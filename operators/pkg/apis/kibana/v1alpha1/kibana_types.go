@@ -11,7 +11,10 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 )
 
-const KibanaContainerName = "kibana"
+const (
+	KibanaContainerName = "kibana"
+	Kind                = "Kibana"
+)
 
 // KibanaSpec defines the desired state of Kibana
 type KibanaSpec struct {
@@ -110,6 +113,12 @@ func (k *Kibana) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
 
 func (k *Kibana) SecureSettings() *commonv1alpha1.SecretRef {
 	return k.Spec.SecureSettings
+}
+
+// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
+// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
+func (k *Kibana) Kind() string {
+	return Kind
 }
 
 // +genclient
