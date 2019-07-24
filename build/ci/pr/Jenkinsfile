@@ -37,6 +37,9 @@ pipeline {
                     }
                 }
                 stage("Run docs build") {
+                    agent {
+                        label 'linux'
+                    }
                     steps {
                         cleanWs()
                         sh 'git clone git@github.com:elastic/docs.git'
@@ -56,9 +59,6 @@ pipeline {
                             checkout scm
                             notOnlyDocs()
                         }
-                    }
-                    agent {
-                        label 'linux'
                     }
                     steps {
                         sh 'make -C build/ci ci-e2e'
