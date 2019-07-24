@@ -117,7 +117,7 @@ func newPodSpec(as *v1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec 
 
 	if p.keystoreResources != nil {
 		dataVolume := keystore.DataVolume(
-			strings.ToLower(as.Kind),
+			strings.ToLower(as.Kind()),
 			DataVolumePath,
 		)
 		builder.WithInitContainers(p.keystoreResources.InitContainer).
