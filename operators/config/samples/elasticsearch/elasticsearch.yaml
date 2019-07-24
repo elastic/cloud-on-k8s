@@ -9,6 +9,10 @@ spec:
   - config:
       # most Elasticsearch configuration parameters are possible to set, e.g:
       node.attr.attr_name: attr_value
+      node.master: true
+      node.data: true
+      node.ingest: true
+      node.ml: true
     podTemplate:
       metadata:
         labels:
