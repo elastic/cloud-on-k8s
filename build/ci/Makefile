@@ -93,6 +93,7 @@ ci-release: vault-public-key vault-docker-creds
     	-e "ELASTIC_DOCKER_PASSWORD=$(shell cat $(DOCKER_CREDENTIALS_FILE))" \
     	-e "USE_ELASTIC_DOCKER_REGISTRY=true" \
     	-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
+    	-e "LATEST_RELEASED_IMG=$(LATEST_RELEASED_IMG)" \
     	-e "VERSION=$(VERSION)" \
     	-e "SNAPSHOT=$(SNAPSHOT)" \
     	cloud-on-k8s-ci-release \
