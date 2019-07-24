@@ -17,12 +17,14 @@ spec:
       spec:
         containers:
         - name: elasticsearch
+          # specify resource limits and requests
           resources:
-            # specify resource limits and requests
             limits:
-              # by default, we will size the heap size of ES to half of the memory limit
-              memory: 2Gi
+              memory: 4Gi
               cpu: 1
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms2g -Xmx2g"
     nodeCount: 3
 #    # this shows how to request 2Gi of persistent data storage for pods in this topology element
 #    volumeClaimTemplates:
