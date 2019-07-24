@@ -77,13 +77,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					Name:      "as",
 					Namespace: "default",
 				},
-				Spec: apmtype.ApmServerSpec{
-					Output: apmtype.Output{
-						Elasticsearch: apmtype.ElasticsearchOutput{
-							ElasticsearchRef: nil,
-						},
-					},
-				},
+				Spec: apmtype.ApmServerSpec{},
 			},
 			initialObjects: []runtime.Object{
 				&corev1.Secret{

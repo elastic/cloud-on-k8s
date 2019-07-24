@@ -17,7 +17,7 @@ GKE_CLUSTER_VERSION ?= 1.12
 
 REPOSITORY 	?= eck
 NAME       	?= eck-operator
-VERSION    	?= 0.9.0-SNAPSHOT
+VERSION    	?= $(shell cat VERSION)
 SNAPSHOT   	?= true
 
 LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
@@ -240,10 +240,6 @@ bootstrap-gke: require-gcloud-project
 	$(MAKE) set-context-gke cluster-bootstrap
 ifeq ($(PSP), 1)
 	kubectl apply -f config/dev/elastic-psp.yaml
-endif
-ifeq ($(SKIP_DOCKER_COMMAND), false)
-	# push "latest" operator image to be used for init containers when running the operator locally
-	$(MAKE) docker-build docker-push
 endif
 
 delete-gke: require-gcloud-project

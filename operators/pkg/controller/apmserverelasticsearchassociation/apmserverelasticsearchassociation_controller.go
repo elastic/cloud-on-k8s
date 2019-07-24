@@ -12,7 +12,9 @@ import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
@@ -24,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -45,8 +48,8 @@ var (
 
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, _ operator.Parameters) error {
-	r := newReconciler(mgr)
+func Add(mgr manager.Manager, params operator.Parameters) error {
+	r := newReconciler(mgr, params)
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -55,13 +58,14 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *ReconcileApmServerElasticsearchAssociation {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServerElasticsearchAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServerElasticsearchAssociation{
-		Client:   client,
-		scheme:   mgr.GetScheme(),
-		watches:  watches.NewDynamicWatches(),
-		recorder: mgr.GetRecorder(name),
+		Client:     client,
+		scheme:     mgr.GetScheme(),
+		watches:    watches.NewDynamicWatches(),
+		recorder:   mgr.GetRecorder(name),
+		Parameters: params,
 	}
 }
 
@@ -97,7 +101,7 @@ type ReconcileApmServerElasticsearchAssociation struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 	watches  watches.DynamicWatches
-
+	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
 }
@@ -144,6 +148,21 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		return reconcile.Result{}, nil
 	}
 
+	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: apmServer.Name}).AsSelector()
+	compat, err := annotation.ReconcileCompatibility(r.Client, &apmServer, selector, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !compat {
+		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
+		return reconcile.Result{}, nil
+	}
+
+	err = annotation.UpdateControllerVersion(r.Client, &apmServer, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	newStatus, err := r.reconcileInternal(apmServer)
 	// maybe update status
 	origStatus := apmServer.Status.DeepCopy()
@@ -185,13 +204,16 @@ func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result 
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer apmtype.ApmServer) (commonv1alpha1.AssociationStatus, error) {
-	assocKey := k8s.ExtractNamespacedName(&apmServer)
 	// no auto-association nothing to do
-	elasticsearchRef := apmServer.Spec.Output.Elasticsearch.ElasticsearchRef
-	if elasticsearchRef == nil {
+	elasticsearchRef := apmServer.Spec.ElasticsearchRef
+	if !elasticsearchRef.IsDefined() {
 		return "", nil
 	}
-
+	if elasticsearchRef.Namespace == "" {
+		// no namespace provided: default to the APM server namespace
+		elasticsearchRef.Namespace = apmServer.Namespace
+	}
+	assocKey := k8s.ExtractNamespacedName(&apmServer)
 	// Make sure we see events from Elasticsearch using a dynamic watch
 	// will become more relevant once we refactor user handling to CRDs and implement
 	// syncing of user credentials across namespaces
@@ -221,8 +243,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	var expectedEsConfig apmtype.ElasticsearchOutput
-	expectedEsConfig.ElasticsearchRef = apmServer.Spec.Output.Elasticsearch.ElasticsearchRef
-
 	// TODO: look up public certs secret name from the ES cluster resource instead of relying on naming convention
 	var publicCertsSecret corev1.Secret
 	publicCertsSecretKey := http.PublicCertsSecretRef(
@@ -238,8 +258,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	expectedEsConfig.Auth.SecretKeyRef = clearTextSecretKeySelector(apmServer)
 
 	// TODO: this is a bit rough
-	if !reflect.DeepEqual(apmServer.Spec.Output.Elasticsearch, expectedEsConfig) {
-		apmServer.Spec.Output.Elasticsearch = expectedEsConfig
+	if !reflect.DeepEqual(apmServer.Spec.Elasticsearch, expectedEsConfig) {
+		apmServer.Spec.Elasticsearch = expectedEsConfig
 		log.Info("Updating Apm Server spec with Elasticsearch output configuration", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
 		if err := r.Update(&apmServer); err != nil {
 			return commonv1alpha1.AssociationPending, err
@@ -266,7 +286,7 @@ func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 
 	for _, s := range secrets.Items {
 		controlledBy := metav1.IsControlledBy(&s, &apm)
-		if controlledBy && !apm.Spec.Output.Elasticsearch.ElasticsearchRef.IsDefined() {
+		if controlledBy && !apm.Spec.ElasticsearchRef.IsDefined() {
 			log.Info("Deleting secret", "namespace", s.Namespace, "secret_name", s.Name, "as_name", apm.Name)
 			if err := c.Delete(&s); err != nil {
 				return err

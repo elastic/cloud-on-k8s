@@ -3,5 +3,8 @@ kind: ApmServer
 metadata:
   name: apmserver-sample
 spec:
-  version: "7.1.0"
+  version: "7.2.0"
   nodeCount: 1
+  config:
+    output.console:
+      pretty: true
