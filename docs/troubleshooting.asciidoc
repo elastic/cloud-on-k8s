@@ -146,8 +146,7 @@ and change the following lines from:
       - manager
       - --operator-roles
       - all
-      - --enable-debug-logs
-      - false
+      - --enable-debug-logs=false
 ----
 
 to
@@ -160,8 +159,7 @@ to
       - manager
       - --operator-roles
       - all
-      - --enable-debug-logs
-      - true
+      - --enable-debug-logs=true
 ----
 
 [float]
