@@ -47,7 +47,7 @@ spec:
 #   http:
 #     service:
 #       spec:
-#         # exposes this cluster Service with a LoadBalancer
+#         # expose this cluster Service with a LoadBalancer
 #         type: LoadBalancer
 #     tls:
 #       # add a list of SANs into the self-signed HTTP certificate
