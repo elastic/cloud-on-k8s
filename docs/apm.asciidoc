@@ -3,7 +3,7 @@
 
 This section describes how to deploy, configure and access an APM Server with ECK.
 
-NOTE: The current Docker image of the APM Server needs to be run as `root` or with the user id 1000. This prevents to run the APM Server on some environments like Openshift or on any Kubernetes cluster that would set a different user in the security context.
+NOTE: The current Docker image of the APM Server must run as `root` or with the user id 1000. This prevents the APM Server from running in some environments such as Openshift, or on any Kubernetes cluster that would set a different user in the security context.
 
 === Use an Elasticsearch cluster managed by ECK
 
