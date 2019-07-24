@@ -50,9 +50,12 @@ spec:
 #         # expose this cluster Service with a LoadBalancer
 #         type: LoadBalancer
 #     tls:
-#       # add a list of SANs into the self-signed HTTP certificate
 #       selfSignedCertificate:
+#         # add a list of SANs into the self-signed HTTP certificate
 #         subjectAltNames:
 #         - ip: 192.168.1.2
 #         - ip: 192.168.1.3
 #         - dns: elasticsearch-sample.example.com
+#       certificate:
+#         # provide your own certificate
+#         secretName: my-cert
