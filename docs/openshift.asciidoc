@@ -21,7 +21,7 @@ Before deploying an Elasticsearch cluster with ECK you must ensure that the `vm.
 oc apply -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
 ----
 
-. [Optional] If the Software Defined Network is configured with the `ovs-multitenant` plug-in you need to allow the `elastic-system` namespace to access other pods and services in the cluster: 
+. [Optional] If the Software Defined Network is configured with the `ovs-multitenant` plug-in, you must allow the `elastic-system` namespace to access other pods and services in the cluster: 
 +
 [source,shell]
 ----
