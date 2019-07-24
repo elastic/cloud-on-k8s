@@ -12,12 +12,13 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
-        REGISTRY = 'push.docker.elastic.co'
-        REPOSITORY = 'eck'
-        IMG_NAME = 'eck-operator'
-        IMG_SUFFIX = ''
+        REGISTRY = "push.docker.elastic.co"
+        REPOSITORY = "eck"
+        IMG_NAME = "eck-operator"
+        OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
         LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
-        SNAPSHOT_RELEASE = 'false'
+        VERSION = "${TAG_NAME}"
+        SNAPSHOT = "false"
     }
 
     stages {
