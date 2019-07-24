@@ -131,6 +131,7 @@ In the above command the file `elasticsearch-ca.crt` must contain the CA certifi
 . You can then mount this secret using the pod template and reference the file in the `config` of the APM server.
 +
 Here is a complete example with a password stored in the Keystore as it is described in the previous section:
++
 [source,yaml]
 ----
 apiVersion: apm.k8s.elastic.co/v1alpha1
