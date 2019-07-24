@@ -12,12 +12,11 @@ GKE_CREDS_FILE ?= credentials.json
 VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
 VAULT_DOCKER_CREDENTIALS ?= secret/devops-ci/cloud-on-k8s/eckadmin
+DOCKER_LOGIN ?= eckadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
 VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
 VAULT_AWS_ACCESS_KEY_FILE ?= aws_access_key.file
 VAULT_AWS_SECRET_KEY_FILE ?= aws_secret_key.file
-
-DOCKER_LOGIN ?= eckadmin
 
 VAULT_TOKEN ?= $(shell vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
 
