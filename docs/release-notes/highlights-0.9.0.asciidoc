@@ -32,4 +32,7 @@ or to specify `imagePullSecrets` for your private Docker registry.
 [float]
 === Breaking Changes
 
-Existing resources (Elasticsearch and Kibana) that were created with a 0.8.x version of the operator are *not* compatible with this release. They will automatically have an annotation added to them indicating the controller version, and then skipped. They will continue to function, but any changes made to them will not be processed by the 0.9.x version of the operator. To upgrade existing clusters, please https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[perform a snapshot] of the existing cluster and restore them into a new cluster created by the 0.9.x version of the operator.
+Existing resources (Elasticsearch and Kibana) that were created with a 0.8.x version of the operator are *not* compatible with this release. They will automatically have an annotation added to them indicating the controller version, and then skipped. They will continue to function, but any changes made to them will not be processed by the 0.9.x version of the operator. To upgrade existing clusters, you can either:
+
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Perform a snapshot] of the existing cluster and restore them into a new cluster created by the 0.9.x version of the operator, or
+- Create a new cluster, and https://www.elastic.co/guide/en/elasticsearch/reference/current/reindex-upgrade-remote.html[reindex from remote] to reindex your data to the new cluster.
