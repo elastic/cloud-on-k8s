@@ -6,28 +6,27 @@
 
 In addition to Google Kubernetes Engine (GKE) and vanilla Kubernetes, ECK now also works on
 Azure Kubernetes Service (AKS), Amazon Elastic Kubernetes Service (EKS) and
-Red Hat OpenShift 3.11+ (with some restrictions on APM server functionality)
+Red Hat OpenShift 3.11+ (with some restrictions for APM Server).
 
 [float]
 === APM Server
 
-ECK 0.9.0 brings support for a new custom resource that allows you to deploy APM server on Kubernetes.
+ECK 0.9.0 brings support for a new custom resource that allows you to deploy APM Server on Kubernetes.
 The ECK operator takes care of linking it up to an Elasticsearch output, if desired, as well.
 
 [float]
 === User Provided HTTP Certificates
 
-In addition to self-signed certificates which ECK uses as a default, we now support user provided certificates for
-HTTP connections to Elasticsearch, Kibana or APM. Configure them via a regular k8s TLS secrets and
+In addition to self-signed certificates which ECK uses as a default, we now support user-provided certificates for
+HTTP connections to Elasticsearch, Kibana or APM. Configure them via a regular k8s TLS secret and
 reference them in the Elastic resource of choice in the new TLS options attribute.
 
 [float]
 === User Provided Pod Templates
 
-This release introduces support for user provided pod templates in Elasticsearch, Kibana and APM server. This allows you to configure, for example,
-your own init containers to run code before Elasticsearch, Kibana or APM start up. Or you can use the pod template to mount
-additional volumes with configuration files e.g. to configure SAML or synonym files, or to specify `imagePullSecrets` for your private Docker registry.
-
-
+This release introduces support for user-provided Pod templates in Elasticsearch, Kibana and APM Server.  For example,
+this allows you to configure your own init containers to run code before Elasticsearch, Kibana or APM start up.
+Or you can use the Pod template to mount additional volumes with configuration files, for example to configure SAML or synonym files,
+or to specify `imagePullSecrets` for your private Docker registry.
 
 
