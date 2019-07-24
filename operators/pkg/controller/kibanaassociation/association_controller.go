@@ -13,15 +13,18 @@ import (
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,8 +60,8 @@ var (
 
 // Add creates a new Association Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, _ operator.Parameters) error {
-	r := newReconciler(mgr)
+func Add(mgr manager.Manager, params operator.Parameters) error {
+	r := newReconciler(mgr, params)
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -67,13 +70,14 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *ReconcileAssociation {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileAssociation{
-		Client:   client,
-		scheme:   mgr.GetScheme(),
-		watches:  watches.NewDynamicWatches(),
-		recorder: mgr.GetRecorder(name),
+		Client:     client,
+		scheme:     mgr.GetScheme(),
+		watches:    watches.NewDynamicWatches(),
+		recorder:   mgr.GetRecorder(name),
+		Parameters: params,
 	}
 }
 
@@ -95,7 +99,7 @@ type ReconcileAssociation struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 	watches  watches.DynamicWatches
-
+	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
 }
@@ -147,6 +151,16 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	if common.IsPaused(kibana.ObjectMeta) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", kibana.Namespace, "kibana_name", kibana.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
+	}
+
+	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kibana.Name}).AsSelector()
+	compat, err := annotation.ReconcileCompatibility(r.Client, &kibana, selector, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !compat {
+		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
+		return reconcile.Result{}, nil
 	}
 
 	newStatus, err := r.reconcileInternal(kibana)

@@ -11,6 +11,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -201,6 +202,16 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
+	selector := labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
+	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !compat {
+		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
+		return reconcile.Result{}, nil
+	}
+
 	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -288,7 +299,7 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
-		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, "elasticsearch"),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind()),
 		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Name, esname.ESNamer),
 	}
 }
