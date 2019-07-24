@@ -5,7 +5,7 @@ This section explains how to run ECK on Openshift.
 
 NOTE: Only Elasticsearch and Kibana are supported on Openshift.
 
-=== Prerequisites 
+=== Prerequisites
 
 . To run the following instructions, you must be a `system:admin` user or a User with the privileges to create Projects, CRDs and RBACs resources at the cluster level.
 
