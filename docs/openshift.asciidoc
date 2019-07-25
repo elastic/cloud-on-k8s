@@ -1,9 +1,9 @@
 [id="{p}-openshift"]
-== Deploying ECK on Openshift
+== Deploying ECK on OpenShift
 
-This section explains how to run ECK on Openshift.
+This section explains how to run ECK on OpenShift.
 
-NOTE: Only Elasticsearch and Kibana are supported on Openshift.
+NOTE: Only Elasticsearch and Kibana are supported on OpenShift.
 
 === Prerequisites
 
