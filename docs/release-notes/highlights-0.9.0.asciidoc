@@ -29,4 +29,18 @@ this allows you to configure your own init containers to run code before Elastic
 Or you can use the Pod template to mount additional volumes with configuration files, for example to configure SAML or synonym files,
 or to specify `imagePullSecrets` for your private Docker registry.
 
+[float]
+=== Breaking Changes
 
+Existing resources (Elasticsearch and Kibana) that were created with a 0.8.x version of the operator are *not* compatible with this release. They will automatically have an annotation added to them indicating the controller version, and then skipped. They will continue to function, but any changes made to them will not be processed by the 0.9.x version of the operator. To upgrade existing clusters, you can either:
+
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Perform a snapshot] of the existing cluster and restore them into a new cluster created by the 0.9.x version of the operator, or
+- Create a new cluster, and https://www.elastic.co/guide/en/elasticsearch/reference/current/reindex-upgrade-remote.html[reindex from remote] to reindex your data to the new cluster.
+
+Attempting to delete resources created with a 0.8.x version will hang if ECK 0.9.x is running. To unblock the deletion, remove any registered finalizer from the resource:
+
+[source,sh]
+----
+kubectl patch elasticsearch quickstart-0-8 --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch kibana quickstart-0-8 --patch '{"metadata": {"finalizers": []}}' --type=merge
+----
