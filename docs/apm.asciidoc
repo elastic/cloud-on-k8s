@@ -1,5 +1,5 @@
 [id="{p}-apm-server"]
-== APM Server
+== Running APM Server on ECK
 
 This section describes how to deploy, configure and access an APM Server with ECK.
 
@@ -134,20 +134,20 @@ spec:
 [id="{p}-apm-existing-es"]
 ==== Reference an existing Elasticsearch cluster
 
-Now that we know how to use the APM keystore and customize the server configuration, let's see how to manually configure a secured connection to an existing Elasticsearch cluster.
+Now that you how to use the APM keystore and customize the server configuration, you can manually configure a secured connection to an existing Elasticsearch cluster.
 
 . Create a secret with the Elasticsearch CA
 +
-First we need to store the certificate authority of the Elasticsearch cluster in a secret:
+First, you need to store the certificate authority of the Elasticsearch cluster in a secret:
 +
 [source,yaml]
 ----
 kubectl create secret generic es-ca --from-file=tls.crt=elasticsearch-ca.crt
 ----
 +
-Note: the file `elasticsearch-ca.crt` must contain the CA certificate of the Elasticsearch cluster you want to use with the APM server.
+Note: the file `elasticsearch-ca.crt` must contain the CA certificate of the Elasticsearch cluster you want to use with the APM Server.
 
-. You can then mount this secret using the pod template, and reference the file in the `config` of the APM Server.
+. You can then mount this secret using the Pod template, and reference the file in the `config` of the APM Server.
 +
 Here is a complete example with a password stored in the Keystore as described in the previous section:
 +
@@ -193,9 +193,9 @@ spec:
 
 By default the operator manages a private CA and generates a self-signed certificate used to secure the communication between APM agents and the server.
 
-This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. You can refer to link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[this documentation] to understand how to use your own certificate to configure the TLS endpoint of the APM Server.
+This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. See link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[Setting up your own certificate] for more information on how to use your own certificate to configure the TLS endpoint of the APM Server.
 
-You can refer to the https://www.elastic.co/guide/en/apm/agent/index.html[APM agents documentation] for further details about how to configure them to work with custom certificates.
+For more details on how to configure them to work with custom certificates, see the  https://www.elastic.co/guide/en/apm/agent/index.html[APM agents documentation].
 
 [float]
 [id="{p}-apm-connecting"]
@@ -204,9 +204,9 @@ You can refer to the https://www.elastic.co/guide/en/apm/agent/index.html[APM ag
 [id="{p}-apm-service"]
 ==== APM Server service
 
-The APM Server is exposed with a Service. You can refer to link:k8s-accessing-elastic-services.html[this documentation] for information on accessing it.
+The APM Server is exposed with a Service. For information on accessing it, see link:k8s-accessing-elastic-services.html[How to access Elastic Stack services].
 
-You can retrieve the list of all the APM Services with following command:
+To retrieve the list of all the APM Services, use the following command:
 
 [source,sh]
 ----
@@ -228,7 +228,7 @@ This token is stored in a secret named `{APM-server-name}-apm-token` and can be 
 
 [source,sh]
 ----
-kubectl get secret/apm-server-quickstart-apm-token  -o go-template='{{index .data "secret-token" | base64decode}}'
+kubectl get secret/apm-server-quickstart-apm-token -o go-template='{{index .data "secret-token" | base64decode}}'
 ----
 
-For any additional information about the APM Server please refer to https://www.elastic.co/guide/en/apm/server/current/index.html[this documentation].
+For more information about the APM Server, see https://www.elastic.co/guide/en/apm/server/current/index.html[APM Server Reference].
