@@ -116,7 +116,7 @@ spec:
 
 ==== Reference an already existing Elasticsearch cluster
 
-Now that we know how to use the APM keystore and customize the server configuration let's see how to manually configure a secured connection to an already existing Elasticsearch cluster:
+Now that we know how to use the APM keystore and customize the server configuration, let's see how to manually configure a secured connection to an existing Elasticsearch cluster.
 
 . Create a secret with the Elasticsearch CA
 +
@@ -126,11 +126,11 @@ First we need to store the certificate authority of the Elasticsearch cluster in
 ----
 kubectl create secret generic es-ca --from-file=tls.crt=elasticsearch-ca.crt
 ----
-In the above command the file `elasticsearch-ca.crt` must contain the CA certificate of the Elasticsearch cluster you want to use.
+Note: the file `elasticsearch-ca.crt` must contain the CA certificate of the Elasticsearch cluster you want to use with the APM server.
 +
-. You can then mount this secret using the pod template and reference the file in the `config` of the APM Server.
+. You can then mount this secret using the pod template, and reference the file in the `config` of the APM Server.
 +
-Here is a complete example with a password stored in the Keystore as it is described in the previous section:
+Here is a complete example with a password stored in the Keystore as described in the previous section:
 +
 [source,yaml]
 ----
@@ -178,7 +178,7 @@ This behavior and the relevant configuration is identical to what is done for El
 
 ==== APM Server service
 
-The APM Server is exposed with a Service, you can refer to link:k8s-accessing-elastic-services.html[this documentation] to understand how to access it.
+The APM Server is exposed with a Service. You can refer to link:k8s-accessing-elastic-services.html[this documentation] for information on accessing it.
 
 You can retrieve the list of all the APM Services with following command:
 
@@ -195,9 +195,9 @@ apm-server-quickstart-apm-http   ClusterIP   10.0.1.252   <none>        8200/TCP
 
 ==== APM Server secret token
 
-The operator generates an authorization token that the agents must send to authenticate themselves to the APM Server.
+The operator generates an authorization token that agents must send to authenticate themselves to the APM Server.
 
-This token is stored in a secret and can be retrieved with the following command:
+This token is stored in a secret named `{APM-server-name}-apm-token` and can be retrieved with the following command:
 
 [source,sh]
 ----
