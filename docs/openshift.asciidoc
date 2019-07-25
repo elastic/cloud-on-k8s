@@ -1,5 +1,5 @@
 [id="{p}-openshift"]
-== Openshift
+== OpenShift
 
 This section explains how to run ECK on Openshift.
 
