@@ -114,7 +114,7 @@ func TestCustomConfiguration(t *testing.T) {
 					r, err := http.NewRequest(http.MethodPut, "/test-index", bytes.NewBufferString(settings))
 					require.NoError(t, err)
 					response, err := esClient.Request(context.Background(), r)
-					defer response.Body.Close()
+					defer response.Body.Close() // nolint
 					require.NoError(t, err)
 				},
 			},
@@ -130,7 +130,7 @@ func TestCustomConfiguration(t *testing.T) {
 					r, err := http.NewRequest(http.MethodGet, "/test-index/_analyze", bytes.NewBufferString(body))
 					require.NoError(t, err)
 					response, err := esClient.Request(context.Background(), r)
-					defer response.Body.Close()
+					defer response.Body.Close() // nolint
 					require.NoError(t, err)
 					actual, err := ioutil.ReadAll(response.Body)
 					require.NoError(t, err)

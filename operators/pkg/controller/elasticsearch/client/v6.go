@@ -98,11 +98,11 @@ func (c *clientV6) DeleteVotingConfigExclusions(ctx context.Context, waitForRemo
 }
 
 func (c *clientV6) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
-	newUrl, err := url.Parse(stringsutil.Concat(c.Endpoint, r.URL.String()))
+	newURL, err := url.Parse(stringsutil.Concat(c.Endpoint, r.URL.String()))
 	if err != nil {
 		return nil, err
 	}
-	r.URL = newUrl
+	r.URL = newURL
 	return c.doRequest(ctx, r)
 }
 
