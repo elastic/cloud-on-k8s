@@ -71,13 +71,14 @@ vault-aws-creds:
 ## -- Job executed on all PRs
 
 ci-pr: check-license-header
+	docker build -f Dockerfile -t cloud-on-k8s-ci-pr .
 	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
 		-e "IMG_SUFFIX=-ci" \
 		--net=host \
-		$(IMAGE) \
+		cloud-on-k8s-ci-pr \
 		bash -c \
 			"make -C operators ci && \
 			 make -C local-volume ci"
@@ -85,6 +86,7 @@ ci-pr: check-license-header
 ## -- Release job
 
 ci-release: vault-public-key vault-docker-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
 	@ docker run --rm -t \
     	-v /var/run/docker.sock:/var/run/docker.sock \
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -93,19 +95,21 @@ ci-release: vault-public-key vault-docker-creds
     	-e "ELASTIC_DOCKER_PASSWORD=$(shell cat $(DOCKER_CREDENTIALS_FILE))" \
     	-e "USE_ELASTIC_DOCKER_REGISTRY=true" \
     	-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
+    	-e "LATEST_RELEASED_IMG=$(LATEST_RELEASED_IMG)" \
     	-e "VERSION=$(VERSION)" \
     	-e "SNAPSHOT=$(SNAPSHOT)" \
-    	$(IMAGE) \
+    	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
 
 # Will be uploaded to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
 yaml-upload: vault-aws-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
 	@ docker run --rm -t \
         -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
         -w $(GO_MOUNT_PATH) \
         -e "AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE))" \
         -e "AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE))" \
-        $(IMAGE) \
+        cloud-on-k8s-ci-release \
         bash -c "aws s3 cp $(GO_MOUNT_PATH)/operators/config/all-in-one.yaml \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml"
 
@@ -113,6 +117,7 @@ yaml-upload: vault-aws-creds
 
 # Spawn a k8s cluster, and run e2e tests against it
 ci-e2e: vault-gke-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
 	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -125,11 +130,12 @@ ci-e2e: vault-gke-creds
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
-		$(IMAGE) \
+		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e"
 
 # Run e2e tests in GKE against provided ECK image
 ci-e2e-rc: vault-gke-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
 	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -143,13 +149,14 @@ ci-e2e-rc: vault-gke-creds
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
 		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
-		$(IMAGE) \
+		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e-rc"
 
 ## -- Support jobs
 
 # Remove k8s cluster
 ci-e2e-delete-cluster: vault-gke-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
 	@ docker run --rm -t \
     	-v /var/run/docker.sock:/var/run/docker.sock \
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -157,7 +164,7 @@ ci-e2e-delete-cluster: vault-gke-creds
     	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
     	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
     	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
-    	$(IMAGE) \
+    	cloud-on-k8s-ci-e2e \
     	bash -c "make -C operators set-context-gke delete-gke"
 
 # Remove all unused resources in GKE
@@ -168,7 +175,7 @@ ci-gke-cleanup: ci-e2e-delete-cluster
     	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
     	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
     	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
-    	$(IMAGE) \
+    	cloud-on-k8s-ci-e2e \
     	bash -c "GKE_CLUSTER_VERSION=1.11 $(GO_MOUNT_PATH)/operators/hack/gke-cluster.sh auth && \
     	 	$(GO_MOUNT_PATH)/build/ci/delete_unused_disks.py"
 
