@@ -38,7 +38,7 @@ import (
 // initContainersParameters is used to generate the init container that will load the secure settings into a keystore
 var initContainersParameters = keystore.InitContainerParameters{
 	KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
-	KeystoreAddCommand:            "/usr/share/kibana/bin/kibana-keystore add",
+	KeystoreAddCommand:            `/usr/share/kibana/bin/kibana-keystore add "$key" --stdin < "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 	DataVolumePath:                volume.DataVolumeMountPath,
 }

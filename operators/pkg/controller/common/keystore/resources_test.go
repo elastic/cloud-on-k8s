@@ -23,7 +23,7 @@ import (
 var (
 	initContainersParameters = InitContainerParameters{
 		KeystoreCreateCommand:         "/keystore/bin/keystore create",
-		KeystoreAddCommand:            "/keystore/bin/keystore add",
+		KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
 		SecureSettingsVolumeMountPath: "/foo/secret",
 		DataVolumePath:                "/bar/data",
 	}
