@@ -1,5 +1,5 @@
 [id="{p}-openshift"]
-== OpenShift
+== Deploying ECK on Openshift
 
 This section explains how to run ECK on Openshift.
 

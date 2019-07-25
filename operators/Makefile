@@ -334,7 +334,6 @@ ci-bootstrap-gke:
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
-ci-release: export LATEST_RELEASED_IMG = docker.elastic.co/$(REPOSITORY)/eck-operator:$(TAG)
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 	@ echo $(OPERATOR_IMAGE) was pushed!
