@@ -154,7 +154,7 @@ spec:
     secretName: your-secure-settings-secret
 ----
 
-See link:snapshots.asciidoc[How to create automated snapshots] for an example use case.
+See link:k8s-how-to-snapshot.html[How to create automated snapshots] for an example use case.
 
 
 [id="{p}-bundles-plugins"]
