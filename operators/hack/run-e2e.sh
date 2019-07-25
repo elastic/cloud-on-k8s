@@ -82,11 +82,11 @@ else
     kubectl -n $NAMESPACE get elastic,pods,rs,deploy,svc,cm,secrets,pvc,pv
     echo "--"
     echo "# events for non-running pods"
-    for pod in $(kubectl get pods -n $NAMESPACE | tail -n +2 | grep -v Running | awk '{print $1}')
+    for pod in $(kubectl -n $NAMESPACE get pods --no-headers --field-selector=status.phase!=Running -o custom-columns=:metadata.name)
     do
         echo "--"
-        echo "> kubectl -n $NAMESPACE describe pod $pod | grep -A30 Events"
-        kubectl -n $NAMESPACE describe pod $pod | grep -A30 Events
+        echo "> kubectl -n $NAMESPACE get event --field-selector involvedObject.name=$pod"
+        kubectl -n $NAMESPACE get event --field-selector involvedObject.name=$pod
         echo "--"
     done
 fi
