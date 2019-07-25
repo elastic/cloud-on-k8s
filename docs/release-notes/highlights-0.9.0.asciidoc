@@ -39,7 +39,8 @@ Existing resources (Elasticsearch and Kibana) that were created with a 0.8.x ver
 
 Resources created with a 0.8.X version will be stuck on the delete operation if ECK 0.9.X is running. To unlock the deletion, remove any registered finalizer:
 
-```
+[source,sh]
+----
 kubectl patch elasticsearch quickstart-0-8 --patch '{"metadata": {"finalizers": []}}' --type=merge
 kubectl patch kibana quickstart-0-8 --patch '{"metadata": {"finalizers": []}}' --type=merge
-```
+----
