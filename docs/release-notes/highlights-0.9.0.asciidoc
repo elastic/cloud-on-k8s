@@ -36,3 +36,10 @@ Existing resources (Elasticsearch and Kibana) that were created with a 0.8.x ver
 
 - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Perform a snapshot] of the existing cluster and restore them into a new cluster created by the 0.9.x version of the operator, or
 - Create a new cluster, and https://www.elastic.co/guide/en/elasticsearch/reference/current/reindex-upgrade-remote.html[reindex from remote] to reindex your data to the new cluster.
+
+Resources created with a 0.8.X version will be stuck on the delete operation if ECK 0.9.X is running. To unlock the deletion, remove any registered finalizer:
+
+```
+kubectl patch elasticsearch quickstart-0-8 --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch kibana quickstart-0-8 --patch '{"metadata": {"finalizers": []}}' --type=merge
+```
