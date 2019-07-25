@@ -185,6 +185,13 @@ func (b Builder) WithPersistentVolumes(volumeName string, storageClassName *stri
 	return b
 }
 
+func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
+	for i := range b.Elasticsearch.Spec.Nodes {
+		b.Elasticsearch.Spec.Nodes[i].PodTemplate = pt
+	}
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {

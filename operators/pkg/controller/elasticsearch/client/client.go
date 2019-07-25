@@ -101,6 +101,8 @@ type Client interface {
 	//
 	// Introduced in: Elasticsearch 7.0.0
 	DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error
+	// Request exposes a low level interface to the underlying HTTP client e.g. for testing purposes.
+	Request(ctx context.Context, r *http.Request) (*http.Response, error)
 }
 
 // NewElasticsearchClient creates a new client for the target cluster.
