@@ -3,24 +3,65 @@
 
 There are a number of settings which need to be considered before going into production related to Elasticsearch but also to Kubernetes.
 
-Basic settings
+**<<{p}-basic-settings>>**
 
-- JVM heap size
-- Node configuration
-- HTTP settings & TLS SANs
-- Resource limits
-- Pod Template
-- Volume claim templates
+- <<{p}-pod-template>>
+- <<{p}-node-configuration>>
+- <<{p}-volume-claim-templates>>
+- <<{p}-http-settings-tls-sans>>
 
-Advanced settings
+**<<{p}-advanced-settings>>**
 
-- Virtual memory
-- Custom HTTP certificate
-- Secure settings
-- Custom plugins and bundles
-- Init containers for plugin downloads
-- Pod disruption budget
-- Change budget (maxUnavailable, maxSurge)
+- <<{p}-virtual-memory>>
+- <<{p}-custom-http-certificate>>
+- <<{p}-es-secure-settings>>
+- <<{p}-bundles-plugins>>
+- <<{p}-init-containers-plugin-downloads>>
+- <<{p}-update-strategy>>
+  - <<{p}-change-budget>>
+- <<{p}-group-definitions>>
+
+[id="{p}-basic-settings"]
+== Basic settings
+
+[id="{p}-pod-template"]
+=== Pod Template
+
+Pod templates are the same pod templates you know and love from stateful sets and deployments. You can provide your own to add new settings, or merge settings with our defaults. For instance, if you want to add new labels to your pods, you can apply a pod template like so:
+
+[source,yaml]
+----
+    podTemplate:
+      metadata:
+        labels:
+          # additional labels for pods
+          foo: bar
+----
+
+More common is setting resource requests and limits, which is covered in link:k8s-managing-compute-resources.html[Managing compute resources].
+
+You may want to also install additional plugins, which is described in the <<{p}-init-containers-plugin-downloads>> section.
+
+You may want to set environment variables to configure Elasticsearch. For instance to set the minimum and maximum JVM heap size to `2g` and `4g` respectively you may modify the environment variables of the `elasticsearch` container as follows:
+
+[source,yaml]
+----
+spec:
+  podTemplate:
+    spec:
+      containers:
+      - name: elasticsearch
+        env:
+        - name: ES_JAVA_OPTS
+          value: "-Xms2g -Xmx4g"
+----
+
+You can also refer to the Kubernetes documentation here for more information on pod templates:
+
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/#pod-templates[Pod Templates Overview]
+
+- https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#podtemplatespec-v1-core[Pod Template Spec API Reference]
+
 
 [id="{p}-node-configuration"]
 === Node configuration
@@ -51,7 +92,7 @@ spec:
 For more information on Elasticsearch settings, see https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].
 
 [id="{p}-volume-claim-templates"]
-=== Volume Claim Templates
+=== Volume claim templates
 
 By default the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
 
@@ -116,6 +157,38 @@ spec:
         - dns: hulk.example.com
 ----
 
+[id="{p}-advanced-settings"]
+== Advanced Settings
+
+[id="{p}-virtual-memory"]
+=== Virtual memory
+
+By default, Elasticsearch is using memory mapping (`mmap`) to efficiently access indices.
+Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions.
+To increase virtual memory, ECK sets the recommended value by default.
+
+The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which needs to be privileged. If the kernel setting is set directly, you may disable the init container in the Elasticsearch specification:
+[source,yaml]
+----
+spec:
+  setVmMaxMapCount: false
+----
+
+For more information on this setting, see the 
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Elasticsearch documentation].
+
+Optionally, you can select a different type of file system implementation for the storage. For possible options, see the
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html[store module documentation].
+
+[source,yaml]
+----
+spec:
+  nodes:
+  - nodeCount: 3
+    config:
+      index.store.type: niofs
+----
+
 [id="{p}-custom-http-certificate"]
 === Custom HTTP certificate
 
@@ -156,7 +229,6 @@ spec:
 
 See link:k8s-how-to-snapshot.html[How to create automated snapshots] for an example use case.
 
-
 [id="{p}-bundles-plugins"]
 === Custom Configuration Files and Plugins
 
@@ -176,15 +248,16 @@ nodes start, use an init container to run the link:https://www.elastic.co/guide/
 
 [source,yaml]
 ----
-podTemplate:
-  spec:
-    initContainers:
-    - name: install-plugins
-      command:
-      - sh
-      - -c
-      - |
-        bin/elasticsearch-plugin install --batch repository-azure
+spec:
+  podTemplate:
+    spec:
+      initContainers:
+      - name: install-plugins
+        command:
+        - sh
+        - -c
+        - |
+          bin/elasticsearch-plugin install --batch repository-azure
 ----
 
 To install custom configuration files you can use volumes and volume mounts. The next example shows how to add a synonyms file for the
@@ -193,55 +266,49 @@ But you can use the same approach for any kind of file you want to mount into th
 
 [source,yaml]
 ----
-podTemplate:
-  spec:
-    containers:
-    - name: elasticsearch <1>
-      volumeMounts:
+spec:
+  podTemplate:
+    spec:
+      containers:
+      - name: elasticsearch <1>
+        volumeMounts:
+        - name: synonyms
+          mountPath: /usr/share/elasticsearch/config/dictionaries
+      volumes:
       - name: synonyms
-        mountPath: /usr/share/elasticsearch/config/dictionaries
-    volumes:
-    - name: synonyms
-      configMap:
-        name: synonyms <2>
+        configMap:
+          name: synonyms <2>
 ----
 
 <1> Elasticsearch runs by convention in a container called 'elasticsearch'
 <2> assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s)
 
-[id="{p}-virtual-memory"]
-=== Virtual memory
+[id="{p}-init-containers-plugin-downloads"]
+=== Init containers for plugin downloads
 
-By default, Elasticsearch is using memory mapping (`mmap`) to efficiently access indices.
-Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions.
-To increase virtual memory, ECK sets the recommended value by default.
-
-The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which needs to be privileged. If the kernel setting is set directly, you may disable the init container in the Elasticsearch specification:
-[source,yaml]
-----
-spec:
-  setVmMaxMapCount: false
-----
-
-For more information on this setting, see the 
-link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Elasticsearch documentation].
-
-Optionally, you can select a different type of file system implementation for the storage. For possible options, see the
-link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html[store module documentation].
+To install a custom plugin, you can install them before the Elasticsearch container starts with an initContainer. For example:
 
 [source,yaml]
 ----
-spec:
-  nodes:
-  - nodeCount: 3
-    config:
-      index.store.type: niofs
+  - podTemplate:
+      spec:
+        initContainers:
+        - name: install-plugins
+          command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin install --batch repository-gcs
 ----
+
+You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:k8s-how-to-snapshot.html[snapshots] doc has more information on both of these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
+
+The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It will also inherit the pod name and IP address environment variables.
 
 [id="{p}-update-strategy"]
 === Update strategy
 
-The Elasticsearch cluster configuration can be updated at any time:
+The Elasticsearch cluster configuration can be updated at any time to:
 
 * add new nodes
 * remove some nodes
@@ -301,7 +368,7 @@ Under certain circumstances, ECK will therefore ignore the change budget. For ex
 It is possible to configure the `changeBudget` to optimize for reusing Persistent Volumes instead of migrating data across nodes. This feature is not supported yet: more details to come in the next release.
 
 [id="{p}-group-definitions"]
-==== Group definitions
+=== Group definitions
 
 To optimize upgrades for highly available setups, ECK can take into account arbitrary nodes grouping. It prioritizes recovery of entire availability zones in catastrophic scenarios.
 
