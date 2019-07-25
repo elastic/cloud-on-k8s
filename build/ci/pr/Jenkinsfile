@@ -20,11 +20,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout from GitHub') {
-            steps {
-                checkout scm
-            }
-        }
         stage('Run tests in parallel') {
             parallel {
                 stage("Run unit and integration tests") {
@@ -43,6 +38,7 @@ pipeline {
                 }
                 stage("Run docs build") {
                     steps {
+                        checkout scm
                         sh 'git clone git@github.com:elastic/docs.git docs-repo'
                         sh """
                             $WORKSPACE/docs-repo/build_docs \
