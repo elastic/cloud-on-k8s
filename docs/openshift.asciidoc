@@ -7,14 +7,14 @@ NOTE: Only Elasticsearch and Kibana are supported on Openshift.
 
 === Prerequisites
 
-. To run the following instructions, you must be a `system:admin` user or a User with the privileges to create Projects, CRDs and RBACs resources at the cluster level.
+. To run the following instructions, you must be a `system:admin` user or a User with the privileges to create Projects, CRDs, and RBAC resources at the cluster level.
 
 . Set virtual memory settings on the nodes
 +
 Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraints] (SCC), they will run with a limited set of privileges and will not be able to change this setting on the nodes that host them. You can refer to the following https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[documentation] for more information.
 
 === Deploy the operator
-. Apply the all-in-one template as described in the quickstart.
+. Apply the all-in-one template as described in the link:k8s-quickstart.html[quickstart].
 +
 [source,shell]
 ----
