@@ -144,12 +144,13 @@ First we need to store the certificate authority of the Elasticsearch cluster in
 ----
 kubectl create secret generic es-ca --from-file=tls.crt=elasticsearch-ca.crt
 ----
++
 Note: the file `elasticsearch-ca.crt` must contain the CA certificate of the Elasticsearch cluster you want to use with the APM server.
 
 . You can then mount this secret using the pod template, and reference the file in the `config` of the APM Server.
 +
 Here is a complete example with a password stored in the Keystore as described in the previous section:
-
++
 [source,yaml]
 ----
 apiVersion: apm.k8s.elastic.co/v1alpha1
