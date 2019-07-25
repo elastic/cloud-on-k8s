@@ -94,7 +94,7 @@ This section only covers TLS certificates for the HTTP layer. Those for the tran
 ==== Default self-signed certificate
 
 By default, the operator manages a self-signed certificate with a custom CA for Elasticsearch, Kibana and APM Server.
-The CA, the certificate and the private key are stored in a `secret`.
+The CA, the certificate and the private key are each stored in a separate `Secret`.
 
 [source,sh]
 ----
