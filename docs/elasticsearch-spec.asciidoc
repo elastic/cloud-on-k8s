@@ -1,5 +1,5 @@
 [id="{p}-elasticsearch-specification"]
-== Elasticsearch Specification
+== Running Elasticsearch on ECK
 
 There are a number of settings which need to be considered before going into production related to Elasticsearch but also to Kubernetes.
 
@@ -212,25 +212,22 @@ podTemplate:
 [id="{p}-virtual-memory"]
 === Virtual memory
 
-By default, Elasticsearch is using memory mapping (mmap) to efficiently access indices.
-Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out of memory exceptions.
-To increase virtual memory ECK sets the recommended value by default.
+By default, Elasticsearch is using memory mapping (`mmap`) to efficiently access indices.
+Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions.
+To increase virtual memory, ECK sets the recommended value by default.
 
-A dedicated init container will set the kernel setting `vm.max_map_count=262144` on the host.
-This requires the init container to be privileged.
-This kernel setting can also be set on the host directly.
-In such case, you may disable the init container explicitly in the Elasticsearch specification:
+The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which needs to be privileged. If the kernel setting is set directly, you may disable the init container in the Elasticsearch specification:
 [source,yaml]
 ----
 spec:
   setVmMaxMapCount: false
 ----
 
-To get more info about this setting you can consult the Elasticsearch documentation:
-https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+For more information on this setting, see the 
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Elasticsearch documentation].
 
-Optionally, you can select a different type of file system implementation for the storage. Here you can find information about possible options:
-https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html
+Optionally, you can select a different type of file system implementation for the storage. For possible options, see the
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html[store module documentation].
 
 [source,yaml]
 ----
