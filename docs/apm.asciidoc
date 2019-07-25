@@ -227,4 +227,4 @@ This token is stored in a secret named `{APM-server-name}-apm-token` and can be 
 kubectl get secret/apm-server-quickstart-apm-token  -o go-template='{{index .data "secret-token" | base64decode}}'
 ----
 
-For any additional information about the APM Server please refer to https://www.elastic.co/guide/en/apm/server/current/index.html[this documenation].
+For any additional information about the APM Server please refer to https://www.elastic.co/guide/en/apm/server/current/index.html[this documentation].
