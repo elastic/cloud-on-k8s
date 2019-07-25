@@ -49,9 +49,13 @@ def ifImageNeedsRebuilding() {
         script: "git diff --name-status HEAD~1 HEAD | grep -v build/ci/Dockerfile",
     	returnStatus: true
     )
-    def gopkg = sh (
+    def operator = sh (
         script: "git diff --name-status HEAD~1 HEAD | grep -v operators/Gopkg.lock",
     	returnStatus: true
     )
-    return dockerfile == 1 || gopkg == 1
+    def volume = sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep -v local-volume/Gopkg.lock",
+        returnStatus: true
+    )
+    return dockerfile == 1 || operator == 1 || volume == 1
 }
