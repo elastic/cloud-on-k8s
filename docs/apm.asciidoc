@@ -21,7 +21,7 @@ NOTE: The current Docker image of the APM Server must run as `root` or with the 
 
 When both the APM Server and Elasticsearch are managed by ECK it allows a smooth and secured integration between the two. The output configuration of the APM Server is setup automatically to establish a trust relationship with Elasticsearch.
 
-. If you want to deploy an APM Server and connect it to the cluster `quickstart` created in the quickstart then apply the following specification:
+. If you want to deploy an APM Server and connect it to the cluster `quickstart` created in the link:k8s-quickstart.html[quickstart] then apply the following specification:
 +
 [source,yaml]
 ----
