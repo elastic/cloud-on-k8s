@@ -13,7 +13,7 @@ This section describes how to deploy, configure and access an APM Server with EC
 ** <<{p}-apm-service,APM Server service>>
 ** <<{p}-apm-secret-token,APM Server secret token>>
 
-NOTE: The current Docker image of the APM Server needs to be run as `root` or with the user id 1000. This prevents to run the APM Server on some environments like Openshift or on any Kubernetes cluster that would set a different user in the security context.
+NOTE: The current Docker image of the APM Server must run as `root` or with the user id 1000. This prevents the APM Server from running in some environments such as OpenShift, or on any Kubernetes cluster that would set a different user in the security context.
 
 [float]
 [id="{p}-apm-eck-managed-es"]
