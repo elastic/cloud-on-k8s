@@ -1,10 +1,13 @@
 [id="{p}-apm-server"]
 == APM Server
 
+:toc:
+
 This section describes how to deploy, configure and access an APM Server with ECK.
 
 NOTE: The current Docker image of the APM Server needs to be run as `root` or with the user id 1000. This prevents to run the APM Server on some environments like Openshift or on any Kubernetes cluster that would set a different user in the security context.
 
+[id="{p}-apm-eck-managed-es"]
 === Use an Elasticsearch cluster managed by ECK
 
 When both the APM Server and Elasticsearch are managed by ECK it allows a smooth and secured integration between the two. The output configuration of the APM Server is setup automatically to establish a trust relationship with Elasticsearch.
@@ -56,6 +59,7 @@ NAME                                                READY   STATUS    RESTARTS  
 apm-server-quickstart-apm-server-69b447ddc5-fflc6   1/1     Running   0          2m50s
 ----
 
+[id="{p}-apm-advanced-configuration"]
 === Advanced configuration
 
 ==== Customize the APM Server configuration
@@ -174,6 +178,7 @@ By default the operator manages a private CA and generates a self-signed certifi
 
 This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. You can refer to link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[this documentation] to understand how to use your own certificate to configure the TLS endpoint of the APM Server.
 
+[id="{p}-apm-connecting"]
 === Connecting to the APM Server
 
 ==== APM Server service
