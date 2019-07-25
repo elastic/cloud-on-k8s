@@ -19,10 +19,14 @@ pipeline {
     }
 
     stages {
+        stage('Git checkout') {
+            steps {
+                checkout scm
+            }
+        }
         stage("E2E tests") {
             when {
                 expression {
-                    checkout scm
                     notOnlyDocs()
                 }
             }
