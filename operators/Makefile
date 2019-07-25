@@ -39,9 +39,6 @@ IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --short --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
-ifeq ($(SNAPSHOT_RELEASE), false)
-	OPERATOR_IMAGE = $(IMG):$(TAG)
-endif
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildHash=$(TAG) \
@@ -337,7 +334,6 @@ ci-bootstrap-gke:
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
-ci-release: export LATEST_RELEASED_IMG = docker.elastic.co/$(REPOSITORY)/eck-operator:$(TAG)
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 	@ echo $(OPERATOR_IMAGE) was pushed!
