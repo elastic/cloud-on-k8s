@@ -65,7 +65,7 @@ var (
 
 	initContainerParameters = keystore.InitContainerParameters{
 		KeystoreCreateCommand:         ApmServerBin + " keystore create --force",
-		KeystoreAddCommand:            ApmServerBin + " keystore add",
+		KeystoreAddCommand:            ApmServerBin + ` keystore add "$key" --stdin < "$filename"`,
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		DataVolumePath:                DataVolumePath,
 	}

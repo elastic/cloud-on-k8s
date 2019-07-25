@@ -46,7 +46,7 @@ import (
 // initContainerParams is used to generate the init container that will load the secure settings into a keystore
 var initContainerParams = keystore.InitContainerParameters{
 	KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
-	KeystoreAddCommand:            "/usr/share/elasticsearch/bin/elasticsearch-keystore add-file",
+	KeystoreAddCommand:            `/usr/share/elasticsearch/bin/elasticsearch-keystore add-file "$key" "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 	DataVolumePath:                esvolume.ElasticsearchDataMountPath,
 }
