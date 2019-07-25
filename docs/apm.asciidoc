@@ -194,6 +194,9 @@ spec:
 By default the operator manages a private CA and generates a self-signed certificate used to secure the communication between APM agents and the server.
 
 This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. You can refer to link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[this documentation] to understand how to use your own certificate to configure the TLS endpoint of the APM Server.
+
+You can refer to the https://www.elastic.co/guide/en/apm/agent/index.html[APM agents documentation] for further details about how to configure them to work with custom certificates.
+
 [float]
 [id="{p}-apm-connecting"]
 === Connecting to the APM Server
