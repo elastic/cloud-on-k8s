@@ -19,7 +19,7 @@ pipeline {
     }
 
     stages {
-        stage('Git checkout') {
+        stage('Checkout from GitHub') {
             steps {
                 checkout scm
             }
