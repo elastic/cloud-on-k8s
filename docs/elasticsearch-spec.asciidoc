@@ -38,7 +38,7 @@ Pod templates are the same pod templates you know and love from stateful sets an
           foo: bar
 ----
 
-More common is setting resource requests and limits, which is covered in link:managing-compute-resources.asciidoc[Managing compute resources].
+More common is setting resource requests and limits, which is covered in link:k8s-managing-compute-resources.html[Managing compute resources].
 
 You may want to also install additional plugins, which is described in the <<{p}-init-containers-plugin-downloads>> section.
 
