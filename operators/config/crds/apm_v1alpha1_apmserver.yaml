@@ -50,6 +50,60 @@ spec:
             config:
               description: Config represents the APM configuration.
               type: object
+            elasticsearch:
+              description: Elasticsearch configures how the APM server connects to
+                Elasticsearch
+              properties:
+                auth:
+                  description: Auth configures authentication for APM Server to use.
+                  properties:
+                    inline:
+                      description: Inline is auth provided as plaintext inline credentials.
+                      properties:
+                        password:
+                          description: Password is the password to use.
+                          type: string
+                        username:
+                          description: User is the username to use.
+                          type: string
+                      required:
+                      - username
+                      - password
+                      type: object
+                    secret:
+                      description: SecretKeyRef is a secret that contains the credentials
+                        to use.
+                      type: object
+                  type: object
+                hosts:
+                  description: Hosts are the URLs of the output Elasticsearch nodes.
+                  items:
+                    type: string
+                  type: array
+                ssl:
+                  description: SSL configures TLS-related configuration for Elasticsearch
+                  properties:
+                    certificateAuthorities:
+                      description: CertificateAuthorities is a secret that contains
+                        a `tls.crt` entry that contain certificates for server verifications.
+                      properties:
+                        secretName:
+                          type: string
+                      type: object
+                  type: object
+              type: object
+            elasticsearchRef:
+              description: ElasticsearchRef references an Elasticsearch resource in
+                the Kubernetes cluster. If the namespace is not specified, the current
+                resource namespace will be used.
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
             featureFlags:
               description: FeatureFlags are apm-specific flags that enable or disable
                 specific experimental features
@@ -114,65 +168,6 @@ spec:
                 must have.
               format: int32
               type: integer
-            output:
-              properties:
-                elasticsearch:
-                  description: Elasticsearch configures the Elasticsearch output
-                  properties:
-                    auth:
-                      description: Auth configures authentication for APM Server to
-                        use.
-                      properties:
-                        inline:
-                          description: Inline is auth provided as plaintext inline
-                            credentials.
-                          properties:
-                            password:
-                              description: Password is the password to use.
-                              type: string
-                            username:
-                              description: User is the username to use.
-                              type: string
-                          required:
-                          - username
-                          - password
-                          type: object
-                        secret:
-                          description: SecretKeyRef is a secret that contains the
-                            credentials to use.
-                          type: object
-                      type: object
-                    hosts:
-                      description: Hosts are the URLs of the output Elasticsearch
-                        nodes.
-                      items:
-                        type: string
-                      type: array
-                    ref:
-                      description: ElasticsearchRef allows users to reference a Elasticsearch
-                        cluster inside k8s to automatically derive the other fields.
-                      properties:
-                        name:
-                          type: string
-                        namespace:
-                          type: string
-                      required:
-                      - name
-                      type: object
-                    ssl:
-                      description: SSL configures TLS-related configuration for Elasticsearch
-                      properties:
-                        certificateAuthorities:
-                          description: CertificateAuthorities is a secret that contains
-                            a `tls.crt` entry that contain certificates for server
-                            verifications.
-                          properties:
-                            secretName:
-                              type: string
-                          type: object
-                      type: object
-                  type: object
-              type: object
             podTemplate:
               description: PodTemplate can be used to propagate configuration to APM
                 Server pods. This allows specifying custom annotations, labels, environment

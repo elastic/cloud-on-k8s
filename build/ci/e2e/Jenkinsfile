@@ -24,9 +24,25 @@ pipeline {
                 checkout scm
             }
         }
-        stage("Run E2E tests") {
-            steps {
-                sh 'make -C build/ci ci-e2e'
+        stage("E2E tests") {
+            when {
+                expression {
+                    notOnlyDocs()
+                }
+            }
+            stages {
+                stage('Run E2E tests') {
+                    steps {
+                        sh 'make -C build/ci ci-e2e'
+                    }
+                }
+                stage('Cleanup GKE') {
+                    steps {
+                        build job: 'cloud-on-k8s-e2e-cleanup',
+                            parameters: [string(name: 'GKE_CLUSTER', value: "${GKE_CLUSTER_NAME}")],
+                            wait: false
+                    }
+                }
             }
         }
     }
@@ -43,12 +59,16 @@ pipeline {
             }
         }
         cleanup {
-            build job: 'cloud-on-k8s-e2e-cleanup',
-                  parameters: [string(name: 'GKE_CLUSTER', value: "${GKE_CLUSTER_NAME}")],
-                  wait: false
-
             cleanWs()
         }
     }
 
+}
+
+def notOnlyDocs() {
+    // grep succeeds if there is at least one line without docs/
+    return sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
+    	returnStatus: true
+    ) == 0
 }

@@ -1,5 +1,5 @@
 [id="{p}-elasticsearch-specification"]
-== Elasticsearch Specification
+== Running Elasticsearch on ECK
 
 There are a number of settings which need to be considered before going into production related to Elasticsearch but also to Kubernetes.
 
@@ -163,25 +163,22 @@ spec:
 [id="{p}-virtual-memory"]
 === Virtual memory
 
-By default, Elasticsearch is using memory mapping (mmap) to efficiently access indices.
-Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out of memory exceptions.
-To increase virtual memory ECK sets the recommended value by default.
+By default, Elasticsearch is using memory mapping (`mmap`) to efficiently access indices.
+Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions.
+To increase virtual memory, ECK sets the recommended value by default.
 
-A dedicated init container will set the kernel setting `vm.max_map_count=262144` on the host.
-This requires the init container to be privileged.
-This kernel setting can also be set on the host directly.
-In such case, you may disable the init container explicitly in the Elasticsearch specification:
+The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which needs to be privileged. If the kernel setting is set directly, you may disable the init container in the Elasticsearch specification:
 [source,yaml]
 ----
 spec:
   setVmMaxMapCount: false
 ----
 
-To get more info about this setting you can consult the Elasticsearch documentation:
-https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+For more information on this setting, see the 
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Elasticsearch documentation].
 
-Optionally, you can select a different type of file system implementation for the storage. Here you can find information about possible options:
-https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html
+Optionally, you can select a different type of file system implementation for the storage. For possible options, see the
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html[store module documentation].
 
 [source,yaml]
 ----
@@ -230,7 +227,7 @@ spec:
     secretName: your-secure-settings-secret
 ----
 
-See link:snapshots.asciidoc[How to create automated snapshots] for an example use case.
+See link:k8s-how-to-snapshot.html[How to create automated snapshots] for an example use case.
 
 [id="{p}-bundles-plugins"]
 === Custom Configuration Files and Plugins
@@ -286,9 +283,6 @@ spec:
 <1> Elasticsearch runs by convention in a container called 'elasticsearch'
 <2> assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s)
 
-[id="{p}-virtual-memory"]
-=== Virtual memory
-
 [id="{p}-init-containers-plugin-downloads"]
 === Init containers for plugin downloads
 
@@ -307,7 +301,7 @@ To install a custom plugin, you can install them before the Elasticsearch contai
             bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
-You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:snapshots.asciidoc[snapshots] doc has more information on both of these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
+You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:k8s-how-to-snapshot.html[snapshots] doc has more information on both of these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
 
 The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It will also inherit the pod name and IP address environment variables.
 

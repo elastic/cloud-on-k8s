@@ -65,7 +65,7 @@ var (
 
 	initContainerParameters = keystore.InitContainerParameters{
 		KeystoreCreateCommand:         ApmServerBin + " keystore create --force",
-		KeystoreAddCommand:            ApmServerBin + " keystore add",
+		KeystoreAddCommand:            ApmServerBin + ` keystore add "$key" --stdin < "$filename"`,
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		DataVolumePath:                DataVolumePath,
 	}
@@ -307,7 +307,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
 	}
 
-	esCASecretName := as.Spec.Output.Elasticsearch.SSL.CertificateAuthorities.SecretName
+	esCASecretName := as.Spec.Elasticsearch.SSL.CertificateAuthorities.SecretName
 	if esCASecretName != "" {
 		// TODO: use apmServerCa to generate cert for deployment
 
@@ -450,6 +450,6 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 // finalizersFor returns the list of finalizers applying to a given APM deployment
 func (r *ReconcileApmServer) finalizersFor(as apmv1alpha1.ApmServer) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
-		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, "apmserver"),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, as.Kind()),
 	}
 }

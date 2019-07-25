@@ -26,13 +26,15 @@ const (
 
 [[release-notes-{{.Version}}]]
 == {n} version {{.Version}}
-{{range $group, $prs := .Groups}}
+{{range $group := .GroupOrder -}}
+{{with (index $.Groups $group)}}
 [[{{- id $group -}}-{{$.Version}}]]
 [float]
 === {{index $.GroupLabels $group}}
-{{range $prs}}
+{{range .}}
 * {{.Title}} {pull}{{.Number}}[#{{.Number}}]{{with .RelatedIssues -}}
 {{$length := len .}} (issue{{if gt $length 1}}s{{end}}: {{range $idx, $el := .}}{{if $idx}}, {{end}}{issue}{{$el}}[#{{$el}}]{{end}})
+{{- end}}
 {{- end}}
 {{- end}}
 {{end}}
@@ -40,6 +42,15 @@ const (
 )
 
 var (
+	order = []string{
+		">breaking",
+		">deprecation",
+		">feature",
+		">enhancement",
+		">bug",
+		"nogroup",
+	}
+
 	groupLabels = map[string]string{
 		">breaking":    "Breaking changes",
 		">deprecation": "Deprecations",
@@ -81,6 +92,7 @@ type TemplateParams struct {
 	Repo        string
 	GroupLabels map[string]string
 	Groups      GroupedIssues
+	GroupOrder  []string
 }
 
 func fetch(url string, out interface{}) (string, error) {
@@ -251,6 +263,7 @@ func main() {
 		Repo:        repo,
 		GroupLabels: groupLabels,
 		Groups:      groupedIssues,
+		GroupOrder:  order,
 	}, os.Stdout)
 
 }

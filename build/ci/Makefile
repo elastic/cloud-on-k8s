@@ -12,12 +12,11 @@ GKE_CREDS_FILE ?= credentials.json
 VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
 VAULT_DOCKER_CREDENTIALS ?= secret/devops-ci/cloud-on-k8s/eckadmin
+DOCKER_LOGIN ?= eckadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
 VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
 VAULT_AWS_ACCESS_KEY_FILE ?= aws_access_key.file
 VAULT_AWS_SECRET_KEY_FILE ?= aws_secret_key.file
-
-DOCKER_LOGIN ?= cloudadmin
 
 VAULT_TOKEN ?= $(shell vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
 
@@ -90,15 +89,13 @@ ci-release: vault-public-key vault-docker-creds
     	-v /var/run/docker.sock:/var/run/docker.sock \
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
     	-w $(GO_MOUNT_PATH) \
-    	-e "TAG=$(TAG_NAME)" \
-    	-e "IMG_SUFFIX=$(IMG_SUFFIX)" \
-    	-e "IMG_NAME=$(IMG_NAME)" \
-    	-e "REGISTRY=$(REGISTRY)" \
-    	-e "REPOSITORY=$(REPOSITORY)" \
     	-e "ELASTIC_DOCKER_LOGIN=$(DOCKER_LOGIN)" \
     	-e "ELASTIC_DOCKER_PASSWORD=$(shell cat $(DOCKER_CREDENTIALS_FILE))" \
     	-e "USE_ELASTIC_DOCKER_REGISTRY=true" \
-    	-e "SNAPSHOT_RELEASE=$(SNAPSHOT_RELEASE)" \
+    	-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
+    	-e "LATEST_RELEASED_IMG=$(LATEST_RELEASED_IMG)" \
+    	-e "VERSION=$(VERSION)" \
+    	-e "SNAPSHOT=$(SNAPSHOT)" \
     	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
 
@@ -177,12 +174,3 @@ ci-gke-cleanup: ci-e2e-delete-cluster
     	cloud-on-k8s-ci-e2e \
     	bash -c "GKE_CLUSTER_VERSION=1.11 $(GO_MOUNT_PATH)/operators/hack/gke-cluster.sh auth && \
     	 	$(GO_MOUNT_PATH)/build/ci/delete_unused_disks.py"
-
-# Run docs build
-ci-build-docs:
-	@ docker run --rm -t \
-		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-        docker.elastic.co/docs/build:1 \
-        bash -c "git clone https://github.com/elastic/docs.git && \
-        	/docs/build_docs.pl --doc $(GO_MOUNT_PATH)/docs/index.asciidoc --out $(GO_MOUNT_PATH)/docs/html --chunk 1 && \
-        	test -e $(GO_MOUNT_PATH)/docs/html/index.html"
