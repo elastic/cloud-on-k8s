@@ -182,5 +182,5 @@ ci-gke-cleanup: ci-e2e-delete-cluster
 # Build and push Docker image for CI
 ci-build-image: vault-docker-creds
 	docker build -f Dockerfile -t $(IMAGE) .
-	@ docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) push.docker.elastic.co
+	@ docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) $(REGISTRY)
 	docker push $(IMAGE)
