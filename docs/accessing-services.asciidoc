@@ -249,17 +249,7 @@ You can now reach Elasticsearch:
   "name" : "hulk-es-4qk62zd928",
   "cluster_name" : "hulk",
   "cluster_uuid" : "q6itjqFqRqW576FXF0uohg",
-  "version" : {
-    "number" : "7.2.0",
-    "build_flavor" : "default",
-    "build_type" : "docker",
-    "build_hash" : "508c38a",
-    "build_date" : "2019-06-20T15:54:18.811730Z",
-    "build_snapshot" : false,
-    "lucene_version" : "8.0.0",
-    "minimum_wire_compatibility_version" : "6.8.0",
-    "minimum_index_compatibility_version" : "6.0.0-beta1"
-  },
+  "version" : {...},
   "tagline" : "You Know, for Search"
 }
 ----
