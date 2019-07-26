@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: "7.1.0"
+  version: 7.2.0
   nodes:
   - nodeCount: 1
 ---
@@ -13,7 +13,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: "7.1.0"
+  version: 7.2.0
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"

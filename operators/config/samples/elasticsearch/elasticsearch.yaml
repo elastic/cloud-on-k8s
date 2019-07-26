@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: "7.2.0"
+  version: 7.2.0
   nodes:
   - config:
       # most Elasticsearch configuration parameters are possible to set, e.g:

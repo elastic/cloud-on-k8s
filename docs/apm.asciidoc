@@ -32,7 +32,7 @@ metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: "7.2.0"
+  version: 7.2.0
   nodeCount: 1
   elasticsearchRef:
     name: quickstart
@@ -52,8 +52,8 @@ kubectl get apmservers
 
 [source,sh]
 ----
-NAME                    HEALTH   NODES   VERSION   AGE
-apm-server-quickstart   green    1       7.2.0     8m
+NAME                     HEALTH    NODES    VERSION   AGE
+apm-server-quickstart    green     1         7.2.0     8m
 ----
 And you can list all the Pods belonging to a given deployment:
 
@@ -85,7 +85,7 @@ metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: "7.2.0"
+  version: 7.2.0
   nodeCount: 1
   config:
     output:
@@ -120,7 +120,7 @@ metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: "7.2.0"
+  version: 7.2.0
   nodeCount: 1
   secureSettings:
     secretName: apm-secret-settings
@@ -159,7 +159,7 @@ metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: "7.2.0"
+  version: 7.2.0
   nodeCount: 1
   secureSettings:
     secretName: apm-secret-settings
