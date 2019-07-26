@@ -29,6 +29,9 @@ func Test_dumpIssues(t *testing.T) {
 					GroupLabels: map[string]string{
 						">bugs": "Bug Fixes",
 					},
+					GroupOrder: []string{
+						">bugs",
+					},
 					Groups: GroupedIssues{
 						">bugs": []Issue{
 							{
@@ -75,6 +78,9 @@ func Test_dumpIssues(t *testing.T) {
 					GroupLabels: map[string]string{
 						">bugs": "Bug Fixes",
 					},
+					GroupOrder: []string{
+						">bugs",
+					},
 					Groups: GroupedIssues{
 						">bugs": []Issue{
 							{
@@ -112,6 +118,9 @@ func Test_dumpIssues(t *testing.T) {
 					GroupLabels: map[string]string{
 						">bugs": "Bug Fixes",
 					},
+					GroupOrder: []string{
+						">bugs",
+					},
 					Groups: GroupedIssues{
 						">bugs": []Issue{
 							{
@@ -137,6 +146,58 @@ func Test_dumpIssues(t *testing.T) {
 === Bug Fixes
 
 * title {pull}123[#123] (issues: {issue}456[#456], {issue}789[#789])
+
+`,
+		},
+		{
+			name: "multi issue--multi group",
+			args: args{
+				params: TemplateParams{
+					Version: "0.9.0",
+					Repo:    "me/my-repo/",
+					GroupLabels: map[string]string{
+						">bugs":    "Bug Fixes",
+						">feature": "New Features",
+					},
+					GroupOrder: []string{
+						">feature",
+						">bugs",
+					},
+					Groups: GroupedIssues{
+						">bugs": []Issue{
+							{
+								Body:   "body",
+								Title:  "title",
+								Number: 123,
+							},
+						},
+						">feature": []Issue{
+							{
+								Body:   "feature",
+								Title:  "feature",
+								Number: 987,
+							},
+						},
+					},
+				},
+			},
+			wantOut: `:issue: https://github.com/me/my-repo/issues/
+:pull: https://github.com/me/my-repo/pull/
+
+[[release-notes-0.9.0]]
+== {n} version 0.9.0
+
+[[feature-0.9.0]]
+[float]
+=== New Features
+
+* feature {pull}987[#987]
+
+[[bugs-0.9.0]]
+[float]
+=== Bug Fixes
+
+* title {pull}123[#123]
 
 `,
 		},
