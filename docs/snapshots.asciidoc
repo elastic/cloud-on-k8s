@@ -29,7 +29,7 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: 7.2.0
-  image: your/custom/image:version
+  image: your/custom/image:tag
   nodes:
   - nodeCount: 1
 ----
