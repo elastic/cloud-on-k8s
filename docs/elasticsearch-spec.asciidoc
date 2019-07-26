@@ -63,6 +63,29 @@ You can also refer to the Kubernetes documentation here for more information on 
 - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#podtemplatespec-v1-core[Pod Template Spec API Reference]
 
 
+[id="{p}-jvm-heap-size"]
+=== JVM heap size
+
+By default, the JVM heap used by Elasticsearch has minimum and maximum size set to 1Gi. As the heap size should not exceed 50% of RAM size, ECK requests by default 2Gi of memory for the Elasticsearch Pod. To change the JVM heap size, use the environment variable ES_JAVA_OPTS. It is also highly recommended to set the resource requests and limits to adjust the pod memory to not exceed 50% of the RAM size. Both changes are shown below. For more information, see link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
+
+[source,yaml]
+----
+spec:
+  nodes:
+  - podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: -Xms2g -Xmx2g
+          resources:
+            requests:
+              memory: 4Gi
+            limits:
+              memory: 4Gi
+----
+
 [id="{p}-node-configuration"]
 === Node configuration
 
