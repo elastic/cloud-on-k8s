@@ -25,7 +25,7 @@ Advanced settings
 [id="{p}-jvm-heap-size"]
 === JVM heap size
 
-By default, the JVM heap used by Elasticsearch has minimum and maximum size set to 1Gi. Since it's not recommended for heap size to exceed 50% of RAM size, ECK will default to requesting 2Gi of memory for the Elasticsearch pod. You can change JVM heap size by using `ES_JAVA_OPTS` environment variable. You can adjust pod memory accordingly by setting resource requests and limits. Both changes are shown below. For more information on setting the heap size, see link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
+By default, the JVM heap used by Elasticsearch has minimum and maximum size set to 1Gi. As the heap size should not exceed 50% of RAM size, ECK requests by default 2Gi of memory for the Elasticsearch Pod. To change the JVM heap size, use the environment variable ES_JAVA_OPTS. It is also highly recommended to set the resource requests and limits to adjust the pod memory to not exceed 50% of the RAM size. Both changes are shown below. For more information, see link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
 
 [source,yaml]
 ----
