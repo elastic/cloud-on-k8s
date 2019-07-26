@@ -94,7 +94,7 @@ This section only covers TLS certificates for the HTTP layer. Those for the tran
 ==== Default self-signed certificate
 
 By default, the operator manages a self-signed certificate with a custom CA for Elasticsearch, Kibana and APM Server.
-The CA, the certificate and the private key are each stored in a `Secret`.
+The CA, the certificate and the private key are each stored in a separate `Secret`.
 
 [source,sh]
 ----
@@ -167,7 +167,7 @@ spec:
 [id="{p}-disable-tls"]
 ==== Disable TLS
 
-You can explicitly disable TLS for Kibana or APM Server if you want to.
+You can explicitly disable TLS for Kibana or APM Server.
 
 [source,yaml]
 ----
@@ -178,7 +178,7 @@ spec:
         disabled: true
 ----
 
-TLS cannot be disabled for Elasticsearch.
+You cannot disable TLS for Elasticsearch.
 
 [float]
 [id="{p}-request-elasticsearch-endpoint"]
@@ -225,7 +225,7 @@ Now you should get this message:
 curl: (51) SSL: no alternative certificate subject name matches target host name '35.198.131.115'
 ----
 
-Add the external IP of the service to the SANs of the certificate in the same Elasticsearch resource YAML manifest used for creating the cluster and apply it again using `kubectl`.
+Add the external IP of the service to the SANs of the certificate in the same Elasticsearch resource YAML manifest used to create the cluster and apply it again using `kubectl`.
 
 [source,yaml]
 ----
