@@ -24,7 +24,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   # 3 dedicated master nodes
   - nodeCount: 3
@@ -59,7 +59,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -86,7 +86,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -103,7 +103,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -149,7 +149,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -168,7 +168,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -208,7 +208,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 1
     config:
@@ -276,7 +276,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   # hot nodes, with high CPU and fast IO
   - nodeCount: 3

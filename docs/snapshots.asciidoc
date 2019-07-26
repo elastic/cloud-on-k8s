@@ -28,8 +28,8 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.1.0
-  image: your/custom/image:7.1.0
+  version: 7.2.0
+  image: your/custom/image:tag
   nodes:
   - nodeCount: 1
 ----
@@ -43,7 +43,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - podTemplate:
       spec:

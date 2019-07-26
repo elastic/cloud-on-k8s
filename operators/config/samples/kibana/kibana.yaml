@@ -4,7 +4,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: "7.1.0"
+  version: 7.2.0
   elasticsearch:
     url: https://url.to.elasticsearch:9200
     auth:
