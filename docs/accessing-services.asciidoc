@@ -178,7 +178,7 @@ spec:
         disabled: true
 ----
 
-You cannot disable TLS for Elasticsearch.
+TLS cannot be disabled for Elasticsearch.
 
 [float]
 [id="{p}-request-elasticsearch-endpoint"]
