@@ -34,7 +34,7 @@ spec:
         - name: e2e
           image: {{ .E2EImage }}
           imagePullPolicy: Always
-          args: ["-run", "{{ .TestRegex }}", "-args", "-testContextPath","/etc/e2e/testcontext.json"]
+          args: [{{- if .TestRegex -}}"-run", "{{ .TestRegex }}",{{- end -}}"-args", "-testContextPath","/etc/e2e/testcontext.json"]
           volumeMounts:
             - name: test-config
               mountPath: /etc/e2e

@@ -294,28 +294,6 @@ e2e-run:
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH)
 
-# targets to run e2e tests in a Kind cluster
-KIND_CLUSTER ?= "eck-e2e"
-
-e2e-kind: e2e-kind-create-cluster e2e-kind-load e2e-kind-run
-
-e2e-kind-create-cluster:
-	kind create cluster --name=$(KIND_CLUSTER) --config=config/e2e/kind.yaml
-
-e2e-kind-load: docker-build e2e-docker-build
-	kind load docker-image --name=$(KIND_CLUSTER) $(OPERATOR_IMAGE)
-	kind load docker-image --name=$(KIND_CLUSTER) $(E2E_IMG)
-
-e2e-kind-run:
-	@go run test/e2e/cmd/main.go run \
-		--operator-image=$(OPERATOR_IMAGE) \
-		--e2e-image=$(E2E_IMG) \
-		--test-regex=$(TESTS_MATCH) \
-		--kubeconfig=$(shell kind get kubeconfig-path --name=$(KIND_CLUSTER))
-
-e2e-kind-delete-cluster:
-	kind delete cluster --name=$(KIND_CLUSTER)
-
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
 	go test ./test/e2e/... -run=dryrun > /dev/null

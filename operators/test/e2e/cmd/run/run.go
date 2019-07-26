@@ -78,147 +78,147 @@ type helper struct {
 	cleanupFuncs   []func()
 }
 
-func (s *helper) createTestOutDir() {
-	s.testOutDir = filepath.Join(s.testOutDirRoot, s.testRunName)
-	log.Info("Creating test output directory", "directory", s.testOutDir)
+func (h *helper) createTestOutDir() {
+	h.testOutDir = filepath.Join(h.testOutDirRoot, h.testRunName)
+	log.Info("Creating test output directory", "directory", h.testOutDir)
 
 	// ensure that the directory does not exist
-	if _, err := os.Stat(s.testOutDir); !os.IsNotExist(err) {
-		s.err = errors.Wrapf(err, "test output directory already exists: %s", s.testOutDir)
+	if _, err := os.Stat(h.testOutDir); !os.IsNotExist(err) {
+		h.err = errors.Wrapf(err, "test output directory already exists: %s", h.testOutDir)
 		return
 	}
 
 	// create the directory
-	if err := os.MkdirAll(s.testOutDir, os.ModePerm); err != nil {
-		s.err = errors.Wrapf(err, "failed to create test output directory: %s", s.testOutDir)
+	if err := os.MkdirAll(h.testOutDir, os.ModePerm); err != nil {
+		h.err = errors.Wrapf(err, "failed to create test output directory: %s", h.testOutDir)
 		return
 	}
 
 	// generate the path to the event log
-	s.eventLog = filepath.Join(s.testOutDir, "event.log")
+	h.eventLog = filepath.Join(h.testOutDir, "event.log")
 
 	// clean up the directory
-	s.addCleanupFunc(func() {
-		log.Info("Cleaning up the test output directory", "directory", s.testOutDir)
-		if err := os.RemoveAll(s.testOutDir); err != nil {
-			log.Error(err, "Failed to cleanup test output directory", "path", s.testOutDir)
+	h.addCleanupFunc(func() {
+		log.Info("Cleaning up the test output directory", "directory", h.testOutDir)
+		if err := os.RemoveAll(h.testOutDir); err != nil {
+			log.Error(err, "Failed to cleanup test output directory", "path", h.testOutDir)
 		}
 	})
 }
 
-func (s *helper) initTestContext() {
-	s.testContext = test.Context{
-		AutoPortForwarding:  s.autoPortForwarding,
-		E2EImage:            s.e2eImage,
-		E2ENamespace:        s.testRunName,
-		E2EServiceAccount:   s.testRunName,
-		ElasticStackVersion: s.elasticStackVersion,
+func (h *helper) initTestContext() {
+	h.testContext = test.Context{
+		AutoPortForwarding:  h.autoPortForwarding,
+		E2EImage:            h.e2eImage,
+		E2ENamespace:        h.testRunName,
+		E2EServiceAccount:   h.testRunName,
+		ElasticStackVersion: h.elasticStackVersion,
 		GlobalOperator: test.ClusterResource{
-			Name:      fmt.Sprintf("%s-global-operator", s.testRunName),
-			Namespace: fmt.Sprintf("%s-elastic-system", s.testRunName),
+			Name:      fmt.Sprintf("%s-global-operator", h.testRunName),
+			Namespace: fmt.Sprintf("%s-elastic-system", h.testRunName),
 		},
-		NamespaceOperators: make([]test.NamespaceOperator, len(s.managedNamespaces)),
-		OperatorImage:      s.operatorImage,
-		TestLicence:        s.testLicence,
-		TestRegex:          s.testRegex,
-		TestRun:            s.testRunName,
+		NamespaceOperators: make([]test.NamespaceOperator, len(h.managedNamespaces)),
+		OperatorImage:      h.operatorImage,
+		TestLicence:        h.testLicence,
+		TestRegex:          h.testRegex,
+		TestRun:            h.testRunName,
 	}
 
-	for i, ns := range s.managedNamespaces {
-		s.testContext.NamespaceOperators[i] = test.NamespaceOperator{
+	for i, ns := range h.managedNamespaces {
+		h.testContext.NamespaceOperators[i] = test.NamespaceOperator{
 			ClusterResource: test.ClusterResource{
-				Name:      fmt.Sprintf("%s-%s-ns-operator", s.testRunName, ns),
-				Namespace: fmt.Sprintf("%s-ns-operators", s.testRunName),
+				Name:      fmt.Sprintf("%s-%s-ns-operator", h.testRunName, ns),
+				Namespace: fmt.Sprintf("%s-ns-operators", h.testRunName),
 			},
-			ManagedNamespace: fmt.Sprintf("%s-%s", s.testRunName, ns),
+			ManagedNamespace: fmt.Sprintf("%s-%s", h.testRunName, ns),
 		}
 	}
 
 	// write the test context if required
-	if s.testContextOutPath != "" {
-		log.Info("Writing test context", "path", s.testContextOutPath)
-		f, err := os.Create(s.testContextOutPath)
+	if h.testContextOutPath != "" {
+		log.Info("Writing test context", "path", h.testContextOutPath)
+		f, err := os.Create(h.testContextOutPath)
 		if err != nil {
-			s.err = errors.Wrap(err, "failed to write test context")
+			h.err = errors.Wrap(err, "failed to write test context")
 			return
 		}
 
 		defer f.Close()
 		enc := json.NewEncoder(f)
-		if err := enc.Encode(s.testContext); err != nil {
-			s.err = errors.Wrap(err, "failed to encode test context")
+		if err := enc.Encode(h.testContext); err != nil {
+			h.err = errors.Wrap(err, "failed to encode test context")
 		}
 	}
 }
 
-func (s *helper) createE2ENamespaceAndRoleBindings() {
+func (h *helper) createE2ENamespaceAndRoleBindings() {
 	log.Info("Creating E2E namespace and role bindings")
-	s.kubectlApplyTemplate("config/e2e/rbac.yaml", s.testContext, true)
+	h.kubectlApplyTemplate("config/e2e/rbac.yaml", h.testContext, true)
 }
 
-func (s *helper) installCRDs() {
+func (h *helper) installCRDs() {
 	log.Info("Installing CRDs")
 	crds, err := filepath.Glob("config/crds/*.yaml")
 	if err != nil {
-		s.err = errors.Wrap(err, "failed to list CRDs")
+		h.err = errors.Wrap(err, "failed to list CRDs")
 		return
 	}
 
 	for _, crd := range crds {
 		log.V(2).Info("Installing CRD", "crd", crd)
-		s.kubectlApplyTemplate(crd, s.testContext, false)
+		h.kubectlApplyTemplate(crd, h.testContext, false)
 	}
 }
 
-func (s *helper) deployGlobalOperator() {
+func (h *helper) deployGlobalOperator() {
 	log.Info("Deploying global operator")
-	s.kubectlApplyTemplate("config/e2e/global_operator.yaml", s.testContext, true)
+	h.kubectlApplyTemplate("config/e2e/global_operator.yaml", h.testContext, true)
 }
 
-func (s *helper) deployNamespaceOperators() {
+func (h *helper) deployNamespaceOperators() {
 	log.Info("Deploying namespace operators")
-	s.kubectlApplyTemplate("config/e2e/namespace_operator.yaml", s.testContext, true)
+	h.kubectlApplyTemplate("config/e2e/namespace_operator.yaml", h.testContext, true)
 }
 
-func (s *helper) deployTestJob() {
+func (h *helper) deployTestJob() {
 	log.Info("Deploying e2e test job")
-	s.kubectlApplyTemplate("config/e2e/batch_job.yaml", s.testContext, true)
+	h.kubectlApplyTemplate("config/e2e/batch_job.yaml", h.testContext, true)
 }
 
-func (s *helper) runTestJob() {
-	if s.setupOnly {
+func (h *helper) runTestJob() {
+	if h.setupOnly {
 		log.Info("Skipping tests because this is a setup-only run")
 		return
 	}
 
-	client, err := s.createKubeClient()
+	client, err := h.createKubeClient()
 	if err != nil {
-		s.err = errors.Wrap(err, "failed to create kubernetes client")
+		h.err = errors.Wrap(err, "failed to create kubernetes client")
 		return
 	}
 
 	// start the event logger to log all relevant events in the cluster
 	stopChan := make(chan struct{})
-	eventLogger := newEventLogger(client, s.testContext, s.eventLog)
+	eventLogger := newEventLogger(client, h.testContext, h.eventLog)
 	go eventLogger.Start(stopChan)
 
 	// launch the test job and wait for it to finish
-	err = s.monitorTestJob(client)
+	err = h.monitorTestJob(client)
 	close(stopChan)
 
 	if err != nil {
-		s.err = errors.Wrap(err, "test run failed")
-		s.dumpEventLog()
+		h.err = errors.Wrap(err, "test run failed")
+		h.dumpEventLog()
 	}
 }
 
-func (s *helper) createKubeClient() (*kubernetes.Clientset, error) {
+func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
 	// load kubernetes client config
 	var overrides clientcmd.ConfigOverrides
 	var clientConfig clientcmd.ClientConfig
 
-	if s.kubeConfig != "" {
-		kubeConf, err := clientcmd.LoadFromFile(s.kubeConfig)
+	if h.kubeConfig != "" {
+		kubeConf, err := clientcmd.LoadFromFile(h.kubeConfig)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load kubeconfig")
 		}
@@ -239,7 +239,7 @@ func (s *helper) createKubeClient() (*kubernetes.Clientset, error) {
 }
 
 // monitorTestJob keeps track of the test pod to determine whether the tests failed or not.
-func (s *helper) monitorTestJob(client *kubernetes.Clientset) error {
+func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	log.Info("Waiting for test job to start")
 	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
 	defer func() {
@@ -248,9 +248,9 @@ func (s *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	}()
 
 	factory := informers.NewSharedInformerFactoryWithOptions(client, kubePollInterval,
-		informers.WithNamespace(s.testContext.E2ENamespace),
+		informers.WithNamespace(h.testContext.E2ENamespace),
 		informers.WithTweakListOptions(func(opt *metav1.ListOptions) {
-			opt.LabelSelector = fmt.Sprintf("%s=%s", testRunLabel, s.testContext.TestRun)
+			opt.LabelSelector = fmt.Sprintf("%s=%s", testRunLabel, h.testContext.TestRun)
 		}))
 
 	informer := factory.Core().V1().Pods().Informer()
@@ -271,7 +271,7 @@ func (s *helper) monitorTestJob(client *kubernetes.Clientset) error {
 				if !jobStarted {
 					jobStarted = true
 					log.Info("Pod started", "name", newPod.Name)
-					go s.streamTestJobOutput(streamStatus, client, newPod.Name)
+					go h.streamTestJobOutput(streamStatus, client, newPod.Name)
 				} else {
 					select {
 					case streamErr := <-streamStatus:
@@ -305,17 +305,17 @@ func (s *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	return err
 }
 
-func (s *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernetes.Clientset, pod string) {
+func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernetes.Clientset, pod string) {
 	log.Info("Streaming pod logs", "name", pod)
 	defer close(streamStatus)
 	sinceSeconds := int64(30)
 	opts := &corev1.PodLogOptions{
-		Container:    "e2e", //TODO remove hardcoded value
+		Container:    "e2e",
 		Follow:       true,
 		SinceSeconds: &sinceSeconds,
 	}
 
-	req := client.CoreV1().Pods(s.testContext.E2ENamespace).GetLogs(pod, opts).Context(context.Background())
+	req := client.CoreV1().Pods(h.testContext.E2ENamespace).GetLogs(pod, opts).Context(context.Background())
 	stream, err := req.Stream()
 	if err != nil {
 		streamStatus <- err
@@ -334,32 +334,32 @@ func (s *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 }
 
-func (s *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}, deleteOnExit bool) {
-	if s.err != nil {
+func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}, deleteOnExit bool) {
+	if h.err != nil {
 		return
 	}
 
-	outFilePath, err := s.renderTemplate(templatePath, templateParam)
+	outFilePath, err := h.renderTemplate(templatePath, templateParam)
 	if err != nil {
 		return
 	}
 
-	s.kubectl("apply", "-f", outFilePath)
+	h.kubectl("apply", "-f", outFilePath)
 
 	if deleteOnExit {
-		s.addCleanupFunc(func() {
+		h.addCleanupFunc(func() {
 			log.Info("Deleting resources", "file", outFilePath)
-			s.kubectl("delete", "--all", "-f", outFilePath)
+			h.kubectl("delete", "--all", "-f", outFilePath)
 		})
 	}
 }
 
-func (s *helper) kubectl(command string, args ...string) {
-	s.exec(s.kubectlWrapper.Command(command, args...))
+func (h *helper) kubectl(command string, args ...string) {
+	h.exec(h.kubectlWrapper.Command(command, args...))
 }
 
-func (s *helper) exec(cmd *command.Command) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), s.commandTimeout)
+func (h *helper) exec(cmd *command.Command) {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), h.commandTimeout)
 	defer cancelFunc()
 
 	log.V(1).Info("Executing command", "command", cmd)
@@ -373,7 +373,7 @@ func (s *helper) exec(cmd *command.Command) {
 		}
 
 		fmt.Fprintln(os.Stderr, string(out))
-		s.err = errors.Wrapf(err, "command failed: [%s]", cmd)
+		h.err = errors.Wrapf(err, "command failed: [%s]", cmd)
 	}
 
 	if log.V(1).Enabled() {
@@ -381,50 +381,50 @@ func (s *helper) exec(cmd *command.Command) {
 	}
 }
 
-func (s *helper) renderTemplate(templatePath string, param interface{}) (string, error) {
+func (h *helper) renderTemplate(templatePath string, param interface{}) (string, error) {
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
-		s.err = errors.Wrapf(err, "failed to parse template at %s", templatePath)
+		h.err = errors.Wrapf(err, "failed to parse template at %s", templatePath)
 		return "", err
 	}
 
-	outFilePath := filepath.Join(s.testOutDir, strings.Replace(templatePath, "/", "_", -1))
+	outFilePath := filepath.Join(h.testOutDir, strings.Replace(templatePath, "/", "_", -1))
 	f, err := os.Create(outFilePath)
 	if err != nil {
-		s.err = errors.Wrapf(err, "failed to create file: %s", outFilePath)
+		h.err = errors.Wrapf(err, "failed to create file: %s", outFilePath)
 		return "", err
 	}
 
 	defer f.Close()
 	if err := tmpl.Execute(f, param); err != nil {
-		s.err = errors.Wrapf(err, "failed to render template to %s", outFilePath)
+		h.err = errors.Wrapf(err, "failed to render template to %s", outFilePath)
 		return "", err
 	}
 
 	return outFilePath, nil
 }
 
-func (s *helper) addCleanupFunc(cf func()) {
-	s.cleanupFuncs = append(s.cleanupFuncs, cf)
+func (h *helper) addCleanupFunc(cf func()) {
+	h.cleanupFuncs = append(h.cleanupFuncs, cf)
 }
 
-func (s *helper) runCleanup() {
-	if s.skipCleanup {
+func (h *helper) runCleanup() {
+	if h.skipCleanup {
 		log.Info("Skipping cleanup")
 		return
 	}
 
 	// run the cleanup functions in the reverse order they were added
-	for i := len(s.cleanupFuncs) - 1; i >= 0; i-- {
-		cf := s.cleanupFuncs[i]
+	for i := len(h.cleanupFuncs) - 1; i >= 0; i-- {
+		cf := h.cleanupFuncs[i]
 		cf()
 	}
 }
 
-func (s *helper) dumpEventLog() {
-	f, err := os.Open(s.eventLog)
+func (h *helper) dumpEventLog() {
+	f, err := os.Open(h.eventLog)
 	if err != nil {
-		log.Error(err, "Failed to open event log", "path", s.eventLog)
+		log.Error(err, "Failed to open event log", "path", h.eventLog)
 		return
 	}
 
