@@ -1,0 +1,15 @@
+# Replace GKE default storageClass to set "volumeBindingMode: WaitForFirstConsumer"
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    storageclass.beta.kubernetes.io/is-default-class: "true"
+  labels:
+    addonmanager.kubernetes.io/mode: EnsureExists
+    kubernetes.io/cluster-service: "true"
+  name: standard-customized
+parameters:
+  type: pd-standard
+provisioner: kubernetes.io/gce-pd
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer

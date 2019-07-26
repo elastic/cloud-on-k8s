@@ -17,9 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -74,20 +72,8 @@ func TestKillCorrectPVReuse(t *testing.T) {
 
 	k := test.NewK8sClientOrFatal()
 
-	// When working with multiple PVs on a single pod, there's a risk each PV get assigned to a different zone,
-	// not taking into consideration pod scheduling constraints. As a result, the pod becomes unschedulable.
-	// This is a Kubernetes issue, that can be dealt with relying on storage classes with `volumeBindingMode: WaitForFirstConsumer`.
-	// With this binding mode, the pod is scheduled before its PVs, which then take into account zone constraints.
-	// That's the only way to work with multiple PVs. Since the k8s cluster here may have a default storage class
-	// with `volumeBindingMode: Immediate`, we create a new one, based on the default storage class, that uses
-	// `waitForFirstConsumer`.
-	lateBinding := v1.VolumeBindingWaitForFirstConsumer
 	sc, err := elasticsearch.DefaultStorageClass(k)
 	require.NoError(t, err)
-	sc.ObjectMeta = metav1.ObjectMeta{
-		Name: "custom-storage",
-	}
-	sc.VolumeBindingMode = &lateBinding
 
 	b := elasticsearch.NewBuilder("test-failure-pvc").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).

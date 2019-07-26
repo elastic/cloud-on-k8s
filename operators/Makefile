@@ -331,6 +331,9 @@ ci-e2e-rc: ci-bootstrap-gke e2e
 
 ci-bootstrap-gke:
 	PSP=1 GKE_MACHINE_TYPE=n1-standard-8 $(MAKE) bootstrap-gke
+	# Create a default storage class that uses late binding to avoid volume zone affinity issues
+	kubectl apply -f config/dev/default-storage.yaml
+	kubectl patch storageclass standard -p '{"metadata": {"annotations":{"storageclass.beta.kubernetes.io/is-default-class":"false"}}}'
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
