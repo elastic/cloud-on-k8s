@@ -11,11 +11,14 @@ IMAGE ?= docker.elastic.co/eck/eck-ci:latest
 
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
+
 VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
+
 VAULT_DOCKER_CREDENTIALS ?= secret/devops-ci/cloud-on-k8s/eckadmin
 DOCKER_LOGIN ?= eckadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
+
 VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
 VAULT_AWS_ACCESS_KEY_FILE ?= aws_access_key.file
 VAULT_AWS_SECRET_KEY_FILE ?= aws_secret_key.file
@@ -181,8 +184,8 @@ ci-gke-cleanup: ci-e2e-delete-cluster
 
 # Build and push Docker image for CI
 .ONESHELL: #https://www.gnu.org/software/make/manual/html_node/One-Shell.html
-ci-build-image: vault-docker-creds
+ci-build-image: #vault-docker-creds
 	@ cd $(ROOT_DIR)
-	docker build -f build/ci/Dockerfile -t $(IMAGE) .
-	@ docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) $(REGISTRY)
-	docker push $(IMAGE)
+	docker build -f build/ci/Dockerfile_v2 -t $(IMAGE) .
+	#@ docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) $(REGISTRY)
+	#docker push $(IMAGE)
