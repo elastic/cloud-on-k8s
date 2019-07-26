@@ -72,13 +72,10 @@ func TestKillCorrectPVReuse(t *testing.T) {
 
 	k := test.NewK8sClientOrFatal()
 
-	sc, err := elasticsearch.DefaultStorageClass(k)
-	require.NoError(t, err)
-
 	b := elasticsearch.NewBuilder("test-failure-pvc").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPersistentVolumes("not-data", &sc.Name).
-		WithPersistentVolumes(volume.ElasticsearchDataVolumeName, &sc.Name) // create an additional volume that is not our data volume
+		WithPersistentVolumes("not-data").
+		WithPersistentVolumes(volume.ElasticsearchDataVolumeName)
 
 	var clusterUUID string
 	var deletedPVC corev1.PersistentVolumeClaim
@@ -86,7 +83,6 @@ func TestKillCorrectPVReuse(t *testing.T) {
 	var killedPod corev1.Pod
 
 	test.StepList{}.
-		WithStep(elasticsearch.CreateStorageClass(*sc, k)).
 		WithSteps(b.InitTestSteps(k)).
 		WithSteps(b.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(b, k)).

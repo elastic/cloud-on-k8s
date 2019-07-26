@@ -150,7 +150,7 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 	return b
 }
 
-func (b Builder) WithPersistentVolumes(volumeName string, storageClassName *string) Builder {
+func (b Builder) WithPersistentVolumes(volumeName string) Builder {
 	for i := range b.Elasticsearch.Spec.Nodes {
 		name := volumeName
 		b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates,
@@ -159,7 +159,6 @@ func (b Builder) WithPersistentVolumes(volumeName string, storageClassName *stri
 					Name: name,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					StorageClassName: storageClassName,
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						corev1.ReadWriteOnce,
 					},
