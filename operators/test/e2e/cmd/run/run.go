@@ -22,11 +22,14 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/workqueue"
 )
 
 const (
@@ -68,6 +71,7 @@ func doRun(flags runFlags) error {
 type helper struct {
 	runFlags
 	err            error
+	eventLog       string
 	kubectlWrapper *command.Kubectl
 	testContext    test.Context
 	testOutDir     string
@@ -90,6 +94,10 @@ func (s *helper) createTestOutDir() {
 		return
 	}
 
+	// generate the path to the event log
+	s.eventLog = filepath.Join(s.testOutDir, "event.log")
+
+	// clean up the directory
 	s.addCleanupFunc(func() {
 		log.Info("Cleaning up the test output directory", "directory", s.testOutDir)
 		if err := os.RemoveAll(s.testOutDir); err != nil {
@@ -189,8 +197,18 @@ func (s *helper) runTestJob() {
 		return
 	}
 
-	if err := s.monitorTestJob(client); err != nil {
+	// start the event logger to log all relevant events in the cluster
+	stopChan := make(chan struct{})
+	eventLogger := newEventLogger(client, s.testContext, s.eventLog)
+	go eventLogger.Start(stopChan)
+
+	// launch the test job and wait for it to finish
+	err = s.monitorTestJob(client)
+	close(stopChan)
+
+	if err != nil {
 		s.err = errors.Wrap(err, "test run failed")
+		s.dumpEventLog()
 	}
 }
 
@@ -401,4 +419,139 @@ func (s *helper) runCleanup() {
 		cf := s.cleanupFuncs[i]
 		cf()
 	}
+}
+
+func (s *helper) dumpEventLog() {
+	f, err := os.Open(s.eventLog)
+	if err != nil {
+		log.Error(err, "Failed to open event log", "path", s.eventLog)
+		return
+	}
+
+	log.Info("Cluster event log")
+	var buffer [1024]byte
+	if _, err := io.CopyBuffer(os.Stdout, f, buffer[:]); err != nil {
+		log.Error(err, "Failed to output event log")
+	}
+}
+
+type eventLogEntry struct {
+	Message   string        `json:"message"`
+	Kind      string        `json:"kind"`
+	Name      string        `json:"name"`
+	Namespace string        `json:"namespace"`
+	RawEvent  *corev1.Event `json:"raw_event"`
+}
+
+type eventLogger struct {
+	eventInformer         cache.SharedIndexInformer
+	eventQueue            workqueue.RateLimitingInterface
+	interestingNamespaces map[string]struct{}
+	logFilePath           string
+}
+
+func newEventLogger(client *kubernetes.Clientset, testCtx test.Context, logFilePath string) *eventLogger {
+	eventWatch := cache.NewListWatchFromClient(client.CoreV1().RESTClient(), "events", metav1.NamespaceAll, fields.Everything())
+	el := &eventLogger{
+		eventInformer:         cache.NewSharedIndexInformer(eventWatch, &corev1.Event{}, kubePollInterval, cache.Indexers{}),
+		eventQueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "elastic_co_eck_e2e_events"),
+		interestingNamespaces: make(map[string]struct{}),
+		logFilePath:           logFilePath,
+	}
+
+	el.eventInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			if key, err := cache.MetaNamespaceKeyFunc(obj); err == nil {
+				el.eventQueue.Add(key)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			if key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj); err == nil {
+				el.eventQueue.Add(key)
+			}
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			if key, err := cache.MetaNamespaceKeyFunc(newObj); err == nil {
+				el.eventQueue.Add(key)
+			}
+		},
+	})
+
+	// add all namespaces to intereting namespaces
+	s := struct{}{}
+	el.interestingNamespaces[testCtx.E2ENamespace] = s
+	el.interestingNamespaces[testCtx.GlobalOperator.Namespace] = s
+	for _, ns := range testCtx.NamespaceOperators {
+		el.interestingNamespaces[ns.Namespace] = s
+		el.interestingNamespaces[ns.ManagedNamespace] = s
+	}
+
+	return el
+}
+
+func (el *eventLogger) Start(stopChan <-chan struct{}) {
+	defer func() {
+		el.eventQueue.ShutDown()
+		runtime.HandleCrash()
+	}()
+
+	go el.eventInformer.Run(stopChan)
+
+	if !cache.WaitForCacheSync(stopChan, el.eventInformer.HasSynced) {
+		runtime.HandleError(fmt.Errorf("timed out waiting for cache to sync"))
+		return
+	}
+
+	wait.Until(el.runEventProcessor, time.Second, stopChan)
+}
+
+func (el *eventLogger) runEventProcessor() {
+	logFile, err := os.Create(el.logFilePath)
+	if err != nil {
+		log.Error(err, "Failed to create event log", "path", el.logFilePath)
+		return
+	}
+	defer logFile.Close()
+	logWriter := json.NewEncoder(logFile)
+
+	for {
+		key, quit := el.eventQueue.Get()
+		if quit {
+			return
+		}
+
+		evtObj, exists, err := el.eventInformer.GetIndexer().GetByKey(key.(string))
+		if err != nil {
+			log.Error(err, "failed to get event", "key", key)
+			return
+		}
+
+		if !exists {
+			continue
+		}
+
+		evt := evtObj.(*corev1.Event)
+		if el.isInterestingEvent(evt) {
+			logEntry := eventLogEntry{
+				Message:   evt.Message,
+				Kind:      evt.InvolvedObject.Kind,
+				Name:      evt.InvolvedObject.Name,
+				Namespace: evt.InvolvedObject.Namespace,
+				RawEvent:  evt,
+			}
+			if err := logWriter.Encode(logEntry); err != nil {
+				log.Error(err, "Failed to write event to event log", "event", evt)
+			}
+		}
+	}
+}
+
+// isInterestingEvent determines whether an event is worthy of logging.
+func (el *eventLogger) isInterestingEvent(evt *corev1.Event) bool {
+	// was the event generated by an object in one of the namespaces associated with this test run?
+	if _, exists := el.interestingNamespaces[evt.InvolvedObject.Namespace]; exists {
+		// if the event is a warning, it should be logged
+		return evt.Type != corev1.EventTypeNormal
+	}
+	return false
 }

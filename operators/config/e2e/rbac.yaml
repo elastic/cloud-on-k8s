@@ -53,8 +53,8 @@ subjects:
   - kind: Group
     name: system:serviceaccounts:e2e
     apiGroup: rbac.authorization.k8s.io
-  - kind: ServiceAccount
-    name: job-controller
+  - kind: Group
+    name: system:serviceaccounts
     namespace: kube-system
   - kind: ServiceAccount
     name: {{ .GlobalOperator.Name }}
