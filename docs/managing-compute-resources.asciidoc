@@ -1,7 +1,9 @@
 [id="{p}-managing-compute-resources"]
 == Managing compute resources
 
-When you create a Pod, you must specify the requests in terms of CPU and RAM resources, and the limits in terms of maximum resources that containers can consume. Then, you can set both `requests` and `limits` in the specification of the object managed by the operator: Elasticsearch, Kibana or the APM server. For more information, see https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers].
+When a Pod is created, it might request CPU and RAM resources. It might also specify the maximum resources that the containers are allowed to consume. Both Pod `limits` and `requests` can be set in the specification of the object managed by the operator: Elasticsearch, Kibana or the APM server. For more information, see https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers].
+
+Then, you can set both `requests` and `limits` in the specification 
 
 [float]
 [id="{p}-custom-resources"]
