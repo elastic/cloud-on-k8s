@@ -25,6 +25,8 @@
 [float]
 === Enhancements
 
+* Relax Elasticsearch validation hook failure policy {pull}1386[#1386]
+* ES samples improvements {pull}1375[#1375]
 * Ignore resources reconciled by older controllers {pull}1286[#1286] (issue: {issue}1241[#1241])
 * Remove process manager {pull}1249[#1249]
 * Change CN and SAN naming {pull}1243[#1243]
@@ -69,6 +71,10 @@
 [float]
 === Bug fixes
 
+* Parameterize keystore settings addition {pull}1401[#1401]
+* Update the way to add settings in the ES keystore {pull}1377[#1377]
+* Fix enable-debug-logs flag in the operator manifest {pull}1372[#1372] (issue: {issue}1371[#1371])
+* Workaround controller-runtime webhook upsert bug {pull}1337[#1337]
 * Don&#39;t rely on buggy metaObject Kind {pull}1324[#1324]
 * Add console output to standalone APM sample {pull}1321[#1321]
 * Allow license secret webhook to fail {pull}1301[#1301]
