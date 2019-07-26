@@ -24,6 +24,8 @@ set -eu
 : "${GKE_GCP_SCOPES:=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append}"
 : "${GKE_SERVICE_ACCOUNT_KEY_FILE:=}"
 
+HERE=$(dirname $0)
+
 set_max_map_count() {
     instances=$(gcloud compute instances list \
                 --project="${GCLOUD_PROJECT}" \
@@ -81,6 +83,12 @@ create_cluster() {
 
     # set vm.max_map_count
     set_max_map_count
+
+    # Create a default storage class that uses late binding to avoid volume zone affinity issues
+    kubectl apply -f $HERE/config/dev/gke-default-storage.yaml
+    kubectl patch storageclass standard -p '{
+        "metadata": {"annotations": {"storageclass.beta.kubernetes.io/is-default-class":"false"} }
+    }'
 }
 
 delete_cluster() {
