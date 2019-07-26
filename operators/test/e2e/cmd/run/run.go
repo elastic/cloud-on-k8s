@@ -45,7 +45,7 @@ func doRun(flags runFlags) error {
 		kubectlWrapper: command.NewKubectl(flags.kubeConfig),
 	}
 
-	steps := []func(){
+	steps := []func() error{
 		helper.createTestOutDir,
 		helper.initTestContext,
 		helper.createE2ENamespaceAndRoleBindings,
@@ -59,18 +59,16 @@ func doRun(flags runFlags) error {
 	defer helper.runCleanup()
 
 	for _, step := range steps {
-		if helper.err != nil {
-			return helper.err
+		if err := step(); err != nil {
+			return err
 		}
-		step()
 	}
 
-	return helper.err
+	return nil
 }
 
 type helper struct {
 	runFlags
-	err            error
 	eventLog       string
 	kubectlWrapper *command.Kubectl
 	testContext    test.Context
@@ -78,20 +76,18 @@ type helper struct {
 	cleanupFuncs   []func()
 }
 
-func (h *helper) createTestOutDir() {
+func (h *helper) createTestOutDir() error {
 	h.testOutDir = filepath.Join(h.testOutDirRoot, h.testRunName)
 	log.Info("Creating test output directory", "directory", h.testOutDir)
 
 	// ensure that the directory does not exist
 	if _, err := os.Stat(h.testOutDir); !os.IsNotExist(err) {
-		h.err = errors.Wrapf(err, "test output directory already exists: %s", h.testOutDir)
-		return
+		return errors.Wrapf(err, "test output directory already exists: %s", h.testOutDir)
 	}
 
 	// create the directory
 	if err := os.MkdirAll(h.testOutDir, os.ModePerm); err != nil {
-		h.err = errors.Wrapf(err, "failed to create test output directory: %s", h.testOutDir)
-		return
+		return errors.Wrapf(err, "failed to create test output directory: %s", h.testOutDir)
 	}
 
 	// generate the path to the event log
@@ -104,9 +100,11 @@ func (h *helper) createTestOutDir() {
 			log.Error(err, "Failed to cleanup test output directory", "path", h.testOutDir)
 		}
 	})
+
+	return nil
 }
 
-func (h *helper) initTestContext() {
+func (h *helper) initTestContext() error {
 	h.testContext = test.Context{
 		AutoPortForwarding:  h.autoPortForwarding,
 		E2EImage:            h.e2eImage,
@@ -139,62 +137,65 @@ func (h *helper) initTestContext() {
 		log.Info("Writing test context", "path", h.testContextOutPath)
 		f, err := os.Create(h.testContextOutPath)
 		if err != nil {
-			h.err = errors.Wrap(err, "failed to write test context")
-			return
+			return errors.Wrap(err, "failed to write test context")
 		}
 
 		defer f.Close()
 		enc := json.NewEncoder(f)
 		if err := enc.Encode(h.testContext); err != nil {
-			h.err = errors.Wrap(err, "failed to encode test context")
+			return errors.Wrap(err, "failed to encode test context")
 		}
 	}
+
+	return nil
 }
 
-func (h *helper) createE2ENamespaceAndRoleBindings() {
+func (h *helper) createE2ENamespaceAndRoleBindings() error {
 	log.Info("Creating E2E namespace and role bindings")
-	h.kubectlApplyTemplate("config/e2e/rbac.yaml", h.testContext, true)
+	return h.kubectlApplyTemplate("config/e2e/rbac.yaml", h.testContext, true)
 }
 
-func (h *helper) installCRDs() {
+func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
 	crds, err := filepath.Glob("config/crds/*.yaml")
 	if err != nil {
-		h.err = errors.Wrap(err, "failed to list CRDs")
-		return
+		return errors.Wrap(err, "failed to list CRDs")
 	}
 
 	for _, crd := range crds {
 		log.V(2).Info("Installing CRD", "crd", crd)
-		h.kubectlApplyTemplate(crd, h.testContext, false)
+		if err := h.kubectlApplyTemplate(crd, h.testContext, false); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func (h *helper) deployGlobalOperator() {
+func (h *helper) deployGlobalOperator() error {
 	log.Info("Deploying global operator")
-	h.kubectlApplyTemplate("config/e2e/global_operator.yaml", h.testContext, true)
+	return h.kubectlApplyTemplate("config/e2e/global_operator.yaml", h.testContext, true)
 }
 
-func (h *helper) deployNamespaceOperators() {
+func (h *helper) deployNamespaceOperators() error {
 	log.Info("Deploying namespace operators")
-	h.kubectlApplyTemplate("config/e2e/namespace_operator.yaml", h.testContext, true)
+	return h.kubectlApplyTemplate("config/e2e/namespace_operator.yaml", h.testContext, true)
 }
 
-func (h *helper) deployTestJob() {
+func (h *helper) deployTestJob() error {
 	log.Info("Deploying e2e test job")
-	h.kubectlApplyTemplate("config/e2e/batch_job.yaml", h.testContext, true)
+	return h.kubectlApplyTemplate("config/e2e/batch_job.yaml", h.testContext, true)
 }
 
-func (h *helper) runTestJob() {
+func (h *helper) runTestJob() error {
 	if h.setupOnly {
 		log.Info("Skipping tests because this is a setup-only run")
-		return
+		return nil
 	}
 
 	client, err := h.createKubeClient()
 	if err != nil {
-		h.err = errors.Wrap(err, "failed to create kubernetes client")
-		return
+		return errors.Wrap(err, "failed to create kubernetes client")
 	}
 
 	// start the event logger to log all relevant events in the cluster
@@ -207,9 +208,11 @@ func (h *helper) runTestJob() {
 	close(stopChan)
 
 	if err != nil {
-		h.err = errors.Wrap(err, "test run failed")
 		h.dumpEventLog()
+		return errors.Wrap(err, "test run failed")
 	}
+
+	return nil
 }
 
 func (h *helper) createKubeClient() (*kubernetes.Clientset, error) {
@@ -334,31 +337,33 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 }
 
-func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}, deleteOnExit bool) {
-	if h.err != nil {
-		return
-	}
-
+func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}, deleteOnExit bool) error {
 	outFilePath, err := h.renderTemplate(templatePath, templateParam)
 	if err != nil {
-		return
+		return err
 	}
 
-	h.kubectl("apply", "-f", outFilePath)
+	if err := h.kubectl("apply", "-f", outFilePath); err != nil {
+		return err
+	}
 
 	if deleteOnExit {
 		h.addCleanupFunc(func() {
 			log.Info("Deleting resources", "file", outFilePath)
-			h.kubectl("delete", "--all", "-f", outFilePath)
+			if err := h.kubectl("delete", "--all", "-f", outFilePath); err != nil {
+				log.Error(err, "Failed to delete resources", "file", outFilePath)
+			}
 		})
 	}
+
+	return nil
 }
 
-func (h *helper) kubectl(command string, args ...string) {
-	h.exec(h.kubectlWrapper.Command(command, args...))
+func (h *helper) kubectl(command string, args ...string) error {
+	return h.exec(h.kubectlWrapper.Command(command, args...))
 }
 
-func (h *helper) exec(cmd *command.Command) {
+func (h *helper) exec(cmd *command.Command) error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), h.commandTimeout)
 	defer cancelFunc()
 
@@ -373,32 +378,31 @@ func (h *helper) exec(cmd *command.Command) {
 		}
 
 		fmt.Fprintln(os.Stderr, string(out))
-		h.err = errors.Wrapf(err, "command failed: [%s]", cmd)
+		return errors.Wrapf(err, "command failed: [%s]", cmd)
 	}
 
 	if log.V(1).Enabled() {
 		fmt.Println(string(out))
 	}
+
+	return nil
 }
 
 func (h *helper) renderTemplate(templatePath string, param interface{}) (string, error) {
 	tmpl, err := template.New(filepath.Base(templatePath)).Funcs(sprig.TxtFuncMap()).ParseFiles(templatePath)
 	if err != nil {
-		h.err = errors.Wrapf(err, "failed to parse template at %s", templatePath)
-		return "", err
+		return "", errors.Wrapf(err, "failed to parse template at %s", templatePath)
 	}
 
 	outFilePath := filepath.Join(h.testOutDir, strings.Replace(templatePath, "/", "_", -1))
 	f, err := os.Create(outFilePath)
 	if err != nil {
-		h.err = errors.Wrapf(err, "failed to create file: %s", outFilePath)
-		return "", err
+		return "", errors.Wrapf(err, "failed to create file: %s", outFilePath)
 	}
 
 	defer f.Close()
 	if err := tmpl.Execute(f, param); err != nil {
-		h.err = errors.Wrapf(err, "failed to render template to %s", outFilePath)
-		return "", err
+		return "", errors.Wrapf(err, "failed to render template to %s", outFilePath)
 	}
 
 	return outFilePath, nil
