@@ -5,16 +5,18 @@ This section explains how to run ECK on OpenShift.
 
 NOTE: Only Elasticsearch and Kibana are supported on OpenShift.
 
+[float]
 === Prerequisites
 
-. To run the following instructions, you must be a `system:admin` user or a User with the privileges to create Projects, CRDs, and RBAC resources at the cluster level.
+. To run the following instructions, you must be a `system:admin` user or a user with the privileges to create Projects, CRDs, and RBAC resources at the cluster level.
 
 . Set virtual memory settings on the nodes
 +
-Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraints] (SCC), they will run with a limited set of privileges and will not be able to change this setting on the nodes that host them. You can refer to the following https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[documentation] for more information.
+Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraints] (SCC), they run with a limited set of privileges and cannot change this setting on the nodes that host them. For more details, see the https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
 
+[float]
 === Deploy the operator
-. Apply the all-in-one template as described in the link:k8s-quickstart.html[quickstart].
+. Apply the all-in-one template, as described in the link:k8s-quickstart.html[quickstart].
 +
 [source,shell]
 ----
@@ -35,7 +37,7 @@ oc adm pod-network make-projects-global elastic-system
 oc new-project elastic # creates the elastic project
 ----
 +
-By default the operator watches and creates resources in the `default` namespace. You need to patch the operator to manage resources in an other namespace.
+By default the operator watches and creates resources in the `default` namespace. You need to patch the operator to manage resources in another namespace.
 +
 [source,shell]
 ----
@@ -47,7 +49,7 @@ kubectl patch statefulset/elastic-operator \
 +
 Replace `elastic` in the examples above with the name of the namespace in which you want to deploy some resources.
 
-. [Optional] If you want to allow an other user or a group of users to manage the Elastic resources:
+. [Optional] If you want to allow another user or a group of users to manage the Elastic resources:
 +
 [source,shell]
 ----
@@ -56,6 +58,7 @@ oc adm policy add-role-to-user elastic-operator developer -n elastic
 +
 In the example above the user `developer` is allowed to manage Elastic resources in the namespace `elastic`.
 
+[float]
 === Deploy an Elasticsearch instance with a route
 
 Use the following command to create an Elasticsearch cluster `elasticsearch-sample` and a "passthrough" route to access it:
@@ -92,6 +95,7 @@ spec:
 EOF
 ----
 
+[float]
 === Deploy a Kibana instance with a route
 
 Use the following command to create a Kibana instance and a "passthrough" route to access it:
