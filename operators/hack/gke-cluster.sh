@@ -85,7 +85,7 @@ create_cluster() {
     set_max_map_count
 
     # Create a default storage class that uses late binding to avoid volume zone affinity issues
-    kubectl apply -f $HERE/config/dev/gke-default-storage.yaml
+    kubectl apply -f $HERE/../config/dev/gke-default-storage.yaml
     kubectl patch storageclass standard -p '{
         "metadata": {"annotations": {"storageclass.beta.kubernetes.io/is-default-class":"false"} }
     }'
