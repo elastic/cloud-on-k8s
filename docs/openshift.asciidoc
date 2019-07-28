@@ -1,16 +1,16 @@
 [id="{p}-openshift"]
 == Deploying ECK on OpenShift
 
-This section explains how to run ECK on OpenShift.
+This page shows how to run ECK on OpenShift.
 
 NOTE: Only Elasticsearch and Kibana are supported on OpenShift.
 
 [float]
-=== Prerequisites
+=== Before you begin
 
-. To run the following instructions, you must be a `system:admin` user or a user with the privileges to create Projects, CRDs, and RBAC resources at the cluster level.
+. To run the instructions on this page, you must be a `system:admin` user or a user with the privileges to create Projects, CRDs, and RBAC resources at the cluster level.
 
-. Set virtual memory settings on the nodes
+. Set virtual memory settings on the nodes.
 +
 Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraints] (SCC): they run with a limited set of privileges and cannot change this setting on the nodes that host them. For more details, see the Elasticsearch documentation on https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
 
@@ -47,9 +47,9 @@ kubectl patch statefulset/elastic-operator \
   --patch '[{"op":"add","path":"/spec/template/spec/containers/0/env/-","value": {"name": "NAMESPACE", "value": "elastic"}}]'
 ----
 +
-Replace `elastic` in the examples above with the name of the namespace in which you want to deploy some resources.
+Replace `elastic` in the examples above with the name of the namespace in which you want to deploy your resources.
 
-. [Optional] If you want to allow another user or a group of users to manage the Elastic resources:
+. [Optional] Allow another user or a group of users to manage the Elastic resources:
 +
 [source,shell]
 ----
@@ -61,7 +61,7 @@ In the example above the user `developer` is allowed to manage Elastic resources
 [float]
 === Deploy an Elasticsearch instance with a route
 
-Use the following command to create an Elasticsearch cluster `elasticsearch-sample` and a "passthrough" route to access it:
+Use the following code to create an Elasticsearch cluster `elasticsearch-sample` and a "passthrough" route to access it:
 
 [source,shell]
 ----
@@ -98,7 +98,7 @@ EOF
 [float]
 === Deploy a Kibana instance with a route
 
-Use the following command to create a Kibana instance and a "passthrough" route to access it:
+Use the following code to create a Kibana instance and a "passthrough" route to access it:
 
 [source,shell]
 ----
