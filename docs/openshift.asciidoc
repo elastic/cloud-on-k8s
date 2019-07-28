@@ -12,7 +12,7 @@ NOTE: Only Elasticsearch and Kibana are supported on OpenShift.
 
 . Set virtual memory settings on the nodes
 +
-Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraints] (SCC), they run with a limited set of privileges and cannot change this setting on the nodes that host them. For more details, see the https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
+Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraints] (SCC): they run with a limited set of privileges and cannot change this setting on the nodes that host them. For more details, see the Elasticsearch documentation on https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
 
 [float]
 === Deploy the operator
