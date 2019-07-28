@@ -1,5 +1,5 @@
 [id="{p}-troubleshooting"]
-== Troubleshoot a failing cluster
+== Troubleshooting
 
 When things don't work as expected, you can investigate by taking the following actions:
 
