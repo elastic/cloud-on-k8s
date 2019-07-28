@@ -1,11 +1,12 @@
 [id="{p}-elasticsearch-specification"]
 == Running Elasticsearch on ECK
 
-There are a number of settings which need to be considered before going into production related to Elasticsearch but also to Kubernetes.
+Before you deploy and run ECK, take some time to look at the basic and advanced settings available on this page. These settings are related both to Elasticsearch and Kubernetes.
 
 **Basic settings**
 
 - <<{p}-pod-template>>
+- <<{p}-jvm-heap-size>>
 - <<{p}-node-configuration>>
 - <<{p}-volume-claim-templates>>
 - <<{p}-http-settings-tls-sans>>
@@ -18,15 +19,15 @@ There are a number of settings which need to be considered before going into pro
 - <<{p}-bundles-plugins>>
 - <<{p}-init-containers-plugin-downloads>>
 - <<{p}-update-strategy>>
-  - <<{p}-change-budget>>
 - <<{p}-group-definitions>>
+- <<{p}-pod-disruption-budget>>
+- <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
 
-**Basic settings**
 
 [id="{p}-pod-template"]
 === Pod Template
 
-Pod templates are the same pod templates you know and love from stateful sets and deployments. You can provide your own to add new settings, or merge settings with our defaults. For instance, if you want to add new labels to your pods, you can apply a pod template like so:
+Pod templates are the same you know and love from stateful sets and deployments. You can provide your own to add new settings, or merge settings with our defaults. For example, if you want to add new labels to your Pods, you can apply a Pod template as follows:
 
 [source,yaml]
 ----
@@ -37,11 +38,11 @@ Pod templates are the same pod templates you know and love from stateful sets an
           foo: bar
 ----
 
-More common is setting resource requests and limits, which is covered in link:k8s-managing-compute-resources.html[Managing compute resources].
+If you need to set resource requests and limits, see link:k8s-managing-compute-resources.html[Managing compute resources].
 
-You may want to also install additional plugins, which is described in the <<{p}-init-containers-plugin-downloads>> section.
+Or if you want to install additional plugins, see <<{p}-init-containers-plugin-downloads>>.
 
-You may want to set environment variables to configure Elasticsearch. For instance to set the minimum and maximum JVM heap size to `2g` and `4g` respectively you may modify the environment variables of the `elasticsearch` container as follows:
+You might want to set environment variables to configure Elasticsearch. For example, to set the minimum and maximum JVM heap size to `2g` and `4g` respectively, you can modify the environment variables of the `elasticsearch` container as follows:
 
 [source,yaml]
 ----
@@ -55,17 +56,16 @@ spec:
           value: "-Xms2g -Xmx4g"
 ----
 
-You can also refer to the Kubernetes documentation here for more information on pod templates:
+For more information on Pod templates, see the Kubernetes documentation:
 
 - https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/#pod-templates[Pod Templates Overview]
-
 - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#podtemplatespec-v1-core[Pod Template Spec API Reference]
 
 
 [id="{p}-jvm-heap-size"]
 === JVM heap size
 
-By default, the JVM heap used by Elasticsearch has minimum and maximum size set to 1Gi. As the heap size should not exceed 50% of RAM size, ECK requests by default 2Gi of memory for the Elasticsearch Pod. To change the JVM heap size, use the environment variable ES_JAVA_OPTS. It is also highly recommended to set the resource requests and limits to adjust the pod memory to not exceed 50% of the RAM size. Both changes are shown below. For more information, see link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
+By default, the JVM heap used by Elasticsearch has minimum and maximum size set to 1Gi. As the heap size should not exceed 50% of RAM size, ECK requests by default 2Gi of memory for the Elasticsearch Pod. To change the JVM heap size, use the `ES_JAVA_OPTS` environment variable. It is also highly recommended to set the resource requests and limits to adjust the Pod memory to not exceed 50% of the RAM size. Both changes are shown below:
 
 [source,yaml]
 ----
@@ -85,10 +85,12 @@ spec:
               memory: 4Gi
 ----
 
+For more information, see the Elasticsearch documentation on link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
+
 [id="{p}-node-configuration"]
 === Node configuration
 
-Any setting that can be configured in the `elasticsearch.yml` configuration file can be defined for each topology of nodes in the `spec.nodes[?].config` section.
+Any setting defined in the `elasticsearch.yml` configuration file can also be defined for each topology of nodes in the `spec.nodes[?].config` section.
 
 [source,yaml]
 ----
@@ -118,7 +120,7 @@ For more information on Elasticsearch settings, see https://www.elastic.co/guide
 
 By default the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
 
-You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs, the name in the template must be `elasticsearch-data`:
+You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs. The name in the template must be `elasticsearch-data`:
 
 [source,yaml]
 ----
@@ -136,7 +138,7 @@ spec:
         storageClassName: standard
 ----
 
-For some reasons you may want to use an `emptyDir` volume, this can be done by specifying the `elasticsearch-data` volume in the `podTemplate`:
+If you want to use an `emptyDir` volume, specify the `elasticsearch-data` volume in the `podTemplate`:
 
 [source,yaml]
 ----
@@ -150,12 +152,12 @@ spec:
           emptyDir: {}
 ----
 
-Keep in mind that using `emptyDir` may result in data loss and is not recommended.
+IMPORTANT: Using `emptyDir` might result in data loss and is not recommended.
 
 [id="{p}-http-settings-tls-sans"]
 === HTTP settings & TLS SANs
 
-You can change the type of the Kubernetes service used to expose Elasticsearch in https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] in the `spec.http.service.spec` section.
+In the `spec.http.service.spec` section, you can change the Kubernetes service used to expose Elasticsearch:
 
 [source,yaml]
 ----
@@ -165,6 +167,8 @@ spec:
       spec:
         type: LoadBalancer
 ----
+
+Check the https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[Kubernetes Publishing Services (ServiceTypes)] that are currently available.
 
 You can add an IP or a DNS name in the SAN of the self-signed certificate configured by default to secure the HTTP layer with TLS in the `spec.http.tls.selfSignedCertificate` section.
 
@@ -179,24 +183,22 @@ spec:
         - dns: hulk.example.com
 ----
 
-**Advanced settings**
-
 [id="{p}-virtual-memory"]
 === Virtual memory
 
-By default, Elasticsearch is using memory mapping (`mmap`) to efficiently access indices.
+By default, Elasticsearch uses memory mapping (`mmap`) to efficiently access indices.
 Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions.
 To increase virtual memory, ECK sets the recommended value by default.
 
-The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which needs to be privileged. If the kernel setting is set directly, you may disable the init container in the Elasticsearch specification:
+The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which needs to be privileged. If the kernel setting is set directly, you might disable the init container in the Elasticsearch specification:
 [source,yaml]
 ----
 spec:
   setVmMaxMapCount: false
 ----
 
-For more information on this setting, see the 
-link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Elasticsearch documentation].
+For more information, see the Elasticsearch documentation on 
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
 
 Optionally, you can select a different type of file system implementation for the storage. For possible options, see the
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html[store module documentation].
@@ -226,7 +228,7 @@ spec:
         secretName: my-cert
 ----
 
-Example to create a Kubernetes TLS secret with a self-signed certificate:
+This is an example on how create a Kubernetes TLS secret with a self-signed certificate:
 
 [source,sh]
 ----
@@ -235,11 +237,11 @@ $ kubectl create secret tls my-cert --cert tls.crt --key tls.key
 ----
 
 [id="{p}-es-secure-settings"]
-=== Secure Settings
+=== Secure settings
 
-link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[Secure settings] can be specified via a Kubernetes secret.
+You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with a Kubernetes secret.
 The secret should contain a key-value pair for each secure setting you want to add. Reference that secret in the Elasticsearch
-resource spec for ECK to automatically inject those settings into the keystore on each node before it starts Elasticsearch.
+resource specification for ECK to automatically inject those settings into the keystore on each node before it starts Elasticsearch.
 
 [source,yaml]
 ----
@@ -251,12 +253,12 @@ spec:
 See link:k8s-how-to-snapshot.html[How to create automated snapshots] for an example use case.
 
 [id="{p}-bundles-plugins"]
-=== Custom Configuration Files and Plugins
+=== Custom configuration files and plugins
 
-To run Elasticsearch with specific plugins or configurations files installed on ECK you have two options:
+To run Elasticsearch with specific plugins or configuration files installed on ECK you have two options:
 
-1. create a custom Docker image with the plugins or files pre-installed
-2. install the plugins or configuration files at pod startup time
+1. Create a custom Docker image with the plugins or files pre-installed.
+2. Install the plugins or configuration files at Pod startup time.
 
 NOTE: The first option has the advantage that you can verify the correctness of the image before rolling it out to your ECK installation, while the second option gives you
 maximum flexibility. But the second option also means you might catch any errors only at runtime. Plugin installation at runtime has another drawback in that it needs access to the Internet from your cluster
@@ -264,7 +266,7 @@ and downloads each plugin multiple times, once for each Elasticsearch node.
 
 Building your custom Docker images is outside the scope of this documentation despite being the better solution for most users.
 
-The following therefore describes option 2 using a repository plugin as the example. To install the plugin before the Elasticsearch
+The following example describes option 2, using a repository plugin. To install the plugin before the Elasticsearch
 nodes start, use an init container to run the link:https://www.elastic.co/guide/en/elasticsearch/plugins/current/installation.html[plugin installation tool].
 
 [source,yaml]
@@ -281,7 +283,9 @@ spec:
           bin/elasticsearch-plugin install --batch repository-azure
 ----
 
-To install custom configuration files you can use volumes and volume mounts. The next example shows how to add a synonyms file for the
+To install custom configuration files you can use volumes and volume mounts. 
+
+The next example shows how to add a synonyms file for the
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html[synonym token filter] in Elasticsearch.
 But you can use the same approach for any kind of file you want to mount into the configuration directory of Elasticsearch.
 
@@ -302,12 +306,12 @@ spec:
 ----
 
 <1> Elasticsearch runs by convention in a container called 'elasticsearch'
-<2> assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s)
+<2> Assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s)
 
 [id="{p}-init-containers-plugin-downloads"]
 === Init containers for plugin downloads
 
-To install a custom plugin, you can install them before the Elasticsearch container starts with an initContainer. For example:
+You can install custom plugins before the Elasticsearch container starts with an `initContainer`. For example:
 
 [source,yaml]
 ----
@@ -322,38 +326,38 @@ To install a custom plugin, you can install them before the Elasticsearch contai
             bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
-You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:k8s-how-to-snapshot.html[snapshots] doc has more information on both of these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
+You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:k8s-how-to-snapshot.html[snapshots] doc has more information on both these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
 
-The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It will also inherit the pod name and IP address environment variables.
+The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It also inherits the Pod name and IP address environment variables.
 
 [id="{p}-update-strategy"]
 === Update strategy
 
 The Elasticsearch cluster configuration can be updated at any time to:
 
-* add new nodes
-* remove some nodes
-* change Elasticsearch configuration
-* change pod resources (example: memory limits, cpu limit, environment variables, etc.)
+* Add new nodes
+* Remove some nodes
+* Change Elasticsearch configuration
+* Change Pod resources (memory limits, cpu limit, environment variables, etc.)
 
-On any change, ECK reconciles Kubernetes resources towards the desired cluster definition. Changes are done in a rolling fashion: the state of the cluster is continuously monitored, to allow addition of new nodes and removal of deprecated nodes.
+On any change, ECK reconciles Kubernetes resources towards the desired cluster definition. Changes occur in a rolling fashion: the state of the cluster is continuously monitored, to allow addition of new nodes and removal of deprecated nodes.
 
 [id="{p}-change-budget"]
 ==== Change budget
 
 No downtime should be expected when the cluster topology changes. Shards on deprecated nodes are migrated away so the node can be safely removed.
 
-For example, in order to mutate a 3-nodes cluster with 16GB memory limit on each node to a 3-nodes cluster with 32GB memory limit on each node, ECK will:
+For example, to mutate a 3-nodes cluster with 16GB memory limit on each node to a 3-nodes cluster with 32GB memory limit on each node, ECK will:
 
-1. add a new 32GB node: the cluster temporarily has 4 nodes
-2. migrate data away from the first 16GB node
-3. once data is migrated, remove the first 16GB node
-4. follow the same steps for the 2 other 16GB nodes
+1. Add a new 32GB node: the cluster temporarily has 4 nodes
+2. Migrate data away from the first 16GB node
+3. Once data is migrated, remove the first 16GB node
+4. Follow the same steps for the 2 other 16GB nodes
 
 The cluster health stays green during the entire process.
 By default, only one extra node can be added on top of the expected ones. In the example above, a 3-nodes cluster may temporarily be composed of 4 nodes while data migration is in progress.
 
-This behaviour can be controlled through the `changeBudget` section of the Cluster specification `updateStrategy`. If not specified, it defaults to the following:
+This behaviour can be controlled through the `changeBudget` section of the cluster specification `updateStrategy`. If not specified, it defaults to the following:
 
 [source,yaml]
 ----
@@ -364,36 +368,36 @@ spec:
       maxUnavailable: 0
 ----
 
-* `maxSurge` specifies the number of pods that can be added to the cluster, on top of the desired number of nodes in the spec during cluster updates
-* `maxUnavailable` specifies the number of pods that can be made unavailable during cluster updates
+* `maxSurge` specifies the number of Pods that can be added to the cluster, on top of the desired number of nodes in the specification during cluster updates
+* `maxUnavailable` specifies the number of Pods that can be made unavailable during cluster updates
 
 The default of `maxSurge: 1; maxUnavailable: 0` spins up an additional Elasticsearch node during cluster updates.
 It is possible to speed up cluster topology changes by increasing `maxSurge`. For example, setting `maxSurge: 3` would allow 3 new nodes to be created while the original 3 migrate data in parallel.
 The cluster would then temporarily have 6 nodes.
 
-Setting `maxSurge` to 0 and `maxUnavailable` to a positive value only allows a maximum number of pods to exist on the Kubernetes cluster.
+Setting `maxSurge` to 0 and `maxUnavailable` to a positive value only allows a maximum number of Pods to exist on the Kubernetes cluster.
 For example, `maxSurge: 0; maxUnavailable: 1` would perform the 3 nodes upgrade this way:
 
-1. migrate data away from the first 16GB node
-2. once data is migrated, remove the 16GB node: the cluster temporarily has 2 nodes
-3. add a new 32GB node: the cluster grows to 3 nodes
-4. follow the same steps for the 2 other 16GB nodes
+1. Migrate data away from the first 16GB node
+2. Once data is migrated, remove the 16GB node: the cluster temporarily has 2 nodes
+3. Add a new 32GB node: the cluster grows to 3 nodes
+4. Follow the same steps for the 2 other 16GB nodes
 
-Even though any `changeBudget` can be specified, ECK will make sure some invariants are respected while a mutation is in progress:
+Even if a `changeBudget` is specified, ECK makes sure that some invariants are maintained while a mutation is in progress. In the cluster, there must be at least:
 
-* there must be at least one master node alive in the cluster
-* there must be at least one data node alive in the cluster
+* One master node alive
+* One data node alive
 
-Under certain circumstances, ECK will therefore ignore the change budget. For example, a safe migration from a 1-node cluster to another 1-node cluster can only be done by temporarily setting up a 2-nodes cluster.
+So under certain circumstances ECK ignores the change budget. For example, a safe migration from a 1-node cluster to another 1-node cluster can only be done by temporarily setting up a 2-nodes cluster.
 
-It is possible to configure the `changeBudget` to optimize for reusing Persistent Volumes instead of migrating data across nodes. This feature is not supported yet: more details to come in the next release.
+It is possible to configure the `changeBudget` to optimize the reuse of persistent volumes, instead of migrating data across nodes. This feature is not supported yet, more details to come in the next release.
 
 [id="{p}-group-definitions"]
 === Group definitions
 
-To optimize upgrades for highly available setups, ECK can take into account arbitrary nodes grouping. It prioritizes recovery of entire availability zones in catastrophic scenarios.
+To optimize upgrades for highly available setups, ECK can take into account arbitrary nodes grouping. It prioritizes recovery of availability zones in catastrophic scenarios.
 
-For example, let's create a zone-aware Elasticsearch cluster. Some nodes will be created in `europe-west3-a`, and some others in `europe-west3-b`:
+For example, let's create a zone-aware Elasticsearch cluster. Some nodes are created in `europe-west3-a`, and some others in `europe-west3-b`:
 
 [source,yaml]
 ----
@@ -453,24 +457,24 @@ spec:
           nodesGroup: group-b
 ----
 
-If a modification is applied to the Elasticsearch configuration of these 6 nodes, ECK will slowly upgrade the cluster nodes, taking the provided `changeBudget` into account.
-In this example, it will spawn one additional node at a time, and migrate data away from one node at a time.
+If a modification is applied to the Elasticsearch configuration of these 6 nodes, ECK slowly upgrades the cluster nodes, taking the provided `changeBudget` into account.
+In this example, it will spawn one node at a time, and migrate data away from one node at a time.
 
 Imagine a catastrophic situation occurs while the mutation is in progress: all nodes in `europe-west3-b` suddenly disappear.
-ECK will detect it, and recreate the 3 missing nodes as expected. However, since a cluster upgrade is already in progress, the current `changeBudget may already be maxed out, preventing new nodes to be created in `europe-west3-b`.
+ECK detects it, and recreates the 3 missing nodes as expected. However, since a cluster upgrade is already in progress, the current `changeBudget` might already be maxed out, preventing new nodes to be created in `europe-west3-b`.
 
-In this situation, it would be preferable to first recreate the missing nodes in `europe-west-3b`, then continue the cluster upgrade.
+In this situation, it is preferable to first recreate the missing nodes in `europe-west-3b`, then continue the cluster upgrade.
 
-In order to do so, ECK must know about the logical grouping of nodes. Since this is an arbitrary setting (can represent availability zones, but also nodes roles, hot-warm topologies, etc.), it must be specified in the `updateStrategy.groups` section of the Elasticsearch specification.
-Nodes grouping is expressed through labels on the resources. In the example above, 3 pods are labeled with `group-a`, and the 3 other pods with `group-b`.
+To do so, ECK must know about the logical grouping of nodes. Since this is an arbitrary setting (can represent availability zones, but also nodes roles, hot-warm topologies, etc.), it must be specified in the `updateStrategy.groups` section of the Elasticsearch specification.
+Nodes grouping is expressed through labels on the resources. In the example above, 3 Pods are labeled with `group-a`, and the 3 Pods with `group-b`.
 
 [id="{p}-pod-disruption-budget"]
 === Pod disruption budget
 
-A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of pods while the Kubernetes cluster administrator manages cluster nodes.
-With Elasticsearch, we'd like to make sure some indices don't become unavailable.
+A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of Pods while the Kubernetes cluster administrator manages cluster nodes.
+Elasticsearch makes sure some indices don't become unavailable.
 
-A default PDB of 1 `maxUnavailable` pod on the entire cluster is enforced by default.
+A default PDB of 1 `maxUnavailable` Pod on the entire cluster is enforced by default.
 
 This default can be tweaked in the Elasticsearch specification:
 
@@ -506,3 +510,5 @@ spec:
   - nodeCount: 3
   podDisruptionBudget: {}
 ----
+
+include::advanced-node-scheduling.asciidoc[]
