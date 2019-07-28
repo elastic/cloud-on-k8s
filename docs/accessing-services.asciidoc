@@ -1,5 +1,5 @@
 [id="{p}-accessing-elastic-services"]
-== How to access Elastic Stack services
+== Accessing Elastic Stack services
 
 To access the Elastic Stack services, you will need to retrieve:
 
