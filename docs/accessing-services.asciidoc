@@ -56,7 +56,7 @@ hulk-kb-http        ClusterIP      10.19.247.151   <none>           5601:31380/T
 ==== Allowing public access
 
 You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of the resource manifest.
-On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur charges.
+On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur costs.
 
 [source,yaml]
 ----
@@ -144,8 +144,8 @@ You can bring your own certificate to configure TLS to ensure that communication
 
 Create a Kubernetes secret with:
 
-- tls.crt: the certificate (or a chain).
-- tls.key: the private key to the first certificate in the certificate chain.
+- `tls.crt`: the certificate (or a chain).
+- `tls.key`: the private key to the first certificate in the certificate chain.
 
 [source,sh]
 ----
@@ -178,7 +178,7 @@ spec:
         disabled: true
 ----
 
-You cannot disable TLS for Elasticsearch.
+TLS cannot be disabled for Elasticsearch.
 
 [float]
 [id="{p}-request-elasticsearch-endpoint"]
