@@ -3,14 +3,14 @@
 
 There are a number of settings which need to be considered before going into production related to Elasticsearch but also to Kubernetes.
 
-**<<{p}-basic-settings>>**
+**Basic settings**
 
 - <<{p}-pod-template>>
 - <<{p}-node-configuration>>
 - <<{p}-volume-claim-templates>>
 - <<{p}-http-settings-tls-sans>>
 
-**<<{p}-advanced-settings>>**
+**Advanced settings**
 
 - <<{p}-virtual-memory>>
 - <<{p}-custom-http-certificate>>
@@ -21,8 +21,7 @@ There are a number of settings which need to be considered before going into pro
   - <<{p}-change-budget>>
 - <<{p}-group-definitions>>
 
-[id="{p}-basic-settings"]
-== Basic settings
+**Basic settings**
 
 [id="{p}-pod-template"]
 === Pod Template
@@ -180,8 +179,7 @@ spec:
         - dns: hulk.example.com
 ----
 
-[id="{p}-advanced-settings"]
-== Advanced Settings
+**Advanced settings**
 
 [id="{p}-virtual-memory"]
 === Virtual memory
