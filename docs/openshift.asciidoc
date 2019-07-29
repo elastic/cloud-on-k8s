@@ -9,7 +9,7 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-deploy-kibana,Deploy a Kibana instance with a route>>
 * <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
 
-NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraint]. To run the APM Server on OpenShift you must allow the POD to run with the `anyuid` SCC as it is described in <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
+NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint]. To run the APM Server on OpenShift you must allow the POD to run with the `anyuid` SCC as it is described in <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
 
 [float]
 [id="{p}-openshift-before-you-begin"]
@@ -19,7 +19,7 @@ NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https:/
 
 . Set virtual memory settings on the nodes.
 +
-Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraints] (SCC): they run with a limited set of privileges and cannot change this setting on the nodes that host them. For more details, see the Elasticsearch documentation on https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
+Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC): they run with a limited set of privileges and cannot change this setting on the nodes that host them. For more details, see the Elasticsearch documentation on https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
 
 [float]
 [id="{p}-openshift-deploy-the-operator"]
