@@ -43,7 +43,7 @@ func doRun(flags runFlags) error {
 	}
 
 	steps := []func() error{
-		helper.createTestOutDir,
+		helper.createScratchDir,
 		helper.initTestContext,
 		helper.createE2ENamespaceAndRoleBindings,
 		helper.installCRDs,
@@ -69,32 +69,32 @@ type helper struct {
 	eventLog       string
 	kubectlWrapper *command.Kubectl
 	testContext    test.Context
-	testOutDir     string
+	scratchDir     string
 	cleanupFuncs   []func()
 }
 
-func (h *helper) createTestOutDir() error {
-	h.testOutDir = filepath.Join(h.testOutDirRoot, h.testRunName)
-	log.Info("Creating test output directory", "directory", h.testOutDir)
+func (h *helper) createScratchDir() error {
+	h.scratchDir = filepath.Join(h.scratchDirRoot, h.testRunName)
+	log.Info("Creating test output directory", "directory", h.scratchDir)
 
 	// ensure that the directory does not exist
-	if _, err := os.Stat(h.testOutDir); !os.IsNotExist(err) {
-		return errors.Wrapf(err, "test output directory already exists: %s", h.testOutDir)
+	if _, err := os.Stat(h.scratchDir); !os.IsNotExist(err) {
+		return errors.Wrapf(err, "scratch directory already exists: %s", h.scratchDir)
 	}
 
 	// create the directory
-	if err := os.MkdirAll(h.testOutDir, os.ModePerm); err != nil {
-		return errors.Wrapf(err, "failed to create test output directory: %s", h.testOutDir)
+	if err := os.MkdirAll(h.scratchDir, os.ModePerm); err != nil {
+		return errors.Wrapf(err, "failed to create scratch directory: %s", h.scratchDir)
 	}
 
 	// generate the path to the event log
-	h.eventLog = filepath.Join(h.testOutDir, "event.log")
+	h.eventLog = filepath.Join(h.scratchDir, "event.log")
 
 	// clean up the directory
 	h.addCleanupFunc(func() {
-		log.Info("Cleaning up the test output directory", "directory", h.testOutDir)
-		if err := os.RemoveAll(h.testOutDir); err != nil {
-			log.Error(err, "Failed to cleanup test output directory", "path", h.testOutDir)
+		log.Info("Cleaning up the scratch directory", "directory", h.scratchDir)
+		if err := os.RemoveAll(h.scratchDir); err != nil {
+			log.Error(err, "Failed to cleanup scratch directory", "path", h.scratchDir)
 		}
 	})
 
@@ -391,7 +391,7 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 		return "", errors.Wrapf(err, "failed to parse template at %s", templatePath)
 	}
 
-	outFilePath := filepath.Join(h.testOutDir, strings.Replace(templatePath, string(filepath.Separator), "_", -1))
+	outFilePath := filepath.Join(h.scratchDir, strings.Replace(templatePath, string(filepath.Separator), "_", -1))
 	f, err := os.Create(outFilePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create file: %s", outFilePath)
