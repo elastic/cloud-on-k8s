@@ -79,6 +79,7 @@ rules:
       - endpoints
       - secrets
       - persistentvolumeclaims
+      - configmaps
     verbs:
       - get
       - list
