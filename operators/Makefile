@@ -300,7 +300,7 @@ e2e-compile:
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
-e2e-local: docker-build docker-push e2e-docker-build e2e-docker-push e2e-run-local
+e2e-local: docker-build docker-push e2e-run-local
 
 e2e-run-local:
 	$(eval TEST_CONTEXT:=$(shell mktemp))

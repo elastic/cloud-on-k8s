@@ -46,7 +46,7 @@ func initializeContext() {
 
 	decoder := json.NewDecoder(f)
 	if err := decoder.Decode(&ctx); err != nil {
-		panic(fmt.Errorf("failed decode test context: %v", err))
+		panic(fmt.Errorf("failed to decode test context: %v", err))
 	}
 
 	log.Info("Test context initialized", "context", ctx)
