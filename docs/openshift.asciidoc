@@ -9,7 +9,7 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-deploy-kibana,Deploy a Kibana instance with a route>>
 * <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
 
-NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint]. To run the APM Server on OpenShift you must allow the POD to run with the `anyuid` SCC as it is described in <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
+NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint]. To run the APM Server on OpenShift you must allow the Pod to run with the `anyuid` SCC as described in <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
 
 [float]
 [id="{p}-openshift-before-you-begin"]
@@ -157,7 +157,7 @@ oc get route -n elastic
 [id="{p}-openshift-apm"]
 === Deploy an APM Server instance with a route
 
-It is currently not possible to run the APM Server with the `restricted` SCC. But as a workaround you may allow the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
+It is currently not possible to run the APM Server with the `restricted` SCC. A possible workaround is to allow the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
 
 . Create a service account to run the APM Server
 +
@@ -209,7 +209,7 @@ spec:
 EOF
 ----
 +
-You can check that the Pod of the APM Server is using the correct SCC with the following command:
+To check that the Pod of the APM Server is using the correct SCC, use the following command:
 +
 [source,shell]
 ----
