@@ -13,8 +13,7 @@ The Elastic Operator can be deployed in 2 different modes using the following ar
 A single operator with all roles, that manages resources in all namespaces.
 
 ```bash
-OPERATOR_IMAGE=<?> NAMESPACE=<?> make all-in-one \
-	kubectl apply -f -
+OPERATOR_IMAGE=<?> NAMESPACE=<?> make generate-all-in-one | kubectl apply -f -
 ```
 
 ### Global and Namespace
@@ -27,8 +26,7 @@ A global operator with the webhook server (optional) that acts across namespaces
 The global operator deployed cluster-wide is responsible for high-level cross-cluster features (CCR, CCS, enterprise licenses).
 
 ```bash
-OPERATOR_IMAGE=<?> NAMESPACE=<?> make global \
-	kubectl apply -f -
+OPERATOR_IMAGE=<?> NAMESPACE=<?> make generate-global | kubectl apply -f -
 ```
 
 #### Namespace
@@ -36,8 +34,7 @@ OPERATOR_IMAGE=<?> NAMESPACE=<?> make global \
 A namespace operator that manages resources in a given namespace.
 
 ```bash
-OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACE=<?> make namespace \
-	kubectl apply -f -
+OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACE=<?> make generate-namespace | kubectl apply -f -
 ```
 
 ## Role of each YAML file
