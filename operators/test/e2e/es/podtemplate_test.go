@@ -61,7 +61,8 @@ func TestCustomConfiguration(t *testing.T) {
 					},
 				},
 			},
-		})
+		}).
+		WithRestrictedSecurityContext()
 
 	init := func(c *test.K8sClient) test.StepList {
 		return test.StepList{
