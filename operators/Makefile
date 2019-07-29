@@ -307,11 +307,10 @@ e2e-run-local:
 	@go run test/e2e/cmd/main.go run \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
-		--test-regex=$(TESTS_MATCH) \
 		--test-context-out=$(TEST_CONTEXT) \
 		--auto-port-forwarding \
 		--setup-only
-	@go test -v -failfast -timeout 1h -tags=e2e -p 1 ./test/e2e/... -run "$(TESTS_MATCH)" -args -testContextPath $(TEST_CONTEXT)
+	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(TEST_CONTEXT)
 
 
 ##########################################

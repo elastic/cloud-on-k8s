@@ -391,6 +391,8 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 		return "", errors.Wrapf(err, "failed to parse template at %s", templatePath)
 	}
 
+	// to avoid creating subdirectories, convert the file path to a flattened path
+	// Eg. path/to/config.yaml will become path_to_config.yaml
 	outFilePath := filepath.Join(h.scratchDir, strings.Replace(templatePath, string(filepath.Separator), "_", -1))
 	f, err := os.Create(outFilePath)
 	if err != nil {
