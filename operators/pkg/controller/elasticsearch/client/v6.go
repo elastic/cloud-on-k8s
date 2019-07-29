@@ -6,7 +6,10 @@ package client
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 )
 
@@ -92,6 +95,15 @@ func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []st
 
 func (c *clientV6) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
 	return errors.New("Not supported in Elasticsearch 6.x")
+}
+
+func (c *clientV6) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
+	newURL, err := url.Parse(stringsutil.Concat(c.Endpoint, r.URL.String()))
+	if err != nil {
+		return nil, err
+	}
+	r.URL = newURL
+	return c.doRequest(ctx, r)
 }
 
 // Equal returns true if c2 can be considered the same as c
