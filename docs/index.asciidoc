@@ -17,7 +17,3 @@ include::apm.asciidoc[]
 include::troubleshooting.asciidoc[]
 include::release-notes/highlights.asciidoc[]
 include::release-notes.asciidoc[]
-
-
-
-
