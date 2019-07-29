@@ -9,7 +9,7 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-deploy-kibana,Deploy a Kibana instance with a route>>
 * <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
 
-NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraint]. To run the APM Server you must allow the POD to run with the `anyuid` SCC as it is described in <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
+NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Secure Context Constraint]. To run the APM Server on OpenShift you must allow the POD to run with the `anyuid` SCC as it is described in <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
 
 [float]
 [id="{p}-openshift-before-you-begin"]
