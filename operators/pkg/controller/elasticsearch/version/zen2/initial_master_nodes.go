@@ -71,7 +71,7 @@ func SetupInitialMasterNodes(
 		return nil
 	}
 	for i, res := range nodeSpecResources {
-		if !IsCompatibleForZen2(res.StatefulSet) {
+		if !IsCompatibleWithZen2(res.StatefulSet) {
 			continue
 		}
 		if !label.IsMasterNodeSet(res.StatefulSet) {

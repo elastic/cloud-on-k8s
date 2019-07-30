@@ -24,7 +24,7 @@ var (
 
 // AddToVotingConfigExclusions adds the given node names to exclude from voting config exclusions.
 func AddToVotingConfigExclusions(esClient client.Client, sset appsv1.StatefulSet, excludeNodes []string) error {
-	if !IsCompatibleForZen2(sset) {
+	if !IsCompatibleWithZen2(sset) {
 		return nil
 	}
 	log.Info("Setting voting config exclusions", "namespace", sset.Namespace, "nodes", excludeNodes)
@@ -64,7 +64,7 @@ func canClearVotingConfigExclusions(c k8s.Client, actualStatefulSets sset.Statef
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.
 // It returns true if this should be retried later (re-queued).
 func ClearVotingConfigExclusions(es v1alpha1.Elasticsearch, c k8s.Client, esClient client.Client, actualStatefulSets sset.StatefulSetList) (bool, error) {
-	if !AtLeastOneNodeCompatibleForZen2(actualStatefulSets) {
+	if !AtLeastOneNodeCompatibleWithZen2(actualStatefulSets) {
 		return false, nil
 	}
 	canClear, err := canClearVotingConfigExclusions(c, actualStatefulSets)

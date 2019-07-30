@@ -50,8 +50,8 @@ func TestIsCompatibleForZen2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsCompatibleForZen2(tt.sset); got != tt.want {
-				t.Errorf("IsCompatibleForZen2() = %v, want %v", got, tt.want)
+			if got := IsCompatibleWithZen2(tt.sset); got != tt.want {
+				t.Errorf("IsCompatibleWithZen2() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -86,8 +86,8 @@ func TestAtLeastOneNodeCompatibleForZen2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AtLeastOneNodeCompatibleForZen2(tt.statefulSets); got != tt.want {
-				t.Errorf("AtLeastOneNodeCompatibleForZen2() = %v, want %v", got, tt.want)
+			if got := AtLeastOneNodeCompatibleWithZen2(tt.statefulSets); got != tt.want {
+				t.Errorf("AtLeastOneNodeCompatibleWithZen2() = %v, want %v", got, tt.want)
 			}
 		})
 	}
