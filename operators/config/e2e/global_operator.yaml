@@ -152,6 +152,14 @@ subjects:
   name: {{ .GlobalOperator.Name }}
   namespace: {{ .GlobalOperator.Namespace }}
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webhook-server-secret
+  namespace: {{ .GlobalOperator.Namespace }}
+  labels:
+    test-run: {{ .TestRun }}
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -209,11 +217,3 @@ spec:
         secret:
           defaultMode: 420
           secretName: webhook-server-secret
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: webhook-server-secret
-  namespace: {{ .GlobalOperator.Namespace }}
-  labels:
-    test-run: {{ .TestRun }}

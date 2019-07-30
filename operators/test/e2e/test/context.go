@@ -14,6 +14,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
+const defaultElasticStackVersion = "7.2.0"
+
 var (
 	testContextPath = flag.String("testContextPath", "", "Path to the test context file")
 	ctxInit         sync.Once
@@ -55,7 +57,7 @@ func initializeContext() {
 func defaultContext() Context {
 	return Context{
 		AutoPortForwarding:  false,
-		ElasticStackVersion: "7.1.1",
+		ElasticStackVersion: defaultElasticStackVersion,
 		GlobalOperator: ClusterResource{
 			Name:      "elastic-global-operator",
 			Namespace: "elastic-system",
@@ -82,17 +84,18 @@ func defaultContext() Context {
 
 // Context encapsulates data about a specific test run
 type Context struct {
-	AutoPortForwarding  bool                `json:"auto_port_forwarding"`
+	GlobalOperator      ClusterResource     `json:"global_operator"`
+	NamespaceOperators  []NamespaceOperator `json:"namespace_operators"`
 	E2EImage            string              `json:"e2e_image"`
 	E2ENamespace        string              `json:"e2e_namespace"`
 	E2EServiceAccount   string              `json:"e2e_service_account"`
 	ElasticStackVersion string              `json:"elastic_stack_version"`
-	GlobalOperator      ClusterResource     `json:"global_operator"`
-	NamespaceOperators  []NamespaceOperator `json:"namespace_operators"`
 	OperatorImage       string              `json:"operator_image"`
 	TestLicence         string              `json:"test_licence"`
 	TestRegex           string              `json:"test_regex"`
 	TestRun             string              `json:"test_run"`
+	AutoPortForwarding  bool                `json:"auto_port_forwarding"`
+	Local               bool                `json:"local"`
 }
 
 // ManagedNamespace returns the nth managed namespace.

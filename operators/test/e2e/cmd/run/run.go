@@ -36,21 +36,35 @@ const (
 	testRunLabel     = "test-run"        // name of the label applied to resources
 )
 
+type stepFunc func() error
+
 func doRun(flags runFlags) error {
 	helper := &helper{
 		runFlags:       flags,
 		kubectlWrapper: command.NewKubectl(flags.kubeConfig),
 	}
 
-	steps := []func() error{
-		helper.createScratchDir,
-		helper.initTestContext,
-		helper.createE2ENamespaceAndRoleBindings,
-		helper.installCRDs,
-		helper.deployGlobalOperator,
-		helper.deployNamespaceOperators,
-		helper.deployTestJob,
-		helper.runTestJob,
+	var steps []stepFunc
+	if flags.local {
+		// local test run steps
+		steps = []stepFunc{
+			helper.createScratchDir,
+			helper.initTestContext,
+			helper.installCRDs,
+			helper.createManagedNamespaces,
+		}
+	} else {
+		// CI test run steps
+		steps = []stepFunc{
+			helper.createScratchDir,
+			helper.initTestContext,
+			helper.createE2ENamespaceAndRoleBindings,
+			helper.installCRDs,
+			helper.deployGlobalOperator,
+			helper.deployNamespaceOperators,
+			helper.deployTestJob,
+			helper.runTestJob,
+		}
 	}
 
 	defer helper.runCleanup()
@@ -112,6 +126,7 @@ func (h *helper) initTestContext() error {
 			Name:      fmt.Sprintf("%s-global-operator", h.testRunName),
 			Namespace: fmt.Sprintf("%s-elastic-system", h.testRunName),
 		},
+		Local:              h.local,
 		NamespaceOperators: make([]test.NamespaceOperator, len(h.managedNamespaces)),
 		OperatorImage:      h.operatorImage,
 		TestLicence:        h.testLicence,
@@ -160,10 +175,23 @@ func (h *helper) installCRDs() error {
 	}
 
 	for _, crd := range crds {
-		log.V(2).Info("Installing CRD", "crd", crd)
+		log.V(1).Info("Installing CRD", "crd", crd)
 		if err := h.kubectlApplyTemplate(crd, h.testContext, false); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (h *helper) createManagedNamespaces() error {
+	for _, ns := range h.managedNamespaces {
+		managedNS := fmt.Sprintf("%s-%s", h.testRunName, ns)
+		if err := h.kubectl("create", "ns", managedNS); err != nil {
+			log.Error(err, "Failed to create managed namespace", "namespace", managedNS)
+			return err
+		}
+		log.Info("Created managed namespace", "namespace", managedNS)
 	}
 
 	return nil
@@ -185,11 +213,6 @@ func (h *helper) deployTestJob() error {
 }
 
 func (h *helper) runTestJob() error {
-	if h.setupOnly {
-		log.Info("Skipping tests because this is a setup-only run")
-		return nil
-	}
-
 	client, err := h.createKubeClient()
 	if err != nil {
 		return errors.Wrap(err, "failed to create kubernetes client")

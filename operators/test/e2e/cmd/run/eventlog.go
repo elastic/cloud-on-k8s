@@ -22,11 +22,11 @@ import (
 )
 
 type eventLogEntry struct {
-	Message   string        `json:"message"`
-	Kind      string        `json:"kind"`
-	Name      string        `json:"name"`
-	Namespace string        `json:"namespace"`
-	RawEvent  *corev1.Event `json:"raw_event"`
+	Reason    string `json:"reason"`
+	Message   string `json:"message"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
 }
 
 type eventLogger struct {
@@ -108,7 +108,7 @@ func (el *eventLogger) runEventProcessor() {
 
 		evtObj, exists, err := el.eventInformer.GetIndexer().GetByKey(key.(string))
 		if err != nil {
-			log.Error(err, "failed to get event", "key", key)
+			log.Error(err, "Failed to get event", "key", key)
 			return
 		}
 
@@ -119,11 +119,11 @@ func (el *eventLogger) runEventProcessor() {
 		evt := evtObj.(*corev1.Event)
 		if el.isInterestingEvent(evt) {
 			logEntry := eventLogEntry{
+				Reason:    evt.Reason,
 				Message:   evt.Message,
 				Kind:      evt.InvolvedObject.Kind,
 				Name:      evt.InvolvedObject.Name,
 				Namespace: evt.InvolvedObject.Namespace,
-				RawEvent:  evt,
 			}
 			if err := logWriter.Encode(logEntry); err != nil {
 				log.Error(err, "Failed to write event to event log", "event", evt)
