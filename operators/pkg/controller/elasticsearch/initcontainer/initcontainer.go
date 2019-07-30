@@ -44,7 +44,7 @@ func NewInitContainers(
 	containers = append(containers, prepareFsContainer)
 
 	if keystoreResources != nil {
-		containers = append(containers, prepareFsContainer)
+		containers = append(containers, keystoreResources.InitContainer)
 	}
 
 	return containers, nil

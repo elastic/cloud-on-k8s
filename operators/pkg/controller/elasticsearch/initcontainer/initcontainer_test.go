@@ -7,6 +7,7 @@ package initcontainer
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,6 +19,7 @@ func TestNewInitContainers(t *testing.T) {
 		elasticsearchImage string
 		operatorImage      string
 		SetVMMaxMapCount   *bool
+		keystoreResources  *keystore.Resources
 	}
 	tests := []struct {
 		name                       string
@@ -51,6 +53,16 @@ func TestNewInitContainers(t *testing.T) {
 			},
 			expectedNumberOfContainers: 1,
 		},
+		{
+			name: "with keystore resources",
+			args: args{
+				elasticsearchImage: "es-image",
+				operatorImage:      "op-image",
+				SetVMMaxMapCount:   nil,
+				keystoreResources:  &keystore.Resources{},
+			},
+			expectedNumberOfContainers: 3,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -59,7 +71,7 @@ func TestNewInitContainers(t *testing.T) {
 				tt.args.SetVMMaxMapCount,
 				volume.SecretVolume{},
 				"clusterName",
-				nil,
+				tt.args.keystoreResources,
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedNumberOfContainers, len(containers))
