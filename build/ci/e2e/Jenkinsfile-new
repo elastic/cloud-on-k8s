@@ -37,7 +37,7 @@ overrides:
   gke:
     gcloudProject: $GCLOUD_PROJECT
 EOF
-                    sh 'make -C build/ci ci-e2e-new'
+                    make -C build/ci ci-e2e-new
                 """
             }
         }
@@ -75,5 +75,4 @@ EOF
             cleanWs()
         }
     }
-
 }
