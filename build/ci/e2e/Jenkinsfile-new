@@ -24,7 +24,8 @@ pipeline {
         }
         stage("Run E2E tests") {
             steps {
-                cat >operators/run-config.yml <<EOF
+                sh """
+                    cat >operators/run-config.yml <<EOF
 id: gke
 overrides:
   kubernetesVersion: $CLUSTER_VERSION
@@ -33,7 +34,8 @@ overrides:
   vaultRoleId: $VAULT_ROLE_ID
   vaultSecretId: $VAULT_SECRET_ID
 EOF
-                sh 'make -C build/ci ci-e2e-new'
+                    sh 'make -C build/ci ci-e2e-new'
+                """
             }
         }
     }
