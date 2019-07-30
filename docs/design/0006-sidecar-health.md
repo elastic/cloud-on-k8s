@@ -1,5 +1,8 @@
 # 6. Elasticsearch sidecar health
 
+**Update (2019-07-30):**
+There is no sidecar anymore. The process-manager has been removed for simplification, and the keystore updater now runs as an init-container. Hence, there is no need to monitor the sidecar health anymore.
+
 * Status: proposed
 * Deciders: cloud-on-k8s team
 * Date: 2019-03-05
