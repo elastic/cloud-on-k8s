@@ -9,7 +9,6 @@ plans:
   psp: true
   vmMapMax: true
   gke:
-    gcloudProject: elastic-cloud-dev
     region: europe-west1
     adminUsername: admin
     localSsdCount: 1

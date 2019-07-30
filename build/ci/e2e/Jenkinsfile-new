@@ -12,6 +12,7 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
+        GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         CLUSTER_VERSION = '1.12'
         CLUSTER_NAME = "${BUILD_TAG}"
     }
@@ -26,13 +27,15 @@ pipeline {
             steps {
                 sh """
                     cat >operators/run-config.yml <<EOF
-id: gke
+id: gke-ci
 overrides:
   kubernetesVersion: $CLUSTER_VERSION
   clusterName: $CLUSTER_NAME
   vaultAddress: $VAULT_ADDR
   vaultRoleId: $VAULT_ROLE_ID
   vaultSecretId: $VAULT_SECRET_ID
+  gke:
+    gcloudProject: $GCLOUD_PROJECT
 EOF
                     sh 'make -C build/ci ci-e2e-new'
                 """
@@ -55,7 +58,7 @@ EOF
             script {
                 sh """
                     cat >operators/run-config.yml <<EOF
-id: gke
+id: gke-ci
 overrides:
   operation: delete
   kubernetesVersion: $CLUSTER_VERSION
@@ -63,6 +66,8 @@ overrides:
   vaultAddress: $VAULT_ADDR
   vaultRoleId: $VAULT_ROLE_ID
   vaultSecretId: $VAULT_SECRET_ID
+  gke:
+    gcloudProject: $GCLOUD_PROJECT
 EOF
                     make -C build/ci ci-deployer-new
                 """
