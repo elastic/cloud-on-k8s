@@ -6,10 +6,13 @@ package run
 
 import (
 	"math/rand"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -40,8 +43,14 @@ func Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "setup an e2e test environment and run tests",
-		PreRun: func(_ *cobra.Command, _ []string) {
+		PreRunE: func(_ *cobra.Command, _ []string) error {
 			log = logf.Log.WithName(flags.testRunName)
+			if err := checkWantedDirectories(); err != nil {
+				log.Error(err, "Please make sure this command is executed from the root of the operators directory")
+				return err
+			}
+
+			return nil
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return doRun(flags)
@@ -67,6 +76,25 @@ func Command() *cobra.Command {
 	_ = viper.BindPFlags(cmd.Flags())
 
 	return cmd
+}
+
+func checkWantedDirectories() error {
+	wantedDirs := []string{
+		filepath.Join("config", "crds"),
+		filepath.Join("config", "e2e"),
+	}
+	for _, wantedDir := range wantedDirs {
+		stat, err := os.Stat(wantedDir)
+		if err != nil {
+			return errors.Wrapf(err, "failed to stat directory: %s", wantedDir)
+		}
+
+		if !stat.IsDir() {
+			return errors.Errorf("not a directory: %s", wantedDir)
+		}
+	}
+
+	return nil
 }
 
 func randomTestRunName() string {

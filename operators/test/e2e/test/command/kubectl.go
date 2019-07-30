@@ -30,13 +30,3 @@ func (k *Kubectl) Command(command string, args ...string) *Command {
 
 	return New("kubectl", argList...).Build()
 }
-
-// Apply executes "kubectl apply"
-func (k *Kubectl) Apply(args ...string) *Command {
-	return k.Command("apply", args...)
-}
-
-// Get executes "kubectl get"
-func (k *Kubectl) Get(args ...string) *Command {
-	return k.Command("get", args...)
-}
