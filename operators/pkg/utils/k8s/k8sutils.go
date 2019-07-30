@@ -64,6 +64,15 @@ func GetPods(
 	return podList.Items, nil
 }
 
+// PodsByName returns a map of pod names to pods
+func PodsByName(pods []corev1.Pod) map[string]corev1.Pod {
+	podMap := make(map[string]corev1.Pod, len(pods))
+	for _, pod := range pods {
+		podMap[pod.Name] = pod
+	}
+	return podMap
+}
+
 // GetServiceDNSName returns the fully qualified DNS name for a service
 func GetServiceDNSName(svc corev1.Service) []string {
 	return []string{

@@ -67,7 +67,7 @@ func ReconcileTransportCertificatesSecrets(
 	}
 
 	// remove certificates and keys for deleted pods
-	podsByName := PodsByName(pods.Items)
+	podsByName := k8s.PodsByName(pods.Items)
 	keysToPrune := make([]string, 0)
 	for secretDataKey := range secret.Data {
 		if secretDataKey == certificates.CAFileName {
@@ -169,13 +169,4 @@ func ensureTransportCertificatesSecretExists(
 	}
 
 	return &reconciled, nil
-}
-
-// PodsByName returns a map of pod names to pods
-func PodsByName(pods []corev1.Pod) map[string]corev1.Pod {
-	podMap := make(map[string]corev1.Pod, len(pods))
-	for _, pod := range pods {
-		podMap[pod.Name] = pod
-	}
-	return podMap
 }
