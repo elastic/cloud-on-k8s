@@ -1,0 +1,18 @@
+[id="{p}-uninstall"]
+== Uninstall ECK
+
+Before you uninstall the operator, you must to uninstall the Elastic resources that it has created:
+
+[source,shell]
+----
+kubectl delete elastic --all --all-namesapces
+----
+
+This should delete all underlying Elasticsearch, Kibana or APM Server resources (pods, secrets, services, etc.).
+
+Then you can uninstall the operator itself:
+
+[source,shell]
+----
+kubectl delete -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
+----
