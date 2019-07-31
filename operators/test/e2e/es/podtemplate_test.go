@@ -26,7 +26,7 @@ func TestCustomConfiguration(t *testing.T) {
 	synonymMap := corev1.ConfigMap{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      synonyms,
-			Namespace: test.Namespace,
+			Namespace: test.Ctx().ManagedNamespace(0),
 		},
 		Data: map[string]string{
 			"synonyms.txt": `ECK => Elastic Cloud on Kubernetes`,

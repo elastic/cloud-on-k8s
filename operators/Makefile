@@ -276,28 +276,23 @@ purge-gcr-images:
 ###################################
 
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-TESTS_MATCH ?= ""
+TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 
 # Run e2e tests as a k8s batch job
-e2e: e2e-setup e2e-deploy-operators e2e-docker-image e2e-run
+e2e: docker-build docker-push e2e-docker-build e2e-docker-push e2e-run
 
-e2e-setup:
-	@ echo -- Setup e2e rbac
-	kubectl apply -f config/e2e/rbac.yaml
-
-e2e-deploy-operators:
-	@ echo -- Deploy operators to manage e2e namespace
-	@ $(MAKE) --no-print-directory MANAGED_NAMESPACE=e2e deploy
-
-e2e-docker-image:
-	@ echo -- Build and push e2e docker image
+e2e-docker-build:
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
+
+e2e-docker-push:
 	docker push $(E2E_IMG)
 
 e2e-run:
-	@ echo -- Run e2e as a job
-	./hack/run-e2e.sh "$(E2E_IMG)" "$(TESTS_MATCH)"
+	@go run test/e2e/cmd/main.go run \
+		--operator-image=$(OPERATOR_IMAGE) \
+		--e2e-image=$(E2E_IMG) \
+		--test-regex=$(TESTS_MATCH)
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
@@ -305,15 +300,19 @@ e2e-compile:
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
-e2e-local: e2e-setup e2e-run-local
+LOCAL_E2E_CTX:=/tmp/e2e-local.json
 
-e2e-run-local:
-	go test -v -failfast -timeout 1h -tags=e2e -p 1 ./test/e2e/... -run "$(TESTS_MATCH)"  --auto-port-forward
+e2e-local: e2e-local-setup
+	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
-# Clean k8s cluster from e2e resources
-clean-e2e:
-	kubectl delete namespace e2e
+e2e-local-setup: $(LOCAL_E2E_CTX)
 
+$(LOCAL_E2E_CTX):
+	@go run test/e2e/cmd/main.go run \
+		--test-run-name=e2e \
+		--test-context-out=$(LOCAL_E2E_CTX) \
+		--auto-port-forwarding \
+		--local
 
 ##########################################
 ##  --    Continuous integration    --  ##

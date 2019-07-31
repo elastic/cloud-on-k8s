@@ -57,6 +57,8 @@ create_cluster() {
         export_credentials
         # ensure vm.max_map_count
         set_max_map_count
+        # ensure container registry is correctly configured
+        setup_registry_credentials
         exit 0
     fi
 

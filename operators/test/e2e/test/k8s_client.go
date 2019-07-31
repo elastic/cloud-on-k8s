@@ -107,7 +107,7 @@ func (k *K8sClient) GetPods(listOpts k8sclient.ListOptions) ([]corev1.Pod, error
 
 func (k *K8sClient) GetPod(name string) (corev1.Pod, error) {
 	var pod corev1.Pod
-	if err := k.Client.Get(types.NamespacedName{Namespace: Namespace, Name: name}, &pod); err != nil {
+	if err := k.Client.Get(types.NamespacedName{Namespace: Ctx().ManagedNamespace(0), Name: name}, &pod); err != nil {
 		return corev1.Pod{}, err
 	}
 	return pod, nil
@@ -132,7 +132,7 @@ func (k *K8sClient) CheckPodCount(listOpts k8sclient.ListOptions, expectedCount 
 func (k *K8sClient) GetService(name string) (*corev1.Service, error) {
 	var service corev1.Service
 	key := types.NamespacedName{
-		Namespace: Namespace,
+		Namespace: Ctx().ManagedNamespace(0),
 		Name:      name,
 	}
 	if err := k.Client.Get(key, &service); err != nil {
@@ -144,7 +144,7 @@ func (k *K8sClient) GetService(name string) (*corev1.Service, error) {
 func (k *K8sClient) GetEndpoints(name string) (*corev1.Endpoints, error) {
 	var endpoints corev1.Endpoints
 	key := types.NamespacedName{
-		Namespace: Namespace,
+		Namespace: Ctx().ManagedNamespace(0),
 		Name:      name,
 	}
 	if err := k.Client.Get(key, &endpoints); err != nil {
@@ -158,7 +158,7 @@ func (k *K8sClient) GetElasticPassword(esName string) (string, error) {
 	elasticUserKey := "elastic"
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: Namespace,
+		Namespace: Ctx().ManagedNamespace(0),
 		Name:      secretName,
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
@@ -176,7 +176,7 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerName string) ([]*x509.Ce
 	secretNSN := http.PublicCertsSecretRef(
 		namer,
 		types.NamespacedName{
-			Namespace: Namespace,
+			Namespace: Ctx().ManagedNamespace(0),
 			Name:      ownerName,
 		},
 	)
@@ -199,7 +199,7 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerName string) ([]*x509.Ce
 func (k *K8sClient) GetCA(ownerName string, caType certificates.CAType) (*certificates.CA, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: Namespace,
+		Namespace: Ctx().ManagedNamespace(0),
 		Name:      certificates.CAInternalSecretName(esname.ESNamer, ownerName, caType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
@@ -235,7 +235,7 @@ func (k *K8sClient) GetCA(ownerName string, caType certificates.CAType) (*certif
 func (k *K8sClient) GetTransportCert(podName string) (caCert, transportCert []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: Namespace,
+		Namespace: Ctx().ManagedNamespace(0),
 		Name:      esname.TransportCertsSecret(podName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
@@ -304,7 +304,7 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 
 func ESPodListOptions(esName string) k8sclient.ListOptions {
 	return k8sclient.ListOptions{
-		Namespace: Namespace,
+		Namespace: Ctx().ManagedNamespace(0),
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			common.TypeLabelName:       label.Type,
 			label.ClusterNameLabelName: esName,
@@ -313,7 +313,7 @@ func ESPodListOptions(esName string) k8sclient.ListOptions {
 
 func KibanaPodListOptions(kbName string) k8sclient.ListOptions {
 	return k8sclient.ListOptions{
-		Namespace: Namespace,
+		Namespace: Ctx().ManagedNamespace(0),
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			kblabel.KibanaNameLabelName: kbName,
 		}))}
@@ -321,7 +321,7 @@ func KibanaPodListOptions(kbName string) k8sclient.ListOptions {
 
 func ApmServerPodListOptions(apmName string) k8sclient.ListOptions {
 	return k8sclient.ListOptions{
-		Namespace: Namespace,
+		Namespace: Ctx().ManagedNamespace(0),
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			common.TypeLabelName:             apmlabels.Type,
 			apmlabels.ApmServerNameLabelName: apmName,

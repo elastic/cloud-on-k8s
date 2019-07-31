@@ -46,7 +46,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 				Test: func(t *testing.T) {
 					var dep appsv1.Deployment
 					err := k.Client.Get(types.NamespacedName{
-						Namespace: test.Namespace,
+						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      kbname.Deployment(kbBuilder.Kibana.Name),
 					}, &dep)
 					require.NoError(t, err)
