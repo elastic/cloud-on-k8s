@@ -1,8 +1,17 @@
 # 3. Associations and relations between resources
 
-* Status: accepted 
+**Update (2019-07-30)**:
+We decided to restrict the number of CRDs to a minimum, and avoid additional CRDs for:
+
+* ES/Kibana association (replaced by a reference to the ES cluster in the Kibana CRD)
+* ES/APM association (replaced by a reference to the ES cluster in the Kibana CRD)
+* Users (replaced by Kubernetes Secrets)
+
+These were judged as confusing for the end user, and indicative of over-engineering.
+
+* Status: ~~accepted~~ rejected
 * Deciders: k8s team
-* Date: 2019-02-12
+* Date: ~~2019-02-12~~ 2019-07-30
 
 
 ## Context and Problem Statement

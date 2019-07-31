@@ -38,14 +38,14 @@ type Builder struct {
 func NewBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
-		Namespace: test.Namespace,
+		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 	return Builder{
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
 				SetVMMaxMapCount: test.BoolPtr(false),
-				Version:          test.ElasticStackVersion,
+				Version:          test.Ctx().ElasticStackVersion,
 			},
 		},
 	}
@@ -150,7 +150,7 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 	return b
 }
 
-func (b Builder) WithPersistentVolumes(volumeName string, storageClassName *string) Builder {
+func (b Builder) WithPersistentVolumes(volumeName string) Builder {
 	for i := range b.Elasticsearch.Spec.Nodes {
 		name := volumeName
 		b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates,
@@ -159,7 +159,6 @@ func (b Builder) WithPersistentVolumes(volumeName string, storageClassName *stri
 					Name: name,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
-					StorageClassName: storageClassName,
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						corev1.ReadWriteOnce,
 					},
@@ -181,6 +180,13 @@ func (b Builder) WithPersistentVolumes(volumeName string, storageClassName *stri
 				},
 			},
 		}
+	}
+	return b
+}
+
+func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
+	for i := range b.Elasticsearch.Spec.Nodes {
+		b.Elasticsearch.Spec.Nodes[i].PodTemplate = pt
 	}
 	return b
 }

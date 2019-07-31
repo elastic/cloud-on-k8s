@@ -1,5 +1,8 @@
 # Elasticsearch nodes certificate management
 
+**Update (2019-07-30):**
+We decided to simplify the way we handle self-signed TLS certificates and nodes private keys. They are still managed by the operator, but signed by the operator then passed to ES pods through secrets directly. The main benefit is to remove the complexity of the CSR init container outlined in this proposal. We now also handle a set of certificates for the Transport protocol, and another set for the HTTP protocol. User-provided certificates are also supported.
+
 * Status: proposed
 * Deciders: k8s team
 * Date: 2019-02-22

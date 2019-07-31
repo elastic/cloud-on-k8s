@@ -29,7 +29,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 	secureSettings := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secureSettingsSecretName,
-			Namespace: test.Namespace,
+			Namespace: test.Ctx().ManagedNamespace(0),
 		},
 		Data: map[string][]byte{
 			// this needs to be a valid configuration item, otherwise Kibana refuses to start

@@ -30,7 +30,7 @@ func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *test.K8sClient) (clien
 	}
 	inClusterURL := fmt.Sprintf("https://%s.%s.svc:9200", name.HTTPService(es.Name), es.Namespace)
 	var dialer net.Dialer
-	if test.AutoPortForward {
+	if test.Ctx().AutoPortForwarding {
 		dialer = portforward.NewForwardingDialer()
 	}
 	v, err := version.Parse(es.Spec.Version)

@@ -1,8 +1,10 @@
 # 1. Stateful set or custom controller
 
-* Status: accepted 
+**Update (2019-07-30):** we decided to refactor the code towards using StatefulSets in order to manage Elasticsearch pods. Mostly in order to get closer to Kubernetes standards, simplify PersistentVolumes management, and stay open to future improvements in the ecosystem. For more details, see [the StatefulSets discussion issue](https://github.com/elastic/cloud-on-k8s/issues/1173).
+
+* Status: ~~accepted~~ rejected, superseded by https://github.com/elastic/cloud-on-k8s/issues/1173
 * Deciders: @nkvoll
-* Date: 2019-02-12
+* Date: ~~~2019-02-12~~ 2019-07-30
 
 ## Context and Problem Statement
 

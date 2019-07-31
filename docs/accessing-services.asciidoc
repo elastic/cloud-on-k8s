@@ -1,5 +1,5 @@
 [id="{p}-accessing-elastic-services"]
-== How to access Elastic Stack services
+== Accessing Elastic Stack services
 
 To access the Elastic Stack services, you will need to retrieve:
 
@@ -56,7 +56,7 @@ hulk-kb-http        ClusterIP      10.19.247.151   <none>           5601:31380/T
 ==== Allowing public access
 
 You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of the resource manifest.
-On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur charges.
+On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur costs.
 
 [source,yaml]
 ----
@@ -94,7 +94,7 @@ This section only covers TLS certificates for the HTTP layer. Those for the tran
 ==== Default self-signed certificate
 
 By default, the operator manages a self-signed certificate with a custom CA for Elasticsearch, Kibana and APM Server.
-The CA, the certificate and the private key are each stored in a `Secret`.
+The CA, the certificate and the private key are each stored in a separate `Secret`.
 
 [source,sh]
 ----
@@ -144,8 +144,8 @@ You can bring your own certificate to configure TLS to ensure that communication
 
 Create a Kubernetes secret with:
 
-- tls.crt: the certificate (or a chain).
-- tls.key: the private key to the first certificate in the certificate chain.
+- `tls.crt`: the certificate (or a chain).
+- `tls.key`: the private key to the first certificate in the certificate chain.
 
 [source,sh]
 ----
@@ -167,7 +167,7 @@ spec:
 [id="{p}-disable-tls"]
 ==== Disable TLS
 
-You can explicitly disable TLS for Kibana or APM Server if you want to.
+You can explicitly disable TLS for Kibana or APM Server.
 
 [source,yaml]
 ----
@@ -225,7 +225,7 @@ Now you should get this message:
 curl: (51) SSL: no alternative certificate subject name matches target host name '35.198.131.115'
 ----
 
-Add the external IP of the service to the SANs of the certificate in the same Elasticsearch resource YAML manifest used for creating the cluster and apply it again using `kubectl`.
+Add the external IP of the service to the SANs of the certificate in the same Elasticsearch resource YAML manifest used to create the cluster and apply it again using `kubectl`.
 
 [source,yaml]
 ----
@@ -249,17 +249,7 @@ You can now reach Elasticsearch:
   "name" : "hulk-es-4qk62zd928",
   "cluster_name" : "hulk",
   "cluster_uuid" : "q6itjqFqRqW576FXF0uohg",
-  "version" : {
-    "number" : "7.2.0",
-    "build_flavor" : "default",
-    "build_type" : "docker",
-    "build_hash" : "508c38a",
-    "build_date" : "2019-06-20T15:54:18.811730Z",
-    "build_snapshot" : false,
-    "lucene_version" : "8.0.0",
-    "minimum_wire_compatibility_version" : "6.8.0",
-    "minimum_index_compatibility_version" : "6.0.0-beta1"
-  },
+  "version" : {...},
   "tagline" : "You Know, for Search"
 }
 ----

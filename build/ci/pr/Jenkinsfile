@@ -38,16 +38,15 @@ pipeline {
                 }
                 stage("Run docs build") {
                     steps {
-                        cleanWs()
-                        sh 'git clone git@github.com:elastic/docs.git'
-                        sh 'git clone git@github.com:elastic/cloud-on-k8s.git'
+                        checkout scm
+                        sh 'git clone git@github.com:elastic/docs.git docs-repo'
                         sh """
-                            $WORKSPACE/docs/build_docs \
-                            --doc $WORKSPACE/cloud-on-k8s/docs/index.asciidoc \
-                            --out $WORKSPACE/cloud-on-k8s/docs/html \
+                            $WORKSPACE/docs-repo/build_docs \
+                            --doc $WORKSPACE/docs/index.asciidoc \
+                            --out $WORKSPACE/docs/html \
                             --chunk 1
                         """
-                        sh 'test -e $WORKSPACE/cloud-on-k8s/docs/html/index.html'
+                        sh 'test -e $WORKSPACE/docs/html/index.html'
                     }
                 }
                 stage("Run smoke E2E tests") {

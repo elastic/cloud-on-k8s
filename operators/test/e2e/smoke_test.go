@@ -32,13 +32,13 @@ func TestSmoke(t *testing.T) {
 	test.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
 
 	esBuilder = esBuilder.
-		WithNamespace(test.Namespace).
+		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithNamespace(test.Namespace).
+		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithRestrictedSecurityContext()
 	apmBuilder = apmBuilder.
-		WithNamespace(test.Namespace).
+		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithRestrictedSecurityContext()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).

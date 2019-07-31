@@ -20,7 +20,7 @@ func NewHTTPClient(caCerts []*x509.Certificate) *http.Client {
 	}
 
 	transport := http.Transport{}
-	if AutoPortForward {
+	if Ctx().AutoPortForwarding {
 		transport.DialContext = portforward.NewForwardingDialer().DialContext
 	}
 

@@ -76,7 +76,7 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(licenseBytes []by
 		Test: func(t *testing.T) {
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: test.Namespace,
+					Namespace: test.Ctx().ManagedNamespace(0),
 					Name:      licenseSecretName,
 					Labels: map[string]string{
 						license.LicenseLabelType: string(license.LicenseTypeEnterprise),
@@ -97,7 +97,7 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret() test.Step {
 		Test: func(t *testing.T) {
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: test.Namespace,
+					Namespace: test.Ctx().ManagedNamespace(0),
 					Name:      licenseSecretName,
 				},
 			}
