@@ -20,6 +20,21 @@ pipeline {
     }
 
     stages {
+        stage('Checkout from GitHub') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Check if Docker image needs rebuilding') {
+            when {
+                expression {
+                    ifImageNeedsRebuilding()
+                }
+            }
+            steps {
+                sh 'make -C build/ci ci-build-image'
+            }
+        }
         stage('Run tests in parallel') {
             parallel {
                 stage("Run unit and integration tests") {
@@ -89,4 +104,20 @@ def notOnlyDocs() {
         script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
     	returnStatus: true
     ) == 0
+}
+
+def ifImageNeedsRebuilding() {
+    def dockerfile = sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep -v build/ci/Dockerfile",
+    	returnStatus: true
+    )
+    def operator = sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep -v operators/Gopkg.lock",
+    	returnStatus: true
+    )
+    def volume = sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep -v local-volume/Gopkg.lock",
+        returnStatus: true
+    )
+    return dockerfile == 1 || operator == 1 || volume == 1
 }
