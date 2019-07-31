@@ -38,7 +38,7 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 				Name: "Retrieve ES certificate",
 				Test: func(t *testing.T) {
 					var err error
-					caCert, err = getCert(k, test.Namespace, name)
+					caCert, err = getCert(k, test.Ctx().ManagedNamespace(0), name)
 					require.NoError(t, err)
 				},
 			},
@@ -46,7 +46,7 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 				Name: "Retrieve ES public IP",
 				Test: test.Eventually(func() error {
 					var err error
-					publicIP, err = getPublicIP(k, test.Namespace, name)
+					publicIP, err = getPublicIP(k, test.Ctx().ManagedNamespace(0), name)
 					return err
 				}),
 			},

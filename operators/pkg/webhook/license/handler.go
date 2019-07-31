@@ -39,7 +39,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 		return admission.ValidationResponse(true, "allowing all deletes")
 	}
 	license := corev1.Secret{}
-	log.Info("ValidationHandler handler called",
+	log.V(1).Info("ValidationHandler handler called",
 		"operation", r.AdmissionRequest.Operation,
 		"name", r.AdmissionRequest.Name,
 		"namespace", r.AdmissionRequest.Namespace,

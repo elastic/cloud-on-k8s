@@ -1,5 +1,8 @@
 # 8. Volume Management in case of disruption
 
+**Update (2019-07-30)**:
+We decided to rely on StatefulSets to manage PersistentVolumes. While this ADR remains valid, our range of action is now limited to what is supported by the StatefulSet controller, responsible for creating and reusing PVCs.
+
 * Status: proposed
 * Deciders: cloud-on-k8s team
 * Date: 2019-03-08

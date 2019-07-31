@@ -32,7 +32,7 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	esWh, err := builder.NewWebhookBuilder().
 		Name("validation.elasticsearch.elastic.co").
 		Validating().
-		FailurePolicy(admission.Fail).
+		FailurePolicy(admission.Ignore).
 		ForType(&v1alpha1.Elasticsearch{}).
 		Handlers(&elasticsearch.ValidationHandler{}).
 		WithManager(mgr).

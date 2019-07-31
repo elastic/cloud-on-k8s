@@ -17,9 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -74,25 +72,10 @@ func TestKillCorrectPVReuse(t *testing.T) {
 
 	k := test.NewK8sClientOrFatal()
 
-	// When working with multiple PVs on a single pod, there's a risk each PV get assigned to a different zone,
-	// not taking into consideration pod scheduling constraints. As a result, the pod becomes unschedulable.
-	// This is a Kubernetes issue, that can be dealt with relying on storage classes with `volumeBindingMode: WaitForFirstConsumer`.
-	// With this binding mode, the pod is scheduled before its PVs, which then take into account zone constraints.
-	// That's the only way to work with multiple PVs. Since the k8s cluster here may have a default storage class
-	// with `volumeBindingMode: Immediate`, we create a new one, based on the default storage class, that uses
-	// `waitForFirstConsumer`.
-	lateBinding := v1.VolumeBindingWaitForFirstConsumer
-	sc, err := elasticsearch.DefaultStorageClass(k)
-	require.NoError(t, err)
-	sc.ObjectMeta = metav1.ObjectMeta{
-		Name: "custom-storage",
-	}
-	sc.VolumeBindingMode = &lateBinding
-
 	b := elasticsearch.NewBuilder("test-failure-pvc").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPersistentVolumes("not-data", &sc.Name).
-		WithPersistentVolumes(volume.ElasticsearchDataVolumeName, &sc.Name) // create an additional volume that is not our data volume
+		WithPersistentVolumes("not-data").
+		WithPersistentVolumes(volume.ElasticsearchDataVolumeName)
 
 	var clusterUUID string
 	var deletedPVC corev1.PersistentVolumeClaim
@@ -100,7 +83,6 @@ func TestKillCorrectPVReuse(t *testing.T) {
 	var killedPod corev1.Pod
 
 	test.StepList{}.
-		WithStep(elasticsearch.CreateStorageClass(*sc, k)).
 		WithSteps(b.InitTestSteps(k)).
 		WithSteps(b.CreationTestSteps(k)).
 		WithSteps(test.CheckTestSteps(b, k)).
@@ -230,7 +212,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 				Name: "Delete elastic user secret",
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
-						Namespace: test.Namespace,
+						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      b.Elasticsearch.Name + "-es-elastic-user",
 					}
 					var secret corev1.Secret
@@ -253,7 +235,7 @@ func TestDeleteCACert(t *testing.T) {
 				Name: "Delete CA cert",
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
-						Namespace: test.Namespace,
+						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      b.Elasticsearch.Name + "-es-transport-ca-internal", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret

@@ -1,23 +1,25 @@
 kind: Namespace
 apiVersion: v1
 metadata:
-  name: e2e
+  name: {{ .E2ENamespace }}
   labels:
-    name: e2e
-
+    name: {{ .E2ENamespace }}
+    test-run: {{ .TestRun }}
 ---
-
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: e2e
-  namespace: e2e
-
+  name: {{ .E2EServiceAccount }}
+  namespace: {{ .E2ENamespace }}
+  labels:
+    test-run: {{ .TestRun }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: elastic-restricted
+  labels:
+    test-run: {{ .TestRun }}
 rules:
   - apiGroups:
       - extensions
@@ -36,12 +38,13 @@ rules:
       - list
       - delete
       - create
-
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: elastic-restricted-binding
+  labels:
+    test-run: {{ .TestRun }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -50,20 +53,24 @@ subjects:
   - kind: Group
     name: system:serviceaccounts:e2e
     apiGroup: rbac.authorization.k8s.io
+  - kind: Group
+    name: system:serviceaccounts
+    namespace: kube-system
   - kind: ServiceAccount
-    name: elastic-global-operator
-    namespace: elastic-system
+    name: {{ .GlobalOperator.Name }}
+    namespace: {{ .GlobalOperator.Namespace }}
+{{- range .NamespaceOperators }}
   - kind: ServiceAccount
-    name: elastic-namespace-operator
-    namespace: elastic-namespace-operators
-
+    name: {{ .Name }}
+    namespace: {{ .Namespace }}
+{{- end }}
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  namespace: e2e
   name: e2e
+  labels:
+    test-run: {{ .TestRun }}
 rules:
   - apiGroups:
       - ""
@@ -79,6 +86,7 @@ rules:
       - endpoints
       - secrets
       - persistentvolumeclaims
+      - configmaps
     verbs:
       - get
       - list
@@ -147,19 +155,26 @@ rules:
       - update
       - patch
       - delete
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
+    verbs:
+      - get
+      - list
 ---
-
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   creationTimestamp: null
-  name: e2e
-  namespace: e2e
+  name: e2e-binding
+  labels:
+    test-run: {{ .TestRun }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: e2e
 subjects:
   - kind: ServiceAccount
-    name: e2e
-    namespace: e2e
+    name: {{ .E2EServiceAccount }}
+    namespace: {{ .E2ENamespace }}

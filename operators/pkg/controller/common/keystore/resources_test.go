@@ -23,7 +23,7 @@ import (
 var (
 	initContainersParameters = InitContainerParameters{
 		KeystoreCreateCommand:         "/keystore/bin/keystore create",
-		KeystoreAddCommand:            "/keystore/bin/keystore add",
+		KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
 		SecureSettingsVolumeMountPath: "/foo/secret",
 		DataVolumePath:                "/bar/data",
 	}
@@ -97,7 +97,7 @@ for filename in  /foo/secret/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
 	echo "Adding "$key" to the keystore."
-	/keystore/bin/keystore add "$key" --stdin < "$filename"
+	/keystore/bin/keystore add "$key" "$filename"
 done
 
 echo "Keystore initialization successful."

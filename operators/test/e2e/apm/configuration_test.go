@@ -47,7 +47,7 @@ func TestUpdateConfiguration(t *testing.T) {
 	secureSettings := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secureSettingsSecretName,
-			Namespace: test.Namespace,
+			Namespace: test.Ctx().ManagedNamespace(0),
 		},
 		Data: map[string][]byte{
 			"logging.verbose": []byte("true"),
@@ -58,8 +58,8 @@ func TestUpdateConfiguration(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	apmBuilder := apmserver.NewBuilder(name).
-		WithNamespace(test.Namespace).
-		WithVersion(test.ElasticStackVersion).
+		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
 
 	var previousPodUID *types.UID
@@ -82,7 +82,7 @@ func TestUpdateConfiguration(t *testing.T) {
 	}
 	apmNamespacedName := types.NamespacedName{
 		Name:      name,
-		Namespace: test.Namespace,
+		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 
 	stepsFn := func(k *test.K8sClient) test.StepList {

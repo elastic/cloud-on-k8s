@@ -1,19 +1,19 @@
 [id="{p}-advanced-node-scheduling"]
 
-== Advanced Elasticsearch node scheduling
+=== Advanced Elasticsearch node scheduling
 
 Elastic Cloud on Kubernetes (ECK) offers full control over cluster nodes scheduling by combining Elasticsearch configuration with Kubernetes scheduling options:
 
-* <<{p}-define-elasticsearch-nodes-roles,define Elasticsearch nodes roles>>
-* <<{p}-affinity-options,pod affinity and anti-affinity>>
-* <<{p}-availability-zone-awareness,availability zone and rack awareness>>
-* <<{p}-hot-warm-topologies,hot-warm topologies>>
+* <<{p}-define-elasticsearch-nodes-roles,Define Elasticsearch nodes roles>>
+* <<{p}-affinity-options,Pod affinity and anti-affinity>>
+* <<{p}-availability-zone-awareness,Availability zone and rack awareness>>
+* <<{p}-hot-warm-topologies,Hot-warm topologies>>
 
 These features can be combined together, to deploy a production-grade Elasticsearch cluster.
 
 [float]
 [id="{p}-define-elasticsearch-nodes-roles"]
-=== Define Elasticsearch nodes roles
+==== Define Elasticsearch nodes roles
 
 You can configure Elasticsearch nodes with link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[one or multiple roles]. This allows you to describe an Elasticsearch cluster with 3 dedicated master nodes, for example:
 
@@ -24,7 +24,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   # 3 dedicated master nodes
   - nodeCount: 3
@@ -43,12 +43,12 @@ spec:
 
 [float]
 [id="{p}-affinity-options"]
-=== Affinity options
+==== Affinity options
 
 You can setup various link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity[affinity and anti-affinity options] through the `podTemplate` section of the Elasticsearch resource specification.
 
 [float]
-==== A single Elasticsearch node per Kubernetes host (default)
+===== A single Elasticsearch node per Kubernetes host (default)
 
 To avoid scheduling several Elasticsearch nodes from the same cluster on the same host, use a `podAntiAffinity` rule based on the hostname and the cluster name label:
 
@@ -59,7 +59,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -86,7 +86,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -103,7 +103,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -120,7 +120,7 @@ spec:
 ----
 
 [float]
-==== Local Persistent Volume constraints
+===== Local Persistent Volume constraints
 
 By default, volumes can be bound to a pod before the pod gets scheduled to a particular node. This can be a problem if the PersistentVolume can only be accessed from a particular host or set of hosts. Local persistent volumes are a good example: they are accessible from a single host. If the pod gets scheduled to a different host based on any affinity or anti-affinity rule, the volume may not be available.
 
@@ -137,7 +137,7 @@ volumeBindingMode: WaitForFirstConsumer
 ----
 
 [float]
-==== Node affinity
+===== Node affinity
 
 To restrict the scheduling to a particular set of nodes based on labels, use a link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector[NodeSelector].
 The following example schedules Elasticsearch pods on Kubernetes nodes tagged with both labels `diskType: ssd` and `environment: production`.
@@ -149,7 +149,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -168,7 +168,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 3
     podTemplate:
@@ -197,7 +197,7 @@ This example restricts Elasticsearch nodes to be scheduled on Kubernetes hosts t
 
 [float]
 [id="{p}-availability-zone-awareness"]
-=== Availability zone awareness
+==== Availability zone awareness
 
 By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can setup an availability zone-aware Elasticsearch cluster:
 
@@ -208,7 +208,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   - nodeCount: 1
     config:
@@ -265,7 +265,7 @@ This example relies on:
 
 [float]
 [id="{p}-hot-warm-topologies"]
-=== Hot-warm topologies
+==== Hot-warm topologies
 
 By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can setup an Elasticsearch cluster with hot-warm topology:
 
@@ -276,7 +276,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.1.0
+  version: 7.2.0
   nodes:
   # hot nodes, with high CPU and fast IO
   - nodeCount: 3

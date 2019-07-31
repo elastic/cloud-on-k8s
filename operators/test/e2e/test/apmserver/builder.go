@@ -21,17 +21,17 @@ type Builder struct {
 func NewBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
-		Namespace: test.Namespace,
+		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 	return Builder{
 		ApmServer: apmtype.ApmServer{
 			ObjectMeta: meta,
 			Spec: apmtype.ApmServerSpec{
 				NodeCount: 1,
-				Version:   test.ElasticStackVersion,
+				Version:   test.Ctx().ElasticStackVersion,
 				ElasticsearchRef: commonv1alpha1.ObjectSelector{
 					Name:      name,
-					Namespace: test.Namespace,
+					Namespace: test.Ctx().ManagedNamespace(0),
 				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
