@@ -1,14 +1,14 @@
 [id="{p}-uninstall"]
 == Uninstall ECK
 
-Before you uninstall the operator, you must to uninstall the Elastic resources that it has created:
+Before you uninstall the operator, you must remove all Elastic resources:
 
 [source,shell]
 ----
 kubectl delete elastic --all --all-namesapces
 ----
 
-This should delete all underlying Elasticsearch, Kibana or APM Server resources (pods, secrets, services, etc.).
+This deletes all underlying Elasticsearch, Kibana, and APM Server resources (pods, secrets, services, etc.).
 
 Then you can uninstall the operator itself:
 
@@ -17,7 +17,7 @@ Then you can uninstall the operator itself:
 kubectl delete -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
 ----
 
-And terminate with the webhook configuration:
+And remove the webhook configuration:
 
 [source,shell]
 ----
