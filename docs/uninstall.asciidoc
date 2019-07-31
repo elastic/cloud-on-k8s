@@ -1,7 +1,7 @@
 [id="{p}-uninstall"]
 == Uninstall ECK
 
-Before you uninstall the operator, you must remove all Elastic resources:
+Before uninstalling the operator, remove all Elastic resources:
 
 [source,shell]
 ----
