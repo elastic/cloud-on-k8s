@@ -107,20 +107,7 @@ def notOnlyDocs() {
 }
 
 def ifImageNeedsRebuilding() {
-    def dockerfile = sh (
-        script: "git diff --name-status HEAD~1 HEAD | grep -v build/ci/Dockerfile",
-    	returnStatus: true
-    )
-    println(dockerfile)
-    def operator = sh (
-        script: "git diff --name-status HEAD~1 HEAD | grep -v operators/Gopkg.lock",
-    	returnStatus: true
-    )
-    println(operator)
-    def volume = sh (
-        script: "git diff --name-status HEAD~1 HEAD | grep -v local-volume/Gopkg.lock",
-        returnStatus: true
-    )
-    println(volume)
-    return dockerfile == 1 || operator == 1 || volume == 1
+    sh 'git diff --name-status HEAD~1 HEAD > $WORKSPACE/git_diff.txt'
+    def diff = readFile("$WORKSPACE/git_diff.txt")
+    return diff.contains("build/ci/Dockerfile") || diff.contains("operators/Gopkg.lock") || diff.contains("local-volume/Gopkg.lock")
 }
