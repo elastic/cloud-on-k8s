@@ -17,6 +17,7 @@ pipeline {
         TESTS_MATCH = 'TestSmoke'
         GKE_CLUSTER_VERSION = '1.12'
         GKE_CLUSTER_NAME = "${BUILD_TAG}"
+        IMAGE = "push.docker.elastic.co/eck/eck-ci:latest"
     }
 
     stages {
