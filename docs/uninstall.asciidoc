@@ -16,3 +16,10 @@ Then you can uninstall the operator itself:
 ----
 kubectl delete -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
 ----
+
+And terminate with the webhook configuration:
+
+[source,shell]
+----
+kubectl delete validatingwebhookconfigurations validating-webhook-configuration
+----
