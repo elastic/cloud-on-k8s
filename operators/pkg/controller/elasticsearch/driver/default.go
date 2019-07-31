@@ -291,10 +291,15 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if err != nil {
 		return results.WithError(err)
 	}
-	// patch configs to consider zen1 & zen2 initial master nodes
+
+	// TODO: there is a split brain possibility here if going from 1 to 3 masters or 3 to 7.
+	//  See https://github.com/elastic/cloud-on-k8s/issues/1281.
+
+	// patch configs to consider zen1 minimum master nodes
 	if err := zen1.SetupMinimumMasterNodesConfig(nodeSpecResources); err != nil {
 		return results.WithError(err)
 	}
+	// patch configs to consider zen2 initial master nodes
 	if err := zen2.SetupInitialMasterNodes(es, observedState, d.Client, nodeSpecResources); err != nil {
 		return results.WithError(err)
 	}

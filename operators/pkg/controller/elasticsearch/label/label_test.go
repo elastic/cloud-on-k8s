@@ -85,7 +85,7 @@ func TestExtractVersion(t *testing.T) {
 		{
 			name: "invalid version",
 			args: map[string]string{
-				VersionLabelName: "no a version",
+				VersionLabelName: "not a version",
 			},
 			want:    nil,
 			wantErr: true,

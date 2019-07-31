@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
@@ -32,7 +33,7 @@ func (f *fakeESClient) DeleteVotingConfigExclusions(ctx context.Context, waitFor
 
 func Test_ClearVotingConfigExclusions(t *testing.T) {
 	// dummy statefulset with 3 pods
-	statefulSet3rep := createStatefulSet("nodes", "7.2.0", 3, true, true)
+	statefulSet3rep := nodespec.CreateTestSset("nodes", "7.2.0", 3, true, true)
 	pods := make([]corev1.Pod, 0, *statefulSet3rep.Spec.Replicas)
 	for _, podName := range sset.PodNames(statefulSet3rep) {
 		pods = append(pods, corev1.Pod{ObjectMeta: metav1.ObjectMeta{
@@ -44,7 +45,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		}})
 	}
 	// simulate 2 pods out of the 3
-	statefulSet2rep := createStatefulSet("nodes", "7.2.0", 2, true, true)
+	statefulSet2rep := nodespec.CreateTestSset("nodes", "7.2.0", 2, true, true)
 	tests := []struct {
 		name               string
 		c                  k8s.Client

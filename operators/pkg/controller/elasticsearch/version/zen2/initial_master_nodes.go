@@ -6,6 +6,7 @@ package zen2
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -64,13 +65,17 @@ func SetupInitialMasterNodes(
 		return nil
 	}
 
-	// Cluster is not bootstrapped yet, set initial_master_nodes setting in each node config.
+	// Cluster is not bootstrapped yet, set initial_master_nodes setting in each master node config.
 	masters := nodeSpecResources.MasterNodesNames()
 	if len(masters) == 0 {
 		return nil
 	}
 	for i, res := range nodeSpecResources {
 		if !IsCompatibleForZen2(res.StatefulSet) {
+			continue
+		}
+		if !label.IsMasterNodeSet(res.StatefulSet) {
+			// we only care about master nodes config here
 			continue
 		}
 		// patch config with the expected initial master nodes

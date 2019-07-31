@@ -57,6 +57,8 @@ func (d *defaultDriver) HandleDownscale(
 	return results
 }
 
+// scaleStatefulSetDown scales the given StatefulSet down to targetReplicas, if possible.
+// It returns the names of the nodes that will leave the cluster.
 func (d *defaultDriver) scaleStatefulSetDown(
 	es v1alpha1.Elasticsearch,
 	allStatefulSets sset.StatefulSetList,

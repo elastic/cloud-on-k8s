@@ -25,27 +25,6 @@ func createStatefulSetWithESVersion(version string) appsv1.StatefulSet {
 	}}}
 }
 
-func createStatefulSet(name string, esversion string, replicas int32, master bool, data bool) appsv1.StatefulSet {
-	labels := map[string]string{
-		label.VersionLabelName: esversion,
-	}
-	label.NodeTypesMasterLabelName.Set(master, labels)
-	label.NodeTypesDataLabelName.Set(data, labels)
-	return appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-		Spec: appsv1.StatefulSetSpec{
-			Replicas: &replicas,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-			},
-		},
-	}
-}
-
 func TestIsCompatibleForZen2(t *testing.T) {
 
 	tests := []struct {

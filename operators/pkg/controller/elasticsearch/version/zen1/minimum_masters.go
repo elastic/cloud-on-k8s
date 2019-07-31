@@ -48,6 +48,7 @@ func SetupMinimumMasterNodesConfig(nodeSpecResources nodespec.ResourcesList) err
 }
 
 // UpdateMinimumMasterNodes calls the ES API to update the minimum_master_nodes setting if required.
+// It returns true if this should be retried later (re-queued).
 func UpdateMinimumMasterNodes(
 	c k8s.Client,
 	es v1alpha1.Elasticsearch,

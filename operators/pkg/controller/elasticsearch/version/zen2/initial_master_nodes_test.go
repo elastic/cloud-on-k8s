@@ -72,7 +72,7 @@ func TestSetupInitialMasterNodes_AlreadyBootstrapped(t *testing.T) {
 			name: "cluster already annotated for bootstrap: no changes",
 			es:   withAnnotation(newElasticsearch(), ClusterUUIDAnnotationName, defaultClusterUUID),
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: createStatefulSet("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
 			},
 			expected:   []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 			expectedEs: withAnnotation(newElasticsearch(), ClusterUUIDAnnotationName, defaultClusterUUID),
@@ -82,7 +82,7 @@ func TestSetupInitialMasterNodes_AlreadyBootstrapped(t *testing.T) {
 			es:            newElasticsearch(),
 			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: defaultClusterUUID}},
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: createStatefulSet("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
 			},
 			expected:   []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 			expectedEs: withAnnotation(newElasticsearch(), ClusterUUIDAnnotationName, defaultClusterUUID),
@@ -119,16 +119,16 @@ func TestSetupInitialMasterNodes_NotBootstrapped(t *testing.T) {
 		{
 			name: "no master nodes",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: createStatefulSet("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 		},
 		{
 			name: "3 masters, 3 master+data, 3 data",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: createStatefulSet("master", "7.1.0", 3, true, false), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: createStatefulSet("masterdata", "7.1.0", 3, true, true), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: createStatefulSet("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("master", "7.1.0", 3, true, false), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("masterdata", "7.1.0", 3, true, true), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string][]string{
@@ -137,23 +137,22 @@ func TestSetupInitialMasterNodes_NotBootstrapped(t *testing.T) {
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string][]string{
 					settings.ClusterInitialMasterNodes: {"master-0", "master-1", "master-2", "masterdata-0", "masterdata-1", "masterdata-2"},
 				})},
-				{CanonicalConfig: settings2.MustCanonicalConfig(map[string][]string{
-					settings.ClusterInitialMasterNodes: {"master-0", "master-1", "master-2", "masterdata-0", "masterdata-1", "masterdata-2"},
-				})},
+				// no config set on non-master nodes
+				{CanonicalConfig: settings2.NewCanonicalConfig()},
 			},
 		},
 		{
 			name: "version <7: nothing should appear in the config",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: createStatefulSet("master", "6.8.0", 3, true, false), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("master", "6.8.0", 3, true, false), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 		},
 		{
 			name: "mixed v6 & v7: include all masters but only in v7 configs",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: createStatefulSet("masterv6", "6.8.0", 3, true, false), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: createStatefulSet("masterv7", "7.1.0", 3, true, false), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("masterv6", "6.8.0", 3, true, false), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.CreateTestSset("masterv7", "7.1.0", 3, true, false), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{
 				settings.NewCanonicalConfig(),

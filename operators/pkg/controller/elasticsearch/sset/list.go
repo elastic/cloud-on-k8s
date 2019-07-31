@@ -68,13 +68,8 @@ func (l StatefulSetList) PodNames() []string {
 }
 
 // GetActualPods returns the list of pods currently existing in the StatefulSetList.
-// Some "expected" pods may be missing from the returned list if they don't exist yet
-// or are temporarily down.
 func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
-	if len(l) == 0 {
-		return nil, nil
-	}
-	allPods := make([]corev1.Pod, 0, len(l))
+	allPods := []corev1.Pod{}
 	for _, statefulSet := range l {
 		pods, err := GetActualPods(c, statefulSet)
 		if err != nil {

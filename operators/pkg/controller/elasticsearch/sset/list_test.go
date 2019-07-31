@@ -84,4 +84,5 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 	// TODO: test with an additional pod that does not belong to the sset and
 	//  check it is not returned.
 	//  This cannot be done currently since the fake client does not support label list options.
+	//  See https://github.com/kubernetes-sigs/controller-runtime/pull/311
 }

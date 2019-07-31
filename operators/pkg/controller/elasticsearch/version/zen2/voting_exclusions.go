@@ -62,6 +62,7 @@ func canClearVotingConfigExclusions(c k8s.Client, actualStatefulSets sset.Statef
 }
 
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.
+// It returns true if this should be retried later (re-queued).
 func ClearVotingConfigExclusions(es v1alpha1.Elasticsearch, c k8s.Client, esClient client.Client, actualStatefulSets sset.StatefulSetList) (bool, error) {
 	if !AtLeastOneNodeCompatibleForZen2(actualStatefulSets) {
 		return false, nil
