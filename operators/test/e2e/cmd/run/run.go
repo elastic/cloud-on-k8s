@@ -185,16 +185,8 @@ func (h *helper) installCRDs() error {
 }
 
 func (h *helper) createManagedNamespaces() error {
-	for _, ns := range h.managedNamespaces {
-		managedNS := fmt.Sprintf("%s-%s", h.testRunName, ns)
-		if err := h.kubectl("create", "ns", managedNS); err != nil {
-			log.Error(err, "Failed to create managed namespace", "namespace", managedNS)
-			return err
-		}
-		log.Info("Created managed namespace", "namespace", managedNS)
-	}
-
-	return nil
+	log.Info("Creating managed namespaces")
+	return h.kubectlApplyTemplate("config/e2e/local_namespace.yaml", h.testContext, false)
 }
 
 func (h *helper) deployGlobalOperator() error {

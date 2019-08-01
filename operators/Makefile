@@ -160,6 +160,9 @@ apply-operators:
 	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
 
+apply-psp:
+	kubectl apply -f config/dev/elastic-psp.yaml
+
 generate-crds:
 	for yaml in $$(ls config/crds/*); do \
 		cat $$yaml && echo -e "\n---\n" ; \
@@ -236,7 +239,7 @@ bootstrap-gke: require-gcloud-project
 	PSP=$(PSP) GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
 	$(MAKE) set-context-gke cluster-bootstrap
 ifeq ($(PSP), 1)
-	kubectl apply -f config/dev/elastic-psp.yaml
+	$(MAKE) apply-psp
 endif
 
 delete-gke: require-gcloud-project
@@ -302,17 +305,13 @@ e2e-compile:
 # that can reach ES services running in the k8s cluster through port-forwarding.
 LOCAL_E2E_CTX:=/tmp/e2e-local.json
 
-e2e-local: e2e-local-setup
-	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
-
-e2e-local-setup: $(LOCAL_E2E_CTX)
-
-$(LOCAL_E2E_CTX):
+e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--auto-port-forwarding \
 		--local
+	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##
@@ -336,6 +335,13 @@ ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 	@ echo $(OPERATOR_IMAGE) was pushed!
+
+ci-e2e-new: deployer-new
+	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
+
+deployer-new: dep-vendor-only
+	@ go build -o hack/deployer/deployer ./hack/deployer/...
+	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
 
 ##########################

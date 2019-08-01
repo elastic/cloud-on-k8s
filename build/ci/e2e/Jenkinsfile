@@ -30,19 +30,8 @@ pipeline {
                     notOnlyDocs()
                 }
             }
-            stages {
-                stage('Run E2E tests') {
-                    steps {
-                        sh 'make -C build/ci ci-e2e'
-                    }
-                }
-                stage('Cleanup GKE') {
-                    steps {
-                        build job: 'cloud-on-k8s-e2e-cleanup',
-                            parameters: [string(name: 'GKE_CLUSTER', value: "${GKE_CLUSTER_NAME}")],
-                            wait: false
-                    }
-                }
+            steps {
+                sh 'make -C build/ci ci-e2e'
             }
         }
     }
@@ -59,6 +48,14 @@ pipeline {
             }
         }
         cleanup {
+            script {
+                if (notOnlyDocs()) {
+                    build job: 'cloud-on-k8s-e2e-cleanup',
+                        parameters: [string(name: 'GKE_CLUSTER', value: "${GKE_CLUSTER_NAME}")],
+                        wait: false
+                }
+            }
+
             cleanWs()
         }
     }

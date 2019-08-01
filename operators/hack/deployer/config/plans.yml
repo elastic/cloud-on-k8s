@@ -1,0 +1,16 @@
+plans:
+- id: gke-ci
+  operation: create
+  clusterName: ci
+  provider: gke
+  kubernetesVersion: 1.13
+  machineType: n1-standard-8
+  serviceAccount: true
+  psp: true
+  vmMapMax: true
+  gke:
+    region: europe-west1
+    adminUsername: admin
+    localSsdCount: 1
+    nodeCountPerZone: 1
+    gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
