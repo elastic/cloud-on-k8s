@@ -341,9 +341,9 @@ ci-release:
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ci-e2e-new: deployer-new
-	$(MAKE) IMG_SUFFIX=-ci cluster-bootstrap apply-psp e2e
+	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
 
-deployer-new:
+deployer-new: dep-vendor-only
 	@ go build -o hack/deployer/deployer ./hack/deployer/...
 	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
