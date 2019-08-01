@@ -64,7 +64,7 @@ func KillNodeSteps(listOptions client.ListOptions, podMatch func(p corev1.Pod) b
 			{
 				Name: "Wait for pod to be deleted",
 				Test: Eventually(func() error {
-					pod, err := k.GetPod(killedPod.Name)
+					pod, err := k.GetPod(killedPod.Namespace, killedPod.Name)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}

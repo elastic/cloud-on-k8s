@@ -28,7 +28,7 @@ func TestKillKibanaPod(t *testing.T) {
 		return true
 	}
 	test.RunFailure(t,
-		test.KillNodeSteps(test.KibanaPodListOptions(kbBuilder.Kibana.Name), matchFirst),
+		test.KillNodeSteps(test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name), matchFirst),
 		esBuilder, kbBuilder)
 }
 

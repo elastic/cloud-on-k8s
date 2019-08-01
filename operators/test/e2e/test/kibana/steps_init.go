@@ -50,7 +50,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				}
 				// wait for Kibana pods to disappear
 				test.Eventually(func() error {
-					return k.CheckPodCount(test.KibanaPodListOptions(b.Kibana.Name), 0)
+					return k.CheckPodCount(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name), 0)
 				})(t)
 			},
 		},

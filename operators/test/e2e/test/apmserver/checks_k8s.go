@@ -53,7 +53,7 @@ func CheckApmServerPodsCount(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer pods count should match the expected one",
 		Test: test.Eventually(func() error {
-			return k.CheckPodCount(test.ApmServerPodListOptions(b.ApmServer.Name), int(b.ApmServer.Spec.NodeCount))
+			return k.CheckPodCount(test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name), int(b.ApmServer.Spec.NodeCount))
 		}),
 	}
 }
@@ -63,7 +63,7 @@ func CheckApmServerPodsRunning(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer pods should eventually be running",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ApmServerPodListOptions(b.ApmServer.Name))
+			pods, err := k.GetPods(test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name))
 			if err != nil {
 				return err
 			}
@@ -85,7 +85,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 			for _, s := range []string{
 				b.ApmServer.Name + "-apm-http",
 			} {
-				if _, err := k.GetService(s); err != nil {
+				if _, err := k.GetService(b.ApmServer.Namespace, s); err != nil {
 					return err
 				}
 			}
@@ -102,7 +102,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 			for endpointName, addrCount := range map[string]int{
 				b.ApmServer.Name + "-apm-http": int(b.ApmServer.Spec.NodeCount),
 			} {
-				endpoints, err := k.GetEndpoints(endpointName)
+				endpoints, err := k.GetEndpoints(b.ApmServer.Namespace, endpointName)
 				if err != nil {
 					return err
 				}
