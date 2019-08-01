@@ -32,6 +32,9 @@ func ReadVaultIntoFile(fileName, address, roleId, secretId, name string) error {
 		WithVariable(vaultTokenName, vaultToken).
 		WithoutStreaming().
 		Output()
+	if err != nil {
+		return err
+	}
 
 	return ioutil.WriteFile(fileName, []byte(serviceAccountKey), 0644)
 }
