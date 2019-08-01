@@ -72,6 +72,21 @@ func (b Builder) WithKibanaSecureSettings(secretName string) Builder {
 	return b
 }
 
+func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
+	if len(b.Kibana.Spec.PodTemplate.Spec.Containers) == 0 {
+		b.Kibana.Spec.PodTemplate.Spec.Containers = []corev1.Container{
+			{Name: kbtype.KibanaContainerName},
+		}
+	}
+	for i, c := range b.Kibana.Spec.PodTemplate.Spec.Containers {
+		if c.Name == kbtype.KibanaContainerName {
+			c.Resources = resources
+			b.Kibana.Spec.PodTemplate.Spec.Containers[i] = c
+		}
+	}
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {
