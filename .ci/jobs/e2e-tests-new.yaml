@@ -1,0 +1,22 @@
+---
+- job:
+    description: Job that runs e2e tests-new against Elastic Cloud on Kubernetes running in a dedicated k8s cluster. This Job is managed by JJB.
+    logrotate:
+      daysToKeep: 7
+      numToKeep: 100
+      artifactDaysToKeep: 5
+      artifactNumToKeep: 10
+    name: cloud-on-k8s-e2e-tests-new
+    project-type: pipeline
+    concurrent: true
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/elastic/cloud-on-k8s
+            branches:
+              - master
+            credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
+      script-path: build/ci/e2e/Jenkinsfile-new
+      lightweight-checkout: true
+    wrappers:
+      - ansicolor

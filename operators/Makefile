@@ -160,6 +160,9 @@ apply-operators:
 	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
 
+apply-psp:
+	kubectl apply -f config/dev/elastic-psp.yaml
+
 generate-crds:
 	for yaml in $$(ls config/crds/*); do \
 		cat $$yaml && echo -e "\n---\n" ; \
@@ -236,7 +239,7 @@ bootstrap-gke: require-gcloud-project
 	PSP=$(PSP) GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
 	$(MAKE) set-context-gke cluster-bootstrap
 ifeq ($(PSP), 1)
-	kubectl apply -f config/dev/elastic-psp.yaml
+	$(MAKE) apply-psp
 endif
 
 delete-gke: require-gcloud-project
@@ -336,6 +339,13 @@ ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 	@ echo $(OPERATOR_IMAGE) was pushed!
+
+ci-e2e-new: deployer-new
+	$(MAKE) IMG_SUFFIX=-ci cluster-bootstrap apply-psp e2e
+
+deployer-new:
+	@ go build -o hack/deployer/deployer ./hack/deployer/...
+	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
 
 ##########################
