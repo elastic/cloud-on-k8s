@@ -4,12 +4,14 @@
 
 package main
 
+import "io/ioutil"
+
 const (
 	vaultTokenName = "VAULT_TOKEN"
 )
 
-// ReadVault is a helper function used to read from Hashicorp Vault
-func ReadVault(address, roleId, secretId, name string) (string, error) {
+// ReadVaultIntoFile is a helper function used to read from Hashicorp Vault
+func ReadVaultIntoFile(fileName, address, roleId, secretId, name string) error {
 	vaultToken, err := NewCommand("vault write -address={{.Address}} -field=token auth/approle/login role_id={{.RoleId}} secret_id={{.SecretId}}").
 		AsTemplate(map[string]interface{}{
 			"Address":  address,
@@ -19,10 +21,10 @@ func ReadVault(address, roleId, secretId, name string) (string, error) {
 		WithoutStreaming().
 		Output()
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return NewCommand("vault read -address={{.Address}} -field=service-account {{.Name}}").
+	serviceAccountKey, err := NewCommand("vault read -address={{.Address}} -field=service-account {{.Name}}").
 		AsTemplate(map[string]interface{}{
 			"Address": address,
 			"Name":    name,
@@ -30,4 +32,6 @@ func ReadVault(address, roleId, secretId, name string) (string, error) {
 		WithVariable(vaultTokenName, vaultToken).
 		WithoutStreaming().
 		Output()
+
+	return ioutil.WriteFile(fileName, []byte(serviceAccountKey), 0644)
 }

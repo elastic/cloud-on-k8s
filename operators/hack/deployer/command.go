@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"text/template"
 )
 
@@ -18,10 +19,11 @@ type Command struct {
 	params    map[string]interface{}
 	variables []string
 	stream    bool
+	stderr    bool
 }
 
 func NewCommand(command string) *Command {
-	return &Command{command: command, stream: true}
+	return &Command{command: command, stream: true, stderr: true}
 }
 
 func (c *Command) AsTemplate(params map[string]interface{}) *Command {
@@ -39,6 +41,11 @@ func (c *Command) WithoutStreaming() *Command {
 	return c
 }
 
+func (c *Command) StdoutOnly() *Command {
+	c.stderr = false
+	return c
+}
+
 func (c *Command) Run() error {
 	_, err := c.output()
 	return err
@@ -46,6 +53,33 @@ func (c *Command) Run() error {
 
 func (c *Command) Output() (string, error) {
 	return c.output()
+}
+
+func (c *Command) OutputContainsAny(tokens ...string) (bool, error) {
+	out, err := c.output()
+
+	for _, token := range tokens {
+		if strings.Contains(out, token) {
+			return true, err
+		}
+	}
+
+	return false, err
+}
+
+func (c *Command) OutputList() (list []string, err error) {
+	out, err := c.output()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range strings.Split(out, "\n") {
+		if item != "" {
+			list = append(list, item)
+		}
+	}
+
+	return
 }
 
 func (c *Command) output() (string, error) {
@@ -63,10 +97,14 @@ func (c *Command) output() (string, error) {
 	b := bytes.Buffer{}
 	if c.stream {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &b)
-		cmd.Stderr = io.MultiWriter(os.Stderr, &b)
+		if c.stderr {
+			cmd.Stderr = io.MultiWriter(os.Stderr, &b)
+		}
 	} else {
 		cmd.Stdout = &b
-		cmd.Stderr = &b
+		if c.stderr {
+			cmd.Stderr = &b
+		}
 	}
 
 	err := cmd.Run()

@@ -35,7 +35,7 @@ overrides:
   vaultRoleId: $VAULT_ROLE_ID
   vaultSecretId: $VAULT_SECRET_ID
   gke:
-    gcloudProject: $GCLOUD_PROJECT
+    gCloudProject: $GCLOUD_PROJECT
 EOF
                     make -C build/ci ci-e2e-new
                 """
@@ -67,7 +67,7 @@ overrides:
   vaultRoleId: $VAULT_ROLE_ID
   vaultSecretId: $VAULT_SECRET_ID
   gke:
-    gcloudProject: $GCLOUD_PROJECT
+    gCloudProject: $GCLOUD_PROJECT
 EOF
                     make -C build/ci ci-deployer-new
                 """

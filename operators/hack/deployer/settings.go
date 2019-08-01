@@ -29,9 +29,9 @@ type Plan struct {
 	VaultSecretId string `yaml:"vaultSecretId"`
 }
 
-// GkeSettings encapculates settings specific to GKE
+// GkeSettings encapsulates settings specific to GKE
 type GkeSettings struct {
-	GCloudProject    string `yaml:"gcloudProject"`
+	GCloudProject    string `yaml:"gCloudProject"`
 	Region           string `yaml:"region"`
 	AdminUsername    string `yaml:"adminUsername"`
 	LocalSsdCount    int64  `yaml:"localSsdCount"`

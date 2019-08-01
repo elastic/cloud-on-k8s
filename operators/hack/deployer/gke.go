@@ -6,7 +6,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -26,10 +25,24 @@ type GkeDriverFactory struct {
 
 type GkeDriver struct {
 	plan Plan
+	ctx  map[string]interface{}
 }
 
 func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
-	return &GkeDriver{plan: plan}, nil
+	return &GkeDriver{
+		plan: plan,
+		ctx: map[string]interface{}{
+			"GCloudProject":     plan.Gke.GCloudProject,
+			"ClusterName":       plan.ClusterName,
+			"Region":            plan.Gke.Region,
+			"AdminUsername":     plan.Gke.AdminUsername,
+			"KubernetesVersion": plan.KubernetesVersion,
+			"MachineType":       plan.MachineType,
+			"LocalSsdCount":     plan.Gke.LocalSsdCount,
+			"GcpScopes":         plan.Gke.GcpScopes,
+			"NodeCountPerZone":  plan.Gke.NodeCountPerZone,
+		},
+	}, nil
 }
 
 func (d *GkeDriver) Execute() error {
@@ -88,54 +101,27 @@ func (d *GkeDriver) Execute() error {
 
 func (d *GkeDriver) auth() error {
 	if d.plan.ServiceAccount {
-		return d.serviceAuth()
+		log.Println("Authenticating as service account...")
+
+		keyFileName := "gke_service_account_key.json"
+		defer os.Remove(keyFileName)
+		if err := ReadVaultIntoFile(keyFileName, d.plan.VaultAddress, d.plan.VaultRoleId, d.plan.VaultSecretId, GkeServiceAccountKeyVaultName); err != nil {
+			return err
+		}
+
+		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
 	} else {
-		return d.userAuth()
+		log.Println("Authenticating as user...")
+		return NewCommand("gcloud auth login").Run()
 	}
-}
-
-func (d *GkeDriver) serviceAuth() error {
-	log.Println("Authenticating as service account...")
-
-	serviceAccountKey, err := ReadVault(d.plan.VaultAddress, d.plan.VaultRoleId, d.plan.VaultSecretId, GkeServiceAccountKeyVaultName)
-	if err != nil {
-		return err
-	}
-
-	file, err := ioutil.TempFile(".", "gke_service_account_key-")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(file.Name())
-
-	if err := ioutil.WriteFile(file.Name(), []byte(serviceAccountKey), 0644); err != nil {
-		return err
-	}
-
-	return NewCommand("gcloud auth activate-service-account --key-file={{.FileName}}").
-		AsTemplate(map[string]interface{}{
-			"FileName": file.Name(),
-		}).
-		Run()
-}
-
-func (d *GkeDriver) userAuth() error {
-	log.Println("Authenticating as user...")
-	return NewCommand("gcloud auth login").Run()
 }
 
 func (d *GkeDriver) clusterExists() (bool, error) {
 	log.Println("Checking if cluster exists...")
-	out, err := NewCommand("gcloud beta container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}").
-		AsTemplate(map[string]interface{}{
-			"GCloudProject": d.plan.Gke.GCloudProject,
-			"ClusterName":   d.plan.ClusterName,
-			"Region":        d.plan.Gke.Region,
-		}).
-		WithoutStreaming().
-		Output()
 
-	if strings.Contains(out, "Not found") {
+	cmd := "gcloud beta container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}"
+	contains, err := NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("Not found")
+	if contains {
 		return false, nil
 	}
 
@@ -144,18 +130,14 @@ func (d *GkeDriver) clusterExists() (bool, error) {
 
 func (d *GkeDriver) configSsh() error {
 	log.Println("Configuring ssh...")
-	return NewCommand("gcloud --quiet --project {{.GCloudProject}} compute config-ssh").
-		AsTemplate(map[string]interface{}{
-			"GCloudProject": d.plan.Gke.GCloudProject,
-		}).
-		Run()
+	return NewCommand("gcloud --quiet --project {{.GCloudProject}} compute config-ssh").AsTemplate(d.ctx).Run()
 }
 
 func (d *GkeDriver) create() error {
 	log.Println("Creating cluster...")
 	pspOption := ""
 	if d.plan.Psp {
-		pspOption = "--enable-pod-security-policy"
+		pspOption = " --enable-pod-security-policy"
 	}
 
 	return NewCommand(`gcloud beta container --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
@@ -164,19 +146,8 @@ func (d *GkeDriver) create() error {
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 		`--enable-cloud-logging --enable-cloud-monitoring --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --network projects/{{.GCloudProject}}/global/networks/default ` +
-		`--subnetwork projects/{{.GCloudProject}}/regions/{{.Region}}/subnetworks/default {{.PspOption}}`).
-		AsTemplate(map[string]interface{}{
-			"GCloudProject":     d.plan.Gke.GCloudProject,
-			"ClusterName":       d.plan.ClusterName,
-			"Region":            d.plan.Gke.Region,
-			"AdminUsername":     d.plan.Gke.AdminUsername,
-			"KubernetesVersion": d.plan.KubernetesVersion,
-			"MachineType":       d.plan.MachineType,
-			"LocalSsdCount":     d.plan.Gke.LocalSsdCount,
-			"GcpScopes":         d.plan.Gke.GcpScopes,
-			"NodeCountPerZone":  d.plan.Gke.NodeCountPerZone,
-			"PspOption":         pspOption,
-		}).
+		`--subnetwork projects/{{.GCloudProject}}/regions/{{.Region}}/subnetworks/default` + pspOption).
+		AsTemplate(d.ctx).
 		Run()
 }
 
@@ -186,48 +157,39 @@ func (d *GkeDriver) bindRoles() error {
 	if err != nil {
 		return err
 	}
-
-	return NewCommand("kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user={{.User}}").
-		AsTemplate(map[string]interface{}{
-			"User": user,
-		}).
-		Run()
+	cmd := "kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=" + user
+	return NewCommand(cmd).Run()
 }
 
 func (d *GkeDriver) setMaxMapCount() error {
 	log.Println("Setting max map count...")
-	out, err := NewCommand(`gcloud compute instances list ` +
-		`--project={{.GCloudProject}} ` +
+	instances, err := NewCommand(`gcloud compute instances list --project={{.GCloudProject}} ` +
 		`--filter="metadata.items.key['cluster-name']['value']='{{.ClusterName}}' AND metadata.items.key['cluster-name']['value']!='' " ` +
-		`--format="value[separator=','](name,zone)" --verbosity=error`).
+		`--format="value[separator=','](name,zone)"`).
 		AsTemplate(map[string]interface{}{
 			"GCloudProject": d.plan.Gke.GCloudProject,
 			"ClusterName":   d.plan.ClusterName,
 		}).
-		Output()
+		StdoutOnly().
+		OutputList()
 	if err != nil {
 		return err
 	}
 
-	for _, instance := range strings.Split(out, "\n") {
-		if instance == "" {
-			continue
-		}
-
+	for _, instance := range instances {
 		nameZone := strings.Split(instance, ",")
 		if len(nameZone) != 2 {
 			return fmt.Errorf("instance %s could not be parsed", instance)
 		}
 
 		name, zone := nameZone[0], nameZone[1]
-		err := NewCommand(`gcloud -q compute ssh jenkins@{{.Name}} --project={{.GCloudProject}} --zone={{.Zone}} --command="sudo sysctl -w vm.max_map_count=262144"`).
+		if err := NewCommand(`gcloud -q compute ssh jenkins@{{.Name}} --project={{.GCloudProject}} --zone={{.Zone}} --command="sudo sysctl -w vm.max_map_count=262144"`).
 			AsTemplate(map[string]interface{}{
 				"GCloudProject": d.plan.Gke.GCloudProject,
 				"Name":          name,
 				"Zone":          zone,
 			}).
-			Run()
-		if err != nil {
+			Run(); err != nil {
 			return err
 		}
 	}
@@ -242,22 +204,12 @@ func (d *GkeDriver) configureDocker() error {
 
 func (d *GkeDriver) getCredentials() error {
 	log.Println("Getting credentials...")
-	return NewCommand("gcloud beta --project {{.GCloudProject}} container clusters get-credentials {{.ClusterName}} --region {{.Region}}").
-		AsTemplate(map[string]interface{}{
-			"GCloudProject": d.plan.Gke.GCloudProject,
-			"ClusterName":   d.plan.ClusterName,
-			"Region":        d.plan.Gke.Region,
-		}).
-		Run()
+	cmd := "gcloud beta --project {{.GCloudProject}} container clusters get-credentials {{.ClusterName}} --region {{.Region}}"
+	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 
 func (d *GkeDriver) delete() error {
 	log.Println("Deleting cluster...")
-	return NewCommand("gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}").
-		AsTemplate(map[string]interface{}{
-			"GCloudProject": d.plan.Gke.GCloudProject,
-			"ClusterName":   d.plan.ClusterName,
-			"Region":        d.plan.Gke.Region,
-		}).
-		Run()
+	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
+	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
