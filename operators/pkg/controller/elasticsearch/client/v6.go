@@ -53,34 +53,28 @@ func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string)
 	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
 }
 
-func (c *clientV6) EnableShardAllocation(ctx context.Context) error {
+func (c *clientV6) updateAllocationEnable(ctx context.Context, value string) error {
 	allocationSettings := ClusterRoutingAllocation{
 		Transient: AllocationSettings{
 			Cluster: ClusterRoutingSettings{
 				Routing: RoutingSettings{
 					Allocation: RoutingAllocationSettings{
-						Enable: "all",
+						Enable: value,
 					},
 				},
 			},
 		},
 	}
 	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
+
+}
+
+func (c *clientV6) EnableShardAllocation(ctx context.Context) error {
+	return c.updateAllocationEnable(ctx, "all")
 }
 
 func (c *clientV6) DisableReplicaShardsAllocation(ctx context.Context) error {
-	allocationSettings := ClusterRoutingAllocation{
-		Transient: AllocationSettings{
-			Cluster: ClusterRoutingSettings{
-				Routing: RoutingSettings{
-					Allocation: RoutingAllocationSettings{
-						Enable: "primaries",
-					},
-				},
-			},
-		},
-	}
-	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
+	return c.updateAllocationEnable(ctx, "primaries")
 }
 
 func (c *clientV6) SyncedFlush(ctx context.Context) error {

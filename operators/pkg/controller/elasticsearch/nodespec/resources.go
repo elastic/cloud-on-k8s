@@ -10,6 +10,7 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
@@ -60,5 +61,20 @@ func BuildExpectedResources(es v1alpha1.Elasticsearch, podTemplateBuilder versio
 			Config:          cfg,
 		})
 	}
+
 	return nodesResources, nil
+}
+
+// MasterNodesNames returns the names of the master nodes for this ResourcesList.
+func (l ResourcesList) MasterNodesNames() []string {
+	var masters []string
+	for _, s := range l.StatefulSets() {
+		if label.IsMasterNodeSet(s) {
+			for i := int32(0); i < sset.Replicas(s); i++ {
+				masters = append(masters, sset.PodName(s.Name, i))
+			}
+		}
+	}
+
+	return masters
 }

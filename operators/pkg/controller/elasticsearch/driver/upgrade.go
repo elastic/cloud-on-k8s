@@ -7,15 +7,17 @@ package driver
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 func (d *defaultDriver) handleRollingUpgrades(
@@ -47,14 +49,6 @@ func (d *defaultDriver) doRollingUpgrade(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	if !d.expectations.GenerationExpected(statefulSets.ObjectMetas()...) {
-		// Our cache of SatefulSets is out of date compared to previous reconciliation operations.
-		// It does not matter much here since operations are idempotent, but we might as well avoid
-		// useless operations that would end up in a resource update conflict anyway.
-		log.V(1).Info("StatefulSet cache out-of-date, re-queueing")
-		return results.WithResult(defaultRequeue)
-	}
-
 	if !statefulSets.RevisionUpdateScheduled() {
 		// nothing to upgrade
 		return results
@@ -67,20 +61,26 @@ func (d *defaultDriver) doRollingUpgrade(
 	//  Instead of green health, we could look at shards status, taking into account nodes
 	//  we scheduled for a restart (maybe not restarted yet).
 
-	// TODO: don't upgrade more than 1 master concurrently (ok for now since we upgrade 1 node at a time anyway)
-
 	maxConcurrentUpgrades := 1
 	scheduledUpgrades := 0
+
+	// Only update 1 master node at a time, for safety and zen settings convenience.
+	// This can slow down the upgrade, but the number of master nodes should be small anyway.
+	maxMasterNodeUpgrades := 1
+	scheduledMasterNodeUpgrades := 0
 
 	for i, statefulSet := range statefulSets {
 		// Inspect each pod, starting from the highest ordinal, and decrement the partition to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
 		for partition := sset.GetUpdatePartition(statefulSet); partition >= 0; partition-- {
+			if partition >= sset.Replicas(statefulSet) {
+				continue
+			}
 			if scheduledUpgrades >= maxConcurrentUpgrades {
 				return results.WithResult(defaultRequeue)
 			}
-			if partition >= sset.Replicas(statefulSet) {
-				continue
+			if label.IsMasterNodeSet(statefulSet) && scheduledMasterNodeUpgrades >= maxMasterNodeUpgrades {
+				return results.WithResult(defaultRequeue)
 			}
 
 			// Do we need to upgrade that pod?
@@ -112,9 +112,19 @@ func (d *defaultDriver) doRollingUpgrade(
 				return results.WithResult(defaultRequeue)
 			}
 
-			log.Info("Preparing cluster for node restart", "namespace", es.Namespace, "name", es.Name)
+			log.Info("Preparing cluster for node restart", "namespace", es.Namespace, "es_name", es.Name)
 			if err := prepareClusterForNodeRestart(esClient, esState); err != nil {
 				return results.WithError(err)
+			}
+
+			if label.IsMasterNodeSet(statefulSet) {
+				scheduledMasterNodeUpgrades++
+				// TODO if the node is a master:
+				//  - zen1: update minimum_master_node to account for master node deletion. Otherwise upgrading a 2-masters
+				//   cluster provokes downtime since m_m_n=2.
+				//   Problem: how to prevent this to be reverted at the next reconciliation, before the pod gets deleted?
+				//  - zen2: set voting config exclusions: same problem, this is not easy. But since we only delete
+				//   one master at a time, maybe it's not required?
 			}
 
 			// Upgrade the pod.
@@ -131,8 +141,6 @@ func (d *defaultDriver) upgradeStatefulSetPartition(
 	statefulSet *appsv1.StatefulSet,
 	newPartition int32,
 ) error {
-	// TODO: zen1, zen2
-
 	// Node can be removed, update the StatefulSet rollingUpdate.Partition ordinal.
 	log.Info("Updating rollingUpdate.Partition",
 		"namespace", statefulSet.Namespace,
@@ -249,13 +257,6 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	statefulSets sset.StatefulSetList,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
-	// Since we rely on sset rollingUpdate.Partition, requeue in case our cache hasn't seen a sset update yet.
-	// Otherwise we could re-enable shards allocation while a pod was just scheduled for termination,
-	// with the partition in the sset cache being outdated.
-	if !d.Expectations.GenerationExpected(statefulSets.ObjectMetas()...) {
-		return results.WithResult(defaultRequeue)
-	}
-
 	alreadyEnabled, err := esState.ShardAllocationsEnabled()
 	if err != nil {
 		return results.WithError(err)
@@ -273,7 +274,7 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 		log.V(1).Info(
 			"Rolling upgrade not over yet, some pods don't have the updated revision, keeping shard allocations disabled",
 			"namespace", es.Namespace,
-			"name", es.Name,
+			"es_name", es.Name,
 		)
 		return results.WithResult(defaultRequeue)
 	}
@@ -287,12 +288,12 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 		log.V(1).Info(
 			"Some upgraded nodes are not back in the cluster yet, keeping shard allocations disabled",
 			"namespace", es.Namespace,
-			"name", es.Name,
+			"es_name", es.Name,
 		)
 		return results.WithResult(defaultRequeue)
 	}
 
-	log.Info("Enabling shards allocation", "namespace", es.Namespace, "name", es.Name)
+	log.Info("Enabling shards allocation", "namespace", es.Namespace, "es_name", es.Name)
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
 	if err := esClient.EnableShardAllocation(ctx); err != nil {

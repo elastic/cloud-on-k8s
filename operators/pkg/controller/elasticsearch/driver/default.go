@@ -8,14 +8,14 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -30,7 +30,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
@@ -43,7 +42,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/version6"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
@@ -89,36 +88,6 @@ type defaultDriver struct {
 		c k8s.Client,
 		es v1alpha1.Elasticsearch,
 	) (*reconcile.ResourcesState, error)
-
-	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
-	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
-	clusterInitialMasterNodesEnforcer func(
-		cluster v1alpha1.Elasticsearch,
-		clusterState observer.State,
-		c k8s.Client,
-		performableChanges mutation.PerformableChanges,
-		resourcesState reconcile.ResourcesState,
-	) (*mutation.PerformableChanges, error)
-
-	// zen1SettingsUpdater updates the zen1 settings for the current pods.
-	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is >= 7)
-	zen1SettingsUpdater func(
-		cluster v1alpha1.Elasticsearch,
-		c k8s.Client,
-		esClient esclient.Client,
-		allPods []corev1.Pod,
-		performableChanges *mutation.PerformableChanges,
-		reconcileState *reconcile.State,
-	) (bool, error)
-
-	// zen2SettingsUpdater updates the zen2 settings for the current changes.
-	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
-	zen2SettingsUpdater func(
-		esClient esclient.Client,
-		minVersion version.Version,
-		changes mutation.Changes,
-		performableChanges mutation.PerformableChanges,
-	) error
 
 	// TODO: implement
 	// // apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
@@ -244,14 +213,6 @@ func (d *defaultDriver) Reconcile(
 		},
 	)
 
-	//
-	//if d.clusterInitialMasterNodesEnforcer != nil {
-	//	performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)
-	//	if err != nil {
-	//		return results.WithError(err)
-	//	}
-	//}
-
 	// Compute seed hosts based on current masters with a podIP
 	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, es, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
@@ -287,63 +248,15 @@ func (d *defaultDriver) Reconcile(
 				KeystoreResources: keystoreResources,
 			},
 			cfg,
-			version6.NewEnvironmentVars,
+			zen1.NewEnvironmentVars,
 			initcontainer.NewInitContainers,
 		)
 	}
 
-	res = d.reconcileNodeSpecs(es, esReachable, podTemplateSpecBuilder, esClient, observedState)
+	res = d.reconcileNodeSpecs(es, esReachable, podTemplateSpecBuilder, esClient, reconcileState, observedState, *resourcesState)
 	if results.WithResults(res).HasError() {
 		return results
 	}
-
-	//
-	//// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
-	//// correct value for minimum_master_nodes.
-	//// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy of one node is applied then
-	//// minimum_master_nodes is increased from 2 to 3 for new and current nodes.
-	//if d.zen1SettingsUpdater != nil {
-	//	requeue, err := d.zen1SettingsUpdater(
-	//		es,
-	//		d.Client,
-	//		esClient,
-	//		resourcesState.AllPods,
-	//		performableChanges,
-	//		reconcileState,
-	//	)
-	//
-	//	if err != nil {
-	//		return results.WithError(err)
-	//	}
-	//
-	//	if requeue {
-	//		results.WithResult(defaultRequeue)
-	//	}
-	//}
-
-	if !esReachable {
-		// We cannot manipulate ES allocation exclude settings if the ES cluster
-		// cannot be reached, hence we cannot delete pods.
-		// Probably it was just created and is not ready yet.
-		// Let's retry in a while.
-		log.Info("ES external service not ready yet for shard migration reconciliation. Requeuing.", "namespace", es.Namespace, "es_name", es.Name)
-
-		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods.Pods())
-
-		return results.WithResult(defaultRequeue)
-	}
-	//
-	//if d.zen2SettingsUpdater != nil {
-	//	// TODO: would prefer to do this after MigrateData iff there's no changes? or is that an premature optimization?
-	//	if err := d.zen2SettingsUpdater(
-	//		esClient,
-	//		*min,
-	//		*changes,
-	//		*performableChanges,
-	//	); err != nil {
-	//		return results.WithResult(defaultRequeue).WithError(err)
-	//	}
-	//}
 
 	reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 
@@ -355,7 +268,9 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	esReachable bool,
 	podSpecBuilder esversion.PodTemplateSpecBuilder,
 	esClient esclient.Client,
+	reconcileState *reconcile.State,
 	observedState observer.State,
+	resourcesState reconcile.ResourcesState,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -364,30 +279,29 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
+	if !d.expectations.GenerationExpected(actualStatefulSets.ObjectMetas()...) {
+		// Our cache of StatefulSets is out of date compared to previous reconciliation operations.
+		// This will probably lead to conflicting sset updates (which is ok), but also to
+		// conflicting ES calls (set/reset zen1/zen2/allocation excludes, etc.), which may not be ok.
+		log.V(1).Info("StatefulSet cache out-of-date, re-queueing", "namespace", es.Namespace, "es_name", es.Name)
+		return results.WithResult(defaultRequeue)
+	}
+
 	nodeSpecResources, err := nodespec.BuildExpectedResources(es, podSpecBuilder)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	// TODO: handle zen2 initial master nodes more cleanly
-	//  should be empty once cluster is bootstraped
-	var initialMasters []string
-	// TODO: refactor/move
-	for _, res := range nodeSpecResources {
-		cfg, err := res.Config.Unpack()
-		if err != nil {
-			return results.WithError(err)
-		}
-		if cfg.Node.Master {
-			for i := 0; i < int(*res.StatefulSet.Spec.Replicas); i++ {
-				initialMasters = append(initialMasters, fmt.Sprintf("%s-%d", res.StatefulSet.Name, i))
-			}
-		}
+	// TODO: there is a split brain possibility here if going from 1 to 3 masters or 3 to 7.
+	//  See https://github.com/elastic/cloud-on-k8s/issues/1281.
+
+	// patch configs to consider zen1 minimum master nodes
+	if err := zen1.SetupMinimumMasterNodesConfig(nodeSpecResources); err != nil {
+		return results.WithError(err)
 	}
-	for i := range nodeSpecResources {
-		if err := nodeSpecResources[i].Config.SetStrings(settings.ClusterInitialMasterNodes, initialMasters...); err != nil {
-			return results.WithError(err)
-		}
+	// patch configs to consider zen2 initial master nodes
+	if err := zen2.SetupInitialMasterNodes(es, observedState, d.Client, nodeSpecResources); err != nil {
+		return results.WithError(err)
 	}
 
 	// Phase 1: apply expected StatefulSets resources, but don't scale down.
@@ -418,32 +332,36 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	if !esReachable {
-		// cannot perform downscale or rolling upgrade if we cannot request Elasticsearch
+		// Cannot perform next operations if we cannot request Elasticsearch.
+		log.Info("ES external service not ready yet for further reconciliation, re-queuing.", "namespace", es.Namespace, "es_name", es.Name)
+		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods.Pods())
 		return results.WithResult(defaultRequeue)
+	}
+
+	// Update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
+	requeue, err := zen1.UpdateMinimumMasterNodes(d.Client, es, esClient, actualStatefulSets, reconcileState)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if requeue {
+		results.WithResult(defaultRequeue)
+	}
+	// Maybe clear zen2 voting config exclusions.
+	requeue, err = zen2.ClearVotingConfigExclusions(es, d.Client, esClient, actualStatefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if requeue {
+		results.WithResult(defaultRequeue)
 	}
 
 	// Phase 2: handle sset scale down.
 	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
 	// or because it should be removed entirely.
-	for i, actual := range actualStatefulSets {
-		expected, shouldExist := nodeSpecResources.StatefulSets().GetByName(actual.Name)
-		switch {
-		// stateful set removal
-		case !shouldExist:
-			target := int32(0)
-			removalResult := d.scaleStatefulSetDown(&actualStatefulSets[i], target, esClient, observedState)
-			results.WithResults(removalResult)
-			if removalResult.HasError() {
-				return results
-			}
-		// stateful set downscale
-		case actual.Spec.Replicas != nil && sset.Replicas(expected) < sset.Replicas(actual):
-			target := sset.Replicas(expected)
-			downscaleResult := d.scaleStatefulSetDown(&actualStatefulSets[i], target, esClient, observedState)
-			if downscaleResult.HasError() {
-				return results
-			}
-		}
+	downscaleRes := d.HandleDownscale(es, nodeSpecResources.StatefulSets(), actualStatefulSets, esClient, observedState, reconcileState)
+	results.WithResults(downscaleRes)
+	if downscaleRes.HasError() {
+		return results
 	}
 
 	// Phase 3: handle rolling upgrades.
@@ -456,72 +374,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// TODO:
 	//  - change budget
-	//  - zen1, zen2
-	return results
-}
-
-func (d *defaultDriver) scaleStatefulSetDown(
-	statefulSet *appsv1.StatefulSet,
-	targetReplicas int32,
-	esClient esclient.Client,
-	observedState observer.State,
-) *reconciler.Results {
-	results := &reconciler.Results{}
-	logger := log.WithValues("statefulset", k8s.ExtractNamespacedName(statefulSet))
-
-	if sset.Replicas(*statefulSet) == 0 && targetReplicas == 0 {
-		// we don't expect any new replicas in this statefulset, remove it
-		logger.Info("Deleting statefulset", "namespace", statefulSet.Namespace, "name", statefulSet.Name)
-		if err := d.Client.Delete(statefulSet); err != nil {
-			return results.WithError(err)
-		}
-	}
-	// copy the current replicas, to be decremented with nodes to remove
-	initialReplicas := sset.Replicas(*statefulSet)
-	updatedReplicas := initialReplicas
-
-	// leaving nodes names can be built from StatefulSet name and ordinals
-	// nodes are ordered by highest ordinal first
-	var leavingNodes []string
-	for i := initialReplicas - 1; i > targetReplicas-1; i-- {
-		leavingNodes = append(leavingNodes, sset.PodName(statefulSet.Name, i))
-	}
-
-	// TODO: don't remove last master/last data nodes?
-	// TODO: detect cases where data migration cannot happen since no nodes to host shards?
-
-	// migrate data away from these nodes before removing them
-	logger.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
-	if err := migration.MigrateData(esClient, leavingNodes); err != nil {
-		return results.WithError(err)
-	}
-
-	for _, node := range leavingNodes {
-		if migration.IsMigratingData(observedState, node, leavingNodes) {
-			// data migration not over yet: schedule a requeue
-			logger.V(1).Info("Data migration not over yet, skipping node deletion", "node", node)
-			results.WithResult(defaultRequeue)
-			// no need to check other nodes since we remove them in order and this one isn't ready anyway
-			break
-		}
-		// data migration over: allow pod to be removed
-		updatedReplicas--
-	}
-
-	if updatedReplicas != initialReplicas {
-		// update cluster coordination settings to account for nodes deletion
-		// TODO: update zen1/zen2
-
-		// trigger deletion of nodes whose data migration is over
-		logger.V(1).Info("Scaling replicas down", "from", initialReplicas, "to", updatedReplicas)
-		statefulSet.Spec.Replicas = &updatedReplicas
-		if err := d.Client.Update(statefulSet); err != nil {
-			return results.WithError(err)
-		}
-	}
-
-	// TODO: clear allocation excludes
-
+	//  - grow and shrink
 	return results
 }
 

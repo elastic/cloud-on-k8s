@@ -25,7 +25,7 @@ func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 	pods []corev1.Pod,
 ) error {
 	for _, pod := range pods {
-		v, err := label.ExtractVersion(pod)
+		v, err := label.ExtractVersion(pod.Labels)
 		if err != nil {
 			return err
 		}
