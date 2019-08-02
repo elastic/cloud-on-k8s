@@ -115,5 +115,5 @@ def ifImageNeedsRebuilding() {
     return sh (
         script: "docker pull docker.elastic.co/eck/eck-ci:" + diff,
         returnStatus: true
-    ) == 0
+    ) == 1
 }
