@@ -14,6 +14,7 @@ import (
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
@@ -166,6 +167,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	newStatus, err := r.reconcileInternal(kibana)
 	// maybe update status
 	if !reflect.DeepEqual(kibana.Status.AssociationStatus, newStatus) {
+		oldStatus := kibana.Status.AssociationStatus
 		kibana.Status.AssociationStatus = newStatus
 		if err := r.Status().Update(&kibana); err != nil {
 			if apierrors.IsConflict(err) {
@@ -176,6 +178,11 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 
 			return defaultRequeue, err
 		}
+		r.recorder.AnnotatedEventf(&kibana,
+			annotation.ForAssociationStatusChange(oldStatus, newStatus),
+			corev1.EventTypeNormal,
+			events.EventAssociationStatusChange,
+			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
 	}
 	return resultFromStatus(newStatus), err
 }
@@ -235,6 +242,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	var es estype.Elasticsearch
 	if err := r.Get(esRefKey, &es); err != nil {
+		r.recorder.Eventf(&kibana, corev1.EventTypeWarning, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
 		if apierrors.IsNotFound(err) {
 			// ES not found. 2 options:
 			// - not created yet: that's ok, we'll reconcile on creation event

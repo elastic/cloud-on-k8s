@@ -27,7 +27,7 @@ func TestKillKibanaPod(t *testing.T) {
 	matchFirst := func(p corev1.Pod) bool {
 		return true
 	}
-	test.RunFailure(t,
+	test.RunRecoverableFailureScenario(t,
 		test.KillNodeSteps(test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name), matchFirst),
 		esBuilder, kbBuilder)
 }
@@ -39,7 +39,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 	kbBuilder := kibana.NewBuilder(name).
 		WithNodeCount(1)
 
-	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Delete Kibana deployment",

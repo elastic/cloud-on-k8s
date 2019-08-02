@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
@@ -172,6 +173,12 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		if err := r.Status().Update(&apmServer); err != nil {
 			return defaultRequeue, err
 		}
+		r.recorder.AnnotatedEventf(&apmServer,
+			annotation.ForAssociationStatusChange(origStatus.Association, newStatus),
+			corev1.EventTypeNormal,
+			events.EventAssociationStatusChange,
+			"Association status changed from [%s] to [%s]", origStatus.Association, newStatus)
+
 	}
 	return resultFromStatus(newStatus), err
 }
@@ -229,6 +236,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	var es estype.Elasticsearch
 	err = r.Get(elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
+		r.recorder.Eventf(&apmServer, corev1.EventTypeWarning, events.EventAssociationError,
+			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// Es not found, could be deleted or not yet created? Recheck in a while
 			return commonv1alpha1.AssociationPending, nil

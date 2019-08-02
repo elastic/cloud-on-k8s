@@ -14,8 +14,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// RunFailure tests failures on given resources.
-func RunFailure(t *testing.T, failure StepsFunc, builders ...Builder) {
+// RunRecoverableFailureScenario tests a failure scenario that is recoverable.
+func RunRecoverableFailureScenario(t *testing.T, failureSteps StepsFunc, builders ...Builder) {
+	runFailureScenario(t, true, failureSteps, builders...)
+}
+
+// RunUnrecoverableFailureScenario tests a failure scenario that is not recoverable.
+func RunUnrecoverableFailureScenario(t *testing.T, failureSteps StepsFunc, builders ...Builder) {
+	runFailureScenario(t, false, failureSteps, builders...)
+}
+
+func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, builders ...Builder) {
 	k := NewK8sClientOrFatal()
 
 	steps := StepList{}
@@ -30,12 +39,14 @@ func RunFailure(t *testing.T, failure StepsFunc, builders ...Builder) {
 		steps = steps.WithSteps(CheckTestSteps(b, k))
 	}
 
-	// Trigger some kind of catastrophe
-	steps = steps.WithSteps(failure(k))
+	// Trigger the failure
+	steps = steps.WithSteps(failureSteps(k))
 
-	// Check we recover
-	for _, b := range builders {
-		steps = steps.WithSteps(CheckTestSteps(b, k))
+	if recoverable {
+		// Check we recover
+		for _, b := range builders {
+			steps = steps.WithSteps(CheckTestSteps(b, k))
+		}
 	}
 
 	for _, b := range builders {
