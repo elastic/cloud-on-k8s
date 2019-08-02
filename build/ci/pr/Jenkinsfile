@@ -28,7 +28,7 @@ pipeline {
             }
             steps {
                 sh """
-                    export HASH=\$(md5sum operators/Gopkg.lock build/ci/Dockerfile local-volume/Gopkg.lock | md5sum | awk '{print \$1}')
+                    export HASH=\$(md5sum operators/Gopkg.lock build/ci/Dockerfile local-volume/Gopkg.lock | awk '{print \$1}' | md5sum | awk '{print \$1}')
                     export IMAGE=push.docker.elastic.co/eck/eck-ci:\${HASH}
                     make -C build/ci ci-build-image
                 """
@@ -108,7 +108,7 @@ def notOnlyDocs() {
 def ifImageNeedsRebuilding() {
     sh """
         md5sum operators/Gopkg.lock build/ci/Dockerfile local-volume/Gopkg.lock \
-        | md5sum | awk '{print \$1}' \
+        | awk '{print \$1}' | md5sum | awk '{print \$1}' \
         > $WORKSPACE/git_diff.txt
     """
     def diff = readFile("$WORKSPACE/git_diff.txt").trim()
