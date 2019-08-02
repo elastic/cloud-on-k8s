@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package driver
+package reconciler
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,7 +14,7 @@ type Expectations struct {
 	generations map[types.UID]int64
 }
 
-func NewGenerationExpectations() *Expectations {
+func NewExpectations() *Expectations {
 	return &Expectations{
 		generations: make(map[types.UID]int64),
 	}

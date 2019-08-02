@@ -31,7 +31,7 @@ func SetupMinimumMasterNodesConfig(nodeSpecResources nodespec.ResourcesList) err
 	masters := nodeSpecResources.MasterNodesNames()
 	quorum := settings.Quorum(len(masters))
 	for i, res := range nodeSpecResources {
-		if !IsCompatibleForZen1(res.StatefulSet) {
+		if !IsCompatibleWithZen1(res.StatefulSet) {
 			continue
 		}
 		// patch config with the expected minimum master nodes
@@ -56,7 +56,7 @@ func UpdateMinimumMasterNodes(
 	actualStatefulSets sset.StatefulSetList,
 	reconcileState *reconcile.State,
 ) (bool, error) {
-	if !AtLeastOneNodeCompatibleForZen1(actualStatefulSets) {
+	if !AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
 		// nothing to do
 		return false, nil
 	}

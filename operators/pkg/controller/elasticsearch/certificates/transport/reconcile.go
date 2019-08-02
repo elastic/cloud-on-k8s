@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,7 +67,7 @@ func ReconcileTransportCertificatesSecrets(
 	}
 
 	// remove certificates and keys for deleted pods
-	podsByName := pod.PodsByName(pods.Items)
+	podsByName := k8s.PodsByName(pods.Items)
 	keysToPrune := make([]string, 0)
 	for secretDataKey := range secret.Data {
 		if secretDataKey == certificates.CAFileName {

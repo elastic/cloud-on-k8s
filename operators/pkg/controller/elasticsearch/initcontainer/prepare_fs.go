@@ -7,6 +7,7 @@ package initcontainer
 import (
 	"path"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -107,11 +108,7 @@ func NewPrepareFSInitContainer(
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
-		Env: []corev1.EnvVar{
-			{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
-			}},
-		},
+		Env:     defaults.PodDownwardEnvVars,
 		Command: []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
 		VolumeMounts: append(
 			PluginVolumes.InitContainerVolumeMounts(),

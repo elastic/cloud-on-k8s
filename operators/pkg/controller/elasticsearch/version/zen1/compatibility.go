@@ -16,13 +16,13 @@ func zen1VersionMatch(v version.Version) bool {
 	return v.Major < 7
 }
 
-// IsCompatibleForZen1 returns true if the given StatefulSet is compatible with zen1.
-func IsCompatibleForZen1(statefulSet appsv1.StatefulSet) bool {
+// IsCompatibleWithZen1 returns true if the given StatefulSet is compatible with zen1.
+func IsCompatibleWithZen1(statefulSet appsv1.StatefulSet) bool {
 	return sset.ESVersionMatch(statefulSet, zen1VersionMatch)
 }
 
-// AtLeastOneNodeCompatibleForZen1 returns true if the given StatefulSetList contains
+// AtLeastOneNodeCompatibleWithZen1 returns true if the given StatefulSetList contains
 // at least one StatefulSet compatible with zen1.
-func AtLeastOneNodeCompatibleForZen1(statefulSets sset.StatefulSetList) bool {
+func AtLeastOneNodeCompatibleWithZen1(statefulSets sset.StatefulSetList) bool {
 	return sset.AtLeastOneESVersionMatch(statefulSets, zen1VersionMatch)
 }

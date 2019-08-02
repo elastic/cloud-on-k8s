@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -21,6 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
@@ -68,7 +71,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 
 		finalizers:     finalizer.NewHandler(client),
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   driver.NewGenerationExpectations(),
+		expectations:   reconciler.NewExpectations(),
 
 		Parameters: params,
 	}
@@ -167,7 +170,7 @@ type ReconcileElasticsearch struct {
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
-	expectations *driver.Expectations
+	expectations *reconciler.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -243,11 +246,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	ver, err := commonversion.Parse(es.Spec.Version)
-	if err != nil {
-		return results.WithError(err)
-	}
-
 	violations, err := validation.Validate(es)
 	if err != nil {
 		return results.WithError(err)
@@ -257,23 +255,28 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	driver, err := driver.NewDriver(driver.Options{
-		Client:   r.Client,
-		Scheme:   r.scheme,
-		Recorder: r.recorder,
-
-		Version: *ver,
-
-		Expectations:   r.expectations,
-		Observers:      r.esObservers,
-		DynamicWatches: r.dynamicWatches,
-		Parameters:     r.Parameters,
-	})
+	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
 		return results.WithError(err)
 	}
+	supported := esversion.SupportedVersions(*ver)
+	if supported == nil {
+		return results.WithError(fmt.Errorf("unsupported version: %s", ver))
+	}
 
-	return driver.Reconcile(es, reconcileState)
+	return driver.NewDefaultDriver(driver.DefaultDriverParameters{
+		OperatorParameters: r.Parameters,
+		ES:                 es,
+		ReconcileState:     reconcileState,
+		Client:             r.Client,
+		Scheme:             r.scheme,
+		Recorder:           r.recorder,
+		Version:            *ver,
+		Expectations:       r.expectations,
+		Observers:          r.esObservers,
+		DynamicWatches:     r.dynamicWatches,
+		SupportedVersions:  *supported,
+	}).Reconcile()
 }
 
 func (r *ReconcileElasticsearch) updateStatus(

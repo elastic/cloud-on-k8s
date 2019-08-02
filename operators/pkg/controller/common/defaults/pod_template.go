@@ -7,8 +7,21 @@ package defaults
 import (
 	"sort"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/env"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+)
+
+var (
+	// PodDownwardEnvVars inject the runtime Pod Name and IP as environment variables.
+	PodDownwardEnvVars = []corev1.EnvVar{
+		{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+		}},
+		{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+		}},
+	}
 )
 
 // PodTemplateBuilder helps with building a pod template inheriting values
@@ -184,7 +197,7 @@ func (b *PodTemplateBuilder) envExists(name string) bool {
 	return false
 }
 
-// WithEnv appends the given en vars to the Container, unless already provided in the template.
+// WithEnv appends the given env vars to the Container, unless already provided in the template.
 func (b *PodTemplateBuilder) WithEnv(vars ...corev1.EnvVar) *PodTemplateBuilder {
 	for _, v := range vars {
 		if !b.envExists(v.Name) {
@@ -246,7 +259,7 @@ func (b *PodTemplateBuilder) WithInitContainerDefaults() *PodTemplateBuilder {
 		}
 
 		// append the dynamic pod name and IP env vars
-		c.Env = append(c.Env, env.DynamicPodEnvVars...)
+		c.Env = append(c.Env, PodDownwardEnvVars...)
 	}
 	return b
 }

@@ -5,7 +5,6 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -15,15 +14,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 )
 
 func (d *defaultDriver) HandleDownscale(
-	es v1alpha1.Elasticsearch,
 	expectedStatefulSets sset.StatefulSetList,
 	actualStatefulSets sset.StatefulSetList,
 	esClient esclient.Client,
+	resourcesState reconcile.ResourcesState,
 	observedState observer.State,
 	reconcileState *reconcile.State,
 ) *reconciler.Results {
@@ -40,7 +38,7 @@ func (d *defaultDriver) HandleDownscale(
 		if shouldExist {           // sset downscale
 			targetReplicas = sset.Replicas(expected)
 		}
-		leaving, removalResult := d.scaleStatefulSetDown(es, actualStatefulSets, &actualStatefulSets[i], targetReplicas, esClient, observedState, reconcileState)
+		leaving, removalResult := d.scaleStatefulSetDown(actualStatefulSets, &actualStatefulSets[i], targetReplicas, esClient, resourcesState, observedState, reconcileState)
 		results.WithResults(removalResult)
 		if removalResult.HasError() {
 			return results
@@ -60,16 +58,16 @@ func (d *defaultDriver) HandleDownscale(
 // scaleStatefulSetDown scales the given StatefulSet down to targetReplicas, if possible.
 // It returns the names of the nodes that will leave the cluster.
 func (d *defaultDriver) scaleStatefulSetDown(
-	es v1alpha1.Elasticsearch,
 	allStatefulSets sset.StatefulSetList,
 	ssetToScaleDown *appsv1.StatefulSet,
 	targetReplicas int32,
 	esClient esclient.Client,
+	resourcesState reconcile.ResourcesState,
 	observedState observer.State,
 	reconcileState *reconcile.State,
 ) ([]string, *reconciler.Results) {
 	results := &reconciler.Results{}
-	logger := log.WithValues("statefulset", k8s.ExtractNamespacedName(ssetToScaleDown))
+	logger := log.WithValues("namespace", ssetToScaleDown.Namespace, "statefulset", ssetToScaleDown.Name)
 
 	if sset.Replicas(*ssetToScaleDown) == 0 && targetReplicas == 0 {
 		// no replicas expected, StatefulSet can be safely deleted
@@ -96,6 +94,7 @@ func (d *defaultDriver) scaleStatefulSetDown(
 		if migration.IsMigratingData(observedState, node, leavingNodes) {
 			// data migration not over yet: schedule a requeue
 			logger.V(1).Info("Data migration not over yet, skipping node deletion", "node", node)
+			reconcileState.UpdateElasticsearchMigrating(resourcesState, observedState)
 			results.WithResult(defaultRequeue)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
 			break
@@ -106,12 +105,12 @@ func (d *defaultDriver) scaleStatefulSetDown(
 
 	if updatedReplicas < initialReplicas {
 		// trigger deletion of nodes whose data migration is over
-		logger.V(1).Info("Scaling replicas down", "from", initialReplicas, "to", updatedReplicas)
+		logger.Info("Scaling replicas down", "from", initialReplicas, "to", updatedReplicas)
 		ssetToScaleDown.Spec.Replicas = &updatedReplicas
 
 		if label.IsMasterNodeSet(*ssetToScaleDown) {
 			// Update Zen1 minimum master nodes API, accounting for the updated downscaled replicas.
-			_, err := zen1.UpdateMinimumMasterNodes(d.Client, es, esClient, allStatefulSets, reconcileState)
+			_, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, allStatefulSets, reconcileState)
 			if err != nil {
 				return nil, results.WithError(err)
 			}
@@ -129,7 +128,7 @@ func (d *defaultDriver) scaleStatefulSetDown(
 			return nil, results.WithError(err)
 		}
 		// Expect the updated statefulset in the cache for next reconciliation.
-		d.expectations.ExpectGeneration(ssetToScaleDown.ObjectMeta)
+		d.Expectations.ExpectGeneration(ssetToScaleDown.ObjectMeta)
 	}
 
 	return leavingNodes, results
