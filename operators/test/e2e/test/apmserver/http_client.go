@@ -46,7 +46,7 @@ func NewApmServerClient(as apmtype.ApmServer, k *test.K8sClient) (*ApmClient, er
 	var caCerts []*x509.Certificate
 	if as.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"
-		crts, err := k.GetHTTPCerts(name.APMNamer, as.Name)
+		crts, err := k.GetHTTPCerts(name.APMNamer, as.Namespace, as.Name)
 		if err != nil {
 			return nil, err
 		}

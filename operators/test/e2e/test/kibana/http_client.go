@@ -23,7 +23,7 @@ import (
 func NewKibanaClient(kb v1alpha1.Kibana, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
 	if kb.Spec.HTTP.TLS.Enabled() {
-		crts, err := k.GetHTTPCerts(name.KBNamer, kb.Name)
+		crts, err := k.GetHTTPCerts(name.KBNamer, kb.Namespace, kb.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -34,7 +34,7 @@ func NewKibanaClient(kb v1alpha1.Kibana, k *test.K8sClient) (*http.Client, error
 
 // DoKibanaReq executes an HTTP request against a Kibana instance.
 func DoKibanaReq(k *test.K8sClient, b Builder, method string, uri string, body []byte) ([]byte, error) {
-	password, err := k.GetElasticPassword(b.Kibana.Spec.ElasticsearchRef.Name)
+	password, err := k.GetElasticPassword(b.Kibana.Spec.ElasticsearchRef.Namespace, b.Kibana.Spec.ElasticsearchRef.Name)
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting elastic password")
 	}
