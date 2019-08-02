@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
 )
 
-// TestCrossNSAssociation tests associating ElasticSearch running in a different namespace.
+// TestCrossNSAssociation tests associating Elasticsearch and Kibana running in different namespaces.
 func TestCrossNSAssociation(t *testing.T) {
 	// This test currently does not work in the E2E environment because each namespace has a dedicated
 	// controller (see https://github.com/elastic/cloud-on-k8s/issues/1438)
