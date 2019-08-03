@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
@@ -39,7 +40,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const name = "apm-es-association-controller"
+const (
+	name          = "apm-es-association-controller"
+	apmUserSuffix = "apm-user"
+)
 
 var (
 	log            = logf.Log.WithName(name)
@@ -236,10 +240,18 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		return commonv1alpha1.AssociationFailed, err
 	}
 
-	// TODO reconcile external user CRD here
-	err = reconcileEsUser(r.Client, r.scheme, apmServer, es)
-	if err != nil {
-		return commonv1alpha1.AssociationPending, err // TODO distinguish conflicts and non-recoverable errors here
+	if err := association.ReconcileEsUser(
+		r.Client,
+		r.scheme,
+		&apmServer,
+		map[string]string{
+			AssociationLabelName:      apmServer.Name,
+			AssociationLabelNamespace: apmServer.Namespace,
+		},
+		"superuser",
+		apmUserSuffix,
+		es); err != nil { // TODO distinguish conflicts and non-recoverable errors here
+		return commonv1alpha1.AssociationPending, err
 	}
 
 	var expectedEsConfig apmtype.ElasticsearchOutput
@@ -255,7 +267,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	// TODO this is currently limiting the association to the same namespace
 	expectedEsConfig.SSL.CertificateAuthorities = commonv1alpha1.SecretRef{SecretName: publicCertsSecret.Name}
 	expectedEsConfig.Hosts = []string{services.ExternalServiceURL(es)}
-	expectedEsConfig.Auth.SecretKeyRef = clearTextSecretKeySelector(apmServer)
+	expectedEsConfig.Auth.SecretKeyRef = association.ClearTextSecretKeySelector(&apmServer, apmUserSuffix)
 
 	// TODO: this is a bit rough
 	if !reflect.DeepEqual(apmServer.Spec.Elasticsearch, expectedEsConfig) {

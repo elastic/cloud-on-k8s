@@ -150,6 +150,10 @@ func (as *ApmServer) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
 	return as.Spec.Elasticsearch.Auth
 }
 
+func (as *ApmServer) ElasticsearchRef() commonv1alpha1.ObjectSelector {
+	return as.Spec.ElasticsearchRef
+}
+
 func (as *ApmServer) SecureSettings() *commonv1alpha1.SecretRef {
 	return as.Spec.SecureSettings
 }
