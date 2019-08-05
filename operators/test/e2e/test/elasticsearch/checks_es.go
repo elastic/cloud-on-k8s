@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -146,8 +145,6 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 						return err
 					}
 
-					podNameExample := name.NewPodName(es.Name, topoElem)
-
 					// ES returns a string, parse it as an int64, base10:
 					cgroupMemoryLimitsInBytes, err := strconv.ParseInt(
 						nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
@@ -157,9 +154,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 					}
 
 					if cfg.Node == nodeRoles &&
-						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) &&
-						// compare the base names of the pod and topology to ensure they're from the same nodespec
-						name.Basename(node.Name) == name.Basename(podNameExample) {
+						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) {
 						// no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						break

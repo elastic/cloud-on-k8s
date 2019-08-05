@@ -35,8 +35,6 @@ var ESNamer = name.Namer{
 	DefaultSuffixes: []string{"es"},
 }
 
-var esNoDefaultSuffixesNamer = ESNamer.WithDefaultSuffixes()
-
 // StatefulSet returns the name of the StatefulSet corresponding to the given NodeSpec.
 func StatefulSet(esName string, nodeSpecName string) string {
 	return ESNamer.Suffix(esName, nodeSpecName)
