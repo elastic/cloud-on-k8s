@@ -54,7 +54,7 @@ func TestAPMAssociationWithNonExistentES(t *testing.T) {
 func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 	name := "test-apm-del-referenced-es"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	apmBuilder := apmserver.NewBuilder(name).
 		WithNodeCount(1)
 
