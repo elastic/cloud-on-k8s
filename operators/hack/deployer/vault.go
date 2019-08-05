@@ -5,39 +5,49 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
-	"strings"
+
+	"github.com/hashicorp/vault/api"
 )
 
 const (
-	vaultTokenName = "VAULT_TOKEN"
+	serviceAccountKey = "service-account"
 )
 
 // ReadVaultIntoFile is a helper function used to read from Hashicorp Vault
-func ReadVaultIntoFile(fileName, address, roleId, secretId, name string) error {
-	vaultToken, err := NewCommand("vault write -address={{.Address}} -field=token auth/approle/login role_id={{.RoleId}} secret_id={{.SecretId}}").
-		AsTemplate(map[string]interface{}{
-			"Address":  address,
-			"RoleId":   roleId,
-			"SecretId": secretId,
-		}).
-		WithoutStreaming().
-		Output()
+func ReadVaultIntoFile(fileName, address, roleId, secretId, secretPath string) error {
+	client, err := api.NewClient(&api.Config{Address: address})
 	if err != nil {
 		return err
 	}
 
-	serviceAccountKey, err := NewCommand("vault read -address={{.Address}} -field=service-account {{.Name}}").
-		AsTemplate(map[string]interface{}{
-			"Address": address,
-			"Name":    name,
-		}).
-		WithVariable(vaultTokenName, strings.Trim(vaultToken, "\n")).
-		WithoutStreaming().
-		Output()
+	// fetch the token
+	data := map[string]interface{}{
+		"role_id":   roleId,
+		"secret_id": secretId,
+	}
+	resp, err := client.Logical().Write("auth/approle/login", data)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(fileName, []byte(serviceAccountKey), 0644)
+	if resp.Auth == nil {
+		return fmt.Errorf("no auth info in response")
+	}
+
+	client.SetToken(resp.Auth.ClientToken)
+
+	// fetch the secret
+	res, err := client.Logical().Read(secretPath)
+	if err != nil {
+		return err
+	}
+
+	serviceAccount, ok := res.Data[serviceAccountKey]
+	if !ok {
+		return fmt.Errorf("field %s not found at %s", serviceAccountKey, secretPath)
+	}
+
+	return ioutil.WriteFile(fileName, []byte(serviceAccount.(string)), 0644)
 }
