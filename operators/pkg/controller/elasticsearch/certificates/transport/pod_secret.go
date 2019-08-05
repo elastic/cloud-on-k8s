@@ -43,7 +43,8 @@ func ensureTransportCertificatesSecretContentsForPod(
 	if privateKeyData, ok := secret.Data[PodKeyFileName(pod.Name)]; ok {
 		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
 		if err != nil {
-			log.Error(err, "Unable to parse stored private key", "pod", pod.Name)
+			log.Error(err, "Unable to parse stored private key",
+				"namespace", pod.Namespace, "pod_name", pod.Name)
 		} else {
 			needsNewPrivateKey = false
 			privateKey = storedPrivateKey
@@ -64,7 +65,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 	if shouldIssueNewCertificate(es, *secret, pod, privateKey, svcs, ca, rotationParams.RotateBefore) {
 		log.Info(
 			"Issuing new certificate",
-			"pod", pod.Name,
+			"pod_name", pod.Name,
 		)
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
@@ -117,7 +118,8 @@ func shouldIssueNewCertificate(
 
 	generalNames, err := buildGeneralNames(es, svcs, pod)
 	if err != nil {
-		log.Error(err, "Cannot create GeneralNames for the TLS certificate", "pod", pod.Name)
+		log.Error(err, "Cannot create GeneralNames for the TLS certificate",
+			"namespace", pod.Namespace, "pod_name", pod.Name)
 		return true
 	}
 
@@ -130,10 +132,11 @@ func shouldIssueNewCertificate(
 	if !publicKeyOk || publicKey.N.Cmp(privateKey.PublicKey.N) != 0 || publicKey.E != privateKey.PublicKey.E {
 		log.Info(
 			"Certificate belongs do a different public key, should issue new",
+			"namespace", pod.Namespace,
 			"subject", cert.Subject,
 			"issuer", cert.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
-			"pod", pod.Name,
+			"pod_name", pod.Name,
 		)
 		return true
 	}
@@ -148,6 +151,7 @@ func shouldIssueNewCertificate(
 	if _, err := cert.Verify(verifyOpts); err != nil {
 		log.Info(
 			fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
+			"namespace", pod.Namespace,
 			"subject", cert.Subject,
 			"issuer", cert.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
@@ -157,14 +161,16 @@ func shouldIssueNewCertificate(
 	}
 
 	if time.Now().After(cert.NotAfter.Add(-certReconcileBefore)) {
-		log.Info("Certificate soon to expire, should issue new", "pod", pod.Name)
+		log.Info("Certificate soon to expire, should issue new",
+			"namespace", pod.Namespace, "pod", pod.Name)
 		return true
 	}
 
 	// compare actual vs. expected SANs
 	expected, err := certificates.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
-		log.Error(err, "Cannot marshal subject alternative names", "pod", pod.Name)
+		log.Error(err, "Cannot marshal subject alternative names",
+			"namespace", pod.Namespace, "pod_name", pod.Name)
 		return true
 	}
 	extraExtensionFound := false
@@ -174,12 +180,14 @@ func shouldIssueNewCertificate(
 		}
 		extraExtensionFound = true
 		if !reflect.DeepEqual(ext.Value, expected) {
-			log.Info("Certificate SANs do not match expected one, should issue new", "pod", pod.Name)
+			log.Info("Certificate SANs do not match expected one, should issue new",
+				"namespace", pod.Namespace, "pod_name", pod.Name)
 			return true
 		}
 	}
 	if !extraExtensionFound {
-		log.Info("SAN extra extension not found, should issue new certificate", "pod", pod.Name)
+		log.Info("SAN extra extension not found, should issue new certificate",
+			"namespace", pod.Namespace, "pod_name", pod.Name)
 		return true
 	}
 
@@ -190,13 +198,15 @@ func shouldIssueNewCertificate(
 func extractTransportCert(secret corev1.Secret, pod corev1.Pod, commonName string) *x509.Certificate {
 	certData, ok := secret.Data[PodCertFileName(pod.Name)]
 	if !ok {
-		log.Info("No tls certificate found in secret", "pod", pod.Name)
+		log.Info("No tls certificate found in secret",
+			"namespace", pod.Namespace, "pod_name", pod.Name)
 		return nil
 	}
 
 	certs, err := certificates.ParsePEMCerts(certData)
 	if err != nil {
-		log.Error(err, "Invalid certificate data found, issuing new certificate", "pod", pod.Name)
+		log.Error(err, "Invalid certificate data found, issuing new certificate",
+			"namespace", pod.Namespace, "pod_name", pod.Name)
 		return nil
 	}
 
@@ -211,9 +221,10 @@ func extractTransportCert(secret corev1.Secret, pod corev1.Pod, commonName strin
 
 	log.Info(
 		"Did not find a certificate with the expected common name",
-		"pod", pod.Name,
-		"expected", commonName,
-		"found", names,
+		"namespace", pod.Namespace,
+		"pod_name", pod.Name,
+		"expected_name", commonName,
+		"actual_name", names,
 	)
 
 	return nil

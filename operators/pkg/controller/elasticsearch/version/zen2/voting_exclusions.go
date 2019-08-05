@@ -72,13 +72,13 @@ func ClearVotingConfigExclusions(es v1alpha1.Elasticsearch, c k8s.Client, esClie
 		return false, err
 	}
 	if !canClear {
-		log.V(1).Info("Cannot clear voting exclusions yet", "namespace", es.Namespace, "name", es.Name)
+		log.V(1).Info("Cannot clear voting exclusions yet", "namespace", es.Namespace, "es_name", es.Name)
 		return true, nil // requeue
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
-	log.Info("Ensuring no voting exclusions are set", "namespace", es.Namespace, "name", es.Name)
+	log.Info("Ensuring no voting exclusions are set", "namespace", es.Namespace, "es_name", es.Name)
 	if err := esClient.DeleteVotingConfigExclusions(ctx, false); err != nil {
 		return false, err
 	}
