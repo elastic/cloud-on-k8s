@@ -25,7 +25,7 @@ import (
 
 const (
 	userName       = "default-kibana-foo-kibana-user"
-	userSecretName = "kibana-foo-kibana-user"
+	userSecretName = "kibana-foo-kibana-user" // nolint
 )
 
 var esFixture = estype.Elasticsearch{

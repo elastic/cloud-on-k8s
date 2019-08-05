@@ -52,13 +52,6 @@ var apmFixture = apmtype.ApmServer{
 	},
 }
 
-var esFixture = estype.Elasticsearch{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "es",
-		Namespace: "default",
-	},
-}
-
 func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
 	if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {

@@ -42,14 +42,6 @@ var esFixture = estype.Elasticsearch{
 		UID:       "f8d564d9-885e-11e9-896d-08002703f062",
 	},
 }
-var esRefFixture = metav1.OwnerReference{
-	APIVersion:         "elasticsearch.k8s.elastic.co/v1alpha1",
-	Kind:               "Elasticsearch",
-	Name:               "es-foo",
-	UID:                "f8d564d9-885e-11e9-896d-08002703f062",
-	Controller:         &t,
-	BlockOwnerDeletion: &t,
-}
 
 var kibanaFixtureUID types.UID = "82257b19-8862-11e9-896d-08002703f062"
 
@@ -67,16 +59,6 @@ var kibanaFixture = kbtype.Kibana{
 			Namespace: esFixture.Namespace,
 		},
 	},
-}
-
-var t = true
-var ownerRefFixture = metav1.OwnerReference{
-	APIVersion:         "kibana.k8s.elastic.co/v1alpha1",
-	Kind:               "Kibana",
-	Name:               "foo",
-	UID:                kibanaFixtureUID,
-	Controller:         &t,
-	BlockOwnerDeletion: &t,
 }
 
 func setupScheme(t *testing.T) *runtime.Scheme {
@@ -134,7 +116,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy path: should create a secret and a user CRD",
+			name: "Happy path: should create two secrets",
 			args: args{
 				initialObjects: nil,
 				kibana:         kibanaFixture,
