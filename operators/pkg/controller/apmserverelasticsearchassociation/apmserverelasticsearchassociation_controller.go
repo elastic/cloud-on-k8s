@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
@@ -168,14 +169,18 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	}
 
 	newStatus, err := r.reconcileInternal(apmServer)
-	// maybe update status
-	origStatus := apmServer.Status.DeepCopy()
-	apmServer.Status.Association = newStatus
-
-	if !reflect.DeepEqual(*origStatus, apmServer.Status) {
+	oldStatus := apmServer.Status.Association
+	if !reflect.DeepEqual(oldStatus, newStatus) {
+		apmServer.Status.Association = newStatus
 		if err := r.Status().Update(&apmServer); err != nil {
 			return defaultRequeue, err
 		}
+		r.recorder.AnnotatedEventf(&apmServer,
+			annotation.ForAssociationStatusChange(oldStatus, newStatus),
+			corev1.EventTypeNormal,
+			events.EventAssociationStatusChange,
+			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
+
 	}
 	return resultFromStatus(newStatus), err
 }
@@ -199,11 +204,9 @@ func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) fin
 func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
 	switch status {
 	case commonv1alpha1.AssociationPending:
-		return defaultRequeue // retry again
-	case commonv1alpha1.AssociationEstablished, commonv1alpha1.AssociationFailed:
-		return reconcile.Result{} // we are done or there is not much we can do
+		return defaultRequeue // retry
 	default:
-		return reconcile.Result{} // make the compiler happy
+		return reconcile.Result{} // we are done or there is not much we can do
 	}
 }
 
@@ -211,7 +214,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.ElasticsearchRef
 	if !elasticsearchRef.IsDefined() {
-		return "", nil
+		return commonv1alpha1.AssociationUnknown, nil
 	}
 	if elasticsearchRef.Namespace == "" {
 		// no namespace provided: default to the APM server namespace
@@ -233,6 +236,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	var es estype.Elasticsearch
 	err = r.Get(elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
+		r.recorder.Eventf(&apmServer, corev1.EventTypeWarning, events.EventAssociationError,
+			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// Es not found, could be deleted or not yet created? Recheck in a while
 			return commonv1alpha1.AssociationPending, nil

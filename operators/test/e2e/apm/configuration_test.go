@@ -55,10 +55,11 @@ func TestUpdateConfiguration(t *testing.T) {
 	}
 
 	name := "test-apm-configuration"
+	namespace := test.Ctx().ManagedNamespace(0)
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	apmBuilder := apmserver.NewBuilder(name).
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithNamespace(namespace).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
 
@@ -77,7 +78,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				},
 			},
 			// Keystore should be empty
-			test.CheckKeystoreEntries(k, test.ApmServerPodListOptions(name), APMKeystoreCmd, nil),
+			test.CheckKeystoreEntries(k, test.ApmServerPodListOptions(namespace, name), APMKeystoreCmd, nil),
 		}
 	}
 	apmNamespacedName := types.NamespacedName{
@@ -90,7 +91,7 @@ func TestUpdateConfiguration(t *testing.T) {
 			{
 				Name: "Check the value of a parameter in the configuration",
 				Test: func(t *testing.T) {
-					config, err := partialAPMConfiguration(k, name)
+					config, err := partialAPMConfiguration(k, namespace, name)
 					require.NoError(t, err)
 					esHost := services.ExternalServiceURL(esBuilder.Elasticsearch)
 					require.Equal(t, config.Output.Elasticsearch.Hosts[0], esHost)
@@ -101,7 +102,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				Name: "Add a Keystore to the APM server",
 				Test: func(t *testing.T) {
 					// get current pod id
-					pods, err := k.GetPods(test.ApmServerPodListOptions(name))
+					pods, err := k.GetPods(test.ApmServerPodListOptions(namespace, name))
 					require.NoError(t, err)
 					require.True(t, len(pods) == 1)
 					previousPodUID = &pods[0].UID
@@ -118,7 +119,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				Name: "APM Pod should be recreated",
 				Test: test.Eventually(func() error {
 					// get current pod id
-					pods, err := k.GetPods(test.ApmServerPodListOptions(name))
+					pods, err := k.GetPods(test.ApmServerPodListOptions(namespace, name))
 					if err != nil {
 						return err
 					}
@@ -132,13 +133,13 @@ func TestUpdateConfiguration(t *testing.T) {
 				}),
 			},
 
-			test.CheckKeystoreEntries(k, test.ApmServerPodListOptions(name), APMKeystoreCmd, []string{"logging.verbose"}),
+			test.CheckKeystoreEntries(k, test.ApmServerPodListOptions(namespace, name), APMKeystoreCmd, []string{"logging.verbose"}),
 
 			test.Step{
 				Name: "Customize configuration of the APM server",
 				Test: func(t *testing.T) {
 					// get current pod id
-					pods, err := k.GetPods(test.ApmServerPodListOptions(name))
+					pods, err := k.GetPods(test.ApmServerPodListOptions(namespace, name))
 					require.NoError(t, err)
 					require.True(t, len(pods) == 1)
 					previousPodUID = &pods[0].UID
@@ -156,7 +157,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				Name: "APM Pod should be recreated",
 				Test: test.Eventually(func() error {
 					// get current pod id
-					pods, err := k.GetPods(test.ApmServerPodListOptions(name))
+					pods, err := k.GetPods(test.ApmServerPodListOptions(namespace, name))
 					if err != nil {
 						return err
 					}
@@ -173,7 +174,7 @@ func TestUpdateConfiguration(t *testing.T) {
 			test.Step{
 				Name: "Check the value of a parameter in the configuration",
 				Test: func(t *testing.T) {
-					config, err := partialAPMConfiguration(k, name)
+					config, err := partialAPMConfiguration(k, namespace, name)
 					require.NoError(t, err)
 					require.Equal(t, config.Output.Elasticsearch.CompressionLevel, 1) // value should be updated to 1
 				},
@@ -194,10 +195,10 @@ func TestUpdateConfiguration(t *testing.T) {
 
 }
 
-func partialAPMConfiguration(k *test.K8sClient, name string) (PartialApmConfiguration, error) {
+func partialAPMConfiguration(k *test.K8sClient, namespace, name string) (PartialApmConfiguration, error) {
 	var config PartialApmConfiguration
 	// get current pod id
-	pods, err := k.GetPods(test.ApmServerPodListOptions(name))
+	pods, err := k.GetPods(test.ApmServerPodListOptions(namespace, name))
 	if err != nil {
 		return config, err
 	}

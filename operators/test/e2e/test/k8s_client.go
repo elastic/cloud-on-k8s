@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -105,9 +106,9 @@ func (k *K8sClient) GetPods(listOpts k8sclient.ListOptions) ([]corev1.Pod, error
 	return podList.Items, nil
 }
 
-func (k *K8sClient) GetPod(name string) (corev1.Pod, error) {
+func (k *K8sClient) GetPod(namespace, name string) (corev1.Pod, error) {
 	var pod corev1.Pod
-	if err := k.Client.Get(types.NamespacedName{Namespace: Ctx().ManagedNamespace(0), Name: name}, &pod); err != nil {
+	if err := k.Client.Get(types.NamespacedName{Namespace: namespace, Name: name}, &pod); err != nil {
 		return corev1.Pod{}, err
 	}
 	return pod, nil
@@ -129,10 +130,10 @@ func (k *K8sClient) CheckPodCount(listOpts k8sclient.ListOptions, expectedCount 
 	return nil
 }
 
-func (k *K8sClient) GetService(name string) (*corev1.Service, error) {
+func (k *K8sClient) GetService(namespace, name string) (*corev1.Service, error) {
 	var service corev1.Service
 	key := types.NamespacedName{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: namespace,
 		Name:      name,
 	}
 	if err := k.Client.Get(key, &service); err != nil {
@@ -141,10 +142,10 @@ func (k *K8sClient) GetService(name string) (*corev1.Service, error) {
 	return &service, nil
 }
 
-func (k *K8sClient) GetEndpoints(name string) (*corev1.Endpoints, error) {
+func (k *K8sClient) GetEndpoints(namespace, name string) (*corev1.Endpoints, error) {
 	var endpoints corev1.Endpoints
 	key := types.NamespacedName{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: namespace,
 		Name:      name,
 	}
 	if err := k.Client.Get(key, &endpoints); err != nil {
@@ -153,12 +154,20 @@ func (k *K8sClient) GetEndpoints(name string) (*corev1.Endpoints, error) {
 	return &endpoints, nil
 }
 
-func (k *K8sClient) GetElasticPassword(esName string) (string, error) {
+func (k *K8sClient) GetEvents(listOpts k8sclient.ListOptions) ([]corev1.Event, error) {
+	var eventList corev1.EventList
+	if err := k.Client.List(&listOpts, &eventList); err != nil {
+		return nil, err
+	}
+	return eventList.Items, nil
+}
+
+func (k *K8sClient) GetElasticPassword(namespace, esName string) (string, error) {
 	secretName := esName + "-es-elastic-user"
 	elasticUserKey := "elastic"
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: namespace,
 		Name:      secretName,
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
@@ -171,12 +180,12 @@ func (k *K8sClient) GetElasticPassword(esName string) (string, error) {
 	return string(password), nil
 }
 
-func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerName string) ([]*x509.Certificate, error) {
+func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName string) ([]*x509.Certificate, error) {
 	var secret corev1.Secret
 	secretNSN := http.PublicCertsSecretRef(
 		namer,
 		types.NamespacedName{
-			Namespace: Ctx().ManagedNamespace(0),
+			Namespace: ownerNamespace,
 			Name:      ownerName,
 		},
 	)
@@ -196,10 +205,10 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerName string) ([]*x509.Ce
 }
 
 // GetCA returns the CA of the given owner name
-func (k *K8sClient) GetCA(ownerName string, caType certificates.CAType) (*certificates.CA, error) {
+func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.CAType) (*certificates.CA, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: ownerNamespace,
 		Name:      certificates.CAInternalSecretName(esname.ESNamer, ownerName, caType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
@@ -232,10 +241,10 @@ func (k *K8sClient) GetCA(ownerName string, caType certificates.CAType) (*certif
 }
 
 // GetTransportCert retrieves the certificate of the CA and the transport certificate
-func (k *K8sClient) GetTransportCert(podName string) (caCert, transportCert []*x509.Certificate, err error) {
+func (k *K8sClient) GetTransportCert(podNamespace, podName string) (caCert, transportCert []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: podNamespace,
 		Name:      esname.TransportCertsSecret(podName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
@@ -302,30 +311,39 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 	return stdout.String(), stderr.String(), err
 }
 
-func ESPodListOptions(esName string) k8sclient.ListOptions {
+func ESPodListOptions(esNamespace, esName string) k8sclient.ListOptions {
 	return k8sclient.ListOptions{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: esNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			common.TypeLabelName:       label.Type,
 			label.ClusterNameLabelName: esName,
 		}))}
 }
 
-func KibanaPodListOptions(kbName string) k8sclient.ListOptions {
+func KibanaPodListOptions(kbNamespace, kbName string) k8sclient.ListOptions {
 	return k8sclient.ListOptions{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: kbNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			kblabel.KibanaNameLabelName: kbName,
 		}))}
 }
 
-func ApmServerPodListOptions(apmName string) k8sclient.ListOptions {
+func ApmServerPodListOptions(apmNamespace, apmName string) k8sclient.ListOptions {
 	return k8sclient.ListOptions{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: apmNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			common.TypeLabelName:             apmlabels.Type,
 			apmlabels.ApmServerNameLabelName: apmName,
 		}))}
+}
+
+func EventListOptions(namespace, name string) k8sclient.ListOptions {
+	return k8sclient.ListOptions{
+		FieldSelector: fields.SelectorFromSet(fields.Set(map[string]string{
+			"involvedObject.name":      name,
+			"involvedObject.namespace": namespace,
+		})),
+	}
 }
 
 func GetFirstPodMatching(pods []corev1.Pod, predicate func(pod corev1.Pod) bool) (corev1.Pod, bool) {

@@ -32,7 +32,7 @@ func CheckKibanaDeployment(b Builder, k *test.K8sClient) test.Step {
 		Test: test.Eventually(func() error {
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
-				Namespace: test.Ctx().ManagedNamespace(0),
+				Namespace: b.Kibana.Namespace,
 				Name:      kbname.Deployment(b.Kibana.Name),
 			}, &dep)
 			if b.Kibana.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {
@@ -54,7 +54,7 @@ func CheckKibanaPodsCount(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana pods count should match the expected one",
 		Test: test.Eventually(func() error {
-			return k.CheckPodCount(test.KibanaPodListOptions(b.Kibana.Name), int(b.Kibana.Spec.NodeCount))
+			return k.CheckPodCount(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name), int(b.Kibana.Spec.NodeCount))
 		}),
 	}
 }
@@ -64,7 +64,7 @@ func CheckKibanaPodsRunning(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana pods should eventually be running",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.KibanaPodListOptions(b.Kibana.Name))
+			pods, err := k.GetPods(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name))
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 			for _, s := range []string{
 				kbname.HTTPService(b.Kibana.Name),
 			} {
-				if _, err := k.GetService(s); err != nil {
+				if _, err := k.GetService(b.Kibana.Namespace, s); err != nil {
 					return err
 				}
 			}
@@ -106,7 +106,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 				if addrCount == 0 {
 					continue // maybe no Kibana in this b
 				}
-				endpoints, err := k.GetEndpoints(endpointName)
+				endpoints, err := k.GetEndpoints(b.Kibana.Namespace, endpointName)
 				if err != nil {
 					return err
 				}

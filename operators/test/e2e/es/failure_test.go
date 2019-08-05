@@ -31,8 +31,8 @@ func TestKillOneDataNode(t *testing.T) {
 		return label.IsDataNode(p) && !label.IsMasterNode(p)
 	}
 
-	test.RunFailure(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchDataNode),
+	test.RunRecoverableFailureScenario(t,
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchDataNode),
 		b)
 }
 
@@ -46,8 +46,8 @@ func TestKillOneMasterNode(t *testing.T) {
 		return !label.IsDataNode(p) && label.IsMasterNode(p)
 	}
 
-	test.RunFailure(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchMasterNode),
+	test.RunRecoverableFailureScenario(t,
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchMasterNode),
 		b)
 }
 
@@ -59,8 +59,8 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 		return true // match first node we find
 	}
 
-	test.RunFailure(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchNode),
+	test.RunRecoverableFailureScenario(t,
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchNode),
 		b)
 }
 
@@ -93,7 +93,7 @@ func TestKillCorrectPVReuse(t *testing.T) {
 			{
 				Name: "Kill a node",
 				Test: func(t *testing.T) {
-					pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Name))
+					pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
 					require.NoError(t, err)
 					require.True(t, len(pods) > 0, "need at least one pod to kill")
 					for i, pod := range pods {
@@ -108,7 +108,7 @@ func TestKillCorrectPVReuse(t *testing.T) {
 			{
 				Name: "Wait for pod to be deleted",
 				Test: test.Eventually(func() error {
-					pod, err := k.GetPod(killedPod.Name)
+					pod, err := k.GetPod(killedPod.Namespace, killedPod.Name)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
@@ -150,7 +150,7 @@ func TestKillCorrectPVReuse(t *testing.T) {
 			Test: func(t *testing.T) {
 				// should be resurrected with same name due to second PVC still around and forcing the pods name
 				// back to the old one
-				pod, err := k.GetPod(killedPod.Name)
+				pod, err := k.GetPod(killedPod.Namespace, killedPod.Name)
 				require.NoError(t, err)
 				var checkedVolumes bool
 				for _, v := range pod.Spec.Volumes {
@@ -187,12 +187,12 @@ func TestDeleteServices(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-failure-delete-services").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Delete external service",
 				Test: func(t *testing.T) {
-					s, err := k.GetService(esname.HTTPService(b.Elasticsearch.Name))
+					s, err := k.GetService(b.Elasticsearch.Namespace, esname.HTTPService(b.Elasticsearch.Name))
 					require.NoError(t, err)
 					err = k.Client.Delete(s)
 					require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-delete-es-elastic-user-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Delete elastic user secret",
@@ -229,7 +229,7 @@ func TestDeleteCACert(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-failure-delete-ca-cert").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Delete CA cert",

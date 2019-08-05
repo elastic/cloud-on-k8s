@@ -50,7 +50,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "APM Server pods should be eventually be removed",
 			Test: test.Eventually(func() error {
-				return k.CheckPodCount(test.ApmServerPodListOptions(b.ApmServer.Name), 0)
+				return k.CheckPodCount(test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name), 0)
 			}),
 		},
 	}

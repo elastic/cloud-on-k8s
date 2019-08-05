@@ -6,17 +6,26 @@ package apmserver
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type apmClusterChecks struct {
 	apmClient *ApmClient
+	esClient  client.Client
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
@@ -26,6 +35,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		a.CheckApmServerReachable(),
 		a.CheckApmServerVersion(b.ApmServer),
 		a.CheckEventsAPI(),
+		a.CheckEventsInElasticsearch(b.ApmServer, k),
 	}
 }
 
@@ -47,7 +57,23 @@ func (c *apmClusterChecks) BuildApmServerClient(apm apmtype.ApmServer, k *test.K
 					return err
 				}
 				c.apmClient = apmClient
-				return nil
+
+				// Get the associated Elasticsearch, we assume here that ElasticsearchRef is not nil and that the
+				// Elasticsearch object has been created before the APM Server.
+				var es v1alpha1.Elasticsearch
+				namespace := apm.Spec.ElasticsearchRef.Namespace
+				if len(namespace) == 0 {
+					namespace = apm.Namespace
+				}
+				if err := k.Client.Get(types.NamespacedName{
+					Namespace: namespace,
+					Name:      apm.Spec.ElasticsearchRef.Name,
+				}, &es); err != nil {
+					return err
+				}
+				// Build the Elasticsearch client
+				c.esClient, err = elasticsearch.NewElasticsearchClient(es, k)
+				return err
 			})(t)
 		},
 	}
@@ -101,7 +127,96 @@ func (c *apmClusterChecks) CheckEventsAPI() test.Step {
 				assert.Equal(t, eventsErrorResponse.Accepted, 2)
 				assert.Len(t, eventsErrorResponse.Errors, 0)
 			}
-			// TODO: verify that the events eventually show up in Elasticsearch
 		},
 	}
+}
+
+// CountResult maps the result of a /index/_count request.
+type CountResult struct {
+	Count  int `json:"count"`
+	Shards struct {
+		Total      int `json:"total"`
+		Successful int `json:"successful"`
+		Skipped    int `json:"skipped"`
+		Failed     int `json:"failed"`
+	} `json:"_shards"`
+}
+
+// CheckEventsInElasticsearch checks that the events sent in the previous step have been stored.
+// We only count document to not rely on the internal schema of the APM Server.
+func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmtype.ApmServer, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "Events should eventually show up in Elasticsearch",
+		Test: test.Eventually(func() error {
+			// Fetch the last version of the APM Server
+			var updatedApmServer apmtype.ApmServer
+			if err := k.Client.Get(k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
+				return err
+			}
+
+			// Check that the metric has been stored
+			err := assertCountIndexEqual(
+				c.esClient,
+				fmt.Sprintf("apm-%s-metric-2017.05.30", updatedApmServer.Spec.Version),
+				1,
+			)
+			if err != nil {
+				return err
+			}
+
+			// Check that the error has been stored
+			err = assertCountIndexEqual(
+				c.esClient,
+				fmt.Sprintf("apm-%s-error-2018.08.09", updatedApmServer.Spec.Version),
+				1,
+			)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+}
+
+// assertCountIndexEqual asserts that the number of document in an index is the expected one, it raises an error otherwise.
+func assertCountIndexEqual(esClient client.Client, index string, expected int) error {
+	metricCount, err := countIndex(esClient, index)
+	if err != nil {
+		return err
+	}
+	if metricCount != expected {
+		return fmt.Errorf("%d document expected in index %s, got %d instead", expected, index, metricCount)
+	}
+	return nil
+}
+
+// countIndex counts the number of document in an index.
+func countIndex(esClient client.Client, indexName string) (int, error) {
+	r, err := http.NewRequest(
+		http.MethodGet, fmt.Sprintf("/%s/_count", indexName),
+		nil,
+	)
+	if err != nil {
+		return 0, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+	defer cancel()
+	response, err := esClient.Request(ctx, r)
+	if err != nil {
+		return 0, err
+	}
+	defer response.Body.Close() // nolint
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	// Unmarshal the response
+	var countResult CountResult
+	err = json.Unmarshal(body, &countResult)
+	if err != nil {
+		return 0, err
+	}
+	return countResult.Count, nil
 }

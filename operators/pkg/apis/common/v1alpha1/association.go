@@ -13,6 +13,7 @@ import (
 type AssociationStatus string
 
 const (
+	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"
 	AssociationFailed      AssociationStatus = "Failed"

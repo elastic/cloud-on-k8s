@@ -38,13 +38,13 @@ func CheckCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 		Name: "ES certificate authority should be set and deployed",
 		Test: test.Eventually(func() error {
 			// Check that the Transport CA may be loaded
-			_, err := k.GetCA(b.Elasticsearch.Name, certificates.TransportCAType)
+			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.TransportCAType)
 			if err != nil {
 				return err
 			}
 
 			// Check that the HTTP CA may be loaded
-			_, err = k.GetCA(b.Elasticsearch.Name, certificates.HTTPCAType)
+			_, err = k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.HTTPCAType)
 			if err != nil {
 				return err
 			}
@@ -59,12 +59,12 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES pods should eventually have a certificate",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
 			if err != nil {
 				return err
 			}
 			for _, pod := range pods {
-				_, _, err := k.GetTransportCert(pod.Name)
+				_, _, err := k.GetTransportCert(pod.Namespace, pod.Name)
 				if err != nil {
 					return err
 				}
@@ -79,7 +79,7 @@ func CheckESPodsRunning(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES pods should eventually be running",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
 			if err != nil {
 				return err
 			}
@@ -99,7 +99,7 @@ func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES version should be the expected one",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
 			if err != nil {
 				return err
 			}
@@ -125,7 +125,7 @@ func CheckESPodsReady(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES pods should eventually be ready",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
 			if err != nil {
 				return err
 			}
@@ -175,7 +175,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 			for _, s := range []string{
 				esname.HTTPService(b.Elasticsearch.Name),
 			} {
-				if _, err := k.GetService(s); err != nil {
+				if _, err := k.GetService(b.Elasticsearch.Namespace, s); err != nil {
 					return err
 				}
 			}
@@ -195,7 +195,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 				if addrCount == 0 {
 					continue // maybe no Kibana
 				}
-				endpoints, err := k.GetEndpoints(endpointName)
+				endpoints, err := k.GetEndpoints(b.Elasticsearch.Namespace, endpointName)
 				if err != nil {
 					return err
 				}
@@ -234,7 +234,7 @@ func CheckESPassword(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Elastic password should be available",
 		Test: test.Eventually(func() error {
-			password, err := k.GetElasticPassword(b.Elasticsearch.Name)
+			password, err := k.GetElasticPassword(b.Elasticsearch.Namespace, b.Elasticsearch.Name)
 			if err != nil {
 				return err
 			}
