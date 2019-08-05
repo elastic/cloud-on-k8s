@@ -39,15 +39,6 @@ var (
 			PodIP: testIP,
 		},
 	}
-	testSvc = corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-service",
-			Namespace: "default",
-		},
-		Spec: corev1.ServiceSpec{
-			ClusterIP: "2.2.3.3",
-		},
-	}
 )
 
 const (
@@ -98,7 +89,7 @@ func init() {
 	}
 
 	validatedCertificateTemplate, err = createValidatedCertificateTemplate(
-		testPod, testES, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
+		testPod, testES, testCSR, certificates.DefaultCertValidity)
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
 	}

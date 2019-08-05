@@ -33,7 +33,6 @@ func ReconcileTransportCertificatesSecrets(
 	scheme *runtime.Scheme,
 	ca *certificates.CA,
 	es v1alpha1.Elasticsearch,
-	services []corev1.Service,
 	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling transport certificate secrets", "namespace", es.Namespace, "es_name", es.Name)
@@ -60,7 +59,7 @@ func ReconcileTransportCertificatesSecrets(
 		}
 
 		if err := ensureTransportCertificatesSecretContentsForPod(
-			es, secret, pod, services, ca, rotationParams,
+			es, secret, pod, ca, rotationParams,
 		); err != nil {
 			return reconcile.Result{}, err
 		}

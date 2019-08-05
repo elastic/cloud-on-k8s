@@ -33,7 +33,6 @@ func ensureTransportCertificatesSecretContentsForPod(
 	es v1alpha1.Elasticsearch,
 	secret *corev1.Secret,
 	pod corev1.Pod,
-	svcs []corev1.Service,
 	ca *certificates.CA,
 	rotationParams certificates.RotationParams,
 ) error {
@@ -62,7 +61,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 		secret.Data[PodKeyFileName(pod.Name)] = certificates.EncodePEMPrivateKey(*privateKey)
 	}
 
-	if shouldIssueNewCertificate(es, *secret, pod, privateKey, svcs, ca, rotationParams.RotateBefore) {
+	if shouldIssueNewCertificate(es, *secret, pod, privateKey, ca, rotationParams.RotateBefore) {
 		log.Info(
 			"Issuing new certificate",
 			"pod_name", pod.Name,
@@ -80,7 +79,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 		}
 
 		validatedCertificateTemplate, err := createValidatedCertificateTemplate(
-			pod, es, svcs, parsedCSR, rotationParams.Validity,
+			pod, es, parsedCSR, rotationParams.Validity,
 		)
 		if err != nil {
 			return err
@@ -110,13 +109,12 @@ func shouldIssueNewCertificate(
 	secret corev1.Secret,
 	pod corev1.Pod,
 	privateKey *rsa.PrivateKey,
-	svcs []corev1.Service,
 	ca *certificates.CA,
 	certReconcileBefore time.Duration,
 ) bool {
 	certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
 
-	generalNames, err := buildGeneralNames(es, svcs, pod)
+	generalNames, err := buildGeneralNames(es, pod)
 	if err != nil {
 		log.Error(err, "Cannot create GeneralNames for the TLS certificate",
 			"namespace", pod.Namespace, "pod_name", pod.Name)

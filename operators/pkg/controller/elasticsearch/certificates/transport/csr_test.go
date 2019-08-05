@@ -36,7 +36,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	cn := "test-pod-name.node.test-es-name.test-namespace.es.local"
 
 	validatedCert, err := createValidatedCertificateTemplate(
-		testPod, testES, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+		testPod, testES, testCSR, certificates.DefaultCertValidity,
 	)
 	require.NoError(t, err)
 
@@ -74,7 +74,6 @@ func Test_buildGeneralNames(t *testing.T) {
 
 	type args struct {
 		cluster v1alpha1.Elasticsearch
-		svcs    []corev1.Service
 		pod     corev1.Pod
 	}
 	tests := []struct {
@@ -98,7 +97,7 @@ func Test_buildGeneralNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildGeneralNames(tt.args.cluster, tt.args.svcs, tt.args.pod)
+			got, err := buildGeneralNames(tt.args.cluster, tt.args.pod)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})

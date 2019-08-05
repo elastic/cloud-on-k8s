@@ -22,11 +22,10 @@ import (
 func createValidatedCertificateTemplate(
 	pod corev1.Pod,
 	cluster v1alpha1.Elasticsearch,
-	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
 ) (*certificates.ValidatedCertificateTemplate, error) {
-	generalNames, err := buildGeneralNames(cluster, svcs, pod)
+	generalNames, err := buildGeneralNames(cluster, pod)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +63,6 @@ func createValidatedCertificateTemplate(
 
 func buildGeneralNames(
 	cluster v1alpha1.Elasticsearch,
-	svcs []corev1.Service,
 	pod corev1.Pod,
 ) ([]certificates.GeneralName, error) {
 	podIP := net.ParseIP(pod.Status.PodIP)

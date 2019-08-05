@@ -95,7 +95,6 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				tt.args.secret,
 				*tt.args.pod,
 				testRSAPrivateKey,
-				[]corev1.Service{testSvc},
 				testCA,
 				tt.args.rotateBefore,
 			); got != tt.want {
@@ -205,7 +204,6 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 				testES,
 				tt.secret,
 				*tt.pod,
-				[]corev1.Service{testSvc},
 				testCA,
 				certificates.RotationParams{
 					Validity:     certificates.DefaultCertValidity,

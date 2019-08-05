@@ -112,7 +112,6 @@ func Reconcile(
 		scheme,
 		transportCA,
 		es,
-		services,
 		certRotation,
 	)
 	if results.WithResult(result).WithError(err).HasError() {
