@@ -165,19 +165,17 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	}
 
 	newStatus, err := r.reconcileInternal(apmServer)
-	// maybe update status
-	origStatus := apmServer.Status.DeepCopy()
-	apmServer.Status.Association = newStatus
-
-	if !reflect.DeepEqual(*origStatus, apmServer.Status) {
+	oldStatus := apmServer.Status.Association
+	if !reflect.DeepEqual(oldStatus, newStatus) {
+		apmServer.Status.Association = newStatus
 		if err := r.Status().Update(&apmServer); err != nil {
 			return defaultRequeue, err
 		}
 		r.recorder.AnnotatedEventf(&apmServer,
-			annotation.ForAssociationStatusChange(origStatus.Association, newStatus),
+			annotation.ForAssociationStatusChange(oldStatus, newStatus),
 			corev1.EventTypeNormal,
 			events.EventAssociationStatusChange,
-			"Association status changed from [%s] to [%s]", origStatus.Association, newStatus)
+			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
 
 	}
 	return resultFromStatus(newStatus), err
@@ -202,11 +200,9 @@ func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) fin
 func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
 	switch status {
 	case commonv1alpha1.AssociationPending:
-		return defaultRequeue // retry again
-	case commonv1alpha1.AssociationEstablished, commonv1alpha1.AssociationFailed:
-		return reconcile.Result{} // we are done or there is not much we can do
+		return defaultRequeue // retry
 	default:
-		return reconcile.Result{} // make the compiler happy
+		return reconcile.Result{} // we are done or there is not much we can do
 	}
 }
 
@@ -214,7 +210,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.ElasticsearchRef
 	if !elasticsearchRef.IsDefined() {
-		return "", nil
+		return commonv1alpha1.AssociationUnknown, nil
 	}
 	if elasticsearchRef.Namespace == "" {
 		// no namespace provided: default to the APM server namespace

@@ -190,11 +190,9 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
 	switch status {
 	case commonv1alpha1.AssociationPending:
-		return defaultRequeue // retry again
-	case commonv1alpha1.AssociationEstablished, commonv1alpha1.AssociationFailed:
-		return reconcile.Result{} // we are done or there is not much we can do
+		return defaultRequeue // retry
 	default:
-		return reconcile.Result{} // make the compiler happy
+		return reconcile.Result{} // we are done or there is not much we can do
 	}
 }
 
@@ -210,7 +208,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		// stop watching any ES cluster previously referenced for this Kibana resource
 		r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
 		// other leftover resources are already garbage-collected
-		return "", nil
+		return commonv1alpha1.AssociationUnknown, nil
 	}
 
 	// this Kibana instance references an Elasticsearch cluster
