@@ -7,7 +7,7 @@
 ROOT_DIR = $(CURDIR)/../..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
-IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile $(ROOT_DIR)/local-volume/Gopkg.lock | awk '{print $$1}' | md5sum | awk '{print $$1}')
+IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile $(ROOT_DIR)/local-volume/Gopkg.lock | md5sum | awk '{print $$1}')
 
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
@@ -175,6 +175,6 @@ ci-gke-cleanup: ci-e2e-delete-cluster
 
 # Check if Docker image exists by trying to pull it. If there is no image, then build and push it.
 ci-build-image: vault-docker-creds
-	@ docker pull $(IMAGE) || (docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t $(IMAGE) $(ROOT_DIR) &&\
+	@ docker pull $(IMAGE) || (docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(IMAGE) $(ROOT_DIR) &&\
 	docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) push.docker.elastic.co &&\
-	docker push $(IMAGE))
+	docker push push.$(IMAGE))
