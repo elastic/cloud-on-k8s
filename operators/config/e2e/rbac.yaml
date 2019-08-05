@@ -87,6 +87,7 @@ rules:
       - secrets
       - persistentvolumeclaims
       - configmaps
+      - events
     verbs:
       - get
       - list
