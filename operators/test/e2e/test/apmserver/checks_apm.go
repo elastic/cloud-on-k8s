@@ -203,10 +203,10 @@ func countIndex(esClient client.Client, indexName string) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
 	defer cancel()
 	response, err := esClient.Request(ctx, r)
-	defer response.Body.Close() // nolint
 	if err != nil {
 		return 0, err
 	}
+	defer response.Body.Close() // nolint
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return 0, err
