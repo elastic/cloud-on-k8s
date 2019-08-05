@@ -119,6 +119,7 @@ ci-e2e-new:
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
+		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)"
 		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e-new"
 
@@ -128,6 +129,7 @@ ci-deployer-new:
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
+		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)"
 		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators deployer-new"
 
