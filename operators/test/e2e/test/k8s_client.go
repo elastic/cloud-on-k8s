@@ -339,6 +339,7 @@ func ApmServerPodListOptions(apmNamespace, apmName string) k8sclient.ListOptions
 
 func EventListOptions(namespace, name string) k8sclient.ListOptions {
 	return k8sclient.ListOptions{
+		Namespace: namespace,
 		FieldSelector: fields.SelectorFromSet(fields.Set(map[string]string{
 			"involvedObject.name":      name,
 			"involvedObject.namespace": namespace,
