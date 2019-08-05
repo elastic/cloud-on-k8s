@@ -21,7 +21,7 @@ func CheckESKeystoreEntries(k *test.K8sClient, es v1alpha1.Elasticsearch, expect
 	return test.Step{
 		Name: "Elasticsearch secure settings should eventually be set in all nodes keystore",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(es.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(es.Namespace, es.Name))
 			if err != nil {
 				return err
 			}

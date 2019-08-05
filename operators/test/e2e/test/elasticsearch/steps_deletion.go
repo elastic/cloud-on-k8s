@@ -55,7 +55,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Elasticsearch pods should be eventually be removed",
 			Test: test.Eventually(func() error {
-				return k.CheckPodCount(test.ESPodListOptions(b.Elasticsearch.Name), 0)
+				return k.CheckPodCount(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), 0)
 			}),
 		},
 		{

@@ -56,7 +56,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				}
 				// wait for ES pods to disappear
 				test.Eventually(func() error {
-					return k.CheckPodCount(test.ESPodListOptions(b.Elasticsearch.Name), 0)
+					return k.CheckPodCount(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), 0)
 				})(t)
 
 				// it may take some extra time for Elasticsearch to be fully deleted

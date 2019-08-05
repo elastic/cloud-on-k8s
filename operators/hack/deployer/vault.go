@@ -4,7 +4,10 @@
 
 package main
 
-import "io/ioutil"
+import (
+	"io/ioutil"
+	"strings"
+)
 
 const (
 	vaultTokenName = "VAULT_TOKEN"
@@ -29,7 +32,7 @@ func ReadVaultIntoFile(fileName, address, roleId, secretId, name string) error {
 			"Address": address,
 			"Name":    name,
 		}).
-		WithVariable(vaultTokenName, vaultToken).
+		WithVariable(vaultTokenName, strings.Trim(vaultToken, "\n")).
 		WithoutStreaming().
 		Output()
 	if err != nil {

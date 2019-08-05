@@ -1,0 +1,25 @@
+---
+- job:
+    description: Job that builds release version of ECK. This Job is managed by JJB.
+    logrotate:
+      daysToKeep: 7
+      numToKeep: 100
+      artifactDaysToKeep: 5
+      artifactNumToKeep: 10
+    name: cloud-on-k8s-release
+    project-type: multibranch
+    prune-dead-branches: true
+    script-path: 'build/ci/release/Jenkinsfile'
+    scm:
+      - github:
+          repo: 'cloud-on-k8s'
+          repo-owner: 'elastic'
+          credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
+          discover-tags: true
+          wipe-workspace: true
+          branch-discovery: false
+          discover-pr-forks-strategy: false
+          build-strategies:
+            - tags:
+                ignore-tags-newer-than: 1
+            - regular-branches: false

@@ -27,7 +27,7 @@ func TestKillOneDataNode(t *testing.T) {
 	}
 
 	test.RunFailure(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchDataNode),
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchDataNode),
 		b)
 }
 
@@ -42,7 +42,7 @@ func TestKillOneMasterNode(t *testing.T) {
 	}
 
 	test.RunFailure(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchMasterNode),
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchMasterNode),
 		b)
 }
 
@@ -55,7 +55,7 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 	}
 
 	test.RunFailure(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchNode),
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchNode),
 		b)
 }
 
@@ -68,7 +68,7 @@ func TestDeleteServices(t *testing.T) {
 			{
 				Name: "Delete external service",
 				Test: func(t *testing.T) {
-					s, err := k.GetService(esname.HTTPService(b.Elasticsearch.Name))
+					s, err := k.GetService(b.Elasticsearch.Namespace, esname.HTTPService(b.Elasticsearch.Name))
 					require.NoError(t, err)
 					err = k.Client.Delete(s)
 					require.NoError(t, err)
@@ -101,6 +101,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 		}
 	}, b)
 }
+
 func TestDeleteCACert(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-failure-delete-ca-cert").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)

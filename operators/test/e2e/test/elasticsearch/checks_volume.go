@@ -30,7 +30,7 @@ func CheckESDataVolumeType(es estype.Elasticsearch, k *test.K8sClient) test.Step
 		Name: "Elasticsearch data volumes should be of the specified type",
 		Test: func(t *testing.T) {
 			checkForEmptyDir := usesEmptyDir(es)
-			pods, err := k.GetPods(test.ESPodListOptions(es.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(es.Namespace, es.Name))
 			require.NoError(t, err)
 			for _, p := range pods {
 				for _, v := range p.Spec.Volumes {

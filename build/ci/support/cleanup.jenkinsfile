@@ -18,6 +18,9 @@ pipeline {
 
     stages {
         stage('Cleanup GKE') {
+            options {
+                retry(3)
+            }
             steps {
                 sh 'make -C build/ci ci-gke-cleanup'
             }

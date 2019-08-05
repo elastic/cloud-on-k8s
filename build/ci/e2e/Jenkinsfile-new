@@ -29,7 +29,7 @@ pipeline {
                     cat >operators/run-config.yml <<EOF
 id: gke-ci
 overrides:
-  kubernetesVersion: $CLUSTER_VERSION
+  kubernetesVersion: "$CLUSTER_VERSION"
   clusterName: $CLUSTER_NAME
   vaultAddress: $VAULT_ADDR
   vaultRoleId: $VAULT_ROLE_ID
@@ -61,7 +61,7 @@ EOF
 id: gke-ci
 overrides:
   operation: delete
-  kubernetesVersion: $CLUSTER_VERSION
+  kubernetesVersion: "$CLUSTER_VERSION"
   clusterName: $CLUSTER_NAME
   vaultAddress: $VAULT_ADDR
   vaultRoleId: $VAULT_ROLE_ID
