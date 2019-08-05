@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -151,6 +152,14 @@ func (k *K8sClient) GetEndpoints(namespace, name string) (*corev1.Endpoints, err
 		return nil, err
 	}
 	return &endpoints, nil
+}
+
+func (k *K8sClient) GetEvents(listOpts k8sclient.ListOptions) ([]corev1.Event, error) {
+	var eventList corev1.EventList
+	if err := k.Client.List(&listOpts, &eventList); err != nil {
+		return nil, err
+	}
+	return eventList.Items, nil
 }
 
 func (k *K8sClient) GetElasticPassword(namespace, esName string) (string, error) {
@@ -326,6 +335,15 @@ func ApmServerPodListOptions(apmNamespace, apmName string) k8sclient.ListOptions
 			common.TypeLabelName:             apmlabels.Type,
 			apmlabels.ApmServerNameLabelName: apmName,
 		}))}
+}
+
+func EventListOptions(namespace, name string) k8sclient.ListOptions {
+	return k8sclient.ListOptions{
+		FieldSelector: fields.SelectorFromSet(fields.Set(map[string]string{
+			"involvedObject.name":      name,
+			"involvedObject.namespace": namespace,
+		})),
+	}
 }
 
 func GetFirstPodMatching(pods []corev1.Pod, predicate func(pod corev1.Pod) bool) (corev1.Pod, bool) {

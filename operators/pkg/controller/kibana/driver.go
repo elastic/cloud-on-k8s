@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
@@ -196,6 +197,7 @@ func (d *driver) Reconcile(
 ) *reconciler.Results {
 	results := reconciler.Results{}
 	if !kb.Spec.Elasticsearch.IsConfigured() {
+		d.recorder.Event(kb, corev1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
 		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return &results
 	}

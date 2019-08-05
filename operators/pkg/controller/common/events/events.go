@@ -24,6 +24,14 @@ const (
 	EventReasonRestart = "Restart"
 )
 
+// Event reasons for Association controllers
+const (
+	// EventAssociationError describes an event fired when an association fails.
+	EventAssociationError = "AssociationError"
+	// EventAssociationStatusChange describes association status change events.
+	EventAssociationStatusChange = "AssociationStatusChange"
+)
+
 // Event is a k8s event that can be recorded via an event recorder.
 type Event struct {
 	EventType string
