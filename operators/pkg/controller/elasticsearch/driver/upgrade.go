@@ -129,7 +129,6 @@ func (d *defaultDriver) doRollingUpgrade(
 			if err := d.upgradeStatefulSetPartition(&statefulSets[i], partition); err != nil {
 				return results.WithError(err)
 			}
-			scheduledUpgrades++
 		}
 	}
 	return results
