@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// ElasticsearchUserName identifies the associated user in Elasticsearch namespace.
+// elasticsearchUserName identifies the associated user in Elasticsearch namespace.
 func elasticsearchUserName(associated commonv1alpha1.Associated, userSuffix string) string {
 	// must be namespace-aware since we might have several associated instances running in
 	// different namespaces with the same name: we need one user for each
@@ -33,7 +33,7 @@ func userSecretObjectName(associated commonv1alpha1.Associated, userSuffix strin
 	return associated.GetName() + "-" + userSuffix
 }
 
-// userKey is the namespaced name to identify the user resource created by the controller.
+// UserKey is the namespaced name to identify the user resource created by the controller.
 func UserKey(associated commonv1alpha1.Associated, userSuffix string) types.NamespacedName {
 	esNamespace := associated.ElasticsearchRef().Namespace
 	if esNamespace == "" {
@@ -56,7 +56,7 @@ func secretKey(associated commonv1alpha1.Associated, userSuffix string) types.Na
 	}
 }
 
-// clearTextSecretKeySelector creates a SecretKeySelector for the associated user secret
+// ClearTextSecretKeySelector creates a SecretKeySelector for the associated user secret
 func ClearTextSecretKeySelector(associated commonv1alpha1.Associated, userSuffix string) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
