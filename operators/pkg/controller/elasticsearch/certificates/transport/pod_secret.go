@@ -8,6 +8,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -103,6 +104,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 // - no certificate yet
 // - certificate has the wrong format
 // - certificate is invalid or expired
+// - certificate has no SAN extra extension
 // - certificate SAN and IP does not match pod SAN and IP
 func shouldIssueNewCertificate(
 	es v1alpha1.Elasticsearch,
@@ -167,7 +169,7 @@ func shouldIssueNewCertificate(
 	// compare actual vs. expected SANs
 	expected, err := certificates.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
-		log.Error(err, "Cannot marshal subject alternative names",
+		log.Error(err, "Cannot marshal subject alternative names, will issue new certificate",
 			"namespace", pod.Namespace, "pod_name", pod.Name)
 		return true
 	}
@@ -184,7 +186,8 @@ func shouldIssueNewCertificate(
 		}
 	}
 	if !extraExtensionFound {
-		log.Info("SAN extra extension not found, should issue new certificate",
+		log.Error(errors.New("no SAN extra extension"),
+			"SAN extra extension not found, should issue new certificate",
 			"namespace", pod.Namespace, "pod_name", pod.Name)
 		return true
 	}
@@ -203,7 +206,7 @@ func extractTransportCert(secret corev1.Secret, pod corev1.Pod, commonName strin
 
 	certs, err := certificates.ParsePEMCerts(certData)
 	if err != nil {
-		log.Error(err, "Invalid certificate data found, issuing new certificate",
+		log.Error(err, "Invalid certificate data found",
 			"namespace", pod.Namespace, "pod_name", pod.Name)
 		return nil
 	}
