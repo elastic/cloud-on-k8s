@@ -14,24 +14,6 @@ RUN go get github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
-# Add Go dependencies to Docker image
-WORKDIR /go/src/github.com/elastic/cloud-on-k8s/operators
-COPY operators/Gopkg.lock .
-COPY operators/Gopkg.toml .
-RUN dep ensure --vendor-only -v
-
-WORKDIR /go/src/github.com/elastic/cloud-on-k8s/local-volume
-COPY local-volume/Gopkg.lock .
-COPY local-volume/Gopkg.toml .
-RUN dep ensure --vendor-only -v
-
-# Cleanup
-RUN rm /go/src/github.com/elastic/cloud-on-k8s/local-volume/Gopkg.lock && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/local-volume/Gopkg.toml && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/operators/Gopkg.lock && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/operators/Gopkg.toml
-WORKDIR /
-
 # Download kubebuilder release to get required tools (etcd, apiserver, etc.)
 ENV PATH=${PATH}:/usr/local/kubebuilder/bin
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
@@ -64,3 +46,21 @@ RUN apt-get update && apt-get --no-install-recommends -y install \
     awscli && \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Add Go dependencies to Docker image
+WORKDIR /go/src/github.com/elastic/cloud-on-k8s/operators
+COPY operators/Gopkg.lock .
+COPY operators/Gopkg.toml .
+RUN dep ensure --vendor-only -v
+
+WORKDIR /go/src/github.com/elastic/cloud-on-k8s/local-volume
+COPY local-volume/Gopkg.lock .
+COPY local-volume/Gopkg.toml .
+RUN dep ensure --vendor-only -v
+
+# Cleanup
+RUN rm /go/src/github.com/elastic/cloud-on-k8s/local-volume/Gopkg.lock && \
+    rm /go/src/github.com/elastic/cloud-on-k8s/local-volume/Gopkg.toml && \
+    rm /go/src/github.com/elastic/cloud-on-k8s/operators/Gopkg.lock && \
+    rm /go/src/github.com/elastic/cloud-on-k8s/operators/Gopkg.toml
+WORKDIR /

@@ -174,9 +174,7 @@ ci-gke-cleanup: ci-e2e-delete-cluster
     	 	$(GO_MOUNT_PATH)/build/ci/delete_unused_disks.py"
 
 # Build and push Docker image for CI
-.ONESHELL: #https://www.gnu.org/software/make/manual/html_node/One-Shell.html
 ci-build-image: vault-docker-creds
-	@ cd $(ROOT_DIR)
-	docker build -f build/ci/Dockerfile -t $(IMAGE) .
+	docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t $(IMAGE) $(ROOT_DIR)
 	@ docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) push.docker.elastic.co
 	docker push $(IMAGE)
