@@ -113,23 +113,21 @@ yaml-upload: vault-aws-creds
 ## -- End-to-end tests job
 
 ci-e2e-new:
-	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
-	docker run --rm -t \
+	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
-		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)"
-		cloud-on-k8s-ci-e2e \
+		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+		$(IMAGE) \
 		bash -c "make -C operators ci-e2e-new"
 
 ci-deployer-new:
-	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
-	docker run --rm -t \
+	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
-		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)"
-		cloud-on-k8s-ci-e2e \
+		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+		$(IMAGE) \
 		bash -c "make -C operators deployer-new"
 
 # Spawn a k8s cluster, and run e2e tests against it
