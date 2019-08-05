@@ -31,14 +31,20 @@ func TestSmoke(t *testing.T) {
 	test.ExitOnErr(decoder.Decode(&apmBuilder.ApmServer))
 	test.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
 
+	ns := test.Ctx().ManagedNamespace(0)
 	esBuilder = esBuilder.
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithRandomPrefixName().
+		WithNamespace(ns).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithRandomPrefixName().
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithRestrictedSecurityContext()
 	apmBuilder = apmBuilder.
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithRandomPrefixName().
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithRestrictedSecurityContext()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).

@@ -32,12 +32,16 @@ func TestKibanaEsSample(t *testing.T) {
 	test.ExitOnErr(decoder.Decode(&esBuilder.Elasticsearch))
 	test.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
 
+	ns := test.Ctx().ManagedNamespace(0)
 	esBuilder = esBuilder.
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithRandomPrefixName().
+		WithNamespace(ns).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithRandomPrefixName().
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
 
