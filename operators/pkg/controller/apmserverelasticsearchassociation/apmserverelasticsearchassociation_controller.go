@@ -255,7 +255,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		},
 		"superuser",
 		apmUserSuffix,
-		es); err != nil { // TODO distinguish conflicts and non-recoverable errors here
+		es,
+	); err != nil { // TODO distinguish conflicts and non-recoverable errors here
 		return commonv1alpha1.AssociationPending, err
 	}
 
