@@ -26,7 +26,7 @@ func TestKillOneDataNode(t *testing.T) {
 		return label.IsDataNode(p) && !label.IsMasterNode(p)
 	}
 
-	test.RunFailure(t,
+	test.RunRecoverableFailureScenario(t,
 		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchDataNode),
 		b)
 }
@@ -41,7 +41,7 @@ func TestKillOneMasterNode(t *testing.T) {
 		return !label.IsDataNode(p) && label.IsMasterNode(p)
 	}
 
-	test.RunFailure(t,
+	test.RunRecoverableFailureScenario(t,
 		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchMasterNode),
 		b)
 }
@@ -54,7 +54,7 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 		return true // match first node we find
 	}
 
-	test.RunFailure(t,
+	test.RunRecoverableFailureScenario(t,
 		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchNode),
 		b)
 }
@@ -63,7 +63,7 @@ func TestDeleteServices(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-failure-delete-services").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Delete external service",
@@ -82,7 +82,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-delete-es-elastic-user-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Delete elastic user secret",
@@ -106,7 +106,7 @@ func TestDeleteCACert(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-failure-delete-ca-cert").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Delete CA cert",
