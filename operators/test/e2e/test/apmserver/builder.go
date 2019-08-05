@@ -29,10 +29,6 @@ func NewBuilder(name string) Builder {
 			Spec: apmtype.ApmServerSpec{
 				NodeCount: 1,
 				Version:   test.Ctx().ElasticStackVersion,
-				ElasticsearchRef: commonv1alpha1.ObjectSelector{
-					Name:      name,
-					Namespace: test.Ctx().ManagedNamespace(0),
-				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						SecurityContext: test.DefaultSecurityContext(),
@@ -40,7 +36,12 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}
+	}.WithRandomPrefixName()
+}
+
+func (b Builder) WithRandomPrefixName() Builder {
+	b.ApmServer.ObjectMeta.Name = test.WithRandomPrefix(b.ApmServer.ObjectMeta.Name)
+	return b
 }
 
 func (b Builder) WithRestrictedSecurityContext() Builder {

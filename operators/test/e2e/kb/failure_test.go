@@ -22,6 +22,7 @@ func TestKillKibanaPod(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
 	matchFirst := func(p corev1.Pod) bool {
@@ -37,6 +38,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
 	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {

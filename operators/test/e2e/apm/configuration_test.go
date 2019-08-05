@@ -60,6 +60,7 @@ func TestUpdateConfiguration(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	apmBuilder := apmserver.NewBuilder(name).
 		WithNamespace(namespace).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
 

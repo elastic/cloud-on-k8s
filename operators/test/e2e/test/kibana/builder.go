@@ -28,11 +28,6 @@ func NewBuilder(name string) Builder {
 			ObjectMeta: meta,
 			Spec: kbtype.KibanaSpec{
 				Version: test.Ctx().ElasticStackVersion,
-				// Create an ElasticsearchRef by default with the same name
-				ElasticsearchRef: commonv1alpha1.ObjectSelector{
-					Name:      name,
-					Namespace: test.Ctx().ManagedNamespace(0),
-				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						SecurityContext: test.DefaultSecurityContext(),
@@ -40,7 +35,17 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}
+	}.WithRandomPrefixName()
+}
+
+func (b Builder) WithRandomPrefixName() Builder {
+	b.Kibana.ObjectMeta.Name = test.WithRandomPrefix(b.Kibana.ObjectMeta.Name)
+	return b
+}
+
+func (b Builder) WithElasticsearchRef(ref commonv1alpha1.ObjectSelector) Builder {
+	b.Kibana.Spec.ElasticsearchRef = ref
+	return b
 }
 
 // WithRestrictedSecurityContext helps to enforce a restricted security context on the objects.

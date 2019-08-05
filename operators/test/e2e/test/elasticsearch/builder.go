@@ -48,6 +48,18 @@ func NewBuilder(name string) Builder {
 				Version:          test.Ctx().ElasticStackVersion,
 			},
 		},
+	}.WithRandomPrefixName()
+}
+
+func (b Builder) WithRandomPrefixName() Builder {
+	b.Elasticsearch.ObjectMeta.Name = test.WithRandomPrefix(b.Elasticsearch.ObjectMeta.Name)
+	return b
+}
+
+func (b Builder) Ref() commonv1alpha1.ObjectSelector {
+	return commonv1alpha1.ObjectSelector{
+		Name:      b.Elasticsearch.Name,
+		Namespace: b.Elasticsearch.Namespace,
 	}
 }
 
