@@ -21,17 +21,8 @@ pipeline {
 
     stages {
         stage('Check if Docker image needs rebuilding') {
-            when {
-                expression {
-                    ifImageNeedsRebuilding()
-                }
-            }
             steps {
-                sh """
-                    export HASH=\$(md5sum operators/Gopkg.lock build/ci/Dockerfile local-volume/Gopkg.lock | awk '{print \$1}' | md5sum | awk '{print \$1}')
-                    export IMAGE=push.docker.elastic.co/eck/eck-ci:\${HASH}
-                    make -C build/ci ci-build-image
-                """
+                sh 'make -C build/ci ci-build-image'
             }
         }
         stage('Run tests in parallel') {
@@ -103,17 +94,4 @@ def notOnlyDocs() {
         script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
     	returnStatus: true
     ) == 0
-}
-
-def ifImageNeedsRebuilding() {
-    sh """
-        md5sum operators/Gopkg.lock build/ci/Dockerfile local-volume/Gopkg.lock \
-        | awk '{print \$1}' | md5sum | awk '{print \$1}' \
-        > $WORKSPACE/git_diff.txt
-    """
-    def diff = readFile("$WORKSPACE/git_diff.txt").trim()
-    return sh (
-        script: "docker pull docker.elastic.co/eck/eck-ci:" + diff,
-        returnStatus: true
-    ) == 1
 }

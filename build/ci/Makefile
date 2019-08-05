@@ -173,8 +173,8 @@ ci-gke-cleanup: ci-e2e-delete-cluster
     	bash -c "GKE_CLUSTER_VERSION=1.11 $(GO_MOUNT_PATH)/operators/hack/gke-cluster.sh auth && \
     	 	$(GO_MOUNT_PATH)/build/ci/delete_unused_disks.py"
 
-# Build and push Docker image for CI
+# Check if Docker image exists by trying to pull it. If there is no image, then build and push it.
 ci-build-image: vault-docker-creds
-	docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t $(IMAGE) $(ROOT_DIR)
-	@ docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) push.docker.elastic.co
-	docker push $(IMAGE)
+	@ docker pull $(IMAGE) || (docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t $(IMAGE) $(ROOT_DIR) &&\
+	docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) push.docker.elastic.co &&\
+	docker push $(IMAGE))
