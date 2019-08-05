@@ -48,14 +48,15 @@ func (l StatefulSetList) ObjectMetas() []metav1.ObjectMeta {
 	return objs
 }
 
-// RevisionUpdateScheduled returns true if at least one revision update is scheduled.
-func (l StatefulSetList) RevisionUpdateScheduled() bool {
+// ToUpdate filters the StatefulSetList to the ones having an update revision scheduled.
+func (l StatefulSetList) ToUpdate() StatefulSetList {
+	toUpdate := StatefulSetList{}
 	for _, s := range l {
-		if s.Status.UpdateRevision != "" && s.Status.UpdateRevision != s.Status.CurrentRevision {
-			return true
+		if s.Status.UpdateRevision != "" && (s.Status.UpdateRevision != s.Status.CurrentRevision) {
+			toUpdate = append(toUpdate, s)
 		}
 	}
-	return false
+	return toUpdate
 }
 
 // PodNames returns the names of the pods for all StatefulSets in the list.

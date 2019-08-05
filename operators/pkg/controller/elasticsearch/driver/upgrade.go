@@ -47,11 +47,6 @@ func (d *defaultDriver) doRollingUpgrade(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	if !statefulSets.RevisionUpdateScheduled() {
-		// nothing to upgrade
-		return results
-	}
-
 	// TODO: deal with multiple restarts at once, taking the changeBudget into account.
 	//  We'd need to stop checking cluster health and do something smarter, since cluster health green check
 	//  should be done **in between** restarts to make sense, which is pretty hard to do since we don't
@@ -67,7 +62,7 @@ func (d *defaultDriver) doRollingUpgrade(
 	maxMasterNodeUpgrades := 1
 	scheduledMasterNodeUpgrades := 0
 
-	for i, statefulSet := range statefulSets {
+	for i, statefulSet := range statefulSets.ToUpdate() {
 		// Inspect each pod, starting from the highest ordinal, and decrement the partition to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
 		for partition := sset.GetUpdatePartition(statefulSet); partition >= 0; partition-- {
