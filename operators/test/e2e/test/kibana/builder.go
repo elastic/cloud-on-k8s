@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // Builder to create Kibana instances
@@ -28,11 +29,6 @@ func NewBuilder(name string) Builder {
 			ObjectMeta: meta,
 			Spec: kbtype.KibanaSpec{
 				Version: test.Ctx().ElasticStackVersion,
-				// Create an ElasticsearchRef by default with the same name
-				ElasticsearchRef: commonv1alpha1.ObjectSelector{
-					Name:      name,
-					Namespace: test.Ctx().ManagedNamespace(0),
-				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						SecurityContext: test.DefaultSecurityContext(),
@@ -40,7 +36,17 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}
+	}.WithSuffix(rand.String(4))
+}
+
+func (b Builder) WithSuffix(suffix string) Builder {
+	b.Kibana.ObjectMeta.Name = b.Kibana.ObjectMeta.Name + "-" + suffix
+	return b
+}
+
+func (b Builder) WithElasticsearchRef(ref commonv1alpha1.ObjectSelector) Builder {
+	b.Kibana.Spec.ElasticsearchRef = ref
+	return b
 }
 
 // WithRestrictedSecurityContext helps to enforce a restricted security context on the objects.

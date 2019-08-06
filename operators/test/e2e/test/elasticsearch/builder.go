@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
@@ -48,6 +49,18 @@ func NewBuilder(name string) Builder {
 				Version:          test.Ctx().ElasticStackVersion,
 			},
 		},
+	}.WithSuffix(rand.String(4))
+}
+
+func (b Builder) WithSuffix(suffix string) Builder {
+	b.Elasticsearch.ObjectMeta.Name = b.Elasticsearch.ObjectMeta.Name + "-" + suffix
+	return b
+}
+
+func (b Builder) Ref() commonv1alpha1.ObjectSelector {
+	return commonv1alpha1.ObjectSelector{
+		Name:      b.Elasticsearch.Name,
+		Namespace: b.Elasticsearch.Namespace,
 	}
 }
 
