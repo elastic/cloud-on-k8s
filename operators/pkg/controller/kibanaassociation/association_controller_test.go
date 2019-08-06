@@ -9,6 +9,7 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
@@ -18,8 +19,70 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+const (
+	userName       = "default-kibana-foo-kibana-user"
+	userSecretName = "kibana-foo-kibana-user" // nolint
+)
+
+var esFixture = estype.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "es-foo",
+		Namespace: "default",
+		UID:       "f8d564d9-885e-11e9-896d-08002703f062",
+	},
+}
+
+var esRefFixture = metav1.OwnerReference{
+	APIVersion:         "elasticsearch.k8s.elastic.co/v1alpha1",
+	Kind:               "Elasticsearch",
+	Name:               "es-foo",
+	UID:                "f8d564d9-885e-11e9-896d-08002703f062",
+	Controller:         &t,
+	BlockOwnerDeletion: &t,
+}
+
+func setupScheme(t *testing.T) *runtime.Scheme {
+	sc := scheme.Scheme
+	if err := kbtype.SchemeBuilder.AddToScheme(sc); err != nil {
+		assert.Fail(t, "failed to add Kibana types")
+	}
+	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
+		assert.Fail(t, "failed to add Es types")
+	}
+	return sc
+}
+
+var kibanaFixtureUID types.UID = "82257b19-8862-11e9-896d-08002703f062"
+
+var kibanaFixtureObjectMeta = metav1.ObjectMeta{
+	Name:      "kibana-foo",
+	Namespace: "default",
+	UID:       kibanaFixtureUID,
+}
+
+var kibanaFixture = kbtype.Kibana{
+	ObjectMeta: kibanaFixtureObjectMeta,
+	Spec: kbtype.KibanaSpec{
+		ElasticsearchRef: commonv1alpha1.ObjectSelector{
+			Name:      esFixture.Name,
+			Namespace: esFixture.Namespace,
+		},
+	},
+}
+
+var t = true
+var ownerRefFixture = metav1.OwnerReference{
+	APIVersion:         "kibana.k8s.elastic.co/v1alpha1",
+	Kind:               "Kibana",
+	Name:               "foo",
+	UID:                kibanaFixtureUID,
+	Controller:         &t,
+	BlockOwnerDeletion: &t,
+}
 
 func Test_deleteOrphanedResources(t *testing.T) {
 	s := setupScheme(t)
