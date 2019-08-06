@@ -58,8 +58,12 @@ func (c *apmClusterChecks) BuildApmServerClient(apm apmtype.ApmServer, k *test.K
 				}
 				c.apmClient = apmClient
 
-				// Get the associated Elasticsearch, we assume here that ElasticsearchRef is not nil and that the
-				// Elasticsearch object has been created before the APM Server.
+				// Get the associated Elasticsearch
+				if !apm.Spec.ElasticsearchRef.IsDefined() { // No associated ES, do not try to create a client
+					return nil
+				}
+
+				// We assume here that the Elasticsearch object has been created before the APM Server.
 				var es v1alpha1.Elasticsearch
 				namespace := apm.Spec.ElasticsearchRef.Namespace
 				if len(namespace) == 0 {
@@ -152,6 +156,11 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmtype.ApmServer, k *
 			var updatedApmServer apmtype.ApmServer
 			if err := k.Client.Get(k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
 				return err
+			}
+
+			if !updatedApmServer.Spec.ElasticsearchRef.IsDefined() {
+				// No ES is referenced, do not try to check data
+				return nil
 			}
 
 			// Check that the metric has been stored
