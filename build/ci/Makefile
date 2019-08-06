@@ -29,7 +29,7 @@ check-license-header:
 	./../check-license-header.sh
 
 create-env-file:
-	@ $(shell create_env_file.py)
+	@ $(shell ./create_env_file.py)
 
 # login to vault and retrieve gke creds into $GKE_CREDS_FILE
 vault-gke-creds:
