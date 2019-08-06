@@ -14,6 +14,7 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
         REGISTRY = "eu.gcr.io"
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
+        REPOSITORY = "${GCLOUD_PROJECT}"
         OPERATOR_IMAGE = "${IMAGE}"
         LATEST_RELEASED_IMG = "${IMAGE}"
     }
