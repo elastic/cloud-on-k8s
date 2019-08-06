@@ -33,16 +33,16 @@ func TestSmoke(t *testing.T) {
 
 	ns := test.Ctx().ManagedNamespace(0)
 	esBuilder = esBuilder.
-		WithRandomPrefixName().
+		WithRandomSuffix().
 		WithNamespace(ns).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithRandomPrefixName().
+		WithRandomSuffix().
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithRestrictedSecurityContext()
 	apmBuilder = apmBuilder.
-		WithRandomPrefixName().
+		WithRandomSuffix().
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithRestrictedSecurityContext()

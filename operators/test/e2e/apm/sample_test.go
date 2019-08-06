@@ -38,18 +38,18 @@ func TestApmEsKibanaSample(t *testing.T) {
 	// set namespace and version
 	ns := test.Ctx().ManagedNamespace(0)
 	esBuilder = esBuilder.
-		WithRandomPrefixName().
+		WithRandomSuffix().
 		WithNamespace(ns).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithRandomPrefixName().
+		WithRandomSuffix().
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	apmBuilder = apmBuilder.
-		WithRandomPrefixName().
+		WithRandomSuffix().
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).

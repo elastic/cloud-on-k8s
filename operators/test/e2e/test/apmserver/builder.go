@@ -36,10 +36,10 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}.WithRandomPrefixName()
+	}.WithRandomSuffix()
 }
 
-func (b Builder) WithRandomPrefixName() Builder {
+func (b Builder) WithRandomSuffix() Builder {
 	b.ApmServer.ObjectMeta.Name = test.WithRandomPrefix(b.ApmServer.ObjectMeta.Name)
 	return b
 }

@@ -34,12 +34,12 @@ func TestKibanaEsSample(t *testing.T) {
 
 	ns := test.Ctx().ManagedNamespace(0)
 	esBuilder = esBuilder.
-		WithRandomPrefixName().
+		WithRandomSuffix().
 		WithNamespace(ns).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithRandomPrefixName().
+		WithRandomSuffix().
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).

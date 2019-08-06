@@ -48,10 +48,10 @@ func NewBuilder(name string) Builder {
 				Version:          test.Ctx().ElasticStackVersion,
 			},
 		},
-	}.WithRandomPrefixName()
+	}.WithRandomSuffix()
 }
 
-func (b Builder) WithRandomPrefixName() Builder {
+func (b Builder) WithRandomSuffix() Builder {
 	b.Elasticsearch.ObjectMeta.Name = test.WithRandomPrefix(b.Elasticsearch.ObjectMeta.Name)
 	return b
 }

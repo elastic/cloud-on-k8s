@@ -35,10 +35,10 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}.WithRandomPrefixName()
+	}.WithRandomSuffix()
 }
 
-func (b Builder) WithRandomPrefixName() Builder {
+func (b Builder) WithRandomSuffix() Builder {
 	b.Kibana.ObjectMeta.Name = test.WithRandomPrefix(b.Kibana.ObjectMeta.Name)
 	return b
 }
