@@ -20,6 +20,11 @@ pipeline {
     }
 
     stages {
+        stage('Check if Docker image needs rebuilding') {
+            steps {
+                sh 'make -C build/ci ci-build-image'
+            }
+        }
         stage('Run tests in parallel') {
             parallel {
                 stage("Run unit and integration tests") {

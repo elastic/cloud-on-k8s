@@ -43,10 +43,13 @@ func nameLength(ctx Context) validation.Result {
 
 // supportedVersion checks if the version is supported.
 func supportedVersion(ctx Context) validation.Result {
-	if v := esversion.SupportedVersions(ctx.Proposed.Version); v == nil {
-		return validation.Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
+	if v := esversion.SupportedVersions(ctx.Proposed.Version); v != nil {
+		if err := v.Supports(ctx.Proposed.Version); err == nil {
+			return validation.OK
+		}
 	}
-	return validation.OK
+	return validation.Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
+
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.

@@ -14,12 +14,14 @@ import (
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	elasticsearchuser "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -52,7 +54,11 @@ import (
 // If reference to an Elasticsearch cluster is not set in the Kibana resource,
 // this controller does nothing.
 
-const name = "kibana-association-controller"
+const (
+	name = "kibana-association-controller"
+	// kibanaUserSuffix is used to suffix user and associated secret resources.
+	kibanaUserSuffix = "kibana-user"
+)
 
 var (
 	log            = logf.Log.WithName(name)
@@ -228,7 +234,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationFailed, err
 	}
 
-	userSecretKey := KibanaUserKey(kibana, esRef.Namespace)
+	userSecretKey := association.UserKey(&kibana, kibanaUserSuffix)
 	// watch the user secret in the ES namespace
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(kibanaKey),
@@ -259,7 +265,17 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationFailed, err
 	}
 
-	if err := reconcileEsUser(r.Client, r.scheme, kibana, es); err != nil {
+	if err := association.ReconcileEsUser(
+		r.Client,
+		r.scheme,
+		&kibana,
+		map[string]string{
+			AssociationLabelName:      kibana.Name,
+			AssociationLabelNamespace: kibana.Namespace,
+		},
+		elasticsearchuser.KibanaSystemUserBuiltinRole,
+		kibanaUserSuffix,
+		es); err != nil {
 		return commonv1alpha1.AssociationPending, err
 	}
 
@@ -272,7 +288,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 	var expectedEsConfig kbtype.BackendElasticsearch
 	expectedEsConfig.CertificateAuthorities.SecretName = caSecretName
 	expectedEsConfig.URL = services.ExternalServiceURL(es)
-	expectedEsConfig.Auth.SecretKeyRef = KibanaUserSecretSelector(kibana)
+	expectedEsConfig.Auth.SecretKeyRef = association.ClearTextSecretKeySelector(&kibana, kibanaUserSuffix)
 
 	if !reflect.DeepEqual(kibana.Spec.Elasticsearch, expectedEsConfig) {
 		kibana.Spec.Elasticsearch = expectedEsConfig

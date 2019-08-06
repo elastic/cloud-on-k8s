@@ -106,6 +106,10 @@ func (k *Kibana) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
 	return k.Spec.Elasticsearch.Auth
 }
 
+func (k *Kibana) ElasticsearchRef() commonv1alpha1.ObjectSelector {
+	return k.Spec.ElasticsearchRef
+}
+
 func (k *Kibana) SecureSettings() *commonv1alpha1.SecretRef {
 	return k.Spec.SecureSettings
 }
