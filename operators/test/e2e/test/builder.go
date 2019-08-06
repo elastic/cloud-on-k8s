@@ -4,8 +4,6 @@
 
 package test
 
-import "k8s.io/apimachinery/pkg/util/rand"
-
 type Builder interface {
 	// InitTestSteps includes pre-requisite tests (eg. is k8s accessible) and cleanup from previous tests.
 	InitTestSteps(k *K8sClient) StepList
@@ -21,8 +19,4 @@ type Builder interface {
 	// We expect the resource to be already created and running.
 	// If the resource to mutate to is the same as the original resource, then all tests should still pass.
 	MutationTestSteps(k *K8sClient) StepList
-}
-
-func WithRandomPrefix(name string) string {
-	return name + "-" + rand.String(4)
 }

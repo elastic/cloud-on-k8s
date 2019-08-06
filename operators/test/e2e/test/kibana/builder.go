@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // Builder to create Kibana instances
@@ -35,11 +36,11 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}.WithRandomSuffix()
+	}.WithSuffix(rand.String(4))
 }
 
-func (b Builder) WithRandomSuffix() Builder {
-	b.Kibana.ObjectMeta.Name = test.WithRandomPrefix(b.Kibana.ObjectMeta.Name)
+func (b Builder) WithSuffix(suffix string) Builder {
+	b.Kibana.ObjectMeta.Name = b.Kibana.ObjectMeta.Name + "-" + suffix
 	return b
 }
 

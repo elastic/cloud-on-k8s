@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // Builder to create APM Servers
@@ -36,11 +37,11 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}.WithRandomSuffix()
+	}.WithSuffix(rand.String(4))
 }
 
-func (b Builder) WithRandomSuffix() Builder {
-	b.ApmServer.ObjectMeta.Name = test.WithRandomPrefix(b.ApmServer.ObjectMeta.Name)
+func (b Builder) WithSuffix(suffix string) Builder {
+	b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
 	return b
 }
 
