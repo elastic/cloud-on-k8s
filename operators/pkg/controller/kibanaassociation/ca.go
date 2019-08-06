@@ -23,7 +23,7 @@ import (
 // ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName
 const ElasticsearchCASecretSuffix = "kb-es-ca"
 
-// CAPublicCertSecretName returns the name of the secret holding Elasticsearch CA for this Kibana deployment
+// CACertSecretName returns the name of the secret holding Elasticsearch CA for this Kibana deployment
 func CACertSecretName(kibanaName string) string {
 	return kibanaName + "-" + ElasticsearchCASecretSuffix
 }

@@ -27,4 +27,5 @@ type Associated interface {
 	metav1.Object
 	runtime.Object
 	ElasticsearchAuth() ElasticsearchAuth
+	ElasticsearchRef() ObjectSelector
 }

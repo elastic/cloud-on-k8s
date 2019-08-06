@@ -7,7 +7,7 @@
 ROOT_DIR = $(CURDIR)/../..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
-IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile $(ROOT_DIR)/local-volume/Gopkg.lock | md5sum | awk '{print $$1}')
+IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile $(ROOT_DIR)/local-volume/Gopkg.lock | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
 
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
@@ -118,21 +118,21 @@ yaml-upload: vault-aws-creds create-env-file
 ## -- End-to-end tests job
 
 ci-e2e-new:
-	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
-	docker run --rm -t \
+	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
-		cloud-on-k8s-ci-e2e \
+		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+		$(IMAGE) \
 		bash -c "make -C operators ci-e2e-new"
 
 ci-deployer-new:
-	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
-	docker run --rm -t \
+	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
-		cloud-on-k8s-ci-e2e \
+		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+		$(IMAGE) \
 		bash -c "make -C operators deployer-new"
 
 # Spawn a k8s cluster, and run e2e tests against it
