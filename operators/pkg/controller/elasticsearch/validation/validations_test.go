@@ -131,6 +131,18 @@ func Test_supportedVersion(t *testing.T) {
 		want validation.Result
 	}{
 		{
+			name: "unsupported major version should fail",
+			args: args{
+				esCluster: *es("6.0.0"),
+			},
+			want: validation.Result{Allowed: false, Reason: unsupportedVersion(&version.Version{
+				Major: 6,
+				Minor: 0,
+				Patch: 0,
+				Label: "",
+			})},
+		},
+		{
 			name: "unsupported FAIL",
 			args: args{
 				esCluster: *es("1.0.0"),
