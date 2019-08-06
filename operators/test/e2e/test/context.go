@@ -103,6 +103,21 @@ func (c Context) ManagedNamespace(n int) string {
 	return c.NamespaceOperators[n].ManagedNamespace
 }
 
+// OperatorNamespaces returns the unique set of namespaces that have operators deployed.
+func (c Context) OperatorNamespaces() []string {
+	seen := make(map[string]struct{}, len(c.NamespaceOperators))
+	for _, ns := range c.NamespaceOperators {
+		seen[ns.Namespace] = struct{}{}
+	}
+
+	namespaces := make([]string, 0, len(seen))
+	for ns := range seen {
+		namespaces = append(namespaces, ns)
+	}
+
+	return namespaces
+}
+
 // ClusterResource is a generic cluster resource.
 type ClusterResource struct {
 	Name      string `json:"name"`
