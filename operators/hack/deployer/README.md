@@ -49,7 +49,7 @@ CI will populate run-config with vault login information and deployer will fetch
 
 ## CI impersonation
 
-To facilitate testing locally, developers can run "as CI". While the credentials and vault login method are different it does allow fetching the same credentials and logining in as the same service account as CI would. This aims to to shorten the dev cycle for CI related work and debugging.
+To facilitate testing locally, developers can run "as CI". While the credentials and vault login method are different it does allow fetching the same credentials and logging in as the same service account as CI would. This aims to shorten the dev cycle for CI related work and debugging.
 
 To achieve the above, add the following to your run-config.yml, where TOKEN is your GitHub personal access token.
 
