@@ -12,40 +12,35 @@ def get_env_var(var):
 
 def get_value_from_file(file):
     try:
-        tf = open(file, "r")
-        return tf.read()
+        with open(file, "r") as tf:
+            return tf.read()
     except:
         return ""
 
 
+def write_to_file(key, value, file):
+    if value != "":
+        file.write("{}={}\r\n".format(key, value))
+
+
+def file_read_env_and_write(var, filename, file_to_write):
+    write_to_file(var, get_value_from_file(filename), file_to_write)
+
+
 def write_env_to_file(key, file):
-    var = get_env_var(key)
-    if len(var) > 0:
-        file.write("{}={}\r\n".format(key.upper(), var))
+    write_to_file(key, get_env_var(key), file)
 
 
 with open("environment", "w") as text_file:
-    docker_login = get_value_from_file("docker_login.file")
-    if docker_login != "":
-        text_file.write("{}={}\r\n".format("ELASTIC_DOCKER_LOGIN", docker_login))
-
-    docker_password = get_value_from_file("docker_credentials.file")
-    if docker_password != "":
-        text_file.write("{}={}\r\n".format("ELASTIC_DOCKER_PASSWORD", docker_password))
-
-    aws_access = get_value_from_file("aws_access_key.file")
-    if aws_access != "":
-        text_file.write("{}={}\r\n".format("AWS_ACCESS_KEY_ID", aws_access))
-
-    aws_secret = get_value_from_file("aws_secret_key.file")
-    if aws_secret != "":
-        text_file.write("{}={}\r\n".format("AWS_SECRET_ACCESS_KEY", aws_secret))
-
     gcp_creds = get_value_from_file("credentials.json")
     if gcp_creds != "":
         text_file.write("{}={}\r\n".format("GKE_SERVICE_ACCOUNT_KEY_FILE",
         "/go/src/github.com/elastic/cloud-on-k8s/build/ci/credentials.json"))
 
+    file_read_env_and_write("ELASTIC_DOCKER_LOGIN", "docker_login.file", text_file)
+    file_read_env_and_write("ELASTIC_DOCKER_PASSWORD", "docker_credentials.file", text_file)
+    file_read_env_and_write("AWS_ACCESS_KEY_ID", "aws_access_key.file", text_file)
+    file_read_env_and_write("AWS_SECRET_ACCESS_KEY", "aws_secret_key.file", text_file)
     write_env_to_file("OPERATOR_IMAGE", text_file)
     write_env_to_file("LATEST_RELEASED_IMG", text_file)
     write_env_to_file("VERSION", text_file)
