@@ -36,8 +36,10 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	if !d.Expectations.GenerationExpected(actualStatefulSets.ObjectMetas()...) {
 		// Our cache of StatefulSets is out of date compared to previous reconciliation operations.
-		// This will probably lead to conflicting sset updates (which is ok), but also to
-		// conflicting ES calls (set/reset zen1/zen2/allocation excludes, etc.), which may not be ok.
+		// Continuing with the reconciliation at this point may lead to:
+		// - errors on rejected sset updates (conflict since cached resource out of date): that's ok
+		// - calling ES orchestration settings (zen1/zen2/allocation excludes) with wrong assumptions: that's not ok
+		// Hence we choose to abort the reconciliation early: will run again later with an updated cache.
 		log.V(1).Info("StatefulSet cache out-of-date, re-queueing", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 		return results.WithResult(defaultRequeue)
 	}
