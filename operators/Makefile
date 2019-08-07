@@ -281,6 +281,7 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
+STACK_VERSION ?= 7.3.0
 
 # Run e2e tests as a k8s batch job
 e2e: docker-build docker-push e2e-docker-build e2e-docker-push e2e-run
@@ -295,7 +296,8 @@ e2e-run:
 	@go run test/e2e/cmd/main.go run \
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
-		--test-regex=$(TESTS_MATCH)
+		--test-regex=$(TESTS_MATCH) \
+		--elastic-stack-version=$(STACK_VERSION)
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:

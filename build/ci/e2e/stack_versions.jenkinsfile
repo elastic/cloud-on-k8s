@@ -1,0 +1,102 @@
+pipeline {
+
+    agent {
+        label 'linux'
+    }
+
+    options {
+        timeout(time: 150, unit: 'MINUTES')
+    }
+
+    environment {
+        VAULT_ADDR = credentials('vault-addr')
+        VAULT_ROLE_ID = credentials('vault-role-id')
+        VAULT_SECRET_ID = credentials('vault-secret-id')
+        GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
+        OPERATOR_IMAGE = "${IMAGE}"
+        LATEST_RELEASED_IMG = "${IMAGE}"
+    }
+
+    stages {
+        stage('Run tests for different ELK stack versions in GKE') {
+            parallel {
+                stage("6.8.0") {
+                    environment {
+                        STACK_VERSION = "6.8.0"
+                        GKE_CLUSTER_NAME = "${BUILD_TAG}-680"
+                    }
+                    steps {
+                        checkout scm
+                        sh 'make -C build/ci ci-e2e'
+                    }
+                }
+                stage("7.1.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    environment {
+                        STACK_VERSION = "7.1.0"
+                        GKE_CLUSTER_NAME = "${BUILD_TAG}-710"
+                    }
+                    steps {
+                        checkout scm
+                        sh 'make -C build/ci ci-e2e'
+                    }
+                }
+                stage("7.2.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    environment {
+                        STACK_VERSION = "7.2.0"
+                        GKE_CLUSTER_NAME = "${BUILD_TAG}-720"
+                    }
+                    steps {
+                        checkout scm
+                        sh 'make -C build/ci ci-e2e'
+                    }
+                }
+                stage("7.3.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    environment {
+                        STACK_VERSION = "7.3.0"
+                        GKE_CLUSTER_NAME = "${BUILD_TAG}-730"
+                    }
+                    steps {
+                        checkout scm
+                        sh 'make -C build/ci ci-e2e'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        unsuccessful {
+            script {
+                def msg = "E2E tests for ELK stack versions failed!\r\n" + env.BUILD_URL
+                slackSend botUser: true,
+                      channel: '#cloud-k8s',
+                      color: 'danger',
+                      message: msg,
+                      tokenCredentialId: 'cloud-ci-slack-integration-token'
+            }
+        }
+        cleanup {
+            script {
+                clusters = ["${BUILD_TAG}-680", "${BUILD_TAG}-710", "${BUILD_TAG}-720", "${BUILD_TAG}-730"]
+                for (int i = 0; i < clusters.size(); i++) {
+                        build job: 'cloud-on-k8s-e2e-cleanup',
+                              parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
+                              wait: false
+                }
+            }
+            cleanWs()
+        }
+    }
+
+}
+
+
