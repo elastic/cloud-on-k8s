@@ -19,7 +19,7 @@ plans:
   clusterName: ci
   provider: aks
   kubernetesVersion: 1.12.8
-  machineType: Standard_D16s_v3
+  machineType: Standard_D8s_v3
   serviceAccount: true
   psp: false
   vmMapMax: false
