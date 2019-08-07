@@ -42,8 +42,13 @@ pipeline {
                     }
                 }
                 stage("Run docs build") {
+                     when {
+                        expression {
+                            checkout scm
+                            hasDocChanged()
+                        }
+                    }
                     steps {
-                        checkout scm
                         sh 'git clone git@github.com:elastic/docs.git docs-repo'
                         sh """
                             $WORKSPACE/docs-repo/build_docs \
@@ -92,5 +97,13 @@ def notOnlyDocs() {
     return sh (
         script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
     	returnStatus: true
+    ) == 0
+}
+
+def hasDocChanged() {
+    // grep succeeds if there is at least one line without docs/
+    return sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep docs/",
+        returnStatus: true
     ) == 0
 }
