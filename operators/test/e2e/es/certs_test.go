@@ -24,8 +24,7 @@ import (
 )
 
 func TestUpdateHTTPCertSAN(t *testing.T) {
-	name := "test-http-cert-san"
-	b := elasticsearch.NewBuilder(name).
+	b := elasticsearch.NewBuilder("test-http-cert-san").
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithHTTPLoadBalancer()
 
@@ -38,7 +37,7 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 				Name: "Retrieve ES certificate",
 				Test: func(t *testing.T) {
 					var err error
-					caCert, err = getCert(k, test.Ctx().ManagedNamespace(0), name)
+					caCert, err = getCert(k, b.Elasticsearch.Namespace, b.Elasticsearch.Name)
 					require.NoError(t, err)
 				},
 			},
@@ -46,7 +45,7 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 				Name: "Retrieve ES public IP",
 				Test: test.Eventually(func() error {
 					var err error
-					publicIP, err = getPublicIP(k, test.Ctx().ManagedNamespace(0), name)
+					publicIP, err = getPublicIP(k, b.Elasticsearch.Namespace, b.Elasticsearch.Name)
 					return err
 				}),
 			},

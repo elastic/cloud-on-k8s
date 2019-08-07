@@ -39,7 +39,7 @@ func TestUpdateKibanaResources(t *testing.T) {
 			test.Step{
 				Name: "Check resources are propagated to the pod spec",
 				Test: func(t *testing.T) {
-					pods, err := k.GetPods(test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, name))
+					pods, err := k.GetPods(test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name))
 					require.NoError(t, err)
 					for _, p := range pods {
 						require.Equal(t, resources, p.Spec.Containers[0].Resources)

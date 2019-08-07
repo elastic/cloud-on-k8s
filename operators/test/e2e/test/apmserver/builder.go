@@ -52,7 +52,6 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.ApmServer.ObjectMeta.Namespace = namespace
-	b.ApmServer.Spec.ElasticsearchRef.Namespace = namespace
 	return b
 }
 
