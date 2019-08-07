@@ -236,7 +236,7 @@ func Test_leavingNodeNames(t *testing.T) {
 		{
 			name:       "no downscales",
 			downscales: nil,
-			want:       nil,
+			want:       []string{},
 		},
 		{
 			name: "2 downscales",
