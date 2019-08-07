@@ -1,5 +1,5 @@
 # Docker image aimed to run compilation and tests in CI
-FROM golang:1.11
+FROM golang:1.11-stretch
 
 ENV KUBEBUILDER_VERSION=1.0.8
 ENV GCLOUD_VERSION=232.0.0
