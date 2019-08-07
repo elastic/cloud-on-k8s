@@ -9,7 +9,6 @@ GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
 IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile $(ROOT_DIR)/local-volume/Gopkg.lock | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
-
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
 VAULT_PUBLIC_KEY ?= secret/release/license
