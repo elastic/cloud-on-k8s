@@ -10,7 +10,7 @@ kubectl delete elastic --all --all-namesapces
 
 This deletes all underlying Elasticsearch, Kibana, and APM Server resources (pods, secrets, services, etc.).
 
-Then you can uninstall the operator itself:
+Then, you can uninstall the operator:
 
 [source,shell]
 ----
