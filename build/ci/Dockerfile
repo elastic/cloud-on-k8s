@@ -3,7 +3,7 @@ FROM golang:1.11
 
 ENV KUBEBUILDER_VERSION=1.0.8
 ENV GCLOUD_VERSION=232.0.0
-ENV KUBECTL_VERSION=1.13.2
+ENV KUBECTL_VERSION=1.13.6
 ENV DOCKER_VERSION=18.03.1-ce
 
 # Download kubebuilder release to get required tools (etcd, apiserver, etc.)
