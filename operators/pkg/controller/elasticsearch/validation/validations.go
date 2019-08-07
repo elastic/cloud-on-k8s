@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -31,6 +32,7 @@ var Validations = []Validation{
 	noBlacklistedSettings,
 	validSanIP,
 	tlsCannotBeDisabled,
+	pvcModification,
 }
 
 // nameLength checks the length of the Elasticsearch name.
@@ -149,3 +151,66 @@ func tlsCannotBeDisabled(ctx Context) validation.Result {
 	}
 	return validation.OK
 }
+
+// pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
+func pvcModification(ctx Context) validation.Result {
+	if ctx.Current == nil {
+		return validation.OK
+	}
+	for _, node := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+		// does this node exist already?
+		currNode := getNode(node.Name, ctx.Current.Elasticsearch)
+		if currNode == nil {
+			// this is a new sset, so we're good
+			return validation.OK
+		}
+
+		// ssets do not allow modifications
+		// spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden
+		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
+		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
+			return validation.Result{
+				Allowed: false,
+				Reason:  pvcImmutableMsg,
+			}
+		}
+		// for _, pvc := range currNode.VolumeClaimTemplates {
+		// 	// is it safe to assume all PVCs will have names?
+		// 	currPvc := getPvc(pvc.Name, currNode)
+		// 	// can we even add new Pvcs to ssets? either way I think we need to check it because we need to compare statuses
+		// 	// pretty sure we cannot add new PVCs
+		// 	if currPvc == nil {
+
+		// 		// this is a new sset, so we're good
+		// 		return validation.OK
+		// 	}
+		// 	// if !cmp.Equal(currPvc.Spec, pvc.Spec) {
+		// 	if !reflect.DeepEqual(currPvc.Spec, pvc.Spec) {
+		// 		return validation.Result{
+		// 			Allowed: false,
+		// 			Reason:  "Modifications are not allowed to volume claim templates",
+		// 		}
+		// 	}
+
+		// }
+	}
+	return validation.OK
+}
+
+func getNode(name string, es v1alpha1.Elasticsearch) *v1alpha1.NodeSpec {
+	for i := range es.Spec.Nodes {
+		if es.Spec.Nodes[i].Name == name {
+			return &es.Spec.Nodes[i]
+		}
+	}
+	return nil
+}
+
+// func getPvc(name string, nodespec *v1alpha1.NodeSpec) *corev1.PersistentVolumeClaim {
+// 	for i := range nodespec.VolumeClaimTemplates {
+// 		if nodespec.VolumeClaimTemplates[i].Name == name {
+// 			return &nodespec.VolumeClaimTemplates[i]
+// 		}
+// 	}
+// 	return nil
+// }

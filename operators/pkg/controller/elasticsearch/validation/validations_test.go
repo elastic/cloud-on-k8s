@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func Test_hasMaster(t *testing.T) {
@@ -500,4 +503,178 @@ func Test_tlsCannotBeDisabled(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_pvcModified(t *testing.T) {
+	failedValidation := validation.Result{Allowed: false, Reason: pvcImmutableMsg}
+	current := v1alpha1.Elasticsearch{
+		Spec: v1alpha1.ElasticsearchSpec{
+			Version: "7.2.0",
+			Nodes: []v1alpha1.NodeSpec{
+				{
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						corev1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "elasticsearch-data",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("5Gi"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name string
+		es   estype.Elasticsearch
+		want validation.Result
+	}{
+		{
+			name: "resize fails",
+			es: v1alpha1.Elasticsearch{
+				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.2.0",
+					Nodes: []v1alpha1.NodeSpec{
+						{
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								corev1.PersistentVolumeClaim{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("10Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: failedValidation,
+		},
+
+		{
+			name: "same size accepted",
+			es: v1alpha1.Elasticsearch{
+				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.2.0",
+					Nodes: []v1alpha1.NodeSpec{
+						{
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								corev1.PersistentVolumeClaim{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: validation.OK,
+		},
+
+		{
+			name: "additional PVC fails",
+			es: v1alpha1.Elasticsearch{
+				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.2.0",
+					Nodes: []v1alpha1.NodeSpec{
+						{
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								corev1.PersistentVolumeClaim{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+								corev1.PersistentVolumeClaim{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data1",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: failedValidation,
+		},
+
+		{
+			name: "name change rejected",
+			es: v1alpha1.Elasticsearch{
+				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.2.0",
+					Nodes: []v1alpha1.NodeSpec{
+						{
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								corev1.PersistentVolumeClaim{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data1",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: failedValidation,
+		},
+	}
+	// this is in other tests but it runs all of the validations, which i think we want in an overall test not a specific func test
+	// should we make a mock context?
+	// for an example, remove the version string from the examples
+	// ctx, err := NewValidationContext(&current, proposed)
+	// require.NoError(t, err)
+	// require.False(t, pvcModification(*ctx).Allowed)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, err := NewValidationContext(&current, tt.es)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, pvcModification(*ctx))
+		})
+	}
+
+	// TODO add test case for new cluster just to cover all branches?
+	// do we want to add a test to ensure that there is a claim named elasticsearch-data? probably not since we default it
 }
