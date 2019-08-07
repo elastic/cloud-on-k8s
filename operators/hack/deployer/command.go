@@ -97,14 +97,14 @@ func (c *Command) output() (string, error) {
 	b := bytes.Buffer{}
 	if c.stream {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &b)
-		if c.stderr {
-			cmd.Stderr = io.MultiWriter(os.Stderr, &b)
-		}
+		cmd.Stderr = io.MultiWriter(os.Stderr, &b)
 	} else {
 		cmd.Stdout = &b
-		if c.stderr {
-			cmd.Stderr = &b
-		}
+		cmd.Stderr = &b
+	}
+
+	if !c.stderr {
+		cmd.Stderr = nil
 	}
 
 	err := cmd.Run()
