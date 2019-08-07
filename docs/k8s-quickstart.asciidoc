@@ -290,7 +290,7 @@ spec:
       node.ingest: true
     volumeClaimTemplates:
     - metadata:
-        name: elasticsearch-data
+        name: elasticsearch-data # note: elasticsearch-data must be the name of the Elasticsearch volume
       spec:
         accessModes:
         - ReadWriteOnce
