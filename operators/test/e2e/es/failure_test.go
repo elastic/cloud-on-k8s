@@ -79,7 +79,7 @@ func TestDeleteServices(t *testing.T) {
 }
 
 func TestDeleteElasticUserSecret(t *testing.T) {
-	b := elasticsearch.NewBuilder("test-delete-es-elastic-user-secret").
+	b := elasticsearch.NewBuilder("test-delete-elastic-user-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
