@@ -38,7 +38,7 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-e2e-new
+                    make -C build/ci ci-e2e
                 """
             }
         }
@@ -71,7 +71,7 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-deployer-new
+                    make -C build/ci ci-deployer
                 """
             }
             cleanWs()

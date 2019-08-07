@@ -16,45 +16,37 @@ pipeline {
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         OPERATOR_IMAGE = "${IMAGE}"
         LATEST_RELEASED_IMG = "${IMAGE}"
+        SKIP_DOCKER_COMMAND = 'true'
     }
 
     stages {
         stage('Run tests for different k8s versions in GKE') {
             parallel {
                 stage("1.11") {
-                    environment {
-                        GKE_CLUSTER_VERSION = '1.11'
-                        GKE_CLUSTER_NAME = "${BUILD_TAG}-11"
-                    }
                     steps {
                         checkout scm
-                        sh 'make -C build/ci ci-e2e-rc'
+                        createRunConfig('create', '1.11', "${BUILD_TAG}-11")
+                        sh 'make -C build/ci ci-e2e'
                     }
                 }
                 stage("1.12") {
                     agent {
                         label 'linux'
                     }
-                    environment {
-                        GKE_CLUSTER_VERSION = '1.12'
-                        GKE_CLUSTER_NAME = "${BUILD_TAG}-12"
-                    }
                     steps {
                         checkout scm
-                        sh 'make -C build/ci ci-e2e-rc'
+                        createRunConfig('create', '1.12', "${BUILD_TAG}-12")
+                        sh 'make -C build/ci ci-e2e'
                     }
                 }
                 stage("1.13") {
                     agent {
                         label 'linux'
                     }
-                    environment {
-                        GKE_CLUSTER_VERSION = '1.13'
-                        GKE_CLUSTER_NAME = "${BUILD_TAG}-13"
-                    }
                     steps {
                         checkout scm
-                        sh 'make -C build/ci ci-e2e-rc'
+                        createRunConfig('create', '1.13', "${BUILD_TAG}-13")
+                        sh 'make -C build/ci ci-e2e'
                     }
                 }
             }
@@ -75,16 +67,31 @@ pipeline {
         cleanup {
             script {
                 clusters = ["${BUILD_TAG}-11", "${BUILD_TAG}-12", "${BUILD_TAG}-13"]
+                versions = ["1.11", "1.12", "1.13"]
                 for (int i = 0; i < clusters.size(); i++) {
-                        build job: 'cloud-on-k8s-e2e-cleanup',
-                              parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
-                              wait: false
+                    createRunConfig('delete', versions[i], clusters[i])
+                    make -C build/ci ci-deployer
                 }
             }
             cleanWs()
         }
     }
-
 }
 
-
+void createRunConfig(operation, clusterVersion, clusterName) {
+    sh """
+                    cat >operators/run-config.yml <<EOF
+id: gke-ci
+overrides:
+  operation: ${operation}
+  kubernetesVersion: "${clusterVersion}"
+  clusterName: ${clusterName}
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+EOF
+    """
+}

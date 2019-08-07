@@ -31,7 +31,21 @@ pipeline {
                 }
             }
             steps {
-                sh 'make -C build/ci ci-e2e'
+                sh """
+                    cat >operators/run-config.yml <<EOF
+id: gke-ci
+overrides:
+  kubernetesVersion: "$CLUSTER_VERSION"
+  clusterName: $CLUSTER_NAME
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+EOF
+                    make -C build/ci ci-e2e
+                """
             }
         }
     }
@@ -48,12 +62,28 @@ pipeline {
             }
         }
         cleanup {
-            script {
-                if (notOnlyDocs()) {
-                    build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'GKE_CLUSTER', value: "${GKE_CLUSTER_NAME}")],
-                        wait: false
+            when {
+                expression {
+                    notOnlyDocs()
                 }
+            }
+            steps {
+                sh """
+                    cat >operators/run-config.yml <<EOF
+id: gke-ci
+overrides:
+  operation: delete
+  kubernetesVersion: "$CLUSTER_VERSION"
+  clusterName: $CLUSTER_NAME
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+EOF
+                    make -C build/ci ci-deployer
+                """
             }
 
             cleanWs()
