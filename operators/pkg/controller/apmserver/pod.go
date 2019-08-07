@@ -87,23 +87,15 @@ func newPodSpec(as *v1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec 
 		filepath.Join(ConfigVolumePath, "config-secret"),
 	)
 
-	env := []corev1.EnvVar{
-		{
-			Name: "POD_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+	env := append(defaults.PodDownwardEnvVars, corev1.EnvVar{
+		Name: "SECRET_TOKEN",
+		ValueFrom: &corev1.EnvVarSource{
+			SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: p.ApmServerSecret.Name},
+				Key:                  SecretTokenKey,
 			},
 		},
-		{
-			Name: "SECRET_TOKEN",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: p.ApmServerSecret.Name},
-					Key:                  SecretTokenKey,
-				},
-			},
-		},
-	}
+	})
 
 	builder := defaults.NewPodTemplateBuilder(
 		p.PodTemplate, v1alpha1.APMServerContainerName).

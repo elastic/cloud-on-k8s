@@ -10,6 +10,7 @@ import (
 	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -69,25 +70,7 @@ func (tp testParams) withInitContainer() testParams {
 			},
 			Name:  "",
 			Image: "docker.elastic.co/apm/apm-server:1.0",
-			Env: []corev1.EnvVar{{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						APIVersion: "v1",
-						FieldPath:  "metadata.name",
-					},
-				},
-			},
-				{
-					Name: "POD_IP",
-					ValueFrom: &corev1.EnvVarSource{
-						FieldRef: &corev1.ObjectFieldSelector{
-							APIVersion: "v1",
-							FieldPath:  "status.podIP",
-						},
-					},
-				},
-			},
+			Env:   defaults.PodDownwardEnvVars,
 		},
 	}
 	return tp
@@ -137,7 +120,6 @@ func expectedDeploymentParams() testParams {
 				},
 				Containers: []corev1.Container{{
 					VolumeMounts: []corev1.VolumeMount{
-
 						{
 							Name:      "config",
 							ReadOnly:  true,
@@ -163,27 +145,17 @@ func expectedDeploymentParams() testParams {
 						"-c",
 						"config/config-secret/apm-server.yml",
 					},
-					Env: []corev1.EnvVar{{
-						Name: "POD_NAME",
+					Env: append(defaults.PodDownwardEnvVars, corev1.EnvVar{
+						Name: "SECRET_TOKEN",
 						ValueFrom: &corev1.EnvVarSource{
-							FieldRef: &corev1.ObjectFieldSelector{
-								APIVersion: "v1",
-								FieldPath:  "metadata.name",
-							},
-						},
-					},
-						{
-							Name: "SECRET_TOKEN",
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "test-apm-server-apm-token",
-									},
-									Key: "secret-token",
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "test-apm-server-apm-token",
 								},
+								Key: "secret-token",
 							},
 						},
-					},
+					}),
 					Ports: []corev1.ContainerPort{
 						{Name: "http", ContainerPort: int32(8200), Protocol: corev1.ProtocolTCP},
 					},

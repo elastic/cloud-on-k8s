@@ -5,8 +5,25 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
@@ -25,17 +42,6 @@ import (
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const name = "elasticsearch-controller"
@@ -63,9 +69,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
-		finalizers:       finalizer.NewHandler(client),
-		dynamicWatches:   watches.NewDynamicWatches(),
-		podsExpectations: reconciler.NewExpectations(),
+		finalizers:     finalizer.NewHandler(client),
+		dynamicWatches: watches.NewDynamicWatches(),
+		expectations:   reconciler.NewExpectations(),
 
 		Parameters: params,
 	}
@@ -85,29 +91,36 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
-	// Watch pods
-	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}}, r.dynamicWatches.Pods); err != nil {
+	// Watch StatefulSets
+	if err := c.Watch(
+		&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+		},
+	); err != nil {
 		return err
 	}
-	if err := r.dynamicWatches.Pods.AddHandlers(
-		// trigger reconciliation loop on ES pods owned by this controller
-		&watches.OwnerWatch{
-			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-				IsController: true,
-				OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
-			},
-		},
-		// Reconcile pods expectations.
-		// This does not technically need to be part of a dynamic watch, since it will
-		// stay there forever (nothing dynamic here).
-		// Turns out our dynamic watch mechanism happens to be a pretty nice way to
-		// setup multiple "static" handlers for a single watch.
-		watches.NewExpectationsWatch(
-			"pods-expectations",
-			r.podsExpectations,
-			// retrieve cluster name from pod labels
-			label.ClusterFromResourceLabels,
-		)); err != nil {
+
+	// Watch pods belonging to ES clusters
+	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(
+				func(object handler.MapObject) []reconcile.Request {
+					labels := object.Meta.GetLabels()
+					clusterName, isSet := labels[label.ClusterNameLabelName]
+					if !isSet {
+						return nil
+					}
+					return []reconcile.Request{
+						{
+							NamespacedName: types.NamespacedName{
+								Namespace: object.Meta.GetNamespace(),
+								Name:      clusterName,
+							},
+						},
+					}
+				}),
+		}); err != nil {
 		return err
 	}
 
@@ -155,9 +168,9 @@ type ReconcileElasticsearch struct {
 
 	dynamicWatches watches.DynamicWatches
 
-	// podsExpectations help dealing with inconsistencies in our client cache,
-	// by marking Pods creation/deletion as expected, and waiting til they are effectively observed.
-	podsExpectations *reconciler.Expectations
+	// expectations help dealing with inconsistencies in our client cache,
+	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
+	expectations *reconciler.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -233,11 +246,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	ver, err := commonversion.Parse(es.Spec.Version)
-	if err != nil {
-		return results.WithError(err)
-	}
-
 	violations, err := validation.Validate(es)
 	if err != nil {
 		return results.WithError(err)
@@ -247,23 +255,28 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	driver, err := driver.NewDriver(driver.Options{
-		Client:   r.Client,
-		Scheme:   r.scheme,
-		Recorder: r.recorder,
-
-		Version: *ver,
-
-		Observers:        r.esObservers,
-		DynamicWatches:   r.dynamicWatches,
-		PodsExpectations: r.podsExpectations,
-		Parameters:       r.Parameters,
-	})
+	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
 		return results.WithError(err)
 	}
+	supported := esversion.SupportedVersions(*ver)
+	if supported == nil {
+		return results.WithError(fmt.Errorf("unsupported version: %s", ver))
+	}
 
-	return driver.Reconcile(es, reconcileState)
+	return driver.NewDefaultDriver(driver.DefaultDriverParameters{
+		OperatorParameters: r.Parameters,
+		ES:                 es,
+		ReconcileState:     reconcileState,
+		Client:             r.Client,
+		Scheme:             r.scheme,
+		Recorder:           r.recorder,
+		Version:            *ver,
+		Expectations:       r.expectations,
+		Observers:          r.esObservers,
+		DynamicWatches:     r.dynamicWatches,
+		SupportedVersions:  *supported,
+	}).Reconcile()
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
@@ -288,7 +301,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 ) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
-		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
 		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind()),
 		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Name, esname.ESNamer),

@@ -29,6 +29,20 @@ func StringInSlice(str string, list []string) bool {
 	return false
 }
 
+// StringsInSlice returns true if the given strings are found in the provided slice, else returns false
+func StringsInSlice(strings []string, slice []string) bool {
+	asMap := make(map[string]struct{}, len(slice))
+	for _, s := range slice {
+		asMap[s] = struct{}{}
+	}
+	for _, s := range strings {
+		if _, exists := asMap[s]; !exists {
+			return false
+		}
+	}
+	return true
+}
+
 // RemoveStringInSlice returns a new slice with all occurrences of s removed,
 // keeping the given slice unmodified
 func RemoveStringInSlice(s string, slice []string) []string {

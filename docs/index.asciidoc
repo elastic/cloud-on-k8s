@@ -15,7 +15,3 @@ include::snapshots.asciidoc[]
 include::elasticsearch-spec.asciidoc[]
 include::apm.asciidoc[]
 include::troubleshooting.asciidoc[]
-
-
-
-
