@@ -195,10 +195,10 @@ You can request the Elasticsearch endpoint within or outside the Kubernetes clus
 ----
 NAME=hulk
 
-kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}' > ca.pem
-PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
+kubectl get secret "$NAME-es-http-certs-public" -o go-template='{{index .data "tls.crt" | base64decode }}' > tls.crt
+PW=$(kubectl get secret "$NAME-es-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
 
-curl --cacert ca.pem -u elastic:$PW https://$NAME-es-http:9200/
+curl --cacert tls.crt -u elastic:$PW https://$NAME-es-http:9200/
 ----
 
 *Outside the Kubernetes cluster*
@@ -244,7 +244,7 @@ You can now reach Elasticsearch:
 
 [source,sh]
 ----
-> curl --cacert ca.pem -u elastic:$PASSWORD https://$IP:9200/
+> curl --cacert tls.crt -u elastic:$PASSWORD https://$IP:9200/
 {
   "name" : "hulk-es-4qk62zd928",
   "cluster_name" : "hulk",
