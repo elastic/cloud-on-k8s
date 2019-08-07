@@ -25,7 +25,7 @@ func createStatefulSetWithESVersion(version string) appsv1.StatefulSet {
 	}}}
 }
 
-func TestIsCompatibleForZen2(t *testing.T) {
+func TestIsCompatibleWithZen2(t *testing.T) {
 
 	tests := []struct {
 		name string
@@ -57,7 +57,7 @@ func TestIsCompatibleForZen2(t *testing.T) {
 	}
 }
 
-func TestAtLeastOneNodeCompatibleForZen2(t *testing.T) {
+func TestAtLeastOneNodeCompatibleWithZen2(t *testing.T) {
 	tests := []struct {
 		name         string
 		statefulSets sset.StatefulSetList
