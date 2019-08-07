@@ -28,9 +28,11 @@ LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
 	REPOSITORY = ${GCLOUD_PROJECT}
-endif
-# default to local registry
-ifeq ($(REGISTRY),)
+else ifneq ($(findstring azmk8s.io:443,$(shell kubectl config view --minify -o=jsonpath={.clusters[*].cluster.server} 2> /dev/null)),)
+	REGISTRY ?= cloudonk8s.azurecr.io
+	REPOSITORY ?= operators
+else ifeq ($(REGISTRY),)
+	# default to local registry
 	REGISTRY ?= localhost:5000
 endif
 

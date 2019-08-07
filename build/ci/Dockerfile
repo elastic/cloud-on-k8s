@@ -47,6 +47,9 @@ RUN apt-get update && apt-get --no-install-recommends -y install \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Download Azure CLI
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
 # Add Go dependencies to Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s/operators
 COPY operators/Gopkg.lock .
