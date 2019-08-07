@@ -319,7 +319,7 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
+ci: check-fmt lint check-local-changes unit integration docker-build
 
 # Run e2e tests in a dedicated gke cluster, that we delete if everything went fine.
 # Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.
