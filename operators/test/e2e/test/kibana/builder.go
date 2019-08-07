@@ -57,7 +57,6 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.Kibana.ObjectMeta.Namespace = namespace
-	b.Kibana.Spec.ElasticsearchRef.Namespace = namespace
 	return b
 }
 
