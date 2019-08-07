@@ -94,7 +94,7 @@ func TestUpdateConfiguration(t *testing.T) {
 			{
 				Name: "Check the value of a parameter in the configuration",
 				Test: func(t *testing.T) {
-					config, err := partialAPMConfiguration(k, namespace, name)
+					config, err := partialAPMConfiguration(k, namespace, apmName)
 					require.NoError(t, err)
 
 					esHost := services.ExternalServiceURL(esBuilder.Elasticsearch)
