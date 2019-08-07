@@ -523,7 +523,7 @@ func Test_pvcModified(t *testing.T) {
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								corev1.PersistentVolumeClaim{
+								{
 									ObjectMeta: metav1.ObjectMeta{
 										Name: "elasticsearch-data",
 									},
@@ -552,7 +552,7 @@ func Test_pvcModified(t *testing.T) {
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								corev1.PersistentVolumeClaim{
+								{
 									ObjectMeta: metav1.ObjectMeta{
 										Name: "elasticsearch-data",
 									},
@@ -581,7 +581,7 @@ func Test_pvcModified(t *testing.T) {
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								corev1.PersistentVolumeClaim{
+								{
 									ObjectMeta: metav1.ObjectMeta{
 										Name: "elasticsearch-data",
 									},
@@ -593,7 +593,7 @@ func Test_pvcModified(t *testing.T) {
 										},
 									},
 								},
-								corev1.PersistentVolumeClaim{
+								{
 									ObjectMeta: metav1.ObjectMeta{
 										Name: "elasticsearch-data1",
 									},
@@ -622,7 +622,7 @@ func Test_pvcModified(t *testing.T) {
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-								corev1.PersistentVolumeClaim{
+								{
 									ObjectMeta: metav1.ObjectMeta{
 										Name: "elasticsearch-data1",
 									},
@@ -666,7 +666,7 @@ func getEsCluster() *v1alpha1.Elasticsearch {
 			Nodes: []v1alpha1.NodeSpec{
 				{
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-						corev1.PersistentVolumeClaim{
+						{
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "elasticsearch-data",
 							},
