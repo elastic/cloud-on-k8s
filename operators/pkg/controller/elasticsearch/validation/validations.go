@@ -158,15 +158,13 @@ func pvcModification(ctx Context) validation.Result {
 		return validation.OK
 	}
 	for _, node := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		// does this node exist already?
 		currNode := getNode(node.Name, ctx.Current.Elasticsearch)
 		if currNode == nil {
-			// this is a new sset, so we're good
+			// this is a new sset, so there it is okay
 			return validation.OK
 		}
 
-		// ssets do not allow modifications
-		// spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden
+		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
 		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
 		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
 			return validation.Result{
@@ -174,25 +172,6 @@ func pvcModification(ctx Context) validation.Result {
 				Reason:  pvcImmutableMsg,
 			}
 		}
-		// for _, pvc := range currNode.VolumeClaimTemplates {
-		// 	// is it safe to assume all PVCs will have names?
-		// 	currPvc := getPvc(pvc.Name, currNode)
-		// 	// can we even add new Pvcs to ssets? either way I think we need to check it because we need to compare statuses
-		// 	// pretty sure we cannot add new PVCs
-		// 	if currPvc == nil {
-
-		// 		// this is a new sset, so we're good
-		// 		return validation.OK
-		// 	}
-		// 	// if !cmp.Equal(currPvc.Spec, pvc.Spec) {
-		// 	if !reflect.DeepEqual(currPvc.Spec, pvc.Spec) {
-		// 		return validation.Result{
-		// 			Allowed: false,
-		// 			Reason:  "Modifications are not allowed to volume claim templates",
-		// 		}
-		// 	}
-
-		// }
 	}
 	return validation.OK
 }
@@ -205,12 +184,3 @@ func getNode(name string, es v1alpha1.Elasticsearch) *v1alpha1.NodeSpec {
 	}
 	return nil
 }
-
-// func getPvc(name string, nodespec *v1alpha1.NodeSpec) *corev1.PersistentVolumeClaim {
-// 	for i := range nodespec.VolumeClaimTemplates {
-// 		if nodespec.VolumeClaimTemplates[i].Name == name {
-// 			return &nodespec.VolumeClaimTemplates[i]
-// 		}
-// 	}
-// 	return nil
-// }

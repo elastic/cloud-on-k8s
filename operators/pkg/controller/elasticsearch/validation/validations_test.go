@@ -507,38 +507,17 @@ func Test_tlsCannotBeDisabled(t *testing.T) {
 
 func Test_pvcModified(t *testing.T) {
 	failedValidation := validation.Result{Allowed: false, Reason: pvcImmutableMsg}
-	current := v1alpha1.Elasticsearch{
-		Spec: v1alpha1.ElasticsearchSpec{
-			Version: "7.2.0",
-			Nodes: []v1alpha1.NodeSpec{
-				{
-					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-						corev1.PersistentVolumeClaim{
-							ObjectMeta: metav1.ObjectMeta{
-								Name: "elasticsearch-data",
-							},
-							Spec: corev1.PersistentVolumeClaimSpec{
-								Resources: corev1.ResourceRequirements{
-									Requests: corev1.ResourceList{
-										corev1.ResourceStorage: resource.MustParse("5Gi"),
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
+	current := getEsCluster()
 	tests := []struct {
-		name string
-		es   estype.Elasticsearch
-		want validation.Result
+		name     string
+		current  *v1alpha1.Elasticsearch
+		proposed v1alpha1.Elasticsearch
+		want     validation.Result
 	}{
 		{
-			name: "resize fails",
-			es: v1alpha1.Elasticsearch{
+			name:    "resize fails",
+			current: current,
+			proposed: v1alpha1.Elasticsearch{
 				Spec: v1alpha1.ElasticsearchSpec{
 					Version: "7.2.0",
 					Nodes: []v1alpha1.NodeSpec{
@@ -565,8 +544,9 @@ func Test_pvcModified(t *testing.T) {
 		},
 
 		{
-			name: "same size accepted",
-			es: v1alpha1.Elasticsearch{
+			name:    "same size accepted",
+			current: current,
+			proposed: v1alpha1.Elasticsearch{
 				Spec: v1alpha1.ElasticsearchSpec{
 					Version: "7.2.0",
 					Nodes: []v1alpha1.NodeSpec{
@@ -593,8 +573,9 @@ func Test_pvcModified(t *testing.T) {
 		},
 
 		{
-			name: "additional PVC fails",
-			es: v1alpha1.Elasticsearch{
+			name:    "additional PVC fails",
+			current: current,
+			proposed: v1alpha1.Elasticsearch{
 				Spec: v1alpha1.ElasticsearchSpec{
 					Version: "7.2.0",
 					Nodes: []v1alpha1.NodeSpec{
@@ -633,8 +614,9 @@ func Test_pvcModified(t *testing.T) {
 		},
 
 		{
-			name: "name change rejected",
-			es: v1alpha1.Elasticsearch{
+			name:    "name change rejected",
+			current: current,
+			proposed: v1alpha1.Elasticsearch{
 				Spec: v1alpha1.ElasticsearchSpec{
 					Version: "7.2.0",
 					Nodes: []v1alpha1.NodeSpec{
@@ -659,22 +641,46 @@ func Test_pvcModified(t *testing.T) {
 			},
 			want: failedValidation,
 		},
+		{
+			name:     "new instance accepted",
+			current:  nil,
+			proposed: *current,
+			want:     validation.OK,
+		},
 	}
-	// this is in other tests but it runs all of the validations, which i think we want in an overall test not a specific func test
-	// should we make a mock context?
-	// for an example, remove the version string from the examples
-	// ctx, err := NewValidationContext(&current, proposed)
-	// require.NoError(t, err)
-	// require.False(t, pvcModification(*ctx).Allowed)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, err := NewValidationContext(&current, tt.es)
+			ctx, err := NewValidationContext(current, tt.proposed)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, pvcModification(*ctx))
 		})
 	}
+}
 
-	// TODO add test case for new cluster just to cover all branches?
-	// do we want to add a test to ensure that there is a claim named elasticsearch-data? probably not since we default it
+// getEsCluster returns a ES cluster test fixture
+func getEsCluster() *v1alpha1.Elasticsearch {
+	return &v1alpha1.Elasticsearch{
+		Spec: v1alpha1.ElasticsearchSpec{
+			Version: "7.2.0",
+			Nodes: []v1alpha1.NodeSpec{
+				{
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						corev1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "elasticsearch-data",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("5Gi"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
