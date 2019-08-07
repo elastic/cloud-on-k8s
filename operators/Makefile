@@ -323,10 +323,6 @@ ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration
 # Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.
 ci-e2e: ci-bootstrap-gke e2e
 
-# Run e2e tests in gke using custom operator image
-ci-e2e-rc: export SKIP_DOCKER_COMMAND=true
-ci-e2e-rc: ci-bootstrap-gke e2e
-
 ci-bootstrap-gke:
 	PSP=1 GKE_MACHINE_TYPE=n1-standard-8 $(MAKE) bootstrap-gke
 

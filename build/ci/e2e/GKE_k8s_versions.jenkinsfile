@@ -17,6 +17,7 @@ pipeline {
         REPOSITORY = "${GCLOUD_PROJECT}"
         OPERATOR_IMAGE = "${IMAGE}"
         LATEST_RELEASED_IMG = "${IMAGE}"
+        SKIP_DOCKER_COMMAND = "true"
     }
 
     stages {

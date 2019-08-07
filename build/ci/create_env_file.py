@@ -57,7 +57,5 @@ with open("environment", "w") as text_file:
     write_env_to_file("GKE_CLUSTER_NAME", text_file)
     write_env_to_file("TESTS_MATCH", text_file)
     write_env_to_file("GKE_CLUSTER_VERSION", text_file)
-
-
-
-
+    write_env_to_file("STACK_VERSION", text_file)
+    write_env_to_file("SKIP_DOCKER_COMMAND", text_file)
