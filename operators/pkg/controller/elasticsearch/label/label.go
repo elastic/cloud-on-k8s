@@ -10,9 +10,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -28,6 +28,8 @@ const (
 	VersionLabelName = "elasticsearch.k8s.elastic.co/version"
 	// PodNameLabelName used to store the name of the pod on other objects
 	PodNameLabelName = "elasticsearch.k8s.elastic.co/pod-name"
+	// StatefulSetNameLabelName used to store the name of the statefulset
+	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset"
 	// VolumeNameLabelName is the name of the volume e.g. elasticsearch-data a PVC was used for.
 	VolumeNameLabelName = "elasticsearch.k8s.elastic.co/volume-name"
 	// ConfigChecksumLabelName used to store the checksum of the Elasticsearch configuration
@@ -42,6 +44,8 @@ const (
 	// NodeTypesMLLabelName is a label set to true on nodes with the ml role
 	NodeTypesMLLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
 
+	ConfigTemplateHashLabelName = "elasticsearch.k8s.elastic.co/config-template-hash"
+
 	// Type represents the Elasticsearch type
 	Type = "elasticsearch"
 )
@@ -51,20 +55,24 @@ func IsMasterNode(pod corev1.Pod) bool {
 	return NodeTypesMasterLabelName.HasValue(true, pod.Labels)
 }
 
+func IsMasterNodeSet(statefulSet appsv1.StatefulSet) bool {
+	return NodeTypesMasterLabelName.HasValue(true, statefulSet.Spec.Template.Labels)
+}
+
 // IsDataNode returns true if the pod has the data node label
 func IsDataNode(pod corev1.Pod) bool {
 	return NodeTypesDataLabelName.HasValue(true, pod.Labels)
 }
 
-// ExtractVersion extracts the Elasticsearch version from a pod label.
-func ExtractVersion(pod corev1.Pod) (*version.Version, error) {
-	labelValue, ok := pod.Labels[VersionLabelName]
+// ExtractVersion extracts the Elasticsearch version from the given labels.
+func ExtractVersion(labels map[string]string) (*version.Version, error) {
+	labelValue, ok := labels[VersionLabelName]
 	if !ok {
-		return nil, fmt.Errorf("pod %s is missing the version label %s", pod.Name, VersionLabelName)
+		return nil, fmt.Errorf("version label %s is missing", VersionLabelName)
 	}
 	v, err := version.Parse(labelValue)
 	if err != nil {
-		return nil, errors.Wrapf(err, "pod %s has an invalid version label", pod.Name)
+		return nil, errors.Wrapf(err, "version label %s is invalid: %s", VersionLabelName, labelValue)
 	}
 	return v, nil
 }
@@ -78,18 +86,38 @@ func NewLabels(es types.NamespacedName) map[string]string {
 }
 
 // NewPodLabels returns labels to apply for a new Elasticsearch pod.
-func NewPodLabels(es v1alpha1.Elasticsearch, version version.Version, cfg v1alpha1.ElasticsearchSettings) map[string]string {
+func NewPodLabels(es types.NamespacedName, ssetName string, version version.Version, nodeRoles v1alpha1.Node, configHash string) (map[string]string, error) {
 	// cluster name based labels
-	labels := NewLabels(k8s.ExtractNamespacedName(&es))
+	labels := NewLabels(es)
 	// version label
 	labels[VersionLabelName] = version.String()
-	// node types labels
-	NodeTypesMasterLabelName.Set(cfg.Node.Master, labels)
-	NodeTypesDataLabelName.Set(cfg.Node.Data, labels)
-	NodeTypesIngestLabelName.Set(cfg.Node.Ingest, labels)
-	NodeTypesMLLabelName.Set(cfg.Node.ML, labels)
 
-	return labels
+	// node types labels
+	NodeTypesMasterLabelName.Set(nodeRoles.Master, labels)
+	NodeTypesDataLabelName.Set(nodeRoles.Data, labels)
+	NodeTypesIngestLabelName.Set(nodeRoles.Ingest, labels)
+	NodeTypesMLLabelName.Set(nodeRoles.ML, labels)
+
+	// config hash label, to rotate pods on config changes
+	labels[ConfigTemplateHashLabelName] = configHash
+
+	// apply stateful set label selector
+	for k, v := range NewStatefulSetLabels(es, ssetName) {
+		labels[k] = v
+	}
+
+	return labels, nil
+}
+
+// NewConfigLabels returns labels to apply for an Elasticsearch Config secret.
+func NewConfigLabels(es types.NamespacedName, ssetName string) map[string]string {
+	return NewStatefulSetLabels(es, ssetName)
+}
+
+func NewStatefulSetLabels(es types.NamespacedName, ssetName string) map[string]string {
+	lbls := NewLabels(es)
+	lbls[StatefulSetNameLabelName] = ssetName
+	return lbls
 }
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels

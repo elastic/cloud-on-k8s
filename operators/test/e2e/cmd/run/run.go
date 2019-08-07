@@ -60,6 +60,8 @@ func doRun(flags runFlags) error {
 			helper.initTestContext,
 			helper.createE2ENamespaceAndRoleBindings,
 			helper.installCRDs,
+			helper.createOperatorNamespaces,
+			helper.createManagedNamespaces,
 			helper.deployGlobalOperator,
 			helper.deployNamespaceOperators,
 			helper.deployTestJob,
@@ -164,7 +166,7 @@ func (h *helper) initTestContext() error {
 
 func (h *helper) createE2ENamespaceAndRoleBindings() error {
 	log.Info("Creating E2E namespace and role bindings")
-	return h.kubectlApplyTemplate("config/e2e/rbac.yaml", h.testContext, true)
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/rbac.yaml", h.testContext)
 }
 
 func (h *helper) installCRDs() error {
@@ -176,7 +178,7 @@ func (h *helper) installCRDs() error {
 
 	for _, crd := range crds {
 		log.V(1).Info("Installing CRD", "crd", crd)
-		if err := h.kubectlApplyTemplate(crd, h.testContext, false); err != nil {
+		if _, err := h.kubectlApplyTemplate(crd, h.testContext); err != nil {
 			return err
 		}
 	}
@@ -184,24 +186,35 @@ func (h *helper) installCRDs() error {
 	return nil
 }
 
+func (h *helper) createOperatorNamespaces() error {
+	log.Info("Creating operator namespaces")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator_namespaces.yaml", h.testContext)
+}
+
 func (h *helper) createManagedNamespaces() error {
 	log.Info("Creating managed namespaces")
-	return h.kubectlApplyTemplate("config/e2e/local_namespace.yaml", h.testContext, false)
+	// when in local mode, don't delete the namespaces on exit
+	if h.testContext.Local {
+		_, err := h.kubectlApplyTemplate("config/e2e/managed_namespaces.yaml", h.testContext)
+		return err
+	}
+
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
 }
 
 func (h *helper) deployGlobalOperator() error {
 	log.Info("Deploying global operator")
-	return h.kubectlApplyTemplate("config/e2e/global_operator.yaml", h.testContext, true)
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/global_operator.yaml", h.testContext)
 }
 
 func (h *helper) deployNamespaceOperators() error {
 	log.Info("Deploying namespace operators")
-	return h.kubectlApplyTemplate("config/e2e/namespace_operator.yaml", h.testContext, true)
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/namespace_operator.yaml", h.testContext)
 }
 
 func (h *helper) deployTestJob() error {
 	log.Info("Deploying e2e test job")
-	return h.kubectlApplyTemplate("config/e2e/batch_job.yaml", h.testContext, true)
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml", h.testContext)
 }
 
 func (h *helper) runTestJob() error {
@@ -349,25 +362,22 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 }
 
-func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}, deleteOnExit bool) error {
+func (h *helper) kubectlApplyTemplate(templatePath string, templateParam interface{}) (string, error) {
 	outFilePath, err := h.renderTemplate(templatePath, templateParam)
+	if err != nil {
+		return "", err
+	}
+
+	return outFilePath, h.kubectl("apply", "-f", outFilePath)
+}
+
+func (h *helper) kubectlApplyTemplateWithCleanup(templatePath string, templateParam interface{}) error {
+	resourceFile, err := h.kubectlApplyTemplate(templatePath, templateParam)
 	if err != nil {
 		return err
 	}
 
-	if err := h.kubectl("apply", "-f", outFilePath); err != nil {
-		return err
-	}
-
-	if deleteOnExit {
-		h.addCleanupFunc(func() {
-			log.Info("Deleting resources", "file", outFilePath)
-			if err := h.kubectl("delete", "--all", "-f", outFilePath); err != nil {
-				log.Error(err, "Failed to delete resources", "file", outFilePath)
-			}
-		})
-	}
-
+	h.addCleanupFunc(h.deleteResources(resourceFile))
 	return nil
 }
 
@@ -420,6 +430,15 @@ func (h *helper) renderTemplate(templatePath string, param interface{}) (string,
 	}
 
 	return outFilePath, nil
+}
+
+func (h *helper) deleteResources(file string) func() {
+	return func() {
+		log.Info("Deleting resources", "file", file)
+		if err := h.kubectl("delete", "--all", "--wait", "-f", file); err != nil {
+			log.Error(err, "Failed to delete resources", "file", file)
+		}
+	}
 }
 
 func (h *helper) addCleanupFunc(cf func()) {

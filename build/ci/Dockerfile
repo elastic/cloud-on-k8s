@@ -1,9 +1,9 @@
 # Docker image aimed to run compilation and tests in CI
-FROM golang:1.11
+FROM golang:1.11-stretch
 
 ENV KUBEBUILDER_VERSION=1.0.8
 ENV GCLOUD_VERSION=232.0.0
-ENV KUBECTL_VERSION=1.13.2
+ENV KUBECTL_VERSION=1.13.6
 ENV DOCKER_VERSION=18.03.1-ce
 ENV GOLANGCILINT_VERSION=1.17.1
 
@@ -46,6 +46,9 @@ RUN apt-get update && apt-get --no-install-recommends -y install \
     awscli && \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Download Azure CLI
+RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
 
 # Add Go dependencies to Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s/operators

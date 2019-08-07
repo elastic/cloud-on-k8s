@@ -15,9 +15,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/set"
 )
@@ -45,7 +45,7 @@ func nameLength(ctx Context) validation.Result {
 
 // supportedVersion checks if the version is supported.
 func supportedVersion(ctx Context) validation.Result {
-	if v := driver.SupportedVersions(ctx.Proposed.Version); v != nil {
+	if v := esversion.SupportedVersions(ctx.Proposed.Version); v != nil {
 		if err := v.Supports(ctx.Proposed.Version); err == nil {
 			return validation.OK
 		}

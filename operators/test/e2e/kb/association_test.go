@@ -36,13 +36,11 @@ func TestCrossNSAssociation(t *testing.T) {
 		WithNamespace(esNamespace).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithRestrictedSecurityContext()
-
 	kbBuilder := kibana.NewBuilder(name).
 		WithNamespace(kbNamespace).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
-	kbBuilder.Kibana.Spec.ElasticsearchRef.Name = name
-	kbBuilder.Kibana.Spec.ElasticsearchRef.Namespace = esNamespace
 
 	builders := []test.Builder{esBuilder, kbBuilder}
 	test.RunMutations(t, builders, builders)
@@ -84,6 +82,7 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
 	failureSteps := func(k *test.K8sClient) test.StepList {

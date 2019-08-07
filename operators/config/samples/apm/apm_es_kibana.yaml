@@ -3,28 +3,29 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  name: elasticsearch-sample
+  name: es-apm-sample
 spec:
   version: 7.2.0
   nodes:
-  - nodeCount: 3
+  - name: default
+    nodeCount: 3
 ---
 apiVersion: apm.k8s.elastic.co/v1alpha1
 kind: ApmServer
 metadata:
-  name: apm-server-sample
+  name: apm-apm-sample
 spec:
   version: 7.2.0
   nodeCount: 1
   elasticsearchRef:
-    name: "elasticsearch-sample"
+    name: "es-apm-sample"
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
 metadata:
-  name: kibana-sample
+  name: kb-apm-sample
 spec:
   version: 7.2.0
   nodeCount: 1
   elasticsearchRef:
-    name: "elasticsearch-sample"
+    name: "es-apm-sample"

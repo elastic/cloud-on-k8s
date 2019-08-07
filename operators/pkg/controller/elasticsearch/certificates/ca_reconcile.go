@@ -107,12 +107,11 @@ func Reconcile(
 	}
 
 	// reconcile transport certificates
-	result, err := transport.ReconcileTransportCertificateSecrets(
+	result, err := transport.ReconcileTransportCertificatesSecrets(
 		c,
 		scheme,
 		transportCA,
 		es,
-		services,
 		certRotation,
 	)
 	if results.WithResult(result).WithError(err).HasError() {

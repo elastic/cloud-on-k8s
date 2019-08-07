@@ -67,10 +67,20 @@ func xpackConfig() *CanonicalConfig {
 		XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 
 		// x-pack security transport settings
-		XPackSecurityTransportSslEnabled:                "true",
-		XPackSecurityTransportSslKey:                    path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.KeyFileName),
-		XPackSecurityTransportSslCertificate:            path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CertFileName),
-		XPackSecurityTransportSslCertificateAuthorities: []string{path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName)},
+		XPackSecurityTransportSslEnabled: "true",
+		XPackSecurityTransportSslKey: path.Join(
+			volume.ConfigVolumeMountPath,
+			volume.NodeTransportCertificatePathSegment,
+			volume.NodeTransportCertificateKeyFile,
+		),
+		XPackSecurityTransportSslCertificate: path.Join(
+			volume.ConfigVolumeMountPath,
+			volume.NodeTransportCertificatePathSegment,
+			volume.NodeTransportCertificateCertFile,
+		),
+		XPackSecurityTransportSslCertificateAuthorities: []string{
+			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
+		},
 	}
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }

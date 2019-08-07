@@ -68,9 +68,10 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 // NodeSpec defines a common topology for a set of Elasticsearch nodes
 type NodeSpec struct {
 	// Name is a logical name for this set of nodes. Used as a part of the managed Elasticsearch node.name setting.
-	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]*
-	// +kubebuilder:validation:MaxLength=12
-	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+
+	// +kubebuilder:validation:MaxLength=19
+	// TODO: refactor and explain name length conventions
+	Name string `json:"name"`
 
 	// Config represents Elasticsearch configuration.
 	Config *commonv1alpha1.Config `json:"config,omitempty"`

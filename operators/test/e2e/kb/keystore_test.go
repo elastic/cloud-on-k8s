@@ -42,10 +42,11 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).
 		WithKibanaSecureSettings(secureSettings.Name)
 
-	namespace := kbBuilder.Kibana.Namespace
+	kbPodListOpts := test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name)
 
 	initStepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
@@ -61,9 +62,10 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 		}
 	}
+
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
-			test.CheckKeystoreEntries(k, test.KibanaPodListOptions(namespace, name), KibanaKeystoreCmd, []string{"logging.verbose"}),
+			test.CheckKeystoreEntries(k, kbPodListOpts, KibanaKeystoreCmd, []string{"logging.verbose"}),
 			// modify the secure settings secret
 			test.Step{
 				Name: "Modify secure settings secret",
@@ -79,7 +81,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			test.CheckKeystoreEntries(k, test.KibanaPodListOptions(namespace, name), KibanaKeystoreCmd, []string{"logging.json", "logging.verbose"}),
+			test.CheckKeystoreEntries(k, kbPodListOpts, KibanaKeystoreCmd, []string{"logging.json", "logging.verbose"}),
 
 			// remove the secure settings reference
 			test.Step{
@@ -97,7 +99,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			test.CheckKeystoreEntries(k, test.KibanaPodListOptions(namespace, name), KibanaKeystoreCmd, nil),
+			test.CheckKeystoreEntries(k, kbPodListOpts, KibanaKeystoreCmd, nil),
 
 			// cleanup extra resources
 			test.Step{

@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // Builder to create APM Servers
@@ -29,10 +30,6 @@ func NewBuilder(name string) Builder {
 			Spec: apmtype.ApmServerSpec{
 				NodeCount: 1,
 				Version:   test.Ctx().ElasticStackVersion,
-				ElasticsearchRef: commonv1alpha1.ObjectSelector{
-					Name:      name,
-					Namespace: test.Ctx().ManagedNamespace(0),
-				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						SecurityContext: test.DefaultSecurityContext(),
@@ -40,7 +37,12 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}
+	}.WithSuffix(rand.String(4))
+}
+
+func (b Builder) WithSuffix(suffix string) Builder {
+	b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
+	return b
 }
 
 func (b Builder) WithRestrictedSecurityContext() Builder {
@@ -50,7 +52,6 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.ApmServer.ObjectMeta.Namespace = namespace
-	b.ApmServer.Spec.ElasticsearchRef.Namespace = namespace
 	return b
 }
 

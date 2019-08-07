@@ -23,6 +23,9 @@ import (
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
 	name := "test-apm-assoc-non-existent-es"
 	apmBuilder := apmserver.NewBuilder(name).
+		WithElasticsearchRef(commonv1alpha1.ObjectSelector{
+			Name: "non-existent-es",
+		}).
 		WithNodeCount(1)
 
 	k := test.NewK8sClientOrFatal()
@@ -56,6 +59,7 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	apmBuilder := apmserver.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
 	failureSteps := func(k *test.K8sClient) test.StepList {

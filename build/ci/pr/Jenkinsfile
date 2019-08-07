@@ -41,19 +41,6 @@ pipeline {
                         sh 'make -C build/ci ci-pr'
                     }
                 }
-                stage("Run docs build") {
-                    steps {
-                        checkout scm
-                        sh 'git clone git@github.com:elastic/docs.git docs-repo'
-                        sh """
-                            $WORKSPACE/docs-repo/build_docs \
-                            --doc $WORKSPACE/docs/index.asciidoc \
-                            --out $WORKSPACE/docs/html \
-                            --chunk 1
-                        """
-                        sh 'test -e $WORKSPACE/docs/html/index.html'
-                    }
-                }
                 stage("Run smoke E2E tests") {
                     when {
                         expression {
