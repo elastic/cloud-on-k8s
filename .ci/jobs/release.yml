@@ -1,11 +1,6 @@
 ---
 - job:
     description: Job that builds release version of ECK. This Job is managed by JJB.
-    logrotate:
-      daysToKeep: 7
-      numToKeep: 100
-      artifactDaysToKeep: 5
-      artifactNumToKeep: 10
     name: cloud-on-k8s-release
     project-type: multibranch
     prune-dead-branches: true

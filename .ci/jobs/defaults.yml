@@ -8,4 +8,8 @@
 ##### JOB DEFAULTS
 
 - job:
-      foo: bar
+    logrotate:
+      daysToKeep: 7
+      numToKeep: 100
+      artifactDaysToKeep: 5
+      artifactNumToKeep: 10
