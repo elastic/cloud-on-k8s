@@ -62,14 +62,10 @@ EOF
             }
         }
         cleanup {
-            when {
-                expression {
-                    notOnlyDocs()
-                }
-            }
-            steps {
-                sh """
-                    cat >operators/run-config.yml <<EOF
+            script {
+                if (notOnlyDocs()) {
+                    sh """
+                        cat >operators/run-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: delete
@@ -82,8 +78,9 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-run-deployer
-                """
+                        make -C build/ci ci-run-deployer
+                    """
+                }
             }
 
             cleanWs()
