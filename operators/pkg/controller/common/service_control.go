@@ -73,6 +73,10 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 		}
 	}
 
+	if expected.Spec.HealthCheckNodePort == 0 {
+		expected.Spec.HealthCheckNodePort = reconciled.Spec.HealthCheckNodePort
+	}
+
 	return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
 }
 
