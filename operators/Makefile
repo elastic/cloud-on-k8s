@@ -40,7 +40,13 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --short --verify HEAD)
+
+ifeq ($(OPERATOR_IMAGE),)
+	# we never want this empty
+	undefine OPERATOR_IMAGE
+endif
 OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
+
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildHash=$(TAG) \
@@ -321,30 +327,19 @@ e2e-local:
 
 ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
 
-# Run e2e tests in a dedicated gke cluster, that we delete if everything went fine.
-# Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.
-ci-e2e: ci-bootstrap-gke e2e
+# Run e2e tests in a dedicated cluster.
+ci-e2e: run-deployer
+	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
 
-# Run e2e tests in gke using custom operator image
-ci-e2e-rc: export SKIP_DOCKER_COMMAND=true
-ci-e2e-rc: ci-bootstrap-gke e2e
-
-ci-bootstrap-gke:
-	PSP=1 GKE_MACHINE_TYPE=n1-standard-8 $(MAKE) bootstrap-gke
+run-deployer: dep-vendor-only
+	@ go build -o hack/deployer/deployer ./hack/deployer/...
+	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 	@ echo $(OPERATOR_IMAGE) was pushed!
-
-ci-e2e-new: deployer-new
-	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
-
-deployer-new: dep-vendor-only
-	@ go build -o hack/deployer/deployer ./hack/deployer/...
-	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
-
 
 ##########################
 ##  --   Helpers    --  ##

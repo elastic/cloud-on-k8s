@@ -214,5 +214,36 @@ func (d *GkeDriver) getCredentials() error {
 func (d *GkeDriver) delete() error {
 	log.Println("Deleting cluster...")
 	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
-	return NewCommand(cmd).AsTemplate(d.ctx).Run()
+	if err := NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
+		return err
+	}
+
+	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
+	cmd = `gcloud compute disks list --filter="-users:*" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	if err != nil {
+		return err
+	}
+
+	for _, disk := range disks {
+		nameZone := strings.Split(disk, ",")
+		if len(nameZone) != 2 {
+			return fmt.Errorf("disk name and zone contained unexpected number of fields")
+		}
+
+		name, zone := nameZone[0], nameZone[1]
+		cmd = `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
+		err := NewCommand(cmd).
+			AsTemplate(map[string]interface{}{
+				"GCloudProject": d.plan.Gke.GCloudProject,
+				"Name":          name,
+				"Zone":          zone,
+			}).
+			Run()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

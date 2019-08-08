@@ -38,7 +38,7 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-e2e-new
+                    make -C build/ci ci-e2e
                 """
             }
         }
@@ -47,7 +47,7 @@ EOF
     post {
         unsuccessful {
             script {
-                def msg = "E2E tests with deployer failed!\r\n" + env.BUILD_URL
+                def msg = "E2E tests with failed!\r\n" + env.BUILD_URL
                 slackSend botUser: true,
                       channel: '#cloud-k8s',
                       color: 'danger',
@@ -71,7 +71,7 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-deployer-new
+                    make -C build/ci ci-run-deployer
                 """
             }
             cleanWs()

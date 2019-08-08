@@ -112,26 +112,7 @@ yaml-upload: vault-aws-creds
 
 ## -- End-to-end tests job
 
-ci-e2e-new:
-	@ docker run --rm -t \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-		-w $(GO_MOUNT_PATH) \
-		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-		$(IMAGE) \
-		bash -c "make -C operators ci-e2e-new"
-
-ci-deployer-new:
-	@ docker run --rm -t \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-		-w $(GO_MOUNT_PATH) \
-		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-		$(IMAGE) \
-		bash -c "make -C operators deployer-new"
-
-# Spawn a k8s cluster, and run e2e tests against it
-ci-e2e: vault-gke-creds
+ci-e2e:
 	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -140,56 +121,20 @@ ci-e2e: vault-gke-creds
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
 		-e "REGISTRY=$(REGISTRY)" \
 		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
-		-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
-		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
-		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
+		-e "SKIP_DOCKER_COMMAND=$(SKIP_DOCKER_COMMAND)" \
+		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
 		$(IMAGE) \
 		bash -c "make -C operators ci-e2e"
 
-# Run e2e tests in GKE against provided ECK image
-ci-e2e-rc: vault-gke-creds
+ci-run-deployer:
 	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
-		-e "IMG_SUFFIX=-ci" \
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-		-e "REGISTRY=$(REGISTRY)" \
-		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
-		-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
-		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
-		-e "TESTS_MATCH=$(TESTS_MATCH)" \
-		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
-		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
 		$(IMAGE) \
-		bash -c "make -C operators ci-e2e-rc"
-
-## -- Support jobs
-
-# Remove k8s cluster
-ci-e2e-delete-cluster: vault-gke-creds
-	@ docker run --rm -t \
-    	-v /var/run/docker.sock:/var/run/docker.sock \
-    	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-    	-w $(GO_MOUNT_PATH) \
-    	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-    	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
-    	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
-    	$(IMAGE) \
-    	bash -c "make -C operators set-context-gke delete-gke"
-
-# Remove all unused resources in GKE
-ci-gke-cleanup: ci-e2e-delete-cluster
-	@ docker run --rm -t \
-    	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-    	-w $(GO_MOUNT_PATH) \
-    	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-    	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
-    	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
-    	$(IMAGE) \
-    	bash -c "GKE_CLUSTER_VERSION=1.11 $(GO_MOUNT_PATH)/operators/hack/gke-cluster.sh auth && \
-    	 	$(GO_MOUNT_PATH)/build/ci/delete_unused_disks.py"
+		bash -c "make -C operators run-deployer"
 
 # Check if Docker image exists by trying to pull it. If there is no image, then build and push it.
 ci-build-image: vault-docker-creds
