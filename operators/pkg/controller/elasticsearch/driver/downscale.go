@@ -5,6 +5,8 @@
 package driver
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
@@ -16,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	appsv1 "k8s.io/api/apps/v1"
 )
 
 // downscaleContext holds the context of this downscale, including clients and states,
@@ -144,25 +145,26 @@ func scheduleDataMigrations(esClient esclient.Client, leavingNodes []string) err
 // Nodes whose data migration is not over will not be removed.
 // A boolean is returned to indicate if a requeue should be scheduled if the entire downscale could not be performed.
 func attemptDownscale(ctx downscaleContext, downscale ssetDownscale, allLeavingNodes []string, statefulSets sset.StatefulSetList) (bool, error) {
-	// TODO: only one master node downscale at a time
-	if downscale.isRemoval() {
+	switch {
+	case downscale.isRemoval():
 		ssetLogger(downscale.statefulSet).Info("Deleting statefulset")
-		if err := ctx.k8sClient.Delete(&downscale.statefulSet); err != nil {
-			return false, err
-		}
-		return false, nil
-	}
+		return false, ctx.k8sClient.Delete(&downscale.statefulSet)
 
-	if !downscale.isReplicaDecrease() {
+	case downscale.isReplicaDecrease():
+		// adjust the theoretical downscale to one we can safely perform
+		performable := calculatePerformableDownscale(ctx, downscale, allLeavingNodes)
+		if !performable.isReplicaDecrease() {
+			// no downscale can be performed for now, let's requeue
+			return true, nil
+		}
+		// do performable downscale, and requeue if needed
+		shouldRequeue := performable.targetReplicas != downscale.targetReplicas
+		return shouldRequeue, doDownscale(ctx, performable, statefulSets)
+
+	default:
 		// nothing to do
 		return false, nil
 	}
-
-	// adjust the theoretical downscale to one we can safely perform
-	performable, shouldRequeue := calculatePerformableDownscale(ctx, downscale, allLeavingNodes)
-
-	// do the performable downscale
-	return shouldRequeue, doDownscale(ctx, performable, statefulSets)
 }
 
 // calculatePerformableDownscale updates the given downscale target replicas to account for nodes
@@ -172,7 +174,9 @@ func calculatePerformableDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
 	allLeavingNodes []string,
-) (ssetDownscale, bool) {
+) ssetDownscale {
+	// TODO: only one master node downscale at a time
+
 	// create another downscale based on the provided one, for which we'll slowly decrease target replicas
 	performableDownscale := ssetDownscale{
 		statefulSet:     downscale.statefulSet,
@@ -185,13 +189,12 @@ func calculatePerformableDownscale(
 			ssetLogger(downscale.statefulSet).V(1).Info("Data migration not over yet, skipping node deletion", "node", node)
 			ctx.reconcileState.UpdateElasticsearchMigrating(ctx.resourcesState, ctx.observedState)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
-			// make sure we requeue
-			return performableDownscale, true
+			return performableDownscale
 		}
 		// data migration over: allow pod to be removed
 		performableDownscale.targetReplicas--
 	}
-	return performableDownscale, false
+	return performableDownscale
 }
 
 // doDownscale schedules nodes removal for the given downscale, and updates zen settings accordingly.

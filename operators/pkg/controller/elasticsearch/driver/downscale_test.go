@@ -423,10 +423,9 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 		allLeavingNodes []string
 	}
 	tests := []struct {
-		name        string
-		args        args
-		want        ssetDownscale
-		wantRequeue bool
+		name string
+		args args
+		want ssetDownscale
 	}{
 		{
 			name: "no downscale planned",
@@ -442,7 +441,6 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  3,
 			},
-			wantRequeue: false,
 		},
 		{
 			name: "downscale possible from 3 to 1",
@@ -465,7 +463,6 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  1,
 			},
-			wantRequeue: false,
 		},
 		{
 			name: "downscale not possible: data migration not ready",
@@ -489,17 +486,13 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  3,
 			},
-			wantRequeue: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotRequeue := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale, tt.args.allLeavingNodes)
+			got := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale, tt.args.allLeavingNodes)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("calculatePerformableDownscale() got = %v, want %v", got, tt.want)
-			}
-			if gotRequeue != tt.wantRequeue {
-				t.Errorf("calculatePerformableDownscale() got1 = %v, want %v", gotRequeue, tt.wantRequeue)
 			}
 		})
 	}
