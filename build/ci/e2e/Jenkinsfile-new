@@ -31,13 +31,14 @@ id: gke-ci
 overrides:
   kubernetesVersion: "$CLUSTER_VERSION"
   clusterName: $CLUSTER_NAME
-  vaultAddress: $VAULT_ADDR
-  vaultRoleId: $VAULT_ROLE_ID
-  vaultSecretId: $VAULT_SECRET_ID
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-e2e-new
+                    make -C build/ci ci-e2e
                 """
             }
         }
@@ -46,7 +47,7 @@ EOF
     post {
         unsuccessful {
             script {
-                def msg = "E2E tests with deployer failed!\r\n" + env.BUILD_URL
+                def msg = "E2E tests with failed!\r\n" + env.BUILD_URL
                 slackSend botUser: true,
                       channel: '#cloud-k8s',
                       color: 'danger',
@@ -63,13 +64,14 @@ overrides:
   operation: delete
   kubernetesVersion: "$CLUSTER_VERSION"
   clusterName: $CLUSTER_NAME
-  vaultAddress: $VAULT_ADDR
-  vaultRoleId: $VAULT_ROLE_ID
-  vaultSecretId: $VAULT_SECRET_ID
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-deployer-new
+                    make -C build/ci ci-run-deployer
                 """
             }
             cleanWs()

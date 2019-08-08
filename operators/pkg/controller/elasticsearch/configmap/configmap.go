@@ -5,9 +5,15 @@
 package configmap
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -21,4 +27,23 @@ func NewConfigMapWithData(es types.NamespacedName, data map[string]string) corev
 		},
 		Data: data,
 	}
+}
+
+// ReconcileScriptsConfigMap reconciles a configmap containing scripts used by
+// init containers and readiness probe.
+func ReconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
+	fsScript, err := initcontainer.RenderPrepareFsScript()
+	if err != nil {
+		return err
+	}
+
+	scriptsConfigMap := NewConfigMapWithData(
+		types.NamespacedName{Namespace: es.Namespace, Name: name.ScriptsConfigMap(es.Name)},
+		map[string]string{
+			nodespec.ReadinessProbeScriptConfigKey: nodespec.ReadinessProbeScript,
+			initcontainer.PrepareFsScriptConfigKey: fsScript,
+		},
+	)
+
+	return ReconcileConfigMap(c, scheme, es, scriptsConfigMap)
 }

@@ -22,6 +22,11 @@ func (c *clientV6) GetClusterInfo(ctx context.Context) (Info, error) {
 	return info, c.get(ctx, "/", &info)
 }
 
+func (c *clientV6) GetClusterRoutingAllocation(ctx context.Context) (ClusterRoutingAllocation, error) {
+	var settings ClusterRoutingAllocation
+	return settings, c.get(ctx, "/_cluster/settings", &settings)
+}
+
 func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
 	var clusterState ClusterState
 	return clusterState, c.get(ctx, "/_cluster/state/dispatcher,master_node,nodes,routing_table", &clusterState)
@@ -32,18 +37,44 @@ func (c *clientV6) UpdateSettings(ctx context.Context, settings Settings) error 
 }
 
 func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
-	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
-	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
+	allocationSettings := ClusterRoutingAllocation{
+		Transient: AllocationSettings{
+			Cluster: ClusterRoutingSettings{
+				Routing: RoutingSettings{
+					Allocation: RoutingAllocationSettings{
+						Exclude: AllocationExclude{
+							Name: nodes,
+						},
+					},
+				},
+			},
+		},
+	}
+	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
+}
+
+func (c *clientV6) updateAllocationEnable(ctx context.Context, value string) error {
+	allocationSettings := ClusterRoutingAllocation{
+		Transient: AllocationSettings{
+			Cluster: ClusterRoutingSettings{
+				Routing: RoutingSettings{
+					Allocation: RoutingAllocationSettings{
+						Enable: value,
+					},
+				},
+			},
+		},
+	}
+	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
+
 }
 
 func (c *clientV6) EnableShardAllocation(ctx context.Context) error {
-	allocationSetting := ClusterRoutingAllocation{AllocationSettings{Enable: "all"}}
-	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
+	return c.updateAllocationEnable(ctx, "all")
 }
 
-func (c *clientV6) DisableShardAllocation(ctx context.Context) error {
-	allocationSetting := ClusterRoutingAllocation{AllocationSettings{Enable: "none"}}
-	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
+func (c *clientV6) DisableReplicaShardsAllocation(ctx context.Context) error {
+	return c.updateAllocationEnable(ctx, "primaries")
 }
 
 func (c *clientV6) SyncedFlush(ctx context.Context) error {

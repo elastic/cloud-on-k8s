@@ -47,6 +47,7 @@ rules:
   - apps
   resources:
   - deployments
+  - statefulsets
   verbs:
   - get
   - list
@@ -143,20 +144,6 @@ rules:
   - patch
 
 {{- range .NamespaceOperators }}
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ .Namespace }}
-  labels:
-    test-run: {{ $testRun }}
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ .ManagedNamespace }}
-  labels:
-    test-run: {{ $testRun }}
 ---
 apiVersion: v1
 kind: ServiceAccount

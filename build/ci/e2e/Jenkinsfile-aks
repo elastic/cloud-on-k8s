@@ -1,0 +1,65 @@
+pipeline {
+
+    agent {
+        label 'linux'
+    }
+
+    options {
+        timeout(time: 150, unit: 'MINUTES')
+    }
+
+    environment {
+        VAULT_ADDR = credentials('vault-addr')
+        VAULT_ROLE_ID = credentials('vault-role-id')
+        VAULT_SECRET_ID = credentials('vault-secret-id')
+        CLUSTER_VERSION = '1.12.8'
+        CLUSTER_NAME = "${BUILD_TAG}"
+    }
+
+    stages {
+        stage('Checkout from GitHub') {
+            steps {
+                checkout scm
+            }
+        }
+        stage("Run E2E tests") {
+            steps {
+                sh """
+                    cat >operators/run-config.yml <<EOF
+id: aks-ci
+overrides:
+  kubernetesVersion: "$CLUSTER_VERSION"
+  clusterName: $CLUSTER_NAME
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+EOF
+                    make -C build/ci ci-e2e
+                """
+            }
+        }  
+    }
+
+    post {
+        cleanup {
+            script {
+                sh """
+                    cat >operators/run-config.yml <<EOF
+id: aks-ci
+overrides:
+  operation: delete
+  kubernetesVersion: "$CLUSTER_VERSION"
+  clusterName: $CLUSTER_NAME
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+EOF
+                    make -C build/ci ci-run-deployer
+                """
+            }
+            cleanWs()
+        }
+    }
+}

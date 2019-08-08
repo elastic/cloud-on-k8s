@@ -7,6 +7,8 @@ package version
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -17,6 +19,60 @@ import (
 var (
 	testPodWithoutVersionLabel = corev1.Pod{}
 )
+
+func TestSupportedVersions(t *testing.T) {
+	type args struct {
+		v version.Version
+	}
+	tests := []struct {
+		name        string
+		args        args
+		supported   []version.Version
+		unsupported []version.Version
+	}{
+		{
+			name: "6.x",
+			args: args{
+				v: version.MustParse("6.8.0"),
+			},
+			supported: []version.Version{
+				version.MustParse("6.7.0"),
+				version.MustParse("6.8.0"),
+				version.MustParse("6.99.99"),
+			},
+			unsupported: []version.Version{
+				version.MustParse("6.5.0"),
+				version.MustParse("7.0.0"),
+			},
+		},
+		{
+			name: "7.x",
+			args: args{
+				v: version.MustParse("7.1.0"),
+			},
+			supported: []version.Version{
+				version.MustParse("6.7.0"), //wire compat
+				version.MustParse("7.2.0"),
+				version.MustParse("7.99.99"),
+			},
+			unsupported: []version.Version{
+				version.MustParse("6.6.0"),
+				version.MustParse("8.0.0"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vs := SupportedVersions(tt.args.v)
+			for _, v := range tt.supported {
+				require.NoError(t, vs.Supports(v))
+			}
+			for _, v := range tt.unsupported {
+				require.Error(t, vs.Supports(v))
+			}
+		})
+	}
+}
 
 func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T) {
 	newPodWithVersionLabel := func(v version.Version) corev1.Pod {

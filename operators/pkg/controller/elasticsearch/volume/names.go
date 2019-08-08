@@ -9,6 +9,11 @@ const (
 	ProbeUserSecretMountPath = "/mnt/elastic-internal/probe-user"
 	ProbeUserVolumeName      = "elastic-internal-probe-user"
 
+	ConfigVolumeMountPath               = "/usr/share/elasticsearch/config"
+	NodeTransportCertificatePathSegment = "node-transport-cert"
+	NodeTransportCertificateKeyFile     = "transport.tls.key"
+	NodeTransportCertificateCertFile    = "transport.tls.crt"
+
 	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
 	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs"
 

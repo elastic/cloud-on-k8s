@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestModel_RemoteCluster(t *testing.T) {
@@ -55,4 +56,14 @@ func TestModel_RemoteCluster(t *testing.T) {
 			assert.Equal(t, tt.want, string(json))
 		})
 	}
+}
+
+func TestClusterRoutingAllocation(t *testing.T) {
+	clusterSettingsSample := `{"persistent":{},"transient":{"cluster":{"routing":{"allocation":{"enable":"none","exclude":{"_name":"excluded"}}}}}}`
+	expected := ClusterRoutingAllocation{Transient: AllocationSettings{Cluster: ClusterRoutingSettings{Routing: RoutingSettings{Allocation: RoutingAllocationSettings{Enable: "none", Exclude: AllocationExclude{Name: "excluded"}}}}}}
+
+	var settings ClusterRoutingAllocation
+	require.NoError(t, json.Unmarshal([]byte(clusterSettingsSample), &settings))
+	require.Equal(t, expected, settings)
+	require.Equal(t, false, settings.Transient.IsShardsAllocationEnabled())
 }

@@ -11,11 +11,7 @@ include::k8s-quickstart.asciidoc[]
 include::openshift.asciidoc[]
 include::accessing-services.asciidoc[]
 include::managing-compute-resources.asciidoc[]
-include::snapshots.asciidoc[]
 include::elasticsearch-spec.asciidoc[]
 include::apm.asciidoc[]
 include::troubleshooting.asciidoc[]
-
-
-
-
+include::uninstall.asciidoc[]

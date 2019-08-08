@@ -85,7 +85,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 // then mutates it to a 1 node cluster with less RAM
 func TestMutationResizeMemoryDown(t *testing.T) {
 	// create an ES cluster with a 4G node
-	b := elasticsearch.NewBuilder("test-mutation-resize-memory-down").
+	b := elasticsearch.NewBuilder("test-mutation-resize-mem-down").
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("4Gi"),

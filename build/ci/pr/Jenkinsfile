@@ -15,8 +15,8 @@ pipeline {
         REGISTRY = "eu.gcr.io"
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         TESTS_MATCH = 'TestSmoke'
-        GKE_CLUSTER_VERSION = '1.12'
-        GKE_CLUSTER_NAME = "${BUILD_TAG}"
+        CLUSTER_VERSION = '1.12'
+        CLUSTER_NAME = "${BUILD_TAG}"
     }
 
     stages {
@@ -41,19 +41,6 @@ pipeline {
                         sh 'make -C build/ci ci-pr'
                     }
                 }
-                stage("Run docs build") {
-                    steps {
-                        checkout scm
-                        sh 'git clone git@github.com:elastic/docs.git docs-repo'
-                        sh """
-                            $WORKSPACE/docs-repo/build_docs \
-                            --doc $WORKSPACE/docs/index.asciidoc \
-                            --out $WORKSPACE/docs/html \
-                            --chunk 1
-                        """
-                        sh 'test -e $WORKSPACE/docs/html/index.html'
-                    }
-                }
                 stage("Run smoke E2E tests") {
                     when {
                         expression {
@@ -65,7 +52,21 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh 'make -C build/ci ci-e2e'
+                        sh """
+                            cat >operators/run-config.yml <<EOF
+id: gke-ci
+overrides:
+  kubernetesVersion: "$CLUSTER_VERSION"
+  clusterName: $CLUSTER_NAME
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+EOF
+                            make -C build/ci ci-e2e
+                        """
                     }
                 }
             }
@@ -76,15 +77,28 @@ pipeline {
         cleanup {
             script {
                 if (notOnlyDocs()) {
-                    build job: 'cloud-on-k8s-e2e-cleanup',
-                          parameters: [string(name: 'GKE_CLUSTER', value: "${GKE_CLUSTER_NAME}")],
-                          wait: false
+                    sh """
+                        cat >operators/run-config.yml <<EOF
+id: gke-ci
+overrides:
+  operation: delete
+  kubernetesVersion: "$CLUSTER_VERSION"
+  clusterName: $CLUSTER_NAME
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+EOF
+                        make -C build/ci ci-run-deployer
+                    """
                 }
             }
+
             cleanWs()
         }
     }
-
 }
 
 def notOnlyDocs() {

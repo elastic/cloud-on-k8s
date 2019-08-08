@@ -137,6 +137,28 @@ func TestNeedsUpdate(t *testing.T) {
 				Ports: []corev1.ServicePort{{Port: int32(9200)}},
 			}},
 		},
+		{
+			name: "Reconciled health check node ports are used",
+			args: args{
+				expected: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+					Ports:                 []corev1.ServicePort{{Port: int32(9200)}},
+				}},
+				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
+					Type:                  corev1.ServiceTypeLoadBalancer,
+					ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+					HealthCheckNodePort:   32767,
+					Ports:                 []corev1.ServicePort{{Port: int32(9200), NodePort: int32(33433)}},
+				}},
+			},
+			want: corev1.Service{Spec: corev1.ServiceSpec{
+				Type:                  corev1.ServiceTypeLoadBalancer,
+				ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
+				HealthCheckNodePort:   32767,
+				Ports:                 []corev1.ServicePort{{Port: int32(9200), NodePort: int32(33433)}},
+			}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -5,16 +5,17 @@
 package version
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // MinVersion extracts the currently running Elasticsearch versions from the running pods
 func MinVersion(pods []corev1.Pod) (*version.Version, error) {
 	var vs []version.Version
 	for _, pod := range pods {
-		v, err := label.ExtractVersion(pod)
+		v, err := label.ExtractVersion(pod.Labels)
 		if err != nil {
 			return nil, err
 		}

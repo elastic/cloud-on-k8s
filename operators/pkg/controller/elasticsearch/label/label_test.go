@@ -16,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -73,36 +72,28 @@ func TestNewLabelSelectorForElasticsearch(t *testing.T) {
 func TestExtractVersion(t *testing.T) {
 	tests := []struct {
 		name    string
-		args    corev1.Pod
+		args    map[string]string
 		want    *version.Version
 		wantErr bool
 	}{
 		{
 			name:    "no version",
-			args:    corev1.Pod{},
+			args:    nil,
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "invalid version",
-			args: corev1.Pod{
-				ObjectMeta: v1.ObjectMeta{
-					Labels: map[string]string{
-						VersionLabelName: "no a version",
-					},
-				},
+			args: map[string]string{
+				VersionLabelName: "not a version",
 			},
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "valid version",
-			args: corev1.Pod{
-				ObjectMeta: v1.ObjectMeta{
-					Labels: map[string]string{
-						VersionLabelName: "1.0.0",
-					},
-				},
+			args: map[string]string{
+				VersionLabelName: "1.0.0",
 			},
 			want: &version.Version{
 				Major: 1,

@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +18,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+)
+
+const (
+	esUserName     = "default-as-apm-user"
+	userSecretName = "as-elastic-internal-apm"
 )
 
 var t = true
@@ -26,6 +35,35 @@ var ownerRefFixture = metav1.OwnerReference{
 	UID:                "",
 	Controller:         &t,
 	BlockOwnerDeletion: &t,
+}
+
+// apmFixture is a shared test fixture
+var apmFixture = apmtype.ApmServer{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "as",
+		Namespace: "default",
+	},
+	Spec: apmtype.ApmServerSpec{
+		ElasticsearchRef: commonv1alpha1.ObjectSelector{
+			Name:      "es",
+			Namespace: "default",
+		},
+		Elasticsearch: apmtype.ElasticsearchOutput{},
+	},
+}
+
+func setupScheme(t *testing.T) *runtime.Scheme {
+	sc := scheme.Scheme
+	if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
+		assert.Fail(t, "failed to add assoc types")
+	}
+	if err := apmtype.SchemeBuilder.AddToScheme(sc); err != nil {
+		assert.Fail(t, "failed to add apm types")
+	}
+	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
+		assert.Fail(t, "failed to add Es types")
+	}
+	return sc
 }
 
 func Test_deleteOrphanedResources(t *testing.T) {

@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
@@ -241,11 +242,11 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 }
 
 // GetTransportCert retrieves the certificate of the CA and the transport certificate
-func (k *K8sClient) GetTransportCert(podNamespace, podName string) (caCert, transportCert []*x509.Certificate, err error) {
+func (k *K8sClient) GetTransportCert(esName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: podNamespace,
-		Name:      esname.TransportCertsSecret(podName),
+		Namespace: Ctx().ManagedNamespace(0),
+		Name:      esname.TransportCertificatesSecret(esName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
 		return nil, nil, err
@@ -258,9 +259,9 @@ func (k *K8sClient) GetTransportCert(podNamespace, podName string) (caCert, tran
 	if err != nil {
 		return nil, nil, err
 	}
-	transportCertBytes, exists := secret.Data[certificates.CertFileName]
+	transportCertBytes, exists := secret.Data[transport.PodCertFileName(podName)]
 	if !exists || len(transportCertBytes) == 0 {
-		return nil, nil, fmt.Errorf("no value found for secret %s", certificates.CertFileName)
+		return nil, nil, fmt.Errorf("no value found for secret %s", transport.PodCertFileName(podName))
 	}
 	transportCert, err = certificates.ParsePEMCerts(transportCertBytes)
 	if err != nil {

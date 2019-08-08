@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -31,14 +32,21 @@ func TestSmoke(t *testing.T) {
 	test.ExitOnErr(decoder.Decode(&apmBuilder.ApmServer))
 	test.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
 
+	ns := test.Ctx().ManagedNamespace(0)
+	randSuffix := rand.String(4)
 	esBuilder = esBuilder.
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithSuffix(randSuffix).
+		WithNamespace(ns).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithSuffix(randSuffix).
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithRestrictedSecurityContext()
 	apmBuilder = apmBuilder.
-		WithNamespace(test.Ctx().ManagedNamespace(0)).
+		WithSuffix(randSuffix).
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithRestrictedSecurityContext()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).

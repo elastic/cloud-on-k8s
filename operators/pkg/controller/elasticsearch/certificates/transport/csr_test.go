@@ -35,8 +35,8 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	// we expect this name to be used for both the common name as well as the es othername
 	cn := "test-pod-name.node.test-es-name.test-namespace.es.local"
 
-	validatedCert, err := CreateValidatedCertificateTemplate(
-		testPod, testCluster, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+	validatedCert, err := createValidatedCertificateTemplate(
+		testPod, testES, testCSR, certificates.DefaultCertValidity,
 	)
 	require.NoError(t, err)
 
@@ -74,7 +74,6 @@ func Test_buildGeneralNames(t *testing.T) {
 
 	type args struct {
 		cluster v1alpha1.Elasticsearch
-		svcs    []corev1.Service
 		pod     corev1.Pod
 	}
 	tests := []struct {
@@ -85,7 +84,7 @@ func Test_buildGeneralNames(t *testing.T) {
 		{
 			name: "no svcs and user-provided SANs",
 			args: args{
-				cluster: testCluster,
+				cluster: testES,
 				pod:     testPod,
 			},
 			want: []certificates.GeneralName{
@@ -98,7 +97,7 @@ func Test_buildGeneralNames(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := buildGeneralNames(tt.args.cluster, tt.args.svcs, tt.args.pod)
+			got, err := buildGeneralNames(tt.args.cluster, tt.args.pod)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})

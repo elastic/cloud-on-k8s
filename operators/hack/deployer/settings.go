@@ -23,10 +23,16 @@ type Plan struct {
 	VmMapMax bool `yaml:"vmMapMax"`
 
 	Gke *GkeSettings `yaml:"gke,omitempty"`
+	Aks *AksSettings `yaml:"aks,omitempty"`
 
-	VaultAddress  string `yaml:"vaultAddress"`
-	VaultRoleId   string `yaml:"vaultRoleId"`
-	VaultSecretId string `yaml:"vaultSecretId"`
+	VaultInfo *VaultInfo `yaml:"vaultInfo,omitempty"`
+}
+
+type VaultInfo struct {
+	Address  string `yaml:"address"`
+	RoleId   string `yaml:"roleId"`
+	SecretId string `yaml:"secretId"`
+	Token    string `yaml:"token"`
 }
 
 // GkeSettings encapsulates settings specific to GKE
@@ -37,6 +43,13 @@ type GkeSettings struct {
 	LocalSsdCount    int64  `yaml:"localSsdCount"`
 	NodeCountPerZone int64  `yaml:"nodeCountPerZone"`
 	GcpScopes        string `yaml:"gcpScopes"`
+}
+
+// AksSettings encapsulates settings specific to AKS
+type AksSettings struct {
+	ResourceGroup string `yaml:"resourceGroup"`
+	AcrName       string `yaml:"acrName"`
+	NodeCount     int64  `yaml:"nodeCount"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file

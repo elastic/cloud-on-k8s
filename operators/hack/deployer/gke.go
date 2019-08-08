@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	GkeDriverId                   = "gke"
-	GkeServiceAccountKeyVaultName = "secret/cloud-team/cloud-ci/ci-gcp-k8s-operator"
+	GkeDriverId                     = "gke"
+	GkeVaultPath                    = "secret/cloud-team/cloud-ci/ci-gcp-k8s-operator"
+	GkeServiceAccountVaultFieldName = "service-account"
 )
 
 func init() {
@@ -103,9 +104,14 @@ func (d *GkeDriver) auth() error {
 	if d.plan.ServiceAccount {
 		log.Println("Authenticating as service account...")
 
+		client, err := NewClient(*d.plan.VaultInfo)
+		if err != nil {
+			return err
+		}
+
 		keyFileName := "gke_service_account_key.json"
 		defer os.Remove(keyFileName)
-		if err := ReadVaultIntoFile(keyFileName, d.plan.VaultAddress, d.plan.VaultRoleId, d.plan.VaultSecretId, GkeServiceAccountKeyVaultName); err != nil {
+		if err := client.ReadIntoFile(keyFileName, GkeVaultPath, GkeServiceAccountVaultFieldName); err != nil {
 			return err
 		}
 
@@ -166,10 +172,7 @@ func (d *GkeDriver) setMaxMapCount() error {
 	instances, err := NewCommand(`gcloud compute instances list --project={{.GCloudProject}} ` +
 		`--filter="metadata.items.key['cluster-name']['value']='{{.ClusterName}}' AND metadata.items.key['cluster-name']['value']!='' " ` +
 		`--format="value[separator=','](name,zone)"`).
-		AsTemplate(map[string]interface{}{
-			"GCloudProject": d.plan.Gke.GCloudProject,
-			"ClusterName":   d.plan.ClusterName,
-		}).
+		AsTemplate(d.ctx).
 		StdoutOnly().
 		OutputList()
 	if err != nil {
@@ -211,5 +214,36 @@ func (d *GkeDriver) getCredentials() error {
 func (d *GkeDriver) delete() error {
 	log.Println("Deleting cluster...")
 	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
-	return NewCommand(cmd).AsTemplate(d.ctx).Run()
+	if err := NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
+		return err
+	}
+
+	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
+	cmd = `gcloud compute disks list --filter="-users:*" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	disks, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+	if err != nil {
+		return err
+	}
+
+	for _, disk := range disks {
+		nameZone := strings.Split(disk, ",")
+		if len(nameZone) != 2 {
+			return fmt.Errorf("disk name and zone contained unexpected number of fields")
+		}
+
+		name, zone := nameZone[0], nameZone[1]
+		cmd = `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
+		err := NewCommand(cmd).
+			AsTemplate(map[string]interface{}{
+				"GCloudProject": d.plan.Gke.GCloudProject,
+				"Name":          name,
+				"Zone":          zone,
+			}).
+			Run()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

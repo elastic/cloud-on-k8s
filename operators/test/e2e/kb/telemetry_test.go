@@ -20,6 +20,7 @@ func TestTelemetry(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1)
 
 	stepsFn := func(k *test.K8sClient) test.StepList {
