@@ -14,8 +14,8 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
         REGISTRY = "eu.gcr.io"
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        GKE_CLUSTER_VERSION = "${VERSION}"
-        GKE_CLUSTER_NAME = "${BUILD_TAG}"
+        CLUSTER_VERSION = "${VERSION}"
+        CLUSTER_NAME = "${BUILD_TAG}"
         OPERATOR_IMAGE = "${IMAGE}"
         LATEST_RELEASED_IMG = "${IMAGE}"
         SKIP_DOCKER_COMMAND = 'true'
