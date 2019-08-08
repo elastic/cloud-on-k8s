@@ -161,7 +161,7 @@ func TestHandleDownscale(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
-	// data migration should have been requested for the master node leaving the cluster
+	// data migration should have been requested for the data node leaving the cluster
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
 	require.Equal(t, "sset4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
 
