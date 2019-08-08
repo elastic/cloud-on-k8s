@@ -328,10 +328,10 @@ e2e-local:
 ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
-ci-e2e: deployer
+ci-e2e: run-deployer
 	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
 
-deployer: dep-vendor-only
+run-deployer: dep-vendor-only
 	@ go build -o hack/deployer/deployer ./hack/deployer/...
 	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 

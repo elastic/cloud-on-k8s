@@ -218,6 +218,7 @@ func (d *GkeDriver) delete() error {
 		return err
 	}
 
+	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
 	cmd = `gcloud compute disks list --filter="-users:*" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
 	disks, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {

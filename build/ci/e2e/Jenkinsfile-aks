@@ -56,7 +56,7 @@ overrides:
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
 EOF
-                    make -C build/ci ci-deployer
+                    make -C build/ci ci-run-deployer
                 """
             }
             cleanWs()

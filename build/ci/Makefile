@@ -127,14 +127,14 @@ ci-e2e:
 		$(IMAGE) \
 		bash -c "make -C operators ci-e2e"
 
-ci-deployer:
+ci-run-deployer:
 	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
 		$(IMAGE) \
-		bash -c "make -C operators deployer"
+		bash -c "make -C operators run-deployer"
 
 # Check if Docker image exists by trying to pull it. If there is no image, then build and push it.
 ci-build-image: vault-docker-creds

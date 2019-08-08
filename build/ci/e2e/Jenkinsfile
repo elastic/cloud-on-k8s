@@ -82,7 +82,7 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-deployer
+                    make -C build/ci ci-run-deployer
                 """
             }
 
