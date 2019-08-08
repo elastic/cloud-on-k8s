@@ -160,8 +160,8 @@ func pvcModification(ctx Context) validation.Result {
 	for _, node := range ctx.Proposed.Elasticsearch.Spec.Nodes {
 		currNode := getNode(node.Name, ctx.Current.Elasticsearch)
 		if currNode == nil {
-			// this is a new sset, so there it is okay
-			return validation.OK
+			// this is a new sset, so there is nothing to check
+			continue
 		}
 
 		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'

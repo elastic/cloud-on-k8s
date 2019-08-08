@@ -522,6 +522,7 @@ func Test_pvcModified(t *testing.T) {
 					Version: "7.2.0",
 					Nodes: []v1alpha1.NodeSpec{
 						{
+							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
 									ObjectMeta: metav1.ObjectMeta{
@@ -551,6 +552,7 @@ func Test_pvcModified(t *testing.T) {
 					Version: "7.2.0",
 					Nodes: []v1alpha1.NodeSpec{
 						{
+							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
 									ObjectMeta: metav1.ObjectMeta{
@@ -580,6 +582,7 @@ func Test_pvcModified(t *testing.T) {
 					Version: "7.2.0",
 					Nodes: []v1alpha1.NodeSpec{
 						{
+							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
 									ObjectMeta: metav1.ObjectMeta{
@@ -621,6 +624,7 @@ func Test_pvcModified(t *testing.T) {
 					Version: "7.2.0",
 					Nodes: []v1alpha1.NodeSpec{
 						{
+							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 								{
 									ObjectMeta: metav1.ObjectMeta{
@@ -641,6 +645,54 @@ func Test_pvcModified(t *testing.T) {
 			},
 			want: failedValidation,
 		},
+
+		{
+			name:    "add new node set accepted",
+			current: current,
+			proposed: v1alpha1.Elasticsearch{
+				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.2.0",
+					Nodes: []v1alpha1.NodeSpec{
+						{
+							Name: "master",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name: "ingest",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("10Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: validation.OK,
+		},
+
 		{
 			name:     "new instance accepted",
 			current:  nil,
@@ -665,6 +717,7 @@ func getEsCluster() *v1alpha1.Elasticsearch {
 			Version: "7.2.0",
 			Nodes: []v1alpha1.NodeSpec{
 				{
+					Name: "master",
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: metav1.ObjectMeta{
