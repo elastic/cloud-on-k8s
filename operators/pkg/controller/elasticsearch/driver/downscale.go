@@ -132,11 +132,11 @@ func calculateDownscales(expectedStatefulSets sset.StatefulSetList, actualStatef
 }
 
 // scheduleDataMigrations requests Elasticsearch to migrate data away from leavingNodes.
+// If leavingNodes is empty, it clears any existing settings.
 func scheduleDataMigrations(esClient esclient.Client, leavingNodes []string) error {
-	if len(leavingNodes) == 0 {
-		return nil
+	if len(leavingNodes) != 0 {
+		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
 	}
-	log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
 	return migration.MigrateData(esClient, leavingNodes)
 }
 

@@ -146,7 +146,7 @@ func TestHandleDownscale(t *testing.T) {
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
 	// running the downscale again should give the same results
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actualStatefulSets)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	err = k8sClient.List(&client.ListOptions{}, &actual)
 	require.NoError(t, err)
@@ -155,11 +155,26 @@ func TestHandleDownscale(t *testing.T) {
 	// once data migration is over the complete downscale should go through
 	downscaleCtx.observedState.ClusterState.RoutingTable = esclient.RoutingTable{}
 	expectedAfterDownscale[1].Spec.Replicas = common.Int32(2)
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actualStatefulSets)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	err = k8sClient.List(&client.ListOptions{}, &actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
+
+	// data migration should have been requested for the master node leaving the cluster
+	require.True(t, esClient.ExcludeFromShardAllocationCalled)
+	require.Equal(t, "sset4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
+
+	// running the downscale again should not remove any new node
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	require.False(t, results.HasError())
+	err = k8sClient.List(&client.ListOptions{}, &actual)
+	require.NoError(t, err)
+	require.Equal(t, expectedAfterDownscale, actual.Items)
+
+	// data migration settings should have been cleared
+	require.True(t, esClient.ExcludeFromShardAllocationCalled)
+	require.Equal(t, "none_excluded", esClient.ExcludeFromShardAllocationCalledWith)
 }
 
 func Test_ssetDownscale_leavingNodeNames(t *testing.T) {
