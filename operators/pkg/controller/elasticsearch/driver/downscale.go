@@ -67,6 +67,7 @@ func HandleDownscale(
 }
 
 // ssetDownscale helps with the downscale of a single StatefulSet.
+// A StatefulSet removal (going from 0 to 0 replicas) is also considered as a Downscale here.
 type ssetDownscale struct {
 	statefulSet     appsv1.StatefulSet
 	initialReplicas int32
@@ -74,23 +75,27 @@ type ssetDownscale struct {
 }
 
 // leavingNodeNames returns names of the nodes that are supposed to leave the Elasticsearch cluster
-// for this StatefulSet.
+// for this StatefulSet. They are ordered by highest ordinal first;
 func (d ssetDownscale) leavingNodeNames() []string {
 	if d.targetReplicas >= d.initialReplicas {
 		return nil
 	}
 	leavingNodes := make([]string, 0, d.initialReplicas-d.targetReplicas)
-	// nodes are ordered by highest ordinal first
 	for i := d.initialReplicas - 1; i >= d.targetReplicas; i-- {
 		leavingNodes = append(leavingNodes, sset.PodName(d.statefulSet.Name, i))
 	}
 	return leavingNodes
 }
 
-// canRemove returns true if the StatefulSet can be safely removed (no replicas).
-func (d ssetDownscale) canRemoveStatefulSet() bool {
+// isRemoval returns true if this downscale is a StatefulSet removal.
+func (d ssetDownscale) isRemoval() bool {
 	// StatefulSet does not have any replica, and should not have one
 	return d.initialReplicas == 0 && d.targetReplicas == 0
+}
+
+// isReplicaDecrease returns true if this downscale corresponds to decreasing replicas.
+func (d ssetDownscale) isReplicaDecrease() bool {
+	return d.targetReplicas < d.initialReplicas
 }
 
 // leavingNodeNames returns the names of all nodes that should leave the cluster (across StatefulSets).
@@ -103,6 +108,7 @@ func leavingNodeNames(downscales []ssetDownscale) []string {
 }
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of ssetDownscale.
+// We also include StatefulSets removal (0 replicas) in those downscales.
 func calculateDownscales(expectedStatefulSets sset.StatefulSetList, actualStatefulSets sset.StatefulSetList) []ssetDownscale {
 	downscales := []ssetDownscale{}
 	for _, actualSset := range actualStatefulSets {
@@ -139,7 +145,7 @@ func scheduleDataMigrations(esClient esclient.Client, leavingNodes []string) err
 // A boolean is returned to indicate if a requeue should be scheduled if the entire downscale could not be performed.
 func attemptDownscale(ctx downscaleContext, downscale ssetDownscale, allLeavingNodes []string, statefulSets sset.StatefulSetList) (bool, error) {
 	// TODO: only one master node downscale at a time
-	if downscale.canRemoveStatefulSet() {
+	if downscale.isRemoval() {
 		ssetLogger(downscale.statefulSet).Info("Deleting statefulset")
 		if err := ctx.k8sClient.Delete(&downscale.statefulSet); err != nil {
 			return false, err
@@ -147,7 +153,7 @@ func attemptDownscale(ctx downscaleContext, downscale ssetDownscale, allLeavingN
 		return false, nil
 	}
 
-	if downscale.targetReplicas >= downscale.initialReplicas {
+	if !downscale.isReplicaDecrease() {
 		// nothing to do
 		return false, nil
 	}
