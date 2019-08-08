@@ -82,7 +82,7 @@ func Validate(es estype.Elasticsearch) ([]validation.Result, error) {
 			Version:       *v,
 		},
 	}
-	var errs []validation.Result //nolint:go-lint
+	var errs []validation.Result
 	for _, v := range Validations {
 		r := v(vCtx)
 		if r.Allowed {
