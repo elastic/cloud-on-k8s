@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
@@ -41,7 +40,6 @@ import (
 )
 
 var (
-	log            = logf.Log.WithName("driver")
 	defaultRequeue = controller.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 

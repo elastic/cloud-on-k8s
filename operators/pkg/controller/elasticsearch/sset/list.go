@@ -81,6 +81,15 @@ func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 	return allPods, nil
 }
 
+// DeepCopy returns a copy of the StatefulSetList with no reference to the original StatefulSetList.
+func (l StatefulSetList) DeepCopy() StatefulSetList {
+	result := make(StatefulSetList, 0, len(l))
+	for _, s := range l {
+		result = append(result, *s.DeepCopy())
+	}
+	return result
+}
+
 // GetUpdatePartition returns the updateStrategy.Partition index, or falls back to the number of replicas if not set.
 func GetUpdatePartition(statefulSet appsv1.StatefulSet) int32 {
 	if statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
