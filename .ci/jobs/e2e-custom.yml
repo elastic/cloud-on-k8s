@@ -1,11 +1,6 @@
 ---
 - job:
     description: Job that runs e2e tests against custom ECK image running in a dedicated k8s cluster in GKE. This Job is managed by JJB.
-    logrotate:
-      daysToKeep: 7
-      numToKeep: 100
-      artifactDaysToKeep: 5
-      artifactNumToKeep: 10
     name: cloud-on-k8s-e2e-tests-custom
     project-type: pipeline
     parameters:
@@ -26,5 +21,3 @@
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
       script-path: build/ci/e2e/custom_operator_image.jenkinsfile
       lightweight-checkout: true
-    wrappers:
-      - ansicolor
