@@ -14,6 +14,19 @@ import (
 
 type CertificatesSecret v1.Secret
 
+// CaPem returns the certificate of the certificate authority.
+func (s CertificatesSecret) CaPem() []byte {
+	if ca, exist := s.Data[certificates.CAFileName]; exist {
+		return ca
+	}
+	return nil
+}
+
+// CertChain combines the certificate of the CA and the host certificate.
+func (s CertificatesSecret) CertChain() []byte {
+	return append(s.CaPem(), s.CertPem()...)
+}
+
 func (s CertificatesSecret) CertPem() []byte {
 	return s.Data[certificates.CertFileName]
 }

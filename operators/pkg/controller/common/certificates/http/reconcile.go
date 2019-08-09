@@ -118,9 +118,13 @@ func reconcileHTTPInternalCertificatesSecret(
 	}
 
 	if customCertificates != nil {
-		if !reflect.DeepEqual(secret.Data, customCertificates.Data) {
+		expectedSecretData := make(map[string][]byte)
+		expectedSecretData[certificates.CertFileName] = customCertificates.CertChain()
+		expectedSecretData[certificates.KeyFileName] = customCertificates.KeyPem()
+
+		if !reflect.DeepEqual(secret.Data, expectedSecretData) {
 			needsUpdate = true
-			secret.Data = customCertificates.Data
+			secret.Data = expectedSecretData
 		}
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
