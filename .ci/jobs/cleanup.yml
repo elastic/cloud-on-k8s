@@ -1,11 +1,6 @@
 ---
 - job:
     description: Job that cleanup resources in cloud services. This Job is managed by JJB.
-    logrotate:
-      daysToKeep: 7
-      numToKeep: 100
-      artifactDaysToKeep: 5
-      artifactNumToKeep: 10
     name: cloud-on-k8s-e2e-cleanup
     project-type: pipeline
     parameters:

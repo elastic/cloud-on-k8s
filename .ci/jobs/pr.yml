@@ -1,11 +1,6 @@
 ---
 - job:
     description: Job that runs the pr Jenkinsfile on any PR of the Elastic Cloud on Kubernetes project. This Job is managed by JJB.
-    logrotate:
-      daysToKeep: 7
-      numToKeep: 100
-      artifactDaysToKeep: 5
-      artifactNumToKeep: 10
     name: cloud-on-k8s-pr
     project-type: pipeline
     concurrent: true
