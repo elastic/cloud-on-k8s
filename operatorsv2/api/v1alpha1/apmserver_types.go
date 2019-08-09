@@ -121,6 +121,7 @@ func (e ElasticsearchOutput) IsConfigured() bool {
 }
 
 // ApmServer is the Schema for the apmservers API
+// +kubebuilder:object:root=true
 // +kubebuilder:categories=elastic
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
