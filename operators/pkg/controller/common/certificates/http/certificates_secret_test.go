@@ -87,6 +87,36 @@ rEdwvajksm6a3Oft5KtsWNfXhNPACUrLxTH2wv9zoejf+q/Xyf7NYq73xWfiRChG
 INX8iEaHVcH6jWNyCE/0BdPtMfvw4sypv/yxZH0RlvmhvzqemFmP
 -----END RSA PRIVATE KEY-----
 `
+
+	corruptedKey = `
+-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAq6HRcrfV1kHnXv5Z+ImkgKDvxCezI3/pyiR0jSv6L7+bblHz
+zsqkPnz3aaIPJJ2G4sdwaIhl5rJdOvCj48It8OtRidZjzuJHhN2RpN2Ii5WX4D1u
+18CrjEQrRUzs/vuwpyP0zWx0yP3lp88fy8kfWHj8cE06KZ3cjq1fTRjEDv/N6xof
+qBSIHPsnvOVIP0Sp9bJkw5yO0H3oBfrqP0N2mjnwQknclz30t/LoXHcRrZTOH42p
+gG5ODZslqLNgKLXQHzRcglzNQPwYKYHigBiy+xsHxbIIXe1nR70PYKXisA0bhHTi
+V1Sa77dqQRdSkm0JzrNg58lHZYA1sVKTh0nRMQIDAQABAoIBAHZmCPDUdMV7bTsQ
+x8w2V68MVprAsEl7AjKad3Szs8Ggsn6mNkSfcjJRTvQmAcBGkzh6UMcr4PAGd14j
+h0ulNsAN9Y/av7uGScQUfVZ4JKv2JHFir8ZSeYUnuZny+ULlKfYDTeswOFg3Hmhm
+8A5Kzj7gJ3TpMYhoCDC81ROAVC/rkinM3bGm/JFl9MeSBLleWVGVF7S7dyirN0xi
+z4pwleF3LwI9N52l0qAgXXXXXXXXrW2H8UB6PrMW2oLLw04p1IXy0ja+T9qZHUxp
+zJhTzhhXAY+5QDpGwvTqKYKkqhusBUTwGx39/p9Eq05wXkIEnh7Q09kGz7RJcUnD
+6ji12skCgYEA2MsRy1Jrk9MZ8XO2EknuHEpDPqRcwJG4CvBp+V569Zq7pmuqWRSz
+U2XcHvzBy6d2LS4QzuHO/YPCn/YXnSJ3K3kwX7TDjH7zPX22peJpLFg2lJU0+LkB
+XizOFGpGib0HJ8o2xhL/Ras4i98mGsNSVM7wcl4Swj9Z3fx2ds69kdMCgYEAyqvp
+h0s50kzgvEMwYwveXo7wNjojqe/NU7FFoW02LDU/KRzTNnv0Hs0Xc3WBytqBE94U
+kdITBqtzCrYBHo2JhQq4dez6H33RrgIbNSy9aGuqcblvr8gI9roH9fDeF4AqRAnZ
+XRFO6IqFiSrkxJkriPt2xJR041UNFyXGG6FR6msCgYBmxlZoOmmPietpoP52yx+b
+v8UDRG5ISIykevbyZk0KdFFzguUeGAcviUGCWzcQchI/NvB282vqmXVB2iu1raor
+LOe2534w89oik59sItrTT/qIE/gp1aMFX15PJVbNY5Sp016GJmloQNSs0pxA4cn9
+NKGexmREPD5BU7dheX87SwKBgQCVoFXIjMEjgZ5pXzFZ7mk9ZknxvvqVe3UbVMUT
+aI2WFbmLoLxOfTS9iKzHkPlByg+Bm3OUNIPXaLyGK9intdbRYhjM9yeyGDG1RdjQ
+aTds4A/15fGO1R/JB47ZA/rzXqvVj2/qRdz70UjE++XpPyvk9cG5X+Dr9N61OC4K
+OA9CAQKBgFdDVaQEG+rERVXAgdYo0KQ741Rc3kbavdVr7tRE3eY+aJUauOcoaWjT
+rEdwvajksm6a3Oft5KtsWNfXhNPACUrLxTH2wv9zoejf+q/Xyf7NYq73xWfiRChG
+INX8iEaHVcH6jWNyCE/0BdPtMfvw4sypv/yxZH0RlvmhvzqemFmP
+-----END RSA PRIVATE KEY-----
+`
 )
 
 func TestCertificatesSecret(t *testing.T) {
@@ -136,6 +166,79 @@ func TestCertificatesSecret(t *testing.T) {
 			}
 			if got := tt.s.KeyPem(); !reflect.DeepEqual(got, tt.wantKey) {
 				t.Errorf("CertificatesSecret.CertChain() = %v, want %v", got, tt.wantKey)
+			}
+		})
+	}
+}
+
+func TestCertificatesSecret_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		s       CertificatesSecret
+		wantErr bool
+	}{
+		{
+			name: "Happy path",
+			s: CertificatesSecret{
+				Data: map[string][]byte{
+					certificates.CAFileName:   []byte(ca),
+					certificates.CertFileName: []byte(tls),
+					certificates.KeyFileName:  []byte(key),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Empty certificate",
+			s: CertificatesSecret{
+				Data: map[string][]byte{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "No cert",
+			s: CertificatesSecret{
+				Data: map[string][]byte{
+					certificates.KeyFileName: []byte(key),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "No key",
+			s: CertificatesSecret{
+				Data: map[string][]byte{
+					certificates.CAFileName:   []byte(ca),
+					certificates.CertFileName: []byte(tls),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "No CA cert",
+			s: CertificatesSecret{
+				Data: map[string][]byte{
+					certificates.CertFileName: []byte(tls),
+					certificates.KeyFileName:  []byte(key),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Corrupted key",
+			s: CertificatesSecret{
+				Data: map[string][]byte{
+					certificates.CertFileName: []byte(tls),
+					certificates.KeyFileName:  []byte(corruptedKey),
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.Validate(); (err != nil) != tt.wantErr {
+				t.Errorf("CertificatesSecret.Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

@@ -5,6 +5,8 @@
 package http
 
 import (
+	"fmt"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -35,8 +37,36 @@ func (s CertificatesSecret) KeyPem() []byte {
 	return s.Data[certificates.KeyFileName]
 }
 
+// Validate checks that mandatory fields are present.
+// It does not check that the public matches the private key.
 func (s CertificatesSecret) Validate() error {
-	// TODO: Validate that the contents of the secret forms a valid certificate.
+	// Validate private key
+	key, exist := s.Data[certificates.KeyFileName]
+	if !exist {
+		return fmt.Errorf("can't find private key %s in %s/%s", certificates.KeyFileName, s.Namespace, s.Name)
+	}
+	_, err := certificates.ParsePEMPrivateKey(key)
+	if err != nil {
+		return err
+	}
+	// Validate host certificate
+	cert, exist := s.Data[certificates.CertFileName]
+	if !exist {
+		return fmt.Errorf("can't find certificate %s in %s/%s", certificates.CertFileName, s.Namespace, s.Name)
+	}
+	_, err = certificates.ParsePEMCerts(cert)
+	if err != nil {
+		return err
+	}
+	// Eventually validate CA certificate
+	ca, exist := s.Data[certificates.CAFileName]
+	if !exist {
+		return nil
+	}
+	_, err = certificates.ParsePEMCerts(ca)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
