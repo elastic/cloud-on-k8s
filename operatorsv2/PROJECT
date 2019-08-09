@@ -1,0 +1,7 @@
+version: "2"
+domain: k8s.elastic.co
+repo: github.com/elastic/cloud-on-k8s/operatorsv2
+resources:
+- group: apm
+  version: v1alpha1
+  kind: ApmServer
