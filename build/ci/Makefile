@@ -124,6 +124,7 @@ ci-e2e:
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		-e "SKIP_DOCKER_COMMAND=$(SKIP_DOCKER_COMMAND)" \
 		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
+		-e "STACK_VERSION=$(STACK_VERSION)" \
 		$(CI_IMAGE) \
 		bash -c "make -C operators ci-e2e"
 

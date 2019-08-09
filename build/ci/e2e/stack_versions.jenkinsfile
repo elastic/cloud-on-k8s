@@ -15,6 +15,7 @@ pipeline {
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         OPERATOR_IMAGE = "${IMAGE}"
         LATEST_RELEASED_IMG = "${IMAGE}"
+        SKIP_DOCKER_COMMAND = 'true'
     }
 
     stages {
@@ -23,10 +24,10 @@ pipeline {
                 stage("6.8.0") {
                     environment {
                         STACK_VERSION = "6.8.0"
-                        GKE_CLUSTER_NAME = "${BUILD_TAG}-680"
                     }
                     steps {
                         checkout scm
+                        createRunConfig('create', "${BUILD_TAG}-680")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -36,10 +37,10 @@ pipeline {
                     }
                     environment {
                         STACK_VERSION = "7.1.0"
-                        GKE_CLUSTER_NAME = "${BUILD_TAG}-710"
                     }
                     steps {
                         checkout scm
+                        createRunConfig('create', "${BUILD_TAG}-710")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -49,10 +50,10 @@ pipeline {
                     }
                     environment {
                         STACK_VERSION = "7.2.0"
-                        GKE_CLUSTER_NAME = "${BUILD_TAG}-720"
                     }
                     steps {
                         checkout scm
+                        createRunConfig('create', "${BUILD_TAG}-720")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -62,10 +63,10 @@ pipeline {
                     }
                     environment {
                         STACK_VERSION = "7.3.0"
-                        GKE_CLUSTER_NAME = "${BUILD_TAG}-730"
                     }
                     steps {
                         checkout scm
+                        createRunConfig('create', "${BUILD_TAG}-730")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -88,9 +89,8 @@ pipeline {
             script {
                 clusters = ["${BUILD_TAG}-680", "${BUILD_TAG}-710", "${BUILD_TAG}-720", "${BUILD_TAG}-730"]
                 for (int i = 0; i < clusters.size(); i++) {
-                        build job: 'cloud-on-k8s-e2e-cleanup',
-                              parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
-                              wait: false
+                    createRunConfig('delete', clusters[i])
+                    sh 'make -C build/ci ci-run-deployer'
                 }
             }
             cleanWs()
@@ -99,4 +99,19 @@ pipeline {
 
 }
 
-
+def createRunConfig(operation, clusterName) {
+    sh """
+                    cat >operators/run-config.yml <<EOF
+id: gke-ci
+overrides:
+  operation: ${operation}
+  clusterName: ${clusterName}
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+EOF
+    """
+}
