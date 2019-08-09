@@ -4,6 +4,7 @@
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
+# Script to generate API reference documentation from the source code.
 
 set -euo pipefail
 
@@ -23,7 +24,6 @@ install_refdocs() {
         go mod init github.com/elastic/eck-refdocs
         go get -u "${REFDOCS_PKG}@${REFDOCS_VER}"
     )
-
 }
 
 build_docs() {
@@ -33,9 +33,8 @@ build_docs() {
         -out-file=$TEMP_OUT_FILE \
         -config="${SCRIPT_DIR}/config.json"
 
-    cat $TEMP_OUT_FILE | sed -e 's|\(<br/>\)\+|\n|g' > "${DOCS_DIR}/api-docs.asciidoc"
+    sed -e 's|\(<br/>\)\+|\n|g' $TEMP_OUT_FILE > "${DOCS_DIR}/api-docs.asciidoc"
 }
-
 
 if [[ ! -x "$REFDOCS_BIN" ]]; then
     install_refdocs
