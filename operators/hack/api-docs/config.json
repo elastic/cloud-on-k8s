@@ -22,7 +22,8 @@
     ],
     "typeDisplayNamePrefixOverrides": {
         "k8s.io/api/": "Kubernetes ",
-        "k8s.io/apimachinery/pkg/apis/": "Kubernetes "
+        "k8s.io/apimachinery/pkg/apis/": "Kubernetes ",
+        "k8s.io/apimachinery/pkg/util/": "Kubernetes "
     },
     "markdownDisabled": true,
     "preserveTrailingWhitespace": true

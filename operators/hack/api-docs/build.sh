@@ -7,7 +7,8 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DOCS_DIR="${SCRIPT_DIR}/../../../docs"
 # TODO: revert to main repo if https://github.com/ahmetb/gen-crd-api-reference-docs/pull/11 gets merged
 #REFDOCS_PKG="github.com/ahmetb/gen-crd-api-reference-docs"
 #REFDOCS_VER="v0.1.5"
@@ -28,11 +29,11 @@ install_refdocs() {
 build_docs() {
     local TEMP_OUT_FILE=$(mktemp)
     $REFDOCS_BIN -api-dir=github.com/elastic/cloud-on-k8s/operators/pkg/apis \
-        -template-dir="${ROOT_DIR}/templates" \
+        -template-dir="${SCRIPT_DIR}/templates" \
         -out-file=$TEMP_OUT_FILE \
-        -config="${ROOT_DIR}/config.json"
+        -config="${SCRIPT_DIR}/config.json"
 
-    mv $TEMP_OUT_FILE "${ROOT_DIR}/api-docs.asciidoc"
+    cat $TEMP_OUT_FILE | sed -e 's|\(<br/>\)\+|\n|g' > "${DOCS_DIR}/api-docs.asciidoc"
 }
 
 

@@ -4,13 +4,16 @@
 == Reference
 {{ with .packages }}
 .Packages
+****
 {{- range . }}
 - xref:{{ packageAnchorID . | safeIdentifier }}[{{ packageDisplayName . }}]
 {{- end }}
 {{- end }}
+****
 
 {{ range .packages }}
 [id="{{ packageAnchorID . | safeIdentifier }}"]
+[float]
 === {{ packageDisplayName . }}
 {{- with (index .GoPackages 0 ) }}
 {{- with .DocComments }}
@@ -19,14 +22,18 @@
 {{- end }}
 
 .Resource Types
+--
 {{- range (visibleTypes (sortedTypes .Types)) }}
 {{- if isExportedType . }}
-link:{{ linkForType . }}[{{ typeDisplayName . }}]
+- link:{{ linkForType . }}[$${{ typeDisplayName . }}$$]
 {{- end }}
 {{- end }}
+--
 
-{{ range (visibleTypes (sortedTypes .Types)) }}
+{{- range (visibleTypes (sortedTypes .Types)) }}
+
 {{ template "type" .  }}
 {{- end }}
+
 {{- end }}
 {{- end }}

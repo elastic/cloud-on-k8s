@@ -1,5 +1,6 @@
 {{- define "type" -}}
 [id="{{ anchorIDForType . | safeIdentifier }}"]
+[float]
 ==== {{ .Name.Name }} {{- if eq .Kind "Alias" -}}(`{{.Underlying}}` alias){{ end }}
 {{- with (typeReferences .) }}
 (*Appears on:*
@@ -15,18 +16,18 @@ link:{{ linkForType . }}[{{ typeDisplayName . }}]
 {{ safe (renderComments .CommentLines) }}
 
 {{- if .Members }}
-[cols="1a,5a", options="header"]
+[cols="20a,80a", options="header"]
 |===
 |Field |Description
 
 {{- if isExportedType . }}
-|`*apiVersion*` +
+| *`apiVersion`*  +
 _string_
-|`{{ apiGroup .  }}`
+| `{{ apiGroup . }}`
 
-|`*kind*` +
+| *`kind`*  +
 _string_
-|`{{ .Name.Name }}`
+| `{{ .Name.Name }}`
 {{- end }}
 {{ template "members" .}}
 |===
