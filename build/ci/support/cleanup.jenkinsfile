@@ -13,7 +13,6 @@ pipeline {
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        GKE_CLUSTER_NAME = "${GKE_CLUSTER}"
     }
 
     stages {
@@ -22,7 +21,21 @@ pipeline {
                 retry(3)
             }
             steps {
-                sh 'make -C build/ci ci-gke-cleanup'
+                sh """
+                    cat >operators/run-config.yml <<EOF
+id: gke-ci
+overrides:
+  operation: ${operation}
+  clusterName: ${clusterName}
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+EOF
+                """
+                sh 'make -C build/ci ci-run-deployer'
             }
         }
     }
