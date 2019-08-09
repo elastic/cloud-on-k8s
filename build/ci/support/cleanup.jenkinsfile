@@ -21,23 +21,8 @@ pipeline {
                 retry(3)
             }
             steps {
-                createRunConfig('delete', "${GKE_CLUSTER}")
-                sh 'make -C build/ci ci-run-deployer'
-            }
-        }
-    }
-
-    post {
-        cleanup {
-            cleanWs()
-        }
-    }
-
-}
-
-def createRunConfig(operation, clusterName) {
-    sh """
-        cat >operators/run-config.yml <<EOF
+                sh """
+                    cat >operators/run-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: ${operation}
@@ -49,5 +34,16 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-    """
+                """
+                sh 'make -C build/ci ci-run-deployer'
+            }
+        }
+    }
+
+    post {
+        cleanup {
+            cleanWs()
+        }
+    }
+
 }
