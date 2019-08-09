@@ -23,6 +23,9 @@ pipeline {
         stage('Run tests for different k8s versions in GKE') {
             parallel {
                 stage("1.11") {
+                    agent {
+                        label 'linux'
+                    }
                     steps {
                         checkout scm
                         createRunConfig('create', '1.11', "${BUILD_TAG}-11")
@@ -70,7 +73,7 @@ pipeline {
                 versions = ["1.11", "1.12", "1.13"]
                 for (int i = 0; i < clusters.size(); i++) {
                     createRunConfig('delete', versions[i], clusters[i])
-                    make -C build/ci ci-run-deployer
+                    sh 'make -C build/ci ci-run-deployer'
                 }
             }
             cleanWs()
