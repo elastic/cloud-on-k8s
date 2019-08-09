@@ -152,7 +152,7 @@ func TestHandleDownscale(t *testing.T) {
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
 	// once data migration is over the complete downscale should go through
-	downscaleCtx.observedState.ClusterState.RoutingTable = esclient.RoutingTable{}
+	downscaleCtx.observedState.ClusterState.RoutingTable.Indices["index-1"].Shards["0"][0].Node = "sset4Replicas-1"
 	expectedAfterDownscale[1].Spec.Replicas = common.Int32(2)
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
