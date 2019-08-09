@@ -38,7 +38,7 @@ func (s CertificatesSecret) KeyPem() []byte {
 }
 
 // Validate checks that mandatory fields are present.
-// It does not check that the public matches the private key.
+// It does not check that the public key matches the private key.
 func (s CertificatesSecret) Validate() error {
 	// Validate private key
 	key, exist := s.Data[certificates.KeyFileName]
