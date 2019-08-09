@@ -26,7 +26,7 @@ func (s CertificatesSecret) CaPem() []byte {
 
 // CertChain combines the certificate of the CA and the host certificate.
 func (s CertificatesSecret) CertChain() []byte {
-	return append(s.CaPem(), s.CertPem()...)
+	return append(s.CertPem(), s.CaPem()...)
 }
 
 func (s CertificatesSecret) CertPem() []byte {

@@ -118,6 +118,9 @@ func reconcileHTTPInternalCertificatesSecret(
 	}
 
 	if customCertificates != nil {
+		if err := customCertificates.Validate(); err != nil {
+			return nil, err
+		}
 		expectedSecretData := make(map[string][]byte)
 		expectedSecretData[certificates.CertFileName] = customCertificates.CertChain()
 		expectedSecretData[certificates.KeyFileName] = customCertificates.KeyPem()
