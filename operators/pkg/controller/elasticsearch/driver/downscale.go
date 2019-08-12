@@ -20,6 +20,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
+const (
+	OneMasterAtATimeInvariant        = "A master node is already in the process of being removed"
+	AtLeastOneRunningMasterInvariant = "Cannot remove the last running master node"
+)
+
 // downscaleContext holds the context of this downscale, including clients and states,
 // propagated from the main driver.
 type downscaleContext struct {
@@ -60,9 +65,14 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
+	invariants, err := NewDownscaleInvariants(downscaleCtx.k8sClient, downscaleCtx.es)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	for _, downscale := range downscales {
 		// attempt the StatefulSet downscale (may or may not remove nodes)
-		requeue, err := attemptDownscale(downscaleCtx, downscale, leavingNodes, actualStatefulSets)
+		requeue, err := attemptDownscale(downscaleCtx, downscale, invariants, leavingNodes, actualStatefulSets)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -86,6 +96,57 @@ func noOnGoingDeletion(downscaleCtx downscaleContext, actualStatefulSets sset.St
 	// Let's retry once expected pods are there.
 	// PodReconciliationDone also matches any pod not created yet, for which we'll also requeue.
 	return actualStatefulSets.PodReconciliationDone(downscaleCtx.k8sClient, downscaleCtx.es)
+}
+
+// DownscaleInvariants restricts downscales to perform in a single reconciliation attempt:
+// - remove a single master at once
+// - don't remove the last living master node
+type DownscaleInvariants struct {
+	// masterRemoved indicates whether a master node is in the process of being removed already.
+	masterRemoved bool
+	// runningMasters indicates how many masters are currently running in the cluster.
+	runningMasters int
+}
+
+// NewDownscaleInvariants creates a new DownscaleInvariants.
+func NewDownscaleInvariants(c k8s.Client, es v1alpha1.Elasticsearch) (*DownscaleInvariants, error) {
+	// retrieve the number of masters running ready
+	actualPods, err := sset.GetActualPodsForCluster(c, es)
+	if err != nil {
+		return nil, err
+	}
+	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
+
+	return &DownscaleInvariants{
+		masterRemoved:  false,
+		runningMasters: len(mastersReady),
+	}, nil
+}
+
+// canDownscale returns true if the current state allows downscaling the given StatefulSet.
+// If not, it also returns the reason why.
+func (d *DownscaleInvariants) canDownscale(statefulSet appsv1.StatefulSet) (bool, string) {
+	if !label.IsMasterNodeSet(statefulSet) {
+		// only care about master nodes
+		return true, ""
+	}
+	if d.masterRemoved {
+		return false, OneMasterAtATimeInvariant
+	}
+	if d.runningMasters == 1 {
+		return false, AtLeastOneRunningMasterInvariant
+	}
+	return true, ""
+}
+
+// accountDownscale updates the current invariants state to consider a 1-replica downscale of the given statefulSet.
+func (d *DownscaleInvariants) accountOneRemoval(statefulSet appsv1.StatefulSet) {
+	if !label.IsMasterNodeSet(statefulSet) {
+		// only care about master nodes
+		return
+	}
+	d.masterRemoved = true
+	d.runningMasters--
 }
 
 // ssetDownscale helps with the downscale of a single StatefulSet.
@@ -165,7 +226,13 @@ func scheduleDataMigrations(esClient esclient.Client, leavingNodes []string) err
 // or deletes the StatefulSet entirely if it should not contain any replica.
 // Nodes whose data migration is not over will not be removed.
 // A boolean is returned to indicate if a requeue should be scheduled if the entire downscale could not be performed.
-func attemptDownscale(ctx downscaleContext, downscale ssetDownscale, allLeavingNodes []string, statefulSets sset.StatefulSetList) (bool, error) {
+func attemptDownscale(
+	ctx downscaleContext,
+	downscale ssetDownscale,
+	invariants *DownscaleInvariants,
+	allLeavingNodes []string,
+	statefulSets sset.StatefulSetList,
+) (bool, error) {
 	switch {
 	case downscale.isRemoval():
 		ssetLogger(downscale.statefulSet).Info("Deleting statefulset")
@@ -173,7 +240,7 @@ func attemptDownscale(ctx downscaleContext, downscale ssetDownscale, allLeavingN
 
 	case downscale.isReplicaDecrease():
 		// adjust the theoretical downscale to one we can safely perform
-		performable := calculatePerformableDownscale(ctx, downscale, allLeavingNodes)
+		performable := calculatePerformableDownscale(ctx, invariants, downscale, allLeavingNodes)
 		if !performable.isReplicaDecrease() {
 			// no downscale can be performed for now, let's requeue
 			return true, nil
@@ -193,6 +260,7 @@ func attemptDownscale(ctx downscaleContext, downscale ssetDownscale, allLeavingN
 // It returns the updated downscale and a boolean indicating whether a requeue should be done.
 func calculatePerformableDownscale(
 	ctx downscaleContext,
+	invariants *DownscaleInvariants,
 	downscale ssetDownscale,
 	allLeavingNodes []string,
 ) ssetDownscale {
@@ -206,6 +274,10 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
+		if canDownscale, reason := invariants.canDownscale(downscale.statefulSet); !canDownscale {
+			ssetLogger(downscale.statefulSet).V(1).Info("Cannot downscale StatefulSet", "node", node, "reason", reason)
+			return performableDownscale
+		}
 		if migration.IsMigratingData(ctx.observedState, node, allLeavingNodes) {
 			ssetLogger(downscale.statefulSet).V(1).Info("Data migration not over yet, skipping node deletion", "node", node)
 			ctx.reconcileState.UpdateElasticsearchMigrating(ctx.resourcesState, ctx.observedState)
@@ -214,6 +286,7 @@ func calculatePerformableDownscale(
 		}
 		// data migration over: allow pod to be removed
 		performableDownscale.targetReplicas--
+		invariants.accountOneRemoval(downscale.statefulSet)
 	}
 	return performableDownscale
 }
