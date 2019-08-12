@@ -1,7 +1,7 @@
 ---
 - job:
     description: Job that runs ECK e2e tests against different ELK stack versions in GKE. This Job is managed by JJB.
-    name: cloud-on-k8s-stack-versions
+    name: cloud-on-k8s-stack
     project-type: pipeline
     parameters:
       - string:
