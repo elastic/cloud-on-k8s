@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 )
 
 func TestBackendElasticsearch_IsConfigured(t *testing.T) {
@@ -34,9 +35,11 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 			fields: fields{
 				URL: "i am an url",
 				Auth: v1alpha1.ElasticsearchAuth{
-					Inline: &v1alpha1.ElasticsearchInlineAuth{
-						Username: "foo",
-						Password: "bar",
+					SecretKeyRef: &v1.SecretKeySelector{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: "some-secret",
+						},
+						Key: "secret-key",
 					},
 				},
 			},
@@ -47,9 +50,11 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 			fields: fields{
 				URL: "i am an url",
 				Auth: v1alpha1.ElasticsearchAuth{
-					Inline: &v1alpha1.ElasticsearchInlineAuth{
-						Username: "foo",
-						Password: "bar",
+					SecretKeyRef: &v1.SecretKeySelector{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: "some-secret",
+						},
+						Key: "secret-key",
 					},
 				},
 				CertificateAuthorities: v1alpha1.SecretRef{SecretName: caSecretName},
