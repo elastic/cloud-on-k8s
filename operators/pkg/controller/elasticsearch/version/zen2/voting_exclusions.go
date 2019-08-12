@@ -12,10 +12,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 )
 
 var (
@@ -37,28 +35,16 @@ func AddToVotingConfigExclusions(esClient client.Client, sset appsv1.StatefulSet
 }
 
 // canClearVotingConfigExclusions returns true if it is safe to clear voting config exclusions.
-func canClearVotingConfigExclusions(c k8s.Client, actualStatefulSets sset.StatefulSetList) (bool, error) {
+func canClearVotingConfigExclusions(c k8s.Client, es v1alpha1.Elasticsearch, actualStatefulSets sset.StatefulSetList) (bool, error) {
 	// Voting config exclusions are set before master nodes are removed on sset downscale.
 	// They can be cleared when:
 	// - nodes are effectively removed
 	// - nodes are expected to be in the cluster (shouldn't be removed anymore)
 	// They cannot be cleared when:
 	// - expected nodes to remove are not removed yet
-	for _, s := range actualStatefulSets {
-		if label.IsMasterNodeSet(s) {
-			actualPods, err := sset.GetActualPodsNames(c, s)
-			if err != nil {
-				return false, err
-			}
-			expectedPods := sset.PodNames(s)
-			if !stringsutil.StringsInSlice(actualPods, expectedPods) {
-				// some of the actual pods are not expected: they are probably not deleted yet
-				return false, nil
-			}
-		}
-	}
-
-	return true, nil
+	// PodReconciliationDone returns false is there are some pods not created yet: we don't really
+	// care about those here, but that's still fine to requeue and retry later for the sake of simplicity.
+	return actualStatefulSets.PodReconciliationDone(c, es)
 }
 
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.
@@ -67,7 +53,7 @@ func ClearVotingConfigExclusions(es v1alpha1.Elasticsearch, c k8s.Client, esClie
 	if !AtLeastOneNodeCompatibleWithZen2(actualStatefulSets) {
 		return false, nil
 	}
-	canClear, err := canClearVotingConfigExclusions(c, actualStatefulSets)
+	canClear, err := canClearVotingConfigExclusions(c, es, actualStatefulSets)
 	if err != nil {
 		return false, err
 	}

@@ -13,6 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -85,4 +87,92 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 	//  check it is not returned.
 	//  This cannot be done currently since the fake client does not support label list options.
 	//  See https://github.com/kubernetes-sigs/controller-runtime/pull/311
+}
+
+func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
+	es := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
+	}
+	statefulSet1 := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1"},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: common.Int32(2),
+		},
+	}
+	statefulSet2 := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset2"},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: common.Int32(1),
+		},
+	}
+	sset1Pod0 := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: "sset1-0", Labels: map[string]string{
+			label.ClusterNameLabelName: es.Name,
+		}},
+	}
+	sset1Pod1 := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: "sset1-1", Labels: map[string]string{
+			label.ClusterNameLabelName: es.Name,
+		}},
+	}
+	sset1Pod2 := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: "sset1-2", Labels: map[string]string{
+			label.ClusterNameLabelName: es.Name,
+		}},
+	}
+	sset2Pod0 := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: "sset2-0", Labels: map[string]string{
+			label.ClusterNameLabelName: es.Name,
+		}},
+	}
+	tests := []struct {
+		name string
+		l    StatefulSetList
+		c    k8s.Client
+		want bool
+	}{
+		{
+			name: "no pods, no sset",
+			l:    nil,
+			c:    k8s.WrapClient(fake.NewFakeClient()),
+			want: true,
+		},
+		{
+			name: "some pods, no sset",
+			l:    nil,
+			c:    k8s.WrapClient(fake.NewFakeClient(&sset1Pod0)),
+			want: false,
+		},
+		{
+			name: "some statefulSets, no pod",
+			l:    StatefulSetList{statefulSet1, statefulSet2},
+			c:    k8s.WrapClient(fake.NewFakeClient(&statefulSet1, &statefulSet2)),
+			want: false,
+		},
+		{
+			name: "missing sset1Pod1",
+			l:    StatefulSetList{statefulSet1, statefulSet2},
+			c:    k8s.WrapClient(fake.NewFakeClient(&statefulSet1, &statefulSet2, &sset1Pod0, &sset2Pod0)),
+			want: false,
+		},
+		{
+			name: "additional pod sset1Pod2 that shouldn't be there",
+			l:    StatefulSetList{statefulSet1, statefulSet2},
+			c:    k8s.WrapClient(fake.NewFakeClient(&statefulSet1, &statefulSet2, &sset1Pod0, &sset1Pod1, &sset1Pod2, &sset2Pod0)),
+			want: false,
+		},
+		{
+			name: "pods match sset spec",
+			l:    StatefulSetList{statefulSet1, statefulSet2},
+			c:    k8s.WrapClient(fake.NewFakeClient(&statefulSet1, &statefulSet2, &sset1Pod0, &sset1Pod1, &sset2Pod0)),
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.l.PodReconciliationDone(tt.c, es)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }

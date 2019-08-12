@@ -12,9 +12,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 )
 
 var log = logf.Log.WithName("statefulset")
@@ -72,13 +74,39 @@ func (l StatefulSetList) PodNames() []string {
 func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 	allPods := []corev1.Pod{}
 	for _, statefulSet := range l {
-		pods, err := GetActualPods(c, statefulSet)
+		pods, err := GetActualPodsForStatefulSet(c, statefulSet)
 		if err != nil {
 			return nil, err
 		}
 		allPods = append(allPods, pods...)
 	}
 	return allPods, nil
+}
+
+// PodReconciliationDone returns true if actual existing pods match what is specified in the StatefulSetList.
+// It may return false if there are pods in the process of being created (but not created yet)
+// or terminated (but not removed yet).
+func (l StatefulSetList) PodReconciliationDone(c k8s.Client, es v1alpha1.Elasticsearch) (bool, error) {
+	// pods we expect to be there based on StatefulSets spec
+	expectedPods := l.PodNames()
+	// pods that are there for this cluster
+	actualRawPods, err := GetActualPodsForCluster(c, es)
+	if err != nil {
+		return false, err
+	}
+	actualPods := k8s.PodNames(actualRawPods)
+
+	// check if they match
+	match := len(expectedPods) == len(actualPods) && stringsutil.StringsInSlice(expectedPods, actualPods)
+	if !match {
+		log.V(1).Info(
+			"Pod reconciliation is not done yet",
+			"namespace", es.Namespace, "es_name", es.Name,
+			"expected_pods", expectedPods, "actual_pods", actualPods,
+		)
+	}
+
+	return match, nil
 }
 
 // DeepCopy returns a copy of the StatefulSetList with no reference to the original StatefulSetList.

@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
@@ -34,9 +35,9 @@ func PodRevision(pod corev1.Pod) string {
 	return pod.Labels[appsv1.StatefulSetRevisionLabel]
 }
 
-// GetActualPods return the existing pods associated to this StatefulSet.
+// GetActualPodsForStatefulSet returns the existing pods associated to this StatefulSet.
 // The returned pods may not match the expected StatefulSet replicas in a transient situation.
-func GetActualPods(c k8s.Client, sset appsv1.StatefulSet) ([]corev1.Pod, error) {
+func GetActualPodsForStatefulSet(c k8s.Client, sset appsv1.StatefulSet) ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	if err := c.List(&client.ListOptions{
 		Namespace: sset.Namespace,
@@ -49,16 +50,18 @@ func GetActualPods(c k8s.Client, sset appsv1.StatefulSet) ([]corev1.Pod, error) 
 	return pods.Items, nil
 }
 
-func GetActualPodsNames(c k8s.Client, sset appsv1.StatefulSet) ([]string, error) {
-	actualPods, err := GetActualPods(c, sset)
-	if err != nil {
+// GetActualPodsForCluster return the existing pods associated to this cluster.
+func GetActualPodsForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+	if err := c.List(&client.ListOptions{
+		Namespace: es.Namespace,
+		LabelSelector: labels.SelectorFromSet(map[string]string{
+			label.ClusterNameLabelName: es.Name,
+		}),
+	}, &pods); err != nil {
 		return nil, err
 	}
-	names := make([]string, 0, len(actualPods))
-	for _, p := range actualPods {
-		names = append(names, p.Name)
-	}
-	return names, nil
+	return pods.Items, nil
 }
 
 // ScheduledUpgradesDone returns true if all pods scheduled for upgrade have been upgraded.
