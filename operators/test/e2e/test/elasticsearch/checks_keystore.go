@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
 	"github.com/pkg/errors"
@@ -27,7 +27,7 @@ func CheckESKeystoreEntries(k *test.K8sClient, es v1alpha1.Elasticsearch, expect
 			}
 			return test.OnAllPods(pods, func(p corev1.Pod) error {
 				// exec into the pod to list keystore entries
-				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), []string{keystore.KeystoreBinPath, "list"})
+				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), []string{initcontainer.KeystoreBinPath, "list"})
 				if err != nil {
 					return errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr))
 				}
