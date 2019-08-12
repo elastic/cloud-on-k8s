@@ -47,7 +47,8 @@ func SetupMinimumMasterNodesConfig(nodeSpecResources nodespec.ResourcesList) err
 	return nil
 }
 
-// UpdateMinimumMasterNodes calls the ES API to update the minimum_master_nodes setting if required.
+// UpdateMinimumMasterNodes calls the ES API to update the minimum_master_nodes setting if required,
+// based on nodes currently running in the cluster.
 // It returns true if this should be retried later (re-queued).
 func UpdateMinimumMasterNodes(
 	c k8s.Client,
@@ -60,6 +61,7 @@ func UpdateMinimumMasterNodes(
 		// nothing to do
 		return false, nil
 	}
+
 	pods, err := actualStatefulSets.GetActualPods(c)
 	if err != nil {
 		return false, err
@@ -76,12 +78,8 @@ func UpdateMinimumMasterNodes(
 			}
 		}
 	}
+	// Calculate minimum_master_nodes based on that.
 	minimumMasterNodes := settings.Quorum(currentMasterCount)
-
-	// Check if we really need to update minimum_master_nodes with an API call
-	if minimumMasterNodes == reconcileState.GetZen1MinimumMasterNodes() {
-		return false, nil
-	}
 
 	// Do not attempt to make an API call if there is not enough available masters
 	if currentAvailableMasterCount < minimumMasterNodes {
@@ -96,19 +94,40 @@ func UpdateMinimumMasterNodes(
 		return true, nil
 	}
 
+	return false, UpdateMinimumMasterNodesTo(es, esClient, actualStatefulSets, reconcileState, minimumMasterNodes)
+}
+
+// UpdateMinimumMasterNodesTo calls the ES API to update the value of zen1 minimum_master_nodes
+// to the given value, if the cluster is using zen1.
+func UpdateMinimumMasterNodesTo(
+	es v1alpha1.Elasticsearch,
+	esClient client.Client,
+	actualStatefulSets sset.StatefulSetList,
+	reconcileState *reconcile.State,
+	minimumMasterNodes int,
+) error {
+	if !AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
+		// nothing to do
+		return nil
+	}
+
+	// Check if we really need to update minimum_master_nodes with an API call
+	if minimumMasterNodes == reconcileState.GetZen1MinimumMasterNodes() {
+		return nil
+	}
+
 	log.Info("Updating minimum master nodes",
 		"how", "api",
 		"namespace", es.Namespace,
 		"es_name", es.Name,
-		"current", currentMasterCount,
 		"minimum_master_nodes", minimumMasterNodes,
 	)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
 	if err := esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes); err != nil {
-		return false, err
+		return nil
 	}
 	// Save the current value in the status
 	reconcileState.UpdateZen1MinimumMasterNodes(minimumMasterNodes)
-	return false, nil
+	return nil
 }
