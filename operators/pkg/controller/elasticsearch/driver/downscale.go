@@ -5,40 +5,14 @@
 package driver
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
-
-const (
-	OneMasterAtATimeInvariant        = "A master node is already in the process of being removed"
-	AtLeastOneRunningMasterInvariant = "Cannot remove the last running master node"
-)
-
-// downscaleContext holds the context of this downscale, including clients and states,
-// propagated from the main driver.
-type downscaleContext struct {
-	// clients
-	k8sClient k8s.Client
-	esClient  esclient.Client
-	// driver states
-	resourcesState reconcile.ResourcesState
-	observedState  observer.State
-	reconcileState *reconcile.State
-	expectations   *reconciler.Expectations
-	// ES cluster
-	es v1alpha1.Elasticsearch
-}
 
 // HandleDownscale attempts to downscale actual StatefulSets towards expected ones.
 func HandleDownscale(
@@ -65,6 +39,7 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
+	// make sure we only downscale nodes we're allowed to
 	invariants, err := NewDownscaleInvariants(downscaleCtx.k8sClient, downscaleCtx.es)
 	if err != nil {
 		return results.WithError(err)
@@ -96,98 +71,6 @@ func noOnGoingDeletion(downscaleCtx downscaleContext, actualStatefulSets sset.St
 	// Let's retry once expected pods are there.
 	// PodReconciliationDone also matches any pod not created yet, for which we'll also requeue.
 	return actualStatefulSets.PodReconciliationDone(downscaleCtx.k8sClient, downscaleCtx.es)
-}
-
-// DownscaleInvariants restricts downscales to perform in a single reconciliation attempt:
-// - remove a single master at once
-// - don't remove the last living master node
-type DownscaleInvariants struct {
-	// masterRemoved indicates whether a master node is in the process of being removed already.
-	masterRemoved bool
-	// runningMasters indicates how many masters are currently running in the cluster.
-	runningMasters int
-}
-
-// NewDownscaleInvariants creates a new DownscaleInvariants.
-func NewDownscaleInvariants(c k8s.Client, es v1alpha1.Elasticsearch) (*DownscaleInvariants, error) {
-	// retrieve the number of masters running ready
-	actualPods, err := sset.GetActualPodsForCluster(c, es)
-	if err != nil {
-		return nil, err
-	}
-	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
-
-	return &DownscaleInvariants{
-		masterRemoved:  false,
-		runningMasters: len(mastersReady),
-	}, nil
-}
-
-// canDownscale returns true if the current state allows downscaling the given StatefulSet.
-// If not, it also returns the reason why.
-func (d *DownscaleInvariants) canDownscale(statefulSet appsv1.StatefulSet) (bool, string) {
-	if !label.IsMasterNodeSet(statefulSet) {
-		// only care about master nodes
-		return true, ""
-	}
-	if d.masterRemoved {
-		return false, OneMasterAtATimeInvariant
-	}
-	if d.runningMasters == 1 {
-		return false, AtLeastOneRunningMasterInvariant
-	}
-	return true, ""
-}
-
-// accountDownscale updates the current invariants state to consider a 1-replica downscale of the given statefulSet.
-func (d *DownscaleInvariants) accountOneRemoval(statefulSet appsv1.StatefulSet) {
-	if !label.IsMasterNodeSet(statefulSet) {
-		// only care about master nodes
-		return
-	}
-	d.masterRemoved = true
-	d.runningMasters--
-}
-
-// ssetDownscale helps with the downscale of a single StatefulSet.
-// A StatefulSet removal (going from 0 to 0 replicas) is also considered as a Downscale here.
-type ssetDownscale struct {
-	statefulSet     appsv1.StatefulSet
-	initialReplicas int32
-	targetReplicas  int32
-}
-
-// leavingNodeNames returns names of the nodes that are supposed to leave the Elasticsearch cluster
-// for this StatefulSet. They are ordered by highest ordinal first;
-func (d ssetDownscale) leavingNodeNames() []string {
-	if d.targetReplicas >= d.initialReplicas {
-		return nil
-	}
-	leavingNodes := make([]string, 0, d.initialReplicas-d.targetReplicas)
-	for i := d.initialReplicas - 1; i >= d.targetReplicas; i-- {
-		leavingNodes = append(leavingNodes, sset.PodName(d.statefulSet.Name, i))
-	}
-	return leavingNodes
-}
-
-// isRemoval returns true if this downscale is a StatefulSet removal.
-func (d ssetDownscale) isRemoval() bool {
-	// StatefulSet does not have any replica, and should not have one
-	return d.initialReplicas == 0 && d.targetReplicas == 0
-}
-
-// isReplicaDecrease returns true if this downscale corresponds to decreasing replicas.
-func (d ssetDownscale) isReplicaDecrease() bool {
-	return d.targetReplicas < d.initialReplicas
-}
-
-// leavingNodeNames returns the names of all nodes that should leave the cluster (across StatefulSets).
-func leavingNodeNames(downscales []ssetDownscale) []string {
-	leavingNodes := []string{}
-	for _, d := range downscales {
-		leavingNodes = append(leavingNodes, d.leavingNodeNames()...)
-	}
-	return leavingNodes
 }
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of ssetDownscale.
