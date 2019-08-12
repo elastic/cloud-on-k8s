@@ -43,7 +43,7 @@ TAG ?= $(shell git rev-parse --short --verify HEAD)
 
 ifeq ($(OPERATOR_IMAGE),)
 	# we never want this empty
-	undefine OPERATOR_IMAGE
+	OPERATOR_IMAGE := $(IMG):$(VERSION)-$(TAG)
 endif
 OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
 
