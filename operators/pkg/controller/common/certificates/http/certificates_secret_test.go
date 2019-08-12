@@ -198,8 +198,8 @@ func TestCertificatesSecret(t *testing.T) {
 			if got := tt.s.CertChain(); !reflect.DeepEqual(got, tt.wantChain) {
 				t.Errorf("CertificatesSecret.CertChain() = %v, want %v", got, tt.wantChain)
 			}
-			if got := tt.s.CaPem(); !reflect.DeepEqual(got, tt.wantCa) {
-				t.Errorf("CertificatesSecret.CaPem() = %v, want %v", got, tt.wantCa)
+			if got := tt.s.CAPem(); !reflect.DeepEqual(got, tt.wantCa) {
+				t.Errorf("CertificatesSecret.CAPem() = %v, want %v", got, tt.wantCa)
 			}
 			if got := tt.s.CertPem(); !reflect.DeepEqual(got, tt.wantCert) {
 				t.Errorf("CertificatesSecret.CertPem() = %v, want %v", got, tt.wantCert)
