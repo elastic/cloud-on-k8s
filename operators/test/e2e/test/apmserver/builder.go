@@ -30,6 +30,11 @@ func NewBuilder(name string) Builder {
 			Spec: apmtype.ApmServerSpec{
 				NodeCount: 1,
 				Version:   test.Ctx().ElasticStackVersion,
+				Config: &commonv1alpha1.Config{
+					Data: map[string]interface{}{
+						"apm-server.ilm.enabled": false,
+					},
+				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						SecurityContext: test.DefaultSecurityContext(),
