@@ -83,10 +83,10 @@ func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 	return allPods, nil
 }
 
-// MatchActualPods returns true if actual existing pods match what is specified in the StatefulSetList.
+// PodReconciliationDone returns true if actual existing pods match what is specified in the StatefulSetList.
 // It may return false if there are pods in the process of being created (but not created yet)
 // or terminated (but not removed yet).
-func (l StatefulSetList) MatchActualPods(c k8s.Client, es v1alpha1.Elasticsearch) (bool, error) {
+func (l StatefulSetList) PodReconciliationDone(c k8s.Client, es v1alpha1.Elasticsearch) (bool, error) {
 	// pods we expect to be there based on StatefulSets spec
 	expectedPods := l.PodNames()
 	// pods that are there for this cluster

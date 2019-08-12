@@ -89,7 +89,7 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 	//  See https://github.com/kubernetes-sigs/controller-runtime/pull/311
 }
 
-func TestStatefulSetList_MatchActualPods(t *testing.T) {
+func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 	es := v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
 	}
@@ -170,7 +170,7 @@ func TestStatefulSetList_MatchActualPods(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.l.MatchActualPods(tt.c, es)
+			got, err := tt.l.PodReconciliationDone(tt.c, es)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})

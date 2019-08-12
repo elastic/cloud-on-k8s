@@ -84,8 +84,8 @@ func noOnGoingDeletion(downscaleCtx downscaleContext, actualStatefulSets sset.St
 	// Elasticsearch shards allocation excludes (should not be cleared if the ghost node isn't removed yet)
 	// or zen settings (must consider terminating masters that are still there).
 	// Let's retry once expected pods are there.
-	// MatchActualPods also matches any pod not created yet, for which we'll also requeue.
-	return actualStatefulSets.MatchActualPods(downscaleCtx.k8sClient, downscaleCtx.es)
+	// PodReconciliationDone also matches any pod not created yet, for which we'll also requeue.
+	return actualStatefulSets.PodReconciliationDone(downscaleCtx.k8sClient, downscaleCtx.es)
 }
 
 // ssetDownscale helps with the downscale of a single StatefulSet.

@@ -42,7 +42,7 @@ func canClearVotingConfigExclusions(c k8s.Client, es v1alpha1.Elasticsearch, act
 	// - nodes are expected to be in the cluster (shouldn't be removed anymore)
 	// They cannot be cleared when:
 	// - expected nodes to remove are not removed yet
-	return actualStatefulSets.MatchActualPods(c, es)
+	return actualStatefulSets.PodReconciliationDone(c, es)
 }
 
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.
