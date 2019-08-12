@@ -1,7 +1,7 @@
 {{- define "packages" -}}
 // Generated documentation. Please do not edit.
-[id="{p}-reference"]
-== Reference
+[id="{p}-api-reference"]
+== API Reference
 {{ with .packages }}
 .Packages
 ****
