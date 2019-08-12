@@ -58,12 +58,14 @@ func (d *GkeDriver) Execute() error {
 
 	switch d.plan.Operation {
 	case "delete":
+		log.Printf("Trying to delete GKE cluster with name: %s ...", d.ctx["ClusterName"])
 		if exists {
 			err = d.delete()
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
 		}
 	case "create":
+		log.Printf("Trying to create GKE cluster using version: %s with name: %s ...", d.ctx["KubernetesVersion"], d.ctx["ClusterName"])
 		if exists {
 			log.Printf("not creating as cluster exists")
 		} else {
