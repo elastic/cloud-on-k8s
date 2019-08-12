@@ -42,6 +42,8 @@ func canClearVotingConfigExclusions(c k8s.Client, es v1alpha1.Elasticsearch, act
 	// - nodes are expected to be in the cluster (shouldn't be removed anymore)
 	// They cannot be cleared when:
 	// - expected nodes to remove are not removed yet
+	// PodReconciliationDone returns false is there are some pods not created yet: we don't really
+	// care about those here, but that's still fine to requeue and retry later for the sake of simplicity.
 	return actualStatefulSets.PodReconciliationDone(c, es)
 }
 

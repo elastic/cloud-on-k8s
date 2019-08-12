@@ -34,6 +34,7 @@ func (f *fakeESClient) DeleteVotingConfigExclusions(ctx context.Context, waitFor
 func Test_ClearVotingConfigExclusions(t *testing.T) {
 	// dummy statefulset with 3 pods
 	statefulSet3rep := nodespec.CreateTestSset("nodes", "7.2.0", 3, true, true)
+	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: statefulSet3rep.Namespace}}
 	pods := make([]corev1.Pod, 0, *statefulSet3rep.Spec.Replicas)
 	for _, podName := range sset.PodNames(statefulSet3rep) {
 		pods = append(pods, corev1.Pod{ObjectMeta: metav1.ObjectMeta{
@@ -41,6 +42,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			Name:      podName,
 			Labels: map[string]string{
 				label.StatefulSetNameLabelName: statefulSet3rep.Name,
+				label.ClusterNameLabelName:     es.Name,
 			},
 		}})
 	}
@@ -70,11 +72,11 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			wantRequeue:        false,
 		},
 		{
-			name:               "2/3 nodes there: can clear",
+			name:               "2/3 nodes there: cannot clear, should requeue",
 			c:                  k8s.WrapClient(fake.NewFakeClient(&statefulSet3rep, &pods[0], &pods[1])),
 			actualStatefulSets: sset.StatefulSetList{statefulSet3rep},
-			wantCall:           true,
-			wantRequeue:        false,
+			wantCall:           false,
+			wantRequeue:        true,
 		},
 		{
 			name:               "3/2 nodes there: cannot clear, should requeue",
@@ -87,7 +89,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			clientMock := &fakeESClient{}
-			requeue, err := ClearVotingConfigExclusions(v1alpha1.Elasticsearch{}, tt.c, clientMock, tt.actualStatefulSets)
+			requeue, err := ClearVotingConfigExclusions(es, tt.c, clientMock, tt.actualStatefulSets)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRequeue, requeue)
 			require.Equal(t, tt.wantCall, clientMock.called)
