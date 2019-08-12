@@ -7,7 +7,7 @@
 ROOT_DIR = $(CURDIR)/../..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
-IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile $(ROOT_DIR)/local-volume/Gopkg.lock | awk '{print $$1}' | md5sum | awk '{print $$1}')
+CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile $(ROOT_DIR)/local-volume/Gopkg.lock | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
@@ -77,7 +77,7 @@ ci-pr: check-license-header
 		-w $(GO_MOUNT_PATH) \
 		-e "IMG_SUFFIX=-ci" \
 		--net=host \
-		$(IMAGE) \
+		$(CI_IMAGE) \
 		bash -c \
 			"make -C operators ci && \
 			 make -C local-volume ci"
@@ -96,7 +96,7 @@ ci-release: vault-public-key vault-docker-creds
     	-e "LATEST_RELEASED_IMG=$(LATEST_RELEASED_IMG)" \
     	-e "VERSION=$(VERSION)" \
     	-e "SNAPSHOT=$(SNAPSHOT)" \
-    	$(IMAGE) \
+    	$(CI_IMAGE) \
     	bash -c "make -C operators ci-release"
 
 # Will be uploaded to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
@@ -106,7 +106,7 @@ yaml-upload: vault-aws-creds
         -w $(GO_MOUNT_PATH) \
         -e "AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE))" \
         -e "AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE))" \
-        $(IMAGE) \
+        $(CI_IMAGE) \
         bash -c "aws s3 cp $(GO_MOUNT_PATH)/operators/config/all-in-one.yaml \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml"
 
@@ -124,7 +124,8 @@ ci-e2e:
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		-e "SKIP_DOCKER_COMMAND=$(SKIP_DOCKER_COMMAND)" \
 		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
-		$(IMAGE) \
+		-e "STACK_VERSION=$(STACK_VERSION)" \
+		$(CI_IMAGE) \
 		bash -c "make -C operators ci-e2e"
 
 ci-run-deployer:
@@ -133,12 +134,12 @@ ci-run-deployer:
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-		$(IMAGE) \
+		$(CI_IMAGE) \
 		bash -c "make -C operators run-deployer"
 
 # Check if Docker image exists by trying to pull it. If there is no image, then build and push it.
 ci-build-image: vault-docker-creds
-	@ docker pull $(IMAGE) || (docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(IMAGE) \
+	@ docker pull $(CI_IMAGE) || (docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(CI_IMAGE) \
 	--label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) &&\
 	docker login -u $(DOCKER_LOGIN) -p $(shell cat $(DOCKER_CREDENTIALS_FILE)) push.docker.elastic.co &&\
-	docker push push.$(IMAGE))
+	docker push push.$(CI_IMAGE))

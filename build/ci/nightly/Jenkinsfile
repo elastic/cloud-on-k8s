@@ -50,6 +50,10 @@ pipeline {
                 build job: 'cloud-on-k8s-versions-gke',
                       parameters: [string(name: 'IMAGE', value: image)],
                       wait: false
+
+                build job: 'cloud-on-k8s-stack-versions',
+                      parameters: [string(name: 'IMAGE', value: image)],
+                      wait: false
             }
         }
         cleanup {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -31,6 +32,7 @@ var Validations = []Validation{
 	noBlacklistedSettings,
 	validSanIP,
 	tlsCannotBeDisabled,
+	pvcModification,
 }
 
 // nameLength checks the length of the Elasticsearch name.
@@ -148,4 +150,37 @@ func tlsCannotBeDisabled(ctx Context) validation.Result {
 		}
 	}
 	return validation.OK
+}
+
+// pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
+func pvcModification(ctx Context) validation.Result {
+	if ctx.Current == nil {
+		return validation.OK
+	}
+	for _, node := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+		currNode := getNode(node.Name, ctx.Current.Elasticsearch)
+		if currNode == nil {
+			// this is a new sset, so there is nothing to check
+			continue
+		}
+
+		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
+		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
+		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
+			return validation.Result{
+				Allowed: false,
+				Reason:  pvcImmutableMsg,
+			}
+		}
+	}
+	return validation.OK
+}
+
+func getNode(name string, es v1alpha1.Elasticsearch) *v1alpha1.NodeSpec {
+	for i := range es.Spec.Nodes {
+		if es.Spec.Nodes[i].Name == name {
+			return &es.Spec.Nodes[i]
+		}
+	}
+	return nil
 }
