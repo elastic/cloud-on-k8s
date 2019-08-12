@@ -17,6 +17,7 @@ pipeline {
         TESTS_MATCH = 'TestSmoke'
         CLUSTER_VERSION = '1.12'
         CLUSTER_NAME = "${BUILD_TAG}"
+        SKIP_DOCKER_COMMAND = "false"
     }
 
     stages {

@@ -144,6 +144,11 @@ go-run:
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false
 
+build-operator-image:
+ifeq ($(SKIP_DOCKER_COMMAND), false)
+	$(MAKE) docker-build docker-push
+endif
+
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
@@ -153,11 +158,7 @@ endif
 endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds
-ifeq ($(SKIP_DOCKER_COMMAND), false)
-	$(MAKE) docker-build docker-push
-endif
-	$(MAKE) apply-operators
+deploy: check-gke install-crds build-operator-image apply-operators
 
 apply-operators:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
@@ -292,7 +293,7 @@ E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 STACK_VERSION ?= 7.3.0
 
 # Run e2e tests as a k8s batch job
-e2e: docker-build docker-push e2e-docker-build e2e-docker-push e2e-run
+e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
 
 e2e-docker-build:
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
