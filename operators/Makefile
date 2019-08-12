@@ -290,7 +290,9 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-STACK_VERSION ?= 7.3.0
+ifeq ($(STACK_VERSION),)
+	STACK_VERSION = 7.3.0
+endif
 
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
