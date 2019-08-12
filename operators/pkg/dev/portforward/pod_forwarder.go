@@ -177,7 +177,7 @@ func (f *PodForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 		return nil, f.viaErr
 	}
 
-	log.Info("Redirecting dial call", "addr", f.addr, "via", f.viaAddr)
+	log.V(1).Info("Redirecting dial call", "addr", f.addr, "via", f.viaAddr)
 	return f.dialerFunc(ctx, f.network, f.viaAddr)
 }
 
@@ -201,7 +201,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 	defer runCtxCancel()
 
 	if f.clientset != nil {
-		log.Info("Watching pod for changes", "namespace", f.podNSN.Namespace, "pod_name", f.podNSN.Name)
+		log.V(1).Info("Watching pod for changes", "namespace", f.podNSN.Namespace, "pod_name", f.podNSN.Name)
 		w, err := f.clientset.CoreV1().Pods(f.podNSN.Namespace).Watch(metav1.ListOptions{
 			FieldSelector: fields.OneTermEqualSelector("metadata.name", f.podNSN.Name).String(),
 		})
@@ -215,7 +215,7 @@ func (f *PodForwarder) Run(ctx context.Context) error {
 				select {
 				case evt := <-w.ResultChan():
 					if evt.Type == watch.Deleted || evt.Type == watch.Error || evt.Type == "" {
-						log.Info(
+						log.V(1).Info(
 							"Pod is deleted or watch failed/closed, closing pod forwarder",
 							"namespace", f.podNSN.Namespace,
 							"pod_name", f.podNSN.Name,

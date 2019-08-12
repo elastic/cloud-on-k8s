@@ -65,8 +65,11 @@ func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
 		log.Error(err, "Failed to add handler to dynamic enqueue request")
 		return err
 	}
+	_, exists := d.registrations[handler.Key()]
+	if !exists {
+		log.V(1).Info("Adding new handler registration", "key", handler.Key(), "current_registrations", d.registrations)
+	}
 	d.registrations[handler.Key()] = handler
-	log.V(1).Info("Added new handler registration", "current_registrations", d.registrations)
 	return nil
 }
 
@@ -80,7 +83,6 @@ func (d *DynamicEnqueueRequest) RemoveHandlerForKey(key string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	delete(d.registrations, key)
-	log.V(1).Info("Removed handler registration", "removed", key, "current_registrations", d.registrations)
 }
 
 // Registrations returns the list of registered handler names.

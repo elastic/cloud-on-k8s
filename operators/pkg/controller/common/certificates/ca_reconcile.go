@@ -83,7 +83,6 @@ func ReconcileCAForOwner(
 	}
 
 	// reuse existing CA
-	log.V(1).Info("Reusing existing CA", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 	return ca, nil
 }
 

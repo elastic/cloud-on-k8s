@@ -35,8 +35,6 @@ func ReconcileTransportCertificatesSecrets(
 	es v1alpha1.Elasticsearch,
 	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
-	log.Info("Reconciling transport certificate secrets", "namespace", es.Namespace, "es_name", es.Name)
-
 	var pods corev1.PodList
 	if err := c.List(&client.ListOptions{
 		LabelSelector: label.NewLabelSelectorForElasticsearch(es),

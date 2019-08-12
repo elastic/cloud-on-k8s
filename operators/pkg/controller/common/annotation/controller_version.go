@@ -42,7 +42,6 @@ func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version stri
 
 	// do not send unnecessary update if the value would not change
 	if annotations[ControllerVersionAnnotation] == version {
-		log.V(1).Info("Skipping controller version annotation update, version already matches", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
 		return nil
 	}
 
@@ -112,8 +111,6 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector labe
 
 	// if the current version is gte the minimum version then they are compatible
 	if currentVersion.IsSameOrAfter(*minVersion) {
-		log.V(1).Info("Current controller version on resource is compatible with running controller version", "controller_version", ctrlVersion,
-			"resource_controller_version", currentVersion, "namespace", namespace, "name", name)
 		return true, nil
 	}
 
