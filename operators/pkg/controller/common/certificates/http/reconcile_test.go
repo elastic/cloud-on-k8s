@@ -132,8 +132,8 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
 					Data: map[string][]byte{
-						certificates.CertFileName: []byte("cert-data"),
-						certificates.KeyFileName:  []byte("key-data"),
+						certificates.CertFileName: []byte(tls),
+						certificates.KeyFileName:  []byte(key),
 					},
 				})),
 				es: v1alpha1.Elasticsearch{
@@ -151,8 +151,8 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 				ca: testCA,
 			},
 			want: func(t *testing.T, cs *CertificatesSecret) {
-				assert.Equal(t, cs.Data[certificates.KeyFileName], []byte("key-data"))
-				assert.Equal(t, cs.Data[certificates.CertFileName], []byte("cert-data"))
+				assert.Equal(t, cs.Data[certificates.KeyFileName], []byte(key))
+				assert.Equal(t, cs.Data[certificates.CertFileName], []byte(tls))
 			},
 		},
 	}
