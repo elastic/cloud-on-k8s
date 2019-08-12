@@ -95,8 +95,18 @@ func (l StatefulSetList) PodReconciliationDone(c k8s.Client, es v1alpha1.Elastic
 		return false, err
 	}
 	actualPods := k8s.PodNames(actualRawPods)
+
 	// check if they match
-	return len(expectedPods) == len(actualPods) && stringsutil.StringsInSlice(expectedPods, actualPods), nil
+	match := len(expectedPods) == len(actualPods) && stringsutil.StringsInSlice(expectedPods, actualPods)
+	if !match {
+		log.V(1).Info(
+			"Pod reconciliation is not done yet",
+			"namespace", es.Namespace, "es_name", es.Name,
+			"expected_pods", expectedPods, "actual_pods", actualPods,
+		)
+	}
+
+	return match, nil
 }
 
 // DeepCopy returns a copy of the StatefulSetList with no reference to the original StatefulSetList.
