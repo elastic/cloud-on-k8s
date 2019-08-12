@@ -320,6 +320,7 @@ e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
 		--test-context-out=$(LOCAL_E2E_CTX) \
+		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
 		--local
 	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
