@@ -21,6 +21,8 @@ func TestUpdateESSecureSettings(t *testing.T) {
 
 	// user-provided secure settings secret
 	secureSettingsSecretName := "secure-settings-secret"
+	const securePasswordSettingKey = "xpack.notification.email.account.foo.smtp.secure_password"
+	const securetUserSettingKey = "xpack.notification.jira.account.bar.secure_user"
 	secureSettings := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secureSettingsSecretName,
@@ -28,8 +30,8 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		},
 		Data: map[string][]byte{
 			// this needs to be a valid configuration item, otherwise ES refuses to start
-			"path.logs":                    []byte("/tmp/logs"),
-			"xpack.security.audit.enabled": []byte("false"),
+			securePasswordSettingKey: []byte("foo_pw"),
+			securetUserSettingKey:    []byte("bar_user"),
 		},
 	}
 
@@ -58,8 +60,8 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		WithSteps(test.StepList{
 			// initial secure settings should be there in all nodes keystore
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
-				"path.logs",
-				"xpack.security.audit.enabled"}),
+				securePasswordSettingKey,
+				securetUserSettingKey}),
 
 			// modify the secure settings secret
 			test.Step{
@@ -67,7 +69,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				Test: func(t *testing.T) {
 					// remove some keys, add new ones
 					secureSettings.Data = map[string][]byte{
-						"path.logs": []byte("/tmp/logs2"), // the actual value update cannot be checked :(
+						securePasswordSettingKey: []byte("baz"), // the actual value update cannot be checked :(
 					}
 					err := k.Client.Update(&secureSettings)
 					require.NoError(t, err)
@@ -76,7 +78,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 
 			// keystore should be updated accordingly
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
-				"path.logs"}),
+				securePasswordSettingKey}),
 
 			// remove the secure settings reference
 			test.Step{
