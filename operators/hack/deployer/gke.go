@@ -13,7 +13,7 @@ import (
 
 const (
 	GkeDriverId                     = "gke"
-	GkeVaultPath                    = "secret/cloud-team/cloud-ci/ci-gcp-k8s-operator"
+	GkeVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-gcp-k8s-operator"
 	GkeServiceAccountVaultFieldName = "service-account"
 )
 
