@@ -15,7 +15,7 @@ func init() {
 
 const (
 	AksDriverId                    = "aks"
-	AksVaultPath                   = "secret/cloud-team/cloud-ci/ci-azr-k8s-operator"
+	AksVaultPath                   = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
 	AksResourceGroupVaultFieldName = "resource-group"
 	AksAcrNameVaultFieldName       = "acr-name"
 )
