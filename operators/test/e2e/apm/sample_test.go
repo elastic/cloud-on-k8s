@@ -55,6 +55,9 @@ func TestApmEsKibanaSample(t *testing.T) {
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithVersion(test.Ctx().ElasticStackVersion).
+		WithConfig(map[string]interface{}{
+			"apm-server.ilm.enabled": false,
+		}).
 		WithRestrictedSecurityContext()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).

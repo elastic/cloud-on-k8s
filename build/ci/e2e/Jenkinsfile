@@ -16,6 +16,7 @@ pipeline {
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         CLUSTER_VERSION = '1.12'
         CLUSTER_NAME = "${BUILD_TAG}"
+        SKIP_DOCKER_COMMAND = "false"
     }
 
     stages {

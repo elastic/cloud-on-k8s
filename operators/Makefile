@@ -43,7 +43,7 @@ TAG ?= $(shell git rev-parse --short --verify HEAD)
 
 ifeq ($(OPERATOR_IMAGE),)
 	# we never want this empty
-	undefine OPERATOR_IMAGE
+	OPERATOR_IMAGE := $(IMG):$(VERSION)-$(TAG)
 endif
 OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
 
@@ -84,7 +84,7 @@ dep:
 
 dep-vendor-only:
 	# don't attempt to upgrade Gopkg.lock
-	dep ensure --vendor-only -v
+	dep ensure --vendor-only 
 
 # Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
 generate:
@@ -144,6 +144,11 @@ go-run:
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false
 
+build-operator-image:
+ifeq ($(SKIP_DOCKER_COMMAND), false)
+	$(MAKE) docker-build docker-push
+endif
+
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
@@ -153,11 +158,7 @@ endif
 endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds
-ifeq ($(SKIP_DOCKER_COMMAND), false)
-	$(MAKE) docker-build docker-push
-endif
-	$(MAKE) apply-operators
+deploy: check-gke install-crds build-operator-image apply-operators
 
 apply-operators:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
@@ -289,10 +290,12 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-STACK_VERSION ?= 7.3.0
+ifeq ($(STACK_VERSION),)
+	STACK_VERSION = 7.3.0
+endif
 
 # Run e2e tests as a k8s batch job
-e2e: docker-build docker-push e2e-docker-build e2e-docker-push e2e-run
+e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
 
 e2e-docker-build:
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
@@ -319,6 +322,7 @@ e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
 		--test-context-out=$(LOCAL_E2E_CTX) \
+		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
 		--local
 	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)

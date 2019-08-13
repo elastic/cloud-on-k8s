@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,8 +30,60 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	sset3Replicas = nodespec.CreateTestSset("sset3Replicas", "7.2.0", 3, true, true)
-	sset4Replicas = nodespec.CreateTestSset("sset4Replicas", "7.2.0", 4, true, true)
+	sset3Replicas     = nodespec.CreateTestSset("sset3Replicas", "7.2.0", 3, true, true)
+	podsSset3Replicas = []corev1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sset3Replicas.Namespace,
+				Name:      sset.PodName(sset3Replicas.Name, 0),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sset3Replicas.Namespace,
+				Name:      sset.PodName(sset3Replicas.Name, 1),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sset3Replicas.Namespace,
+				Name:      sset.PodName(sset3Replicas.Name, 2),
+			},
+		},
+	}
+	sset4Replicas     = nodespec.CreateTestSset("sset4Replicas", "7.2.0", 4, true, true)
+	podsSset4Replicas = []corev1.Pod{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sset3Replicas.Namespace,
+				Name:      sset.PodName(sset4Replicas.Name, 0),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sset3Replicas.Namespace,
+				Name:      sset.PodName(sset4Replicas.Name, 1),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sset3Replicas.Namespace,
+				Name:      sset.PodName(sset4Replicas.Name, 2),
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sset3Replicas.Namespace,
+				Name:      sset.PodName(sset4Replicas.Name, 3),
+			},
+		},
+	}
+	runtimeObjs = []runtime.Object{&sset3Replicas, &sset4Replicas,
+		&podsSset3Replicas[0], &podsSset3Replicas[1], &podsSset3Replicas[2],
+		&podsSset4Replicas[0], &podsSset4Replicas[1], &podsSset4Replicas[2], &podsSset4Replicas[3],
+	}
+	requeueResults = (&reconciler.Results{}).WithResult(defaultRequeue)
+	emptyResults   = &reconciler.Results{}
 )
 
 // fakeESClient mocks the ES client to register function calls that were made.
@@ -74,7 +127,7 @@ func TestHandleDownscale(t *testing.T) {
 	// We want to downscale 2 StatefulSets (3 -> 1 and 4 -> 2) in version 7.X,
 	// but should only be allowed a partial downscale (3 -> 1 and 4 -> 3).
 
-	k8sClient := k8s.WrapClient(fake.NewFakeClient(&sset3Replicas, &sset4Replicas))
+	k8sClient := k8s.WrapClient(fake.NewFakeClient(runtimeObjs...))
 	esClient := &fakeESClient{}
 	actualStatefulSets := sset.StatefulSetList{sset3Replicas, sset4Replicas}
 	downscaleCtx := downscaleContext{
@@ -134,6 +187,9 @@ func TestHandleDownscale(t *testing.T) {
 	sset4ReplicasExpectedAfterDownscale.Spec.Replicas = common.Int32(3)
 	expectedAfterDownscale := []appsv1.StatefulSet{sset3ReplicasDownscaled, sset4ReplicasExpectedAfterDownscale}
 
+	// a requeue should be requested since all nodes were not downscaled
+	require.Equal(t, requeueResults, results)
+
 	// voting config exclusion should have been added for leaving masters
 	require.True(t, esClient.AddVotingConfigExclusionsCalled)
 	require.Equal(t, []string{"sset3Replicas-2", "sset3Replicas-1", "sset4Replicas-3"}, esClient.AddVotingConfigExclusionsCalledWith)
@@ -144,18 +200,35 @@ func TestHandleDownscale(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
-	// running the downscale again should give the same results
+	// running the downscale again should requeue since some pods are not terminated yet
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
+	require.Equal(t, requeueResults, results)
+	// no StatefulSet should have been updated
 	err = k8sClient.List(&client.ListOptions{}, &actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
-	// once data migration is over the complete downscale should go through
+	// simulate pods deletion that would be done by the StatefulSet controller
+	require.NoError(t, k8sClient.Delete(&podsSset3Replicas[2]))
+	require.NoError(t, k8sClient.Delete(&podsSset3Replicas[1]))
+	require.NoError(t, k8sClient.Delete(&podsSset4Replicas[3]))
+
+	// running the downscale again should requeue since data migration is still not over
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	require.False(t, results.HasError())
+	require.Equal(t, requeueResults, results)
+	// no StatefulSet should have been updated
+	err = k8sClient.List(&client.ListOptions{}, &actual)
+	require.NoError(t, err)
+	require.Equal(t, expectedAfterDownscale, actual.Items)
+
+	// once data migration is over the downscale should continue
 	downscaleCtx.observedState.ClusterState.RoutingTable.Indices["index-1"].Shards["0"][0].Node = "sset4Replicas-1"
 	expectedAfterDownscale[1].Spec.Replicas = common.Int32(2)
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
+	require.Equal(t, emptyResults, results)
 	err = k8sClient.List(&client.ListOptions{}, &actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
@@ -164,9 +237,13 @@ func TestHandleDownscale(t *testing.T) {
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
 	require.Equal(t, "sset4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
 
+	// simulate pod deletion
+	require.NoError(t, k8sClient.Delete(&podsSset4Replicas[2]))
+
 	// running the downscale again should not remove any new node
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
+	require.Equal(t, emptyResults, results)
 	err = k8sClient.List(&client.ListOptions{}, &actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)

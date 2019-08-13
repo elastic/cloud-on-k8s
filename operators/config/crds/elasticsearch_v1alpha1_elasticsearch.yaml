@@ -78,9 +78,10 @@ spec:
                     certificate:
                       description: 'Certificate is a reference to a secret that contains
                         the certificate and private key to be used.  The secret should
-                        have the following content:  - `tls.crt`: The certificate
-                        (or a chain). - `tls.key`: The private key to the first certificate
-                        in the certificate chain.'
+                        have the following content:  - `ca.crt`: The certificate authority
+                        (optional) - `tls.crt`: The certificate (or a chain). - `tls.key`:
+                        The private key to the first certificate in the certificate
+                        chain.'
                       properties:
                         secretName:
                           type: string

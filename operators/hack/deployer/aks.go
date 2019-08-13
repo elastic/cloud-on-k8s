@@ -15,7 +15,7 @@ func init() {
 
 const (
 	AksDriverId                    = "aks"
-	AksVaultPath                   = "secret/cloud-team/cloud-ci/ci-azr-k8s-operator"
+	AksVaultPath                   = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
 	AksResourceGroupVaultFieldName = "resource-group"
 	AksAcrNameVaultFieldName       = "acr-name"
 )
@@ -148,9 +148,20 @@ func (d *AksDriver) clusterExists() (bool, error) {
 func (d *AksDriver) create() error {
 	log.Print("Creating cluster...")
 
+	servicePrincipal := ""
+	if d.plan.ServiceAccount {
+		// our service principal doesn't have permissions to create a service principal for aks cluster
+		// instead, we reuse the current service principal as the one for aks cluster
+		secrets, err := d.vaultClient.GetMany(AksVaultPath, "appId", "password")
+		if err != nil {
+			return err
+		}
+		servicePrincipal = fmt.Sprintf(" --service-principal %s --client-secret %s", secrets[0], secrets[1])
+	}
+
 	cmd := `az aks create --resource-group {{.ResourceGroup}} --name {{.ClusterName}} ` +
 		`--node-count {{.NodeCount}} --node-vm-size {{.MachineType}} --kubernetes-version {{.KubernetesVersion}} ` +
-		`--node-osdisk-size 30 --enable-addons http_application_routing,monitoring --generate-ssh-keys`
+		`--node-osdisk-size 30 --enable-addons http_application_routing,monitoring --generate-ssh-keys` + servicePrincipal
 	if err := NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
 		return err
 	}
