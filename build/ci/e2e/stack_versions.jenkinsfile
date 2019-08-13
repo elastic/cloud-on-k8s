@@ -77,7 +77,7 @@ pipeline {
     post {
         unsuccessful {
             script {
-                def msg = "E2E tests for ELK stack versions failed!\r\n" + env.BUILD_URL
+                def msg = "E2E tests for Elastic stack versions failed!\r\n" + env.BUILD_URL
                 slackSend botUser: true,
                       channel: '#cloud-k8s',
                       color: 'danger',
