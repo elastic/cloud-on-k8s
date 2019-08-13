@@ -84,7 +84,7 @@ dep:
 
 dep-vendor-only:
 	# don't attempt to upgrade Gopkg.lock
-	dep ensure --vendor-only -v
+	dep ensure --vendor-only 
 
 # Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
 generate:
