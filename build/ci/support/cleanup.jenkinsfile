@@ -25,8 +25,8 @@ pipeline {
                     cat >operators/run-config.yml <<EOF
 id: gke-ci
 overrides:
-  operation: ${operation}
-  clusterName: ${clusterName}
+  operation: delete
+  clusterName: $GKE_CLUSTER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
