@@ -51,7 +51,7 @@ pipeline {
                       parameters: [string(name: 'IMAGE', value: image)],
                       wait: false
 
-                build job: 'cloud-on-k8s-stack-versions',
+                build job: 'cloud-on-k8s-stack',
                       parameters: [string(name: 'IMAGE', value: image)],
                       wait: false
             }
