@@ -41,7 +41,7 @@ pipeline {
     post {
         success {
             script {
-                def version = sh(returnStdout: true, script: 'cat $WORKSPACE/operators/VERSION')
+                def version = readFile("$WORKSPACE/operators/VERSION").trim()
                 def hash = sh(returnStdout: true, script: 'git rev-parse --short --verify HEAD')
                 def date = new Date()
                 def image = env.DOCKER_IMAGE_NO_TAG + ":" + version + "-" + date.format("yyyy-MM-dd") + "-" + hash
