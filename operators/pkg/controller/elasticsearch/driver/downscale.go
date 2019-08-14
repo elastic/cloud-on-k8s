@@ -289,7 +289,7 @@ func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.S
 	// there are 2 masters and we are about to downscale a StatefulSet with master nodes: 2->1 situation
 	ctx.reconcileState.AddEvent(
 		v1.EventTypeWarning, events.EventReasonUnhealthy,
-		"Downscaling from 2 to 1 master nodes",
+		"Downscaling from 2 to 1 master nodes is unsafe",
 	)
 	minimumMasterNodes := 1
 	return zen1.UpdateMinimumMasterNodesTo(ctx.es, ctx.esClient, actualStatefulSets, ctx.reconcileState, minimumMasterNodes)
