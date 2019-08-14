@@ -6,8 +6,10 @@ package driver
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -264,6 +266,9 @@ func updateZenSettingsForDownscale(ctx downscaleContext, downscale ssetDownscale
 
 // maybeUpdateZen1ForDownscale updates zen1 minimum master nodes if we are downscaling from 2 to 1 master node.
 func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.StatefulSetList) error {
+	if !zen1.AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
+		return nil
+	}
 	// If we are moving from 2 to 1 master nodes, we need to update minimum_master_nodes before removing
 	// the 2nd node, otherwise the cluster won't be able to form anymore.
 	// This is inherently unsafe (can cause split brains), but there's no alternative.
@@ -282,6 +287,10 @@ func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.S
 	}
 
 	// there are 2 masters and we are about to downscale a StatefulSet with master nodes: 2->1 situation
+	ctx.reconcileState.AddEvent(
+		v1.EventTypeWarning, events.EventReasonUnhealthy,
+		"Downscaling from 2 to 1 master nodes",
+	)
 	minimumMasterNodes := 1
 	return zen1.UpdateMinimumMasterNodesTo(ctx.es, ctx.esClient, actualStatefulSets, ctx.reconcileState, minimumMasterNodes)
 }
