@@ -264,9 +264,6 @@ func updateZenSettingsForDownscale(ctx downscaleContext, downscale ssetDownscale
 
 // maybeUpdateZen1ForDownscale updates zen1 minimum master nodes if we are downscaling from 2 to 1 master node.
 func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.StatefulSetList) error {
-	if !zen1.AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
-		return nil
-	}
 	// If we are moving from 2 to 1 master nodes, we need to update minimum_master_nodes before removing
 	// the 2nd node, otherwise the cluster won't be able to form anymore.
 	// This is inherently unsafe (can cause split brains), but there's no alternative.
