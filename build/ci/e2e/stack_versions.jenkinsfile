@@ -28,7 +28,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('create', "${BUILD_TAG}-680")
+                        createRunConfig("${BUILD_TAG}-680")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -41,7 +41,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('create', "${BUILD_TAG}-710")
+                        createRunConfig("${BUILD_TAG}-710")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -54,7 +54,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('create', "${BUILD_TAG}-720")
+                        createRunConfig("${BUILD_TAG}-720")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -67,7 +67,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('create', "${BUILD_TAG}-730")
+                        createRunConfig("${BUILD_TAG}-730")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -80,8 +80,9 @@ pipeline {
             script {
                 clusters = ["${BUILD_TAG}-680", "${BUILD_TAG}-710", "${BUILD_TAG}-720", "${BUILD_TAG}-730"]
                 for (int i = 0; i < clusters.size(); i++) {
-                    createRunConfig('delete', clusters[i])
-                    sh 'make -C build/ci ci-run-deployer'
+                    build job: 'cloud-on-k8s-e2e-cleanup',
+                        parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
+                        wait: false
                 }
             }
             cleanWs()
@@ -90,12 +91,12 @@ pipeline {
 
 }
 
-def createRunConfig(operation, clusterName) {
+def createRunConfig(clusterName) {
     sh """
-                    cat >operators/run-config.yml <<EOF
+        cat >operators/run-config.yml <<EOF
 id: gke-ci
 overrides:
-  operation: ${operation}
+  operation: create
   clusterName: ${clusterName}
   vaultInfo:
     address: $VAULT_ADDR
