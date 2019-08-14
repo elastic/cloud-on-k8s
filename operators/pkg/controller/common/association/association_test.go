@@ -15,50 +15,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var elasticsearhInlineAuth = commonv1alpha1.ElasticsearchInlineAuth{
-	Username: "foo_username",
-	Password: "foo_password",
-}
-
-func Test_getCredentials(t *testing.T) {
-	type args struct {
-		c  k8s.Client
-		as v1alpha1.ApmServer
+func TestGetCredentials(t *testing.T) {
+	apmServer := &v1alpha1.ApmServer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "apm-server-sample",
+			Namespace: "default",
+		},
+		Spec: v1alpha1.ApmServerSpec{
+			Elasticsearch: v1alpha1.ElasticsearchOutput{
+				Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
+			},
+		},
 	}
+
 	tests := []struct {
 		name         string
-		args         args
+		client       k8s.Client
+		auth         commonv1alpha1.ElasticsearchAuth
 		wantUsername string
 		wantPassword string
 		wantErr      bool
 	}{
 		{
-			name: "Test output configuration with a SecretKeyRef",
-			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
-				})),
-				as: v1alpha1.ApmServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "apm-server-sample",
-						Namespace: "default",
-					},
-					Spec: v1alpha1.ApmServerSpec{
-						Elasticsearch: v1alpha1.ElasticsearchOutput{
-							Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
-							Auth: commonv1alpha1.ElasticsearchAuth{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									Key: "elastic-internal-apm",
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "apmelasticsearchassociation-sample-elastic-internal-apm",
-									},
-								},
-							},
-						},
+			name: "When SecretKeyRef is defined",
+			client: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+			})),
+			auth: commonv1alpha1.ElasticsearchAuth{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					Key: "elastic-internal-apm",
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "apmelasticsearchassociation-sample-elastic-internal-apm",
 					},
 				},
 			},
@@ -66,37 +57,37 @@ func Test_getCredentials(t *testing.T) {
 			wantPassword: "a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy",
 		},
 		{
-			name: "Test inline credentials",
-			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
-				})),
-				as: v1alpha1.ApmServer{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "apm-server-sample",
-						Namespace: "default",
-					},
-					Spec: v1alpha1.ApmServerSpec{
-						Elasticsearch: v1alpha1.ElasticsearchOutput{
-							Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
-							Auth: commonv1alpha1.ElasticsearchAuth{
-								Inline: &elasticsearhInlineAuth,
-							},
-						},
-					},
+			name: "When SecretKeyRef is undefined",
+			client: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+					Namespace: "default",
 				},
-			},
-			wantUsername: "foo_username",
-			wantPassword: "foo_password",
+				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+			})),
+			auth:         commonv1alpha1.ElasticsearchAuth{},
+			wantUsername: "",
+			wantPassword: "",
+		},
+		{
+			name: "When the secret does not exist",
+			client: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "some-secret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+			})),
+			auth:         commonv1alpha1.ElasticsearchAuth{},
+			wantUsername: "",
+			wantPassword: "",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotUsername, gotPassword, err := ElasticsearchAuthSettings(tt.args.c, &tt.args.as)
+			apmServer.Spec.Elasticsearch.Auth = tt.auth
+			gotUsername, gotPassword, err := ElasticsearchAuthSettings(tt.client, apmServer)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return

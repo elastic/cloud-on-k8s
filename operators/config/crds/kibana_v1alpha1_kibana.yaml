@@ -58,19 +58,6 @@ spec:
                 auth:
                   description: Auth configures authentication for Kibana to use.
                   properties:
-                    inline:
-                      description: Inline is auth provided as plaintext inline credentials.
-                      properties:
-                        password:
-                          description: Password is the password to use.
-                          type: string
-                        username:
-                          description: User is the username to use.
-                          type: string
-                      required:
-                      - username
-                      - password
-                      type: object
                     secret:
                       description: SecretKeyRef is a secret that contains the credentials
                         to use.
