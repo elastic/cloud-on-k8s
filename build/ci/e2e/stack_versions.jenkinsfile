@@ -16,6 +16,7 @@ pipeline {
         OPERATOR_IMAGE = "${IMAGE}"
         LATEST_RELEASED_IMG = "${IMAGE}"
         SKIP_DOCKER_COMMAND = 'true'
+        REGISTRY = "eu.gcr.io"
     }
 
     stages {
@@ -75,16 +76,6 @@ pipeline {
     }
 
     post {
-        unsuccessful {
-            script {
-                def msg = "E2E tests for ELK stack versions failed!\r\n" + env.BUILD_URL
-                slackSend botUser: true,
-                      channel: '#cloud-k8s',
-                      color: 'danger',
-                      message: msg,
-                      tokenCredentialId: 'cloud-ci-slack-integration-token'
-            }
-        }
         cleanup {
             script {
                 clusters = ["${BUILD_TAG}-680", "${BUILD_TAG}-710", "${BUILD_TAG}-720", "${BUILD_TAG}-730"]

@@ -55,14 +55,7 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 	defer func() {
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_name", request.Name)
 	}()
-	result, err := r.reconcileInternal(request)
-	if result.Requeue {
-		log.Info("Re-queuing new license check immediately (rate-limited)", "namespace", request.Namespace, "es_name", request.Name)
-	}
-	if result.RequeueAfter > 0 {
-		log.Info("Re-queuing new license check", "namespace", request.Namespace, "es_name", request.Name, "RequeueAfter", result.RequeueAfter)
-	}
-	return result, err
+	return r.reconcileInternal(request)
 }
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller

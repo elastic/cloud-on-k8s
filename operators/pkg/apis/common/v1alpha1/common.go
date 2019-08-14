@@ -59,6 +59,7 @@ type TLSOptions struct {
 	//
 	// The secret should have the following content:
 	//
+	// - `ca.crt`: The certificate authority (optional)
 	// - `tls.crt`: The certificate (or a chain).
 	// - `tls.key`: The private key to the first certificate in the certificate chain.
 	Certificate SecretRef `json:"certificate,omitempty"`
