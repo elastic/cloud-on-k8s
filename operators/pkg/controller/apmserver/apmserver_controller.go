@@ -200,6 +200,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: as.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		r.recorder.Eventf(as, corev1.EventTypeWarning, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -219,7 +220,9 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 	results := apmcerts.Reconcile(r.Client, r.scheme, *as, r.dynamicWatches, []corev1.Service{*svc}, r.CACertRotation)
 	if results.HasError() {
-		return results.Aggregate()
+		res, err := results.Aggregate()
+		r.recorder.Eventf(as, corev1.EventTypeWarning, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		return res, err
 	}
 
 	state, err = r.reconcileApmServerDeployment(state, as)
@@ -228,6 +231,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 			log.V(1).Info("Conflict while updating status")
 			return reconcile.Result{Requeue: true}, nil
 		}
+		r.recorder.Eventf(as, corev1.EventTypeWarning, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
 		return state.Result, err
 	}
 

@@ -156,6 +156,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: apmServer.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, &apmServer, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		r.recorder.Eventf(&apmServer, corev1.EventTypeWarning, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {

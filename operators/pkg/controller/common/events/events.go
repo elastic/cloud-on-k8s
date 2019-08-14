@@ -32,6 +32,14 @@ const (
 	EventAssociationStatusChange = "AssociationStatusChange"
 )
 
+// Event reasons for common error conditions
+const (
+	// EventReconciliationError describes an error detected during reconciliation of an object.
+	EventReconciliationError = "ReconciliationError"
+	// EventCompatCheckError describes an error during the check for compatibility between operator version and managed resources.
+	EventCompatCheckError = "CompatibilityCheckError"
+)
+
 // Event is a k8s event that can be recorded via an event recorder.
 type Event struct {
 	EventType string

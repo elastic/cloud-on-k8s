@@ -113,7 +113,7 @@ func ReconcileResource(params Params) error {
 		return nil
 	} else if err != nil {
 		log.Error(err, fmt.Sprintf("Generic GET for %s %s/%s failed with error", kind, namespace, name))
-		return err
+		return errors.Wrapf(err, "failed to get %s %s/%s", kind, namespace, name)
 	}
 
 	// Update if needed

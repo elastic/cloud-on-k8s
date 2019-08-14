@@ -158,6 +158,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kb.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		r.recorder.Eventf(kb, corev1.EventTypeWarning, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -181,6 +182,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
+		r.recorder.Eventf(kb, corev1.EventTypeWarning, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
 		return reconcile.Result{}, err
 	}
 
@@ -203,7 +205,12 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}
-	return results.WithError(err).Aggregate()
+
+	res, err := results.WithError(err).Aggregate()
+	if err != nil {
+		r.recorder.Eventf(kb, corev1.EventTypeWarning, events.EventReconciliationError, "Reconciliation error: %v", err)
+	}
+	return res, err
 }
 
 func (r *ReconcileKibana) updateStatus(state State) error {

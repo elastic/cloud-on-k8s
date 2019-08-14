@@ -163,6 +163,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kibana.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, &kibana, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		r.recorder.Eventf(&kibana, corev1.EventTypeWarning, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -171,6 +172,10 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	newStatus, err := r.reconcileInternal(kibana)
+	if err != nil {
+		r.recorder.Eventf(&kibana, corev1.EventTypeWarning, events.EventReconciliationError, "Reconciliation error: %v", err)
+	}
+
 	// maybe update status
 	if !reflect.DeepEqual(kibana.Status.AssociationStatus, newStatus) {
 		oldStatus := kibana.Status.AssociationStatus
