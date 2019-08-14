@@ -272,15 +272,16 @@ nodes start, use an init container to run the link:https://www.elastic.co/guide/
 [source,yaml]
 ----
 spec:
-  podTemplate:
-    spec:
-      initContainers:
-      - name: install-plugins
-        command:
-        - sh
-        - -c
-        - |
-          bin/elasticsearch-plugin install --batch repository-azure
+  nodes:
+  - podTemplate:
+      spec:
+        initContainers:
+        - name: install-plugins
+          command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin install --batch repository-azure
 ----
 
 To install custom configuration files you can use volumes and volume mounts. 
@@ -292,17 +293,18 @@ But you can use the same approach for any kind of file you want to mount into th
 [source,yaml]
 ----
 spec:
-  podTemplate:
-    spec:
-      containers:
-      - name: elasticsearch <1>
-        volumeMounts:
+  nodes:
+  - podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch <1>
+          volumeMounts:
+          - name: synonyms
+            mountPath: /usr/share/elasticsearch/config/dictionaries
+        volumes:
         - name: synonyms
-          mountPath: /usr/share/elasticsearch/config/dictionaries
-      volumes:
-      - name: synonyms
-        configMap:
-          name: synonyms <2>
+          configMap:
+            name: synonyms <2>
 ----
 
 <1> Elasticsearch runs by convention in a container called 'elasticsearch'
