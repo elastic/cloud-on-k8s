@@ -18,18 +18,32 @@ const (
 	AtLeastOneRunningMasterInvariant = "Cannot remove the last running master node"
 )
 
-// DownscaleInvariants restricts downscales to perform in a single reconciliation attempt:
-// - remove a single master at once
-// - don't remove the last living master node
-type DownscaleInvariants struct {
-	// masterRemoved indicates whether a master node is in the process of being removed already.
-	masterRemoved bool
+// checkDownscaleInvariants returns true if the given state state allows downscaling the given StatefulSet.
+// If not, it also returns the reason why.
+func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulSet) (bool, string) {
+	if !label.IsMasterNodeSet(statefulSet) {
+		// only care about master nodes
+		return true, ""
+	}
+	if state.masterRemovalInProgress {
+		return false, OneMasterAtATimeInvariant
+	}
+	if state.runningMasters == 1 {
+		return false, AtLeastOneRunningMasterInvariant
+	}
+	return true, ""
+}
+
+// downscaleState tracks the state of a downscale to be checked against invariants
+type downscaleState struct {
+	// masterRemovalInProgress indicates whether a master node is in the process of being removed already.
+	masterRemovalInProgress bool
 	// runningMasters indicates how many masters are currently running in the cluster.
 	runningMasters int
 }
 
-// NewDownscaleInvariants creates a new DownscaleInvariants.
-func NewDownscaleInvariants(c k8s.Client, es v1alpha1.Elasticsearch) (*DownscaleInvariants, error) {
+// newDownscaleState creates a new downscaleState.
+func newDownscaleState(c k8s.Client, es v1alpha1.Elasticsearch) (*downscaleState, error) {
 	// retrieve the number of masters running ready
 	actualPods, err := sset.GetActualPodsForCluster(c, es)
 	if err != nil {
@@ -37,34 +51,18 @@ func NewDownscaleInvariants(c k8s.Client, es v1alpha1.Elasticsearch) (*Downscale
 	}
 	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
 
-	return &DownscaleInvariants{
-		masterRemoved:  false,
-		runningMasters: len(mastersReady),
+	return &downscaleState{
+		masterRemovalInProgress: false,
+		runningMasters:          len(mastersReady),
 	}, nil
 }
 
-// canDownscale returns true if the current state allows downscaling the given StatefulSet.
-// If not, it also returns the reason why.
-func (d *DownscaleInvariants) canDownscale(statefulSet appsv1.StatefulSet) (bool, string) {
-	if !label.IsMasterNodeSet(statefulSet) {
-		// only care about master nodes
-		return true, ""
-	}
-	if d.masterRemoved {
-		return false, OneMasterAtATimeInvariant
-	}
-	if d.runningMasters == 1 {
-		return false, AtLeastOneRunningMasterInvariant
-	}
-	return true, ""
-}
-
-// accountDownscale updates the current invariants state to consider a 1-replica downscale of the given statefulSet.
-func (d *DownscaleInvariants) accountOneRemoval(statefulSet appsv1.StatefulSet) {
+// recordOneRemoval updates the state to consider a 1-replica downscale of the given statefulSet.
+func (s *downscaleState) recordOneRemoval(statefulSet appsv1.StatefulSet) {
 	if !label.IsMasterNodeSet(statefulSet) {
 		// only care about master nodes
 		return
 	}
-	d.masterRemoved = true
-	d.runningMasters--
+	s.masterRemovalInProgress = true
+	s.runningMasters--
 }

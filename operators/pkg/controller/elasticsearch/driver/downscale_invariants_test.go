@@ -20,17 +20,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
-func TestNewDownscaleInvariants(t *testing.T) {
+func Test_newDownscaleState(t *testing.T) {
 	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "name"}}
 	tests := []struct {
 		name             string
 		initialResources []runtime.Object
-		want             *DownscaleInvariants
+		want             *downscaleState
 	}{
 		{
 			name:             "no resources in the apiserver",
 			initialResources: nil,
-			want:             &DownscaleInvariants{masterRemoved: false, runningMasters: 0},
+			want:             &downscaleState{masterRemovalInProgress: false, runningMasters: 0},
 		},
 		{
 			name: "3 masters running in the apiserver, 1 not running",
@@ -118,13 +118,13 @@ func TestNewDownscaleInvariants(t *testing.T) {
 					},
 				},
 			},
-			want: &DownscaleInvariants{masterRemoved: false, runningMasters: 3},
+			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.WrapClient(fake.NewFakeClient(tt.initialResources...))
-			got, err := NewDownscaleInvariants(k8sClient, es)
+			got, err := newDownscaleState(k8sClient, es)
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewDownscaleInvariants() got = %v, want %v", got, tt.want)
@@ -133,36 +133,36 @@ func TestNewDownscaleInvariants(t *testing.T) {
 	}
 }
 
-func Test_DownscaleInvariants_canDownscale(t *testing.T) {
+func Test_checkDownscaleInvariants(t *testing.T) {
 	tests := []struct {
 		name             string
-		budget           *DownscaleInvariants
+		state            *downscaleState
 		statefulSet      appsv1.StatefulSet
 		wantCanDownscale bool
 		wantReason       string
 	}{
 		{
 			name:             "should always allow removing data nodes",
-			budget:           &DownscaleInvariants{runningMasters: 1, masterRemoved: true},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: true,
 		},
 		{
 			name:             "should allow removing one master if there is another one running",
-			budget:           &DownscaleInvariants{runningMasters: 2, masterRemoved: false},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: true,
 		},
 		{
 			name:             "should not allow removing the last master",
-			budget:           &DownscaleInvariants{runningMasters: 1, masterRemoved: false},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: false},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       AtLeastOneRunningMasterInvariant,
 		},
 		{
 			name:             "should not allow removing a master if one is already being removed",
-			budget:           &DownscaleInvariants{runningMasters: 2, masterRemoved: true},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: true},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       OneMasterAtATimeInvariant,
@@ -170,7 +170,7 @@ func Test_DownscaleInvariants_canDownscale(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			canDownscale, reason := tt.budget.canDownscale(tt.statefulSet)
+			canDownscale, reason := checkDownscaleInvariants(*tt.state, tt.statefulSet)
 			if canDownscale != tt.wantCanDownscale {
 				t.Errorf("canDownscale() canDownscale = %v, want %v", canDownscale, tt.wantCanDownscale)
 			}
@@ -181,30 +181,30 @@ func Test_DownscaleInvariants_canDownscale(t *testing.T) {
 	}
 }
 
-func Test_DownscaleInvariants_accountOneRemoval(t *testing.T) {
+func Test_downscaleState_recordOneRemoval(t *testing.T) {
 	tests := []struct {
-		name           string
-		statefulSet    appsv1.StatefulSet
-		budget         *DownscaleInvariants
-		wantInvariants *DownscaleInvariants
+		name        string
+		statefulSet appsv1.StatefulSet
+		state       *downscaleState
+		wantState   *downscaleState
 	}{
 		{
-			name:           "removing a data node should be a no-op",
-			statefulSet:    ssetData4Replicas,
-			budget:         &DownscaleInvariants{runningMasters: 2, masterRemoved: false},
-			wantInvariants: &DownscaleInvariants{runningMasters: 2, masterRemoved: false},
+			name:        "removing a data node should be a no-op",
+			statefulSet: ssetData4Replicas,
+			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
+			wantState:   &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 		},
 		{
-			name:           "removing a master node should mutate the budget",
-			statefulSet:    ssetMaster3Replicas,
-			budget:         &DownscaleInvariants{runningMasters: 2, masterRemoved: false},
-			wantInvariants: &DownscaleInvariants{runningMasters: 1, masterRemoved: true},
+			name:        "removing a master node should mutate the budget",
+			statefulSet: ssetMaster3Replicas,
+			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
+			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: true},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.budget.accountOneRemoval(tt.statefulSet)
-			require.Equal(t, tt.wantInvariants, tt.budget)
+			tt.state.recordOneRemoval(tt.statefulSet)
+			require.Equal(t, tt.wantState, tt.state)
 		})
 	}
 }

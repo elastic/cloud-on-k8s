@@ -40,14 +40,14 @@ func HandleDownscale(
 	}
 
 	// make sure we only downscale nodes we're allowed to
-	invariants, err := NewDownscaleInvariants(downscaleCtx.k8sClient, downscaleCtx.es)
+	downscaleState, err := newDownscaleState(downscaleCtx.k8sClient, downscaleCtx.es)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	for _, downscale := range downscales {
 		// attempt the StatefulSet downscale (may or may not remove nodes)
-		requeue, err := attemptDownscale(downscaleCtx, downscale, invariants, leavingNodes, actualStatefulSets)
+		requeue, err := attemptDownscale(downscaleCtx, downscale, downscaleState, leavingNodes, actualStatefulSets)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -112,7 +112,7 @@ func scheduleDataMigrations(esClient esclient.Client, leavingNodes []string) err
 func attemptDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
-	invariants *DownscaleInvariants,
+	state *downscaleState,
 	allLeavingNodes []string,
 	statefulSets sset.StatefulSetList,
 ) (bool, error) {
@@ -123,7 +123,7 @@ func attemptDownscale(
 
 	case downscale.isReplicaDecrease():
 		// adjust the theoretical downscale to one we can safely perform
-		performable := calculatePerformableDownscale(ctx, invariants, downscale, allLeavingNodes)
+		performable := calculatePerformableDownscale(ctx, state, downscale, allLeavingNodes)
 		if !performable.isReplicaDecrease() {
 			// no downscale can be performed for now, let's requeue
 			return true, nil
@@ -143,7 +143,7 @@ func attemptDownscale(
 // It returns the updated downscale and a boolean indicating whether a requeue should be done.
 func calculatePerformableDownscale(
 	ctx downscaleContext,
-	invariants *DownscaleInvariants,
+	state *downscaleState,
 	downscale ssetDownscale,
 	allLeavingNodes []string,
 ) ssetDownscale {
@@ -157,7 +157,7 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		if canDownscale, reason := invariants.canDownscale(downscale.statefulSet); !canDownscale {
+		if canDownscale, reason := checkDownscaleInvariants(*state, downscale.statefulSet); !canDownscale {
 			ssetLogger(downscale.statefulSet).V(1).Info("Cannot downscale StatefulSet", "node", node, "reason", reason)
 			return performableDownscale
 		}
@@ -169,7 +169,7 @@ func calculatePerformableDownscale(
 		}
 		// data migration over: allow pod to be removed
 		performableDownscale.targetReplicas--
-		invariants.accountOneRemoval(downscale.statefulSet)
+		state.recordOneRemoval(downscale.statefulSet)
 	}
 	return performableDownscale
 }

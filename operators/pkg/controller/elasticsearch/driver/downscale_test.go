@@ -420,7 +420,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 	type args struct {
 		ctx             downscaleContext
 		downscale       ssetDownscale
-		invariants      *DownscaleInvariants
+		state           *downscaleState
 		allLeavingNodes []string
 	}
 	tests := []struct {
@@ -436,7 +436,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					initialReplicas: 3,
 					targetReplicas:  3,
 				},
-				invariants:      &DownscaleInvariants{masterRemoved: false, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -459,7 +459,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					initialReplicas: 3,
 					targetReplicas:  2,
 				},
-				invariants:      &DownscaleInvariants{masterRemoved: false, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -484,7 +484,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  2,
 				},
 				// a master node has already been removed
-				invariants:      &DownscaleInvariants{masterRemoved: true, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: true, runningMasters: 3},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -510,7 +510,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  1,
 				},
 				// invariants limits us to one master node downscale only
-				invariants:      &DownscaleInvariants{masterRemoved: false, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -536,7 +536,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  0,
 				},
 				// only one master is running
-				invariants:      &DownscaleInvariants{masterRemoved: false, runningMasters: 1},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 1},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -560,7 +560,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					initialReplicas: 3,
 					targetReplicas:  1,
 				},
-				invariants:      &DownscaleInvariants{masterRemoved: false, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -572,7 +572,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := calculatePerformableDownscale(tt.args.ctx, tt.args.invariants, tt.args.downscale, tt.args.allLeavingNodes)
+			got := calculatePerformableDownscale(tt.args.ctx, tt.args.state, tt.args.downscale, tt.args.allLeavingNodes)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("calculatePerformableDownscale() got = %v, want %v", got, tt.want)
 			}
@@ -584,7 +584,7 @@ func Test_attemptDownscale(t *testing.T) {
 	tests := []struct {
 		name                 string
 		downscale            ssetDownscale
-		invariants           *DownscaleInvariants
+		state                *downscaleState
 		statefulSets         sset.StatefulSetList
 		expectedStatefulSets []appsv1.StatefulSet
 	}{
@@ -595,7 +595,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 0,
 				targetReplicas:  0,
 			},
-			invariants: &DownscaleInvariants{runningMasters: 2, masterRemoved: false},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
 				nodespec.CreateTestSset("should-be-removed", "7.1.0", 0, true, true),
 				nodespec.CreateTestSset("should-stay", "7.1.0", 2, true, true),
@@ -611,7 +611,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  3,
 			},
-			invariants: &DownscaleInvariants{runningMasters: 2, masterRemoved: false},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
 				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
 			},
@@ -626,7 +626,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  4,
 			},
-			invariants: &DownscaleInvariants{runningMasters: 2, masterRemoved: false},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
 				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
 			},
@@ -641,7 +641,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  2,
 			},
-			invariants: &DownscaleInvariants{runningMasters: 2, masterRemoved: false},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
 				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
 			},
@@ -670,7 +670,7 @@ func Test_attemptDownscale(t *testing.T) {
 				esClient: &fakeESClient{},
 			}
 			// do the downscale
-			_, err := attemptDownscale(downscaleCtx, tt.downscale, tt.invariants, nil, tt.statefulSets)
+			_, err := attemptDownscale(downscaleCtx, tt.downscale, tt.state, nil, tt.statefulSets)
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList
