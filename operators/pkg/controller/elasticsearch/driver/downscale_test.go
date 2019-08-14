@@ -31,7 +31,7 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	ssetMaster3Replicas     = nodespec.CreateTestSset("ssetMaster3Replicas", "7.2.0", 3, true, false)
+	ssetMaster3Replicas     = nodespec.TestSset{Name: "ssetMaster3Replicas", Version: "7.2.0", Replicas: 3, Master: true, Data: false}.Build()
 	podsSsetMaster3Replicas = []corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -52,7 +52,7 @@ var (
 			},
 		},
 	}
-	ssetData4Replicas     = nodespec.CreateTestSset("ssetData4Replicas", "7.2.0", 4, false, true)
+	ssetData4Replicas     = nodespec.TestSset{Name: "ssetData4Replicas", Version: "7.2.0", Replicas: 4, Master: false, Data: true}.Build()
 	podsSsetData4Replicas = []corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -592,62 +592,62 @@ func Test_attemptDownscale(t *testing.T) {
 		{
 			name: "1 statefulset should be removed",
 			downscale: ssetDownscale{
-				statefulSet:     nodespec.CreateTestSset("should-be-removed", "7.1.0", 0, true, true),
+				statefulSet:     nodespec.TestSset{Name: "should-be-removed", Version: "7.1.0", Replicas: 0, Master: true, Data: true}.Build(),
 				initialReplicas: 0,
 				targetReplicas:  0,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
-				nodespec.CreateTestSset("should-be-removed", "7.1.0", 0, true, true),
-				nodespec.CreateTestSset("should-stay", "7.1.0", 2, true, true),
+				nodespec.TestSset{Name: "should-be-removed", Version: "7.1.0", Replicas: 0, Master: true, Data: true}.Build(),
+				nodespec.TestSset{Name: "should-stay", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				nodespec.CreateTestSset("should-stay", "7.1.0", 2, true, true),
+				nodespec.TestSset{Name: "should-stay", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
 		},
 		{
 			name: "target replicas == initial replicas",
 			downscale: ssetDownscale{
-				statefulSet:     nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				statefulSet:     nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  3,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 		},
 		{
 			name: "upscale case",
 			downscale: ssetDownscale{
-				statefulSet:     nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				statefulSet:     nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  4,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 		},
 		{
 			name: "perform 3 -> 2 downscale",
 			downscale: ssetDownscale{
-				statefulSet:     nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				statefulSet:     nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  2,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				nodespec.CreateTestSset("default", "7.1.0", 2, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
 		},
 	}
@@ -727,8 +727,8 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 }
 
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
-	ssetMasters := nodespec.CreateTestSset("masters", "7.1.0", 3, true, false)
-	ssetData := nodespec.CreateTestSset("datas", "7.1.0", 3, false, true)
+	ssetMasters := nodespec.TestSset{Name: "masters", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build()
+	ssetData := nodespec.TestSset{Name: "datas", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build()
 	tests := []struct {
 		name               string
 		downscale          ssetDownscale
@@ -780,7 +780,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 
 func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
-	ssetMasters := nodespec.CreateTestSset("masters", "6.8.0", 3, true, false)
+	ssetMasters := nodespec.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
 	masterPods := []corev1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -852,7 +852,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			},
 		},
 	}
-	ssetData := nodespec.CreateTestSset("datas", "6.8.0", 3, false, true)
+	ssetData := nodespec.TestSset{Name: "datas", Version: "6.8.0", Replicas: 3, Master: false, Data: true}.Build()
 	tests := []struct {
 		name               string
 		downscale          ssetDownscale

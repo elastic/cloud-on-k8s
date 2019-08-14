@@ -32,16 +32,16 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 		{
 			name: "no master nodes",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: nodespec.CreateTestSset("data", "7.1.0", 3, false, true), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.TestSset{Name: "data", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 		},
 		{
 			name: "3 masters, 3 master+data, 3 data",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: nodespec.CreateTestSset("master", "6.8.0", 3, true, false), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: nodespec.CreateTestSset("masterdata", "6.8.0", 3, true, true), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: nodespec.CreateTestSset("data", "6.8.0", 3, false, true), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.TestSset{Name: "master", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.TestSset{Name: "masterdata", Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.TestSset{Name: "data", Version: "6.8.0", Replicas: 3, Master: false, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
@@ -58,15 +58,15 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 		{
 			name: "version 7: nothing should appear in the config",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: nodespec.CreateTestSset("master", "7.1.0", 3, true, false), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.TestSset{Name: "master", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 		},
 		{
 			name: "mixed v6 & v7: include all masters but only in v6 configs",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: nodespec.CreateTestSset("masterv6", "6.8.0", 3, true, false), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: nodespec.CreateTestSset("masterv7", "7.1.0", 3, true, false), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.TestSset{Name: "masterv6", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: nodespec.TestSset{Name: "masterv7", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
@@ -104,7 +104,7 @@ func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, count int) err
 }
 
 func TestUpdateMinimumMasterNodes(t *testing.T) {
-	ssetSample := nodespec.CreateTestSset("nodes", "6.8.0", 3, true, true)
+	ssetSample := nodespec.TestSset{Name: "nodes", Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build()
 	// simulate 3/3 pods ready
 	labels := map[string]string{
 		label.StatefulSetNameLabelName: ssetSample.Name,
@@ -152,7 +152,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 	}{
 		{
 			name:               "no v6 nodes",
-			actualStatefulSets: sset.StatefulSetList{nodespec.CreateTestSset("nodes", "7.1.0", 3, true, true)},
+			actualStatefulSets: sset.StatefulSetList{nodespec.TestSset{Name: "nodes", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
 			wantCalled:         false,
 		},
 		{
