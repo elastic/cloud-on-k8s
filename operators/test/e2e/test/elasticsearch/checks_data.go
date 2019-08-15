@@ -99,13 +99,11 @@ func (dc *DataIntegrityCheck) Verify() error {
 	}
 	defer response.Body.Close() // nolint
 	var results client.SearchResults
-	{
-	}
-	bytes, err := ioutil.ReadAll(response.Body)
+	resultBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(bytes, &results)
+	err = json.Unmarshal(resultBytes, &results)
 	if err != nil {
 		return err
 	}
