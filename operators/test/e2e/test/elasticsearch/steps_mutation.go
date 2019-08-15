@@ -23,8 +23,18 @@ const continuousHealthCheckTimeout = 25 * time.Second
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
 	var continuousHealthChecks *ContinuousHealthCheck
+	var dataIntegrityCheck *DataIntegrityCheck
 
 	return test.StepList{
+		test.Step{
+			Name: "Add some data to the cluster before starting the mutation",
+			Test: func(t *testing.T) {
+				var err error
+				dataIntegrityCheck, err = NewDataIntegrityCheck(b.Elasticsearch, k)
+				require.NoError(t, err)
+				require.NoError(t, dataIntegrityCheck.Init())
+			},
+		},
 		test.Step{
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
 			Test: func(t *testing.T) {
@@ -57,6 +67,12 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 					for _, f := range continuousHealthChecks.Failures {
 						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
 					}
+				},
+			},
+			test.Step{
+				Name: "Data added initially should still be present",
+				Test: func(t *testing.T) {
+					require.NoError(t, dataIntegrityCheck.Verify())
 				},
 			},
 		})
