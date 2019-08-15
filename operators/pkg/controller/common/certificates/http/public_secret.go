@@ -33,8 +33,6 @@ func ReconcileHTTPCertsPublicSecret(
 		},
 	}
 
-	// TODO: reconcile labels and annotations?
-
 	reconciled := &corev1.Secret{}
 
 	return reconciler.ReconcileResource(reconciler.Params{
@@ -44,21 +42,20 @@ func ReconcileHTTPCertsPublicSecret(
 		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// TODO: these label and annotation comparisons are very strict
-			if !reflect.DeepEqual(reconciled.Labels, expected.Labels) {
+			switch {
+			case !reconciler.IsSubset(expected.Labels, reconciled.Labels):
 				return true
-			}
-			if !reflect.DeepEqual(reconciled.Annotations, expected.Annotations) {
+			case !reconciler.IsSubset(expected.Annotations, reconciled.Annotations):
 				return true
-			}
-			if !reflect.DeepEqual(reconciled.Data, expected.Data) {
+			case !reflect.DeepEqual(expected.Data, reconciled.Data):
 				return true
+			default:
+				return false
 			}
-			return false
 		},
 		UpdateReconciled: func() {
-			reconciled.Labels = expected.Labels
-			reconciled.Annotations = expected.Annotations
+			reconciled.Labels = reconciler.UpdateMap(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = reconciler.UpdateMap(reconciled.Annotations, expected.Annotations)
 			reconciled.Data = expected.Data
 		},
 	})
