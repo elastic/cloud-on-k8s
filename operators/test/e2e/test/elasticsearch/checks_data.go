@@ -66,7 +66,7 @@ func (dc *DataIntegrityCheck) Init() error {
 		return err
 	}
 	resp, err := dc.client.Request(context.Background(), indexCreation)
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint
 	if err != nil {
 		return err
 	}
@@ -78,8 +78,11 @@ func (dc *DataIntegrityCheck) Init() error {
 	}
 	for i := 0; i < dc.docCount; i++ {
 		r, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/%s/_doc/%d", dc.indexName, i), bytes.NewReader(payload))
+		if err != nil {
+			return err
+		}
 		resp, err = dc.client.Request(context.Background(), r)
-		defer resp.Body.Close()
+		defer resp.Body.Close() // nolint
 		if err != nil {
 			return err
 		}
