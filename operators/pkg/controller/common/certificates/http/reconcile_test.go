@@ -102,6 +102,9 @@ func init() {
 }
 
 func TestReconcileHTTPCertificates(t *testing.T) {
+	tls := loadFileBytes("tls.crt")
+	key := loadFileBytes("tls.key")
+
 	type args struct {
 		c        k8s.Client
 		es       v1alpha1.Elasticsearch
@@ -132,8 +135,8 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
 					Data: map[string][]byte{
-						certificates.CertFileName: []byte(tls),
-						certificates.KeyFileName:  []byte(key),
+						certificates.CertFileName: tls,
+						certificates.KeyFileName:  key,
 					},
 				})),
 				es: v1alpha1.Elasticsearch{
@@ -151,8 +154,8 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 				ca: testCA,
 			},
 			want: func(t *testing.T, cs *CertificatesSecret) {
-				assert.Equal(t, cs.Data[certificates.KeyFileName], []byte(key))
-				assert.Equal(t, cs.Data[certificates.CertFileName], []byte(tls))
+				assert.Equal(t, cs.Data[certificates.KeyFileName], key)
+				assert.Equal(t, cs.Data[certificates.CertFileName], tls)
 			},
 		},
 	}

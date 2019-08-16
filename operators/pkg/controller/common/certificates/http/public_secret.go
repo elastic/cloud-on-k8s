@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,8 +34,6 @@ func ReconcileHTTPCertsPublicSecret(
 		},
 	}
 
-	// TODO: reconcile labels and annotations?
-
 	reconciled := &corev1.Secret{}
 
 	return reconciler.ReconcileResource(reconciler.Params{
@@ -44,21 +43,20 @@ func ReconcileHTTPCertsPublicSecret(
 		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// TODO: these label and annotation comparisons are very strict
-			if !reflect.DeepEqual(reconciled.Labels, expected.Labels) {
+			switch {
+			case !maps.IsSubset(expected.Labels, reconciled.Labels):
 				return true
-			}
-			if !reflect.DeepEqual(reconciled.Annotations, expected.Annotations) {
+			case !maps.IsSubset(expected.Annotations, reconciled.Annotations):
 				return true
-			}
-			if !reflect.DeepEqual(reconciled.Data, expected.Data) {
+			case !reflect.DeepEqual(expected.Data, reconciled.Data):
 				return true
+			default:
+				return false
 			}
-			return false
 		},
 		UpdateReconciled: func() {
-			reconciled.Labels = expected.Labels
-			reconciled.Annotations = expected.Annotations
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Data = expected.Data
 		},
 	})
