@@ -736,6 +736,7 @@
   digest = "1:e0ec21060953ced38018fae667796890cd67dac80f969eec1634ff5ecfcf59a8"
   name = "k8s.io/apimachinery"
   packages = [
+    "pkg/api/equality",
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
@@ -931,7 +932,7 @@
   revision = "6c36bc71fc4aeb1f49801054e71aebdaef1fbeb4"
 
 [[projects]]
-  digest = "1:decfbb1c40178f0c9b34570c0c98dfc1bc3c9a41268ea7701e559d39ed9f774c"
+  digest = "1:1d6185185c5feeacc1a6c5668425b628a0ab4809bf72a463dc0fc26f17cb9dad"
   name = "sigs.k8s.io/controller-runtime"
   packages = [
     ".",
@@ -975,11 +976,11 @@
     "pkg/webhook/internal/metrics",
   ]
   pruneopts = "T"
-  revision = "eb94491f7ac37f163aef146cf3c17f87d21ae184"
-  version = "v0.2.0-beta.5"
+  revision = "8941d18f48f7f27a939031df9bb891f733cc6726"
+  version = "v0.2.0-rc.0"
 
 [[projects]]
-  digest = "1:9c0e5fd7902e172ee7f4945a4caca5fa8940e2e03235780ea93aa71c25a2efcf"
+  digest = "1:39de66e327ca22ee1f4f087ca0391ecccc0632f5bcfc4aa7cbc2417565c74164"
   name = "sigs.k8s.io/controller-tools"
   packages = [
     "cmd/controller-gen",
@@ -995,8 +996,8 @@
     "pkg/webhook",
   ]
   pruneopts = "T"
-  revision = "46695abfb89bb6fcd972edf4f925915434726008"
-  version = "v0.2.0-beta.5"
+  revision = "ba0eb80257fe8838b29e365188bac37ff77bccb6"
+  version = "v0.2.0-rc.0"
 
 [[projects]]
   digest = "1:290b4da306982122bcdff12dbababbb95c6e4a94a2995db88baf235ef2f6e93e"
