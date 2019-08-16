@@ -156,7 +156,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: apmServer.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, &apmServer, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		r.recorder.Eventf(&apmServer, corev1.EventTypeWarning, events.EventCompatCheckError, "Error during compatibility check: %v", err)
+		k8s.EmitErrorEvent(r.recorder, err, &apmServer, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -237,7 +237,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	var es estype.Elasticsearch
 	err = r.Get(elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
-		r.recorder.Eventf(&apmServer, corev1.EventTypeWarning, events.EventAssociationError,
+		k8s.EmitErrorEvent(r.recorder, err, &apmServer, events.EventAssociationError,
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// Es not found, could be deleted or not yet created? Recheck in a while

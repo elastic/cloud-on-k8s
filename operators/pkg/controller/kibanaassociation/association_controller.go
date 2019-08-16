@@ -163,7 +163,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kibana.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, &kibana, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		r.recorder.Eventf(&kibana, corev1.EventTypeWarning, events.EventCompatCheckError, "Error during compatibility check: %v", err)
+		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -173,7 +173,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 
 	newStatus, err := r.reconcileInternal(kibana)
 	if err != nil {
-		r.recorder.Eventf(&kibana, corev1.EventTypeWarning, events.EventReconciliationError, "Reconciliation error: %v", err)
+		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
 
 	// maybe update status
@@ -251,7 +251,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	var es estype.Elasticsearch
 	if err := r.Get(esRefKey, &es); err != nil {
-		r.recorder.Eventf(&kibana, corev1.EventTypeWarning, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
+		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
 		if apierrors.IsNotFound(err) {
 			// ES not found. 2 options:
 			// - not created yet: that's ok, we'll reconcile on creation event

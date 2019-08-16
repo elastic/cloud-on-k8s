@@ -209,7 +209,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	selector := labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		r.recorder.Eventf(&es, corev1.EventTypeWarning, events.EventCompatCheckError, "Error during compatibility check: %v", err)
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -230,7 +230,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
 			return reconcile.Result{Requeue: true}, nil
 		}
-		r.recorder.Eventf(&es, corev1.EventTypeWarning, events.EventReconciliationError, "Reconciliation error: %v", err)
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
 	return results.WithError(err).Aggregate()
 }

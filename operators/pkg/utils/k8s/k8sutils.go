@@ -8,10 +8,13 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -88,4 +91,14 @@ func GetServiceDNSName(svc corev1.Service) []string {
 		fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace),
 		fmt.Sprintf("%s.%s", svc.Name, svc.Namespace),
 	}
+}
+
+// EmitErrorEvent emits an event if the error is report-worthy
+func EmitErrorEvent(r record.EventRecorder, err error, obj runtime.Object, reason, message string, args ...interface{}) {
+	// ignore nil errors and conflict issues
+	if err == nil || errors.IsConflict(err) {
+		return
+	}
+
+	r.Eventf(obj, corev1.EventTypeWarning, reason, message, args...)
 }
