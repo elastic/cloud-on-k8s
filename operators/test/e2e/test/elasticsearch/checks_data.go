@@ -50,8 +50,8 @@ func (dc *DataIntegrityCheck) Init() error {
 {
     "settings" : {
         "index" : {
-            "number_of_shards" : %d, 
-            "number_of_replicas" : 0 
+            "number_of_shards" : %d,
+            "number_of_replicas" : 0
         }
     }
 }
@@ -77,7 +77,7 @@ func (dc *DataIntegrityCheck) Init() error {
 		return err
 	}
 	for i := 0; i < dc.docCount; i++ {
-		r, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/%s/_doc/%d", dc.indexName, i), bytes.NewReader(payload))
+		r, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/%s/_doc/%d?refresh=true", dc.indexName, i), bytes.NewReader(payload))
 		if err != nil {
 			return err
 		}
