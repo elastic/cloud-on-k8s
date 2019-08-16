@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,9 +47,9 @@ func ReconcileTransportCertsPublicSecret(
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
 			switch {
-			case !reconciler.IsSubset(expected.Labels, reconciled.Labels):
+			case !maps.IsSubset(expected.Labels, reconciled.Labels):
 				return true
-			case !reconciler.IsSubset(expected.Annotations, reconciled.Annotations):
+			case !maps.IsSubset(expected.Annotations, reconciled.Annotations):
 				return true
 			case !reflect.DeepEqual(expected.Data, reconciled.Data):
 				return true
@@ -57,8 +58,8 @@ func ReconcileTransportCertsPublicSecret(
 			}
 		},
 		UpdateReconciled: func() {
-			reconciled.Labels = reconciler.UpdateMap(reconciled.Labels, expected.Labels)
-			reconciled.Annotations = reconciler.UpdateMap(reconciled.Annotations, expected.Annotations)
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 			reconciled.Data = expected.Data
 		},
 	})
