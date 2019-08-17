@@ -121,7 +121,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			}
 
 			// Upgrade the pod.
-			if err := d.upgradeStatefulSetPartition(statefulSet, partition); err != nil {
+			if err := d.upgradeStatefulSetPartition(&statefulSet, partition); err != nil {
 				return results.WithError(err)
 			}
 		}
