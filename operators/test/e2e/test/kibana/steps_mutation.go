@@ -14,6 +14,12 @@ import (
 )
 
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
+	return b.UpgradeTestSteps(k).
+		WithSteps(b.CheckK8sTestSteps(k)).
+		WithSteps(b.CheckStackTestSteps(k))
+}
+
+func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Applying the Kibana mutation should succeed",
@@ -23,7 +29,5 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				kb.Spec = b.Kibana.Spec
 				require.NoError(t, k.Client.Update(&kb))
 			},
-		}}.
-		WithSteps(b.CheckK8sTestSteps(k)).
-		WithSteps(b.CheckStackTestSteps(k))
+		}}
 }

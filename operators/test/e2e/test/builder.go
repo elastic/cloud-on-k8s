@@ -13,6 +13,8 @@ type Builder interface {
 	CheckK8sTestSteps(k *K8sClient) StepList
 	// CheckStackTestSteps returns all test steps to verify the given resource is running as expected
 	CheckStackTestSteps(k *K8sClient) StepList
+	// UpgradeTestSteps returns all the steps necessary to upgrade an existing resource to new configuration.
+	UpgradeTestSteps(k *K8sClient) StepList
 	// DeletionTestSteps returns all test step to delete a resource.
 	DeletionTestSteps(k *K8sClient) StepList
 	// MutationTestSteps returns all test steps to test changes on a resource.
