@@ -62,7 +62,7 @@ func (d *defaultDriver) doRollingUpgrade(
 	maxMasterNodeUpgrades := 1
 	scheduledMasterNodeUpgrades := 0
 
-	for i, statefulSet := range statefulSets.ToUpdate() {
+	for _, statefulSet := range statefulSets.ToUpdate() {
 		// Inspect each pod, starting from the highest ordinal, and decrement the partition to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
 		for partition := sset.GetUpdatePartition(statefulSet); partition >= 0; partition-- {
@@ -121,7 +121,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			}
 
 			// Upgrade the pod.
-			if err := d.upgradeStatefulSetPartition(&statefulSets[i], partition); err != nil {
+			if err := d.upgradeStatefulSetPartition(statefulSet, partition); err != nil {
 				return results.WithError(err)
 			}
 		}
