@@ -15,20 +15,24 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	elasticsearchuser "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
+	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -58,6 +62,8 @@ const (
 	name = "kibana-association-controller"
 	// kibanaUserSuffix is used to suffix user and associated secret resources.
 	kibanaUserSuffix = "kibana-user"
+	// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName
+	ElasticsearchCASecretSuffix = "kb-es-ca"
 )
 
 var (
@@ -279,7 +285,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationPending, err
 	}
 
-	caSecretName, err := r.reconcileCASecret(kibana, esRefKey)
+	caSecretName, err := r.reconcileElasticsearchCA(kibana, esRefKey)
 	if err != nil {
 		return commonv1alpha1.AssociationPending, err
 	}
@@ -299,6 +305,29 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 	}
 
 	return commonv1alpha1.AssociationEstablished, nil
+}
+
+func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana kbtype.Kibana, es types.NamespacedName) (string, error) {
+	kibanaKey := k8s.ExtractNamespacedName(&kibana)
+	// watch ES CA secret to reconcile on any change
+	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
+		Name:    esCAWatchName(kibanaKey),
+		Watched: http.PublicCertsSecretRef(esname.ESNamer, es),
+		Watcher: kibanaKey,
+	}); err != nil {
+		return "", err
+	}
+	// Build the labels applied on the secret
+	labels := kblabel.NewLabels(kibana.Name)
+	labels[AssociationLabelName] = kibana.Name
+	return association.ReconcileCASecret(
+		r.Client,
+		r.scheme,
+		&kibana,
+		es,
+		labels,
+		ElasticsearchCASecretSuffix,
+	)
 }
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
