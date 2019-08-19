@@ -350,7 +350,7 @@ ci-e2e: run-deployer
 	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
 
 run-deployer: dep-vendor-only build-deployer
-	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
+	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
