@@ -12,7 +12,6 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
@@ -227,27 +226,25 @@ func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.S
 	if !zen1.AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
 		return nil
 	}
-	// If we are moving from 2 to 1 master nodes, we need to update minimum_master_nodes before removing
-	// the 2nd node, otherwise the cluster won't be able to form anymore.
-	// This is inherently unsafe (can cause split brains), but there's no alternative.
-	// For other situations (eg. 3 -> 2), it's fine to update minimum_master_nodes after the node is removed
-	// (will be done at next reconciliation, before nodes removal).
 
-	// retrieve the number of masters currently running ready
 	actualPods, err := sset.GetActualPodsForCluster(ctx.k8sClient, ctx.es)
 	if err != nil {
 		return err
 	}
-	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
-	if len(mastersReady) != 2 {
-		// since we only remove one master at once, we can consider we are not in the 2->1 situation
+	masters := label.FilterMasterNodePods(actualPods)
+	if len(masters) != 2 {
+		// not in the 2->1 situation
 		return nil
 	}
 
-	// there are 2 masters and we are about to downscale a StatefulSet with master nodes: 2->1 situation
+	// We are moving from 2 to 1 master nodes, we need to update minimum_master_nodes before removing
+	// the 2nd node, otherwise the cluster won't be able to form anymore.
+	// This is inherently unsafe (can cause split brains), but there's no alternative.
+	// For other situations (eg. 3 -> 2), it's fine to update minimum_master_nodes after the node is removed
+	// (will be done at next reconciliation, before nodes removal).
 	ctx.reconcileState.AddEvent(
 		v1.EventTypeWarning, events.EventReasonUnhealthy,
-		"Downscaling from 2 to 1 master nodes is unsafe",
+		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1
 	return zen1.UpdateMinimumMasterNodesTo(ctx.es, ctx.esClient, actualStatefulSets, ctx.reconcileState, minimumMasterNodes)

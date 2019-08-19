@@ -68,7 +68,6 @@ func UpdateMinimumMasterNodes(
 	}
 	// Get current master nodes count
 	currentMasterCount := 0
-	// Among them get the ones that are ready
 	currentAvailableMasterCount := 0
 	for _, p := range pods {
 		if label.IsMasterNode(p) {

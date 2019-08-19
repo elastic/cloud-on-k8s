@@ -792,18 +792,6 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 					string(label.NodeTypesMasterLabelName): "true",
 				},
 			},
-			Status: corev1.PodStatus{
-				Conditions: []corev1.PodCondition{
-					{
-						Status: corev1.ConditionTrue,
-						Type:   corev1.ContainersReady,
-					},
-					{
-						Status: corev1.ConditionTrue,
-						Type:   corev1.PodReady,
-					},
-				},
-			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -815,18 +803,6 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 					string(label.NodeTypesMasterLabelName): "true",
 				},
 			},
-			Status: corev1.PodStatus{
-				Conditions: []corev1.PodCondition{
-					{
-						Status: corev1.ConditionTrue,
-						Type:   corev1.ContainersReady,
-					},
-					{
-						Status: corev1.ConditionTrue,
-						Type:   corev1.PodReady,
-					},
-				},
-			},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -836,18 +812,6 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 					label.StatefulSetNameLabelName:         ssetMaster3Replicas.Name,
 					label.ClusterNameLabelName:             es.Name,
 					string(label.NodeTypesMasterLabelName): "true",
-				},
-			},
-			Status: corev1.PodStatus{
-				Conditions: []corev1.PodCondition{
-					{
-						Status: corev1.ConditionTrue,
-						Type:   corev1.ContainersReady,
-					},
-					{
-						Status: corev1.ConditionTrue,
-						Type:   corev1.PodReady,
-					},
 				},
 			},
 		},
