@@ -33,6 +33,7 @@ func RetrieveActualStatefulSets(c k8s.Client, es types.NamespacedName) (Stateful
 	return StatefulSetList(ssets.Items), err
 }
 
+// GetByName returns the StatefulSet with the given name, and a bool indicating if the StatefulSet was found.
 func (l StatefulSetList) GetByName(ssetName string) (appsv1.StatefulSet, bool) {
 	for _, sset := range l {
 		if sset.Name == ssetName {
@@ -42,6 +43,7 @@ func (l StatefulSetList) GetByName(ssetName string) (appsv1.StatefulSet, bool) {
 	return appsv1.StatefulSet{}, false
 }
 
+// ObjectMetas returns a list of MetaObject from the StatefulSetList.
 func (l StatefulSetList) ObjectMetas() []metav1.ObjectMeta {
 	objs := make([]metav1.ObjectMeta, len(l))
 	for i, sset := range l {
@@ -118,23 +120,9 @@ func (l StatefulSetList) DeepCopy() StatefulSetList {
 	return result
 }
 
-// GetUpdatePartition returns the updateStrategy.Partition index, or falls back to the number of replicas if not set.
-func GetUpdatePartition(statefulSet appsv1.StatefulSet) int32 {
-	if statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
-		return *statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition
-	}
-	if statefulSet.Spec.Replicas != nil {
-		return *statefulSet.Spec.Replicas
-	}
-	return 0
-}
-
-func ForStatefulSet(statefulSet appsv1.StatefulSet) (*version.Version, error) {
-	return label.ExtractVersion(statefulSet.Spec.Template.Labels)
-}
-
+// ESVersionMatch returns true if the ES version for this StatefulSet matches the given condition.
 func ESVersionMatch(statefulSet appsv1.StatefulSet, condition func(v version.Version) bool) bool {
-	v, err := ForStatefulSet(statefulSet)
+	v, err := ESVersionForStatefulSet(statefulSet)
 	if err != nil || v == nil {
 		log.Error(err, "cannot parse version from StatefulSet", "namespace", statefulSet.Namespace, "name", statefulSet.Name)
 		return false
@@ -142,6 +130,7 @@ func ESVersionMatch(statefulSet appsv1.StatefulSet, condition func(v version.Ver
 	return condition(*v)
 }
 
+// AtLeastOneESVersionMatch returns true if at least one StatefulSet's ES version matches the given condition.
 func AtLeastOneESVersionMatch(statefulSets StatefulSetList, condition func(v version.Version) bool) bool {
 	for _, s := range statefulSets {
 		if ESVersionMatch(s, condition) {

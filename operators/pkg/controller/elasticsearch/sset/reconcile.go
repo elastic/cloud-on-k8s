@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// ReconcileStatefulSet creates or updates the expected StatefulSet.
 func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch, expected appsv1.StatefulSet) error {
 	var reconciled appsv1.StatefulSet
 	return reconciler.ReconcileResource(reconciler.Params{

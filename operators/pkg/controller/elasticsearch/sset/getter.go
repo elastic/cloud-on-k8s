@@ -5,6 +5,8 @@
 package sset
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	appsv1 "k8s.io/api/apps/v1"
 )
 
@@ -14,4 +16,21 @@ func Replicas(statefulSet appsv1.StatefulSet) int32 {
 		return *statefulSet.Spec.Replicas
 	}
 	return 0
+}
+
+// UpdatePartition returns the updateStrategy.Partition index, or falls back to the number of replicas if not set.
+func UpdatePartition(statefulSet appsv1.StatefulSet) int32 {
+	rollingUpdate := statefulSet.Spec.UpdateStrategy.RollingUpdate
+	if rollingUpdate != nil && rollingUpdate.Partition != nil {
+		return *rollingUpdate.Partition
+	}
+	if statefulSet.Spec.Replicas != nil {
+		return *statefulSet.Spec.Replicas
+	}
+	return 0
+}
+
+// ESVersionForStatefulSet returns the ES version from the StatefulSet labels.
+func ESVersionForStatefulSet(statefulSet appsv1.StatefulSet) (*version.Version, error) {
+	return label.ExtractVersion(statefulSet.Spec.Template.Labels)
 }

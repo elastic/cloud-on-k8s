@@ -19,10 +19,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
+// PodName returns the name of the pod with the given ordinal for this StatefulSet.
 func PodName(ssetName string, ordinal int32) string {
 	return fmt.Sprintf("%s-%d", ssetName, ordinal)
 }
 
+// PodNames returns the names of the pods for this StatefulSet, according to the number of replicas.
 func PodNames(sset appsv1.StatefulSet) []string {
 	names := make([]string, 0, Replicas(sset))
 	for i := int32(0); i < Replicas(sset); i++ {
@@ -31,6 +33,7 @@ func PodNames(sset appsv1.StatefulSet) []string {
 	return names
 }
 
+// PodRevision returns the StatefulSet revision from this pod labels.
 func PodRevision(pod corev1.Pod) string {
 	return pod.Labels[appsv1.StatefulSetRevisionLabel]
 }
@@ -73,7 +76,7 @@ func ScheduledUpgradesDone(c k8s.Client, statefulSets StatefulSetList) (bool, er
 			// no upgrade scheduled
 			continue
 		}
-		partition := GetUpdatePartition(s)
+		partition := UpdatePartition(s)
 		for i := Replicas(s) - 1; i >= partition; i-- {
 			var pod corev1.Pod
 			err := c.Get(types.NamespacedName{Namespace: s.Namespace, Name: PodName(s.Name, i)}, &pod)
