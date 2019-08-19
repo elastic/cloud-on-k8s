@@ -22,7 +22,7 @@ pipeline {
     stages {
         stage('Run tests for different ELK stack versions in GKE') {
             parallel {
-                stage("6.8.0") {
+                stage("6.8.2") {
                     environment {
                         STACK_VERSION = "6.8.2"
                     }
@@ -32,7 +32,7 @@ pipeline {
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
-                stage("7.1.0") {
+                stage("7.1.1") {
                     agent {
                         label 'linux'
                     }
@@ -45,7 +45,7 @@ pipeline {
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
-                stage("7.2.0") {
+                stage("7.2.1") {
                     agent {
                         label 'linux'
                     }
