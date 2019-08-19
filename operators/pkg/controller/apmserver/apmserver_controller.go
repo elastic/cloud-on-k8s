@@ -46,6 +46,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -71,6 +73,14 @@ var (
 	}
 )
 
+// TODO: sabo: how do we add watches?
+func (r *ReconcileApmServer) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&apmv1alpha1.ApmServer{}).
+		Complete(r)
+}
+
+// TODO(sabo): remove this?
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
