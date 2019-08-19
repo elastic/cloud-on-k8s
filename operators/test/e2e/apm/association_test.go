@@ -20,6 +20,35 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// TestCrossNSAssociation tests associating Elasticsearch and an APM Server running in different namespaces.
+func TestCrossNSAssociation(t *testing.T) {
+	// This test currently does not work in the E2E environment because each namespace has a dedicated
+	// controller (see https://github.com/elastic/cloud-on-k8s/issues/1438)
+	if !(test.Ctx().Local || test.Ctx().GlobalOperator.AllInOne) {
+		t.SkipNow()
+	}
+
+	esNamespace := test.Ctx().ManagedNamespace(0)
+	apmNamespace := test.Ctx().ManagedNamespace(1)
+	name := "test-cross-ns-assoc"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithNamespace(esNamespace).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext()
+	apmBuilder := apmserver.NewBuilder(name).
+		WithNamespace(apmNamespace).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext()
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).
+		RunSequential(t)
+
+	builders := []test.Builder{esBuilder, apmBuilder}
+	test.RunMutations(t, builders, builders)
+}
+
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
 	name := "test-apm-assoc-non-existent-es"
 	apmBuilder := apmserver.NewBuilder(name).

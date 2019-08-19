@@ -42,8 +42,9 @@ import (
 )
 
 const (
-	name          = "apm-es-association-controller"
-	apmUserSuffix = "apm-user"
+	name                        = "apm-es-association-controller"
+	apmUserSuffix               = "apm-user"
+	elasticsearchCASecretSuffix = "apm-es-ca"
 )
 
 var (
@@ -92,6 +93,19 @@ func addWatches(c controller.Controller, r *ReconcileApmServerElasticsearchAssoc
 
 	// Watch Elasticsearch cluster objects
 	if err := c.Watch(&source.Kind{Type: &estype.Elasticsearch{}}, r.watches.ElasticsearchClusters); err != nil {
+		return err
+	}
+
+	// Dynamically watch Elasticsearch public CA secrets for referenced ES clusters
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets); err != nil {
+		return err
+	}
+
+	// Watch Secrets owned by a Kibana resource
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		OwnerType:    &apmtype.ApmServer{},
+		IsController: true,
+	}); err != nil {
 		return err
 	}
 
@@ -189,6 +203,11 @@ func elasticsearchWatchName(assocKey types.NamespacedName) string {
 	return assocKey.Namespace + "-" + assocKey.Name + "-es-watch"
 }
 
+// esCAWatchName returns the name of the watch setup on Elasticsearch CA secret
+func esCAWatchName(apm types.NamespacedName) string {
+	return apm.Namespace + "-" + apm.Name + "-ca-watch"
+}
+
 // watchFinalizer ensure that we remove watches for Elasticsearch clusters that we are no longer interested in
 // because the association to the APM server has been deleted.
 func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
@@ -196,6 +215,7 @@ func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) fin
 		Name: "dynamic-watches.finalizers.apm.k8s.elastic.co",
 		Execute: func() error {
 			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocKey))
+			w.Secrets.RemoveHandlerForKey(esCAWatchName(assocKey))
 			return nil
 		},
 	}
@@ -260,18 +280,13 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		return commonv1alpha1.AssociationPending, err
 	}
 
-	var expectedEsConfig apmtype.ElasticsearchOutput
-	// TODO: look up public certs secret name from the ES cluster resource instead of relying on naming convention
-	var publicCertsSecret corev1.Secret
-	publicCertsSecretKey := http.PublicCertsSecretRef(
-		esname.ESNamer,
-		elasticsearchRef.NamespacedName(),
-	)
-	if err = r.Get(publicCertsSecretKey, &publicCertsSecret); err != nil {
+	caSecretName, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
+	if err != nil {
 		return commonv1alpha1.AssociationPending, err // maybe not created yet
 	}
-	// TODO this is currently limiting the association to the same namespace
-	expectedEsConfig.SSL.CertificateAuthorities = commonv1alpha1.SecretRef{SecretName: publicCertsSecret.Name}
+
+	var expectedEsConfig apmtype.ElasticsearchOutput
+	expectedEsConfig.SSL.CertificateAuthorities = commonv1alpha1.SecretRef{SecretName: caSecretName}
 	expectedEsConfig.Hosts = []string{services.ExternalServiceURL(es)}
 	expectedEsConfig.Auth.SecretKeyRef = association.ClearTextSecretKeySelector(&apmServer, apmUserSuffix)
 
@@ -289,6 +304,29 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	return commonv1alpha1.AssociationEstablished, nil
+}
+
+func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm apmtype.ApmServer, es types.NamespacedName) (string, error) {
+	apmKey := k8s.ExtractNamespacedName(&apm)
+	// watch ES CA secret to reconcile on any change
+	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
+		Name:    esCAWatchName(apmKey),
+		Watched: http.PublicCertsSecretRef(esname.ESNamer, es),
+		Watcher: apmKey,
+	}); err != nil {
+		return "", err
+	}
+	// Build the labels applied on the secret
+	labels := labels.NewLabels(apm.Name)
+	labels[AssociationLabelName] = apm.Name
+	return association.ReconcileCASecret(
+		r.Client,
+		r.scheme,
+		&apm,
+		es,
+		labels,
+		elasticsearchCASecretSuffix,
+	)
 }
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
