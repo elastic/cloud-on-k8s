@@ -39,7 +39,7 @@ func TestReversalRiskyMasterDownscale(t *testing.T) {
 	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{down}, state)
 }
 
-// TODO we validate a full downscale
+// TODO we validate a downscale to replica=0 not sure if we should allow it
 func TestReversalSingleMasterDownscale(t *testing.T) {
 	t.Skip()
 	b := elasticsearch.NewBuilder("test-non-ha-downscale-reversal").
@@ -62,9 +62,7 @@ func TestReversalStatefulSetRename(t *testing.T) {
 	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{renamed}, state)
 }
 
-// TODO investigate why it does not apply the change here
 func TestRiskyMasterReconfiguration(t *testing.T) {
-	t.Skip()
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithNodeSpec(v1alpha1.NodeSpec{
