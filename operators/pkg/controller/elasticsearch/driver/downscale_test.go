@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
@@ -30,53 +31,61 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
+	clusterName             = "cluster"
 	ssetMaster3Replicas     = nodespec.CreateTestSset("ssetMaster3Replicas", "7.2.0", 3, true, false)
 	podsSsetMaster3Replicas = []corev1.Pod{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetMaster3Replicas.Name, 0),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetMaster3Replicas.Name, 1),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetMaster3Replicas.Name, 2),
-			},
-		},
+		nodespec.TestPod{
+			Namespace:   ssetMaster3Replicas.Namespace,
+			Name:        sset.PodName(ssetMaster3Replicas.Name, 0),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Master:      true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetMaster3Replicas.Namespace,
+			Name:        sset.PodName(ssetMaster3Replicas.Name, 1),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Master:      true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetMaster3Replicas.Namespace,
+			Name:        sset.PodName(ssetMaster3Replicas.Name, 2),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Master:      true,
+		}.Build(),
 	}
 	ssetData4Replicas     = nodespec.CreateTestSset("ssetData4Replicas", "7.2.0", 4, false, true)
 	podsSsetData4Replicas = []corev1.Pod{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetData4Replicas.Name, 0),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetData4Replicas.Name, 1),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetData4Replicas.Name, 2),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetData4Replicas.Name, 3),
-			},
-		},
+		nodespec.TestPod{
+			Namespace:   ssetData4Replicas.Namespace,
+			Name:        sset.PodName(ssetData4Replicas.Name, 0),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Data:        true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetData4Replicas.Namespace,
+			Name:        sset.PodName(ssetData4Replicas.Name, 1),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Data:        true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetData4Replicas.Namespace,
+			Name:        sset.PodName(ssetData4Replicas.Name, 2),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Data:        true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetData4Replicas.Namespace,
+			Name:        sset.PodName(ssetData4Replicas.Name, 3),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Data:        true,
+		}.Build(),
 	}
 	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
@@ -757,7 +766,24 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrapClient(fake.NewFakeClient(&ssetMasters, &ssetData))
+			es := v1alpha1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ssetMasters.Namespace,
+					Name:      "es",
+				},
+			}
+			// simulate an existing v7 master for zen2 to be called
+			v7Pod := corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: es.Namespace,
+					Labels: map[string]string{
+						label.ClusterNameLabelName:             es.Name,
+						string(label.NodeTypesMasterLabelName): "true",
+						label.VersionLabelName:                 "7.1.0",
+					},
+				},
+			}
+			k8sClient := k8s.WrapClient(fake.NewFakeClient(&ssetMasters, &ssetData, &v7Pod))
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,

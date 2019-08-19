@@ -64,6 +64,15 @@ func GetActualPodsForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.
 	return pods.Items, nil
 }
 
+// GetActualMastersForCluster returns the list of existing master-eligible pods for the cluster.
+func GetActualMastersForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.Pod, error) {
+	pods, err := GetActualPodsForCluster(c, es)
+	if err != nil {
+		return nil, err
+	}
+	return label.FilterMasterNodePods(pods), nil
+}
+
 // ScheduledUpgradesDone returns true if all pods scheduled for upgrade have been upgraded.
 // This is done by checking the revision of pods whose ordinal is higher or equal than the StatefulSet
 // rollingUpdate.Partition index.

@@ -213,7 +213,7 @@ func updateZenSettingsForDownscale(ctx downscaleContext, downscale ssetDownscale
 	}
 
 	// Update zen2 settings to exclude leaving master nodes from voting.
-	if err := zen2.AddToVotingConfigExclusions(ctx.esClient, downscale.statefulSet, downscale.leavingNodeNames()); err != nil {
+	if err := zen2.AddToVotingConfigExclusions(ctx.k8sClient, ctx.esClient, ctx.es, downscale.leavingNodeNames()); err != nil {
 		return err
 	}
 
