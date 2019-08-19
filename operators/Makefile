@@ -361,3 +361,46 @@ check-license-header:
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+
+#########################
+# Kind specific targets #
+#########################
+
+kind-node-variable-check:
+ifndef KIND_NODE_IMAGE
+	$(error KIND_NODE_IMAGE is mandatory when using Kind)
+endif
+
+## Start a kind cluster with just the CRDs, e.g.:
+# "make kind-with-operator-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a one node cluster
+# "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" to start a 1 master + 3 nodes cluster
+kind-cluster-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-cluster-%: kind-node-variable-check
+	./hack/kind/kind.sh \
+		--nodes "${*}" \
+		make install-crds
+
+## Same as above but build and deploy the operator image
+kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-with-operator-%: kind-node-variable-check docker-build
+	./hack/kind/kind.sh \
+		--load-images $(OPERATOR_IMAGE) \
+		--nodes "${*}" \
+		make install-crds apply-operators
+
+## Run all the e2e tests in a Kind cluster
+kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
+kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-e2e: kind-node-variable-check docker-build e2e-docker-build
+	./hack/kind/kind.sh \
+		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
+		--nodes 3 \
+		make e2e-run
+
+## Deploy the operator in a Kind cluster and prepare it to run local e2e tests.
+kind-e2e-local: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
+kind-e2e-local: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-e2e-local: kind-node-variable-check docker-build kind-with-operator-3
+	kubectl create ns e2e-mercury
+	kubectl create ns e2e-venus
+	make install-crds
