@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package main
+package runner
 
 import (
 	"fmt"
@@ -80,7 +80,7 @@ func (d *GkeDriver) Execute() error {
 			}
 		}
 
-		if err := d.getCredentials(); err != nil {
+		if err := d.GetCredentials(); err != nil {
 			return err
 		}
 
@@ -205,9 +205,9 @@ func (d *GkeDriver) configureDocker() error {
 	return NewCommand("gcloud auth configure-docker --quiet").Run()
 }
 
-func (d *GkeDriver) getCredentials() error {
+func (d *GkeDriver) GetCredentials() error {
 	log.Println("Getting credentials...")
-	cmd := "gcloud beta --project {{.GCloudProject}} container clusters get-credentials {{.ClusterName}} --region {{.Region}}"
+	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 

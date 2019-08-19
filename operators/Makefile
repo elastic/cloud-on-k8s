@@ -237,22 +237,32 @@ ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set)
 endif
 
-credentials: require-gcloud-project
-	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh credentials
+DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --run-config-file=hack/deployer/config/run-config.yml
+
+setup-deployer-once: require-gcloud-project
+	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
+ifeq (,$(wildcard hack/deployer/config/run-config.yml))
+	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/run-config.yml
+endif
+
+credentials: setup-deployer-once
+	@ $(DEPLOYER) get credentials
 
 set-context-gke: credentials
-	kubectl config use-context $(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name)
-	$(eval KUBECTL_CLUSTER=$(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name))
+	$(eval KUBECTL_CLUSTER=$($(DEPLOYER) get clusterName))
 
-bootstrap-gke: require-gcloud-project
-	PSP=$(PSP) GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
-	$(MAKE) set-context-gke cluster-bootstrap
+bootstrap-gke: setup-deployer-once
+	@ $(DEPLOYER) execute
+	$(MAKE) cluster-bootstrap
 ifeq ($(PSP), 1)
 	$(MAKE) apply-psp
 endif
 
-delete-gke: require-gcloud-project
-	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
+delete-gke: setup-deployer-once
+	@ $(DEPLOYER) execute --operation=delete
+
+show-config: setup-deployer-once
+	@ $(DEPLOYER) get config
 
 #################################
 ##  --    Docker images    --  ##

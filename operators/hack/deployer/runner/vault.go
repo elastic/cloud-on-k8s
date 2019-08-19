@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package main
+package runner
 
 import (
 	"fmt"
@@ -11,20 +11,20 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
-type Client struct {
+type VaultClient struct {
 	client   *api.Client
 	roleId   string
 	secretId string
 	token    string
 }
 
-func NewClient(info VaultInfo) (*Client, error) {
+func NewClient(info VaultInfo) (*VaultClient, error) {
 	client, err := api.NewClient(&api.Config{Address: info.Address})
 	if err != nil {
 		return nil, err
 	}
 
-	return &Client{
+	return &VaultClient{
 		client:   client,
 		roleId:   info.RoleId,
 		secretId: info.SecretId,
@@ -33,7 +33,7 @@ func NewClient(info VaultInfo) (*Client, error) {
 }
 
 // auth fetches the auth token using approle (with role id and secret id) or github (with token)
-func (c *Client) auth() error {
+func (c *VaultClient) auth() error {
 	if c.client.Token() != "" {
 		return nil
 	}
@@ -66,7 +66,7 @@ func (c *Client) auth() error {
 }
 
 // ReadIntoFile is a helper function used to read from Vault into file
-func (c *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
+func (c *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error {
 	if err := c.auth(); err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (c *Client) ReadIntoFile(fileName, secretPath, fieldName string) error {
 }
 
 // Get fetches contents of a single field at a specified path in Vault
-func (c *Client) Get(secretPath string, fieldName string) (string, error) {
+func (c *VaultClient) Get(secretPath string, fieldName string) (string, error) {
 	result, err := c.GetMany(secretPath, fieldName)
 	if err != nil {
 		return "", err
@@ -101,7 +101,7 @@ func (c *Client) Get(secretPath string, fieldName string) (string, error) {
 
 // GetMany fetches contents of multiple fields at a specified path in Vault. If error is nil, result slice
 // will be of length len(fieldNames).
-func (c *Client) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
+func (c *VaultClient) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
 	if err := c.auth(); err != nil {
 		return nil, err
 	}
