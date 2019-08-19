@@ -239,8 +239,10 @@ endif
 
 DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --run-config-file=hack/deployer/config/run-config.yml
 
-setup-deployer-once: require-gcloud-project
+build-deployer:
 	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
+
+setup-deployer-once: require-gcloud-project build-deployer
 ifeq (,$(wildcard hack/deployer/config/run-config.yml))
 	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/run-config.yml
 endif
@@ -347,8 +349,7 @@ ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration
 ci-e2e: run-deployer
 	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
 
-run-deployer: dep-vendor-only
-	@ go build -o hack/deployer/deployer ./hack/deployer/...
+run-deployer: dep-vendor-only build-deployer
 	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
 ci-release: export GO_TAGS = release
