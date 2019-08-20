@@ -4,9 +4,7 @@
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
-# This script takes responsibility to create a minikube cluster. It has all
-# of the necessary default settings so that no environment variable has to
-# be specified.
+# This script used to "bake" Docker images into base image for Jenkins nodes.
 
 declare -a docker_images=("docker.elastic.co/eck/eck-ci:57e169ff162c2ea351a1956e1ad355b9")
 
