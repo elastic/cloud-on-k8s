@@ -13,5 +13,5 @@ declare -a docker_images=("docker.elastic.co/eck/eck-ci:57e169ff162c2ea351a1956e
 # Pull all the required docker images
 for image in "${docker_images[@]}"
 do
-  docker pull $image
+  docker pull "$image"
 done
