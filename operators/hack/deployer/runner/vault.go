@@ -33,25 +33,25 @@ func NewClient(info VaultInfo) (*VaultClient, error) {
 }
 
 // auth fetches the auth token using approle (with role id and secret id) or github (with token)
-func (c *VaultClient) auth() error {
-	if c.client.Token() != "" {
+func (v *VaultClient) auth() error {
+	if v.client.Token() != "" {
 		return nil
 	}
 
 	var data map[string]interface{}
 	var method string
 
-	if c.token != "" {
+	if v.token != "" {
 		method = "github"
-		data = map[string]interface{}{"token": c.token}
-	} else if c.roleId != "" && c.secretId != "" {
+		data = map[string]interface{}{"token": v.token}
+	} else if v.roleId != "" && v.secretId != "" {
 		method = "approle"
-		data = map[string]interface{}{"role_id": c.roleId, "secret_id": c.secretId}
+		data = map[string]interface{}{"role_id": v.roleId, "secret_id": v.secretId}
 	} else {
 		return fmt.Errorf("vault auth info not present")
 	}
 
-	resp, err := c.client.Logical().Write(fmt.Sprintf("auth/%s/login", method), data)
+	resp, err := v.client.Logical().Write(fmt.Sprintf("auth/%s/login", method), data)
 	if err != nil {
 		return err
 	}
@@ -60,18 +60,18 @@ func (c *VaultClient) auth() error {
 		return fmt.Errorf("no auth info in response")
 	}
 
-	c.client.SetToken(resp.Auth.ClientToken)
+	v.client.SetToken(resp.Auth.ClientToken)
 
 	return nil
 }
 
 // ReadIntoFile is a helper function used to read from Vault into file
-func (c *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error {
-	if err := c.auth(); err != nil {
+func (v *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error {
+	if err := v.auth(); err != nil {
 		return err
 	}
 
-	res, err := c.client.Logical().Read(secretPath)
+	res, err := v.client.Logical().Read(secretPath)
 	if err != nil {
 		return err
 	}
@@ -90,8 +90,8 @@ func (c *VaultClient) ReadIntoFile(fileName, secretPath, fieldName string) error
 }
 
 // Get fetches contents of a single field at a specified path in Vault
-func (c *VaultClient) Get(secretPath string, fieldName string) (string, error) {
-	result, err := c.GetMany(secretPath, fieldName)
+func (v *VaultClient) Get(secretPath string, fieldName string) (string, error) {
+	result, err := v.GetMany(secretPath, fieldName)
 	if err != nil {
 		return "", err
 	}
@@ -101,12 +101,12 @@ func (c *VaultClient) Get(secretPath string, fieldName string) (string, error) {
 
 // GetMany fetches contents of multiple fields at a specified path in Vault. If error is nil, result slice
 // will be of length len(fieldNames).
-func (c *VaultClient) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
-	if err := c.auth(); err != nil {
+func (v *VaultClient) GetMany(secretPath string, fieldNames ...string) ([]string, error) {
+	if err := v.auth(); err != nil {
 		return nil, err
 	}
 
-	secret, err := c.client.Logical().Read(secretPath)
+	secret, err := v.client.Logical().Read(secretPath)
 	if err != nil {
 		return nil, err
 	}
