@@ -5,14 +5,13 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
@@ -44,48 +43,14 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 
-	nodeSpecResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources)
+	expectedResources, err := expectedResources(d.Client, d.ES, observedState, keystoreResources)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	// TODO: there is a split brain possibility here if going from 1 to 3 masters or 3 to 7.
-	//  See https://github.com/elastic/cloud-on-k8s/issues/1281.
-
-	// patch configs to consider zen1 minimum master nodes
-	if err := zen1.SetupMinimumMasterNodesConfig(nodeSpecResources); err != nil {
+	// Phase 1: apply expected StatefulSets resources and scale up.
+	if err := HandleUpscaleAndSpecChanges(d.Client, d.ES, d.Scheme, expectedResources, actualStatefulSets); err != nil {
 		return results.WithError(err)
-	}
-	// patch configs to consider zen2 initial master nodes
-	if err := zen2.SetupInitialMasterNodes(d.ES, observedState, d.Client, nodeSpecResources); err != nil {
-		return results.WithError(err)
-	}
-
-	// Phase 1: apply expected StatefulSets resources, but don't scale down.
-	// The goal is to:
-	// 1. scale sset up (eg. go from 3 to 5 replicas).
-	// 2. apply configuration changes on the sset resource, to be used for future pods creation/recreation,
-	//    but do not rotate pods yet.
-	// 3. do **not** apply replicas scale down, otherwise nodes would be deleted before
-	//    we handle a clean deletion.
-	for _, nodeSpecRes := range nodeSpecResources {
-		// always reconcile config (will apply to new & recreated pods)
-		if err := settings.ReconcileConfig(d.Client, d.ES, nodeSpecRes.StatefulSet.Name, nodeSpecRes.Config); err != nil {
-			return results.WithError(err)
-		}
-		if _, err := common.ReconcileService(d.Client, d.Scheme, &nodeSpecRes.HeadlessService, &d.ES); err != nil {
-			return results.WithError(err)
-		}
-		ssetToApply := *nodeSpecRes.StatefulSet.DeepCopy()
-		actual, exists := actualStatefulSets.GetByName(ssetToApply.Name)
-		if exists && sset.Replicas(ssetToApply) < sset.Replicas(actual) {
-			// sset needs to be scaled down
-			// update the sset to use the new spec but don't scale replicas down for now
-			ssetToApply.Spec.Replicas = actual.Spec.Replicas
-		}
-		if err := sset.ReconcileStatefulSet(d.Client, d.Scheme, d.ES, ssetToApply); err != nil {
-			return results.WithError(err)
-		}
 	}
 
 	if !esReachable {
@@ -124,7 +89,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		es:             d.ES,
 		expectations:   d.Expectations,
 	}
-	downscaleRes := HandleDownscale(downscaleCtx, nodeSpecResources.StatefulSets(), actualStatefulSets)
+	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
 	results.WithResults(downscaleRes)
 	if downscaleRes.HasError() {
 		return results
@@ -142,4 +107,27 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	//  - change budget
 	//  - grow and shrink
 	return results
+}
+
+func expectedResources(
+	k8sClient k8s.Client,
+	es v1alpha1.Elasticsearch,
+	observedState observer.State,
+	keystoreResources *keystore.Resources,
+) (nodespec.ResourcesList, error) {
+	resources, err := nodespec.BuildExpectedResources(es, keystoreResources)
+	if err != nil {
+		return nil, err
+	}
+
+	// patch configs to consider zen1 minimum master nodes
+	if err := zen1.SetupMinimumMasterNodesConfig(resources); err != nil {
+		return nil, err
+	}
+	// patch configs to consider zen2 initial master nodes
+	if err := zen2.SetupInitialMasterNodes(es, observedState, k8sClient, resources); err != nil {
+		return nil, err
+	}
+
+	return resources, nil
 }
