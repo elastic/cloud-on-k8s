@@ -122,7 +122,7 @@ func (l StatefulSetList) DeepCopy() StatefulSetList {
 
 // ESVersionMatch returns true if the ES version for this StatefulSet matches the given condition.
 func ESVersionMatch(statefulSet appsv1.StatefulSet, condition func(v version.Version) bool) bool {
-	v, err := ESVersionForStatefulSet(statefulSet)
+	v, err := GetESVersion(statefulSet)
 	if err != nil || v == nil {
 		log.Error(err, "cannot parse version from StatefulSet", "namespace", statefulSet.Namespace, "name", statefulSet.Name)
 		return false

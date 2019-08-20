@@ -10,16 +10,16 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-// Replicas returns the replicas configured for this StatefulSet, or 0 if nil.
-func Replicas(statefulSet appsv1.StatefulSet) int32 {
+// GetReplicas returns the replicas configured for this StatefulSet, or 0 if nil.
+func GetReplicas(statefulSet appsv1.StatefulSet) int32 {
 	if statefulSet.Spec.Replicas != nil {
 		return *statefulSet.Spec.Replicas
 	}
 	return 0
 }
 
-// UpdatePartition returns the updateStrategy.Partition index, or falls back to the number of replicas if not set.
-func UpdatePartition(statefulSet appsv1.StatefulSet) int32 {
+// GetPartition returns the updateStrategy.Partition index, or falls back to the number of replicas if not set.
+func GetPartition(statefulSet appsv1.StatefulSet) int32 {
 	rollingUpdate := statefulSet.Spec.UpdateStrategy.RollingUpdate
 	if rollingUpdate != nil && rollingUpdate.Partition != nil {
 		return *rollingUpdate.Partition
@@ -30,7 +30,7 @@ func UpdatePartition(statefulSet appsv1.StatefulSet) int32 {
 	return 0
 }
 
-// ESVersionForStatefulSet returns the ES version from the StatefulSet labels.
-func ESVersionForStatefulSet(statefulSet appsv1.StatefulSet) (*version.Version, error) {
+// GetESVersion returns the ES version from the StatefulSet labels.
+func GetESVersion(statefulSet appsv1.StatefulSet) (*version.Version, error) {
 	return label.ExtractVersion(statefulSet.Spec.Template.Labels)
 }

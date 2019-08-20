@@ -65,8 +65,8 @@ func (d *defaultDriver) doRollingUpgrade(
 	for _, statefulSet := range statefulSets.ToUpdate() {
 		// Inspect each pod, starting from the highest ordinal, and decrement the partition to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
-		for partition := sset.UpdatePartition(statefulSet); partition >= 0; partition-- {
-			if partition >= sset.Replicas(statefulSet) {
+		for partition := sset.GetPartition(statefulSet); partition >= 0; partition-- {
+			if partition >= sset.GetReplicas(statefulSet) {
 				continue
 			}
 			if scheduledUpgrades >= maxConcurrentUpgrades {
@@ -91,7 +91,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			scheduledUpgrades++
 
 			// Is the pod upgrade already scheduled?
-			if partition == sset.UpdatePartition(statefulSet) {
+			if partition == sset.GetPartition(statefulSet) {
 				continue
 			}
 

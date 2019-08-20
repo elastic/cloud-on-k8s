@@ -26,8 +26,8 @@ func PodName(ssetName string, ordinal int32) string {
 
 // PodNames returns the names of the pods for this StatefulSet, according to the number of replicas.
 func PodNames(sset appsv1.StatefulSet) []string {
-	names := make([]string, 0, Replicas(sset))
-	for i := int32(0); i < Replicas(sset); i++ {
+	names := make([]string, 0, GetReplicas(sset))
+	for i := int32(0); i < GetReplicas(sset); i++ {
 		names = append(names, PodName(sset.Name, i))
 	}
 	return names
@@ -76,8 +76,8 @@ func ScheduledUpgradesDone(c k8s.Client, statefulSets StatefulSetList) (bool, er
 			// no upgrade scheduled
 			continue
 		}
-		partition := UpdatePartition(s)
-		for i := Replicas(s) - 1; i >= partition; i-- {
+		partition := GetPartition(s)
+		for i := GetReplicas(s) - 1; i >= partition; i-- {
 			var pod corev1.Pod
 			err := c.Get(types.NamespacedName{Namespace: s.Namespace, Name: PodName(s.Name, i)}, &pod)
 			if errors.IsNotFound(err) {
