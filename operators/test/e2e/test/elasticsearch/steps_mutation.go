@@ -20,6 +20,20 @@ import (
 
 const continuousHealthCheckTimeout = 25 * time.Second
 
+func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
+	return test.StepList{
+		test.Step{
+			Name: "Applying the Elasticsearch mutation should succeed",
+			Test: func(t *testing.T) {
+				var curEs estype.Elasticsearch
+				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
+				curEs.Spec = b.Elasticsearch.Spec
+				require.NoError(t, k.Client.Update(&curEs))
+			},
+		},
+	}
+}
+
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
 	var continuousHealthChecks *ContinuousHealthCheck
@@ -45,16 +59,8 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			},
 		},
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-		test.Step{
-			Name: "Applying the Elasticsearch mutation should succeed",
-			Test: func(t *testing.T) {
-				var curEs estype.Elasticsearch
-				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
-				curEs.Spec = b.Elasticsearch.Spec
-				require.NoError(t, k.Client.Update(&curEs))
-			},
-		},
 	}.
+		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
@@ -129,7 +135,7 @@ func (hc *ContinuousHealthCheck) Start() {
 				health, err := hc.esClient.GetClusterHealth(ctx)
 				if err != nil {
 					// TODO: Temporarily account only red clusters, see https://github.com/elastic/cloud-on-k8s/issues/614
-					//hc.AppendErr(err)
+					// hc.AppendErr(err)
 					continue
 				}
 				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {
