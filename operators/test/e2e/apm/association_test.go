@@ -40,13 +40,14 @@ func TestCrossNSAssociation(t *testing.T) {
 		WithNamespace(apmNamespace).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(1).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithConfig(map[string]interface{}{
+			"apm-server.ilm.enabled":                           false,
+			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
+		})
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).
 		RunSequential(t)
-
-	builders := []test.Builder{esBuilder, apmBuilder}
-	test.RunMutations(t, builders, builders)
 }
 
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
