@@ -24,7 +24,7 @@ import (
 func TestCrossNSAssociation(t *testing.T) {
 	// This test currently does not work in the E2E environment because each namespace has a dedicated
 	// controller (see https://github.com/elastic/cloud-on-k8s/issues/1438)
-	if !(test.Ctx().Local || test.Ctx().GlobalOperator.AllInOne) {
+	if !(test.Ctx().Local) {
 		t.SkipNow()
 	}
 
