@@ -37,17 +37,17 @@ func TestIsCompatibleWithZen2(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "version 6.8.0",
+			name: "versionCompatibleWithZen2 6.8.0",
 			sset: createStatefulSetWithESVersion("6.8.0"),
 			want: false,
 		},
 		{
-			name: "version 7.0.0",
+			name: "versionCompatibleWithZen2 7.0.0",
 			sset: createStatefulSetWithESVersion("7.0.0"),
 			want: true,
 		},
 		{
-			name: "no version",
+			name: "no versionCompatibleWithZen2",
 			sset: createStatefulSetWithESVersion(""),
 			want: false,
 		},

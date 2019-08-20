@@ -142,7 +142,7 @@ func TestSetupInitialMasterNodes_NotBootstrapped(t *testing.T) {
 			},
 		},
 		{
-			name: "version <7: nothing should appear in the config",
+			name: "versionCompatibleWithZen2 <7: nothing should appear in the config",
 			nodeSpecResources: nodespec.ResourcesList{
 				{StatefulSet: nodespec.CreateTestSset("master", "6.8.0", 3, true, false), Config: settings.NewCanonicalConfig()},
 			},

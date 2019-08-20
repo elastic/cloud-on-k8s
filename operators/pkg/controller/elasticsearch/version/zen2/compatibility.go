@@ -14,14 +14,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
-// zen2VersionMatch returns true if the given Elasticsearch version is compatible with zen2.
-func zen2VersionMatch(v version.Version) bool {
+// zen2VersionMatch returns true if the given Elasticsearch versionCompatibleWithZen2 is compatible with zen2.
+func versionCompatibleWithZen2(v version.Version) bool {
 	return v.Major >= 7
 }
 
 // IsCompatibleWithZen2 returns true if the given StatefulSet is compatible with zen2.
 func IsCompatibleWithZen2(statefulSet appsv1.StatefulSet) bool {
-	return sset.ESVersionMatch(statefulSet, zen2VersionMatch)
+	return sset.ESVersionMatch(statefulSet, versionCompatibleWithZen2)
 }
 
 // AllMastersCompatibleWithZen2 returns true if all master nodes in the given cluster can use zen2 APIs.
@@ -40,7 +40,7 @@ func AllMastersCompatibleWithZen2(c k8s.Client, es v1alpha1.Elasticsearch) (bool
 		if err != nil {
 			return false, err
 		}
-		if !zen2VersionMatch(*v) {
+		if !versionCompatibleWithZen2(*v) {
 			return false, nil
 		}
 	}
