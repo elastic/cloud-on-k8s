@@ -32,7 +32,7 @@ func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuild
 	// set up the mutation test
 	steps = steps.WithSteps(state.PreMutationSteps(k))
 
-	// Trigger some mutations
+	// trigger some mutations
 	for _, mutateTo := range mutationBuilders {
 		steps = steps.WithSteps(mutateTo.UpgradeTestSteps(k))
 	}
@@ -53,7 +53,7 @@ func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuild
 	// verify the specifics of the upgrade reversal
 	steps = steps.WithSteps(state.VerificationSteps(k))
 
-	// and delete the resources again
+	// and delete the resources
 	for _, mutateTo := range mutationBuilders {
 		steps = steps.WithSteps(mutateTo.DeletionTestSteps(k))
 	}

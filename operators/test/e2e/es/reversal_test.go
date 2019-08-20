@@ -14,12 +14,13 @@ import (
 )
 
 func TestReversalIllegalConfig(t *testing.T) {
-	// mutate to 1 m node + 1 d node
+	// 1 master node + 1 data node
 	b := elasticsearch.NewBuilder("test-illegal-config").
 		WithNoESTopology().
 		WithESDataNodes(1, elasticsearch.DefaultResources).
 		WithESMasterNodes(1, elasticsearch.DefaultResources)
 
+	// then apply an illegal configuration change to the data node
 	bogus := b.WithAdditionalConfig(map[string]map[string]interface{}{
 		"data": {
 			"this leads": "to a bootlooping instance",
@@ -31,20 +32,14 @@ func TestReversalIllegalConfig(t *testing.T) {
 }
 
 func TestReversalRiskyMasterDownscale(t *testing.T) {
+	// we create a non-ha cluster
 	b := elasticsearch.NewBuilder("test-non-ha-downscale-reversal").
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+	// we then scale it down to 1 node, which for 6.x cluster in particular is a risky operation
+	// after reversing we expect a cluster to re-form. There is some potential for data loss
+	// in case the cluster indeed goes into split-brain.
+	// TODO it might be necessary to accept some data loss for 6.x here
 	down := b.WithNoESTopology().WithESMasterDataNodes(1, elasticsearch.DefaultResources)
-
-	state := elasticsearch.NewMutationReversalTestState(b.Elasticsearch)
-	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{down}, state)
-}
-
-// TODO we validate a downscale to replica=0 not sure if we should allow it
-func TestReversalSingleMasterDownscale(t *testing.T) {
-	t.Skip()
-	b := elasticsearch.NewBuilder("test-non-ha-downscale-reversal").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
-	down := b.WithNoESTopology().WithESMasterDataNodes(0, elasticsearch.DefaultResources)
 
 	state := elasticsearch.NewMutationReversalTestState(b.Elasticsearch)
 	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{down}, state)

@@ -6,7 +6,6 @@ package elasticsearch
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -29,8 +28,6 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 				var curEs estype.Elasticsearch
 				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
 				curEs.Spec = b.Elasticsearch.Spec
-				bytes, _ := json.MarshalIndent(b.Elasticsearch.Spec, "", " ")
-				println(string(bytes))
 				require.NoError(t, k.Client.Update(&curEs))
 			},
 		},

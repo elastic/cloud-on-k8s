@@ -18,12 +18,14 @@ import (
 type MutationReversalTestState struct {
 	es                     v1alpha1.Elasticsearch
 	initialCurrentReplicas map[string]int32
+	initialRevisions       map[string]string
 	dataIntegrity          *DataIntegrityCheck
 }
 
 func NewMutationReversalTestState(es v1alpha1.Elasticsearch) *MutationReversalTestState {
 	return &MutationReversalTestState{
 		es:                     es,
+		initialRevisions:       make(map[string]string),
 		initialCurrentReplicas: make(map[string]int32),
 	}
 }
@@ -36,6 +38,7 @@ func (s *MutationReversalTestState) PreMutationSteps(k *test.K8sClient) test.Ste
 				statefulSets, err := sset.RetrieveActualStatefulSets(k.Client, k8s.ExtractNamespacedName(&s.es))
 				require.NoError(t, err)
 				for _, set := range statefulSets {
+					s.initialRevisions[set.Name] = set.Status.CurrentRevision
 					s.initialCurrentReplicas[set.Name] = set.Status.CurrentReplicas
 				}
 			},
@@ -63,7 +66,11 @@ func (s *MutationReversalTestState) PostMutationSteps(k *test.K8sClient) test.St
 				}
 				// at least one sset should have started replacing pods
 				for _, set := range statefulSets {
-					if s.initialCurrentReplicas[set.Name] != set.Status.CurrentReplicas {
+					// case 1 simple scaling w/o config change
+					if s.initialCurrentReplicas[set.Name] != set.Status.CurrentReplicas ||
+						// case 2 actual config change which will also affect current replicas but this is supposed to
+						// protect against us missing that if it happens too fast
+						s.initialRevisions[set.Name] != set.Status.UpdateRevision && set.Status.UpdatedReplicas > 0 {
 						return nil
 					}
 				}
