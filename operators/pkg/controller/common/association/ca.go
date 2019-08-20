@@ -7,12 +7,11 @@ package association
 import (
 	"reflect"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +25,7 @@ func ElasticsearchCACertSecretName(associated v1alpha1.Associated, suffix string
 }
 
 // ReconcileCASecret keeps in sync a copy of the Elasticsearch CA.
-// It is the responsability of the controller to set watches on the ES CA.
+// It is the responsibility of the controller to set watches on the ES CA.
 func ReconcileCASecret(
 	client k8s.Client,
 	scheme *runtime.Scheme,
