@@ -8,7 +8,9 @@
 
 set -eou pipefail
 
-declare -a docker_images=("docker.elastic.co/eck/eck-ci:57e169ff162c2ea351a1956e1ad355b9")
+DOCKER_CI_IMAGE=$(cd ../build/ci/ && make show-image)
+
+declare -a docker_images=("$DOCKER_CI_IMAGE")
 
 # Pull all the required docker images
 for image in "${docker_images[@]}"
