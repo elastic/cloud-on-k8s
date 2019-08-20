@@ -6,6 +6,8 @@
 
 # This script used to "bake" Docker images into base image for Jenkins nodes.
 
+set -eou pipefail
+
 declare -a docker_images=("docker.elastic.co/eck/eck-ci:57e169ff162c2ea351a1956e1ad355b9")
 
 # Pull all the required docker images
