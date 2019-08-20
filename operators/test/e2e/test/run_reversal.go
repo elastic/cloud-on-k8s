@@ -30,7 +30,7 @@ func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuild
 		steps = steps.WithSteps(CheckTestSteps(toCreate, k))
 	}
 
-	var ctxs []ReversalTestContext
+	ctxs := make([]ReversalTestContext, len(mutationBuilders))
 	for _, mutateTo := range mutationBuilders {
 		ctxs = append(ctxs, mutateTo.MutationReversalTestContext())
 	}
