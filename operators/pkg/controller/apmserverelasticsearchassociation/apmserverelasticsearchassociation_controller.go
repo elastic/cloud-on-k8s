@@ -101,7 +101,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServerElasticsearchAssoc
 		return err
 	}
 
-	// Watch Secrets owned by a Kibana resource
+	// Watch Secrets owned by a ApmServer resource
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		OwnerType:    &apmtype.ApmServer{},
 		IsController: true,

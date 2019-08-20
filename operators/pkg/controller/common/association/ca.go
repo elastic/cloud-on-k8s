@@ -19,13 +19,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// ElasticsearchCACertSecretName returns the name of the secret holding Elasticsearch CA for this Kibana deployment
+// ElasticsearchCACertSecretName returns the name of the secret holdingElasticsearch CA
+// for the deployment of the associated resource.
 func ElasticsearchCACertSecretName(associated v1alpha1.Associated, suffix string) string {
 	return associated.GetName() + "-" + suffix
 }
 
 // ReconcileCASecret keeps in sync a copy of the Elasticsearch CA.
-// It is the responsibility of the controller to set watches on the ES CA.
+// It is the responsibility of the controller to set a watch on the ES CA.
 func ReconcileCASecret(
 	client k8s.Client,
 	scheme *runtime.Scheme,
