@@ -18,10 +18,6 @@ func ElasticsearchAuthSettings(
 	associated v1alpha1.Associated,
 ) (username, password string, err error) {
 	auth := associated.ElasticsearchAuth()
-	if auth.Inline != nil {
-		return auth.Inline.Username, auth.Inline.Password, nil
-	}
-
 	// if auth is provided via a secret, resolve credentials from it.
 	if auth.SecretKeyRef != nil {
 		secretObjKey := types.NamespacedName{Namespace: associated.GetNamespace(), Name: auth.SecretKeyRef.Name}

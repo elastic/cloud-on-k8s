@@ -14,6 +14,8 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
         CLUSTER_VERSION = '1.12.8'
         CLUSTER_NAME = "${BUILD_TAG}"
+        REGISTRY = "cloudonk8s.azurecr.io"
+        REPOSITORY = "operators"
     }
 
     stages {

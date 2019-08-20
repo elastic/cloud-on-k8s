@@ -32,7 +32,7 @@ func (f *fakeESClient) DeleteVotingConfigExclusions(ctx context.Context, waitFor
 
 func Test_ClearVotingConfigExclusions(t *testing.T) {
 	// dummy statefulset with 3 pods
-	statefulSet3rep := nodespec.CreateTestSset("nodes", "7.2.0", 3, true, true)
+	statefulSet3rep := nodespec.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build()
 	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es", Namespace: statefulSet3rep.Namespace}}
 	pods := make([]corev1.Pod, 0, *statefulSet3rep.Spec.Replicas)
 	for _, podName := range sset.PodNames(statefulSet3rep) {
@@ -46,7 +46,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 		}.Build())
 	}
 	// simulate 2 pods out of the 3
-	statefulSet2rep := nodespec.CreateTestSset("nodes", "7.2.0", 2, true, true)
+	statefulSet2rep := nodespec.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 2, Master: true, Data: true}.Build()
 	tests := []struct {
 		name               string
 		c                  k8s.Client
