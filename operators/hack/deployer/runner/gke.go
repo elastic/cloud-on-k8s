@@ -118,6 +118,15 @@ func (d *GkeDriver) auth() error {
 		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
 	} else {
 		log.Println("Authenticating as user...")
+		accounts, err := NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
+		if err != nil {
+			return err
+		}
+
+		if len(accounts) > 0 {
+			return nil
+		}
+
 		return NewCommand("gcloud auth login").Run()
 	}
 }
