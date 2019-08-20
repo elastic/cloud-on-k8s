@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-type ReversalTestState interface {
+type ReversalTestContext interface {
 	PreMutationSteps(k *K8sClient) StepList
 	PostMutationSteps(k *K8sClient) StepList
 	VerificationSteps(k *K8sClient) StepList
@@ -16,7 +16,7 @@ type ReversalTestState interface {
 
 // RunMutationReversal tests mutations that are either invalid or aborted mid way leading to a configuration reversal of
 // the original configuration.
-func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder, state ReversalTestState) {
+func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder) {
 	k := NewK8sClientOrFatal()
 	steps := StepList{}
 
@@ -29,16 +29,26 @@ func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuild
 	for _, toCreate := range creationBuilders {
 		steps = steps.WithSteps(CheckTestSteps(toCreate, k))
 	}
-	// set up the mutation test
-	steps = steps.WithSteps(state.PreMutationSteps(k))
+
+	var ctxs []ReversalTestContext
+	for _, mutateTo := range mutationBuilders {
+		ctxs = append(ctxs, mutateTo.MutationReversalTestContext())
+	}
+
+	for _, ctx := range ctxs {
+		// set up the mutation test
+		steps = steps.WithSteps(ctx.PreMutationSteps(k))
+	}
 
 	// trigger some mutations
 	for _, mutateTo := range mutationBuilders {
 		steps = steps.WithSteps(mutateTo.UpgradeTestSteps(k))
 	}
 
-	// ensure the desired progress has been made with the mutation
-	steps = steps.WithSteps(state.PostMutationSteps(k))
+	for _, ctx := range ctxs {
+		// ensure the desired progress has been made with the mutation
+		steps = steps.WithSteps(ctx.PostMutationSteps(k))
+	}
 
 	// now revert the mutation
 	for _, toRevertTo := range creationBuilders {
@@ -50,8 +60,10 @@ func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuild
 		steps = steps.WithSteps(CheckTestSteps(toCreate, k))
 	}
 
-	// verify the specifics of the upgrade reversal
-	steps = steps.WithSteps(state.VerificationSteps(k))
+	for _, ctx := range ctxs {
+		// verify the specifics of the upgrade reversal
+		steps = steps.WithSteps(ctx.VerificationSteps(k))
+	}
 
 	// and delete the resources
 	for _, mutateTo := range mutationBuilders {

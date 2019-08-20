@@ -15,22 +15,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type MutationReversalTestState struct {
+func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
+	return &mutationReversalTestContext{
+		es:                     b.Elasticsearch,
+		initialRevisions:       make(map[string]string),
+		initialCurrentReplicas: make(map[string]int32),
+	}
+}
+
+type mutationReversalTestContext struct {
 	es                     v1alpha1.Elasticsearch
 	initialCurrentReplicas map[string]int32
 	initialRevisions       map[string]string
 	dataIntegrity          *DataIntegrityCheck
 }
 
-func NewMutationReversalTestState(es v1alpha1.Elasticsearch) *MutationReversalTestState {
-	return &MutationReversalTestState{
-		es:                     es,
-		initialRevisions:       make(map[string]string),
-		initialCurrentReplicas: make(map[string]int32),
-	}
-}
-
-func (s *MutationReversalTestState) PreMutationSteps(k *test.K8sClient) test.StepList {
+func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Remember the current config revisions",
@@ -55,7 +55,7 @@ func (s *MutationReversalTestState) PreMutationSteps(k *test.K8sClient) test.Ste
 	}
 }
 
-func (s *MutationReversalTestState) PostMutationSteps(k *test.K8sClient) test.StepList {
+func (s *mutationReversalTestContext) PostMutationSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Verify that a config change is being applied",
@@ -80,7 +80,7 @@ func (s *MutationReversalTestState) PostMutationSteps(k *test.K8sClient) test.St
 	}
 }
 
-func (s *MutationReversalTestState) VerificationSteps(k *test.K8sClient) test.StepList {
+func (s *mutationReversalTestContext) VerificationSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "Verify no data loss has happened during the aborted upgrade",
@@ -91,4 +91,4 @@ func (s *MutationReversalTestState) VerificationSteps(k *test.K8sClient) test.St
 	}
 }
 
-var _ test.ReversalTestState = &MutationReversalTestState{}
+var _ test.ReversalTestContext = &mutationReversalTestContext{}

@@ -27,8 +27,7 @@ func TestReversalIllegalConfig(t *testing.T) {
 		},
 	})
 
-	state := elasticsearch.NewMutationReversalTestState(b.Elasticsearch)
-	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{bogus}, state)
+	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{bogus})
 }
 
 func TestReversalRiskyMasterDownscale(t *testing.T) {
@@ -41,8 +40,7 @@ func TestReversalRiskyMasterDownscale(t *testing.T) {
 	// TODO it might be necessary to accept some data loss for 6.x here
 	down := b.WithNoESTopology().WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	state := elasticsearch.NewMutationReversalTestState(b.Elasticsearch)
-	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{down}, state)
+	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{down})
 }
 
 func TestReversalStatefulSetRename(t *testing.T) {
@@ -53,8 +51,7 @@ func TestReversalStatefulSetRename(t *testing.T) {
 	copy.Name = "other"
 	renamed := b.WithNoESTopology().WithNodeSpec(copy)
 
-	state := elasticsearch.NewMutationReversalTestState(b.Elasticsearch)
-	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{renamed}, state)
+	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{renamed})
 }
 
 func TestRiskyMasterReconfiguration(t *testing.T) {
@@ -86,6 +83,5 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
 		})
 
-	state := elasticsearch.NewMutationReversalTestState(b.Elasticsearch)
-	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{noMasterMaster}, state)
+	test.RunMutationReversal(t, []test.Builder{b}, []test.Builder{noMasterMaster})
 }
