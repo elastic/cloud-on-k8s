@@ -30,7 +30,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	esState := NewLazyESState(esClient)
 
 	// Maybe upgrade some of the nodes.
-	res := d.doRollingUpgrade(statefulSets, esClient, esState)
+	res := d.doRollingUpgrade(statefulSets, esClient, esState, d.upgradeStatefulSetPartition)
 	results.WithResults(res)
 
 	// Maybe re-enable shards allocation if upgraded nodes are back into the cluster.
@@ -44,6 +44,7 @@ func (d *defaultDriver) doRollingUpgrade(
 	statefulSets sset.StatefulSetList,
 	esClient esclient.Client,
 	esState ESState,
+	updater func(statefulSet *appsv1.StatefulSet, newPartition int32) error,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -121,7 +122,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			}
 
 			// Upgrade the pod.
-			if err := d.upgradeStatefulSetPartition(&statefulSet, partition); err != nil {
+			if err := updater(&statefulSet, partition); err != nil {
 				return results.WithError(err)
 			}
 		}
