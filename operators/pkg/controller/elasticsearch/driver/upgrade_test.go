@@ -174,14 +174,11 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var runtimeObjects []runtime.Object
 			for i := range tt.args.statefulSets {
 				runtimeObjects = append(runtimeObjects, &tt.args.statefulSets[i])
 			}
-
 			k8sClient := k8s.WrapClient(fake.NewFakeClient(runtimeObjects...))
-
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
 					Client: k8sClient,
