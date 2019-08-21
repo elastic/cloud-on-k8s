@@ -251,6 +251,14 @@ ifeq ($(PSP), 1)
 	$(MAKE) apply-psp
 endif
 
+KIND_NODES ?= 0
+KIND_NODE_IMAGE ?= kindest/node:v1.15.0
+KIND_CLUSTER_NAME ?= eck
+bootstrap-kind:
+	$(MAKE) kind-cluster-$(KIND_NODES)
+	@ echo "Run the following command to update your curent context:"
+	@ echo "export KUBECONFIG=\"$$(kind get kubeconfig-path --name=${KIND_CLUSTER_NAME})\""
+
 delete-gke: require-gcloud-project
 	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
 
@@ -375,6 +383,7 @@ endif
 # "make kind-with-operator-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a one node cluster
 # "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" to start a 1 master + 3 nodes cluster
 kind-cluster-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-with-operator-%: export KIND_CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-cluster-%: kind-node-variable-check
 	./hack/kind/kind.sh \
 		--nodes "${*}" \
@@ -382,6 +391,7 @@ kind-cluster-%: kind-node-variable-check
 
 ## Same as above but build and deploy the operator image
 kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-with-operator-%: export KIND_CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-with-operator-%: kind-node-variable-check docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \

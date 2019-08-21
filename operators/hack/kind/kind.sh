@@ -17,6 +17,7 @@ set -e
 set -x
 
 KIND_LOG_LEVEL=${KIND_LOG_LEVEL:-warning}
+KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME:-eck-e2e}
 NODES=3
 MANIFEST=/tmp/cluster.yml
 
@@ -44,22 +45,22 @@ EOT
     do
       echo '  - role: worker' >> ${MANIFEST}
       if [[ $i -gt 1 ]]; then
-      workers="${workers},eck-e2e-worker${i}"
+      workers="${workers},${KIND_CLUSTER_NAME}-worker${i}"
       else
-      workers="eck-e2e-worker"
+      workers="${KIND_CLUSTER_NAME}-worker"
       fi
 
     done
   else
     # There's only a controle plane
-    workers=eck-e2e-control-plane
+    workers=${KIND_CLUSTER_NAME}-control-plane
   fi
 
 }
 
 function cleanup_kind_cluster() {
   echo "Cleaning up kind cluster"
-  kind delete cluster --name=eck-e2e
+  kind delete cluster --name=${KIND_CLUSTER_NAME}
 }
 
 function setup_kind_cluster() {
@@ -75,9 +76,9 @@ function setup_kind_cluster() {
   create_manifest
 
   # Delete any previous e2e Kind cluster
-  echo "Deleting previous Kind cluster with name=eck-e2e"
-  if ! (kind delete cluster --name=eck-e2e) > /dev/null; then
-    echo "No existing kind cluster with name eck-e2e. Continue..."
+  echo "Deleting previous Kind cluster with name=${KIND_CLUSTER_NAME}"
+  if ! (kind delete cluster --name=${KIND_CLUSTER_NAME}) > /dev/null; then
+    echo "No existing kind cluster with name ${KIND_CLUSTER_NAME}. Continue..."
   fi
 
   config_opts=""
@@ -85,12 +86,12 @@ function setup_kind_cluster() {
     config_opts="--config ${MANIFEST}"
   fi
   # Create Kind cluster
-  if ! (kind create cluster --name=eck-e2e ${config_opts} --loglevel "${KIND_LOG_LEVEL}" --retain --image "${NODE_IMAGE}"); then
+  if ! (kind create cluster --name=${KIND_CLUSTER_NAME} ${config_opts} --loglevel "${KIND_LOG_LEVEL}" --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1
   fi
 
-  KUBECONFIG="$(kind get kubeconfig-path --name="eck-e2e")"
+  KUBECONFIG="$(kind get kubeconfig-path --name="${KIND_CLUSTER_NAME}")"
   export KUBECONFIG
 
   # setup storage
@@ -137,7 +138,7 @@ fi
 if [[ -n "${LOAD_IMAGES}" ]]; then
   IMAGES=(${LOAD_IMAGES//,/ })
   for image in "${IMAGES[@]}"; do
-          kind --loglevel "${KIND_LOG_LEVEL}" --name eck-e2e load docker-image --nodes ${workers} "${image}"
+          kind --loglevel "${KIND_LOG_LEVEL}" --name ${KIND_CLUSTER_NAME} load docker-image --nodes ${workers} "${image}"
   done
 fi
 
