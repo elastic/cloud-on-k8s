@@ -78,7 +78,6 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				statefulSets: sset.StatefulSetList{
 					nodespec.TestSset{
 						Name:      "default",
-						Version:   "7.3.0",
 						Replicas:  1,
 						Master:    true,
 						Data:      true,
@@ -103,7 +102,6 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				statefulSets: sset.StatefulSetList{
 					nodespec.TestSset{
 						Name:      "default",
-						Version:   "7.3.0",
 						Replicas:  3,
 						Master:    true,
 						Data:      true,
@@ -128,13 +126,11 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				statefulSets: sset.StatefulSetList{
 					nodespec.TestSset{
 						Name:     "master",
-						Version:  "7.3.0",
 						Replicas: 3,
 						Master:   true,
 					}.Build(),
 					nodespec.TestSset{
 						Name:      "data",
-						Version:   "7.3.0",
 						Replicas:  1,
 						Data:      true,
 						Partition: 1,
@@ -158,7 +154,6 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				statefulSets: sset.StatefulSetList{
 					nodespec.TestSset{
 						Name:      "default",
-						Version:   "7.3.0",
 						Replicas:  1,
 						Master:    true,
 						Data:      true,
