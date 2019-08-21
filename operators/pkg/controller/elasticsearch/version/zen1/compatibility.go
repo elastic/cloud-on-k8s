@@ -11,18 +11,18 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 )
 
-// zen1VersionMatch returns true if the given Elasticsearch version is compatible with zen1.
-func zen1VersionMatch(v version.Version) bool {
+// versionCompatibleWithZen1 returns true if the given Elasticsearch version is compatible with zen1.
+func versionCompatibleWithZen1(v version.Version) bool {
 	return v.Major < 7
 }
 
 // IsCompatibleWithZen1 returns true if the given StatefulSet is compatible with zen1.
 func IsCompatibleWithZen1(statefulSet appsv1.StatefulSet) bool {
-	return sset.ESVersionMatch(statefulSet, zen1VersionMatch)
+	return sset.ESVersionMatch(statefulSet, versionCompatibleWithZen1)
 }
 
 // AtLeastOneNodeCompatibleWithZen1 returns true if the given StatefulSetList contains
 // at least one StatefulSet compatible with zen1.
 func AtLeastOneNodeCompatibleWithZen1(statefulSets sset.StatefulSetList) bool {
-	return sset.AtLeastOneESVersionMatch(statefulSets, zen1VersionMatch)
+	return sset.AtLeastOneESVersionMatch(statefulSets, versionCompatibleWithZen1)
 }

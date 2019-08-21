@@ -36,6 +36,8 @@ type Builder struct {
 	Elasticsearch estype.Elasticsearch
 }
 
+var _ test.Builder = Builder{}
+
 func NewBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
@@ -104,7 +106,7 @@ func (b Builder) WithNoESTopology() Builder {
 }
 
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.withESTopologyElement(estype.NodeSpec{
+	return b.WithNodeSpec(estype.NodeSpec{
 		Name:      "master",
 		NodeCount: int32(count),
 		Config: &commonv1alpha1.Config{
@@ -117,7 +119,7 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 }
 
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.withESTopologyElement(estype.NodeSpec{
+	return b.WithNodeSpec(estype.NodeSpec{
 		Name:      "data",
 		NodeCount: int32(count),
 		Config: &commonv1alpha1.Config{
@@ -130,7 +132,7 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 }
 
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.withESTopologyElement(estype.NodeSpec{
+	return b.WithNodeSpec(estype.NodeSpec{
 		Name:      "masterdata",
 		NodeCount: int32(count),
 		Config: &commonv1alpha1.Config{
@@ -140,8 +142,8 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 	})
 }
 
-func (b Builder) withESTopologyElement(topologyElement estype.NodeSpec) Builder {
-	b.Elasticsearch.Spec.Nodes = append(b.Elasticsearch.Spec.Nodes, topologyElement)
+func (b Builder) WithNodeSpec(nodeSpec estype.NodeSpec) Builder {
+	b.Elasticsearch.Spec.Nodes = append(b.Elasticsearch.Spec.Nodes, nodeSpec)
 	return b
 }
 
@@ -204,6 +206,24 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 	for i := range b.Elasticsearch.Spec.Nodes {
 		b.Elasticsearch.Spec.Nodes[i].PodTemplate = pt
 	}
+	return b
+}
+
+func (b Builder) WithAdditionalConfig(nodeSpecCfg map[string]map[string]interface{}) Builder {
+	var newNodes []estype.NodeSpec
+	for node, cfg := range nodeSpecCfg {
+		for _, n := range b.Elasticsearch.Spec.Nodes {
+			if n.Name == node {
+				newCfg := n.Config.DeepCopy()
+				for k, v := range cfg {
+					newCfg.Data[k] = v
+				}
+				n.Config = newCfg
+			}
+			newNodes = append(newNodes, n)
+		}
+	}
+	b.Elasticsearch.Spec.Nodes = newNodes
 	return b
 }
 

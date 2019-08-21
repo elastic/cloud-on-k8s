@@ -19,6 +19,8 @@ type Builder struct {
 	ApmServer apmtype.ApmServer
 }
 
+var _ test.Builder = Builder{}
+
 func NewBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,

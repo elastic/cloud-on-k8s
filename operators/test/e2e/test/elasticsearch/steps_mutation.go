@@ -20,11 +20,35 @@ import (
 
 const continuousHealthCheckTimeout = 25 * time.Second
 
+func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
+	return test.StepList{
+		test.Step{
+			Name: "Applying the Elasticsearch mutation should succeed",
+			Test: func(t *testing.T) {
+				var curEs estype.Elasticsearch
+				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
+				curEs.Spec = b.Elasticsearch.Spec
+				require.NoError(t, k.Client.Update(&curEs))
+			},
+		},
+	}
+}
+
 func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
 	var continuousHealthChecks *ContinuousHealthCheck
+	var dataIntegrityCheck *DataIntegrityCheck
 
 	return test.StepList{
+		test.Step{
+			Name: "Add some data to the cluster before starting the mutation",
+			Test: func(t *testing.T) {
+				var err error
+				dataIntegrityCheck, err = NewDataIntegrityCheck(b.Elasticsearch, k)
+				require.NoError(t, err)
+				require.NoError(t, dataIntegrityCheck.Init())
+			},
+		},
 		test.Step{
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
 			Test: func(t *testing.T) {
@@ -35,16 +59,8 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			},
 		},
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-		test.Step{
-			Name: "Applying the Elasticsearch mutation should succeed",
-			Test: func(t *testing.T) {
-				var curEs estype.Elasticsearch
-				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
-				curEs.Spec = b.Elasticsearch.Spec
-				require.NoError(t, k.Client.Update(&curEs))
-			},
-		},
 	}.
+		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
@@ -57,6 +73,12 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 					for _, f := range continuousHealthChecks.Failures {
 						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
 					}
+				},
+			},
+			test.Step{
+				Name: "Data added initially should still be present",
+				Test: func(t *testing.T) {
+					require.NoError(t, dataIntegrityCheck.Verify())
 				},
 			},
 		})
@@ -113,7 +135,7 @@ func (hc *ContinuousHealthCheck) Start() {
 				health, err := hc.esClient.GetClusterHealth(ctx)
 				if err != nil {
 					// TODO: Temporarily account only red clusters, see https://github.com/elastic/cloud-on-k8s/issues/614
-					//hc.AppendErr(err)
+					// hc.AppendErr(err)
 					continue
 				}
 				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {

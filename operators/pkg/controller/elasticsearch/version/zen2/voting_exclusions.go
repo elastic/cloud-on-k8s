@@ -7,7 +7,6 @@ package zen2
 import (
 	"context"
 
-	appsv1 "k8s.io/api/apps/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -21,11 +20,15 @@ var (
 )
 
 // AddToVotingConfigExclusions adds the given node names to exclude from voting config exclusions.
-func AddToVotingConfigExclusions(esClient client.Client, sset appsv1.StatefulSet, excludeNodes []string) error {
-	if !IsCompatibleWithZen2(sset) {
+func AddToVotingConfigExclusions(c k8s.Client, esClient client.Client, es v1alpha1.Elasticsearch, excludeNodes []string) error {
+	compatible, err := AllMastersCompatibleWithZen2(c, es)
+	if err != nil {
+		return err
+	}
+	if !compatible {
 		return nil
 	}
-	log.Info("Setting voting config exclusions", "namespace", sset.Namespace, "nodes", excludeNodes)
+	log.Info("Setting voting config exclusions", "namespace", es.Namespace, "nodes", excludeNodes)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
 	if err := esClient.AddVotingConfigExclusions(ctx, excludeNodes, ""); err != nil {
@@ -50,9 +53,15 @@ func canClearVotingConfigExclusions(c k8s.Client, es v1alpha1.Elasticsearch, act
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.
 // It returns true if this should be retried later (re-queued).
 func ClearVotingConfigExclusions(es v1alpha1.Elasticsearch, c k8s.Client, esClient client.Client, actualStatefulSets sset.StatefulSetList) (bool, error) {
-	if !AtLeastOneNodeCompatibleWithZen2(actualStatefulSets) {
+	compatible, err := AllMastersCompatibleWithZen2(c, es)
+	if err != nil {
+		return false, err
+	}
+	if !compatible {
+		// nothing to do
 		return false, nil
 	}
+
 	canClear, err := canClearVotingConfigExclusions(c, es, actualStatefulSets)
 	if err != nil {
 		return false, err

@@ -13,7 +13,6 @@ Current features:
 *  TLS Certificates management
 *  Safe Elasticsearch cluster configuration & topology changes
 *  Persistent volumes usage
-*  [Dynamic local persistent volumes provisioning](https://github.com/elastic/cloud-on-k8s/tree/master/local-volume)
 *  Custom node configuration and attributes
 *  Secure settings keystore updates
 

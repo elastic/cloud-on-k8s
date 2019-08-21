@@ -23,9 +23,9 @@ func TestResourcesList_MasterNodesNames(t *testing.T) {
 		{
 			name: "3 master-only nodes, 3 master-data nodes, 3 data nodes",
 			l: ResourcesList{
-				{StatefulSet: CreateTestSset("master-only", "7.2.0", 3, true, false)},
-				{StatefulSet: CreateTestSset("master-data", "7.2.0", 3, true, true)},
-				{StatefulSet: CreateTestSset("data-only", "7.2.0", 3, false, true)},
+				{StatefulSet: TestSset{Name: "master-only", Version: "7.2.0", Replicas: 3, Master: true, Data: false}.Build()},
+				{StatefulSet: TestSset{Name: "master-data", Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build()},
+				{StatefulSet: TestSset{Name: "data-only", Version: "7.2.0", Replicas: 3, Master: false, Data: true}.Build()},
 			},
 			want: []string{
 				"master-only-0", "master-only-1", "master-only-2",

@@ -5,6 +5,7 @@
 package client
 
 import (
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -327,4 +328,27 @@ type Cluster struct {
 // RemoteClusterSeeds is the set of seeds to use in a remote cluster setting.
 type RemoteCluster struct {
 	Seeds []string `json:"seeds"`
+}
+
+// Hit represents a single search hit.
+type Hit struct {
+	Index  string                 `json:"_index"`
+	Type   string                 `json:"_type"`
+	ID     string                 `json:"_id"`
+	Score  float64                `json:"_score"`
+	Source map[string]interface{} `json:"_source"`
+}
+
+// Hits are the collections of search hits.
+type Hits struct {
+	Total json.RawMessage // model when needed
+	Hits  []Hit           `json:"hits"`
+}
+
+// SearchResults are the results returned from a _search.
+type SearchResults struct {
+	Took   int
+	Hits   Hits                       `json:"hits"`
+	Shards json.RawMessage            // model when needed
+	Aggs   map[string]json.RawMessage // model when needed
 }
