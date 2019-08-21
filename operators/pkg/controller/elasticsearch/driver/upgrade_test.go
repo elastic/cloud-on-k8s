@@ -239,8 +239,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					nodespec.TestSset{
-						Name: "default",
-						//	Version:   "7.3.0",
+						Name:      "default",
 						Replicas:  1,
 						Master:    true,
 						Data:      true,
