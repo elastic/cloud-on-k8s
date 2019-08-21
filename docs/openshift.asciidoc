@@ -81,7 +81,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: "7.2.0"
+  version: 7.3.0
   setVmMaxMapCount: false
   nodes:
   - config:
@@ -118,7 +118,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: "7.2.0"
+  version: 7.3.0
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
@@ -186,7 +186,7 @@ kind: ApmServer
 metadata:
   name: apm-server-sample
 spec:
-  version: 7.2.0
+  version: 7.3.0
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
