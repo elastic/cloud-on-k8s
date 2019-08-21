@@ -63,7 +63,7 @@ const (
 	// kibanaUserSuffix is used to suffix user and associated secret resources.
 	kibanaUserSuffix = "kibana-user"
 	// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName
-	ElasticsearchCASecretSuffix = "kb-es-ca"
+	ElasticsearchCASecretSuffix = "kb-es-ca" // nolint
 )
 
 var (

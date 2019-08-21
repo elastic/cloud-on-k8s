@@ -44,7 +44,7 @@ import (
 const (
 	name                        = "apm-es-association-controller"
 	apmUserSuffix               = "apm-user"
-	elasticsearchCASecretSuffix = "apm-es-ca"
+	elasticsearchCASecretSuffix = "apm-es-ca" // nolint
 )
 
 var (

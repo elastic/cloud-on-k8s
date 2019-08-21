@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const ElasticsearchCASecretSuffix = "xx-es-ca"
+const ElasticsearchCASecretSuffix = "xx-es-ca" // nolint
 
 func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	// setup scheme and init watches
