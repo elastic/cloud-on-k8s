@@ -188,12 +188,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 			mu := mockUpdater{}
 			fc := fakeESClient{}
 			if got := d.doRollingUpgrade(tt.args.statefulSets, &fc, tt.args.esState, mu.updatePartition); !reflect.DeepEqual(got, tt.want) {
-				result, err := got.Aggregate()
-				wantRes, wantErr := tt.want.Aggregate()
-				t.Errorf("doRollingUpgrade() = %v, want %v,err = %v, want %v", result, wantRes, err, wantErr)
-			}
-			if diff := deep.Equal(map[string]int32(mu), tt.wantNewPartition); diff != nil {
-				t.Error(diff)
+				t.Errorf("doRollingUpgrade() = %+v, want %+v", got, tt.want)
 			}
 			require.Equal(t, tt.wantSyncedFlush, fc.SyncedFlushCalled, "Synced Flush API call")
 		})
