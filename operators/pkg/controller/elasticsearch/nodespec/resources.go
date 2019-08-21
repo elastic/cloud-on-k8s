@@ -70,7 +70,7 @@ func (l ResourcesList) MasterNodesNames() []string {
 	var masters []string
 	for _, s := range l.StatefulSets() {
 		if label.IsMasterNodeSet(s) {
-			for i := int32(0); i < sset.Replicas(s); i++ {
+			for i := int32(0); i < sset.GetReplicas(s); i++ {
 				masters = append(masters, sset.PodName(s.Name, i))
 			}
 		}
