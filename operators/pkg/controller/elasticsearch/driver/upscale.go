@@ -44,7 +44,7 @@ func HandleUpscaleAndSpecChanges(
 		}
 		ssetToApply := *nodeSpecRes.StatefulSet.DeepCopy()
 		actual, exists := actualStatefulSets.GetByName(ssetToApply.Name)
-		if exists && sset.Replicas(ssetToApply) < sset.Replicas(actual) {
+		if exists && sset.GetReplicas(ssetToApply) < sset.GetReplicas(actual) {
 			// sset needs to be scaled down
 			// update the sset to use the new spec but don't scale replicas down for now
 			ssetToApply.Spec.Replicas = actual.Spec.Replicas

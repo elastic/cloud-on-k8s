@@ -81,11 +81,11 @@ func noOnGoingDeletion(downscaleCtx downscaleContext, actualStatefulSets sset.St
 func calculateDownscales(expectedStatefulSets sset.StatefulSetList, actualStatefulSets sset.StatefulSetList) []ssetDownscale {
 	downscales := []ssetDownscale{}
 	for _, actualSset := range actualStatefulSets {
-		actualReplicas := sset.Replicas(actualSset)
+		actualReplicas := sset.GetReplicas(actualSset)
 		expectedSset, shouldExist := expectedStatefulSets.GetByName(actualSset.Name)
 		expectedReplicas := int32(0) // sset removal
 		if shouldExist {             // sset downscale
-			expectedReplicas = sset.Replicas(expectedSset)
+			expectedReplicas = sset.GetReplicas(expectedSset)
 		}
 		if expectedReplicas == 0 || // removal
 			expectedReplicas < actualReplicas { // downscale
