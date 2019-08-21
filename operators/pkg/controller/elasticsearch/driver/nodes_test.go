@@ -41,7 +41,7 @@ func Test_expectedResources_zen2(t *testing.T) {
 	resources, err := expectedResources(k8s.WrapClient(fake.NewFakeClient()), es, observer.State{}, nil)
 	require.NoError(t, err)
 
-	// 3 StatefulSets should be created
+	// 2 StatefulSets should be created
 	require.Equal(t, 2, len(resources.StatefulSets()))
 	// master nodes config should be patched to account for zen2 initial master nodes
 	require.NotEmpty(t, resources[0].Config.HasKeys([]string{settings.ClusterInitialMasterNodes}))
@@ -73,7 +73,7 @@ func Test_expectedResources_zen1(t *testing.T) {
 	resources, err := expectedResources(k8s.WrapClient(fake.NewFakeClient()), es, observer.State{}, nil)
 	require.NoError(t, err)
 
-	// 3 StatefulSets should be created
+	// 2 StatefulSets should be created
 	require.Equal(t, 2, len(resources.StatefulSets()))
 	// master nodes config should be patched to account for zen1 minimum_master_nodes
 	require.NotEmpty(t, resources[0].Config.HasKeys([]string{settings.DiscoveryZenMinimumMasterNodes}))
