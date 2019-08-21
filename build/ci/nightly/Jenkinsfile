@@ -16,14 +16,21 @@ pipeline {
         REGISTRY = "push.docker.elastic.co"
         REPOSITORY = "eck-snapshots"
         IMG_NAME = "eck-operator"
-        SNAPSHOT = "true"
-        DOCKER_IMAGE_NO_TAG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}"
     }
 
     stages {
         stage('Run unit and integration tests') {
             steps {
-                sh 'make -C build/ci ci-pr'
+                sh """
+                    cat > operators/environment <<EOF
+GCLOUD_PROJECT = $GCLOUD_PROJECT
+REGISTRY = "push.docker.elastic.co"
+REPOSITORY = "eck-snapshots"
+IMG_NAME = "eck-operator"
+SNAPSHOT = "true"
+EOF
+                    make -C build/ci COMMAND=ci ci
+                """
             }
         }
         stage('Build and push Docker image') {
@@ -33,7 +40,11 @@ pipeline {
                     export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     export LATEST_RELEASED_IMG=docker.elastic.co/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     echo \$LATEST_RELEASED_IMG > eck_image.txt
-                    make -C build/ci ci-release
+                    cat >> operators/environment <<EOF
+OPERATOR_IMAGE = "$OPERATOR_IMAGE"
+LATEST_RELEASED_IMG = "$LATEST_RELEASED_IMG"
+EOF
+                    make -C build/ci COMMAND=ci-release ci
                 """
             }
         }
@@ -58,5 +69,4 @@ pipeline {
             cleanWs()
         }
     }
-
 }

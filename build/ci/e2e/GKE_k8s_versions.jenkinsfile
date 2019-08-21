@@ -12,11 +12,7 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
-        REGISTRY = "eu.gcr.io"
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        OPERATOR_IMAGE = "${IMAGE}"
-        LATEST_RELEASED_IMG = "${IMAGE}"
-        SKIP_DOCKER_COMMAND = 'true'
     }
 
     stages {
@@ -28,8 +24,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('1.11', "${BUILD_TAG}-11")
-                        sh 'make -C build/ci ci-e2e'
+                        runWith('1.11', "${BUILD_TAG}-11")
                     }
                 }
                 stage("1.12") {
@@ -38,8 +33,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('1.12', "${BUILD_TAG}-12")
-                        sh 'make -C build/ci ci-e2e'
+                        runWith('1.12', "${BUILD_TAG}-12")
                     }
                 }
                 stage("1.13") {
@@ -48,8 +42,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('1.13', "${BUILD_TAG}-13")
-                        sh 'make -C build/ci ci-e2e'
+                        runWith('1.13', "${BUILD_TAG}-13")
                     }
                 }
             }
@@ -81,8 +74,16 @@ pipeline {
     }
 }
 
-void createRunConfig(clusterVersion, clusterName) {
+void runWith(clusterVersion, clusterName) {
     sh """
+        cat >environment <<EOF
+GCLOUD_PROJECT = "$GCLOUD_PROJECT"
+LATEST_RELEASED_IMG = "$IMAGE"
+OPERATOR_IMAGE = "$IMAGE"
+REGISTRY = eu.gcr.io
+REPOSITORY = "$GCLOUD_PROJECT"
+SKIP_DOCKER_COMMAND = true
+EOF
         cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
@@ -96,5 +97,6 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
+        make -C build/ci COMMAND=ci-e2e ci
     """
 }

@@ -12,12 +12,7 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
-        REGISTRY = "eu.gcr.io"
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        TESTS_MATCH = 'TestSmoke'
-        CLUSTER_VERSION = '1.12'
-        CLUSTER_NAME = "${BUILD_TAG}"
-        SKIP_DOCKER_COMMAND = "false"
     }
 
     stages {
@@ -44,7 +39,8 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        sh 'make -C build/ci ci-pr'
+                        createConfig()
+                        sh 'make -C build/ci COMMAND=ci ci'
                     }
                 }
                 stage("Run smoke E2E tests") {
@@ -58,11 +54,12 @@ pipeline {
                         label 'linux'
                     }
                     steps {
+                        createConfig()
                         sh """
                             cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
-  kubernetesVersion: "$CLUSTER_VERSION"
+  kubernetesVersion: "1.12"
   clusterName: $CLUSTER_NAME
   vaultInfo:
     address: $VAULT_ADDR
@@ -71,7 +68,7 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                            make -C build/ci ci-e2e
+                            make -C build/ci COMMAND=ci-e2e ci
                         """
                     }
                 }
@@ -99,4 +96,17 @@ def notOnlyDocs() {
         script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
     	returnStatus: true
     ) == 0
+}
+
+void createConfig() {
+    sh """
+        cat >operators/environment <<EOF
+CLUSTER_NAME = "$BUILD_TAG"
+REGISTRY = eu.gcr.io
+REPOSITORY = "$GCLOUD_PROJECT"
+TESTS_MATCH = TestSmoke
+SKIP_DOCKER_COMMAND = false
+IMG_SUFFIX = -ci
+EOF
+    """
 }

@@ -6,6 +6,8 @@
 ##  --      Variables      --  ##
 #################################
 
+# reads file 'environment', ignores if it doesn't exist
+-include environment
 
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
@@ -25,11 +27,8 @@ LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
 # on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
-	REPOSITORY = ${GCLOUD_PROJECT}
-else ifneq ($(findstring azmk8s.io:443,$(shell kubectl config view --minify -o=jsonpath={.clusters[*].cluster.server} 2> /dev/null)),)
-	REGISTRY ?= cloudonk8s.azurecr.io
-	REPOSITORY ?= operators
-else ifeq ($(REGISTRY),)
+	REPOSITORY ?= ${GCLOUD_PROJECT}
+else
 	# default to local registry
 	REGISTRY ?= localhost:5000
 endif
@@ -38,11 +37,6 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --short --verify HEAD)
-
-ifeq ($(OPERATOR_IMAGE),)
-	# we never want this empty
-	OPERATOR_IMAGE := $(IMG):$(VERSION)-$(TAG)
-endif
 OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
 
 
@@ -300,9 +294,7 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-ifeq ($(STACK_VERSION),)
-	STACK_VERSION = 7.3.0
-endif
+STACK_VERSION ?= 7.3.0
 
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
@@ -341,20 +333,25 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
+ci: check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
-ci-e2e: run-deployer
-	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
+ci-e2e: run-deployer install-crds apply-psp e2e
 
-run-deployer: dep-vendor-only build-deployer
+run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
-ci-release: export GO_TAGS = release
-ci-release: export LICENSE_PUBKEY = $(CURDIR)/build/ci/license.key
-ci-release: clean
-	@ $(MAKE) dep-vendor-only generate docker-build docker-push
+ci-release: clean dep-vendor-only generate build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
+
+VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
+# reads AWS creds for yaml upload
+# uploads to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
+yaml-upload:
+	@ AWS_ACCESS_KEY_ID=$(shell vault read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS)) \
+		AWS_SECRET_ACCESS_KEY=$(shell vault read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS)) \
+		bash -c "aws s3 cp $(GO_MOUNT_PATH)/operators/config/all-in-one.yaml \
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml"
 
 ##########################
 ##  --   Helpers    --  ##
