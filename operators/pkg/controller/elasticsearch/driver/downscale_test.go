@@ -109,7 +109,8 @@ type fakeESClient struct { //nolint:maligned
 	ExcludeFromShardAllocationCalledWith string
 
 	EnableShardAllocationCalled bool
-	SyncedFlushCalled           bool
+
+	SyncedFlushCalled bool
 }
 
 func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, n int) error {

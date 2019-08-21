@@ -44,7 +44,7 @@ func (d *defaultDriver) doRollingUpgrade(
 	statefulSets sset.StatefulSetList,
 	esClient esclient.Client,
 	esState ESState,
-	updater func(statefulSet *appsv1.StatefulSet, newPartition int32) error,
+	upgrader func(statefulSet *appsv1.StatefulSet, newPartition int32) error,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -122,7 +122,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			}
 
 			// Upgrade the pod.
-			if err := updater(&statefulSet, partition); err != nil {
+			if err := upgrader(&statefulSet, partition); err != nil {
 				return results.WithError(err)
 			}
 		}

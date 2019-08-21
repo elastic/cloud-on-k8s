@@ -50,7 +50,6 @@ var defaultESState = mockESState{
 type mockUpdater map[string]int32
 
 func (m mockUpdater) updatePartition(sset *appsv1.StatefulSet, newPartition int32) error {
-	// println(fmt.Sprintf("%s set to %d", sset.Name, newPartition))
 	m[sset.Name] = newPartition
 	return nil
 }
