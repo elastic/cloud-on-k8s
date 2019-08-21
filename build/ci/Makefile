@@ -25,6 +25,9 @@ VAULT_TOKEN ?= $(shell vault write -field=token auth/approle/login role_id=$(VAU
 check-license-header:
 	./../check-license-header.sh
 
+show-image:
+	@ echo $(CI_IMAGE)
+
 # login to vault and retrieve gke creds into $GKE_CREDS_FILE
 vault-gke-creds:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) \
