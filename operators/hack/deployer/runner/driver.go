@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package main
+package runner
 
 import (
 	"fmt"
@@ -23,16 +23,26 @@ type DriverFactory interface {
 // Driver allows executing a plan
 type Driver interface {
 	Execute() error
+	GetCredentials() error
+}
+
+func GetPlan(plans []Plan, config RunConfig) (Plan, error) {
+	plan, err := choosePlan(plans, config.Id)
+	if err != nil {
+		return Plan{}, err
+	}
+
+	plan, err = merge(plan, config.Overrides)
+	if err != nil {
+		return Plan{}, err
+	}
+
+	return plan, nil
 }
 
 // GetDriver picks plan based on the run config and returns the appropriate driver
 func GetDriver(plans []Plan, config RunConfig) (Driver, error) {
-	plan, err := choosePlan(plans, config.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	plan, err = merge(plan, config.Overrides)
+	plan, err := GetPlan(plans, config)
 	if err != nil {
 		return nil, err
 	}

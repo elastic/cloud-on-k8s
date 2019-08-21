@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package main
+package runner
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ type AksDriverFactory struct {
 type AksDriver struct {
 	plan        Plan
 	ctx         map[string]interface{}
-	vaultClient *Client
+	vaultClient *VaultClient
 }
 
 func (gdf *AksDriverFactory) Create(plan Plan) (Driver, error) {
@@ -98,7 +98,7 @@ func (d *AksDriver) Execute() error {
 			}
 		}
 
-		if err := d.getCredentials(); err != nil {
+		if err := d.GetCredentials(); err != nil {
 			return err
 		}
 	default:
@@ -195,7 +195,7 @@ func (d *AksDriver) configureDocker() error {
 		Run()
 }
 
-func (d *AksDriver) getCredentials() error {
+func (d *AksDriver) GetCredentials() error {
 	log.Print("Getting credentials...")
 	cmd := `az aks get-credentials --resource-group {{.ResourceGroup}} --name {{.ClusterName}}`
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()

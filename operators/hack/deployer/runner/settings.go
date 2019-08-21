@@ -2,7 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package main
+package runner
+
+import (
+	"io/ioutil"
+
+	"github.com/ghodss/yaml"
+)
 
 // Plans encapsulates list of plans, expected to map to a file
 type Plans struct {
@@ -56,4 +62,30 @@ type AksSettings struct {
 type RunConfig struct {
 	Id        string                 `yaml:"id"`
 	Overrides map[string]interface{} `yaml:"overrides"`
+}
+
+func ParseFiles(plansFile, runConfigFile string) (Plans, RunConfig, error) {
+	yml, err := ioutil.ReadFile(plansFile)
+	if err != nil {
+		return Plans{}, RunConfig{}, err
+	}
+
+	var plans Plans
+	err = yaml.Unmarshal(yml, &plans)
+	if err != nil {
+		return Plans{}, RunConfig{}, err
+	}
+
+	yml, err = ioutil.ReadFile(runConfigFile)
+	if err != nil {
+		return Plans{}, RunConfig{}, err
+	}
+
+	var runConfig RunConfig
+	err = yaml.Unmarshal(yml, &runConfig)
+	if err != nil {
+		return Plans{}, RunConfig{}, err
+	}
+
+	return plans, runConfig, nil
 }

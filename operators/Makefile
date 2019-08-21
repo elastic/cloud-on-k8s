@@ -237,22 +237,34 @@ ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set)
 endif
 
-credentials: require-gcloud-project
-	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh credentials
+DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --run-config-file=hack/deployer/config/run-config.yml
+
+build-deployer:
+	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
+
+setup-deployer-for-gke-once: require-gcloud-project build-deployer
+ifeq (,$(wildcard hack/deployer/config/run-config.yml))
+	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/run-config.yml
+endif
+
+credentials: setup-deployer-for-gke-once
+	@ $(DEPLOYER) get credentials
 
 set-context-gke: credentials
-	kubectl config use-context $(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name)
-	$(eval KUBECTL_CLUSTER=$(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name))
+	$(eval KUBECTL_CLUSTER=$($(DEPLOYER) get clusterName))
 
-bootstrap-gke: require-gcloud-project
-	PSP=$(PSP) GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
-	$(MAKE) set-context-gke cluster-bootstrap
+bootstrap-gke: setup-deployer-for-gke-once
+	@ $(DEPLOYER) execute
+	$(MAKE) cluster-bootstrap
 ifeq ($(PSP), 1)
 	$(MAKE) apply-psp
 endif
 
-delete-gke: require-gcloud-project
-	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
+delete-gke: setup-deployer-for-gke-once
+	@ $(DEPLOYER) execute --operation=delete
+
+get-deployer-config: setup-deployer-for-gke-once
+	@ $(DEPLOYER) get config
 
 #################################
 ##  --    Docker images    --  ##
@@ -337,9 +349,8 @@ ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration
 ci-e2e: run-deployer
 	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
 
-run-deployer: dep-vendor-only
-	@ go build -o hack/deployer/deployer ./hack/deployer/...
-	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
+run-deployer: dep-vendor-only build-deployer
+	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
