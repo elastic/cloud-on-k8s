@@ -41,7 +41,7 @@ func GetCommand() *cobra.Command {
 
 	var getCredentialsCommand = &cobra.Command{
 		Use:   "credentials",
-		Short: "Fetches credentials for the cluster as per config, switches to that cluster.",
+		Short: "Fetches credentials for the cluster as per config and sets kubectl context to this cluster.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			plans, runConfig, err := runner.ParseFiles(*plansFile, *configFile)
 			if err != nil {

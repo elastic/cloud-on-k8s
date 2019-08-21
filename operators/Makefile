@@ -242,28 +242,28 @@ DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --
 build-deployer:
 	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
 
-setup-deployer-once: require-gcloud-project build-deployer
+setup-deployer-for-gke-once: require-gcloud-project build-deployer
 ifeq (,$(wildcard hack/deployer/config/run-config.yml))
 	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/run-config.yml
 endif
 
-credentials: setup-deployer-once
+credentials: setup-deployer-for-gke-once
 	@ $(DEPLOYER) get credentials
 
 set-context-gke: credentials
 	$(eval KUBECTL_CLUSTER=$($(DEPLOYER) get clusterName))
 
-bootstrap-gke: setup-deployer-once
+bootstrap-gke: setup-deployer-for-gke-once
 	@ $(DEPLOYER) execute
 	$(MAKE) cluster-bootstrap
 ifeq ($(PSP), 1)
 	$(MAKE) apply-psp
 endif
 
-delete-gke: setup-deployer-once
+delete-gke: setup-deployer-for-gke-once
 	@ $(DEPLOYER) execute --operation=delete
 
-show-config: setup-deployer-once
+get-deployer-config: setup-deployer-for-gke-once
 	@ $(DEPLOYER) get config
 
 #################################
