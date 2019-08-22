@@ -27,7 +27,7 @@
 
 **Environment**
 
-* Version information:
+* ECK version:
 
 	insert version or git commit id here
 
