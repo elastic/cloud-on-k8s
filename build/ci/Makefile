@@ -82,7 +82,7 @@ ci-pr: check-license-header
 		--net=host \
 		$(CI_IMAGE) \
 		bash -c \
-			"make -C operators ci"
+			"make ci"
 
 ## -- Release job
 
@@ -99,7 +99,7 @@ ci-release: vault-public-key vault-docker-creds
     	-e "VERSION=$(VERSION)" \
     	-e "SNAPSHOT=$(SNAPSHOT)" \
     	$(CI_IMAGE) \
-    	bash -c "make -C operators ci-release"
+		bash -c "make ci-release"
 
 # Will be uploaded to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
 yaml-upload: vault-aws-creds
@@ -128,7 +128,7 @@ ci-e2e:
 		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
 		-e "STACK_VERSION=$(STACK_VERSION)" \
 		$(CI_IMAGE) \
-		bash -c "make -C operators ci-e2e"
+		bash -c "make ci-e2e"
 
 ci-run-deployer:
 	@ docker run --rm -t \
@@ -137,7 +137,7 @@ ci-run-deployer:
 		-w $(GO_MOUNT_PATH) \
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
 		$(CI_IMAGE) \
-		bash -c "make -C operators run-deployer"
+		bash -c "make run-deployer"
 
 # Check if Docker image exists by trying to pull it. If there is no image, then build and push it.
 ci-build-image: vault-docker-creds
