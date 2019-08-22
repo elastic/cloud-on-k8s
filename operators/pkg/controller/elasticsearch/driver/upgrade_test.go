@@ -8,15 +8,18 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -44,7 +47,7 @@ var _ ESState = mockESState{}
 var defaultESState = mockESState{
 	shardAllocationsEnabled: false,
 	green:                   true,
-	nodeNames:               []string{"default-0"},
+	nodeNames:               nil,
 }
 
 type mockUpdater map[string]int32
@@ -54,13 +57,19 @@ func (m mockUpdater) updatePartition(sset *appsv1.StatefulSet, newPartition int3
 	return nil
 }
 
-func newResults() *reconciler.Results {
+type mockPodCheck map[string]bool
+
+func (m mockPodCheck) podUpgradeDone(_ k8s.Client, _ ESState, nsn types.NamespacedName, _ string) (bool, error) {
+	return m[nsn.Name], nil
+}
+
+func success() *reconciler.Results {
 	return &reconciler.Results{}
 }
 
 func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 	// This does not test: podUpgradeDone or prepareClusterForNodeRestart in detail but is focused on the main invariants
-	// of the doRollingUpgrade method
+	// of the run method
 	type args struct {
 		statefulSets sset.StatefulSetList
 		esState      ESState
@@ -68,6 +77,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 	tests := []struct {
 		name             string
 		args             args
+		upgradedPods     map[string]bool
 		want             *reconciler.Results
 		wantNewPartition map[string]int32
 		wantSyncedFlush  bool
@@ -90,7 +100,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				},
 				esState: defaultESState,
 			},
-			want: newResults(),
+			want: success(),
 			wantNewPartition: map[string]int32{
 				"default": 0,
 			},
@@ -114,7 +124,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				},
 				esState: defaultESState,
 			},
-			want: newResults().WithResult(defaultRequeue),
+			want: success().WithResult(defaultRequeue),
 			wantNewPartition: map[string]int32{
 				"default": 2,
 			},
@@ -142,7 +152,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				},
 				esState: defaultESState,
 			},
-			want: newResults(),
+			want: success(),
 			wantNewPartition: map[string]int32{
 				"data": 0,
 			},
@@ -168,8 +178,34 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 					green: false,
 				},
 			},
-			want:             newResults().WithResult(defaultRequeue),
+			want:             success().WithResult(defaultRequeue),
 			wantNewPartition: map[string]int32{},
+		},
+		{
+			name: "partially rolled out upgrade",
+			args: args{
+				statefulSets: sset.StatefulSetList{
+					nodespec.TestSset{
+						Name:      "default",
+						Replicas:  2,
+						Data:      true,
+						Partition: 1, // first node has been upgraded
+						Status: appsv1.StatefulSetStatus{
+							CurrentRevision: "a",
+							UpdateRevision:  "b",
+						},
+					}.Build(),
+				},
+				esState: defaultESState,
+			},
+			upgradedPods: map[string]bool{
+				"default-1": true, //
+			},
+			want: success(),
+			wantNewPartition: map[string]int32{
+				"default": 0,
+			},
+			wantSyncedFlush: true,
 		},
 	}
 	for _, tt := range tests {
@@ -179,17 +215,21 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				runtimeObjects = append(runtimeObjects, &tt.args.statefulSets[i])
 			}
 			k8sClient := k8s.WrapClient(fake.NewFakeClient(runtimeObjects...))
-			d := &defaultDriver{
-				DefaultDriverParameters: DefaultDriverParameters{
-					Client: k8sClient,
-					Scheme: scheme.Scheme,
-				},
-			}
 			mu := mockUpdater{}
 			fc := fakeESClient{}
-			if got := d.doRollingUpgrade(tt.args.statefulSets, &fc, tt.args.esState, mu.updatePartition); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("doRollingUpgrade() = %+v, want %+v", got, tt.want)
+			upgrade := rollingUpgradeCtx{
+				client:         k8sClient,
+				ES:             v1alpha1.Elasticsearch{},
+				statefulSets:   tt.args.statefulSets,
+				esClient:       &fc,
+				esState:        tt.args.esState,
+				podUpgradeDone: mockPodCheck(tt.upgradedPods).podUpgradeDone,
+				upgrader:       mu.updatePartition,
 			}
+			if got := upgrade.run(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("run() = %+v, want %+v", got, tt.want)
+			}
+			assert.Nil(t, deep.Equal(map[string]int32(mu), tt.wantNewPartition))
 			require.Equal(t, tt.wantSyncedFlush, fc.SyncedFlushCalled, "Synced Flush API call")
 		})
 	}
@@ -227,7 +267,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 				esState: defaultESState,
 			},
 			runtimeObjects: nil, // but no corresponding pod in runtime objects
-			want:           newResults().WithResult(defaultRequeue),
+			want:           success().WithResult(defaultRequeue),
 		},
 		{
 			name: "update done but node not in cluster",
@@ -259,7 +299,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 					Data:     true,
 				}.BuildPtr(),
 			},
-			want: newResults().WithResult(defaultRequeue),
+			want: success().WithResult(defaultRequeue),
 		},
 		{
 			name: "should enable shard allocations",
@@ -287,7 +327,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 					Data:     true,
 				}.BuildPtr(),
 			},
-			want:                  newResults(),
+			want:                  success(),
 			wantAllocationEnabled: true,
 		},
 	}
