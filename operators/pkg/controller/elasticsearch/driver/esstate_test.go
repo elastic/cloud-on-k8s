@@ -105,6 +105,7 @@ func Test_lazyNodes_NodesInCluster(t *testing.T) {
 	inCluster, err = lazyNodes.NodesInCluster([]string{"a", "b", "c"})
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetNodesCallCount)
+	require.Equal(t, true, inCluster)
 
 	// nodes are a subset of the cluster nodes: should return true
 	inCluster, err = lazyNodes.NodesInCluster([]string{"a", "b"})
@@ -131,6 +132,7 @@ func Test_lazyShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T) {
 	enabled, err = l.ShardAllocationsEnabled()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterRoutingAllocationCallCount)
+	require.True(t, enabled)
 
 	// simulate cluster routing allocation disabled
 	clusterRoutingAllocation := esclient.ClusterRoutingAllocation{}
