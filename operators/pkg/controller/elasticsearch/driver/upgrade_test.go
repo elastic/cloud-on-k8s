@@ -320,7 +320,10 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 						},
 					}.Build(),
 				},
-				esState: defaultESState, // default state contains pod 0
+				esState: mockESState{
+					shardAllocationsEnabled: false,
+					nodeNames:               []string{"default-0"},
+				},
 			},
 			runtimeObjects: []runtime.Object{
 				nodespec.TestPod{
