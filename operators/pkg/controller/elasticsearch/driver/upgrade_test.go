@@ -7,6 +7,7 @@ package driver
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
@@ -18,6 +19,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -350,6 +353,156 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 				t.Errorf("MaybeEnableShardsAllocation() = %v, want %v", got, tt.want)
 			}
 			require.Equal(t, tt.wantAllocationEnabled, c.EnableShardAllocationCalled, "shard allocation enabled API called")
+		})
+	}
+}
+
+func Test_podUpgradeDone(t *testing.T) {
+	type args struct {
+		esState          ESState
+		podRef           types.NamespacedName
+		expectedRevision string
+	}
+	const testPod = "test"
+	const upgradeRevision = "rev1"
+	const testNamespace = "default"
+	nsn := types.NamespacedName{Name: testPod, Namespace: testNamespace}
+	defaultArgs := args{
+		podRef:           nsn,
+		expectedRevision: upgradeRevision,
+	}
+	currentTime := metav1.NewTime(time.Now())
+	tests := []struct {
+		name           string
+		runtimeObjects []runtime.Object
+		args           args
+		want           bool
+		wantErr        bool
+	}{
+		{
+			name: "pod not found: not done",
+			args: args{
+				podRef:           nsn,
+				expectedRevision: upgradeRevision,
+			},
+			want: false,
+		},
+		{
+			name: "pod deleting: not done",
+			runtimeObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:         testNamespace,
+						Name:              testPod,
+						DeletionTimestamp: &currentTime,
+					},
+				},
+			},
+			args: defaultArgs,
+			want: false,
+		},
+		{
+			name: "pod on incorrect rev: not done",
+			runtimeObjects: []runtime.Object{
+				nodespec.TestPod{
+					Namespace: testNamespace,
+					Name:      testPod,
+					Revision:  "rev0",
+				}.BuildPtr(),
+			},
+			args: defaultArgs,
+			want: false,
+		},
+		{
+			name: "pod not ready: not done",
+			runtimeObjects: []runtime.Object{
+				nodespec.TestPod{
+					Namespace: testNamespace,
+					Name:      testPod,
+					Revision:  upgradeRevision,
+				}.BuildPtr(),
+			},
+			args: defaultArgs,
+			want: false,
+		},
+		{
+			name: "ES node not in cluster: not done",
+			runtimeObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testPod,
+						Labels: map[string]string{
+							appsv1.StatefulSetRevisionLabel: upgradeRevision,
+						},
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.ContainersReady,
+								Status: corev1.ConditionTrue,
+							},
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				esState:          mockESState{},
+				podRef:           nsn,
+				expectedRevision: upgradeRevision,
+			},
+			want: false,
+		},
+		{
+			name: "pod upgraded",
+			runtimeObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: testNamespace,
+						Name:      testPod,
+						Labels: map[string]string{
+							appsv1.StatefulSetRevisionLabel: upgradeRevision,
+						},
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.ContainersReady,
+								Status: corev1.ConditionTrue,
+							},
+							{
+								Type:   corev1.PodReady,
+								Status: corev1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+			args: args{
+				esState: mockESState{
+					nodeNames: []string{testPod},
+				},
+				podRef:           nsn,
+				expectedRevision: upgradeRevision,
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.WrapClient(fake.NewFakeClient(tt.runtimeObjects...))
+			got, err := podUpgradeDone(k8sClient, tt.args.esState, tt.args.podRef, tt.args.expectedRevision)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("podUpgradeDone() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("podUpgradeDone() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
