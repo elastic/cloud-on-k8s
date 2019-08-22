@@ -22,6 +22,18 @@ SNAPSHOT   	?= true
 
 LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
 
+# TODO (sabo) move this somewhere appropriate
+# find or download controller-gen
+# download controller-gen if necessary
+controller-gen:
+ifeq (, $(shell which controller-gen))
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0-beta.4
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+else
+CONTROLLER_GEN=$(shell which controller-gen)
+endif
+
+
 ## -- Docker image
 
 # on GKE, use GCR and GCLOUD_PROJECT
@@ -86,11 +98,17 @@ dep-vendor-only:
 	# don't attempt to upgrade Gopkg.lock
 	dep ensure --vendor-only 
 
+# TODO (sabo): delete this old version
 # Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
-generate:
-	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
-	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-	$(MAKE) --no-print-directory generate-all-in-one
+# generate:
+# 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
+# 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+# 	$(MAKE) --no-print-directory generate-all-in-one
+
+# Generate code
+generate: controller-gen
+	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./api/...
+
 
 elastic-operator: generate
 	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
