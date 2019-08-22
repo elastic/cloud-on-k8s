@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
+	"github.com/elastic/cloud-on-k8s/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes/scheme"

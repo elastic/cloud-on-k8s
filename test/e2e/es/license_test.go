@@ -8,9 +8,9 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
 )
 

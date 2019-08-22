@@ -7,8 +7,8 @@ package zen1
 import (
 	appsv1 "k8s.io/api/apps/v1"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 )
 
 // versionCompatibleWithZen1 returns true if the given Elasticsearch version is compatible with zen1.

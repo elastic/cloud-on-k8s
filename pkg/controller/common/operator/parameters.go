@@ -5,9 +5,9 @@
 package operator
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/pkg/about"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 // Parameters contain parameters to create new operators.

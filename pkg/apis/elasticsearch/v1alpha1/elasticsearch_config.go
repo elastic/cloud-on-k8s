@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	ucfg "github.com/elastic/go-ucfg"
 )
 

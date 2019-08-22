@@ -5,13 +5,13 @@
 package pod
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"

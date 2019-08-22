@@ -7,7 +7,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/hack/deployer/runner"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/runner"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
 )

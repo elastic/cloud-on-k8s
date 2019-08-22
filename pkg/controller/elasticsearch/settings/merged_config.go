@@ -7,10 +7,10 @@ package settings
 import (
 	"path"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
 // NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived  from the given

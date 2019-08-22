@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 // Info represents the response from /

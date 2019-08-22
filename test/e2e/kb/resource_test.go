@@ -7,9 +7,9 @@ package kb
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

@@ -7,9 +7,9 @@ package webhook
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook/license"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/webhook/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/webhook/license"
 	admission "k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

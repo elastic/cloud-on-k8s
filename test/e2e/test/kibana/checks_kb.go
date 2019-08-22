@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

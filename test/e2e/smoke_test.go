@@ -9,10 +9,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/apmserver"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )

@@ -7,8 +7,8 @@ package apmserver
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

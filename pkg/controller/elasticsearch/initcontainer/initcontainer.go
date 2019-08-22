@@ -5,8 +5,8 @@
 package initcontainer
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 

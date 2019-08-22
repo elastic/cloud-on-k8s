@@ -5,17 +5,17 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func (d *defaultDriver) reconcileNodeSpecs(

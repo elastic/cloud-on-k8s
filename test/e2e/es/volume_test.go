@@ -7,8 +7,8 @@ package es
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
 // TestVolumeEmptyDir tests a manual override of the default persistent storage with emptyDir.

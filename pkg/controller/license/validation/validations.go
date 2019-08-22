@@ -5,8 +5,8 @@
 package validation
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
 	corev1 "k8s.io/api/core/v1"
 )
 

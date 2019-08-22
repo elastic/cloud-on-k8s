@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 

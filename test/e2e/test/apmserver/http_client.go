@@ -15,12 +15,12 @@ import (
 	"strings"
 	"time"
 
-	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )

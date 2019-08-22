@@ -5,7 +5,7 @@
 package name
 
 import (
-	common_name "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
+	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 )
 
 const (

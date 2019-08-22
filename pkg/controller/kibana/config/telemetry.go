@@ -5,7 +5,7 @@
 package config
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
+	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/ghodss/yaml"
 )
 

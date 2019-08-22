@@ -8,9 +8,9 @@ import (
 	"context"
 	"net/http"
 
-	commonvalidation "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/validation"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	commonvalidation "github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/license/validation"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

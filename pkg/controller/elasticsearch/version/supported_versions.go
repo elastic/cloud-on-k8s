@@ -7,10 +7,10 @@ package version
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/pkg/errors"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"
 )
 

@@ -5,7 +5,7 @@
 package license
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/labels"
 )
 

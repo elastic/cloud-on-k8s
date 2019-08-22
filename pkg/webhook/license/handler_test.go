@@ -10,9 +10,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/validation"
+	"github.com/elastic/cloud-on-k8s/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/license/validation"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/admission/v1beta1"

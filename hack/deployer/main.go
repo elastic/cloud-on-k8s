@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/hack/deployer/cmd"
+	"github.com/elastic/cloud-on-k8s/hack/deployer/cmd"
 )
 
 func main() {

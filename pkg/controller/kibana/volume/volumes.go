@@ -5,7 +5,7 @@
 package volume
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 )
 
 const (

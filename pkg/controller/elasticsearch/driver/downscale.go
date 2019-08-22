@@ -7,14 +7,14 @@ package driver
 import (
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 )
 
 // HandleDownscale attempts to downscale actual StatefulSets towards expected ones.

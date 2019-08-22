@@ -5,8 +5,8 @@
 package user
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"golang.org/x/crypto/bcrypt"
 )
 

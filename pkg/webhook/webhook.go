@@ -5,8 +5,8 @@
 package webhook
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 

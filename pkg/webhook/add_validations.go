@@ -5,7 +5,7 @@
 package webhook
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 )
 
 func init() {

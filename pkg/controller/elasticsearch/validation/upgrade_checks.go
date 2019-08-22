@@ -7,9 +7,9 @@ package validation
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
-	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 )
 
 const (

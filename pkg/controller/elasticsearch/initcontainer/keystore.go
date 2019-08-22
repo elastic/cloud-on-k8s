@@ -5,8 +5,8 @@
 package initcontainer
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
-	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
 const (

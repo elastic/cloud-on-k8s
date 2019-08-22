@@ -5,8 +5,8 @@
 package settings
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 )
 
 // CanonicalConfig contains configuration for Elasticsearch ("elasticsearch.yml"),

@@ -7,8 +7,8 @@ package initcontainer
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/stretchr/testify/assert"
 )
 

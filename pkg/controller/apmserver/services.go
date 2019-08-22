@@ -5,10 +5,10 @@
 package apmserver
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
-	apmname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
+	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	corev1 "k8s.io/api/core/v1"
 )
 

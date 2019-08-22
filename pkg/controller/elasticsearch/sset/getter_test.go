@@ -7,7 +7,7 @@ package sset
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	appsv1 "k8s.io/api/apps/v1"
 )
 

@@ -4,7 +4,7 @@
 
 package labels
 
-import "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+import "github.com/elastic/cloud-on-k8s/pkg/controller/common"
 
 const (
 	// ApmServerNameLabelName used to represent an ApmServer in k8s resources

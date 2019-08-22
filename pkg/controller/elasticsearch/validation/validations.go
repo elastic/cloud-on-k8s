@@ -12,14 +12,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
-	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
-	netutil "github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 )
 
 // Validations are all registered Elasticsearch validations.
