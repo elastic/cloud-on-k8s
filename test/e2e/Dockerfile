@@ -6,7 +6,7 @@ RUN mkdir -p /.cache && chmod 777 /.cache
 # If a restricted PSP is applied we can't run as root
 USER 101
 # Copy in the go src
-WORKDIR /go/src/github.com/elastic/cloud-on-k8s/operators
+WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 COPY pkg/    pkg/
 COPY config/ config/
 COPY test/   test/

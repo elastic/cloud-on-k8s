@@ -46,7 +46,7 @@ func Command() *cobra.Command {
 		PreRunE: func(_ *cobra.Command, _ []string) error {
 			log = logf.Log.WithName(flags.testRunName)
 			if err := checkWantedDirectories(); err != nil {
-				log.Error(err, "Please make sure this command is executed from the root of the operators directory")
+				log.Error(err, "Please make sure this command is executed from the root of the repo")
 				return err
 			}
 

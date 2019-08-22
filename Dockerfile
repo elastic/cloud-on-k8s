@@ -2,7 +2,7 @@
 FROM golang:1.11 as builder
 
 # Copy in the go src
-WORKDIR /go/src/github.com/elastic/cloud-on-k8s/operators
+WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 COPY pkg/    pkg/
 COPY cmd/    cmd/
 COPY vendor/ vendor/
@@ -14,7 +14,7 @@ ARG GO_TAGS
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 		go build \
 			-ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
-			-o elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
+			-o elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
 # Copy the controller-manager into a thin image
 FROM centos:7
@@ -27,6 +27,6 @@ RUN set -x \
 WORKDIR /eck
 USER 101
 
-COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/elastic-operator .
+COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
 ENTRYPOINT ["./elastic-operator"]
 CMD ["manager"]

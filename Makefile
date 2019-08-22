@@ -48,10 +48,10 @@ endif
 OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
 
 
-GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(VERSION) \
-	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildHash=$(TAG) \
-	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
-	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildSnapshot=$(SNAPSHOT)
+GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/pkg/about.version=$(VERSION) \
+	-X github.com/elastic/cloud-on-k8s/pkg/about.buildHash=$(TAG) \
+	-X github.com/elastic/cloud-on-k8s/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
+	-X github.com/elastic/cloud-on-k8s/pkg/about.buildSnapshot=$(SNAPSHOT)
 
 # Setting for CI, if set to true will prevent building and using local Docker image
 SKIP_DOCKER_COMMAND ?= false
@@ -93,7 +93,7 @@ generate:
 	$(MAKE) --no-print-directory generate-all-in-one
 
 elastic-operator: generate
-	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
+	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
 fmt:
 	goimports -w pkg cmd

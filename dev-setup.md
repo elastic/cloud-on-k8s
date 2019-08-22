@@ -21,7 +21,7 @@ Before you start, install the following tools and packages:
 
 ```bash
 go get -u github.com/elastic/cloud-on-k8s
-cd ${GOPATH:-$HOME/go}/src/github.com/elastic/cloud-on-k8s/operators
+cd ${GOPATH:-$HOME/go}/src/github.com/elastic/cloud-on-k8s
 ```
 
 ### Check prerequisites

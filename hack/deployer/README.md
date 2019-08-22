@@ -11,7 +11,7 @@ Default values for settings are kept in config/plans.yml file. More settings and
 While in:
 ```
 $ pwd
-/go/src/github.com/elastic/cloud-on-k8s/operators
+/go/src/github.com/elastic/cloud-on-k8s
 ```
 
 Run once with your GCLOUD_PROJECT:
