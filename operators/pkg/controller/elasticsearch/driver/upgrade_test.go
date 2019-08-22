@@ -192,7 +192,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 						Name:      "default",
 						Replicas:  2,
 						Data:      true,
-						Partition: 1, // first node has been upgraded
+						Partition: 1, // one node has been upgraded
 						Status: appsv1.StatefulSetStatus{
 							CurrentRevision: "a",
 							UpdateRevision:  "b",
@@ -202,11 +202,11 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 				esState: defaultESState,
 			},
 			upgradedPods: map[string]bool{
-				"default-1": true, //
+				"default-1": true, // its pod is ready
 			},
 			want: success(),
 			wantNewPartition: map[string]int32{
-				"default": 0,
+				"default": 0, // expect now the remaining node to be rolled
 			},
 			wantSyncedFlush: true,
 		},
