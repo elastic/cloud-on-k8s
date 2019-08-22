@@ -27,7 +27,7 @@
 
 **Environment**
 
-* Version information:
+* Operator version information:
 
 	insert version or git commit id here
 
