@@ -13,12 +13,18 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 )
 
+// ESState gives information about Elasticsearch current status.
 type ESState interface {
+	// NodesInCluster returns true if the given nodes exist in the Elasticsearch cluster.
 	NodesInCluster(nodeNames []string) (bool, error)
+	// ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 	ShardAllocationsEnabled() (bool, error)
+	// GreenHealth returns true if the cluster health is currently green.
 	GreenHealth() (bool, error)
 }
 
+// LazyESState requests Elasticsearch for the requested information only once, at first call.
+// It is "lazy" in the sense it only calls Elasticsearch if required, and does not pre-populate the state.
 type LazyESState struct {
 	esClient esclient.Client
 	*lazyNodes
@@ -26,6 +32,7 @@ type LazyESState struct {
 	*lazyGreenHealth
 }
 
+// NewLazyESState returns an initialized LazyESState.
 func NewLazyESState(esClient esclient.Client) ESState {
 	return &LazyESState{
 		esClient:                    esClient,
@@ -35,6 +42,7 @@ func NewLazyESState(esClient esclient.Client) ESState {
 	}
 }
 
+// initOnce calls f(), if not already called for the given once.
 func initOnce(once *sync.Once, f func() error) error {
 	var err error
 	once.Do(func() {
@@ -45,12 +53,14 @@ func initOnce(once *sync.Once, f func() error) error {
 
 // -- Nodes
 
+// lazyNodes provides nodes information.
 type lazyNodes struct {
 	once     sync.Once
 	esClient esclient.Client
 	nodes    []string
 }
 
+// initialize requests Elasticsearch for nodes information, only once.
 func (n *lazyNodes) initialize() error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
@@ -62,6 +72,7 @@ func (n *lazyNodes) initialize() error {
 	return nil
 }
 
+// NodesInCluster returns true if the given nodes exist in the Elasticsearch cluster.
 func (n *lazyNodes) NodesInCluster(nodeNames []string) (bool, error) {
 	if err := initOnce(&n.once, n.initialize); err != nil {
 		return false, err
@@ -71,12 +82,14 @@ func (n *lazyNodes) NodesInCluster(nodeNames []string) (bool, error) {
 
 // -- Shards allocation enabled
 
+// lazyNodes provides shards allocation information.
 type lazyShardsAllocationEnabled struct {
 	enabled  bool
 	once     sync.Once
 	esClient esclient.Client
 }
 
+// initialize requests Elasticsearch for shards allocation information, only once.
 func (s *lazyShardsAllocationEnabled) initialize() error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
@@ -88,6 +101,7 @@ func (s *lazyShardsAllocationEnabled) initialize() error {
 	return nil
 }
 
+// ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 func (s *lazyShardsAllocationEnabled) ShardAllocationsEnabled() (bool, error) {
 	if err := initOnce(&s.once, s.initialize); err != nil {
 		return false, err
@@ -97,12 +111,14 @@ func (s *lazyShardsAllocationEnabled) ShardAllocationsEnabled() (bool, error) {
 
 // -- Green health
 
+// lazyGreenHealth provides cluster health information.
 type lazyGreenHealth struct {
 	greenHealth bool
 	once        sync.Once
 	esClient    esclient.Client
 }
 
+// initialize requests Elasticsearch for cluster health, only once.
 func (h *lazyGreenHealth) initialize() error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
@@ -114,6 +130,7 @@ func (h *lazyGreenHealth) initialize() error {
 	return nil
 }
 
+// GreenHealth returns true if the cluster health is currently green.
 func (h *lazyGreenHealth) GreenHealth() (bool, error) {
 	if err := initOnce(&h.once, h.initialize); err != nil {
 		return false, err

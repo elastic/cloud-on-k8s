@@ -5,7 +5,6 @@
 package driver
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -94,52 +93,6 @@ var (
 	requeueResults = (&reconciler.Results{}).WithResult(defaultRequeue)
 	emptyResults   = &reconciler.Results{}
 )
-
-// fakeESClient mocks the ES client to register function calls that were made.
-type fakeESClient struct { //nolint:maligned
-	esclient.Client
-
-	SetMinimumMasterNodesCalled     bool
-	SetMinimumMasterNodesCalledWith int
-
-	AddVotingConfigExclusionsCalled     bool
-	AddVotingConfigExclusionsCalledWith []string
-
-	ExcludeFromShardAllocationCalled     bool
-	ExcludeFromShardAllocationCalledWith string
-
-	EnableShardAllocationCalled bool
-
-	SyncedFlushCalled bool
-}
-
-func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, n int) error {
-	f.SetMinimumMasterNodesCalled = true
-	f.SetMinimumMasterNodesCalledWith = n
-	return nil
-}
-
-func (f *fakeESClient) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
-	f.AddVotingConfigExclusionsCalled = true
-	f.AddVotingConfigExclusionsCalledWith = append(f.AddVotingConfigExclusionsCalledWith, nodeNames...)
-	return nil
-}
-
-func (f *fakeESClient) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
-	f.ExcludeFromShardAllocationCalled = true
-	f.ExcludeFromShardAllocationCalledWith = nodes
-	return nil
-}
-
-func (f *fakeESClient) EnableShardAllocation(_ context.Context) error {
-	f.EnableShardAllocationCalled = true
-	return nil
-}
-
-func (f *fakeESClient) SyncedFlush(_ context.Context) error {
-	f.SyncedFlushCalled = true
-	return nil
-}
 
 // -- Tests start here
 
