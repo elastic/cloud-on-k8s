@@ -46,7 +46,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 			licenseTestContext.CreateEnterpriseLicenseSecret(licenseBytes),
 		}).
 		// Mutation shortcuts the license provisioning check...
-		WithSteps(mutatedEsBuilder.MutationTestSteps(k)).
+		WithSteps(mutatedEsBuilder.MutationTestSteps(k, test.MutationOptions{})).
 		// enterprise license can contain all kinds of cluster licenses so we are a bit lenient here and expect either gold or platinum
 		WithStep(licenseTestContext.CheckElasticsearchLicense(
 			license.ElasticsearchLicenseTypeGold,

@@ -15,11 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
+func (b Builder) MutationReversalTestContext(mutationOptions test.MutationOptions) test.ReversalTestContext {
 	return &mutationReversalTestContext{
 		es:                     b.Elasticsearch,
 		initialRevisions:       make(map[string]string),
 		initialCurrentReplicas: make(map[string]int32),
+		mutationOptions:        mutationOptions,
 	}
 }
 
@@ -28,6 +29,7 @@ type mutationReversalTestContext struct {
 	initialCurrentReplicas map[string]int32
 	initialRevisions       map[string]string
 	dataIntegrity          *DataIntegrityCheck
+	mutationOptions        test.MutationOptions
 }
 
 func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.StepList {
@@ -47,7 +49,7 @@ func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.S
 			Name: "Add some data to the cluster before any mutation",
 			Test: func(t *testing.T) {
 				var err error
-				s.dataIntegrity, err = NewDataIntegrityCheck(s.es, k)
+				s.dataIntegrity, err = NewDataIntegrityCheck(s.es, k, s.mutationOptions.IncludesRollingUpgrade)
 				require.NoError(t, err)
 				require.NoError(t, s.dataIntegrity.Init())
 			},

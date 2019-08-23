@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
+func (b Builder) MutationTestSteps(k *test.K8sClient, options test.MutationOptions) test.StepList {
 	return b.UpgradeTestSteps(k).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k))
 }
 
-func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
+func (b Builder) MutationReversalTestContext(options test.MutationOptions) test.ReversalTestContext {
 	panic("not implemented")
 }
 

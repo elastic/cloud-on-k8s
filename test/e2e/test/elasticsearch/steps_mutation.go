@@ -34,7 +34,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
+func (b Builder) MutationTestSteps(k *test.K8sClient, options test.MutationOptions) test.StepList {
 	var clusterIDBeforeMutation string
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
@@ -44,7 +44,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Add some data to the cluster before starting the mutation",
 			Test: func(t *testing.T) {
 				var err error
-				dataIntegrityCheck, err = NewDataIntegrityCheck(b.Elasticsearch, k)
+				dataIntegrityCheck, err = NewDataIntegrityCheck(b.Elasticsearch, k, options.IncludesRollingUpgrade)
 				require.NoError(t, err)
 				require.NoError(t, dataIntegrityCheck.Init())
 			},

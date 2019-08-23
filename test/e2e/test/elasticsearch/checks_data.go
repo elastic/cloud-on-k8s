@@ -24,15 +24,25 @@ type DataIntegrityCheck struct {
 	client     client.Client
 	indexName  string
 	numShards  int
+	replicas   int
 	sampleData map[string]interface{}
 	docCount   int
 }
 
-func NewDataIntegrityCheck(es v1alpha1.Elasticsearch, k *test.K8sClient) (*DataIntegrityCheck, error) {
+func NewDataIntegrityCheck(es v1alpha1.Elasticsearch, k *test.K8sClient, rollingUpgradeExpected bool) (*DataIntegrityCheck, error) {
 	elasticsearchClient, err := NewElasticsearchClient(es, k)
 	if err != nil {
 		return nil, err
 	}
+
+	// default to 0 replicas to ensure we test data migration works: shards should always be available
+	replicas := 0
+	if rollingUpgradeExpected {
+		// we expect a rolling upgrade to happen: the cluster health will become red
+		// if we don't have at least one replica
+		replicas = 1
+	}
+
 	return &DataIntegrityCheck{
 		client:    elasticsearchClient,
 		indexName: "data-integrity-check",
@@ -41,17 +51,17 @@ func NewDataIntegrityCheck(es v1alpha1.Elasticsearch, k *test.K8sClient) (*DataI
 		},
 		docCount:  5,
 		numShards: 3,
+		replicas:  replicas,
 	}, nil
 }
 
 func (dc *DataIntegrityCheck) Init() error {
-	// default to 0 replicas to ensure we test data migration works
 	indexSettings := `
 {
     "settings" : {
         "index" : {
             "number_of_shards" : %d,
-            "number_of_replicas" : 0
+            "number_of_replicas" : %d
         }
     }
 }
@@ -60,7 +70,7 @@ func (dc *DataIntegrityCheck) Init() error {
 	indexCreation, err := http.NewRequest(
 		http.MethodPut,
 		fmt.Sprintf("/%s", dc.indexName),
-		bytes.NewBufferString(fmt.Sprintf(indexSettings, dc.numShards)),
+		bytes.NewBufferString(fmt.Sprintf(indexSettings, dc.numShards, dc.replicas)),
 	)
 	if err != nil {
 		return err
