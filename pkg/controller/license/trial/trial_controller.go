@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	license_validation "github.com/elastic/cloud-on-k8s/pkg/webhook/license"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -71,6 +70,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		if secret.Annotations == nil {
 			secret.Annotations = map[string]string{}
 		}
+		// TODO (sabo) what do? this is the only call
 		res := license_validation.Aggregate(violations)
 		secret.Annotations[licensing.LicenseInvalidAnnotation] = string(res.Response.Result.Reason)
 		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
