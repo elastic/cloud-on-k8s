@@ -7,12 +7,17 @@ package zen2
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 func createStatefulSetWithESVersion(version string) appsv1.StatefulSet {
@@ -26,24 +31,23 @@ func createStatefulSetWithESVersion(version string) appsv1.StatefulSet {
 }
 
 func TestIsCompatibleWithZen2(t *testing.T) {
-
 	tests := []struct {
 		name string
 		sset appsv1.StatefulSet
 		want bool
 	}{
 		{
-			name: "version 6.8.0",
+			name: "versionCompatibleWithZen2 6.8.0",
 			sset: createStatefulSetWithESVersion("6.8.0"),
 			want: false,
 		},
 		{
-			name: "version 7.0.0",
+			name: "versionCompatibleWithZen2 7.0.0",
 			sset: createStatefulSetWithESVersion("7.0.0"),
 			want: true,
 		},
 		{
-			name: "no version",
+			name: "no versionCompatibleWithZen2",
 			sset: createStatefulSetWithESVersion(""),
 			want: false,
 		},
@@ -57,37 +61,56 @@ func TestIsCompatibleWithZen2(t *testing.T) {
 	}
 }
 
-func TestAtLeastOneNodeCompatibleWithZen2(t *testing.T) {
+func TestAllMastersCompatibleWithZen2(t *testing.T) {
+	es := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "cluster",
+		},
+	}
 	tests := []struct {
-		name         string
-		statefulSets sset.StatefulSetList
-		want         bool
+		name string
+		pods []runtime.Object
+		want bool
 	}{
 		{
-			name:         "no sset",
-			statefulSets: nil,
-			want:         false,
+			name: "only v7 master nodes",
+			pods: []runtime.Object{
+				nodespec.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
+				nodespec.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
+				nodespec.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
+			},
+			want: true,
 		},
 		{
-			name:         "none compatible",
-			statefulSets: sset.StatefulSetList{createStatefulSetWithESVersion("6.8.0"), createStatefulSetWithESVersion("6.8.1")},
-			want:         false,
+			name: "only v6 master nodes (with v7 data nodes)",
+			pods: []runtime.Object{
+				nodespec.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
+				nodespec.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
+				nodespec.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
+			},
+			want: false,
 		},
 		{
-			name:         "one compatible",
-			statefulSets: sset.StatefulSetList{createStatefulSetWithESVersion("6.8.0"), createStatefulSetWithESVersion("7.1.0")},
-			want:         true,
+			name: "mixed v6/v7 masters",
+			pods: []runtime.Object{
+				nodespec.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
+				nodespec.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
+			},
+			want: false,
 		},
 		{
-			name:         "all compatible",
-			statefulSets: sset.StatefulSetList{createStatefulSetWithESVersion("7.1.0"), createStatefulSetWithESVersion("7.2.0")},
-			want:         true,
+			name: "no pods",
+			pods: []runtime.Object{},
+			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AtLeastOneNodeCompatibleWithZen2(tt.statefulSets); got != tt.want {
-				t.Errorf("AtLeastOneNodeCompatibleWithZen2() = %v, want %v", got, tt.want)
+			got, err := AllMastersCompatibleWithZen2(k8s.WrapClient(fake.NewFakeClient(tt.pods...)), es)
+			require.NoError(t, err)
+			if got != tt.want {
+				t.Errorf("AllMastersCompatibleWithZen2() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

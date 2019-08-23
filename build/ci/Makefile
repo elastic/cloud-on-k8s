@@ -7,7 +7,7 @@
 ROOT_DIR = $(CURDIR)/../..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
-CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile $(ROOT_DIR)/local-volume/Gopkg.lock | awk '{print $$1}' | md5sum | awk '{print $$1}')
+CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/operators/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
@@ -24,6 +24,9 @@ VAULT_TOKEN ?= $(shell vault write -field=token auth/approle/login role_id=$(VAU
 
 check-license-header:
 	./../check-license-header.sh
+
+show-image:
+	@ echo $(CI_IMAGE)
 
 # login to vault and retrieve gke creds into $GKE_CREDS_FILE
 vault-gke-creds:
@@ -79,8 +82,7 @@ ci-pr: check-license-header
 		--net=host \
 		$(CI_IMAGE) \
 		bash -c \
-			"make -C operators ci && \
-			 make -C local-volume ci"
+			"make -C operators ci"
 
 ## -- Release job
 

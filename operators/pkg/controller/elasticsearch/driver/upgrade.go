@@ -30,7 +30,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	esState := NewLazyESState(esClient)
 
 	// Maybe upgrade some of the nodes.
-	res := d.doRollingUpgrade(statefulSets, esClient, esState)
+	res := newRollingUpgrade(d, esClient, esState, statefulSets).run()
 	results.WithResults(res)
 
 	// Maybe re-enable shards allocation if upgraded nodes are back into the cluster.
@@ -40,11 +40,34 @@ func (d *defaultDriver) handleRollingUpgrades(
 	return results
 }
 
-func (d *defaultDriver) doRollingUpgrade(
-	statefulSets sset.StatefulSetList,
+type rollingUpgradeCtx struct {
+	client         k8s.Client
+	ES             v1alpha1.Elasticsearch
+	statefulSets   sset.StatefulSetList
+	esClient       esclient.Client
+	esState        ESState
+	podUpgradeDone func(k8s.Client, ESState, types.NamespacedName, string) (bool, error)
+	upgrader       func(statefulSet *appsv1.StatefulSet, newPartition int32) error
+}
+
+func newRollingUpgrade(
+	d *defaultDriver,
 	esClient esclient.Client,
 	esState ESState,
-) *reconciler.Results {
+	statefulSets sset.StatefulSetList,
+) rollingUpgradeCtx {
+	return rollingUpgradeCtx{
+		client:         d.Client,
+		ES:             d.ES,
+		statefulSets:   statefulSets,
+		esClient:       esClient,
+		esState:        esState,
+		podUpgradeDone: podUpgradeDone,
+		upgrader:       d.upgradeStatefulSetPartition,
+	}
+}
+
+func (ctx rollingUpgradeCtx) run() *reconciler.Results {
 	results := &reconciler.Results{}
 
 	// TODO: deal with multiple restarts at once, taking the changeBudget into account.
@@ -62,11 +85,11 @@ func (d *defaultDriver) doRollingUpgrade(
 	maxMasterNodeUpgrades := 1
 	scheduledMasterNodeUpgrades := 0
 
-	for i, statefulSet := range statefulSets.ToUpdate() {
+	for _, statefulSet := range ctx.statefulSets.ToUpdate() {
 		// Inspect each pod, starting from the highest ordinal, and decrement the partition to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
-		for partition := sset.GetUpdatePartition(statefulSet); partition >= 0; partition-- {
-			if partition >= sset.Replicas(statefulSet) {
+		for partition := sset.GetPartition(statefulSet); partition >= 0; partition-- {
+			if partition >= sset.GetReplicas(statefulSet) {
 				continue
 			}
 			if scheduledUpgrades >= maxConcurrentUpgrades {
@@ -79,7 +102,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			// Do we need to upgrade that pod?
 			podName := sset.PodName(statefulSet.Name, partition)
 			podRef := types.NamespacedName{Namespace: statefulSet.Namespace, Name: podName}
-			alreadyUpgraded, err := podUpgradeDone(d.Client, esState, podRef, statefulSet.Status.UpdateRevision)
+			alreadyUpgraded, err := ctx.podUpgradeDone(ctx.client, ctx.esState, podRef, statefulSet.Status.UpdateRevision)
 			if err != nil {
 				return results.WithError(err)
 			}
@@ -91,12 +114,12 @@ func (d *defaultDriver) doRollingUpgrade(
 			scheduledUpgrades++
 
 			// Is the pod upgrade already scheduled?
-			if partition == sset.GetUpdatePartition(statefulSet) {
+			if partition == sset.GetPartition(statefulSet) {
 				continue
 			}
 
 			// Is the cluster ready for the node upgrade?
-			clusterReady, err := clusterReadyForNodeRestart(d.ES, esState)
+			clusterReady, err := clusterReadyForNodeRestart(ctx.ES, ctx.esState)
 			if err != nil {
 				return results.WithError(err)
 			}
@@ -105,8 +128,8 @@ func (d *defaultDriver) doRollingUpgrade(
 				return results.WithResult(defaultRequeue)
 			}
 
-			log.Info("Preparing cluster for node restart", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-			if err := prepareClusterForNodeRestart(esClient, esState); err != nil {
+			log.Info("Preparing cluster for node restart", "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
+			if err := prepareClusterForNodeRestart(ctx.esClient, ctx.esState); err != nil {
 				return results.WithError(err)
 			}
 
@@ -121,7 +144,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			}
 
 			// Upgrade the pod.
-			if err := d.upgradeStatefulSetPartition(&statefulSets[i], partition); err != nil {
+			if err := ctx.upgrader(&statefulSet, partition); err != nil {
 				return results.WithError(err)
 			}
 		}

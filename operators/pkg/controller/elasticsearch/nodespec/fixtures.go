@@ -11,23 +11,76 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func CreateTestSset(name string, esversion string, replicas int32, master bool, data bool) appsv1.StatefulSet {
+type TestSset struct {
+	Name        string
+	ClusterName string
+	Version     string
+	Replicas    int32
+	Master      bool
+	Data        bool
+	Partition   int32
+	Status      appsv1.StatefulSetStatus
+}
+
+func (t TestSset) Build() appsv1.StatefulSet {
 	labels := map[string]string{
-		label.VersionLabelName: esversion,
+		label.VersionLabelName:     t.Version,
+		label.ClusterNameLabelName: t.ClusterName,
 	}
-	label.NodeTypesMasterLabelName.Set(master, labels)
-	label.NodeTypesDataLabelName.Set(data, labels)
+	label.NodeTypesMasterLabelName.Set(t.Master, labels)
+	label.NodeTypesDataLabelName.Set(t.Data, labels)
 	return appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name: t.Name,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: &replicas,
+			Replicas: &t.Replicas,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
 				},
 			},
+			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+				Type: "RollingUpdate",
+				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+					Partition: &t.Partition,
+				},
+			},
+		},
+		Status: t.Status,
+	}
+}
+
+type TestPod struct {
+	Namespace       string
+	Name            string
+	ClusterName     string
+	StatefulSetName string
+	Version         string
+	Revision        string
+	Master          bool
+	Data            bool
+}
+
+func (t TestPod) Build() corev1.Pod {
+	labels := map[string]string{
+		label.VersionLabelName:          t.Version,
+		label.ClusterNameLabelName:      t.ClusterName,
+		label.StatefulSetNameLabelName:  t.StatefulSetName,
+		appsv1.StatefulSetRevisionLabel: t.Revision,
+	}
+	label.NodeTypesMasterLabelName.Set(t.Master, labels)
+	label.NodeTypesDataLabelName.Set(t.Data, labels)
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: t.Namespace,
+			Name:      t.Name,
+			Labels:    labels,
 		},
 	}
+}
+
+func (t TestPod) BuildPtr() *corev1.Pod {
+	pod := t.Build()
+	return &pod
 }

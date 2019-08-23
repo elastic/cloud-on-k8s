@@ -237,30 +237,34 @@ ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set)
 endif
 
-credentials: require-gcloud-project
-	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh credentials
+DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --run-config-file=hack/deployer/config/run-config.yml
+
+build-deployer:
+	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
+
+setup-deployer-for-gke-once: require-gcloud-project build-deployer
+ifeq (,$(wildcard hack/deployer/config/run-config.yml))
+	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/run-config.yml
+endif
+
+credentials: setup-deployer-for-gke-once
+	@ $(DEPLOYER) get credentials
 
 set-context-gke: credentials
-	kubectl config use-context $(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name)
-	$(eval KUBECTL_CLUSTER=$(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name))
+	$(eval KUBECTL_CLUSTER=$($(DEPLOYER) get clusterName))
 
-bootstrap-gke: require-gcloud-project
-	PSP=$(PSP) GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
-	$(MAKE) set-context-gke cluster-bootstrap
+bootstrap-gke: setup-deployer-for-gke-once
+	@ $(DEPLOYER) execute
+	$(MAKE) cluster-bootstrap
 ifeq ($(PSP), 1)
 	$(MAKE) apply-psp
 endif
 
-KIND_NODES ?= 0
-KIND_NODE_IMAGE ?= kindest/node:v1.15.0
-KIND_CLUSTER_NAME ?= eck
-bootstrap-kind:
-	$(MAKE) kind-cluster-$(KIND_NODES)
-	@ echo "Run the following command to update your curent context:"
-	@ echo "export KUBECONFIG=\"$$(kind get kubeconfig-path --name=${KIND_CLUSTER_NAME})\""
+delete-gke: setup-deployer-for-gke-once
+	@ $(DEPLOYER) execute --operation=delete
 
-delete-gke: require-gcloud-project
-	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
+get-deployer-config: setup-deployer-for-gke-once
+	@ $(DEPLOYER) get config
 
 #################################
 ##  --    Docker images    --  ##
@@ -345,9 +349,8 @@ ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration
 ci-e2e: run-deployer
 	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
 
-run-deployer: dep-vendor-only
-	@ go build -o hack/deployer/deployer ./hack/deployer/...
-	./hack/deployer/deployer --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
+run-deployer: dep-vendor-only build-deployer
+	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
@@ -373,17 +376,26 @@ check-local-changes:
 #########################
 # Kind specific targets #
 #########################
+KIND_NODES ?= 0
+KIND_NODE_IMAGE ?= kindest/node:v1.15.0
+KIND_CLUSTER_NAME ?= eck
 
 kind-node-variable-check:
 ifndef KIND_NODE_IMAGE
 	$(error KIND_NODE_IMAGE is mandatory when using Kind)
 endif
 
+bootstrap-kind:
+	KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME} \
+		$(MAKE) kind-cluster-$(KIND_NODES)
+	@ echo "Run the following command to update your curent context:"
+	@ echo "export KUBECONFIG=\"$$(kind get kubeconfig-path --name=${KIND_CLUSTER_NAME})\""
+
 ## Start a kind cluster with just the CRDs, e.g.:
-# "make kind-with-operator-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a one node cluster
+# "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a one node cluster
 # "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" to start a 1 master + 3 nodes cluster
 kind-cluster-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-with-operator-%: export KIND_CLUSTER_NAME = ${KIND_CLUSTER_NAME}
+kind-cluster-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-cluster-%: kind-node-variable-check
 	./hack/kind/kind.sh \
 		--nodes "${*}" \
@@ -391,7 +403,7 @@ kind-cluster-%: kind-node-variable-check
 
 ## Same as above but build and deploy the operator image
 kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-with-operator-%: export KIND_CLUSTER_NAME = ${KIND_CLUSTER_NAME}
+kind-with-operator-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-with-operator-%: kind-node-variable-check docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \
@@ -407,10 +419,6 @@ kind-e2e: kind-node-variable-check docker-build e2e-docker-build
 		--nodes 3 \
 		make e2e-run
 
-## Deploy the operator in a Kind cluster and prepare it to run local e2e tests.
-kind-e2e-local: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
-kind-e2e-local: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-e2e-local: kind-node-variable-check docker-build kind-with-operator-3
-	kubectl create ns e2e-mercury
-	kubectl create ns e2e-venus
-	make install-crds
+## Cleanup
+delete-kind:
+	./hack/kind/kind.sh --stop

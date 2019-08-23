@@ -7,22 +7,42 @@ package zen2
 import (
 	appsv1 "k8s.io/api/apps/v1"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
-// zen2VersionMatch returns true if the given Elasticsearch version is compatible with zen2.
-func zen2VersionMatch(v version.Version) bool {
+// zen2VersionMatch returns true if the given Elasticsearch versionCompatibleWithZen2 is compatible with zen2.
+func versionCompatibleWithZen2(v version.Version) bool {
 	return v.Major >= 7
 }
 
 // IsCompatibleWithZen2 returns true if the given StatefulSet is compatible with zen2.
 func IsCompatibleWithZen2(statefulSet appsv1.StatefulSet) bool {
-	return sset.ESVersionMatch(statefulSet, zen2VersionMatch)
+	return sset.ESVersionMatch(statefulSet, versionCompatibleWithZen2)
 }
 
-// AtLeastOneNodeCompatibleWithZen2 returns true if the given StatefulSetList contains
-// at least one StatefulSet compatible with zen2.
-func AtLeastOneNodeCompatibleWithZen2(statefulSets sset.StatefulSetList) bool {
-	return sset.AtLeastOneESVersionMatch(statefulSets, zen2VersionMatch)
+// AllMastersCompatibleWithZen2 returns true if all master nodes in the given cluster can use zen2 APIs.
+// During a v6 -> v7 rolling upgrade, we can only call zen2 APIs once the current master is using v7,
+// which would happen only if there is no more v6 master-eligible nodes in the cluster.
+func AllMastersCompatibleWithZen2(c k8s.Client, es v1alpha1.Elasticsearch) (bool, error) {
+	masters, err := sset.GetActualMastersForCluster(c, es)
+	if err != nil {
+		return false, err
+	}
+	if len(masters) == 0 {
+		return false, nil
+	}
+	for _, pod := range masters {
+		v, err := label.ExtractVersion(pod.Labels)
+		if err != nil {
+			return false, err
+		}
+		if !versionCompatibleWithZen2(*v) {
+			return false, nil
+		}
+	}
+	return true, nil
 }

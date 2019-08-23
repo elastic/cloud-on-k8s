@@ -5,6 +5,7 @@
 package sset
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -173,6 +174,92 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 			got, err := tt.l.PodReconciliationDone(tt.c, es)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestStatefulSetList_GetByName(t *testing.T) {
+	sset := func(name string) appsv1.StatefulSet {
+		return appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: name}}
+	}
+	tests := []struct {
+		name       string
+		l          StatefulSetList
+		ssetName   string
+		wantResult appsv1.StatefulSet
+		wantFound  bool
+	}{
+		{
+			name:      "statefulset not found",
+			l:         StatefulSetList{sset("a"), sset("b")},
+			ssetName:  "c",
+			wantFound: false,
+		},
+		{
+			name:       "statefulset found",
+			l:          StatefulSetList{sset("a"), sset("b")},
+			ssetName:   "b",
+			wantFound:  true,
+			wantResult: sset("b"),
+		},
+		{
+			name:      "empty list",
+			l:         StatefulSetList{},
+			ssetName:  "b",
+			wantFound: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, found := tt.l.GetByName(tt.ssetName)
+			if !reflect.DeepEqual(result, tt.wantResult) {
+				t.Errorf("GetByName() got = %v, want %v", result, tt.wantResult)
+			}
+			if found != tt.wantFound {
+				t.Errorf("GetByName() got1 = %v, want %v", found, tt.wantFound)
+			}
+		})
+	}
+}
+
+func TestStatefulSetList_ToUpdate(t *testing.T) {
+	toUpdate1 := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "toUpdate1"},
+		Status:     appsv1.StatefulSetStatus{UpdateRevision: "update-rev", CurrentRevision: "current-rev"},
+	}
+	toUpdate2 := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "toUpdate2"},
+		Status:     appsv1.StatefulSetStatus{UpdateRevision: "update-rev", CurrentRevision: "current-rev"},
+	}
+	noUpdateRev := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "noUpdateRev"},
+		Status:     appsv1.StatefulSetStatus{UpdateRevision: "", CurrentRevision: "current-rev"},
+	}
+	updateMatchCurrent := appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: "noUpdateRev"},
+		Status:     appsv1.StatefulSetStatus{UpdateRevision: "update-rev", CurrentRevision: "update-rev"},
+	}
+	tests := []struct {
+		name string
+		l    StatefulSetList
+		want StatefulSetList
+	}{
+		{
+			name: "empty list",
+			l:    StatefulSetList{},
+			want: StatefulSetList{},
+		},
+		{
+			name: "2/4 StatefulSets to update",
+			l:    StatefulSetList{noUpdateRev, toUpdate1, updateMatchCurrent, toUpdate2},
+			want: StatefulSetList{toUpdate1, toUpdate2},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.l.ToUpdate(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ToUpdate() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

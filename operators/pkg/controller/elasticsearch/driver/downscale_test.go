@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
@@ -30,53 +31,61 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	ssetMaster3Replicas     = nodespec.CreateTestSset("ssetMaster3Replicas", "7.2.0", 3, true, false)
+	clusterName             = "cluster"
+	ssetMaster3Replicas     = nodespec.TestSset{Name: "ssetMaster3Replicas", Version: "7.2.0", Replicas: 3, Master: true, Data: false}.Build()
 	podsSsetMaster3Replicas = []corev1.Pod{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetMaster3Replicas.Name, 0),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetMaster3Replicas.Name, 1),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetMaster3Replicas.Name, 2),
-			},
-		},
+		nodespec.TestPod{
+			Namespace:   ssetMaster3Replicas.Namespace,
+			Name:        sset.PodName(ssetMaster3Replicas.Name, 0),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Master:      true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetMaster3Replicas.Namespace,
+			Name:        sset.PodName(ssetMaster3Replicas.Name, 1),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Master:      true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetMaster3Replicas.Namespace,
+			Name:        sset.PodName(ssetMaster3Replicas.Name, 2),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Master:      true,
+		}.Build(),
 	}
-	ssetData4Replicas     = nodespec.CreateTestSset("ssetData4Replicas", "7.2.0", 4, false, true)
+	ssetData4Replicas     = nodespec.TestSset{Name: "ssetData4Replicas", Version: "7.2.0", Replicas: 4, Master: false, Data: true}.Build()
 	podsSsetData4Replicas = []corev1.Pod{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetData4Replicas.Name, 0),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetData4Replicas.Name, 1),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetData4Replicas.Name, 2),
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ssetMaster3Replicas.Namespace,
-				Name:      sset.PodName(ssetData4Replicas.Name, 3),
-			},
-		},
+		nodespec.TestPod{
+			Namespace:   ssetData4Replicas.Namespace,
+			Name:        sset.PodName(ssetData4Replicas.Name, 0),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Data:        true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetData4Replicas.Namespace,
+			Name:        sset.PodName(ssetData4Replicas.Name, 1),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Data:        true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetData4Replicas.Namespace,
+			Name:        sset.PodName(ssetData4Replicas.Name, 2),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Data:        true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:   ssetData4Replicas.Namespace,
+			Name:        sset.PodName(ssetData4Replicas.Name, 3),
+			ClusterName: clusterName,
+			Version:     "7.2.0",
+			Data:        true,
+		}.Build(),
 	}
 	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
@@ -98,6 +107,10 @@ type fakeESClient struct { //nolint:maligned
 
 	ExcludeFromShardAllocationCalled     bool
 	ExcludeFromShardAllocationCalledWith string
+
+	EnableShardAllocationCalled bool
+
+	SyncedFlushCalled bool
 }
 
 func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, n int) error {
@@ -115,6 +128,16 @@ func (f *fakeESClient) AddVotingConfigExclusions(ctx context.Context, nodeNames 
 func (f *fakeESClient) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
 	f.ExcludeFromShardAllocationCalled = true
 	f.ExcludeFromShardAllocationCalledWith = nodes
+	return nil
+}
+
+func (f *fakeESClient) EnableShardAllocation(_ context.Context) error {
+	f.EnableShardAllocationCalled = true
+	return nil
+}
+
+func (f *fakeESClient) SyncedFlush(_ context.Context) error {
+	f.SyncedFlushCalled = true
 	return nil
 }
 
@@ -591,62 +614,62 @@ func Test_attemptDownscale(t *testing.T) {
 		{
 			name: "1 statefulset should be removed",
 			downscale: ssetDownscale{
-				statefulSet:     nodespec.CreateTestSset("should-be-removed", "7.1.0", 0, true, true),
+				statefulSet:     nodespec.TestSset{Name: "should-be-removed", Version: "7.1.0", Replicas: 0, Master: true, Data: true}.Build(),
 				initialReplicas: 0,
 				targetReplicas:  0,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
-				nodespec.CreateTestSset("should-be-removed", "7.1.0", 0, true, true),
-				nodespec.CreateTestSset("should-stay", "7.1.0", 2, true, true),
+				nodespec.TestSset{Name: "should-be-removed", Version: "7.1.0", Replicas: 0, Master: true, Data: true}.Build(),
+				nodespec.TestSset{Name: "should-stay", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				nodespec.CreateTestSset("should-stay", "7.1.0", 2, true, true),
+				nodespec.TestSset{Name: "should-stay", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
 		},
 		{
 			name: "target replicas == initial replicas",
 			downscale: ssetDownscale{
-				statefulSet:     nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				statefulSet:     nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  3,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 		},
 		{
 			name: "upscale case",
 			downscale: ssetDownscale{
-				statefulSet:     nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				statefulSet:     nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  4,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 		},
 		{
 			name: "perform 3 -> 2 downscale",
 			downscale: ssetDownscale{
-				statefulSet:     nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				statefulSet:     nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
 				targetReplicas:  2,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
 			statefulSets: sset.StatefulSetList{
-				nodespec.CreateTestSset("default", "7.1.0", 3, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
-				nodespec.CreateTestSset("default", "7.1.0", 2, true, true),
+				nodespec.TestSset{Name: "default", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
 			},
 		},
 	}
@@ -726,8 +749,8 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 }
 
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
-	ssetMasters := nodespec.CreateTestSset("masters", "7.1.0", 3, true, false)
-	ssetData := nodespec.CreateTestSset("datas", "7.1.0", 3, false, true)
+	ssetMasters := nodespec.TestSset{Name: "masters", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build()
+	ssetData := nodespec.TestSset{Name: "datas", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build()
 	tests := []struct {
 		name               string
 		downscale          ssetDownscale
@@ -757,7 +780,24 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrapClient(fake.NewFakeClient(&ssetMasters, &ssetData))
+			es := v1alpha1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: ssetMasters.Namespace,
+					Name:      "es",
+				},
+			}
+			// simulate an existing v7 master for zen2 to be called
+			v7Pod := corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: es.Namespace,
+					Labels: map[string]string{
+						label.ClusterNameLabelName:             es.Name,
+						string(label.NodeTypesMasterLabelName): "true",
+						label.VersionLabelName:                 "7.1.0",
+					},
+				},
+			}
+			k8sClient := k8s.WrapClient(fake.NewFakeClient(&ssetMasters, &ssetData, &v7Pod))
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
@@ -771,11 +811,104 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 			// check call to zen2 is the expected one
 			require.Equal(t, tt.wantZen2Called, esClient.AddVotingConfigExclusionsCalled)
 			require.Equal(t, tt.wantZen2CalledWith, esClient.AddVotingConfigExclusionsCalledWith)
+			// check zen1 was not called
+			require.False(t, esClient.SetMinimumMasterNodesCalled)
 		})
 	}
 }
 
-func Test_doDownscale_callsZen1ForMasterNodes(t *testing.T) {
-	// TODO: implement with https://github.com/elastic/cloud-on-k8s/issues/1281
-	//  to handle the 2->1 masters case
+func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
+	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
+	ssetMasters := nodespec.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
+	masterPods := []corev1.Pod{
+		nodespec.TestPod{
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            ssetMaster3Replicas.Name + "-0",
+			ClusterName:     es.Name,
+			StatefulSetName: ssetMaster3Replicas.Name,
+			Version:         "6.8.0",
+			Master:          true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            ssetMaster3Replicas.Name + "-1",
+			ClusterName:     es.Name,
+			StatefulSetName: ssetMaster3Replicas.Name,
+			Version:         "6.8.0",
+			Master:          true,
+		}.Build(),
+		nodespec.TestPod{
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            ssetMaster3Replicas.Name + "-2",
+			ClusterName:     es.Name,
+			StatefulSetName: ssetMaster3Replicas.Name,
+			Version:         "6.8.0",
+			Master:          true,
+		}.Build(),
+	}
+	ssetData := nodespec.TestSset{Name: "datas", Version: "6.8.0", Replicas: 3, Master: false, Data: true}.Build()
+	tests := []struct {
+		name               string
+		downscale          ssetDownscale
+		statefulSets       sset.StatefulSetList
+		apiserverResources []runtime.Object
+		wantZen1Called     bool
+		wantZen1CalledWith int
+	}{
+		{
+			name: "3 -> 2 master nodes",
+			downscale: ssetDownscale{
+				statefulSet:     ssetMasters,
+				initialReplicas: 3,
+				targetReplicas:  2,
+			},
+			statefulSets:       sset.StatefulSetList{ssetMasters},
+			apiserverResources: []runtime.Object{&ssetMasters, &masterPods[0], &masterPods[1], &masterPods[2]},
+			wantZen1Called:     false,
+		},
+		{
+			name: "3 -> 2 data nodes",
+			downscale: ssetDownscale{
+				statefulSet:     ssetData,
+				initialReplicas: 3,
+				targetReplicas:  2,
+			},
+			statefulSets:       sset.StatefulSetList{ssetMasters, ssetData},
+			apiserverResources: []runtime.Object{&ssetMasters, &ssetData, &masterPods[0], &masterPods[1], &masterPods[2]},
+			wantZen1Called:     false,
+		},
+		{
+			name: "2 -> 1 master nodes",
+			downscale: ssetDownscale{
+				statefulSet:     ssetMasters,
+				initialReplicas: 2,
+				targetReplicas:  1,
+			},
+			statefulSets: sset.StatefulSetList{ssetMasters},
+			// 2 master nodes in the apiserver
+			apiserverResources: []runtime.Object{&ssetMasters, &masterPods[0], &masterPods[1]},
+			wantZen1Called:     true,
+			wantZen1CalledWith: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.WrapClient(fake.NewFakeClient(tt.apiserverResources...))
+			esClient := &fakeESClient{}
+			downscaleCtx := downscaleContext{
+				k8sClient:      k8sClient,
+				expectations:   reconciler.NewExpectations(),
+				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
+				esClient:       esClient,
+			}
+			// do the downscale
+			err := doDownscale(downscaleCtx, tt.downscale, tt.statefulSets)
+			require.NoError(t, err)
+			// check call to zen1 is the expected one
+			require.Equal(t, tt.wantZen1Called, esClient.SetMinimumMasterNodesCalled)
+			require.Equal(t, tt.wantZen1CalledWith, esClient.SetMinimumMasterNodesCalledWith)
+			// check zen2 was not called
+			require.False(t, esClient.AddVotingConfigExclusionsCalled)
+		})
+	}
 }

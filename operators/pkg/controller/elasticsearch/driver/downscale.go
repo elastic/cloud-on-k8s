@@ -5,6 +5,9 @@
 package driver
 
 import (
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -78,11 +81,11 @@ func noOnGoingDeletion(downscaleCtx downscaleContext, actualStatefulSets sset.St
 func calculateDownscales(expectedStatefulSets sset.StatefulSetList, actualStatefulSets sset.StatefulSetList) []ssetDownscale {
 	downscales := []ssetDownscale{}
 	for _, actualSset := range actualStatefulSets {
-		actualReplicas := sset.Replicas(actualSset)
+		actualReplicas := sset.GetReplicas(actualSset)
 		expectedSset, shouldExist := expectedStatefulSets.GetByName(actualSset.Name)
 		expectedReplicas := int32(0) // sset removal
 		if shouldExist {             // sset downscale
-			expectedReplicas = sset.Replicas(expectedSset)
+			expectedReplicas = sset.GetReplicas(expectedSset)
 		}
 		if expectedReplicas == 0 || // removal
 			expectedReplicas < actualReplicas { // downscale
@@ -205,17 +208,44 @@ func updateZenSettingsForDownscale(ctx downscaleContext, downscale ssetDownscale
 		return nil
 	}
 
-	// TODO: only update in case 2->1 masters.
-	// Update Zen1 minimum master nodes API, accounting for the updated downscaled replicas.
-	_, err := zen1.UpdateMinimumMasterNodes(ctx.k8sClient, ctx.es, ctx.esClient, actualStatefulSets, ctx.reconcileState)
-	if err != nil {
+	// Maybe update zen1 minimum_master_nodes.
+	if err := maybeUpdateZen1ForDownscale(ctx, actualStatefulSets); err != nil {
 		return err
 	}
 
-	// Update zen2 settings to exclude leaving master nodes from voting.
-	if err := zen2.AddToVotingConfigExclusions(ctx.esClient, downscale.statefulSet, downscale.leavingNodeNames()); err != nil {
+	// Maybe update zen2 settings to exclude leaving master nodes from voting.
+	if err := zen2.AddToVotingConfigExclusions(ctx.k8sClient, ctx.esClient, ctx.es, downscale.leavingNodeNames()); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// maybeUpdateZen1ForDownscale updates zen1 minimum master nodes if we are downscaling from 2 to 1 master node.
+func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.StatefulSetList) error {
+	if !zen1.AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
+		return nil
+	}
+
+	actualPods, err := sset.GetActualPodsForCluster(ctx.k8sClient, ctx.es)
+	if err != nil {
+		return err
+	}
+	masters := label.FilterMasterNodePods(actualPods)
+	if len(masters) != 2 {
+		// not in the 2->1 situation
+		return nil
+	}
+
+	// We are moving from 2 to 1 master nodes, we need to update minimum_master_nodes before removing
+	// the 2nd node, otherwise the cluster won't be able to form anymore.
+	// This is inherently unsafe (can cause split brains), but there's no alternative.
+	// For other situations (eg. 3 -> 2), it's fine to update minimum_master_nodes after the node is removed
+	// (will be done at next reconciliation, before nodes removal).
+	ctx.reconcileState.AddEvent(
+		v1.EventTypeWarning, events.EventReasonUnhealthy,
+		"Downscaling from 2 to 1 master nodes: unsafe operation",
+	)
+	minimumMasterNodes := 1
+	return zen1.UpdateMinimumMasterNodesTo(ctx.es, ctx.esClient, actualStatefulSets, ctx.reconcileState, minimumMasterNodes)
 }
