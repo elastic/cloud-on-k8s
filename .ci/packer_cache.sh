@@ -8,7 +8,7 @@
 
 set -eou pipefail
 
-DOCKER_CI_IMAGE=$(cd ../build/ci/ && make show-image)
+DOCKER_CI_IMAGE=$(cd build/ci/ && make show-image)
 
 declare -a docker_images=("$DOCKER_CI_IMAGE")
 
