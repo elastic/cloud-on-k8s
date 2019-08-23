@@ -229,7 +229,7 @@ func (d *defaultDriver) newElasticsearchClient(
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
-	url := fmt.Sprintf("https://%s.%s.svc:%d", service.Name, service.Namespace, network.HTTPPort)
+	url := fmt.Sprintf("%s://%s.%s.svc:%d", d.ES.Spec.HTTP.Scheme(), service.Name, service.Namespace, network.HTTPPort)
 	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
 }
 

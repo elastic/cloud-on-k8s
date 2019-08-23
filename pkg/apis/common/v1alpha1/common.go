@@ -50,6 +50,14 @@ type HTTPConfig struct {
 	TLS TLSOptions `json:"tls,omitempty"`
 }
 
+// Scheme returns the scheme for this HTTP config
+func (http HTTPConfig) Scheme() string {
+	if http.TLS.Enabled() {
+		return "https"
+	}
+	return "http"
+}
+
 type TLSOptions struct {
 	// SelfSignedCertificate define options to apply to self-signed certificate
 	// managed by the operator.

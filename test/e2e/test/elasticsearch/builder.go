@@ -91,6 +91,14 @@ func (b Builder) WithHTTPLoadBalancer() Builder {
 	return b
 }
 
+func (b Builder) WithTLSDisabled() Builder {
+	if b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate == nil {
+		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1alpha1.SelfSignedCertificate{}
+	}
+	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = true
+	return b
+}
+
 func (b Builder) WithHTTPSAN(ip string) Builder {
 	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1alpha1.SelfSignedCertificate{
 		SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{{IP: ip}},

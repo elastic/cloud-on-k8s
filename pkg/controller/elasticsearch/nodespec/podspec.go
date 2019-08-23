@@ -58,7 +58,7 @@ func BuildPodTemplateSpec(
 		WithPorts(DefaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe()).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(EnvVars...).
+		WithEnv(DefaultEnvVars(es.Spec.HTTP)...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithLabels(labels).
