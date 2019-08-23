@@ -27,7 +27,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	results := &reconciler.Results{}
 
 	// We need an up-to-date ES state, but avoid requesting information we may not need.
-	esState := NewLazyESState(esClient)
+	esState := NewMemoizingESState(esClient)
 
 	// Maybe upgrade some of the nodes.
 	res := newRollingUpgrade(d, esClient, esState, statefulSets).run()
