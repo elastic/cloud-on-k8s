@@ -59,7 +59,7 @@ pipeline {
                     }
                     steps {
                         sh """
-                            cat >operators/run-config.yml <<EOF
+                            cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
   kubernetesVersion: "$CLUSTER_VERSION"
