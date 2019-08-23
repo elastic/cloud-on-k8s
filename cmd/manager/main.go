@@ -20,7 +20,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/pkg/webhook"
+
+	// todo (sabo)
+	// "github.com/elastic/cloud-on-k8s/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
@@ -262,11 +264,12 @@ func execute() {
 		os.Exit(1)
 	}
 
-	log.Info("Setting up webhooks")
-	if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
-		log.Error(err, "unable to register webhooks to the manager")
-		os.Exit(1)
-	}
+	// todo sabo
+	// log.Info("Setting up webhooks")
+	// if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
+	// 	log.Error(err, "unable to register webhooks to the manager")
+	// 	os.Exit(1)
+	// }
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -278,24 +281,25 @@ func execute() {
 	}
 }
 
-func newWebhookParameters() (*webhook.Parameters, error) {
-	autoInstall := viper.GetBool(AutoInstallWebhooksFlag)
-	ns := viper.GetString(OperatorNamespaceFlag)
-	if ns == "" && autoInstall {
-		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
-	}
-	svcSelector := viper.GetString(WebhookPodsLabelFlag)
-	sec := viper.GetString(WebhookSecretFlag)
-	return &webhook.Parameters{
-		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
-			Namespace:        ns,
-			ManagedNamespace: viper.GetString(NamespaceFlagName),
-			SecretName:       sec,
-			ServiceSelector:  svcSelector,
-		}),
-		AutoInstall: autoInstall,
-	}, nil
-}
+// todo sabo
+// func newWebhookParameters() (*webhook.Parameters, error) {
+// 	autoInstall := viper.GetBool(AutoInstallWebhooksFlag)
+// 	ns := viper.GetString(OperatorNamespaceFlag)
+// 	if ns == "" && autoInstall {
+// 		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
+// 	}
+// 	svcSelector := viper.GetString(WebhookPodsLabelFlag)
+// 	sec := viper.GetString(WebhookSecretFlag)
+// 	return &webhook.Parameters{
+// 		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
+// 			Namespace:        ns,
+// 			ManagedNamespace: viper.GetString(NamespaceFlagName),
+// 			SecretName:       sec,
+// 			ServiceSelector:  svcSelector,
+// 		}),
+// 		AutoInstall: autoInstall,
+// 	}, nil
+// }
 
 func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration) {
 	certValidity := viper.GetDuration(validityFlag)

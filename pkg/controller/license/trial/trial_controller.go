@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"sync/atomic"
 	"time"
-
+	commonvalidation "github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license/validation"
@@ -48,6 +48,27 @@ type ReconcileTrials struct {
 	trialPubKey *rsa.PublicKey
 }
 
+// Aggregate came from the webhook trial license pkg which was removed
+// TODO (sabo) what do?
+func Aggregate(results []commonvalidation.Result) types.Response {
+	response := commonvalidation.Result{Allowed: true}
+	for _, r := range results {
+		if !r.Allowed {
+			response.Allowed = false
+			if r.Error != nil {
+				log.Error(r.Error, r.Reason)
+			}
+			if response.Reason == "" {
+				response.Reason = r.Reason
+				continue
+			}
+			response.Reason = response.Reason + ". " + r.Reason
+		}
+	}
+	log.V(1).Info("Admission validation response", "allowed", response.Allowed, "reason", response.Reason)
+	return admission.ValidationResponse(response.Allowed, response.Reason)
+}
+
 // Reconcile watches a trial status secret. If it finds a trial license it checks whether a trial has been started.
 // If not it starts the trial period if the user has expressed intent to do so.
 // If a trial is already running it validates the trial license.
@@ -71,7 +92,8 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 			secret.Annotations = map[string]string{}
 		}
 		// TODO (sabo) what do? this is the only call
-		res := license_validation.Aggregate(violations)
+		// res := license_validation.Aggregate(violations)
+		res := Aggregate(violations)
 		secret.Annotations[licensing.LicenseInvalidAnnotation] = string(res.Response.Result.Reason)
 		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
 	}
