@@ -52,7 +52,7 @@ EOT
 
     done
   else
-    # There's only a controle plane
+    # There's only the controle plane, no nodes
     workers=${CLUSTER_NAME}-control-plane
   fi
 
