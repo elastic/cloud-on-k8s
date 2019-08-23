@@ -82,7 +82,7 @@ func (n *lazyNodes) NodesInCluster(nodeNames []string) (bool, error) {
 
 // -- Shards allocation enabled
 
-// lazyNodes provides shards allocation information.
+// lazyShardsAllocationEnabled provides shards allocation information.
 type lazyShardsAllocationEnabled struct {
 	enabled  bool
 	once     sync.Once
