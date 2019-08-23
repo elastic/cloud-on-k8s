@@ -89,47 +89,47 @@ func (f *fakeESClient) GetClusterHealth(ctx context.Context) (esclient.Health, e
 
 // -- ESState tests
 
-func Test_lazyNodes_NodesInCluster(t *testing.T) {
+func Test_memoizingNodes_NodesInCluster(t *testing.T) {
 	esClient := &fakeESClient{
 		nodes: esclient.Nodes{Nodes: map[string]esclient.Node{"a": {Name: "a"}, "b": {Name: "b"}, "c": {Name: "c"}}},
 	}
-	lazyNodes := &lazyNodes{esClient: esClient}
+	memoizingNodes := &memoizingNodes{esClient: esClient}
 
-	inCluster, err := lazyNodes.NodesInCluster([]string{"a", "b", "c"})
+	inCluster, err := memoizingNodes.NodesInCluster([]string{"a", "b", "c"})
 	require.NoError(t, err)
 	// es should be requested on first call
 	require.Equal(t, 1, esClient.GetNodesCallCount)
 	// nodes are in the cluster
 	require.Equal(t, true, inCluster)
 	// ES should not be requested again on subsequent calls
-	inCluster, err = lazyNodes.NodesInCluster([]string{"a", "b", "c"})
+	inCluster, err = memoizingNodes.NodesInCluster([]string{"a", "b", "c"})
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetNodesCallCount)
 	require.Equal(t, true, inCluster)
 
 	// nodes are a subset of the cluster nodes: should return true
-	inCluster, err = lazyNodes.NodesInCluster([]string{"a", "b"})
+	inCluster, err = memoizingNodes.NodesInCluster([]string{"a", "b"})
 	require.NoError(t, err)
 	require.True(t, inCluster)
 
 	// all nodes are not in the cluster: should return false
-	inCluster, err = lazyNodes.NodesInCluster([]string{"a", "b", "c", "e"})
+	inCluster, err = memoizingNodes.NodesInCluster([]string{"a", "b", "c", "e"})
 	require.NoError(t, err)
 	require.False(t, inCluster)
 }
 
-func Test_lazyShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T) {
+func Test_memoizingShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T) {
 	// with cluster routing allocation enabled (by default)
 	esClient := &fakeESClient{}
-	l := &lazyShardsAllocationEnabled{esClient: esClient}
+	s := &memoizingShardsAllocationEnabled{esClient: esClient}
 
-	enabled, err := l.ShardAllocationsEnabled()
+	enabled, err := s.ShardAllocationsEnabled()
 	require.NoError(t, err)
 	// es should be requested on first call
 	require.Equal(t, 1, esClient.GetClusterRoutingAllocationCallCount)
 	require.True(t, enabled)
 	// ES should not be requested again on subsequent calls
-	enabled, err = l.ShardAllocationsEnabled()
+	enabled, err = s.ShardAllocationsEnabled()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterRoutingAllocationCallCount)
 	require.True(t, enabled)
@@ -138,41 +138,41 @@ func Test_lazyShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T) {
 	clusterRoutingAllocation := esclient.ClusterRoutingAllocation{}
 	clusterRoutingAllocation.Transient.Cluster.Routing.Allocation.Enable = "none"
 	esClient = &fakeESClient{clusterRoutingAllocation: clusterRoutingAllocation}
-	l = &lazyShardsAllocationEnabled{esClient: esClient}
-	enabled, err = l.ShardAllocationsEnabled()
+	s = &memoizingShardsAllocationEnabled{esClient: esClient}
+	enabled, err = s.ShardAllocationsEnabled()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterRoutingAllocationCallCount)
 	require.False(t, enabled)
 }
 
-func Test_lazyGreenHealth_GreenHealth(t *testing.T) {
+func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 	esClient := &fakeESClient{health: esclient.Health{Status: string(v1alpha1.ElasticsearchGreenHealth)}}
-	l := &lazyGreenHealth{esClient: esClient}
+	h := &memoizingGreenHealth{esClient: esClient}
 
-	green, err := l.GreenHealth()
+	green, err := h.GreenHealth()
 	require.NoError(t, err)
 	// es should be requested on first call
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
 	require.True(t, green)
 	// ES should not be requested again on subsequent calls
-	green, err = l.GreenHealth()
+	green, err = h.GreenHealth()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
 	require.True(t, green)
 
 	// simulate yellow health
 	esClient = &fakeESClient{health: esclient.Health{Status: string(v1alpha1.ElasticsearchYellowHealth)}}
-	l = &lazyGreenHealth{esClient: esClient}
-	green, err = l.GreenHealth()
+	h = &memoizingGreenHealth{esClient: esClient}
+	green, err = h.GreenHealth()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
 	require.False(t, green)
 }
 
-func TestNewLazyESState(t *testing.T) {
+func TestNewMemoizingESState(t *testing.T) {
 	esClient := &fakeESClient{}
 	// just make sure everything is initialized correctly (no panic for nil pointers)
-	s := NewLazyESState(esClient)
+	s := NewMemoizingESState(esClient)
 	_, err := s.GreenHealth()
 	require.NoError(t, err)
 	_, err = s.ShardAllocationsEnabled()
