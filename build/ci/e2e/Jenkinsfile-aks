@@ -27,7 +27,7 @@ pipeline {
         stage("Run E2E tests") {
             steps {
                 sh """
-                    cat >operators/run-config.yml <<EOF
+                    cat >run-config.yml <<EOF
 id: aks-ci
 overrides:
   kubernetesVersion: "$CLUSTER_VERSION"
@@ -47,7 +47,7 @@ EOF
         cleanup {
             script {
                 sh """
-                    cat >operators/run-config.yml <<EOF
+                    cat >run-config.yml <<EOF
 id: aks-ci
 overrides:
   operation: delete
