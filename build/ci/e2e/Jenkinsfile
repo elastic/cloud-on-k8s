@@ -29,7 +29,7 @@ pipeline {
             }
             steps {
                 sh """
-                    cat >environment <<EOF
+                    cat >.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"

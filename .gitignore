@@ -40,4 +40,4 @@ hack/deployer/config/run-config.yml
 
 # ignore CI config files
 run-config.yml
-environment
+.env

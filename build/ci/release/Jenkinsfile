@@ -25,7 +25,7 @@ pipeline {
                 stage('Build and push release image') {
                     steps {
                         sh """
-                            cat >operators/environment <<EOF
+                            cat >operators/.env <<EOF
 OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
 LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
 VERSION = "${TAG_NAME}"

@@ -24,7 +24,7 @@ pipeline {
         stage("Run E2E tests") {
             steps {
                 sh """
-                    cat >environment <<EOF
+                    cat >.env <<EOF
 VAULT_ADDR = "$VAULT_ADDR"
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 LATEST_RELEASED_IMG = "$IMAGE"

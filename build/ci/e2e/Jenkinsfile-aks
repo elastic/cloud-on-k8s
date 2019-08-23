@@ -23,7 +23,7 @@ pipeline {
         stage("Run E2E tests") {
             steps {
                 sh """
-                    cat >environment <<EOF
+                    cat >.env <<EOF
 REGISTRY = cloudonk8s.azurecr.io
 REPOSITORY = operators
 IMG_SUFFIX = -ci

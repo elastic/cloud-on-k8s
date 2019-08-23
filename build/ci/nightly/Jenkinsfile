@@ -22,7 +22,7 @@ pipeline {
         stage('Run unit and integration tests') {
             steps {
                 sh """
-                    cat > operators/environment <<EOF
+                    cat > operators/.env <<EOF
 GCLOUD_PROJECT = $GCLOUD_PROJECT
 REGISTRY = "push.docker.elastic.co"
 REPOSITORY = "eck-snapshots"

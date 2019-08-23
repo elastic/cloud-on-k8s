@@ -7,7 +7,7 @@
 #################################
 
 # reads file 'environment', ignores if it doesn't exist
--include environment
+-include .env
 
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
