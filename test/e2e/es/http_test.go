@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
-// TestHTTPWithoutTLS tests a manual override of the default persistent storage with emptyDir.
+// TestHTTPWithoutTLS tests an Elasticsearch cluster with TLS disabled for the HTTP layer.
 func TestHTTPWithoutTLS(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-es-http").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
