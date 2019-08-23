@@ -83,7 +83,7 @@ pipeline {
 
 void createRunConfig(clusterVersion, clusterName) {
     sh """
-        cat >operators/run-config.yml <<EOF
+        cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: create
