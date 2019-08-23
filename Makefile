@@ -6,7 +6,7 @@
 ##  --      Variables      --  ##
 #################################
 
-# reads file 'environment', ignores if it doesn't exist
+# reads file '.env', ignores if it doesn't exist
 -include .env
 
 # make sure sub-commands don't use eg. fish shell
