@@ -45,6 +45,7 @@ var (
 	}
 )
 
+// DefaultEnvVars are environment variables injected into Elasticsearch pods.
 func DefaultEnvVars(httpCfg v1alpha1.HTTPConfig) []corev1.EnvVar {
 	return append(
 		defaults.PodDownwardEnvVars,
