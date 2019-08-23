@@ -9,8 +9,8 @@ There are few layers in most of our jobs:
 1. [Job definition](../../.ci/jobs) - description of the job.
 2. Jenkinsfile (e.g.: [e2e/Jenkinsfile](e2e/Jenkinsfile)) - loads vault credentials, sets up configuration. 
 3. [CI makefile](Makefile) - creates container to run CI in, consolidates dev and CI setups.
-4. [operators makefile](../../operators/Makefile) - contains logic, delegates to specific tools as needed.
-5. tools - e.g. for [e2e test running](../../operators/test/e2e) and [cluster provisioning](../../operators/hack/deployer).
+4. [dev makefile](../../Makefile) - contains logic, delegates to specific tools as needed.
+5. tools - e.g. for [e2e test running](../../test/e2e) and [cluster provisioning](../../hack/deployer).
 
 ### Local repro
 
@@ -28,7 +28,7 @@ export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 
 Per repro, depending on the job, set up environment and run-config.yml files. E.g.: to repro e2e tests run, look at its [Jenkinsfile](e2e/Jenkinsfile) and rerun the script locally in repo root: 
 ```
-cat >operators/.env <<EOF
+cat >.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
@@ -36,7 +36,7 @@ SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
 EOF
 
-cat >operators/run-config.yml <<EOF
+cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
   kubernetesVersion: "1.12"

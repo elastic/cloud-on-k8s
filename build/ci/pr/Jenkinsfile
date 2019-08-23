@@ -100,7 +100,7 @@ def notOnlyDocs() {
 
 void createConfig() {
     sh """
-        cat >operators/.env <<EOF
+        cat >.env <<EOF
 CLUSTER_NAME = "$BUILD_TAG"
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"

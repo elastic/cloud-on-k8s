@@ -22,7 +22,7 @@ pipeline {
         stage('Run unit and integration tests') {
             steps {
                 sh """
-                    cat > operators/.env <<EOF
+                    cat > .env <<EOF
 GCLOUD_PROJECT = $GCLOUD_PROJECT
 REGISTRY = "push.docker.elastic.co"
 REPOSITORY = "eck-snapshots"
@@ -40,7 +40,7 @@ EOF
                     export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     export LATEST_RELEASED_IMG=docker.elastic.co/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     echo \$LATEST_RELEASED_IMG > eck_image.txt
-                    cat >> operators/environment <<EOF
+                    cat >> .env <<EOF
 OPERATOR_IMAGE = "$OPERATOR_IMAGE"
 LATEST_RELEASED_IMG = "$LATEST_RELEASED_IMG"
 EOF
