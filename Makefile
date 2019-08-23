@@ -108,6 +108,7 @@ dep-vendor-only:
 # Generate code
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/apm/...
+	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/common/...
 
 
 elastic-operator: generate
