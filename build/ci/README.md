@@ -7,7 +7,7 @@ We are using Jenkins as CI runner and keep its configuration as code in the repo
 There are few layers in most of our jobs:
  
 1. [Job definition](../../.ci/jobs) - description of the job.
-2. Jenkinsfile - loads vault credentials, sets up configuration. 
+2. Jenkinsfile (e.g.: [e2e/Jenkinsfile](e2e/Jenkinsfile)) - loads vault credentials, sets up configuration. 
 3. [CI makefile](Makefile) - creates container to run CI in, consolidates dev and CI setups.
 4. [operators makefile](../../operators/Makefile) - contains logic, delegates to specific tools as needed.
 5. tools - e.g. for [e2e test running](../../operators/test/e2e) and [cluster provisioning](../../operators/hack/deployer).
