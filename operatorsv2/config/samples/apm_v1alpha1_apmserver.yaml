@@ -1,7 +1,0 @@
-apiVersion: apm.k8s.elastic.co/v1alpha1
-kind: ApmServer
-metadata:
-  name: apmserver-sample
-spec:
-  # Add fields here
-  foo: bar
