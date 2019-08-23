@@ -38,7 +38,7 @@ overrides:
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
 EOF
-                    make -C build/ci COMMAND=ci-e2e ci
+                    make -C build/ci TARGET=ci-e2e ci
                 """
             }
         }  
@@ -59,7 +59,7 @@ overrides:
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
 EOF
-                    make -C build/ci COMMAND=run-deployer ci
+                    make -C build/ci TARGET=run-deployer ci
                 """
             }
             cleanWs()

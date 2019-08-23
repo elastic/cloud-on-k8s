@@ -29,7 +29,7 @@ REPOSITORY = "eck-snapshots"
 IMG_NAME = "eck-operator"
 SNAPSHOT = "true"
 EOF
-                    make -C build/ci COMMAND=ci ci
+                    make -C build/ci TARGET=ci ci
                 """
             }
         }
@@ -44,7 +44,7 @@ EOF
 OPERATOR_IMAGE = "$OPERATOR_IMAGE"
 LATEST_RELEASED_IMG = "$LATEST_RELEASED_IMG"
 EOF
-                    make -C build/ci COMMAND=ci-release ci
+                    make -C build/ci TARGET=ci-release ci
                 """
             }
         }

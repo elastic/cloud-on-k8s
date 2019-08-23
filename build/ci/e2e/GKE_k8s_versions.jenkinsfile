@@ -97,6 +97,6 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-        make -C build/ci COMMAND=ci-e2e ci
+        make -C build/ci TARGET=ci-e2e ci
     """
 }

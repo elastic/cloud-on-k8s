@@ -21,7 +21,7 @@ CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/Gopkg.lock $
 show-image:
 	@ echo $(CI_IMAGE)
 
-# runs $COMMAND in context of CI container and dev makefile
+# runs $TARGET in context of CI container and dev makefile
 ci: ci-build-image
 	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
@@ -29,7 +29,7 @@ ci: ci-build-image
 		-w $(GO_MOUNT_PATH) \
 		-e "VAULT_TOKEN=$(VAULT_TOKEN)" \
 		$(CI_IMAGE) \
-		bash -c "make $(COMMAND)"
+		bash -c "make $(TARGET)"
 
 ci-interactive: ci-build-image
 	@ docker run --rm -t -i \

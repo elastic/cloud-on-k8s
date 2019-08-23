@@ -34,7 +34,7 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci COMMAND=run-deployer ci
+                    make -C build/ci TARGET=run-deployer ci
                 """
             }
         }
