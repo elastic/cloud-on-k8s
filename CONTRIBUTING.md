@@ -3,17 +3,20 @@
 Thank you for your interest in contributing to Elastic Cloud on Kubernetes!
 The goal of this document is to provide a high-level overview on how you can get involved.
 
-- [Report your bugs](#bug-reports)
-- [Set up your development environment](#development-environment)
-- [Contribute with your code](#contributing-code)
-  - [Format your code and manage imports](#format-your-code-and-import-management)
-  - [Test suites](#test-suites)
-  - [Logging](#logging)
-  - [License Headers](#license-headers)
-- [Submit your changes](#submitting-changes)
-  - [Sign the CLA](#sign-the-cla)
-  - [Prepare a Pull Request](#prepare-a-pull-request)
-- [Design documents](#design-documents)
+- [How to Contribute to Elastic Cloud on Kubernetes](#how-to-contribute-to-elastic-cloud-on-kubernetes)
+  - [Report your bugs](#report-your-bugs)
+  - [Set up your development environment](#set-up-your-development-environment)
+  - [Contribute with your code](#contribute-with-your-code)
+    - [Format your code and manage imports](#format-your-code-and-manage-imports)
+    - [Scripts](#scripts)
+    - [Tests](#tests)
+      - [Test suites](#test-suites)
+    - [Logging](#logging)
+    - [License headers](#license-headers)
+    - [Submit your changes](#submit-your-changes)
+      - [Sign the CLA](#sign-the-cla)
+      - [Prepare a Pull Request](#prepare-a-pull-request)
+  - [Design documents](#design-documents)
 
 ## Report your bugs
 
@@ -21,7 +24,7 @@ If you find an issue, check first our [list of issues](https://github.com/elasti
 
 ## Set up your development environment
 
-Check requirements and steps in this [guide](./operators/dev-setup.md).
+Check requirements and steps in this [guide](dev-setup.md).
 
 ## Contribute with your code
 
