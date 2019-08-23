@@ -101,7 +101,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServerElasticsearchAssoc
 		return err
 	}
 
-	// Watch Secrets owned by a ApmServer resource
+	// Watch Secrets owned by an ApmServer resource
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		OwnerType:    &apmtype.ApmServer{},
 		IsController: true,
@@ -203,7 +203,8 @@ func elasticsearchWatchName(assocKey types.NamespacedName) string {
 	return assocKey.Namespace + "-" + assocKey.Name + "-es-watch"
 }
 
-// esCAWatchName returns the name of the watch setup on Elasticsearch CA secret
+// esCAWatchName returns the name of the watch setup on the secret that
+// contains the HTTP certificate chain of Elasticsearch.
 func esCAWatchName(apm types.NamespacedName) string {
 	return apm.Namespace + "-" + apm.Name + "-ca-watch"
 }

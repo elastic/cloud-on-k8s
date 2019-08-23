@@ -19,8 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// ElasticsearchCACertSecretName returns the name of the secret holdingElasticsearch CA
-// for the deployment of the associated resource.
+// ElasticsearchCACertSecretName returns the name of the secret holding the certificate chain used
+// by the associated resource to establish and validate a secured HTTP connection to Elasticsearch.
 func ElasticsearchCACertSecretName(associated v1alpha1.Associated, suffix string) string {
 	return associated.GetName() + "-" + suffix
 }
@@ -46,7 +46,7 @@ func ReconcileCASecret(
 		return "", err
 	}
 
-	// Certificate data should be copied over a secret in the Kibana or APM namespace
+	// Certificate data should be copied over a secret in the associated namespace
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: associated.GetNamespace(),
