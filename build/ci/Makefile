@@ -22,23 +22,21 @@ show-image:
 	@ echo $(CI_IMAGE)
 
 # runs $TARGET in context of CI container and dev makefile
-ci: ci-build-image
-	@ docker run --rm -t \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-		-w $(GO_MOUNT_PATH) \
-		-e "VAULT_TOKEN=$(VAULT_TOKEN)" \
-		$(CI_IMAGE) \
-		bash -c "make $(TARGET)"
+ci:
+	@ $(MAKE) DOCKER_CMD="make $(TARGET)" ci-internal
 
-ci-interactive: ci-build-image
-	@ docker run --rm -t -i \
+ci-interactive:
+	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
+
+ci-internal: ci-build-image
+	@ docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
 		-e "VAULT_TOKEN=$(VAULT_TOKEN)" \
 		$(CI_IMAGE) \
-		bash
+		bash -c "$(DOCKER_CMD)"
+
 
 # reads Docker password from Vault,
 # checks if Docker image exists by trying to pull it. If there is no image, then build and push it.
@@ -47,3 +45,14 @@ ci-build-image:
 		--label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && docker login -u eckadmin \
 		-p $(shell vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin) \
 		push.docker.elastic.co && docker push push.$(CI_IMAGE))
+
+VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
+AWS_ACCESS_KEY_ID = $(shell vault read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
+AWS_SECRET_ACCESS_KEY = $(shell vault read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS))
+# reads AWS creds for yaml upload to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
+yaml-upload:
+	@ $(MAKE) \
+		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
+		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one.yaml \
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml" ci-internal
+

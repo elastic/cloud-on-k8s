@@ -344,15 +344,6 @@ run-deployer: build-deployer
 ci-release: clean dep-vendor-only generate build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
-VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
-# reads AWS creds for yaml upload
-# uploads to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
-yaml-upload:
-	@ AWS_ACCESS_KEY_ID=$(shell vault read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS)) \
-		AWS_SECRET_ACCESS_KEY=$(shell vault read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS)) \
-		bash -c "aws s3 cp $(GO_MOUNT_PATH)/operators/config/all-in-one.yaml \
-		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml"
-
 ##########################
 ##  --   Helpers    --  ##
 ##########################

@@ -29,7 +29,6 @@ pipeline {
 OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
 LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
 VERSION = "${TAG_NAME}"
-VAULT_ADDR = "$VAULT_ADDR"
 REGISTRY = push.docker.elastic.co
 REPOSITORY = eck
 IMG_NAME = eck-operator

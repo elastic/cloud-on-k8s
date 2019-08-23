@@ -6,7 +6,6 @@ ENV GCLOUD_VERSION=232.0.0
 ENV KUBECTL_VERSION=1.13.6
 ENV DOCKER_VERSION=18.03.1-ce
 ENV GOLANGCILINT_VERSION=1.17.1
-ENV VAULT_CLI_VERSION=1.2.2
 
 # Download required golang tools
 RUN go get github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
@@ -50,12 +49,6 @@ RUN apt-get update && apt-get --no-install-recommends -y install \
 
 # Download Azure CLI
 RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
-
-# Download Vault CLI
-RUN apt-get install unzip && \
-    curl -fsSLO https://releases.hashicorp.com/vault/${VAULT_CLI_VERSION}/vault_${VAULT_CLI_VERSION}_linux_amd64.zip && \
-    unzip vault_${VAULT_CLI_VERSION}_linux_amd64.zip && \
-    mv vault /usr/local/bin/vault
 
 # Add Go dependencies to Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s

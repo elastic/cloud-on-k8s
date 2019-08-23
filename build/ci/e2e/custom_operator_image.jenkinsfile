@@ -25,7 +25,6 @@ pipeline {
             steps {
                 sh """
                     cat >.env <<EOF
-VAULT_ADDR = "$VAULT_ADDR"
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 LATEST_RELEASED_IMG = "$IMAGE"
 OPERATOR_IMAGE = "$IMAGE"

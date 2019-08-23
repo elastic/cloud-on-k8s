@@ -28,7 +28,7 @@ export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 
 Per repro, depending on the job, set up environment and run-config.yml files. E.g.: to repro e2e tests run, look at its [Jenkinsfile](e2e/Jenkinsfile) and rerun the script locally in repo root: 
 ```
-cat >operators/environment <<EOF
+cat >operators/.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
