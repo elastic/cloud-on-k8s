@@ -65,7 +65,7 @@ func adaptForExistingStatefulSet(actualSset appsv1.StatefulSet, ssetToApply apps
 	}
 	// Make sure new pods (with ordinal>partition) get created with the newest revision,
 	// by setting the rollingUpdate partition to the actual StatefulSet replicas count.
-	// Any ongoing rolling upgraded may temporarily pause here, but will go through again.
+	// Any ongoing rolling upgrade may temporarily pause here, but will go through again.
 	ssetToApply.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
 		Partition: actualSset.Spec.Replicas,
 	}
