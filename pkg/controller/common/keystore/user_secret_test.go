@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -97,8 +98,13 @@ func Test_secureSettingsVolume(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			recorder := record.NewFakeRecorder(1000)
-			vol, version, err := secureSettingsVolume(tt.c, scheme.Scheme, recorder, tt.w, &tt.kb, nil, kbname.KBNamer)
+			testDriver := driver.TestDriver{
+				Client:        tt.c,
+				RuntimeScheme: scheme.Scheme,
+				Watches:       tt.w,
+				FakeRecorder:  record.NewFakeRecorder(1000),
+			}
+			vol, version, err := secureSettingsVolume(testDriver, &tt.kb, nil, kbname.KBNamer)
 			require.NoError(t, err)
 
 			if !reflect.DeepEqual(vol, tt.wantVolume) {
@@ -111,11 +117,11 @@ func Test_secureSettingsVolume(t *testing.T) {
 			require.Equal(t, tt.wantWatches, tt.w.Secrets.Registrations())
 
 			if tt.wantEvent != "" {
-				require.Equal(t, tt.wantEvent, <-recorder.Events)
+				require.Equal(t, tt.wantEvent, <-testDriver.FakeRecorder.Events)
 			} else {
 				// no event expected
 				select {
-				case e := <-recorder.Events:
+				case e := <-testDriver.FakeRecorder.Events:
 					require.Fail(t, "no event expected but got one", "event", e)
 				default:
 					// ok

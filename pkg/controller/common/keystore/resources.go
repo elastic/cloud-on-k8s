@@ -7,16 +7,14 @@ package keystore
 import (
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var log = logf.Log.WithName("keystore")
@@ -46,17 +44,14 @@ type HasKeystore interface {
 // in order to create a Keystore from a Secret containing secure settings provided by
 // the user and referenced in the Elastic Stack application spec.
 func NewResources(
-	c k8s.Client,
-	s *runtime.Scheme,
-	recorder record.EventRecorder,
-	watches watches.DynamicWatches,
+	r driver.Interface,
 	hasKeystore HasKeystore,
 	namer name.Namer,
 	labels map[string]string,
 	initContainerParams InitContainerParameters,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, version, err := secureSettingsVolume(c, s, recorder, watches, hasKeystore, labels, namer)
+	secretVolume, version, err := secureSettingsVolume(r, hasKeystore, labels, namer)
 	if err != nil {
 		return nil, err
 	}

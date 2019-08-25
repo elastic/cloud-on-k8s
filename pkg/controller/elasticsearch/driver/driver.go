@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	corev1 "k8s.io/api/core/v1"
@@ -90,6 +91,24 @@ type defaultDriver struct {
 	DefaultDriverParameters
 }
 
+func (d *defaultDriver) K8sClient() k8s.Client {
+	return d.Client
+}
+
+func (d *defaultDriver) Scheme() *runtime.Scheme {
+	return d.DefaultDriverParameters.Scheme
+}
+
+func (d *defaultDriver) DynamicWatches() watches.DynamicWatches {
+	return d.DefaultDriverParameters.DynamicWatches
+}
+
+func (d *defaultDriver) Recorder() record.EventRecorder {
+	return d.DefaultDriverParameters.Recorder
+}
+
+var _ commondriver.Interface = &defaultDriver{}
+
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *defaultDriver) Reconcile() *reconciler.Results {
 	results := &reconciler.Results{}
@@ -99,19 +118,17 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := configmap.ReconcileScriptsConfigMap(d.Client, d.Scheme, d.ES); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(d.Client, d.Scheme(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	externalService, err := common.ReconcileService(d.Client, d.Scheme, services.NewExternalService(d.ES), &d.ES)
+	externalService, err := common.ReconcileService(d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	certificateResources, res := certificates.Reconcile(
-		d.Client,
-		d.Scheme,
-		d.DynamicWatches,
+		d,
 		d.ES,
 		[]corev1.Service{*externalService},
 		d.OperatorParameters.CACertRotation,
@@ -121,7 +138,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results
 	}
 
-	internalUsers, err := user.ReconcileUsers(d.Client, d.Scheme, d.ES)
+	internalUsers, err := user.ReconcileUsers(d.Client, d.Scheme(), d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -154,7 +171,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	}
 
-	if err := pdb.Reconcile(d.Client, d.Scheme, d.ES); err != nil {
+	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 
@@ -198,16 +215,13 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	)
 
 	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
 
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
-		d.Client,
-		d.Scheme,
-		d.Recorder,
-		d.DynamicWatches,
+		d,
 		&d.ES,
 		name.ESNamer,
 		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),

@@ -17,6 +17,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -163,9 +164,14 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := watches.NewDynamicWatches()
 			require.NoError(t, w.InjectScheme(scheme.Scheme))
+			testDriver := driver.TestDriver{
+				Client:        tt.args.c,
+				RuntimeScheme: scheme.Scheme,
+				Watches:       w,
+			}
 
 			got, err := ReconcileHTTPCertificates(
-				tt.args.c, scheme.Scheme, w, &tt.args.es, name.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
+				testDriver, &tt.args.es, name.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
 				certificates.RotationParams{
 					Validity:     certificates.DefaultCertValidity,
 					RotateBefore: certificates.DefaultRotateBefore,

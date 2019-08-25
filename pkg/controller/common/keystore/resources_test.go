@@ -9,6 +9,7 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	watches2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -139,10 +140,14 @@ echo "Keystore initialization successful."
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			recorder := record.NewFakeRecorder(1000)
-			watches := watches2.NewDynamicWatches()
-			require.NoError(t, watches.InjectScheme(scheme.Scheme))
-			resources, err := NewResources(tt.client, scheme.Scheme, recorder, watches, &tt.kb, name.KBNamer, nil, initContainersParameters)
+			testDriver := driver.TestDriver{
+				Client:        tt.client,
+				RuntimeScheme: scheme.Scheme,
+				Watches:       watches2.NewDynamicWatches(),
+				FakeRecorder:  record.NewFakeRecorder(1000),
+			}
+			require.NoError(t, testDriver.Watches.InjectScheme(scheme.Scheme))
+			resources, err := NewResources(testDriver, &tt.kb, name.KBNamer, nil, initContainersParameters)
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)

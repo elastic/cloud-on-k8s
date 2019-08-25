@@ -49,7 +49,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
-	if err := HandleUpscaleAndSpecChanges(d.Client, d.ES, d.Scheme, expectedResources, actualStatefulSets); err != nil {
+	if err := HandleUpscaleAndSpecChanges(d.Client, d.ES, d.Scheme(), expectedResources, actualStatefulSets); err != nil {
 		return results.WithError(err)
 	}
 

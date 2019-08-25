@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -36,25 +37,22 @@ const secureSettingsSecretSuffix = "secure-settings"
 // The user secret resource version is returned along with the volume, so that
 // any change in the user secret leads to pod rotation.
 func secureSettingsVolume(
-	c k8s.Client,
-	scheme *runtime.Scheme,
-	recorder record.EventRecorder,
-	watches watches.DynamicWatches,
+	r driver.Interface,
 	hasKeystore HasKeystore,
 	labels map[string]string,
 	namer name.Namer,
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
-	err := watchSecureSettings(watches, hasKeystore.SecureSettings(), k8s.ExtractNamespacedName(hasKeystore))
+	err := watchSecureSettings(r.DynamicWatches(), hasKeystore.SecureSettings(), k8s.ExtractNamespacedName(hasKeystore))
 	if err != nil {
 		return nil, "", err
 	}
 
-	secrets, err := retrieveUserSecrets(c, recorder, hasKeystore)
+	secrets, err := retrieveUserSecrets(r.K8sClient(), r.Recorder(), hasKeystore)
 	if err != nil {
 		return nil, "", err
 	}
-	secret, err := reconcileSecureSettings(c, scheme, hasKeystore, secrets, namer, labels)
+	secret, err := reconcileSecureSettings(r.K8sClient(), r.Scheme(), hasKeystore, secrets, namer, labels)
 	if err != nil {
 		return nil, "", err
 	}
