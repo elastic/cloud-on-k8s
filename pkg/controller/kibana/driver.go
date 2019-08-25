@@ -70,9 +70,12 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d.client,
+		d.scheme,
 		d.recorder,
 		d.dynamicWatches,
 		kb,
+		kbname.KBNamer,
+		label.NewLabels(kb.Name),
 		initContainersParameters,
 	)
 	if err != nil {
@@ -95,7 +98,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		esAuthSecret := types.NamespacedName{Name: ref.Name, Namespace: kb.Namespace}
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
 			Name:    secretWatchKey(*kb),
-			Watched: esAuthSecret,
+			Watched: []types.NamespacedName{esAuthSecret},
 			Watcher: k8s.ExtractNamespacedName(kb),
 		}); err != nil {
 			return nil, err
@@ -116,7 +119,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		// watch for changes in the CA secret
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
 			Name:    secretWatchKey(*kb),
-			Watched: key,
+			Watched: []types.NamespacedName{key},
 			Watcher: k8s.ExtractNamespacedName(kb),
 		}); err != nil {
 			return nil, err

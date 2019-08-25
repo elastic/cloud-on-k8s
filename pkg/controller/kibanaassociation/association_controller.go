@@ -234,7 +234,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 	// watch the referenced ES cluster for future reconciliations
 	if err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(kibanaKey),
-		Watched: esRefKey,
+		Watched: []types.NamespacedName{esRefKey},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return commonv1alpha1.AssociationFailed, err
@@ -244,7 +244,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 	// watch the user secret in the ES namespace
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(kibanaKey),
-		Watched: userSecretKey,
+		Watched: []types.NamespacedName{userSecretKey},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return commonv1alpha1.AssociationFailed, err
@@ -312,7 +312,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana kbtype.Kibana, es
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(kibanaKey),
-		Watched: http.PublicCertsSecretRef(esname.ESNamer, es),
+		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return "", err

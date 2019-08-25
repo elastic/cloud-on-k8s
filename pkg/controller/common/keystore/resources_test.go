@@ -10,6 +10,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	watches2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
@@ -31,9 +32,11 @@ var (
 	testSecureSettingsSecretName = "secure-settings-secret"
 	testSecureSettingsSecret     = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       "namespace",
-			Name:            testSecureSettingsSecretName,
-			ResourceVersion: "resource-version",
+			Namespace: "namespace",
+			Name:      testSecureSettingsSecretName,
+		},
+		Data: map[string][]byte{
+			"key1": []byte("value1"),
 		},
 	}
 	testSecureSettingsSecretRef = commonv1alpha1.SecretRef{
@@ -51,12 +54,15 @@ var (
 		},
 		ObjectMeta: testKibana.ObjectMeta,
 		Spec: v1alpha1.KibanaSpec{
-			SecureSettings: &testSecureSettingsSecretRef,
+			SecureSettings: []commonv1alpha1.SecretRef{testSecureSettingsSecretRef},
 		},
 	}
 )
 
 func TestResources(t *testing.T) {
+	sc := scheme.Scheme
+	require.NoError(t, v1alpha1.SchemeBuilder.AddToScheme(sc))
+
 	varFalse := false
 	tests := []struct {
 		name           string
@@ -75,7 +81,7 @@ func TestResources(t *testing.T) {
 			wantNil:        true,
 		},
 		{
-			name:   "secure settings specified: return volume, init container and version",
+			name:   "secure settings specified: return volume, init container and (empty) version",
 			client: k8s.WrapClient(fake.NewFakeClient(&testSecureSettingsSecret)),
 			kb:     testKibanaWithSecureSettings,
 			wantContainers: &corev1.Container{
@@ -136,7 +142,7 @@ echo "Keystore initialization successful."
 			recorder := record.NewFakeRecorder(1000)
 			watches := watches2.NewDynamicWatches()
 			require.NoError(t, watches.InjectScheme(scheme.Scheme))
-			resources, err := NewResources(tt.client, recorder, watches, &tt.kb, initContainersParameters)
+			resources, err := NewResources(tt.client, scheme.Scheme, recorder, watches, &tt.kb, name.KBNamer, nil, initContainersParameters)
 			require.NoError(t, err)
 			if tt.wantNil {
 				require.Nil(t, resources)

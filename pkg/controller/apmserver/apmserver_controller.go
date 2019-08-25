@@ -395,9 +395,12 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 	keystoreResources, err := keystore.NewResources(
 		r.Client,
+		r.scheme,
 		r.recorder,
 		r.dynamicWatches,
 		as,
+		apmname.APMNamer,
+		labels.NewLabels(as.Name),
 		initContainerParameters,
 	)
 	if err != nil {

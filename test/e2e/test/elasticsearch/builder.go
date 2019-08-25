@@ -147,10 +147,12 @@ func (b Builder) WithNodeSpec(nodeSpec estype.NodeSpec) Builder {
 	return b
 }
 
-func (b Builder) WithESSecureSettings(secretName string) Builder {
-	b.Elasticsearch.Spec.SecureSettings = &commonv1alpha1.SecretRef{
-		SecretName: secretName,
+func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
+	refs := make([]commonv1alpha1.SecretRef, 0, len(secretNames))
+	for i := range secretNames {
+		refs = append(refs, commonv1alpha1.SecretRef{SecretName: secretNames[i]})
 	}
+	b.Elasticsearch.Spec.SecureSettings = refs
 	return b
 }
 

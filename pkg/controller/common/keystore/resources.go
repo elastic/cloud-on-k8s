@@ -7,6 +7,7 @@ package keystore
 import (
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,7 +36,7 @@ type Resources struct {
 type HasKeystore interface {
 	metav1.Object
 	runtime.Object
-	SecureSettings() *commonv1alpha1.SecretRef
+	SecureSettings() []commonv1alpha1.SecretRef
 	// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
 	// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
 	Kind() string
@@ -46,13 +47,16 @@ type HasKeystore interface {
 // the user and referenced in the Elastic Stack application spec.
 func NewResources(
 	c k8s.Client,
+	s *runtime.Scheme,
 	recorder record.EventRecorder,
 	watches watches.DynamicWatches,
 	hasKeystore HasKeystore,
+	namer name.Namer,
+	labels map[string]string,
 	initContainerParams InitContainerParameters,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, version, err := secureSettingsVolume(c, recorder, watches, hasKeystore)
+	secretVolume, version, err := secureSettingsVolume(c, s, recorder, watches, hasKeystore, labels, namer)
 	if err != nil {
 		return nil, err
 	}

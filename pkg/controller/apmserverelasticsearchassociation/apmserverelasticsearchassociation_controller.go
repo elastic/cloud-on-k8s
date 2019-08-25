@@ -247,7 +247,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	// syncing of user credentials across namespaces
 	err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(assocKey),
-		Watched: elasticsearchRef.NamespacedName(),
+		Watched: []types.NamespacedName{elasticsearchRef.NamespacedName()},
 		Watcher: assocKey,
 	})
 	if err != nil {
@@ -312,7 +312,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(apmKey),
-		Watched: http.PublicCertsSecretRef(esname.ESNamer, es),
+		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
 		Watcher: apmKey,
 	}); err != nil {
 		return "", err

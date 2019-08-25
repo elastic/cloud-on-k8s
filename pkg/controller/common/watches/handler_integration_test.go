@@ -68,7 +68,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 
 	// Add a named watch for the first object
 	assert.NoError(t, eventHandler.AddHandler(NamedWatch{
-		Watched: watched,
+		Watched: []types.NamespacedName{watched},
 		Watcher: watching,
 		Name:    "test-watch-1",
 	}))

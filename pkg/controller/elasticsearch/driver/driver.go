@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -203,9 +205,12 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d.Client,
+		d.Scheme,
 		d.Recorder,
 		d.DynamicWatches,
 		&d.ES,
+		name.ESNamer,
+		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
 		initcontainer.KeystoreParams,
 	)
 	if err != nil {
