@@ -8,15 +8,9 @@ import (
 	"testing"
 )
 
-type MutationOptions struct {
-	// IncludesRollingUpgrade specifies if the mutation to perform includes some rolling upgrade,
-	// for which shards with 0 replicas are expected to become unavailable.
-	IncludesRollingUpgrade bool
-}
-
 // RunMutations tests resources changes on given resources.
 // If the resource to mutate to is the same as the original resource, then all tests should still pass.
-func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder, opts MutationOptions) {
+func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder) {
 	k := NewK8sClientOrFatal()
 	steps := StepList{}
 
@@ -32,7 +26,7 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 
 	// Trigger some mutations
 	for _, mutateTo := range mutationBuilders {
-		steps = steps.WithSteps(mutateTo.MutationTestSteps(k, opts))
+		steps = steps.WithSteps(mutateTo.MutationTestSteps(k))
 	}
 
 	for _, mutateTo := range mutationBuilders {
@@ -43,6 +37,6 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 }
 
 // RunMutations tests one resource change on a given resource.
-func RunMutation(t *testing.T, toCreate Builder, mutateTo Builder, options MutationOptions) {
-	RunMutations(t, []Builder{toCreate}, []Builder{mutateTo}, options)
+func RunMutation(t *testing.T, toCreate Builder, mutateTo Builder) {
+	RunMutations(t, []Builder{toCreate}, []Builder{mutateTo})
 }
