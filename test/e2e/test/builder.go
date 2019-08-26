@@ -20,9 +20,9 @@ type Builder interface {
 	// MutationTestSteps returns all test steps to test changes on a resource.
 	// We expect the resource to be already created and running.
 	// If the resource to mutate to is the same as the original resource, then all tests should still pass.
-	MutationTestSteps(k *K8sClient) StepList
+	MutationTestSteps(k *K8sClient, options MutationOptions) StepList
 	// MutationReversalTestContext returns a context struct to test changes on a resource that are immediately reverted.
 	// We assume the resource to be ready and running.
 	// We assume the resource to be the same as the original resource after reversion.
-	MutationReversalTestContext() ReversalTestContext
+	MutationReversalTestContext(options MutationOptions) ReversalTestContext
 }

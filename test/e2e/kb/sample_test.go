@@ -49,5 +49,5 @@ func TestKibanaEsSample(t *testing.T) {
 
 	builders := []test.Builder{esBuilder, kbBuilder}
 	// run, with mutation to the same resource (should work and do nothing)
-	test.RunMutations(t, builders, builders)
+	test.RunMutations(t, builders, builders, test.MutationOptions{IncludesRollingUpgrade: false})
 }

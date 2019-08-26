@@ -26,7 +26,7 @@ func TestMutationMdiToDedicated(t *testing.T) {
 		WithESDataNodes(1, elasticsearch.DefaultResources).
 		WithESMasterNodes(1, elasticsearch.DefaultResources)
 
-	test.RunMutation(t, b, mutated)
+	test.RunMutation(t, b, mutated, test.MutationOptions{IncludesRollingUpgrade: false})
 }
 
 // TestMutationMoreNodes creates a 1 node cluster,
@@ -40,7 +40,7 @@ func TestMutationMoreNodes(t *testing.T) {
 		WithNoESTopology().
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
-	test.RunMutation(t, b, mutated)
+	test.RunMutation(t, b, mutated, test.MutationOptions{IncludesRollingUpgrade: false})
 }
 
 // TestMutationLessNodes creates a 3 node cluster,
@@ -55,7 +55,7 @@ func TestMutationLessNodes(t *testing.T) {
 		WithNoESTopology().
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	test.RunMutation(t, b, mutated)
+	test.RunMutation(t, b, mutated, test.MutationOptions{IncludesRollingUpgrade: false})
 }
 
 // TestMutationResizeMemoryUp creates a 1 node cluster,
@@ -79,7 +79,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 			},
 		})
 
-	test.RunMutation(t, b, mutated)
+	test.RunMutation(t, b, mutated, test.MutationOptions{IncludesRollingUpgrade: true})
 }
 
 // TestMutationResizeMemoryDown creates a 1 node cluster,
@@ -103,5 +103,20 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 			},
 		})
 
-	test.RunMutation(t, b, mutated)
+	test.RunMutation(t, b, mutated, test.MutationOptions{IncludesRollingUpgrade: true})
+}
+
+// TestVersionUpgrade680To720 creates a cluster in version 6.8.0,
+// and upgrades it to 7.2.0.
+func TestVersionUpgrade680To720(t *testing.T) {
+	// create an ES cluster with 3 x 6.8.0 nodes
+	initial := elasticsearch.NewBuilder("test-version-up-680-to-720").
+		WithVersion("6.8.0").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+	// mutate it to 3 x 7.2.0 nodes
+	mutated := initial.WithNoESTopology().
+		WithVersion("7.2.0").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	test.RunMutation(t, initial, mutated, test.MutationOptions{IncludesRollingUpgrade: true})
 }
