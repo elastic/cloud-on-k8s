@@ -69,7 +69,7 @@ EOF
             script {
                 if (notOnlyDocs()) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'GKE_CLUSTER', value: "${CLUSTER_NAME}")],
+                        parameters: [string(name: 'GKE_CLUSTER', value: "${BUILD_TAG}")],
                         wait: false
                 }
             }
