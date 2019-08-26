@@ -5,6 +5,7 @@
 package driver
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
@@ -43,15 +44,30 @@ func HandleUpscaleAndSpecChanges(
 			return err
 		}
 		ssetToApply := *nodeSpecRes.StatefulSet.DeepCopy()
-		actual, exists := actualStatefulSets.GetByName(ssetToApply.Name)
-		if exists && sset.GetReplicas(ssetToApply) < sset.GetReplicas(actual) {
-			// sset needs to be scaled down
-			// update the sset to use the new spec but don't scale replicas down for now
-			ssetToApply.Spec.Replicas = actual.Spec.Replicas
+		actual, alreadyExists := actualStatefulSets.GetByName(ssetToApply.Name)
+		if alreadyExists {
+			ssetToApply = adaptForExistingStatefulSet(actual, ssetToApply)
 		}
 		if err := sset.ReconcileStatefulSet(k8sClient, scheme, es, ssetToApply); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// adaptForExistingStatefulSet modifies ssetToApply to account for the existing StatefulSet.
+// It avoids triggering downscales (done later), and makes sure new pods are created with the newest revision.
+func adaptForExistingStatefulSet(actualSset appsv1.StatefulSet, ssetToApply appsv1.StatefulSet) appsv1.StatefulSet {
+	if sset.GetReplicas(ssetToApply) < sset.GetReplicas(actualSset) {
+		// This is a downscale.
+		// We still want to update the sset spec to the newest one, but don't scale replicas down for now.
+		ssetToApply.Spec.Replicas = actualSset.Spec.Replicas
+	}
+	// Make sure new pods (with ordinal>partition) get created with the newest revision,
+	// by setting the rollingUpdate partition to the actual StatefulSet replicas count.
+	// Any ongoing rolling upgrade may temporarily pause here, but will go through again.
+	ssetToApply.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
+		Partition: actualSset.Spec.Replicas,
+	}
+	return ssetToApply
 }
