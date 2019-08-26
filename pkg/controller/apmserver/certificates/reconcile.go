@@ -12,20 +12,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	coverv1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func Reconcile(
-	c k8s.Client,
-	scheme *runtime.Scheme,
+	driver driver.Interface,
 	apm v1alpha1.ApmServer,
-	watches watches.DynamicWatches,
 	services []coverv1.Service,
 	rotation certificates.RotationParams,
 ) reconciler.Results {
@@ -39,8 +34,8 @@ func Reconcile(
 
 	// reconcile CA certs first
 	httpCa, err := certificates.ReconcileCAForOwner(
-		c,
-		scheme,
+		driver.K8sClient(),
+		driver.Scheme(),
 		name.APMNamer,
 		&apm,
 		labels,
@@ -58,9 +53,7 @@ func Reconcile(
 
 	// discover and maybe reconcile for the http certificates to use
 	httpCertificates, err := http.ReconcileHTTPCertificates(
-		c,
-		scheme,
-		watches,
+		driver,
 		&apm,
 		name.APMNamer,
 		httpCa,
@@ -73,6 +66,6 @@ func Reconcile(
 		return *results.WithError(err)
 	}
 	// reconcile http public cert secret
-	results.WithError(http.ReconcileHTTPCertsPublicSecret(c, scheme, &apm, name.APMNamer, httpCertificates))
+	results.WithError(http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &apm, name.APMNamer, httpCertificates))
 	return results
 }

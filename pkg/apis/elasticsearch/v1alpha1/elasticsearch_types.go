@@ -48,12 +48,12 @@ type ElasticsearchSpec struct {
 	// +optional
 	PodDisruptionBudget *commonv1alpha1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
-	// SecureSettings reference a secret containing secure settings, to be injected
+	// SecureSettings references secrets containing secure settings, to be injected
 	// into Elasticsearch keystore on each node.
-	// Each individual key/value entry in the referenced secret is considered as an
+	// Each individual key/value entry in the referenced secrets is considered as an
 	// individual secure setting to be injected.
 	// The secret must exist in the same namespace as the Elasticsearch resource.
-	SecureSettings *commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
+	SecureSettings []commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -260,7 +260,7 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 	return !e.DeletionTimestamp.IsZero()
 }
 
-func (e Elasticsearch) SecureSettings() *commonv1alpha1.SecretRef {
+func (e Elasticsearch) SecureSettings() []commonv1alpha1.SecretRef {
 	return e.Spec.SecureSettings
 }
 
