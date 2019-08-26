@@ -1,7 +1,7 @@
 pipeline {
 
     agent {
-        label 'linux'
+        label 'eck'
     }
 
     options {
@@ -21,6 +21,11 @@ pipeline {
     }
 
     stages {
+        stage('Check that kind is installed') {
+            steps {
+                sh 'kind --version'
+            }
+        }
         stage('Check if Docker image needs rebuilding') {
             when {
                 expression {
@@ -39,9 +44,6 @@ pipeline {
                             checkout scm
                             notOnlyDocs()
                         }
-                    }
-                    agent {
-                        label 'linux'
                     }
                     steps {
                         sh 'make -C build/ci ci-pr'
