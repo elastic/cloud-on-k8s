@@ -138,8 +138,10 @@ func dataIntegrityReplicas(b Builder) int {
 		return 0
 	}
 
+	// attempt do detect a rolling upgrade scenario
+	// Important: this only checks ES version and spec, other changes such as secure settings update
+	// are tricky to capture and ignored here.
 	isVersionUpgrade := initial.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
-
 	for _, initialNs := range initial.Elasticsearch.Spec.Nodes {
 		for _, mutatedNs := range b.Elasticsearch.Spec.Nodes {
 			if initialNs.Name == mutatedNs.Name &&
