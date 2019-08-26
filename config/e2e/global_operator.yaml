@@ -176,7 +176,7 @@ spec:
       serviceAccountName: {{ .GlobalOperator.Name }}
       containers:
       - image: {{ .OperatorImage }}
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: manager
         args: ["manager", "--operator-roles", "global,webhook"]
         env:

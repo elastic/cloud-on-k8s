@@ -372,3 +372,53 @@ check-license-header:
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+
+#########################
+# Kind specific targets #
+#########################
+KIND_NODES ?= 0
+KIND_NODE_IMAGE ?= kindest/node:v1.15.0
+KIND_CLUSTER_NAME ?= eck
+
+kind-node-variable-check:
+ifndef KIND_NODE_IMAGE
+	$(error KIND_NODE_IMAGE is mandatory when using Kind)
+endif
+
+bootstrap-kind:
+	KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME} \
+		$(MAKE) kind-cluster-$(KIND_NODES)
+	@ echo "Run the following command to update your curent context:"
+	@ echo "export KUBECONFIG=\"$$(kind get kubeconfig-path --name=${KIND_CLUSTER_NAME})\""
+
+## Start a kind cluster with just the CRDs, e.g.:
+# "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a one node cluster
+# "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" to start a 1 master + 3 nodes cluster
+kind-cluster-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-cluster-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
+kind-cluster-%: kind-node-variable-check
+	./hack/kind/kind.sh \
+		--nodes "${*}" \
+		make install-crds
+
+## Same as above but build and deploy the operator image
+kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-with-operator-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
+kind-with-operator-%: kind-node-variable-check docker-build
+	./hack/kind/kind.sh \
+		--load-images $(OPERATOR_IMAGE) \
+		--nodes "${*}" \
+		make install-crds apply-operators
+
+## Run all the e2e tests in a Kind cluster
+kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
+kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-e2e: kind-node-variable-check docker-build e2e-docker-build
+	./hack/kind/kind.sh \
+		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
+		--nodes 3 \
+		make e2e-run
+
+## Cleanup
+delete-kind:
+	./hack/kind/kind.sh --stop

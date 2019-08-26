@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -25,11 +27,10 @@ import (
 
 func TestUpdateHTTPCertSAN(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-http-cert-san").
-		WithESMasterNodes(1, elasticsearch.DefaultResources).
-		WithHTTPLoadBalancer()
+		WithESMasterNodes(1, elasticsearch.DefaultResources)
 
 	var caCert []byte
-	var publicIP string
+	var podIP string
 
 	steps := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
@@ -42,17 +43,17 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 				},
 			},
 			{
-				Name: "Retrieve ES public IP",
+				Name: "Retrieve a POD IP",
 				Test: test.Eventually(func() error {
 					var err error
-					publicIP, err = getPublicIP(k, b.Elasticsearch.Namespace, b.Elasticsearch.Name)
+					podIP, err = getPodIP(k, b.Elasticsearch.Namespace, b.Elasticsearch.Name)
 					return err
 				}),
 			},
 			{
 				Name: "Check ES is not reachable with cert verification",
 				Test: func(t *testing.T) {
-					_, err := requestESWithCA(publicIP, caCert)
+					_, err := requestESWithCA(podIP, caCert)
 					require.Error(t, err)
 					require.Contains(t, err.Error(), "x509: cannot validate certificate")
 				},
@@ -65,14 +66,14 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 					require.NoError(t, err)
 
 					b.Elasticsearch = currentEs
-					b = b.WithHTTPSAN(publicIP)
+					b = b.WithHTTPSAN(podIP)
 					require.NoError(t, k.Client.Update(&b.Elasticsearch))
 				},
 			},
 			{
 				Name: "Check ES is reachable with cert verification",
 				Test: test.Eventually(func() error {
-					status, err := requestESWithCA(publicIP, caCert)
+					status, err := requestESWithCA(podIP, caCert)
 					if err != nil {
 						return err
 					}
@@ -106,19 +107,15 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 	return certBytes, nil
 }
 
-func getPublicIP(k *test.K8sClient, ns string, esName string) (string, error) {
-	var svc corev1.Service
-	key := types.NamespacedName{
-		Namespace: ns,
-		Name:      esname.HTTPService(esName),
-	}
-	if err := k.Client.Get(key, &svc); err != nil {
+func getPodIP(k *test.K8sClient, ns string, esName string) (string, error) {
+
+	pods, err := k.GetPods(test.ESPodListOptions(ns, esName))
+	if err != nil {
 		return "", err
 	}
-
-	for _, ing := range svc.Status.LoadBalancer.Ingress {
-		if ing.IP != "" {
-			return ing.IP, nil
+	for _, pod := range pods {
+		if len(pod.Status.PodIP) > 0 {
+			return pod.Status.PodIP, nil
 		}
 	}
 
@@ -131,13 +128,19 @@ func requestESWithCA(ip string, caCert []byte) (int, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	client := &http.Client{}
+	transport := http.Transport{}
+	if test.Ctx().AutoPortForwarding {
+		transport.DialContext = portforward.NewForwardingDialer().DialContext
+	}
 	if caCert != nil {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
-			},
+		transport.TLSClientConfig = &tls.Config{
+			RootCAs: caCertPool,
 		}
+	}
+
+	client := http.Client{
+		Timeout:   60 * time.Second,
+		Transport: &transport,
 	}
 
 	resp, err := client.Get(url)

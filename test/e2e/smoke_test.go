@@ -47,6 +47,9 @@ func TestSmoke(t *testing.T) {
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
+		WithConfig(map[string]interface{}{
+			"apm-server.ilm.enabled": false,
+		}).
 		WithRestrictedSecurityContext()
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
