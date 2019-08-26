@@ -16,7 +16,7 @@ type ReversalTestContext interface {
 
 // RunMutationReversal tests mutations that are either invalid or aborted mid way leading to a configuration reversal of
 // the original configuration.
-func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder, options MutationOptions) {
+func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder) {
 	k := NewK8sClientOrFatal()
 	steps := StepList{}
 
@@ -32,7 +32,7 @@ func RunMutationReversal(t *testing.T, creationBuilders []Builder, mutationBuild
 
 	ctxs := make([]ReversalTestContext, 0, len(mutationBuilders))
 	for _, mutateTo := range mutationBuilders {
-		ctxs = append(ctxs, mutateTo.MutationReversalTestContext(options))
+		ctxs = append(ctxs, mutateTo.MutationReversalTestContext())
 	}
 
 	for _, ctx := range ctxs {

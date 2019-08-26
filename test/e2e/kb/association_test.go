@@ -43,7 +43,7 @@ func TestCrossNSAssociation(t *testing.T) {
 		WithRestrictedSecurityContext()
 
 	builders := []test.Builder{esBuilder, kbBuilder}
-	test.RunMutations(t, builders, builders, test.MutationOptions{IncludesRollingUpgrade: false})
+	test.RunMutations(t, builders, builders)
 }
 
 func TestKibanaAssociationWithNonExistentES(t *testing.T) {

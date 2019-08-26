@@ -8,28 +8,25 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 )
 
-func (b Builder) MutationReversalTestContext(mutationOptions test.MutationOptions) test.ReversalTestContext {
+func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
 	return &mutationReversalTestContext{
-		es:                     b.Elasticsearch,
+		esBuilder:              b,
 		initialRevisions:       make(map[string]string),
 		initialCurrentReplicas: make(map[string]int32),
-		mutationOptions:        mutationOptions,
 	}
 }
 
 type mutationReversalTestContext struct {
-	es                     v1alpha1.Elasticsearch
+	esBuilder              Builder
 	initialCurrentReplicas map[string]int32
 	initialRevisions       map[string]string
 	dataIntegrity          *DataIntegrityCheck
-	mutationOptions        test.MutationOptions
 }
 
 func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.StepList {
@@ -37,7 +34,7 @@ func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.S
 		{
 			Name: "Remember the current config revisions",
 			Test: func(t *testing.T) {
-				statefulSets, err := sset.RetrieveActualStatefulSets(k.Client, k8s.ExtractNamespacedName(&s.es))
+				statefulSets, err := sset.RetrieveActualStatefulSets(k.Client, k8s.ExtractNamespacedName(&s.esBuilder.Elasticsearch))
 				require.NoError(t, err)
 				for _, set := range statefulSets {
 					s.initialRevisions[set.Name] = set.Status.CurrentRevision
@@ -49,7 +46,7 @@ func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.S
 			Name: "Add some data to the cluster before any mutation",
 			Test: func(t *testing.T) {
 				var err error
-				s.dataIntegrity, err = NewDataIntegrityCheck(s.es, k, s.mutationOptions.IncludesRollingUpgrade)
+				s.dataIntegrity, err = NewDataIntegrityCheck(k, s.esBuilder)
 				require.NoError(t, err)
 				require.NoError(t, s.dataIntegrity.Init())
 			},
@@ -62,7 +59,7 @@ func (s *mutationReversalTestContext) PostMutationSteps(k *test.K8sClient) test.
 		{
 			Name: "Verify that a config change is being applied",
 			Test: test.Eventually(func() error {
-				statefulSets, err := sset.RetrieveActualStatefulSets(k.Client, k8s.ExtractNamespacedName(&s.es))
+				statefulSets, err := sset.RetrieveActualStatefulSets(k.Client, k8s.ExtractNamespacedName(&s.esBuilder.Elasticsearch))
 				if err != nil {
 					return err
 				}

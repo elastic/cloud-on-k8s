@@ -34,6 +34,7 @@ func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec
 // Builder to create Elasticsearch clusters
 type Builder struct {
 	Elasticsearch estype.Elasticsearch
+	MutatedFrom   *Builder
 }
 
 var _ test.Builder = Builder{}
