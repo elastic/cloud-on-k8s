@@ -31,7 +31,7 @@ const secureSettingsSecretSuffix = "secure-settings"
 // secureSettingsVolume creates a volume from the optional user-provided secure settings secrets.
 //
 // Secure settings are provided by the user in the resource Spec through secret references.
-// The user provicded secrets are then aggregated into a single secret.
+// The user provided secrets are then aggregated into a single secret.
 // This secret is mounted into the pods for secure settings to be injected into a keystore.
 // The user-provided secrets are watched to reconcile on any change.
 // The user secret resource version is returned along with the volume, so that
