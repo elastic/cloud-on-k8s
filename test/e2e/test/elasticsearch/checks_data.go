@@ -69,10 +69,10 @@ func (dc *DataIntegrityCheck) Init() error {
 		return err
 	}
 	resp, err := esClient.Request(context.Background(), indexCreation)
-	defer resp.Body.Close() // nolint
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close() // nolint
 
 	// index a number of sample documents
 	payload, err := json.Marshal(dc.sampleData)
@@ -85,10 +85,10 @@ func (dc *DataIntegrityCheck) Init() error {
 			return err
 		}
 		resp, err = esClient.Request(context.Background(), r)
-		defer resp.Body.Close() // nolint
 		if err != nil {
 			return err
 		}
+		defer resp.Body.Close() // nolint
 	}
 	return nil
 }
