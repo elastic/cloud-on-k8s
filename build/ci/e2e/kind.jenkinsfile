@@ -1,0 +1,55 @@
+pipeline {
+
+    agent {
+        label 'eck'
+    }
+
+    options {
+        timeout(time: 150, unit: 'MINUTES')
+    }
+
+    stages {
+        stage('Run tests for different vanilla K8s versions with kind') {
+            parallel {
+                stage("1.14") {
+                    environment {
+                        KIND_NODE_IMAGE = "kindest/node:v1.14.3"
+                    }
+                    steps {
+                        checkout scm
+                        sh 'make kind-e2e-rc'
+                    }
+                }
+                stage("1.15") {
+                    agent {
+                        label 'eck'
+                    }
+                    environment {
+                        KIND_NODE_IMAGE = "kindest/node:v1.15.0"
+                    }
+                    steps {
+                        checkout scm
+                        sh 'make kind-e2e-rc'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        unsuccessful {
+            script {
+                def msg = "E2E tests for different vanilla K8s versions failed!\r\n" + env.BUILD_URL
+                slackSend botUser: true,
+                      channel: '#cloud-k8s',
+                      color: 'danger',
+                      message: msg,
+                      tokenCredentialId: 'cloud-ci-slack-integration-token'
+            }
+        }
+        cleanup {
+            cleanWs()
+        }
+    }
+
+}

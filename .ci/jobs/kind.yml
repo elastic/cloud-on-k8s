@@ -1,0 +1,18 @@
+---
+- job:
+    description: Job that runs ECK e2e tests against different vanilla K8s versions with kind. This Job is managed by JJB.
+    name: cloud-on-k8s-stack
+    project-type: pipeline
+    parameters:
+      - string:
+          name: ECK_IMAGE
+          description: "Docker image with ECK operator"
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/elastic/cloud-on-k8s
+            branches:
+              - master
+            credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
+      script-path: build/ci/e2e/kind.jenkinsfile
+      lightweight-checkout: true
