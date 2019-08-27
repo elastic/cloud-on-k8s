@@ -9,17 +9,38 @@ import (
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/util/validation"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var (
-	log = logf.Log.WithName("name")
+const (
+	MaxResourceNameLength = 36
+	MaxSuffixLength       = validation.LabelValueMaxLength - MaxResourceNameLength
 )
 
-const (
-	// MaxNameLength is the maximum length of a resource name.
-	MaxNameLength = 63
-)
+var log = logf.Log.WithName("name")
+
+// nameLengthError is an error type for names exceeding the allowed length.
+type nameLengthError struct {
+	reason    string
+	maxLen    int
+	actualLen int
+	value     string
+}
+
+func newNameLengthError(reason string, maxLen int, value string) nameLengthError {
+	return nameLengthError{
+		reason:    reason,
+		maxLen:    maxLen,
+		actualLen: len(value),
+		value:     value,
+	}
+}
+
+func (nle nameLengthError) Error() string {
+	return fmt.Sprintf("%s: '%s' has length %d which is more than %d", nle.reason, nle.value, nle.actualLen, nle.maxLen)
+}
 
 // Namer assists with constructing names for K8s resources and avoiding collisions by ensuring that certain suffixes
 // are always used, and prevents the use of too long suffixes.
@@ -31,6 +52,14 @@ type Namer struct {
 	DefaultSuffixes []string
 }
 
+// NewNamer creates a new Namer object with the default suffix length restriction.
+func NewNamer(defaultSuffixes ...string) Namer {
+	return Namer{
+		MaxSuffixLength: MaxSuffixLength,
+		DefaultSuffixes: defaultSuffixes,
+	}
+}
+
 // WithDefaultSuffixes returns a new Namer with updated default suffixes.
 func (n Namer) WithDefaultSuffixes(defaultSuffixes ...string) Namer {
 	n.DefaultSuffixes = defaultSuffixes
@@ -40,33 +69,45 @@ func (n Namer) WithDefaultSuffixes(defaultSuffixes ...string) Namer {
 // Suffix a resource name.
 //
 // Panics if the suffix exceeds the suffix limits.
-// Trims the name if the concatenated result would exceed the limits.
 func (n Namer) Suffix(ownerName string, suffixes ...string) string {
+	suffixedName, err := n.SafeSuffix(ownerName, suffixes...)
+	if err != nil {
+		// we should never encounter an error at this point because the names should have been validated
+		log.Error(err, "Failed to generate valid suffixed name", "ownerName", ownerName)
+		panic(err)
+	}
+
+	return suffixedName
+}
+
+// SafeSuffix attempts to generate a suffixed name, returning an error if the generated name is unacceptable.
+func (n Namer) SafeSuffix(ownerName string, suffixes ...string) (string, error) {
 	var suffixBuilder strings.Builder
 	for _, s := range n.DefaultSuffixes {
-		suffixBuilder.WriteString("-") // #nosec G104
-		suffixBuilder.WriteString(s)   // #nosec G104
+		suffixBuilder.WriteString("-")
+		suffixBuilder.WriteString(s)
 	}
 	for _, s := range suffixes {
-		suffixBuilder.WriteString("-") // #nosec G104
-		suffixBuilder.WriteString(s)   // #nosec G104
+		suffixBuilder.WriteString("-")
+		suffixBuilder.WriteString(s)
 	}
 
 	suffix := suffixBuilder.String()
 
 	// This should never happen because we control all the suffixes!
 	if len(suffix) > n.MaxSuffixLength {
-		panic(fmt.Errorf("suffix should not exceed %d characters: got %s", n.MaxSuffixLength, suffix))
+		return "", newNameLengthError("suffix exceeds max length", n.MaxSuffixLength, suffix)
 	}
 
-	// This should never happen because the ownerName length should have been validated.
-	// Trim the ownerName and log an error as fallback.
-	maxPrefixLength := MaxNameLength - len(suffix)
+	maxPrefixLength := validation.LabelValueMaxLength - len(suffix)
 	if len(ownerName) > maxPrefixLength {
-		log.Error(fmt.Errorf("ownerName should not exceed %d characters: got %s", maxPrefixLength, ownerName),
-			"Failed to suffix resource")
-		ownerName = ownerName[:maxPrefixLength]
+		return "", newNameLengthError("owner name exceeds max length", maxPrefixLength, ownerName)
 	}
 
-	return stringsutil.Concat(ownerName, suffix)
+	suffixedName := stringsutil.Concat(ownerName, suffix)
+	if errs := apimachineryvalidation.NameIsDNSSubdomain(suffixedName, false); len(errs) > 0 {
+		return suffixedName, fmt.Errorf("invalid name: '%s' [%s]", suffixedName, strings.Join(errs, ","))
+	}
+
+	return suffixedName, nil
 }

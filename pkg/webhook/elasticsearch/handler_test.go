@@ -98,6 +98,48 @@ func TestValidationHandler_Handle(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "long names not allowed",
+			args: args{
+				ctx: nil,
+				r: types.Request{
+					AdmissionRequest: &v1beta1.AdmissionRequest{
+						Name:      "extremely-long-winded-unnecessarily-complicated-elasticsearch-name",
+						Namespace: "default",
+					},
+				},
+			},
+			fields: fields{
+				decoder: mockDecoder{
+					obj: &estype.Elasticsearch{
+						TypeMeta: v1.TypeMeta{},
+						ObjectMeta: v1.ObjectMeta{
+							Name:      "extremely-long-winded-unnecessarily-complicated-elasticsearch-name",
+							Namespace: "default",
+						},
+						Spec: estype.ElasticsearchSpec{
+							Version: "7.0.0",
+							Nodes: []estype.NodeSpec{
+								{
+									Name:      "foo",
+									NodeCount: 3,
+								},
+							},
+						},
+						Status: estype.ElasticsearchStatus{},
+					},
+				},
+				initialObjects: []runtime.Object{},
+			},
+			want: types.Response{
+				Response: &admissionv1beta1.AdmissionResponse{
+					Allowed: false,
+					Result: &v1.Status{
+						Reason: "Elasticsearch configuration would generate resources with invalid names: name exceeds maximum allowed length of 36",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

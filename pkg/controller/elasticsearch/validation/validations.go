@@ -24,7 +24,7 @@ import (
 
 // Validations are all registered Elasticsearch validations.
 var Validations = []Validation{
-	nameLength,
+	validName,
 	hasMaster,
 	supportedVersion,
 	noDowngrades,
@@ -35,10 +35,10 @@ var Validations = []Validation{
 	pvcModification,
 }
 
-// nameLength checks the length of the Elasticsearch name.
-func nameLength(ctx Context) validation.Result {
-	if len(ctx.Proposed.Elasticsearch.Name) > name.MaxElasticsearchNameLength {
-		return validation.Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)}
+// validName checks whether the name is valid.
+func validName(ctx Context) validation.Result {
+	if err := name.Validate(ctx.Proposed.Elasticsearch); err != nil {
+		return validation.Result{Allowed: false, Reason: invalidName(err)}
 	}
 	return validation.OK
 }

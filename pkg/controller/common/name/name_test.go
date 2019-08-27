@@ -55,13 +55,6 @@ func TestNamer_WithDefaultSuffixes(t *testing.T) {
 }
 
 func TestNamer_Suffix(t *testing.T) {
-	t.Run("too long suffix should panic", func(t *testing.T) {
-		require.Panics(t, func() {
-			namer := Namer{MaxSuffixLength: 1}
-			namer.Suffix("foo", "bar")
-		})
-	})
-
 	type args struct {
 		ownerName string
 		suffixes  []string
@@ -97,18 +90,6 @@ func TestNamer_Suffix(t *testing.T) {
 			args: args{ownerName: "foo", suffixes: []string{"bar", "baz"}},
 			want: "foo-default-bar-baz",
 		},
-		{
-			name: "too long owner name",
-			namer: Namer{
-				MaxSuffixLength: 20,
-				DefaultSuffixes: []string{"default"},
-			},
-			args: args{
-				ownerName: "this-owner-name-is-too-long-and-needs-to-be-trimmed-in-order-to-fit-the-suffix",
-				suffixes:  []string{"bar", "baz"},
-			},
-			want: "this-owner-name-is-too-long-and-needs-to-be-tri-default-bar-baz",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -117,4 +98,33 @@ func TestNamer_Suffix(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNamerSuffixPanics(t *testing.T) {
+	testCases := []struct {
+		name      string
+		namer     Namer
+		ownerName string
+		suffixes  []string
+	}{
+		{
+			name:      "long owner name",
+			namer:     Namer{MaxSuffixLength: 20, DefaultSuffixes: []string{"es"}},
+			ownerName: "extremely-long-and-unwieldy-name-for-owner-that-exceeds-the-limit",
+			suffixes:  []string{"bar", "baz"},
+		},
+		{
+			name:      "long suffixes",
+			namer:     Namer{MaxSuffixLength: 20, DefaultSuffixes: []string{"es"}},
+			ownerName: "test",
+			suffixes:  []string{"bar", "baz", "very-long-suffix-exceeding-the-limit"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Panics(t, func() { tc.namer.Suffix(tc.ownerName, tc.suffixes...) })
+		})
+	}
+
 }
