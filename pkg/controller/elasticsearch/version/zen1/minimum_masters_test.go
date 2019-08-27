@@ -8,6 +8,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	settings2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -17,10 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestSetupMinimumMasterNodesConfig(t *testing.T) {
@@ -32,16 +33,16 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 		{
 			name: "no master nodes",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: nodespec.TestSset{Name: "data", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: sset.TestSset{Name: "data", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 		},
 		{
 			name: "3 masters, 3 master+data, 3 data",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: nodespec.TestSset{Name: "master", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: nodespec.TestSset{Name: "masterdata", Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: nodespec.TestSset{Name: "data", Version: "6.8.0", Replicas: 3, Master: false, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: sset.TestSset{Name: "master", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: sset.TestSset{Name: "masterdata", Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: sset.TestSset{Name: "data", Version: "6.8.0", Replicas: 3, Master: false, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
@@ -58,15 +59,15 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 		{
 			name: "version 7: nothing should appear in the config",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: nodespec.TestSset{Name: "master", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: sset.TestSset{Name: "master", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{settings.NewCanonicalConfig()},
 		},
 		{
 			name: "mixed v6 & v7: include all masters but only in v6 configs",
 			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: nodespec.TestSset{Name: "masterv6", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
-				{StatefulSet: nodespec.TestSset{Name: "masterv7", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: sset.TestSset{Name: "masterv6", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
+				{StatefulSet: sset.TestSset{Name: "masterv7", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build(), Config: settings.NewCanonicalConfig()},
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
@@ -104,7 +105,7 @@ func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, count int) err
 }
 
 func TestUpdateMinimumMasterNodes(t *testing.T) {
-	ssetSample := nodespec.TestSset{Name: "nodes", Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build()
+	ssetSample := sset.TestSset{Name: "nodes", Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build()
 	// simulate 3/3 pods ready
 	labels := map[string]string{
 		label.StatefulSetNameLabelName: ssetSample.Name,
@@ -152,7 +153,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 	}{
 		{
 			name:               "no v6 nodes",
-			actualStatefulSets: sset.StatefulSetList{nodespec.TestSset{Name: "nodes", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
+			actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "nodes", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
 			wantCalled:         false,
 		},
 		{
