@@ -99,7 +99,8 @@ func GetExternalService(c k8s.Client, es v1alpha1.Elasticsearch) (corev1.Service
 func ElasticsearchURL(es v1alpha1.Elasticsearch, pods []corev1.Pod) string {
 	var schemeChange bool
 	for _, p := range pods {
-		if p.Labels[label.HTTPSchemeLabelName] != es.Spec.HTTP.Scheme() {
+		scheme, exists := p.Labels[label.HTTPSchemeLabelName]
+		if exists && scheme != es.Spec.HTTP.Scheme() {
 			// scheme in existing pods does not match scheme in spec, user toggled HTTP(S)
 			schemeChange = true
 		}
