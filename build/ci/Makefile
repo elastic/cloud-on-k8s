@@ -9,7 +9,7 @@ GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
 # BUILD_ID is present during run on Jenkins machine, but not on dev box, hence using it here to distinguish between those cases
 ifdef BUILD_ID
-VAULT_TOKEN ?= $(shell vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
+VAULT_TOKEN = $(shell vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
 else
 VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
