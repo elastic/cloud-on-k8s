@@ -9,12 +9,13 @@ GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
 # BUILD_ID is present during run on Jenkins machine, but not on dev box, hence using it here to distinguish between those cases
 ifdef BUILD_ID
-VAULT_TOKEN = $(shell vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
+VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
 else
 VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
 NOT_USED = $(shell test -e ../../run-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" ../../run-config.yml)
 endif
+export VAULT_TOKEN
 
 CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
@@ -33,7 +34,6 @@ ci-internal: ci-build-image
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
-		-e "VAULT_TOKEN=$(VAULT_TOKEN)" \
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)"
 
