@@ -54,7 +54,7 @@ RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 COPY Gopkg.lock .
 COPY Gopkg.toml .
-RUN dep ensure --vendor-only -v
+RUN dep ensure --vendor-only -v && rm -rf vendor/
 
 # Cleanup
 RUN rm /go/src/github.com/elastic/cloud-on-k8s/Gopkg.lock && \
