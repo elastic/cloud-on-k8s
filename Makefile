@@ -352,7 +352,7 @@ run-deployer: dep-vendor-only build-deployer
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(CURDIR)/build/ci/license.key
-ci-release:
+ci-release: clean
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
