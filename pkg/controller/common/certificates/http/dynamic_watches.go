@@ -23,10 +23,10 @@ func reconcileDynamicWatches(dynamicWatches watches.DynamicWatches, owner types.
 	// user provided certificates.
 	httpCertificateWatch := watches.NamedWatch{
 		Name: httpCertificateWatchKey(namer, owner.Name),
-		Watched: types.NamespacedName{
+		Watched: []types.NamespacedName{{
 			Namespace: owner.Namespace,
 			Name:      tls.Certificate.SecretName,
-		},
+		}},
 		Watcher: owner,
 	}
 

@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/go-test/deep"
@@ -24,21 +24,23 @@ type DataIntegrityCheck struct {
 	clientFactory func() (client.Client, error) // recreate clients for cases where we switch scheme in tests
 	indexName     string
 	numShards     int
+	numReplicas   int
 	sampleData    map[string]interface{}
 	docCount      int
 }
 
-func NewDataIntegrityCheck(es v1alpha1.Elasticsearch, k *test.K8sClient) *DataIntegrityCheck {
+func NewDataIntegrityCheck(k *test.K8sClient, b Builder) *DataIntegrityCheck {
 	return &DataIntegrityCheck{
 		clientFactory: func() (client.Client, error) {
-			return NewElasticsearchClient(es, k)
+			return NewElasticsearchClient(b.Elasticsearch, k)
 		},
 		indexName: "data-integrity-check",
 		sampleData: map[string]interface{}{
 			"foo": "bar",
 		},
-		docCount:  5,
-		numShards: 3,
+		docCount:    5,
+		numShards:   3,
+		numReplicas: dataIntegrityReplicas(b),
 	}
 }
 
@@ -53,7 +55,7 @@ func (dc *DataIntegrityCheck) Init() error {
     "settings" : {
         "index" : {
             "number_of_shards" : %d,
-            "number_of_replicas" : 0
+            "number_of_replicas" : %d
         }
     }
 }
@@ -62,7 +64,7 @@ func (dc *DataIntegrityCheck) Init() error {
 	indexCreation, err := http.NewRequest(
 		http.MethodPut,
 		fmt.Sprintf("/%s", dc.indexName),
-		bytes.NewBufferString(fmt.Sprintf(indexSettings, dc.numShards)),
+		bytes.NewBufferString(fmt.Sprintf(indexSettings, dc.numShards, dc.numReplicas)),
 	)
 	if err != nil {
 		return err
@@ -119,7 +121,6 @@ func (dc *DataIntegrityCheck) Verify() error {
 	}
 	// the overall count should be the same
 	if len(results.Hits.Hits) != dc.docCount {
-		println(string(resultBytes))
 		return fmt.Errorf("expected %d got %d, data loss", dc.docCount, len(results.Hits.Hits))
 	}
 	// each document should be identical with the sample we used to create the test data
@@ -129,4 +130,36 @@ func (dc *DataIntegrityCheck) Verify() error {
 		}
 	}
 	return nil
+}
+
+// dataIntegrityReplicas returns the number of replicas to use for the data integrity check,
+// according to the cluster topology, since it affects the cluster health during the mutation.
+func dataIntegrityReplicas(b Builder) int {
+	initial := b.MutatedFrom
+	if initial == nil {
+		initial = &b // consider mutated == initial
+	}
+
+	if initial.Elasticsearch.Spec.NodeCount() == 1 || b.Elasticsearch.Spec.NodeCount() == 1 {
+		// a 1 node cluster can only be green if shards have no replicas
+		return 0
+	}
+
+	// attempt do detect a rolling upgrade scenario
+	// Important: this only checks ES version and spec, other changes such as secure settings update
+	// are tricky to capture and ignored here.
+	isVersionUpgrade := initial.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
+	for _, initialNs := range initial.Elasticsearch.Spec.Nodes {
+		for _, mutatedNs := range b.Elasticsearch.Spec.Nodes {
+			if initialNs.Name == mutatedNs.Name &&
+				(isVersionUpgrade || !reflect.DeepEqual(initialNs, mutatedNs)) {
+				// a rolling upgrade is scheduled for that NodeSpec
+				// we need at least 1 replica per shard for the cluster to remain green during the operation
+				return 1
+			}
+		}
+	}
+
+	// default to 0 replicas, to ensure proper data migration happens during the mutation
+	return 0
 }

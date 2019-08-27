@@ -16,8 +16,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
@@ -35,9 +35,7 @@ var (
 
 // ReconcileHTTPCertificates reconciles the internal resources for the HTTP certificate.
 func ReconcileHTTPCertificates(
-	c k8s.Client,
-	scheme *runtime.Scheme,
-	watches watches.DynamicWatches,
+	driver driver.Interface,
 	owner metav1.Object,
 	namer name.Namer,
 	ca *certificates.CA,
@@ -47,17 +45,17 @@ func ReconcileHTTPCertificates(
 	rotationParams certificates.RotationParams,
 ) (*CertificatesSecret, error) {
 	ownerNSN := k8s.ExtractNamespacedName(owner)
-	customCertificates, err := GetCustomCertificates(c, ownerNSN, tls)
+	customCertificates, err := GetCustomCertificates(driver.K8sClient(), ownerNSN, tls)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := reconcileDynamicWatches(watches, ownerNSN, namer, tls); err != nil {
+	if err := reconcileDynamicWatches(driver.DynamicWatches(), ownerNSN, namer, tls); err != nil {
 		return nil, err
 	}
 
 	internalCerts, err := reconcileHTTPInternalCertificatesSecret(
-		c, scheme, owner, namer, tls, labels, services, customCertificates, ca, rotationParams,
+		driver.K8sClient(), driver.Scheme(), owner, namer, tls, labels, services, customCertificates, ca, rotationParams,
 	)
 	if err != nil {
 		return nil, err

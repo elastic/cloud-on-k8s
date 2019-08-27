@@ -20,36 +20,51 @@ func TestUpdateESSecureSettings(t *testing.T) {
 	k := test.NewK8sClientOrFatal()
 
 	// user-provided secure settings secret
-	secureSettingsSecretName := "secure-settings-secret"
+
 	const securePasswordSettingKey = "xpack.notification.email.account.foo.smtp.secure_password"
-	const securetUserSettingKey = "xpack.notification.jira.account.bar.secure_user"
-	secureSettings := corev1.Secret{
+	const secureBarUserSettingKey = "xpack.notification.jira.account.bar.secure_user"
+	const secureBazUserSettingKey = "xpack.notification.jira.account.baz.secure_user"
+	secureSettings1 := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secureSettingsSecretName,
+			Name:      "user-secrets-1",
 			Namespace: test.Ctx().ManagedNamespace(0),
 		},
 		Data: map[string][]byte{
 			// this needs to be a valid configuration item, otherwise ES refuses to start
 			securePasswordSettingKey: []byte("foo_pw"),
-			securetUserSettingKey:    []byte("bar_user"),
 		},
 	}
+	secureSettings2 := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "user-secrets-2",
+			Namespace: test.Ctx().ManagedNamespace(0),
+		},
+		Data: map[string][]byte{
+			// this needs to be a valid configuration item, otherwise ES refuses to start
+			secureBarUserSettingKey: []byte("bar_user"),
+		},
+	}
+
+	secureSettings := []corev1.Secret{secureSettings1, secureSettings2}
 
 	// set up a 3-nodes cluster with secure settings
 	b := elasticsearch.NewBuilder("test-es-keystore").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithESSecureSettings(secureSettings.Name)
+		WithESSecureSettings(secureSettings1.Name, secureSettings2.Name)
 
 	test.StepList{}.
 		// create secure settings secret
 		WithStep(test.Step{
 			Name: "Create secure settings secret",
 			Test: func(t *testing.T) {
-				// remove if already exists (ignoring errors)
-				_ = k.Client.Delete(&secureSettings)
-				// and create a fresh one
-				err := k.Client.Create(&secureSettings)
-				require.NoError(t, err)
+				for _, s := range secureSettings {
+					// remove if already exists (ignoring errors)
+					_ = k.Client.Delete(&s)
+					// and create a fresh one
+					err := k.Client.Create(&s)
+					require.NoError(t, err)
+
+				}
 			},
 		}).
 
@@ -61,24 +76,35 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			// initial secure settings should be there in all nodes keystore
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
 				securePasswordSettingKey,
-				securetUserSettingKey}),
+				secureBarUserSettingKey}),
 
 			// modify the secure settings secret
 			test.Step{
 				Name: "Modify secure settings secret",
 				Test: func(t *testing.T) {
 					// remove some keys, add new ones
-					secureSettings.Data = map[string][]byte{
-						securePasswordSettingKey: []byte("baz"), // the actual value update cannot be checked :(
+					secureSettings2.Data = map[string][]byte{
+						secureBazUserSettingKey: []byte("baz"), // the actual value update cannot be checked :(
 					}
-					err := k.Client.Update(&secureSettings)
+					err := k.Client.Update(&secureSettings2)
 					require.NoError(t, err)
 				},
 			},
 
 			// keystore should be updated accordingly
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
-				securePasswordSettingKey}),
+				securePasswordSettingKey,
+				secureBazUserSettingKey,
+			}),
+			test.Step{
+				Name: "Remove one of the source secrets",
+				Test: func(t *testing.T) {
+					require.NoError(t, k.Client.Delete(&secureSettings2))
+				},
+			},
+			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
+				securePasswordSettingKey,
+			}),
 
 			// remove the secure settings reference
 			test.Step{
@@ -102,7 +128,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			test.Step{
 				Name: "Delete secure settings secret",
 				Test: func(t *testing.T) {
-					err := k.Client.Delete(&secureSettings)
+					err := k.Client.Delete(&secureSettings1) // we deleted the other one above already
 					require.NoError(t, err)
 				},
 			},

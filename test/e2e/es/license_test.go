@@ -54,5 +54,4 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		)).
 		WithSteps(mutatedEsBuilder.DeletionTestSteps(k)).
 		RunSequential(t)
-
 }
