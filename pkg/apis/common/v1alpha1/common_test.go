@@ -89,6 +89,20 @@ func TestHTTPConfig_Scheme(t *testing.T) {
 			want: "https",
 		},
 		{
+			name: "enabled: custom certs and self-signed disabled",
+			fields: fields{
+				TLS: TLSOptions{
+					SelfSignedCertificate: &SelfSignedCertificate{
+						Disabled: true,
+					},
+					Certificate: SecretRef{
+						SecretName: "my-custom-certs",
+					},
+				},
+			},
+			want: "https",
+		},
+		{
 			name: "disabled",
 			fields: fields{
 				TLS: TLSOptions{

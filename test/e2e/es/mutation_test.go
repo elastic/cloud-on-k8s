@@ -34,7 +34,7 @@ func TestMutationHTTPSToHTTP(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-mutation-http-to-https").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
-	// mutate to https
+	// mutate to http
 	mutated := b.WithTLSDisabled(true)
 
 	test.RunMutation(t, b, mutated)

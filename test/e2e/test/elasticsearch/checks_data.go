@@ -49,7 +49,6 @@ func (dc *DataIntegrityCheck) Init() error {
 	if err != nil {
 		return err
 	}
-	// default to 0 replicas to ensure we test data migration works
 	indexSettings := `
 {
     "settings" : {
