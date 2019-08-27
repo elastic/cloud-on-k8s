@@ -366,7 +366,7 @@ check-requisites:
 	@ hack/check-requisites.sh
 
 check-license-header:
-	../build/check-license-header.sh
+	./build/check-license-header.sh
 
 # Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
