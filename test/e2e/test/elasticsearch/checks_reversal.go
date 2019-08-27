@@ -46,9 +46,7 @@ func (s *mutationReversalTestContext) PreMutationSteps(k *test.K8sClient) test.S
 		{
 			Name: "Add some data to the cluster before any mutation",
 			Test: func(t *testing.T) {
-				var err error
-				s.dataIntegrity, err = NewDataIntegrityCheck(s.es, k)
-				require.NoError(t, err)
+				s.dataIntegrity = NewDataIntegrityCheck(s.es, k)
 				require.NoError(t, s.dataIntegrity.Init())
 			},
 		},

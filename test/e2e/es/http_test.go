@@ -15,7 +15,7 @@ import (
 func TestHTTPWithoutTLS(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-es-http").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithTLSDisabled()
+		WithTLSDisabled(true)
 
 	// volume type will be checked in creation steps
 	test.Sequence(nil, test.EmptySteps, b).

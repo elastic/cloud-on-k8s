@@ -14,9 +14,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 

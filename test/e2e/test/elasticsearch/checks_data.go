@@ -21,30 +21,32 @@ import (
 )
 
 type DataIntegrityCheck struct {
-	client     client.Client
-	indexName  string
-	numShards  int
-	sampleData map[string]interface{}
-	docCount   int
+	clientFactory func() (client.Client, error) // recreate clients for cases where we switch scheme in tests
+	indexName     string
+	numShards     int
+	sampleData    map[string]interface{}
+	docCount      int
 }
 
-func NewDataIntegrityCheck(es v1alpha1.Elasticsearch, k *test.K8sClient) (*DataIntegrityCheck, error) {
-	elasticsearchClient, err := NewElasticsearchClient(es, k)
-	if err != nil {
-		return nil, err
-	}
+func NewDataIntegrityCheck(es v1alpha1.Elasticsearch, k *test.K8sClient) *DataIntegrityCheck {
 	return &DataIntegrityCheck{
-		client:    elasticsearchClient,
+		clientFactory: func() (client.Client, error) {
+			return NewElasticsearchClient(es, k)
+		},
 		indexName: "data-integrity-check",
 		sampleData: map[string]interface{}{
 			"foo": "bar",
 		},
 		docCount:  5,
 		numShards: 3,
-	}, nil
+	}
 }
 
 func (dc *DataIntegrityCheck) Init() error {
+	esClient, err := dc.clientFactory()
+	if err != nil {
+		return err
+	}
 	// default to 0 replicas to ensure we test data migration works
 	indexSettings := `
 {
@@ -65,7 +67,7 @@ func (dc *DataIntegrityCheck) Init() error {
 	if err != nil {
 		return err
 	}
-	resp, err := dc.client.Request(context.Background(), indexCreation)
+	resp, err := esClient.Request(context.Background(), indexCreation)
 	defer resp.Body.Close() // nolint
 	if err != nil {
 		return err
@@ -81,7 +83,7 @@ func (dc *DataIntegrityCheck) Init() error {
 		if err != nil {
 			return err
 		}
-		resp, err = dc.client.Request(context.Background(), r)
+		resp, err = esClient.Request(context.Background(), r)
 		defer resp.Body.Close() // nolint
 		if err != nil {
 			return err
@@ -91,12 +93,17 @@ func (dc *DataIntegrityCheck) Init() error {
 }
 
 func (dc *DataIntegrityCheck) Verify() error {
+	esClient, err := dc.clientFactory()
+	if err != nil {
+		return err
+	}
+
 	// retrieve the previously indexed documents
 	r, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/_search", dc.indexName), nil)
 	if err != nil {
 		return err
 	}
-	response, err := dc.client.Request(context.Background(), r)
+	response, err := esClient.Request(context.Background(), r)
 	if err != nil {
 		return err
 	}
@@ -112,6 +119,7 @@ func (dc *DataIntegrityCheck) Verify() error {
 	}
 	// the overall count should be the same
 	if len(results.Hits.Hits) != dc.docCount {
+		println(string(resultBytes))
 		return fmt.Errorf("expected %d got %d, data loss", dc.docCount, len(results.Hits.Hits))
 	}
 	// each document should be identical with the sample we used to create the test data

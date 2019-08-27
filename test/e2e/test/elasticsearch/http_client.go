@@ -5,12 +5,13 @@
 package elasticsearch
 
 import (
-	"fmt"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -28,7 +29,11 @@ func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *test.K8sClient) (clien
 	if err != nil {
 		return nil, err
 	}
-	inClusterURL := fmt.Sprintf("%s://%s.%s.svc:9200", es.Spec.HTTP.Scheme(), name.HTTPService(es.Name), es.Namespace)
+	pods, err := sset.GetActualPodsForCluster(k.Client, es)
+	if err != nil {
+		return nil, err
+	}
+	inClusterURL := services.ElasticsearchURL(es, reconcile.AvailableElasticsearchNodes(pods))
 	var dialer net.Dialer
 	if test.Ctx().AutoPortForwarding {
 		dialer = portforward.NewForwardingDialer()

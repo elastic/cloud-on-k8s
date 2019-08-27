@@ -91,11 +91,13 @@ func (b Builder) WithHTTPLoadBalancer() Builder {
 	return b
 }
 
-func (b Builder) WithTLSDisabled() Builder {
+func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	if b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate == nil {
 		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1alpha1.SelfSignedCertificate{}
+	} else {
+		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
 	}
-	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = true
+	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate.Disabled = disabled
 	return b
 }
 

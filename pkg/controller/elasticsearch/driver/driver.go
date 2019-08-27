@@ -28,7 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
@@ -141,7 +140,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	observedState := d.Observers.ObservedStateResolver(
 		k8s.ExtractNamespacedName(&d.ES),
 		d.newElasticsearchClient(
-			*externalService,
+			resourcesState,
 			internalUsers.ControllerUser,
 			*min,
 			certificateResources.TrustedHTTPCertificates,
@@ -162,7 +161,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
-		*externalService,
+		resourcesState,
 		internalUsers.ControllerUser,
 		*min,
 		certificateResources.TrustedHTTPCertificates,
@@ -224,12 +223,12 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
-	service corev1.Service,
+	state *reconcile.ResourcesState,
 	user user.User,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
-	url := fmt.Sprintf("%s://%s.%s.svc:%d", d.ES.Spec.HTTP.Scheme(), service.Name, service.Namespace, network.HTTPPort)
+	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
 	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
 }
 

@@ -96,7 +96,11 @@ func buildLabels(
 		return nil, err
 	}
 
-	podLabels, err := label.NewPodLabels(k8s.ExtractNamespacedName(&es), name.StatefulSet(es.Name, nodeSpec.Name), *ver, nodeRoles, cfgHash)
+	podLabels, err := label.NewPodLabels(
+		k8s.ExtractNamespacedName(&es),
+		name.StatefulSet(es.Name, nodeSpec.Name),
+		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Scheme(),
+	)
 	if err != nil {
 		return nil, err
 	}
