@@ -419,6 +419,16 @@ kind-e2e: kind-node-variable-check docker-build e2e-docker-build
 		--nodes 3 \
 		make e2e-run
 
+## Run all the e2e tests in a Kind cluster with provided operator image
+kind-e2e-rc: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
+kind-e2e-rc: export NODE_IMAGE = ${KIND_NODE_IMAGE}
+kind-e2e-rc: kind-node-variable-check dep-vendor-only e2e-docker-build
+	docker pull $(OPERATOR_IMAGE)
+	./hack/kind/kind.sh \
+		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
+		--nodes 3 \
+		make e2e-run
+
 ## Cleanup
 delete-kind:
 	./hack/kind/kind.sh --stop
