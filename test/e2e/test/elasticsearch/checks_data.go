@@ -149,10 +149,11 @@ func dataIntegrityReplicas(b Builder) int {
 	// Important: this only checks ES version and spec, other changes such as secure settings update
 	// are tricky to capture and ignored here.
 	isVersionUpgrade := initial.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
+	httpOptionsChange := reflect.DeepEqual(initial.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
 	for _, initialNs := range initial.Elasticsearch.Spec.Nodes {
 		for _, mutatedNs := range b.Elasticsearch.Spec.Nodes {
 			if initialNs.Name == mutatedNs.Name &&
-				(isVersionUpgrade || !reflect.DeepEqual(initialNs, mutatedNs)) {
+				(isVersionUpgrade || httpOptionsChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
 				// a rolling upgrade is scheduled for that NodeSpec
 				// we need at least 1 replica per shard for the cluster to remain green during the operation
 				return 1
