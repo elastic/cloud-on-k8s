@@ -150,8 +150,6 @@ func calculatePerformableDownscale(
 	downscale ssetDownscale,
 	allLeavingNodes []string,
 ) ssetDownscale {
-	// TODO: only one master node downscale at a time
-
 	// create another downscale based on the provided one, for which we'll slowly decrease target replicas
 	performableDownscale := ssetDownscale{
 		statefulSet:     downscale.statefulSet,
