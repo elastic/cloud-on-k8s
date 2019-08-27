@@ -7,8 +7,6 @@
 #################################
 
 
-ROOT_DIR = $(shell dirname $(CURDIR))
-
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
 
@@ -353,7 +351,7 @@ run-deployer: dep-vendor-only build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
 ci-release: export GO_TAGS = release
-ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
+ci-release: export LICENSE_PUBKEY = $(CURDIR)/build/ci/license.key
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 	@ echo $(OPERATOR_IMAGE) was pushed!
