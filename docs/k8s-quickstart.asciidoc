@@ -54,7 +54,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.2.0
+  version: 7.3.0
   nodes:
   - nodeCount: 1
     config:
@@ -79,7 +79,7 @@ kubectl get elasticsearch
 [source,sh]
 ----
 NAME          HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         7.2.0     Operational   1m
+quickstart    green     1         7.3.0     Operational   1m
 ----
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is `Pending`. After a while, the `PHASE` turns into `Operational`, and `HEALTH` becomes `green`.
@@ -181,7 +181,7 @@ kind: Kibana
 metadata:
   name: quickstart
 spec:
-  version: 7.2.0
+  version: 7.3.0
   nodeCount: 1
   elasticsearchRef:
     name: quickstart
@@ -245,7 +245,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.2.0
+  version: 7.3.0
   nodes:
   - nodeCount: 3
     config:
@@ -271,7 +271,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.2.0
+  version: 7.3.0
   nodes:
   - nodeCount: 3
     config:
@@ -300,10 +300,10 @@ To aim for the best performance, the operator supports persistent volumes local 
 [id="{p}-check-samples"]
 === Check out the samples
 
-You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/samples[in the project repository].
-To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample].
+You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/master/config/samples[in the project repository].
+To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/master/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample].
 
-For a full description of each `CustomResourceDefinition`, go to link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/crds[the project repository].
+For a full description of each `CustomResourceDefinition`, go to link:https://github.com/elastic/cloud-on-k8s/tree/master/config/crds[the project repository].
 You can also retrieve it from the cluster. For example, describe the Elasticsearch CRD specification with:
 
 [source,sh]

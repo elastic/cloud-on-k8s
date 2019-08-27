@@ -51,19 +51,12 @@ RUN apt-get update && apt-get --no-install-recommends -y install \
 RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
 
 # Add Go dependencies to Docker image
-WORKDIR /go/src/github.com/elastic/cloud-on-k8s/operators
-COPY operators/Gopkg.lock .
-COPY operators/Gopkg.toml .
-RUN dep ensure --vendor-only -v
-
-WORKDIR /go/src/github.com/elastic/cloud-on-k8s/local-volume
-COPY local-volume/Gopkg.lock .
-COPY local-volume/Gopkg.toml .
+WORKDIR /go/src/github.com/elastic/cloud-on-k8s
+COPY Gopkg.lock .
+COPY Gopkg.toml .
 RUN dep ensure --vendor-only -v
 
 # Cleanup
-RUN rm /go/src/github.com/elastic/cloud-on-k8s/local-volume/Gopkg.lock && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/local-volume/Gopkg.toml && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/operators/Gopkg.lock && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/operators/Gopkg.toml
+RUN rm /go/src/github.com/elastic/cloud-on-k8s/Gopkg.lock && \
+    rm /go/src/github.com/elastic/cloud-on-k8s/Gopkg.toml
 WORKDIR /

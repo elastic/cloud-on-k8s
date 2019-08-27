@@ -13,7 +13,6 @@ Current features:
 *  TLS Certificates management
 *  Safe Elasticsearch cluster configuration & topology changes
 *  Persistent volumes usage
-*  [Dynamic local persistent volumes provisioning](https://github.com/elastic/cloud-on-k8s/tree/master/local-volume)
 *  Custom node configuration and attributes
 *  Secure settings keystore updates
 
@@ -23,3 +22,5 @@ Supported versions:
 *  Elasticsearch: 6.8+, 7.1+
 
 Check the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html) if you want to deploy you first cluster with ECK.
+
+If you want to contribute to the project, check our [contributing guide](CONTRIBUTING.md) and see [how to setup a local development environment](dev-setup.md).

@@ -33,7 +33,7 @@ pipeline {
             }
             steps {
                 sh """
-                    cat >operators/run-config.yml <<EOF
+                    cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
   kubernetesVersion: "$CLUSTER_VERSION"
@@ -65,22 +65,9 @@ EOF
         cleanup {
             script {
                 if (notOnlyDocs()) {
-                    sh """
-                        cat >operators/run-config.yml <<EOF
-id: gke-ci
-overrides:
-  operation: delete
-  kubernetesVersion: "$CLUSTER_VERSION"
-  clusterName: $CLUSTER_NAME
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-                        make -C build/ci ci-run-deployer
-                    """
+                    build job: 'cloud-on-k8s-e2e-cleanup',
+                        parameters: [string(name: 'GKE_CLUSTER', value: "${CLUSTER_NAME}")],
+                        wait: false
                 }
             }
 

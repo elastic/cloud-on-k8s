@@ -14,6 +14,8 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
         CLUSTER_VERSION = '1.12.8'
         CLUSTER_NAME = "${BUILD_TAG}"
+        REGISTRY = "cloudonk8s.azurecr.io"
+        REPOSITORY = "operators"
     }
 
     stages {
@@ -25,7 +27,7 @@ pipeline {
         stage("Run E2E tests") {
             steps {
                 sh """
-                    cat >operators/run-config.yml <<EOF
+                    cat >run-config.yml <<EOF
 id: aks-ci
 overrides:
   kubernetesVersion: "$CLUSTER_VERSION"
@@ -45,7 +47,7 @@ EOF
         cleanup {
             script {
                 sh """
-                    cat >operators/run-config.yml <<EOF
+                    cat >run-config.yml <<EOF
 id: aks-ci
 overrides:
   operation: delete

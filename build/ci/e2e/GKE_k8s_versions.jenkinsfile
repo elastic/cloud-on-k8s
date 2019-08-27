@@ -28,7 +28,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('create', '1.11', "${BUILD_TAG}-11")
+                        createRunConfig('1.11', "${BUILD_TAG}-11")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -38,7 +38,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('create', '1.12', "${BUILD_TAG}-12")
+                        createRunConfig('1.12', "${BUILD_TAG}-12")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -48,7 +48,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        createRunConfig('create', '1.13', "${BUILD_TAG}-13")
+                        createRunConfig('1.13', "${BUILD_TAG}-13")
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
@@ -57,13 +57,23 @@ pipeline {
     }
 
     post {
+        unsuccessful {
+            script {
+                def msg = "E2E tests for different k8s versions in GKE failed!\r\n" + env.BUILD_URL
+                slackSend botUser: true,
+                    channel: '#cloud-k8s',
+                    color: 'danger',
+                    message: msg,
+                    tokenCredentialId: 'cloud-ci-slack-integration-token'
+            }
+        }
         cleanup {
             script {
                 clusters = ["${BUILD_TAG}-11", "${BUILD_TAG}-12", "${BUILD_TAG}-13"]
-                versions = ["1.11", "1.12", "1.13"]
                 for (int i = 0; i < clusters.size(); i++) {
-                    createRunConfig('delete', versions[i], clusters[i])
-                    sh 'make -C build/ci ci-run-deployer'
+                    build job: 'cloud-on-k8s-e2e-cleanup',
+                        parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
+                        wait: false
                 }
             }
             cleanWs()
@@ -71,12 +81,12 @@ pipeline {
     }
 }
 
-void createRunConfig(operation, clusterVersion, clusterName) {
+void createRunConfig(clusterVersion, clusterName) {
     sh """
-                    cat >operators/run-config.yml <<EOF
+        cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
-  operation: ${operation}
+  operation: create
   kubernetesVersion: "${clusterVersion}"
   clusterName: ${clusterName}
   vaultInfo:

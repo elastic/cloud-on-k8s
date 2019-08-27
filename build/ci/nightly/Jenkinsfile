@@ -29,9 +29,10 @@ pipeline {
         stage('Build and push Docker image') {
             steps {
                 sh """
-                    export VERSION=\$(cat $WORKSPACE/operators/VERSION)-\$(date +%F)-\$(git rev-parse --short --verify HEAD)
+                    export VERSION=\$(cat $WORKSPACE/VERSION)-\$(date +%F)-\$(git rev-parse --short --verify HEAD)
                     export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     export LATEST_RELEASED_IMG=docker.elastic.co/${REPOSITORY}/${IMG_NAME}:\$VERSION
+                    echo \$LATEST_RELEASED_IMG > eck_image.txt
                     make -C build/ci ci-release
                 """
             }
@@ -41,10 +42,7 @@ pipeline {
     post {
         success {
             script {
-                def version = readFile("$WORKSPACE/operators/VERSION").trim()
-                def hash = sh(returnStdout: true, script: 'git rev-parse --short --verify HEAD')
-                def date = new Date()
-                def image = env.DOCKER_IMAGE_NO_TAG + ":" + version + "-" + date.format("yyyy-MM-dd") + "-" + hash
+                def image = readFile("$WORKSPACE/eck_image.txt").trim()
                 currentBuild.description = image
 
                 build job: 'cloud-on-k8s-versions-gke',

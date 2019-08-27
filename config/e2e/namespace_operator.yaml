@@ -1,0 +1,230 @@
+{{- $testRun := .TestRun -}}
+{{- $operatorImage := .OperatorImage -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-operator
+  labels:
+    test-run: {{ .TestRun }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - create
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-namespace-operator
+  labels:
+    test-run: {{ .TestRun }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - endpoints
+  - events
+  - persistentvolumeclaims
+  - secrets
+  - services
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - elasticsearches
+  - elasticsearches/status
+  - elasticsearches/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - kibana.k8s.elastic.co
+  resources:
+  - kibanas
+  - kibanas/status
+  - kibanas/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - associations.k8s.elastic.co
+  resources:
+  - apmserverelasticsearchassociations
+  - apmserverelasticsearchassociations/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apm.k8s.elastic.co
+  resources:
+  - apmservers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apm.k8s.elastic.co
+  resources:
+  - apmservers/status
+  - apmservers/finalizers
+  verbs:
+  - get
+  - update
+  - patch
+
+{{- range .NamespaceOperators }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+  labels:
+    test-run: {{ $testRun }}
+---
+# allow operator to manage resources in its namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+  labels:
+    test-run: {{ $testRun }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elastic-operator
+subjects:
+- kind: ServiceAccount
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+---
+# allow operator to manage resources in the managed namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .ManagedNamespace }}
+  labels:
+    test-run: {{ $testRun }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elastic-namespace-operator
+subjects:
+- kind: ServiceAccount
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Name }}
+  namespace: {{ .Namespace }}
+  labels:
+    control-plane: {{ .Name }}
+    test-run: {{ $testRun }}
+spec:
+  selector:
+    matchLabels:
+      control-plane: {{ .Name }}
+  serviceName: {{ .Name }}
+  template:
+    metadata:
+      labels:
+        control-plane: {{ .Name }}
+        test-run: {{ $testRun }}
+    spec:
+      serviceAccountName: {{ .Name }}
+      containers:
+      - image: {{ $operatorImage }}
+        imagePullPolicy: IfNotPresent
+        name: manager
+        args: ["manager", "--namespace", "{{ .ManagedNamespace }}", "--operator-roles", "namespace"]
+        env:
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: OPERATOR_IMAGE
+            value: {{ $operatorImage }}
+        resources:
+          limits:
+            cpu: 1
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+      terminationGracePeriodSeconds: 10
+{{- end }}
