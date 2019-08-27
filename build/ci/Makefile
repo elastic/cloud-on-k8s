@@ -15,7 +15,6 @@ VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/githu
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
 NOT_USED = $(shell test -e ../../run-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" ../../run-config.yml)
 endif
-export VAULT_TOKEN
 
 CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
@@ -43,12 +42,12 @@ ci-internal: ci-build-image
 ci-build-image:
 	@ docker pull $(CI_IMAGE) || (docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(CI_IMAGE) \
 		--label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && docker login -u eckadmin \
-		-p $(shell vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin) \
+		-p $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin) \
 		push.docker.elastic.co && docker push push.$(CI_IMAGE))
 
 VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
-AWS_ACCESS_KEY_ID = $(shell vault read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
-AWS_SECRET_ACCESS_KEY = $(shell vault read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS))
+AWS_ACCESS_KEY_ID = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
+AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS))
 # reads AWS creds for yaml upload to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
 yaml-upload:
 	@ $(MAKE) \
