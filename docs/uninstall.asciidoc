@@ -5,7 +5,7 @@ Before uninstalling the operator, remove all Elastic resources:
 
 [source,shell]
 ----
-kubectl delete elastic --all --all-namesapces
+kubectl delete elastic --all --all-namespaces
 ----
 
 This deletes all underlying Elasticsearch, Kibana, and APM Server resources (pods, secrets, services, etc.).
