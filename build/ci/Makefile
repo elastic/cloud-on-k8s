@@ -55,3 +55,6 @@ yaml-upload:
 		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one.yaml \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml" ci-internal
 
+# reads Elastic public key from Vault into license.key
+get-elastic-public-key:
+	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=pubkey secret/release/license | base64 --decode > license.key

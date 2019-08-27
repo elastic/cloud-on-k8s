@@ -28,6 +28,7 @@ REGISTRY = "push.docker.elastic.co"
 REPOSITORY = "eck-snapshots"
 IMG_NAME = "eck-operator"
 SNAPSHOT = "true"
+LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
 EOF
                     make -C build/ci TARGET=ci ci
                 """
@@ -44,7 +45,7 @@ EOF
 OPERATOR_IMAGE = "$OPERATOR_IMAGE"
 LATEST_RELEASED_IMG = "$LATEST_RELEASED_IMG"
 EOF
-                    make -C build/ci TARGET=ci-release ci
+                    make -C build/ci get-elastic-public-key TARGET=ci-release ci
                 """
             }
         }
