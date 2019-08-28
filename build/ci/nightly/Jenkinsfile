@@ -29,6 +29,7 @@ REPOSITORY = "eck-snapshots"
 IMG_NAME = "eck-operator"
 SNAPSHOT = "true"
 LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
+IMG_SUFFIX = -ci
 EOF
                     make -C build/ci TARGET=ci ci
                 """
