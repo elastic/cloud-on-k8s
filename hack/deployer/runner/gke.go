@@ -239,8 +239,8 @@ func (d *GkeDriver) patchStorageClass() error {
 		return err
 	}
 
-	sc = strings.ReplaceAll(sc, "name: standard", "name: standard-customized")
-	sc = strings.ReplaceAll(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer")
+	sc = strings.Replace(sc, "name: standard", "name: standard-customized", -1)
+	sc = strings.Replace(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer", -1)
 	err = NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
 EOF`, sc)).Run()
