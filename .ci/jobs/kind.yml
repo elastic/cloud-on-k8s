@@ -1,7 +1,7 @@
 ---
 - job:
     description: Job that runs ECK e2e tests against different vanilla K8s versions with kind. This Job is managed by JJB.
-    name: cloud-on-k8s-stack
+    name: cloud-on-k8s-kind
     project-type: pipeline
     parameters:
       - string:

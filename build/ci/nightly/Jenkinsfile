@@ -65,6 +65,10 @@ EOF
                 build job: 'cloud-on-k8s-stack',
                       parameters: [string(name: 'IMAGE', value: image)],
                       wait: false
+
+                build job: 'cloud-on-k8s-kind',
+                    parameters: [string(name: 'ECK_IMAGE', value: image)],
+                    wait: false
             }
         }
         cleanup {
