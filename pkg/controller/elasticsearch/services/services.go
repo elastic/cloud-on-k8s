@@ -94,7 +94,7 @@ func GetExternalService(c k8s.Client, es v1alpha1.Elasticsearch) (corev1.Service
 }
 
 // ElasticsearchURL calculates the base url for Elasticsearch, taking into account the currently running pods.
-// If there is a HTTP scheme mismatch between spec and pods we switch to requesting individual pods directly
+// If there is an HTTP scheme mismatch between spec and pods we switch to requesting individual pods directly
 // otherwise this delegates to ExternalServiceURL.
 func ElasticsearchURL(es v1alpha1.Elasticsearch, pods []corev1.Pod) string {
 	var schemeChange bool

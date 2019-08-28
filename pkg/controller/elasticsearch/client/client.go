@@ -174,7 +174,7 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("%s: %s", e.response.Status, reason)
 }
 
-// IsNotFound checks whether the error was a HTTP 404 error.
+// IsNotFound checks whether the error was an HTTP 404 error.
 func IsNotFound(err error) bool {
 	switch err := err.(type) {
 	case *APIError:

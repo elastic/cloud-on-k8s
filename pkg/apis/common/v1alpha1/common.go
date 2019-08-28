@@ -42,7 +42,7 @@ func (s *ObjectSelector) IsDefined() bool {
 	return s != nil && s.Name != ""
 }
 
-// HTTPConfig configures a HTTP-based service.
+// HTTPConfig configures an HTTP-based service.
 type HTTPConfig struct {
 	// Service is a template for the Kubernetes Service
 	Service ServiceTemplate `json:"service,omitempty"`
