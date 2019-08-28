@@ -58,3 +58,6 @@ yaml-upload:
 # reads Elastic public key from Vault into license.key
 get-elastic-public-key:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=pubkey secret/release/license | base64 --decode > license.key
+
+get-docker-creds:
+	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ../../.env
