@@ -116,12 +116,17 @@ func parsePodAddr(addr string, clientSet *kubernetes.Clientset) (*types.Namespac
 	}
 	if podDNSRegex.MatchString(host) {
 		// retrieve pod name and namespace from addr
-		// TODO: subdomains in pod names would change this.
-		parts := strings.SplitN(host, ".", 3)
+		parts := strings.SplitN(host, ".", 4)
 		if len(parts) <= 1 {
 			return nil, fmt.Errorf("unsupported pod address format: %s", host)
 		}
-		return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil
+		if len(parts) == 2 || parts[2] == syntheticDNSSegment {
+			// podname.ns[.pod] from service forwarder or direct call
+			return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil
+		}
+		// podname.subdomain.ns
+		return &types.NamespacedName{Namespace: parts[2], Name: parts[0]}, nil
+
 	}
 	return nil, fmt.Errorf("unsupported pod address format: %s", host)
 }
