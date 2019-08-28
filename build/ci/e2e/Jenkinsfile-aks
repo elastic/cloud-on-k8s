@@ -12,10 +12,6 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
-        CLUSTER_VERSION = '1.12.8'
-        CLUSTER_NAME = "${BUILD_TAG}"
-        REGISTRY = "cloudonk8s.azurecr.io"
-        REPOSITORY = "operators"
     }
 
     stages {
@@ -27,17 +23,22 @@ pipeline {
         stage("Run E2E tests") {
             steps {
                 sh """
+                    cat >.env <<EOF
+REGISTRY = cloudonk8s.azurecr.io
+REPOSITORY = operators
+IMG_SUFFIX = -ci
+EOF
                     cat >run-config.yml <<EOF
 id: aks-ci
 overrides:
-  kubernetesVersion: "$CLUSTER_VERSION"
-  clusterName: $CLUSTER_NAME
+  kubernetesVersion: "1.12.8"
+  clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
 EOF
-                    make -C build/ci ci-e2e
+                    make -C build/ci TARGET=ci-e2e ci
                 """
             }
         }  
@@ -51,14 +52,14 @@ EOF
 id: aks-ci
 overrides:
   operation: delete
-  kubernetesVersion: "$CLUSTER_VERSION"
-  clusterName: $CLUSTER_NAME
+  kubernetesVersion: "1.12.8"
+  clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
 EOF
-                    make -C build/ci ci-run-deployer
+                    make -C build/ci TARGET=run-deployer ci
                 """
             }
             cleanWs()
