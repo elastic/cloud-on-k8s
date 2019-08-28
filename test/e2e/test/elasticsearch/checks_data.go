@@ -139,7 +139,7 @@ func dataIntegrityReplicas(b Builder) int {
 		initial = &b // consider mutated == initial
 	}
 
-	if initial.Elasticsearch.Spec.NodeCount() == 1 || b.Elasticsearch.Spec.NodeCount() == 1 {
+	if MustNumDataNodes(initial.Elasticsearch) == 1 || MustNumDataNodes(b.Elasticsearch) == 1 {
 		// a 1 node cluster can only be green if shards have no replicas
 		return 0
 	}
