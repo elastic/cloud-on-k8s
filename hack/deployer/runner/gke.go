@@ -93,6 +93,10 @@ func (d *GkeDriver) Execute() error {
 		if err := d.configureDocker(); err != nil {
 			return err
 		}
+
+		if err := d.patchStorageClass(); err != nil {
+			return err
+		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -218,6 +222,34 @@ func (d *GkeDriver) GetCredentials() error {
 	log.Println("Getting credentials...")
 	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
+}
+
+// patchStorageClass based on standard storageclass, creates new default with "volumeBindingMode: WaitForFirstConsumer"
+func (d *GkeDriver) patchStorageClass() error {
+	log.Println("Patching storage class...")
+
+	if exists, err := NewCommand("kubectl get sc").OutputContainsAny("standard-customized"); err != nil {
+		return err
+	} else if exists {
+		return nil
+	}
+
+	sc, err := NewCommand("kubectl get sc standard -o yaml").Output()
+	if err != nil {
+		return err
+	}
+
+	sc = strings.ReplaceAll(sc, "name: standard", "name: standard-customized")
+	sc = strings.ReplaceAll(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer")
+	err = NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
+%s
+EOF`, sc)).Run()
+	if err != nil {
+		return err
+	}
+
+	cmd := `kubectl patch storageclass standard -p '{ "metadata": { "annotations": { "storageclass.beta.kubernetes.io/is-default-class":"false"} } }'`
+	return NewCommand(cmd).Run()
 }
 
 func (d *GkeDriver) delete() error {
