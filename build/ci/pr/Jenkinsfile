@@ -35,9 +35,6 @@ pipeline {
                             notOnlyDocs()
                         }
                     }
-                    agent {
-                        label 'linux'
-                    }
                     steps {
                         createConfig()
                         sh 'make -C build/ci TARGET=ci ci'
@@ -51,25 +48,10 @@ pipeline {
                         }
                     }
                     agent {
-                        label 'linux'
+                        label 'eck'
                     }
                     steps {
-                        createConfig()
-                        sh """
-                            cat >run-config.yml <<EOF
-id: gke-ci
-overrides:
-  kubernetesVersion: "1.12"
-  clusterName: $BUILD_TAG
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-                            make -C build/ci TARGET=ci-e2e ci
-                        """
+                        sh 'TESTS_MATCH=TestSmoke make kind-e2e'
                     }
                 }
             }
