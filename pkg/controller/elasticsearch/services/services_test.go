@@ -98,13 +98,14 @@ func TestElasticsearchURL(t *testing.T) {
 							Namespace: "my-ns",
 							Name:      "my-sset-0",
 							Labels: map[string]string{
-								label.HTTPSchemeLabelName: "http",
+								label.HTTPSchemeLabelName:      "http",
+								label.StatefulSetNameLabelName: "my-sset",
 							},
 						},
 					},
 				},
 			},
-			want: "http://my-sset-0.my-ns:9200",
+			want: "http://my-sset-0.my-sset.my-ns:9200",
 		},
 		{
 			name: "unexpected: missing pod labels: fallback to service",
@@ -117,6 +118,27 @@ func TestElasticsearchURL(t *testing.T) {
 				},
 				pods: []corev1.Pod{
 					{},
+				},
+			},
+			want: "https://my-cluster-es-http.my-ns.svc:9200",
+		},
+		{
+			name: "unexpected: partially missing pod labels: fallback to service",
+			args: args{
+				es: v1alpha1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "my-cluster",
+						Namespace: "my-ns",
+					},
+				},
+				pods: []corev1.Pod{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								label.HTTPSchemeLabelName: "http",
+							},
+						},
+					},
 				},
 			},
 			want: "https://my-cluster-es-http.my-ns.svc:9200",

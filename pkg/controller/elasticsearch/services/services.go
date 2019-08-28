@@ -108,7 +108,11 @@ func ElasticsearchURL(es v1alpha1.Elasticsearch, pods []corev1.Pod) string {
 	if schemeChange {
 		// switch to sending requests directly to a random pod instead of going through the service
 		randomPod := pods[rand.Intn(len(pods))]
-		return fmt.Sprintf("%s://%s.%s:%d", randomPod.Labels[label.HTTPSchemeLabelName], randomPod.Name, randomPod.Namespace, network.HTTPPort)
+		scheme, hasScheme := randomPod.Labels[label.HTTPSchemeLabelName]
+		sset, hasSset := randomPod.Labels[label.StatefulSetNameLabelName]
+		if hasScheme && hasSset {
+			return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, randomPod.Name, sset, randomPod.Namespace, network.HTTPPort)
+		}
 	}
 	return ExternalServiceURL(es)
 }
