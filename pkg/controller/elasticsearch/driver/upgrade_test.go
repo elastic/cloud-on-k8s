@@ -9,12 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,6 +19,12 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 type mockESState struct {
@@ -89,7 +89,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 			name: "single sset upgrade",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:      "default",
 						Replicas:  1,
 						Master:    true,
@@ -113,7 +113,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 			name: "just one (master) at a time",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:      "default",
 						Replicas:  3,
 						Master:    true,
@@ -137,12 +137,12 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 			name: "multiple ssets, update correct sset",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:     "master",
 						Replicas: 3,
 						Master:   true,
 					}.Build(),
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:      "data",
 						Replicas:  1,
 						Data:      true,
@@ -165,7 +165,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 			name: "wait for healthy cluster",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:      "default",
 						Replicas:  1,
 						Master:    true,
@@ -188,7 +188,7 @@ func Test_defaultDriver_doRollingUpgrade(t *testing.T) {
 			name: "partially rolled out upgrade",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:      "default",
 						Replicas:  2,
 						Data:      true,
@@ -254,7 +254,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 			name: "still update pending",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:      "default",
 						Version:   "7.3.0",
 						Replicas:  1,
@@ -276,7 +276,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 			name: "update done but node not in cluster",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:      "default",
 						Replicas:  1,
 						Master:    true,
@@ -295,7 +295,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 				},
 			},
 			runtimeObjects: []runtime.Object{
-				nodespec.TestPod{
+				sset.TestPod{
 					Name:     "default-0",
 					Revision: "b", // pod at latest revision
 					Master:   true,
@@ -308,7 +308,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 			name: "should enable shard allocations",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					nodespec.TestSset{
+					sset.TestSset{
 						Name:      "default",
 						Replicas:  1,
 						Master:    true,
@@ -326,7 +326,7 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 				},
 			},
 			runtimeObjects: []runtime.Object{
-				nodespec.TestPod{
+				sset.TestPod{
 					Name:     "default-0",
 					Revision: "b", // pod at latest revision
 					Master:   true,
@@ -407,7 +407,7 @@ func Test_podUpgradeDone(t *testing.T) {
 		{
 			name: "pod on incorrect rev: not done",
 			runtimeObjects: []runtime.Object{
-				nodespec.TestPod{
+				sset.TestPod{
 					Namespace: testNamespace,
 					Name:      testPod,
 					Revision:  "rev0",
@@ -419,7 +419,7 @@ func Test_podUpgradeDone(t *testing.T) {
 		{
 			name: "pod not ready: not done",
 			runtimeObjects: []runtime.Object{
-				nodespec.TestPod{
+				sset.TestPod{
 					Namespace: testNamespace,
 					Name:      testPod,
 					Revision:  upgradeRevision,
