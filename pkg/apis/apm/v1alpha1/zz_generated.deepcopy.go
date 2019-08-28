@@ -10,6 +10,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -87,8 +88,10 @@ func (in *ApmServerSpec) DeepCopyInto(out *ApmServerSpec) {
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
-		*out = make([]commonv1alpha1.SecretRef, len(*in))
-		copy(*out, *in)
+		*out = make([]v1.SecretVolumeSource, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.FeatureFlags != nil {
 		in, out := &in.FeatureFlags, &out.FeatureFlags

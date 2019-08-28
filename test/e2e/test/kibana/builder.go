@@ -73,9 +73,9 @@ func (b Builder) WithNodeCount(count int) Builder {
 }
 
 func (b Builder) WithKibanaSecureSettings(secretNames ...string) Builder {
-	refs := make([]commonv1alpha1.SecretRef, 0, len(secretNames))
+	refs := make([]corev1.SecretVolumeSource, 0, len(secretNames))
 	for i := range secretNames {
-		refs = append(refs, commonv1alpha1.SecretRef{SecretName: secretNames[i]})
+		refs = append(refs, corev1.SecretVolumeSource{SecretName: secretNames[i]})
 	}
 	b.Kibana.Spec.SecureSettings = refs
 	return b

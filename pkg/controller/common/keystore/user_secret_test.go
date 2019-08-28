@@ -321,3 +321,129 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		})
 	}
 }
+
+func Test_retrieveUserSecrets(t *testing.T) {
+	testSecretName := "some-user-secret"
+	testSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      testSecretName,
+		},
+		Data: map[string][]byte{
+			"key1": []byte("value1"),
+			"key2": []byte("value2"),
+			"key3": []byte("value3"),
+		},
+	}
+	testKibana := &v1alpha1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kb",
+			Namespace: "ns",
+		},
+		Spec: v1alpha1.KibanaSpec{
+			SecureSettings: []corev1.SecretVolumeSource{},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		args    []corev1.SecretVolumeSource
+		want    []corev1.Secret
+		wantErr bool
+	}{
+		{
+			name: "secure settings secret with only secret name should be retrieved",
+			args: []corev1.SecretVolumeSource{
+				{
+					SecretName: testSecretName,
+				},
+			},
+			want:    []corev1.Secret{testSecret},
+			wantErr: false,
+		},
+		{
+			name: "secure settings secret with empty items should fail",
+			args: []corev1.SecretVolumeSource{
+				{
+					SecretName: testSecretName,
+					Items:      []corev1.KeyToPath{},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "secure settings secret with invalid key should fail",
+			args: []corev1.SecretVolumeSource{
+				{
+					SecretName: testSecretName,
+					Items: []corev1.KeyToPath{
+						{Key: "unknown"},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "secure settings secret with valid key should be retrieved",
+			args: []corev1.SecretVolumeSource{
+				{
+					SecretName: testSecretName,
+					Items: []corev1.KeyToPath{
+						{Key: "key2"},
+					},
+				},
+			},
+			want: []corev1.Secret{{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      testSecretName,
+				},
+				Data: map[string][]byte{
+					"key2": []byte("value2"),
+				},
+			}},
+			wantErr: false,
+		},
+		{
+			name: "secure settings secret with valid key and path should be retrieved",
+			args: []corev1.SecretVolumeSource{
+				{
+					SecretName: testSecretName,
+					Items: []corev1.KeyToPath{
+						{Key: "key1"},
+						{Key: "key3", Path: "newKey"},
+					},
+				},
+			},
+			want: []corev1.Secret{{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      testSecretName,
+				},
+				Data: map[string][]byte{
+					"key1":   []byte("value1"),
+					"newKey": []byte("value3"),
+				},
+			}},
+			wantErr: false,
+		},
+	}
+
+	recorder := record.NewFakeRecorder(100)
+	client := k8s.WrapClient(fake.NewFakeClient(&testSecret))
+	hasKeystore := testKibana
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasKeystore.Spec.SecureSettings = tt.args
+			got, err := retrieveUserSecrets(client, recorder, hasKeystore)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("retrieveUserSecrets() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			require.Nil(t, deep.Equal(got, tt.want))
+		})
+	}
+}

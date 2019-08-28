@@ -161,8 +161,10 @@ func (in *ElasticsearchSpec) DeepCopyInto(out *ElasticsearchSpec) {
 	}
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
-		*out = make([]commonv1alpha1.SecretRef, len(*in))
-		copy(*out, *in)
+		*out = make([]v1.SecretVolumeSource, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }

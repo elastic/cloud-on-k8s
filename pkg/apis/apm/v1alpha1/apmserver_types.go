@@ -50,8 +50,10 @@ type ApmServerSpec struct {
 	// into the APM keystore on each node.
 	// Each individual key/value entry in the referenced secrets is considered as an
 	// individual secure setting to be injected.
+	// You can use the `items` and `key` fields to consider only a subset of the secret
+	// entries and the `path` field to change the target path of a secret entry key.
 	// The secret must exist in the same namespace as the APM resource.
-	SecureSettings []commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
+	SecureSettings []corev1.SecretVolumeSource `json:"secureSettings,omitempty"`
 
 	// FeatureFlags are apm-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
@@ -154,7 +156,7 @@ func (as *ApmServer) ElasticsearchRef() commonv1alpha1.ObjectSelector {
 	return as.Spec.ElasticsearchRef
 }
 
-func (as *ApmServer) SecureSettings() []commonv1alpha1.SecretRef {
+func (as *ApmServer) SecureSettings() []corev1.SecretVolumeSource {
 	return as.Spec.SecureSettings
 }
 

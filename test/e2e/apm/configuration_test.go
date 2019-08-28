@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -113,7 +112,7 @@ func TestUpdateConfiguration(t *testing.T) {
 
 					var apm apmtype.ApmServer
 					require.NoError(t, k.Client.Get(apmNamespacedName, &apm))
-					apm.Spec.SecureSettings = []v1alpha1.SecretRef{
+					apm.Spec.SecureSettings = []corev1.SecretVolumeSource{
 						{SecretName: secureSettingsSecretName},
 					}
 					require.NoError(t, k.Client.Update(&apm))

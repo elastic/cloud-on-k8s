@@ -7,7 +7,6 @@ package keystore
 import (
 	"testing"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	watches2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -40,7 +39,7 @@ var (
 			"key1": []byte("value1"),
 		},
 	}
-	testSecureSettingsSecretRef = commonv1alpha1.SecretRef{
+	testSecureSettingsSecretRef = corev1.SecretVolumeSource{
 		SecretName: testSecureSettingsSecretName,
 	}
 	testKibana = v1alpha1.Kibana{
@@ -55,7 +54,7 @@ var (
 		},
 		ObjectMeta: testKibana.ObjectMeta,
 		Spec: v1alpha1.KibanaSpec{
-			SecureSettings: []commonv1alpha1.SecretRef{testSecureSettingsSecretRef},
+			SecureSettings: []corev1.SecretVolumeSource{testSecureSettingsSecretRef},
 		},
 	}
 )

@@ -171,12 +171,11 @@ spec:
               description: SecureSettings references secrets containing secure settings,
                 to be injected into Elasticsearch keystore on each node. Each individual
                 key/value entry in the referenced secrets is considered as an individual
-                secure setting to be injected. The secret must exist in the same namespace
-                as the Elasticsearch resource.
+                secure setting to be injected. You can use the `items` and `key` fields
+                to consider only a subset of the secret entries and the `path` field
+                to change the target path of a secret entry key. The secret must exist
+                in the same namespace as the Elasticsearch resource.
               items:
-                properties:
-                  secretName:
-                    type: string
                 type: object
               type: array
             setVmMaxMapCount:
