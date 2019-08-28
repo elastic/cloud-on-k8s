@@ -75,7 +75,9 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			},
 			test.Step{
 				Name: "Data added initially should still be present",
-				Test: test.Eventually(dataIntegrityCheck.Verify),
+				Test: test.Eventually(func() error { // nolint
+					return dataIntegrityCheck.Verify()
+				}),
 			},
 		})
 }
