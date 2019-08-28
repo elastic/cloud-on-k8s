@@ -7,6 +7,7 @@ package name
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -56,12 +57,12 @@ func Validate(es v1alpha1.Elasticsearch) error {
 		return fmt.Errorf("name exceeds maximum allowed length of %d", common_name.MaxResourceNameLength)
 	}
 
-	if errs := apimachineryvalidation.NameIsDNSSubdomain(esName, false); len(errs) > 0 {
-		return fmt.Errorf("invalid Elasticsearch name: '%s'", esName)
-	}
-
 	// validate ssets
 	for _, nodeSpec := range es.Spec.Nodes {
+		if errs := apimachineryvalidation.NameIsDNSSubdomain(nodeSpec.Name, false); len(errs) > 0 {
+			return fmt.Errorf("invalid nodeSpec name '%s': [%s]", nodeSpec.Name, strings.Join(errs, ","))
+		}
+
 		ssetName, err := ESNamer.SafeSuffix(esName, nodeSpec.Name)
 		if err != nil {
 			return errors.Wrapf(err, "error generating StatefulSet name for nodeSpec: '%s'", nodeSpec.Name)

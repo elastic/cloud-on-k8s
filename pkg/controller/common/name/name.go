@@ -7,9 +7,10 @@ package name
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
+	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/util/validation"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -73,8 +74,7 @@ func (n Namer) Suffix(ownerName string, suffixes ...string) string {
 	suffixedName, err := n.SafeSuffix(ownerName, suffixes...)
 	if err != nil {
 		// we should never encounter an error at this point because the names should have been validated
-		log.Error(err, "Failed to generate valid suffixed name", "ownerName", ownerName)
-		panic(err)
+		log.Error(err, "Invalid name. This could prevent the operator from functioning correctly", "name", suffixedName)
 	}
 
 	return suffixedName
@@ -83,6 +83,8 @@ func (n Namer) Suffix(ownerName string, suffixes ...string) string {
 // SafeSuffix attempts to generate a suffixed name, returning an error if the generated name is unacceptable.
 func (n Namer) SafeSuffix(ownerName string, suffixes ...string) (string, error) {
 	var suffixBuilder strings.Builder
+	var err error
+
 	for _, s := range n.DefaultSuffixes {
 		suffixBuilder.WriteString("-")
 		suffixBuilder.WriteString(s)
@@ -96,18 +98,27 @@ func (n Namer) SafeSuffix(ownerName string, suffixes ...string) (string, error) 
 
 	// This should never happen because we control all the suffixes!
 	if len(suffix) > n.MaxSuffixLength {
-		return "", newNameLengthError("suffix exceeds max length", n.MaxSuffixLength, suffix)
+		err = multierror.Append(err, newNameLengthError("suffix exceeds max length", n.MaxSuffixLength, suffix))
+		suffix = truncate(suffix, n.MaxSuffixLength)
 	}
 
 	maxPrefixLength := validation.LabelValueMaxLength - len(suffix)
 	if len(ownerName) > maxPrefixLength {
-		return "", newNameLengthError("owner name exceeds max length", maxPrefixLength, ownerName)
+		err = multierror.Append(err, newNameLengthError("owner name exceeds max length", maxPrefixLength, ownerName))
+		ownerName = truncate(ownerName, maxPrefixLength)
 	}
 
-	suffixedName := stringsutil.Concat(ownerName, suffix)
-	if errs := apimachineryvalidation.NameIsDNSSubdomain(suffixedName, false); len(errs) > 0 {
-		return suffixedName, fmt.Errorf("invalid name: '%s' [%s]", suffixedName, strings.Join(errs, ","))
+	return stringsutil.Concat(ownerName, suffix), err
+}
+
+func truncate(s string, length int) string {
+	var b strings.Builder
+	for _, r := range s {
+		if b.Len()+utf8.RuneLen(r) > length {
+			return b.String()
+		}
+		b.WriteRune(r)
 	}
 
-	return suffixedName, nil
+	return b.String()
 }

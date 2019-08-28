@@ -34,20 +34,6 @@ func TestValidate(t *testing.T) {
 			wantErrMsg:    "name exceeds maximum allowed length",
 		},
 		{
-			name:          "invalid characters in ES name",
-			esName:        "test_es",
-			nodeSpecNames: []string{"default", "ha"},
-			wantErr:       true,
-			wantErrMsg:    "invalid Elasticsearch name",
-		},
-		{
-			name:          "empty ES name",
-			esName:        "",
-			nodeSpecNames: []string{"default", "ha"},
-			wantErr:       true,
-			wantErrMsg:    "invalid Elasticsearch name",
-		},
-		{
 			name:          "long nodeSpec name",
 			esName:        "test-es",
 			nodeSpecNames: []string{"default", "extremely-long-nodespec-name-for-no-particular-reason"},
@@ -59,7 +45,7 @@ func TestValidate(t *testing.T) {
 			esName:        "test-es",
 			nodeSpecNames: []string{"default", "my_ha_set"},
 			wantErr:       true,
-			wantErrMsg:    "invalid name",
+			wantErrMsg:    "invalid nodeSpec name",
 		},
 	}
 
