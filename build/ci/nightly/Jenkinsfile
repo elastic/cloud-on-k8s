@@ -43,8 +43,8 @@ EOF
                     export LATEST_RELEASED_IMG=docker.elastic.co/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     echo \$LATEST_RELEASED_IMG > eck_image.txt
                     cat >> .env <<EOF
-OPERATOR_IMAGE = "$OPERATOR_IMAGE"
-LATEST_RELEASED_IMG = "$LATEST_RELEASED_IMG"
+OPERATOR_IMAGE = "\$OPERATOR_IMAGE"
+LATEST_RELEASED_IMG = "\$LATEST_RELEASED_IMG"
 EOF
                     make -C build/ci get-elastic-public-key TARGET=ci-release ci
                 """
