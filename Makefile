@@ -390,20 +390,27 @@ kind-cluster-%: kind-node-variable-check
 ## Same as above but build and deploy the operator image
 kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-with-operator-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
-kind-with-operator-%: kind-node-variable-check docker-build
+kind-with-operator-%: kind-node-variable-check dep-vendor-only docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
 		make install-crds apply-operators
 
 ## Run all the e2e tests in a Kind cluster
+set-kind-e2e-image:
+ifneq ($(ECK_IMAGE),)
+	$(eval OPERATOR_IMAGE=$(ECK_IMAGE))
+	@docker pull $(OPERATOR_IMAGE)
+else
+	$(MAKE) docker-build
+endif
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-e2e: kind-node-variable-check docker-build e2e-docker-build
+kind-e2e: kind-node-variable-check set-kind-e2e-image dep-vendor-only e2e-docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
 		--nodes 3 \
-		make e2e-run
+		make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 
 ## Cleanup
 delete-kind:
