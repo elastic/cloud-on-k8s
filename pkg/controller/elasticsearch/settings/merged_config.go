@@ -17,6 +17,7 @@ import (
 // parameters.
 func NewMergedESConfig(
 	clusterName string,
+	httpConfig v1alpha1.HTTPConfig,
 	userConfig v1alpha1.Config,
 ) (CanonicalConfig, error) {
 	config, err := common.NewCanonicalConfigFrom(userConfig.Data)
@@ -25,7 +26,7 @@ func NewMergedESConfig(
 	}
 	err = config.MergeWith(
 		baseConfig(clusterName).CanonicalConfig,
-		xpackConfig().CanonicalConfig,
+		xpackConfig(httpConfig).CanonicalConfig,
 	)
 	if err != nil {
 		return CanonicalConfig{}, err
@@ -53,7 +54,7 @@ func baseConfig(clusterName string) *CanonicalConfig {
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig() *CanonicalConfig {
+func xpackConfig(httpCfg v1alpha1.HTTPConfig) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -62,7 +63,7 @@ func xpackConfig() *CanonicalConfig {
 		XPackSecurityTransportSslVerificationMode: "certificate",
 
 		// x-pack security http settings
-		XPackSecurityHttpSslEnabled:     "true",
+		XPackSecurityHttpSslEnabled:     httpCfg.TLS.Enabled(),
 		XPackSecurityHttpSslKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 		XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 

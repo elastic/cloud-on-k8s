@@ -46,6 +46,8 @@ const (
 
 	ConfigTemplateHashLabelName = "elasticsearch.k8s.elastic.co/config-template-hash"
 
+	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
+
 	// Type represents the Elasticsearch type
 	Type = "elasticsearch"
 )
@@ -96,7 +98,14 @@ func NewLabels(es types.NamespacedName) map[string]string {
 }
 
 // NewPodLabels returns labels to apply for a new Elasticsearch pod.
-func NewPodLabels(es types.NamespacedName, ssetName string, version version.Version, nodeRoles v1alpha1.Node, configHash string) (map[string]string, error) {
+func NewPodLabels(
+	es types.NamespacedName,
+	ssetName string,
+	version version.Version,
+	nodeRoles v1alpha1.Node,
+	configHash string,
+	scheme string,
+) (map[string]string, error) {
 	// cluster name based labels
 	labels := NewLabels(es)
 	// version label
@@ -110,6 +119,8 @@ func NewPodLabels(es types.NamespacedName, ssetName string, version version.Vers
 
 	// config hash label, to rotate pods on config changes
 	labels[ConfigTemplateHashLabelName] = configHash
+
+	labels[HTTPSchemeLabelName] = scheme
 
 	// apply stateful set label selector
 	for k, v := range NewStatefulSetLabels(es, ssetName) {

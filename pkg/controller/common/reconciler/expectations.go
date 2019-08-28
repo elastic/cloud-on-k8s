@@ -32,3 +32,8 @@ func (e *Expectations) GenerationExpected(metaObjs ...metav1.ObjectMeta) bool {
 	}
 	return true
 }
+
+// GetGenerations returns the map of generations, for testing purpose mostly.
+func (e *Expectations) GetGenerations() map[types.UID]int64 {
+	return e.generations
+}

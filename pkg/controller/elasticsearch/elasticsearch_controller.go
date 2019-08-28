@@ -29,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -208,6 +209,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	selector := labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -223,9 +225,12 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	state := esreconcile.NewState(es)
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
-	if err != nil && apierrors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
-		return reconcile.Result{Requeue: true}, nil
+	if err != nil {
+		if apierrors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
+			return reconcile.Result{Requeue: true}, nil
+		}
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
 	return results.WithError(err).Aggregate()
 }
