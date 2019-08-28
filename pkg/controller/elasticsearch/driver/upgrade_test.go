@@ -509,3 +509,32 @@ func Test_podUpgradeDone(t *testing.T) {
 		})
 	}
 }
+
+func Test_defaultDriver_upgradeStatefulSetPartition(t *testing.T) {
+	actual := sset.TestSset{
+		Name:      "sset",
+		Replicas:  2,
+		Partition: 3,
+	}.Build()
+	d := &defaultDriver{
+		DefaultDriverParameters{
+			Client:       k8s.WrapClient(fake.NewFakeClient(&actual)),
+			Expectations: reconciler.NewExpectations(),
+		},
+	}
+	// update partition to 2
+	err := d.upgradeStatefulSetPartition(&actual, 2)
+	require.NoError(t, err)
+	// sset should be updated
+	expected := sset.TestSset{
+		Name:      "sset",
+		Replicas:  2,
+		Partition: 2,
+	}.Build()
+	var got appsv1.StatefulSet
+	err = d.Client.Get(k8s.ExtractNamespacedName(&expected), &got)
+	require.NoError(t, err)
+	require.Equal(t, expected, got)
+	// expectations should be set
+	require.NotEmpty(t, d.Expectations.GetGenerations())
+}
