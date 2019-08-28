@@ -11,7 +11,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -438,68 +437,6 @@ func Test_validSanIP(t *testing.T) {
 			require.NoError(t, err)
 			if got := validSanIP(*ctx); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("validSanIP() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_tlsCannotBeDisabled(t *testing.T) {
-	tests := []struct {
-		name string
-		es   estype.Elasticsearch
-		want validation.Result
-	}{
-		{
-			name: "default is TLS enabled: OK",
-			es: estype.Elasticsearch{
-				Spec: estype.ElasticsearchSpec{
-					Version: "7.2.0",
-				},
-			},
-			want: validation.OK,
-		},
-		{
-			name: "self-signed TLS disabled: NOK",
-			es: estype.Elasticsearch{
-				Spec: estype.ElasticsearchSpec{
-					Version: "7.2.0",
-					HTTP: common.HTTPConfig{
-						TLS: common.TLSOptions{
-							SelfSignedCertificate: &common.SelfSignedCertificate{
-								Disabled: true,
-							},
-						},
-					},
-				},
-			},
-			want: validation.Result{Allowed: false, Reason: "TLS cannot be disabled for Elasticsearch currently"},
-		},
-		{
-			name: "custom TLS and self-signed disabled: OK",
-			es: estype.Elasticsearch{
-				Spec: estype.ElasticsearchSpec{
-					Version: "7.2.0",
-					HTTP: common.HTTPConfig{
-						TLS: common.TLSOptions{
-							SelfSignedCertificate: &common.SelfSignedCertificate{
-								Disabled: true,
-							},
-							Certificate: common.SecretRef{
-								SecretName: "my-custom-cert",
-							},
-						},
-					},
-				},
-			},
-			want: validation.OK,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, err := NewValidationContext(nil, tt.es)
-			require.NoError(t, err)
-			if diff := deep.Equal(tlsCannotBeDisabled(*ctx), tt.want); diff != nil {
-				t.Error(diff)
 			}
 		})
 	}

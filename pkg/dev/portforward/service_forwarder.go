@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const syntheticDNSSegment = "pod"
+
 // ServiceForwarder forwards one port of a service
 type ServiceForwarder struct {
 	network, addr string
@@ -157,7 +159,7 @@ func (f *ServiceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	pod := podTargets[rand.Intn(len(podTargets))]
 
 	// this should match a supported format of parsePodAddr(addr string)
-	podAddr := fmt.Sprintf("%s.%s.pod:%s", pod.Name, pod.Namespace, targetPort.String())
+	podAddr := fmt.Sprintf("%s.%s.%s:%s", pod.Name, pod.Namespace, syntheticDNSSegment, targetPort.String())
 	forwarder, err := f.store.GetOrCreateForwarder(f.network, podAddr, f.podForwarderFactory)
 	if err != nil {
 		return nil, err

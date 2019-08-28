@@ -21,22 +21,19 @@ import (
 )
 
 type DataIntegrityCheck struct {
-	client      client.Client
-	indexName   string
-	numShards   int
-	numReplicas int
-	sampleData  map[string]interface{}
-	docCount    int
+	clientFactory func() (client.Client, error) // recreate clients for cases where we switch scheme in tests
+	indexName     string
+	numShards     int
+	numReplicas   int
+	sampleData    map[string]interface{}
+	docCount      int
 }
 
-func NewDataIntegrityCheck(k *test.K8sClient, b Builder) (*DataIntegrityCheck, error) {
-	elasticsearchClient, err := NewElasticsearchClient(b.Elasticsearch, k)
-	if err != nil {
-		return nil, err
-	}
-
+func NewDataIntegrityCheck(k *test.K8sClient, b Builder) *DataIntegrityCheck {
 	return &DataIntegrityCheck{
-		client:    elasticsearchClient,
+		clientFactory: func() (client.Client, error) {
+			return NewElasticsearchClient(b.Elasticsearch, k)
+		},
 		indexName: "data-integrity-check",
 		sampleData: map[string]interface{}{
 			"foo": "bar",
@@ -44,10 +41,14 @@ func NewDataIntegrityCheck(k *test.K8sClient, b Builder) (*DataIntegrityCheck, e
 		docCount:    5,
 		numShards:   3,
 		numReplicas: dataIntegrityReplicas(b),
-	}, nil
+	}
 }
 
 func (dc *DataIntegrityCheck) Init() error {
+	esClient, err := dc.clientFactory()
+	if err != nil {
+		return err
+	}
 	indexSettings := `
 {
     "settings" : {
@@ -67,11 +68,11 @@ func (dc *DataIntegrityCheck) Init() error {
 	if err != nil {
 		return err
 	}
-	resp, err := dc.client.Request(context.Background(), indexCreation)
-	defer resp.Body.Close() // nolint
+	resp, err := esClient.Request(context.Background(), indexCreation)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close() // nolint
 
 	// index a number of sample documents
 	payload, err := json.Marshal(dc.sampleData)
@@ -83,22 +84,27 @@ func (dc *DataIntegrityCheck) Init() error {
 		if err != nil {
 			return err
 		}
-		resp, err = dc.client.Request(context.Background(), r)
-		defer resp.Body.Close() // nolint
+		resp, err = esClient.Request(context.Background(), r)
 		if err != nil {
 			return err
 		}
+		defer resp.Body.Close() // nolint
 	}
 	return nil
 }
 
 func (dc *DataIntegrityCheck) Verify() error {
+	esClient, err := dc.clientFactory()
+	if err != nil {
+		return err
+	}
+
 	// retrieve the previously indexed documents
 	r, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/_search", dc.indexName), nil)
 	if err != nil {
 		return err
 	}
-	response, err := dc.client.Request(context.Background(), r)
+	response, err := esClient.Request(context.Background(), r)
 	if err != nil {
 		return err
 	}
@@ -142,10 +148,11 @@ func dataIntegrityReplicas(b Builder) int {
 	// Important: this only checks ES version and spec, other changes such as secure settings update
 	// are tricky to capture and ignored here.
 	isVersionUpgrade := initial.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
+	httpOptionsChange := reflect.DeepEqual(initial.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
 	for _, initialNs := range initial.Elasticsearch.Spec.Nodes {
 		for _, mutatedNs := range b.Elasticsearch.Spec.Nodes {
 			if initialNs.Name == mutatedNs.Name &&
-				(isVersionUpgrade || !reflect.DeepEqual(initialNs, mutatedNs)) {
+				(isVersionUpgrade || httpOptionsChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
 				// a rolling upgrade is scheduled for that NodeSpec
 				// we need at least 1 replica per shard for the cluster to remain green during the operation
 				return 1

@@ -43,7 +43,7 @@ func BuildExpectedResources(es v1alpha1.Elasticsearch, keystoreResources *keysto
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, userCfg)
+		cfg, err := settings.NewMergedESConfig(es.Name, es.Spec.HTTP, userCfg)
 		if err != nil {
 			return nil, err
 		}

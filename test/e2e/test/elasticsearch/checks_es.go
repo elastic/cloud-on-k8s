@@ -8,25 +8,25 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type esClusterChecks struct {
-	client client.Client
+	es estype.Elasticsearch
+	k  *test.K8sClient
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
-	e := esClusterChecks{}
+	e := esClusterChecks{
+		es: b.Elasticsearch,
+		k:  k,
+	}
 	return test.StepList{
-		e.BuildESClient(b.Elasticsearch, k),
 		e.CheckESReachable(),
 		e.CheckESVersion(b.Elasticsearch),
 		e.CheckESHealthGreen(),
@@ -34,15 +34,9 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-func (e *esClusterChecks) BuildESClient(es estype.Elasticsearch, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "Every secret should be set so that we can build an ES client",
-		Test: func(t *testing.T) {
-			esClient, err := NewElasticsearchClient(es, k)
-			assert.NoError(t, err)
-			e.client = esClient
-		},
-	}
+func (e *esClusterChecks) newESClient() (client.Client, error) {
+	// recreate ES client for tests that switch between TlS/no TLS
+	return NewElasticsearchClient(e.es, e.k)
 }
 
 func (e *esClusterChecks) CheckESReachable() test.Step {
@@ -51,7 +45,11 @@ func (e *esClusterChecks) CheckESReachable() test.Step {
 		Test: test.Eventually(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
-			if _, err := e.client.GetClusterHealth(ctx); err != nil {
+			esClient, err := e.newESClient()
+			if err != nil {
+				return err
+			}
+			if _, err := esClient.GetClusterHealth(ctx); err != nil {
 				return err
 			}
 			return nil
@@ -62,13 +60,22 @@ func (e *esClusterChecks) CheckESReachable() test.Step {
 func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) test.Step {
 	return test.Step{
 		Name: "ES version should be the expected one",
-		Test: func(t *testing.T) {
+		Test: test.Eventually(func() error {
+			esClient, err := e.newESClient()
+			if err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
-			info, err := e.client.GetClusterInfo(ctx)
-			require.NoError(t, err)
-			require.Equal(t, es.Spec.Version, info.Version.Number)
-		},
+			info, err := esClient.GetClusterInfo(ctx)
+			if err != nil {
+				return err
+			}
+			if es.Spec.Version != info.Version.Number {
+				return fmt.Errorf("expected %s, got %s", es.Spec.Version, info.Version.Number)
+			}
+			return nil
+		}),
 	}
 }
 
@@ -76,9 +83,13 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 	return test.Step{
 		Name: "ES endpoint should eventually be reachable",
 		Test: test.Eventually(func() error {
+			esClient, err := e.newESClient()
+			if err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
-			health, err := e.client.GetClusterHealth(ctx)
+			health, err := esClient.GetClusterHealth(ctx)
 			if err != nil {
 				return err
 			}
@@ -96,10 +107,14 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 	return test.Step{
 		Name: "ES nodes topology should eventually be the expected one",
 		Test: test.Eventually(func() error {
+			esClient, err := e.newESClient()
+			if err != nil {
+				return err
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
 
-			nodes, err := e.client.GetNodes(ctx)
+			nodes, err := esClient.GetNodes(ctx)
 			if err != nil {
 				return err
 			}
@@ -107,7 +122,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 				return fmt.Errorf("expected node count %d but was %d", es.Spec.NodeCount(), len(nodes.Nodes))
 			}
 
-			nodesStats, err := e.client.GetNodesStats(ctx)
+			nodesStats, err := esClient.GetNodesStats(ctx)
 			if err != nil {
 				return err
 			}
