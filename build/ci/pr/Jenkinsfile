@@ -31,7 +31,6 @@ pipeline {
                 stage("Run unit and integration tests") {
                     when {
                         expression {
-                            checkout scm
                             notOnlyDocs()
                         }
                     }
@@ -43,7 +42,6 @@ pipeline {
                 stage("Run smoke E2E tests") {
                     when {
                         expression {
-                            checkout scm
                             notOnlyDocs()
                         }
                     }
@@ -51,7 +49,12 @@ pipeline {
                         label 'eck'
                     }
                     steps {
-                        sh 'TESTS_MATCH=TestSmoke make kind-e2e'
+                            sh """
+                                cat >.env <<EOF
+                        TESTS_MATCH = TestSmoke
+                        EOF
+                            """
+                            sh 'make -C build/ci TARGET=kind-e2e ci'
                     }
                 }
             }
@@ -60,16 +63,10 @@ pipeline {
 
     post {
         cleanup {
-            script {
-                if (notOnlyDocs()) {
-                    build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'GKE_CLUSTER', value: "${BUILD_TAG}")],
-                        wait: false
-                }
-            }
             cleanWs()
         }
     }
+
 }
 
 def notOnlyDocs() {
