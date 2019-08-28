@@ -61,13 +61,11 @@ func adaptForExistingStatefulSet(actualSset appsv1.StatefulSet, ssetToApply apps
 	if sset.GetReplicas(ssetToApply) < sset.GetReplicas(actualSset) {
 		// This is a downscale.
 		// We still want to update the sset spec to the newest one, but don't scale replicas down for now.
-		ssetToApply.Spec.Replicas = actualSset.Spec.Replicas
+		nodespec.UpdateReplicas(&ssetToApply, actualSset.Spec.Replicas)
 	}
 	// Make sure new pods (with ordinal>partition) get created with the newest revision,
 	// by setting the rollingUpdate partition to the actual StatefulSet replicas count.
 	// Any ongoing rolling upgrade may temporarily pause here, but will go through again.
-	ssetToApply.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
-		Partition: actualSset.Spec.Replicas,
-	}
+	nodespec.UpdatePartition(&ssetToApply, actualSset.Spec.Replicas)
 	return ssetToApply
 }

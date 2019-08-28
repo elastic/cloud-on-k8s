@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -142,10 +143,10 @@ func TestHandleDownscale(t *testing.T) {
 
 	// request master nodes downscale from 3 to 1 replicas
 	ssetMaster3ReplicasDownscaled := *ssetMaster3Replicas.DeepCopy()
-	ssetMaster3ReplicasDownscaled.Spec.Replicas = common.Int32(1)
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasDownscaled, common.Int32(1))
 	// request data nodes downscale from 4 to 2 replicas
 	ssetData4ReplicasDownscaled := *ssetData4Replicas.DeepCopy()
-	ssetData4ReplicasDownscaled.Spec.Replicas = common.Int32(2)
+	nodespec.UpdateReplicas(&ssetData4ReplicasDownscaled, common.Int32(2))
 	requestedStatefulSets := sset.StatefulSetList{ssetMaster3ReplicasDownscaled, ssetData4ReplicasDownscaled}
 
 	// do the downscale
@@ -159,11 +160,11 @@ func TestHandleDownscale(t *testing.T) {
 	// only part of the expected replicas of ssetMaster3Replicas should be updated,
 	// since we remove only one master at a time
 	ssetMaster3ReplicasExpectedAfterDownscale := *ssetMaster3Replicas.DeepCopy()
-	ssetMaster3ReplicasExpectedAfterDownscale.Spec.Replicas = common.Int32(2)
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, common.Int32(2))
 	// only part of the expected replicas of ssetData4Replicas should be updated,
 	// since a node still needs to migrate data
 	ssetData4ReplicasExpectedAfterDownscale := *ssetData4Replicas.DeepCopy()
-	ssetData4ReplicasExpectedAfterDownscale.Spec.Replicas = common.Int32(3)
+	nodespec.UpdateReplicas(&ssetData4ReplicasExpectedAfterDownscale, common.Int32(3))
 
 	expectedAfterDownscale := []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
 
@@ -201,7 +202,7 @@ func TestHandleDownscale(t *testing.T) {
 	require.Equal(t, requeueResults, results)
 
 	// one less master
-	ssetMaster3ReplicasExpectedAfterDownscale.Spec.Replicas = common.Int32(1)
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, common.Int32(1))
 	expectedAfterDownscale = []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
 	err = k8sClient.List(&client.ListOptions{}, &actual)
 	require.NoError(t, err)
@@ -211,7 +212,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// once data migration is over the downscale should continue for next data nodes
 	downscaleCtx.observedState.ClusterState.RoutingTable.Indices["index-1"].Shards["0"][0].Node = "ssetData4Replicas-1"
-	expectedAfterDownscale[1].Spec.Replicas = common.Int32(2)
+	nodespec.UpdateReplicas(&expectedAfterDownscale[1], common.Int32(2))
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
@@ -678,7 +679,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 		initialReplicas: 3,
 		targetReplicas:  2,
 	}
-	expectedSset1.Spec.Replicas = &downscale.targetReplicas
+	nodespec.UpdateReplicas(&expectedSset1, &downscale.targetReplicas)
 
 	// no expectation is currently set
 	require.True(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
