@@ -280,11 +280,11 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	}
 
 	// Make sure all pods scheduled for upgrade have been upgraded.
-	scheduledUpgradesDone, err := sset.ScheduledUpgradesDone(d.Client, statefulSets)
+	done, err := statefulSets.PodReconciliationDone(d.Client)
 	if err != nil {
 		return results.WithError(err)
 	}
-	if !scheduledUpgradesDone {
+	if !done {
 		log.V(1).Info(
 			"Rolling upgrade not over yet, some pods don't have the updated revision, keeping shard allocations disabled",
 			"namespace", d.ES.Namespace,

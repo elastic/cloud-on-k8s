@@ -38,7 +38,7 @@ func AddToVotingConfigExclusions(c k8s.Client, esClient client.Client, es v1alph
 }
 
 // canClearVotingConfigExclusions returns true if it is safe to clear voting config exclusions.
-func canClearVotingConfigExclusions(c k8s.Client, es v1alpha1.Elasticsearch, actualStatefulSets sset.StatefulSetList) (bool, error) {
+func canClearVotingConfigExclusions(c k8s.Client, actualStatefulSets sset.StatefulSetList) (bool, error) {
 	// Voting config exclusions are set before master nodes are removed on sset downscale.
 	// They can be cleared when:
 	// - nodes are effectively removed
@@ -47,7 +47,7 @@ func canClearVotingConfigExclusions(c k8s.Client, es v1alpha1.Elasticsearch, act
 	// - expected nodes to remove are not removed yet
 	// PodReconciliationDone returns false is there are some pods not created yet: we don't really
 	// care about those here, but that's still fine to requeue and retry later for the sake of simplicity.
-	return actualStatefulSets.PodReconciliationDone(c, es)
+	return actualStatefulSets.PodReconciliationDone(c)
 }
 
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.
@@ -62,7 +62,7 @@ func ClearVotingConfigExclusions(es v1alpha1.Elasticsearch, c k8s.Client, esClie
 		return false, nil
 	}
 
-	canClear, err := canClearVotingConfigExclusions(c, es, actualStatefulSets)
+	canClear, err := canClearVotingConfigExclusions(c, actualStatefulSets)
 	if err != nil {
 		return false, err
 	}

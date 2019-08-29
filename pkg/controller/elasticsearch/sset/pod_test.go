@@ -36,55 +36,67 @@ func TestPodNames(t *testing.T) {
 	)
 }
 
-func TestScheduledUpgradesDone(t *testing.T) {
-	ssetSample := func(name string, partition int32, currentRev string, updateRev string) appsv1.StatefulSet {
-		return appsv1.StatefulSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      name,
-			},
-			Spec: appsv1.StatefulSetSpec{
-				Replicas: common.Int32(3),
-				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-					Type:          appsv1.RollingUpdateStatefulSetStrategyType,
-					RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{Partition: common.Int32(partition)},
-				},
-			},
+func Test_PodReconciliationDoneForSset(t *testing.T) {
+	ssetName := "sset"
+	ssetSample := func(replicas int32, partition int32, currentRev string, updateRev string) appsv1.StatefulSet {
+		return TestSset{
+			Name:        ssetName,
+			ClusterName: "cluster",
+			Replicas:    replicas,
+			Partition:   partition,
 			Status: appsv1.StatefulSetStatus{
 				CurrentRevision: currentRev,
 				UpdateRevision:  updateRev,
 			},
-		}
+		}.Build()
 	}
 	podSample := func(name string, revision string) *corev1.Pod {
-		return &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns",
-				Name:      name,
-				Labels: map[string]string{
-					appsv1.StatefulSetRevisionLabel: revision,
-				},
-			},
-		}
+		return TestPod{
+			Namespace:       "ns",
+			Name:            name,
+			ClusterName:     "cluster",
+			StatefulSetName: ssetName,
+			Revision:        revision,
+		}.BuildPtr()
 	}
 
 	tests := []struct {
-		name         string
-		c            k8s.Client
-		statefulSets StatefulSetList
-		want         bool
+		name        string
+		c           k8s.Client
+		statefulSet appsv1.StatefulSet
+		want        bool
 	}{
 		{
-			name:         "no statefulset",
-			c:            k8s.WrapClient(fake.NewFakeClient()),
-			statefulSets: nil,
-			want:         true,
+			name: "statefulset with a pod missing",
+			c: k8s.WrapClient(fake.NewFakeClient(
+				podSample("sset-0", "current-rev"),
+				podSample("sset-1", "current-rev"),
+				// missing sset-2
+			)),
+			statefulSet: ssetSample(3, 1, "current-rev", ""),
+			want:        false,
 		},
 		{
-			name:         "statefulset with no upgrade revision",
-			c:            k8s.WrapClient(fake.NewFakeClient()),
-			statefulSets: StatefulSetList{ssetSample("sset", 1, "current-rev", "")},
-			want:         true,
+			name: "statefulset with an additional pod",
+			c: k8s.WrapClient(fake.NewFakeClient(
+				podSample("sset-0", "current-rev"),
+				podSample("sset-1", "current-rev"),
+				podSample("sset-2", "current-rev"),
+				// sset-3 still there from previous downscale
+				podSample("sset-3", "current-rev"),
+			)),
+			statefulSet: ssetSample(3, 1, "current-rev", ""),
+			want:        false,
+		},
+		{
+			name: "statefulset with all pods in the current revision, no upgrade revision",
+			c: k8s.WrapClient(fake.NewFakeClient(
+				podSample("sset-0", "current-rev"),
+				podSample("sset-1", "current-rev"),
+				podSample("sset-2", "current-rev"),
+			)),
+			statefulSet: ssetSample(3, 1, "current-rev", ""),
+			want:        true,
 		},
 		{
 			name: "statefulset with one pod (sset-2) currently being restarted (missing)",
@@ -92,8 +104,8 @@ func TestScheduledUpgradesDone(t *testing.T) {
 				podSample("sset-0", "current-rev"),
 				podSample("sset-1", "current-rev"),
 			)),
-			statefulSets: StatefulSetList{ssetSample("sset", 2, "current-rev", "update-rev")},
-			want:         false,
+			statefulSet: ssetSample(3, 2, "current-rev", "update-rev"),
+			want:        false,
 		},
 		{
 			name: "statefulset with one pod upgraded, matching current partition",
@@ -102,8 +114,8 @@ func TestScheduledUpgradesDone(t *testing.T) {
 				podSample("sset-1", "current-rev"),
 				podSample("sset-2", "update-rev"),
 			)),
-			statefulSets: StatefulSetList{ssetSample("sset", 2, "current-rev", "update-rev")},
-			want:         true,
+			statefulSet: ssetSample(3, 2, "current-rev", "update-rev"),
+			want:        true,
 		},
 		{
 			name: "statefulset with one pod not upgraded yet",
@@ -112,8 +124,8 @@ func TestScheduledUpgradesDone(t *testing.T) {
 				podSample("sset-1", "current-rev"),
 				podSample("sset-2", "current-rev"),
 			)),
-			statefulSets: StatefulSetList{ssetSample("sset", 2, "current-rev", "update-rev")},
-			want:         false,
+			statefulSet: ssetSample(3, 2, "current-rev", "update-rev"),
+			want:        false,
 		},
 		{
 			name: "statefulset with all pods upgraded",
@@ -122,52 +134,16 @@ func TestScheduledUpgradesDone(t *testing.T) {
 				podSample("sset-1", "update-rev"),
 				podSample("sset-2", "update-rev"),
 			)),
-			statefulSets: StatefulSetList{ssetSample("sset", 0, "current-rev", "update-rev")},
-			want:         true,
-		},
-		{
-			name: "multiple statefulsets with all pods upgraded",
-			c: k8s.WrapClient(fake.NewFakeClient(
-				podSample("sset-0", "update-rev"),
-				podSample("sset-1", "update-rev"),
-				podSample("sset-2", "update-rev"),
-				podSample("sset2-0", "update-rev"),
-				podSample("sset2-1", "update-rev"),
-				podSample("sset2-2", "update-rev"),
-			)),
-			statefulSets: StatefulSetList{
-				ssetSample("sset", 0, "current-rev", "update-rev"),
-				ssetSample("sset2", 0, "current-rev", "update-rev"),
-			},
-			want: true,
-		},
-		{
-			name: "multiple statefulsets with some pods not upgraded yet",
-			c: k8s.WrapClient(fake.NewFakeClient(
-				podSample("sset-0", "update-rev"),
-				podSample("sset-1", "update-rev"),
-				podSample("sset-2", "update-rev"),
-				podSample("sset2-0", "update-rev"),
-				podSample("sset2-1", "update-rev"),
-				podSample("sset2-2", "current-rev"), // not upgraded yet
-				podSample("sset3-0", "update-rev"),
-				podSample("sset3-1", "update-rev"),
-				podSample("sset3-2", "update-rev"),
-			)),
-			statefulSets: StatefulSetList{
-				ssetSample("sset", 0, "current-rev", "update-rev"),
-				ssetSample("sset2", 0, "current-rev", "update-rev"),
-				ssetSample("sset3", 0, "current-rev", "update-rev"),
-			},
-			want: false,
+			statefulSet: ssetSample(3, 0, "current-rev", "update-rev"),
+			want:        true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ScheduledUpgradesDone(tt.c, tt.statefulSets)
+			got, err := PodReconciliationDoneForSset(tt.c, tt.statefulSet)
 			require.NoError(t, err)
 			if got != tt.want {
-				t.Errorf("ScheduledUpgradesDone() got = %v, want %v", got, tt.want)
+				t.Errorf("PodReconciliationDoneForSset() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
