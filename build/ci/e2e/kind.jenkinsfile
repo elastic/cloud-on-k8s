@@ -12,24 +12,20 @@ pipeline {
         stage('Run tests for different vanilla K8s versions with kind') {
             parallel {
                 stage("1.14") {
-                    environment {
-                        KIND_NODE_IMAGE = "kindest/node:v1.14.3"
-                    }
                     steps {
                         checkout scm
-                        sh 'make kind-e2e'
+                        createKindConfig("kindest/node:v1.14.3")
+                        sh 'make -C build/ci TARGET=kind-e2e ci'
                     }
                 }
                 stage("1.15") {
                     agent {
                         label 'eck'
                     }
-                    environment {
-                        KIND_NODE_IMAGE = "kindest/node:v1.15.0"
-                    }
                     steps {
                         checkout scm
-                        sh 'make kind-e2e'
+                        createKindConfig("kindest/node:v1.15.0")
+                        sh 'make -C build/ci TARGET=kind-e2e ci'
                     }
                 }
             }
@@ -52,4 +48,12 @@ pipeline {
         }
     }
 
+}
+
+def createKindConfig(node) {
+    sh """
+        cat >.env <<EOF
+KIND_NODE_IMAGE = ${node}
+EOF
+    """
 }
