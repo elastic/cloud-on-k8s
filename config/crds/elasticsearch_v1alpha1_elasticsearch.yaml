@@ -52,10 +52,6 @@ spec:
           type: object
         spec:
           properties:
-            featureFlags:
-              description: FeatureFlags are instance-specific flags that enable or
-                disable specific experimental features
-              type: object
             http:
               description: HTTP contains settings for HTTP.
               properties:

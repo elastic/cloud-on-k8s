@@ -35,9 +35,6 @@ type ElasticsearchSpec struct {
 	// Nodes represents a list of groups of nodes with the same configuration to be part of the cluster
 	Nodes []NodeSpec `json:"nodes,omitempty"`
 
-	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
-	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
-
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
