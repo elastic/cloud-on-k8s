@@ -86,7 +86,12 @@ func (ctx rollingUpgradeCtx) run() *reconciler.Results {
 	maxMasterNodeUpgrades := 1
 	scheduledMasterNodeUpgrades := 0
 
-	for _, statefulSet := range ctx.statefulSets.ToUpdate() {
+	// Upgrade all StatefulSets that should be, but consider master nodes last.
+	// This is important for single-master rolling version upgrades: once the single master is
+	// upgraded to v7, only data nodes in v7 can join the cluster. They should be upgraded first.
+	toUpgrade := ctx.statefulSets.ToUpdate()
+	toUpgrade.Sort()
+	for _, statefulSet := range toUpgrade {
 		// Inspect each pod, starting from the highest ordinal, and decrement the partition to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
 		for partition := sset.GetPartition(statefulSet); partition >= 0; partition-- {

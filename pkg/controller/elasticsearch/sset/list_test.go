@@ -263,3 +263,19 @@ func TestStatefulSetList_ToUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestStatefulSetList_Sort(t *testing.T) {
+	l := StatefulSetList{
+		TestSset{Name: "masterb", Master: true}.Build(),
+		TestSset{Name: "mastera", Master: true}.Build(),
+		TestSset{Name: "datab", Master: false}.Build(),
+		TestSset{Name: "dataa", Master: false}.Build(),
+	}
+	l.Sort()
+	require.Equal(t, StatefulSetList{
+		TestSset{Name: "dataa", Master: false}.Build(),
+		TestSset{Name: "datab", Master: false}.Build(),
+		TestSset{Name: "mastera", Master: true}.Build(),
+		TestSset{Name: "masterb", Master: true}.Build(),
+	}, l)
+}

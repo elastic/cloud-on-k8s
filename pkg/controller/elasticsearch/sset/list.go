@@ -5,6 +5,8 @@
 package sset
 
 import (
+	"sort"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,6 +63,25 @@ func (l StatefulSetList) ToUpdate() StatefulSetList {
 		}
 	}
 	return toUpdate
+}
+
+// Sort StatefulSets to have master nodes last. Then, fallback to alphabetical order.
+func (l StatefulSetList) Sort() {
+	sort.Slice(l, func(i, j int) bool {
+		sseti := l[i]
+		ssetj := l[j]
+		switch {
+		case label.IsMasterNodeSet(sseti) && !label.IsMasterNodeSet(ssetj):
+			// i is a master, not j: i comes after j
+			return false
+		case !label.IsMasterNodeSet(sseti) && label.IsMasterNodeSet(ssetj):
+			// i is not a master, j is: i comes before j
+			return true
+		default:
+			// sort alphabetically based on sset name, for stable sorts
+			return sseti.Name < ssetj.Name
+		}
+	})
 }
 
 // PodNames returns the names of the pods for all StatefulSets in the list.
