@@ -5,6 +5,8 @@
 package driver
 
 import (
+	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,15 +21,30 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+var onceDone = &sync.Once{}
+
+func init() {
+	onceDone.Do(func() {})
+}
+
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 	k8sClient := k8s.WrapClient(fake.NewFakeClient())
 	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	ctx := upscaleCtx{
+		k8sClient:           k8sClient,
+		es:                  es,
+		scheme:              scheme.Scheme,
+		observedState:       observer.State{},
+		esState:             nil,
+		upscaleStateBuilder: &upscaleStateBuilder{},
+	}
 	expectedResources := nodespec.ResourcesList{
 		{
 			StatefulSet: appsv1.StatefulSet{
@@ -81,7 +98,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// when no StatefulSets already exists
 	actualStatefulSets := sset.StatefulSetList{}
-	err := HandleUpscaleAndSpecChanges(k8sClient, es, scheme.Scheme, expectedResources, actualStatefulSets)
+	err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	// StatefulSets should be created with their expected replicas
 	var sset1 appsv1.StatefulSet
@@ -100,7 +117,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = common.Int32(10)
-	err = HandleUpscaleAndSpecChanges(k8sClient, es, scheme.Scheme, expectedResources, actualStatefulSets)
+	err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
@@ -110,7 +127,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// apply a spec change
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "b"}
-	err = HandleUpscaleAndSpecChanges(k8sClient, es, scheme.Scheme, expectedResources, actualStatefulSets)
+	err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, "b", sset2.Spec.Template.Labels["a"])
@@ -121,7 +138,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = common.Int32(2)
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "c"}
-	err = HandleUpscaleAndSpecChanges(k8sClient, es, scheme.Scheme, expectedResources, actualStatefulSets)
+	err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	// spec should be updated
@@ -130,4 +147,239 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
 	// partition should be updated to 10 so current pods don't get rotated automatically
 	require.Equal(t, common.Int32(10), sset2.Spec.UpdateStrategy.RollingUpdate.Partition)
+}
+
+func Test_adaptForExistingStatefulSet(t *testing.T) {
+	tests := []struct {
+		name        string
+		actualSset  appsv1.StatefulSet
+		ssetToApply appsv1.StatefulSet
+		want        appsv1.StatefulSet
+	}{
+		{
+			name:        "nothing to do",
+			actualSset:  sset.TestSset{Replicas: 3, Partition: 3}.Build(),
+			ssetToApply: sset.TestSset{Replicas: 3}.Build(),
+			want:        sset.TestSset{Replicas: 3, Partition: 3}.Build(),
+		},
+		{
+			name:        "upscale: set Partition to the actual replicas",
+			actualSset:  sset.TestSset{Replicas: 3, Partition: 1}.Build(),
+			ssetToApply: sset.TestSset{Replicas: 10}.Build(),
+			want:        sset.TestSset{Replicas: 10, Partition: 3}.Build(),
+		},
+		{
+			name:        "downscale: set replicas to the actual replicas",
+			actualSset:  sset.TestSset{Replicas: 3, Partition: 1}.Build(),
+			ssetToApply: sset.TestSset{Replicas: 1}.Build(),
+			want:        sset.TestSset{Replicas: 3, Partition: 3}.Build(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := adaptForExistingStatefulSet(tt.actualSset, tt.ssetToApply); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("adaptForExistingStatefulSet() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_isReplicaIncrease(t *testing.T) {
+	tests := []struct {
+		name     string
+		actual   appsv1.StatefulSet
+		expected appsv1.StatefulSet
+		want     bool
+	}{
+		{
+			name:     "increase",
+			actual:   sset.TestSset{Replicas: 3}.Build(),
+			expected: sset.TestSset{Replicas: 5}.Build(),
+			want:     true,
+		},
+		{
+			name:     "decrease",
+			actual:   sset.TestSset{Replicas: 5}.Build(),
+			expected: sset.TestSset{Replicas: 3}.Build(),
+			want:     false,
+		},
+		{
+			name:     "same value",
+			actual:   sset.TestSset{Replicas: 3}.Build(),
+			expected: sset.TestSset{Replicas: 3}.Build(),
+			want:     false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isReplicaIncrease(tt.actual, tt.expected); got != tt.want {
+				t.Errorf("isReplicaIncrease() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_adjustStatefulSetReplicas(t *testing.T) {
+	type args struct {
+		ctx                upscaleCtx
+		actualStatefulSets sset.StatefulSetList
+		expected           appsv1.StatefulSet
+	}
+	tests := []struct {
+		name string
+		args args
+		want appsv1.StatefulSet
+	}{
+		{
+			name: "new StatefulSet to create",
+			args: args{
+				actualStatefulSets: sset.StatefulSetList{},
+				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
+			},
+			want: sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
+		},
+		{
+			name: "same StatefulSet already exists",
+			args: args{
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
+				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
+			},
+			want: sset.TestSset{Name: "sset", Replicas: 3, Partition: 3}.Build(),
+		},
+		{
+			name: "downscale case",
+			args: args{
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2}.Build()},
+				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
+			},
+			want: sset.TestSset{Name: "sset", Replicas: 3, Partition: 3}.Build(),
+		},
+		{
+			name: "upscale case: data nodes",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2, Master: false, Data: true}.Build()},
+				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
+			},
+			want: sset.TestSset{Name: "sset", Replicas: 5, Partition: 3, Master: false, Data: true}.Build(),
+		},
+		{
+			name: "upscale case: master nodes - one by one",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2, Master: true, Data: true}.Build()},
+				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
+			},
+			want: sset.TestSset{Name: "sset", Replicas: 4, Partition: 3, Master: true, Data: true}.Build(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := adjustStatefulSetReplicas(tt.args.ctx, tt.args.actualStatefulSets, tt.args.expected)
+			require.NoError(t, err)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("adjustStatefulSetReplicas() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_adjustZenConfig(t *testing.T) {
+	bootstrappedES := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"}}}
+	notBootstrappedES := v1alpha1.Elasticsearch{}
+
+	tests := []struct {
+		name                      string
+		es                        v1alpha1.Elasticsearch
+		resources                 nodespec.ResourcesList
+		wantMinimumMasterNodesSet bool
+		wantInitialMasterNodesSet bool
+	}{
+		{
+			name: "adjust zen1 minimum_master_nodes",
+			es:   bootstrappedES,
+			resources: nodespec.ResourcesList{
+				{
+					StatefulSet: sset.TestSset{Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build(),
+					Config:      settings.NewCanonicalConfig(),
+				},
+			},
+			wantMinimumMasterNodesSet: true,
+			wantInitialMasterNodesSet: false,
+		},
+		{
+			name: "adjust zen2 initial master nodes when cluster is not bootstrapped yet",
+			es:   notBootstrappedES,
+			resources: nodespec.ResourcesList{
+				{
+					StatefulSet: sset.TestSset{Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build(),
+					Config:      settings.NewCanonicalConfig(),
+				},
+			},
+			wantMinimumMasterNodesSet: false,
+			wantInitialMasterNodesSet: true,
+		},
+		{
+			name: "don't adjust zen2 initial master nodes when cluster is already bootstrapped",
+			es:   bootstrappedES,
+			resources: nodespec.ResourcesList{
+				{
+					StatefulSet: sset.TestSset{Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build(),
+					Config:      settings.NewCanonicalConfig(),
+				},
+			},
+			wantMinimumMasterNodesSet: false,
+			wantInitialMasterNodesSet: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := adjustZenConfig(tt.es, tt.resources)
+			require.NoError(t, err)
+			for _, res := range tt.resources {
+				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{settings.DiscoveryZenMinimumMasterNodes})) > 0
+				require.Equal(t, tt.wantMinimumMasterNodesSet, hasMinimumMasterNodes)
+				hasInitialMasterNodes := len(res.Config.HasKeys([]string{settings.ClusterInitialMasterNodes})) > 0
+				require.Equal(t, tt.wantInitialMasterNodesSet, hasInitialMasterNodes)
+			}
+		})
+	}
+}
+
+func Test_adjustResources(t *testing.T) {
+	actualSset := sset.StatefulSetList{sset.TestSset{Version: "6.8.0", Replicas: 3, Master: true, Partition: 2}.Build()}
+	resources := nodespec.ResourcesList{
+		{
+			// upscale to 10 replicas
+			StatefulSet: sset.TestSset{Version: "6.8.0", Replicas: 10, Master: true, Partition: 2}.Build(),
+			Config:      settings.NewCanonicalConfig(),
+		},
+	}
+	upscaleCtx := upscaleCtx{
+		upscaleStateBuilder: &upscaleStateBuilder{
+			once:         onceDone,
+			upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
+		},
+	}
+	adjusted, err := adjustResources(upscaleCtx, actualSset, resources)
+	require.NoError(t, err)
+
+	// should have added one more master
+	expectedSset := sset.TestSset{Version: "6.8.0", Replicas: 4, Master: true, Partition: 3}.Build()
+	require.Equal(t, expectedSset, adjusted.StatefulSets()[0])
+	// and set minimum master nodes
+	require.NotEmpty(t, adjusted[0].Config.HasKeys([]string{settings.DiscoveryZenMinimumMasterNodes}))
+
+	// original sset should be kept unmodified
+	require.Equal(t, sset.TestSset{Version: "6.8.0", Replicas: 10, Master: true, Partition: 2}.Build(), resources[0].StatefulSet)
 }
