@@ -68,11 +68,8 @@ func Validate(es v1alpha1.Elasticsearch) error {
 			return errors.Wrapf(err, "error generating StatefulSet name for nodeSpec: '%s'", nodeSpec.Name)
 		}
 
-		// length of the ordinal suffix that will be added to the pods of this sset
-		podOrdinalSuffixLen := len(strconv.FormatInt(int64(nodeSpec.NodeCount), 10))
-		if nodeSpec.NodeCount < 10 {
-			podOrdinalSuffixLen++ // account for the dash before the ordinal
-		}
+		// length of the ordinal suffix that will be added to the pods of this sset (dash + ordinal)
+		podOrdinalSuffixLen := len(strconv.FormatInt(int64(nodeSpec.NodeCount), 10)) + 1
 		// there should be enough space for the ordinal suffix
 		if validation.DNS1123SubdomainMaxLength-len(ssetName) < podOrdinalSuffixLen {
 			return fmt.Errorf("generated StatefulSet name '%s' exceeds allowed length of %d",
