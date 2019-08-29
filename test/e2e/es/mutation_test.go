@@ -148,6 +148,40 @@ func TestVersionUpgrade680To720(t *testing.T) {
 	RunESMutation(t, initial, mutated)
 }
 
+// TestVersionUpgrade680To720 creates a cluster in version 6.8.0,
+// and upgrades it to 7.2.0.
+func TestVersionUpgradeSingle680To720(t *testing.T) {
+	t.Skip("Broken in current implementation. Documenting the test case here")
+	// create an ES cluster with  6.8.0 nodes
+	initial := elasticsearch.NewBuilder("test-version-up-680-to-720").
+		WithVersion("6.8.0").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	// mutate it to 7.2.0 nodes
+	mutated := initial.WithNoESTopology().
+		WithVersion("7.2.0").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	RunESMutation(t, initial, mutated)
+}
+
+// TestVersionUpgrade680To720 creates a cluster in version 6.8.0,
+// and upgrades it to 7.2.0.
+func TestVersionUpgradeSingleDedicated680To720(t *testing.T) {
+	t.Skip("Broken in current implementation. Documenting the test case here")
+	// create an ES cluster with 6.8.0 nodes
+	initial := elasticsearch.NewBuilder("test-version-up-680-to-720").
+		WithVersion("6.8.0").
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithESDataNodes(1, elasticsearch.DefaultResources)
+
+	// mutate it to 7.2.0 nodes
+	mutated := initial.WithNoESTopology().
+		WithVersion("7.2.0").
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithESDataNodes(1, elasticsearch.DefaultResources)
+	RunESMutation(t, initial, mutated)
+}
+
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
 	mutateTo.MutatedFrom = &toCreate
 	test.RunMutation(t, toCreate, mutateTo)
