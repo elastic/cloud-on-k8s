@@ -50,6 +50,7 @@ pipeline {
                     }
                     steps {
                         sh 'kind --version' // temporarily, just to check if kind is installed
+                        sh 'which kind'     // temporarily, just to check if kind is installed
                         createKindConfig()
                         sh 'make -C build/ci TARGET=kind-e2e ci'
                     }
