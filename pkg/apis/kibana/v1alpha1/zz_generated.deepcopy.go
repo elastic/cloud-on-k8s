@@ -108,13 +108,6 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 		*out = make([]commonv1alpha1.SecretRef, len(*in))
 		copy(*out, *in)
 	}
-	if in.FeatureFlags != nil {
-		in, out := &in.FeatureFlags, &out.FeatureFlags
-		*out = make(commonv1alpha1.FeatureFlags, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	return
 }
 

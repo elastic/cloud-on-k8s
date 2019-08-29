@@ -52,9 +52,6 @@ type ApmServerSpec struct {
 	// individual secure setting to be injected.
 	// The secret must exist in the same namespace as the APM resource.
 	SecureSettings []commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
-
-	// FeatureFlags are apm-specific flags that enable or disable specific experimental features
-	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 }
 
 // Elasticsearch contains configuration for the Elasticsearch output

@@ -53,9 +53,6 @@ type KibanaSpec struct {
 	// individual secure setting to be injected.
 	// The secret must exist in the same namespace as the Kibana resource.
 	SecureSettings []commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
-
-	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
-	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 }
 
 // BackendElasticsearch contains configuration for an Elasticsearch backend for Kibana

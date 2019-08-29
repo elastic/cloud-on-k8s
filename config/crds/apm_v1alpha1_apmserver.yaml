@@ -91,10 +91,6 @@ spec:
               required:
               - name
               type: object
-            featureFlags:
-              description: FeatureFlags are apm-specific flags that enable or disable
-                specific experimental features
-              type: object
             http:
               description: HTTP contains settings for HTTP.
               properties:
