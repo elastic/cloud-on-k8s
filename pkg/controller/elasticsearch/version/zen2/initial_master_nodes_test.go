@@ -7,111 +7,15 @@ package zen2
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	settings2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-const (
-	defaultClusterUUID = "jiMyMA1hQ-WMPK3vEStZuw"
-)
-
-func setupScheme(t *testing.T) *runtime.Scheme {
-	sc := scheme.Scheme
-	if err := v1alpha1.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to add Es types")
-	}
-	return sc
-}
-
-var esNN = types.NamespacedName{
-	Namespace: "ns1",
-	Name:      "foo",
-}
-
-func newElasticsearch() v1alpha1.Elasticsearch {
-	return v1alpha1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: esNN.Namespace,
-			Name:      esNN.Name,
-		},
-	}
-}
-
-func withAnnotation(es v1alpha1.Elasticsearch, name, value string) v1alpha1.Elasticsearch {
-	if es.Annotations == nil {
-		es.Annotations = make(map[string]string)
-	}
-	es.Annotations[name] = value
-	return es
-}
-
-func TestSetupInitialMasterNodes_AlreadyBootstrapped(t *testing.T) {
-	s := setupScheme(t)
-	tests := []struct {
-		name              string
-		es                v1alpha1.Elasticsearch
-		observedState     observer.State
-		nodeSpecResources nodespec.ResourcesList
-		expected          []settings.CanonicalConfig
-		expectedEs        v1alpha1.Elasticsearch
-	}{
-		{
-			name: "cluster already annotated for bootstrap: no changes",
-			es:   withAnnotation(newElasticsearch(), ClusterUUIDAnnotationName, defaultClusterUUID),
-			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: sset.TestSset{Name: "data", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
-			},
-			expected:   []settings.CanonicalConfig{settings.NewCanonicalConfig()},
-			expectedEs: withAnnotation(newElasticsearch(), ClusterUUIDAnnotationName, defaultClusterUUID),
-		},
-		{
-			name:          "cluster bootstrapped but not annotated: should be annotated",
-			es:            newElasticsearch(),
-			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: defaultClusterUUID}},
-			nodeSpecResources: nodespec.ResourcesList{
-				{StatefulSet: sset.TestSset{Name: "data", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build(), Config: settings.NewCanonicalConfig()},
-			},
-			expected:   []settings.CanonicalConfig{settings.NewCanonicalConfig()},
-			expectedEs: withAnnotation(newElasticsearch(), ClusterUUIDAnnotationName, defaultClusterUUID),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClientWithScheme(s, &tt.es))
-			err := SetupInitialMasterNodes(tt.es, tt.observedState, client, tt.nodeSpecResources)
-			require.NoError(t, err)
-			// check if the ES resource was annotated
-			var es v1alpha1.Elasticsearch
-			err = client.Get(esNN, &es)
-			assert.NoError(t, err)
-			require.Equal(t, tt.expectedEs, es)
-			// check if nodespec config were modified
-			for i := 0; i < len(tt.nodeSpecResources); i++ {
-				expected, err := tt.expected[i].Render()
-				require.NoError(t, err)
-				actual, err := tt.nodeSpecResources[i].Config.Render()
-				require.NoError(t, err)
-				require.Equal(t, expected, actual)
-			}
-		})
-	}
-}
-
-func TestSetupInitialMasterNodes_NotBootstrapped(t *testing.T) {
+func TestSetupInitialMasterNodes(t *testing.T) {
 	tests := []struct {
 		name              string
 		nodeSpecResources nodespec.ResourcesList
@@ -165,7 +69,7 @@ func TestSetupInitialMasterNodes_NotBootstrapped(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := SetupInitialMasterNodes(v1alpha1.Elasticsearch{}, observer.State{}, k8s.WrapClient(fake.NewFakeClient()), tt.nodeSpecResources)
+			err := SetupInitialMasterNodes(tt.nodeSpecResources)
 			require.NoError(t, err)
 			for i := 0; i < len(tt.nodeSpecResources); i++ {
 				expected, err := tt.expected[i].Render()
