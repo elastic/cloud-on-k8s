@@ -234,7 +234,28 @@ func (d *GkeDriver) patchStorageClass() error {
 		return nil
 	}
 
-	sc, err := NewCommand("kubectl get sc standard -o yaml").Output()
+	defaultName := ""
+	for _, annotation := range []string{
+		`storageclass\.kubernetes\.io/is-default-class`,
+		`storageclass\.beta\.kubernetes\.io/is-default-class`,
+	} {
+		template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
+		baseScs, err := NewCommand(fmt.Sprintf(template, annotation)).OutputList()
+		if err != nil {
+			return err
+		}
+
+		if len(baseScs) != 0 {
+			defaultName = baseScs[0]
+			break
+		}
+	}
+
+	if defaultName == "" {
+		return fmt.Errorf("default storageclass not found")
+	}
+
+	sc, err := NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
 	if err != nil {
 		return err
 	}
