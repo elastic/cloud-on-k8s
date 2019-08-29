@@ -14,37 +14,38 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
-var (
-	bootstrappedES    = v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"}}}
-	notBootstrappedES = v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster"}}
-)
+func bootstrappedES() *v1alpha1.Elasticsearch {
+	return &v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"}}}
+}
+
+func notBootstrappedES() *v1alpha1.Elasticsearch {
+	return &v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster"}}
+}
 
 func TestAnnotatedForBootstrap(t *testing.T) {
-	require.True(t, AnnotatedForBootstrap(bootstrappedES))
-	require.False(t, AnnotatedForBootstrap(notBootstrappedES))
+	require.True(t, AnnotatedForBootstrap(*bootstrappedES()))
+	require.False(t, AnnotatedForBootstrap(*notBootstrappedES()))
 }
 
 func Test_annotateWithUUID(t *testing.T) {
 	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 
-	notBootstrappedCopy := notBootstrappedES.DeepCopy()
+	cluster := notBootstrappedES()
 	observedState := observer.State{ClusterState: &client.ClusterState{ClusterUUID: "cluster-uuid"}}
-	k8sClient := k8s.WrapClient(fake.NewFakeClient(notBootstrappedCopy))
+	k8sClient := k8s.WrapClient(fake.NewFakeClient(cluster))
 
-	err := annotateWithUUID(notBootstrappedCopy, observedState, k8sClient)
+	err := annotateWithUUID(cluster, observedState, k8sClient)
 	require.NoError(t, err)
-	require.True(t, AnnotatedForBootstrap(*notBootstrappedCopy))
+	require.True(t, AnnotatedForBootstrap(*cluster))
 
 	var retrieved v1alpha1.Elasticsearch
-	err = k8sClient.Get(k8s.ExtractNamespacedName(notBootstrappedCopy), &retrieved)
+	err = k8sClient.Get(k8s.ExtractNamespacedName(cluster), &retrieved)
 	require.NoError(t, err)
 	require.True(t, AnnotatedForBootstrap(retrieved))
-
 }
 
 func TestReconcileClusterUUID(t *testing.T) {
@@ -58,27 +59,27 @@ func TestReconcileClusterUUID(t *testing.T) {
 	}{
 		{
 			name:        "already annotated",
-			cluster:     &bootstrappedES,
-			wantCluster: &bootstrappedES,
+			cluster:     bootstrappedES(),
+			wantCluster: bootstrappedES(),
 		},
 		{
 			name:          "not annotated, but not bootstrapped yet (cluster state empty)",
-			cluster:       &notBootstrappedES,
+			cluster:       notBootstrappedES(),
 			observedState: observer.State{ClusterState: nil},
-			wantCluster:   &notBootstrappedES,
+			wantCluster:   notBootstrappedES(),
 		},
 		{
 			name:          "not annotated, but not bootstrapped yet (cluster UUID empty)",
-			cluster:       &notBootstrappedES,
+			cluster:       notBootstrappedES(),
 			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: ""}},
-			wantCluster:   &notBootstrappedES,
+			wantCluster:   notBootstrappedES(),
 		},
 		{
 			name:          "not annotated, but bootstrapped",
-			c:             k8s.WrapClient(fake.NewFakeClient(&notBootstrappedES)),
-			cluster:       &notBootstrappedES,
+			c:             k8s.WrapClient(fake.NewFakeClient(notBootstrappedES())),
+			cluster:       notBootstrappedES(),
 			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: "uuid"}},
-			wantCluster:   &bootstrappedES,
+			wantCluster:   bootstrappedES(),
 		},
 	}
 	for _, tt := range tests {

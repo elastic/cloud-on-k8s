@@ -215,7 +215,7 @@ func Test_newUpscaleState(t *testing.T) {
 		{
 			name: "cluster not bootstrapped",
 			args: args{
-				es: notBootstrappedES,
+				es: *notBootstrappedES(),
 			},
 			want: &upscaleState{allowMasterCreation: true, isBootstrapped: false},
 		},
@@ -223,7 +223,7 @@ func Test_newUpscaleState(t *testing.T) {
 			name: "bootstrapped, no master node joining",
 			args: args{
 				c:  k8s.WrapClient(fake.NewFakeClient()),
-				es: bootstrappedES,
+				es: *bootstrappedES(),
 			},
 			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true},
 		},
@@ -231,7 +231,7 @@ func Test_newUpscaleState(t *testing.T) {
 			name: "bootstrapped, a master node is pending",
 			args: args{
 				c:  k8s.WrapClient(fake.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: true, Status: corev1.PodStatus{Phase: corev1.PodPending}}.BuildPtr())),
-				es: bootstrappedES,
+				es: *bootstrappedES(),
 			},
 			want: &upscaleState{allowMasterCreation: false, isBootstrapped: true},
 		},
@@ -239,7 +239,7 @@ func Test_newUpscaleState(t *testing.T) {
 			name: "bootstrapped, a data node is pending",
 			args: args{
 				c:  k8s.WrapClient(fake.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: false, Data: true, Status: corev1.PodStatus{Phase: corev1.PodPending}}.BuildPtr())),
-				es: bootstrappedES,
+				es: *bootstrappedES(),
 			},
 			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true},
 		},
@@ -257,17 +257,17 @@ func Test_newUpscaleState(t *testing.T) {
 
 func Test_upscaleStateBuilder_InitOnce(t *testing.T) {
 	b := &upscaleStateBuilder{}
-	s, err := b.InitOnce(k8s.WrapClient(fake.NewFakeClient()), notBootstrappedES, &fakeESState{})
+	s, err := b.InitOnce(k8s.WrapClient(fake.NewFakeClient()), *notBootstrappedES(), &fakeESState{})
 	require.NoError(t, err)
 	require.Equal(t, &upscaleState{isBootstrapped: false, allowMasterCreation: true}, s)
 	// running InitOnce again should not build the state again
 	// run it with arguments that should normally modify the state
-	s, err = b.InitOnce(k8s.WrapClient(fake.NewFakeClient()), bootstrappedES, &fakeESState{})
+	s, err = b.InitOnce(k8s.WrapClient(fake.NewFakeClient()), *bootstrappedES(), &fakeESState{})
 	require.NoError(t, err)
 	require.Equal(t, &upscaleState{isBootstrapped: false, allowMasterCreation: true}, s)
 	// double checking this would indeed modify the state on first init
 	b = &upscaleStateBuilder{}
-	s, err = b.InitOnce(k8s.WrapClient(fake.NewFakeClient()), bootstrappedES, &fakeESState{})
+	s, err = b.InitOnce(k8s.WrapClient(fake.NewFakeClient()), *bootstrappedES(), &fakeESState{})
 	require.NoError(t, err)
 	require.Equal(t, &upscaleState{isBootstrapped: true, allowMasterCreation: true}, s)
 
