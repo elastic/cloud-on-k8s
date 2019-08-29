@@ -26,14 +26,6 @@ func HandleDownscale(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	canProceed, err := noOnGoingDeletion(downscaleCtx, actualStatefulSets)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !canProceed {
-		return results.WithResult(defaultRequeue)
-	}
-
 	// compute the list of StatefulSet downscales to perform
 	downscales := calculateDownscales(expectedStatefulSets, actualStatefulSets)
 	leavingNodes := leavingNodeNames(downscales)
@@ -62,19 +54,6 @@ func HandleDownscale(
 	}
 
 	return results
-}
-
-// noOnGoingDeletion returns true if some pods deletion or creation may still be in progress
-func noOnGoingDeletion(downscaleCtx downscaleContext, actualStatefulSets sset.StatefulSetList) (bool, error) {
-	// Pods we have may not match replicas specified in the StatefulSets spec.
-	// This can happen if, for example, replicas were recently downscaled to remove a node,
-	// but the node isn't completely terminated yet, and may still be part of the cluster.
-	// Moving on with downscaling more nodes may lead to complications when dealing with
-	// Elasticsearch shards allocation excludes (should not be cleared if the ghost node isn't removed yet)
-	// or zen settings (must consider terminating masters that are still there).
-	// Let's retry once expected pods are there.
-	// PodReconciliationDone also matches any pod not created yet, for which we'll also requeue.
-	return actualStatefulSets.PodReconciliationDone(downscaleCtx.k8sClient, downscaleCtx.es)
 }
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of ssetDownscale.
