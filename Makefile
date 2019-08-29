@@ -402,7 +402,7 @@ ifneq ($(ECK_IMAGE),)
 	$(eval OPERATOR_IMAGE=$(ECK_IMAGE))
 	@docker pull $(OPERATOR_IMAGE)
 else
-	$(MAKE) docker-build
+	$(MAKE) dep-vendor-only docker-build
 endif
 
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
