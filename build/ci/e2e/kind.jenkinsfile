@@ -35,12 +35,14 @@ pipeline {
     post {
         unsuccessful {
             script {
-                def msg = "E2E tests for different vanilla K8s versions failed!\r\n" + env.BUILD_URL
-                slackSend botUser: true,
-                      channel: '#cloud-k8s',
-                      color: 'danger',
-                      message: msg,
-                      tokenCredentialId: 'cloud-ci-slack-integration-token'
+                if (params.SEND_NOTIFICATIONS) {
+                    def msg = "E2E tests for different vanilla K8s versions failed!\r\n" + env.BUILD_URL
+                    slackSend botUser: true,
+                        channel: '#cloud-k8s',
+                        color: 'danger',
+                        message: msg,
+                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                }
             }
         }
         cleanup {
