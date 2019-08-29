@@ -260,7 +260,7 @@ func (d *GkeDriver) patchStorageClass() error {
 		return err
 	}
 
-	sc = strings.Replace(sc, "name: standard", "name: standard-customized", -1)
+	sc = strings.Replace(sc, fmt.Sprintf("name: %s", defaultName), "name: standard-customized", -1)
 	sc = strings.Replace(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer", -1)
 	err = NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
@@ -269,7 +269,9 @@ EOF`, sc)).Run()
 		return err
 	}
 
-	cmd := `kubectl patch storageclass standard -p '{ "metadata": { "annotations": { "storageclass.beta.kubernetes.io/is-default-class":"false"} } }'`
+	cmd := fmt.Sprintf(
+		`kubectl patch storageclass %s -p '{ "metadata": { "annotations": { "storageclass.beta.kubernetes.io/is-default-class":"false"} } }'`,
+		defaultName)
 	return NewCommand(cmd).Run()
 }
 
