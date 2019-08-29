@@ -89,6 +89,7 @@ def createKindConfig() {
     sh """
         cat >.env <<EOF
 TESTS_MATCH = TestSmoke
+IMG_SUFFIX = -ci
 EOF
     """
 }

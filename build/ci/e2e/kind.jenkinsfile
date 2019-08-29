@@ -54,6 +54,7 @@ def createKindConfig(node) {
     sh """
         cat >.env <<EOF
 KIND_NODE_IMAGE = ${node}
+IMG_SUFFIX = -ci
 EOF
     """
 }
