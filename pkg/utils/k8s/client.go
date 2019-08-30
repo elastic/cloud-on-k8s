@@ -36,15 +36,20 @@ type Client interface {
 	// Get wraps a controller-runtime client.Get call with a context.
 	Get(key client.ObjectKey, obj runtime.Object) error
 	// List wraps a controller-runtime client.List call with a context.
-	List(opts *client.ListOptions, list runtime.Object) error
+	List(list runtime.Object, opts ...client.ListOption) error
 	// Create wraps a controller-runtime client.Create call with a context.
-	Create(obj runtime.Object) error
+	Create(obj runtime.Object, opts ...client.CreateOption) error
 	// Delete wraps a controller-runtime client.Delete call with a context.
-	Delete(obj runtime.Object, opts ...client.DeleteOptionFunc) error
+	Delete(obj runtime.Object, opts ...client.DeleteOption) error
 	// Update wraps a controller-runtime client.Update call with a context.
-	Update(obj runtime.Object) error
+	Update(obj runtime.Object, opts ...client.UpdateOption) error
 	// Status wraps a controller-runtime client.Status call.
 	Status() StatusWriter
+	// Patch patches the given obj in the Kubernetes cluster. obj must be a
+	// struct pointer so that obj can be updated with the content returned by the Server.
+	Patch(obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error
+	// DeleteAllOf deletes all objects of the given type matching the given options.
+	DeleteAllOf(obj runtime.Object, opts ...client.DeleteAllOfOption) error
 }
 
 type clientWrapper struct {
@@ -95,30 +100,44 @@ func (w *clientWrapper) Get(key client.ObjectKey, obj runtime.Object) error {
 }
 
 // List wraps a controller-runtime client.List call with a context.
-func (w *clientWrapper) List(opts *client.ListOptions, list runtime.Object) error {
+func (w *clientWrapper) List(list runtime.Object, opts ...client.ListOption) error {
 	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.List(ctx, opts, list)
+		return w.crClient.List(ctx, list, opts...)
 	})
 }
 
 // Create wraps a controller-runtime client.Create call with a context.
-func (w *clientWrapper) Create(obj runtime.Object) error {
+func (w *clientWrapper) Create(obj runtime.Object, opts ...client.CreateOption) error {
 	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.Create(ctx, obj)
+		return w.crClient.Create(ctx, obj, opts...)
 	})
 }
 
 // Update wraps a controller-runtime client.Update call with a context.
-func (w *clientWrapper) Update(obj runtime.Object) error {
+func (w *clientWrapper) Update(obj runtime.Object, opts ...client.UpdateOption) error {
 	return w.callWithContext(func(ctx context.Context) error {
-		return w.crClient.Update(ctx, obj)
+		return w.crClient.Update(ctx, obj, opts...)
+	})
+}
+
+// Patch wraps a controller-runtime client.Patch call with a context.
+func (w *clientWrapper) Patch(obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return w.callWithContext(func(ctx context.Context) error {
+		return w.crClient.Patch(ctx, obj, patch, opts...)
 	})
 }
 
 // Delete wraps a controller-runtime client.Delete call with a context.
-func (w *clientWrapper) Delete(obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+func (w *clientWrapper) Delete(obj runtime.Object, opts ...client.DeleteOption) error {
 	return w.callWithContext(func(ctx context.Context) error {
 		return w.crClient.Delete(ctx, obj, opts...)
+	})
+}
+
+// DeleteAllOf wraps a controller-runtime client.DeleteAllOf call with a context.
+func (w *clientWrapper) DeleteAllOf(obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+	return w.callWithContext(func(ctx context.Context) error {
+		return w.crClient.DeleteAllOf(ctx, obj, opts...)
 	})
 }
 
@@ -140,5 +159,12 @@ func (w *clientWrapper) Status() StatusWriter {
 func (s StatusWriter) Update(obj runtime.Object) error {
 	return s.w.callWithContext(func(ctx context.Context) error {
 		return s.StatusWriter.Update(ctx, obj)
+	})
+}
+
+// Update wraps a controller-runtime client.Status().Update call with a context.
+func (s StatusWriter) Patch(obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return s.w.callWithContext(func(ctx context.Context) error {
+		return s.StatusWriter.Patch(ctx, obj, patch, opts...)
 	})
 }

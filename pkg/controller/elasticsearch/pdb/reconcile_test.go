@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -160,7 +159,7 @@ func TestReconcile(t *testing.T) {
 
 			if err == nil {
 				var pdbs v1beta1.PodDisruptionBudgetList
-				require.NoError(t, tt.args.c.List(&client.ListOptions{}, &pdbs))
+				require.NoError(t, tt.args.c.List(&pdbs))
 
 				for _, pdb := range pdbs.Items {
 					if tt.want != nil {

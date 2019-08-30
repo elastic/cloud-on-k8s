@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
@@ -28,7 +29,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -67,10 +67,11 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServerElasticsearchAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServerElasticsearchAssociation{
-		Client:     client,
-		scheme:     mgr.GetScheme(),
-		watches:    watches.NewDynamicWatches(),
-		recorder:   mgr.GetRecorder(name),
+		Client:   client,
+		scheme:   mgr.GetScheme(),
+		watches:  watches.NewDynamicWatches(),
+		recorder: mgr.GetEventRecorderFor(name),
+		// recorder:   mgr.GetRecorder(name),
 		Parameters: params,
 	}
 }
@@ -126,7 +127,7 @@ type ReconcileApmServerElasticsearchAssociation struct {
 }
 
 // Reconcile reads that state of the cluster for a ApmServerElasticsearchAssociation object and makes changes based on the state read
-// and what is in the ApmServerElasticsearchAssociation.Spec
+// and what is in the ApmServerElasticsearchifs.Spec
 func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -167,7 +168,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		return reconcile.Result{}, nil
 	}
 
-	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: apmServer.Name}).AsSelector()
+	selector := map[string]string{labels.ApmServerNameLabelName: apmServer.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, &apmServer, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -222,20 +223,20 @@ func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) fin
 	}
 }
 
-func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
+func resultFromStatus(status ifs.AssociationStatus) reconcile.Result {
 	switch status {
-	case commonv1alpha1.AssociationPending:
+	case ifs.AssociationPending:
 		return defaultRequeue // retry
 	default:
 		return reconcile.Result{} // we are done or there is not much we can do
 	}
 }
 
-func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer apmtype.ApmServer) (commonv1alpha1.AssociationStatus, error) {
+func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer apmtype.ApmServer) (ifs.AssociationStatus, error) {
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.ElasticsearchRef
 	if !elasticsearchRef.IsDefined() {
-		return commonv1alpha1.AssociationUnknown, nil
+		return ifs.AssociationUnknown, nil
 	}
 	if elasticsearchRef.Namespace == "" {
 		// no namespace provided: default to the APM server namespace
@@ -251,7 +252,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		Watcher: assocKey,
 	})
 	if err != nil {
-		return commonv1alpha1.AssociationFailed, err
+		return ifs.AssociationFailed, err
 	}
 
 	var es estype.Elasticsearch
@@ -261,9 +262,9 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// Es not found, could be deleted or not yet created? Recheck in a while
-			return commonv1alpha1.AssociationPending, nil
+			return ifs.AssociationPending, nil
 		}
-		return commonv1alpha1.AssociationFailed, err
+		return ifs.AssociationFailed, err
 	}
 
 	if err := association.ReconcileEsUser(
@@ -278,12 +279,12 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		apmUserSuffix,
 		es,
 	); err != nil { // TODO distinguish conflicts and non-recoverable errors here
-		return commonv1alpha1.AssociationPending, err
+		return ifs.AssociationPending, err
 	}
 
 	caSecretName, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
 	if err != nil {
-		return commonv1alpha1.AssociationPending, err // maybe not created yet
+		return ifs.AssociationPending, err // maybe not created yet
 	}
 
 	var expectedEsConfig apmtype.ElasticsearchOutput
@@ -296,7 +297,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		apmServer.Spec.Elasticsearch = expectedEsConfig
 		log.Info("Updating Apm Server spec with Elasticsearch output configuration", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
 		if err := r.Update(&apmServer); err != nil {
-			return commonv1alpha1.AssociationPending, err
+			return ifs.AssociationPending, err
 		}
 	}
 
@@ -304,7 +305,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		log.Error(err, "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
 	}
 
-	return commonv1alpha1.AssociationEstablished, nil
+	return ifs.AssociationEstablished, nil
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm apmtype.ApmServer, es types.NamespacedName) (string, error) {
@@ -336,8 +337,13 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 // combinations and deletes them.
 func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 	var secrets corev1.SecretList
-	selector := NewResourceSelector(apm.Name)
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+	// TODO sabo fix this
+	// selector := NewResourceSelector(apm.Name)
+	// if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+	// 	return err
+	// }
+	ns := client.InNamespace(apm.Namespace)
+	if err := c.List(&secrets, ns); err != nil {
 		return err
 	}
 

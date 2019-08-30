@@ -19,6 +19,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -26,7 +27,7 @@ type failingClient struct {
 	k8s.Client
 }
 
-func (failingClient) Create(o runtime.Object) error {
+func (failingClient) Create(o runtime.Object, opts ...client.CreateOption) error {
 	return errors.New("boom")
 }
 

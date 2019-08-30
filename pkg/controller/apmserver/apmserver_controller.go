@@ -35,7 +35,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -98,7 +97,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	return &ReconcileApmServer{
 		Client:         client,
 		scheme:         mgr.GetScheme(),
-		recorder:       mgr.GetRecorder(name),
+		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
 		Parameters:     params,
@@ -207,7 +206,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, nil
 	}
 
-	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: as.Name}).AsSelector()
+	selector := map[string]string{labels.ApmServerNameLabelName: as.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		return reconcile.Result{}, err

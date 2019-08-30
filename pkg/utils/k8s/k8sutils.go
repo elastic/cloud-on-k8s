@@ -43,6 +43,7 @@ func IsPodReady(pod corev1.Pod) bool {
 }
 
 // GetPods returns the list of pods given a NamespacedName and a field selector.
+// TODO sabo update this to take client.ListOptions...
 func GetPods(
 	c Client,
 	namespace string,
@@ -51,13 +52,15 @@ func GetPods(
 ) ([]corev1.Pod, error) {
 	var podList corev1.PodList
 
-	listOpts := client.ListOptions{
-		Namespace:     namespace,
-		LabelSelector: labelSelector,
-		FieldSelector: fieldSelector,
-	}
+	// listOpts := client.ListOptions{
+	// 	Namespace:     namespace,
+	// 	LabelSelector: labelSelector,
+	// 	FieldSelector: fieldSelector,
+	// }
 
-	if err := c.List(&listOpts, &podList); err != nil {
+	ns := client.InNamespace(namespace)
+
+	if err := c.List(&podList, ns); err != nil {
 		return nil, err
 	}
 

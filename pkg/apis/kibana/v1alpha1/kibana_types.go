@@ -9,6 +9,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	// "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
+	
 )
 
 const (
@@ -89,7 +92,7 @@ const (
 type KibanaStatus struct {
 	commonv1alpha1.ReconcilerStatus
 	Health            KibanaHealth                     `json:"health,omitempty"`
-	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
+	AssociationStatus ifs.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

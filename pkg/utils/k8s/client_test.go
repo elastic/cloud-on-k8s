@@ -97,19 +97,23 @@ func (m mockedClient) Get(ctx context.Context, key client.ObjectKey, obj runtime
 	return m.checkCtx(ctx)
 }
 
-func (m mockedClient) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
+func (m mockedClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
 	return m.checkCtx(ctx)
 }
 
-func (m mockedClient) Create(ctx context.Context, obj runtime.Object) error {
+func (m mockedClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
 	return m.checkCtx(ctx)
 }
 
-func (m mockedClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+func (m mockedClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 	return m.checkCtx(ctx)
 }
 
-func (m mockedClient) Update(ctx context.Context, obj runtime.Object) error {
+func (m mockedClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return m.checkCtx(ctx)
+}
+
+func (m mockedClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return m.checkCtx(ctx)
 }
 
@@ -117,10 +121,18 @@ func (m mockedClient) Status() client.StatusWriter {
 	return mockedStatusWriter{c: m}
 }
 
+func (m mockedClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+	return m.checkCtx(ctx)
+}
+
 type mockedStatusWriter struct {
 	c mockedClient
 }
 
-func (m mockedStatusWriter) Update(ctx context.Context, obj runtime.Object) error {
+func (m mockedStatusWriter) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return m.c.checkCtx(ctx)
+}
+
+func (m mockedStatusWriter) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return m.c.checkCtx(ctx)
 }

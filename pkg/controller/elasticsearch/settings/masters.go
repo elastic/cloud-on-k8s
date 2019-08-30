@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -20,7 +19,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Quorum computes the quorum of a cluster given the number of masters.
@@ -92,11 +90,23 @@ func UpdateSeedHostsConfigMap(
 			},
 			PostUpdate: func() {
 				log.Info("Seed hosts updated", "namespace", es.Namespace, "es_name", es.Name, "hosts", seedHosts)
-				annotation.MarkPodsAsUpdated(c,
-					client.ListOptions{
-						Namespace:     es.Namespace,
-						LabelSelector: label.NewLabelSelectorForElasticsearch(es),
-					})
+				// todo sabo fix this to get labels
+				// "k8s.io/apimachinery/pkg/types"
+				// i dont think we want to do this any more?
+				// nsn := k8s.ExtractNamespacedName(es)
+				// labels, err := label.NewPodLabels(nsn,
+				// annotation.MarkPodsAsUpdated(c,
+				// 	client.InNamespace(es.Namespace),
+				// 	client.MatchingLabels(label.NewPodLabels()))
+
+				// this was a bug in the past right? since we were updating all pods instead of just the masters?
+
+				// client.MatchingLabels(label.NewLabels(())))
+				// todo sabo cleanup
+				// client.ListOptions{
+				// 	Namespace:     es.Namespace,
+				// 	LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+				// })
 			},
 		})
 }

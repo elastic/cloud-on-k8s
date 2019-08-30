@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -112,8 +111,8 @@ func TestReconcileConfigSecret(t *testing.T) {
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList
-			labelSelector := labels.Set(map[string]string{label.KibanaNameLabelName: defaultKibana.Name}).AsSelector()
-			err = k8sClient.List(&client.ListOptions{LabelSelector: labelSelector}, &secrets)
+			labelSelector := client.MatchingLabels(map[string]string{label.KibanaNameLabelName: defaultKibana.Name})
+			err = k8sClient.List(&secrets, labelSelector)
 			assert.NoError(t, err)
 
 			err = tt.assertions(secrets)

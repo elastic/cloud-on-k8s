@@ -28,7 +28,7 @@ type ObjectSelector struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
-// NamespacedName is a convenience method to turn an ObjectSelector into a NamespaceName.
+// NamespacedName is a convenience method to turn an ObjectSelector into a NamespacedName.
 func (s ObjectSelector) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      s.Name,

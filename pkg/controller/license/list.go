@@ -5,20 +5,23 @@
 package license
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func listAffectedLicenses(c k8s.Client, licenseName string) ([]reconcile.Request, error) {
 	var list = corev1.SecretList{}
 	// list all cluster licenses referencing the given enterprise license
-	err := c.List(&client.ListOptions{
-		LabelSelector: license.NewLicenseByNameSelector(licenseName),
-	}, &list)
+	// TODO SABO
+	// err := c.List(&client.ListOptions{
+	// 	LabelSelector: license.NewLicenseByNameSelector(licenseName),
+	// }, &list)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	err := c.List(&list)
 	if err != nil {
 		return nil, err
 	}

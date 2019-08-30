@@ -13,7 +13,8 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/apis"
+	// "github.com/elastic/cloud-on-k8s/pkg/apis"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -23,6 +24,15 @@ import (
 
 	// todo (sabo)
 	// "github.com/elastic/cloud-on-k8s/pkg/webhook"
+	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	// todo sabo update this to controllers to match kubebuilder?
+
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	esv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	kbv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
@@ -217,10 +227,19 @@ func execute() {
 
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "unable add APIs to scheme")
-		os.Exit(1)
-	}
+	// TODO sabo remove this
+	// if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+	// 	log.Error(err, "unable add APIs to scheme")
+	// 	os.Exit(1)
+	// }
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+
+	_ = apmv1alpha1.AddToScheme(scheme)
+	// _ = assnv1alpha1.AddToScheme(scheme)
+	_ = commonv1alpha1.AddToScheme(scheme)
+	_ = esv1alpha1.AddToScheme(scheme)
+	_ = kbv1alpha1.AddToScheme(scheme)
 
 	// Verify cert validity options
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(CACertValidityFlag, CACertRotateBeforeFlag)

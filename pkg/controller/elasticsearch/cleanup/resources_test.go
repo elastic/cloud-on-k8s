@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -151,7 +150,7 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 			require.NoError(t, err)
 			// the correct number of secrets should remain in the cache
 			var secrets corev1.SecretList
-			err = tt.client.List(&client.ListOptions{}, &secrets)
+			err = tt.client.List(&secrets)
 			require.NoError(t, err)
 			require.Equal(t, len(tt.secretsAfterCleanup), len(secrets.Items))
 			// remaining secret should be the expected ones

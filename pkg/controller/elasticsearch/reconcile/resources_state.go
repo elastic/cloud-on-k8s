@@ -86,13 +86,15 @@ func getPods(
 ) ([]corev1.Pod, error) {
 	var podList corev1.PodList
 
-	listOpts := client.ListOptions{
-		Namespace:     es.Namespace,
-		LabelSelector: labelSelectors,
-		FieldSelector: fieldSelectors,
-	}
+	// listOpts := client.ListOptions{
+	// 	Namespace:     es.Namespace,
+	// 	LabelSelector: labelSelectors,
+	// 	FieldSelector: fieldSelectors,
+	// }
+	// TODO sabo fix this
+	ns := client.InNamespace(es.Namespace)
 
-	if err := c.List(&listOpts, &podList); err != nil {
+	if err := c.List(&podList, ns); err != nil {
 		return nil, err
 	}
 

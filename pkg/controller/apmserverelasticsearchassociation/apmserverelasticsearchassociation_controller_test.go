@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/cloud-on-k8s/pkg/apis/associations/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -54,9 +53,10 @@ var apmFixture = apmtype.ApmServer{
 
 func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
-	if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to add assoc types")
-	}
+	// todo sabo fix this?
+	// if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
+	// 	assert.Fail(t, "failed to add assoc types")
+	// }
 	if err := apmtype.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to add apm types")
 	}

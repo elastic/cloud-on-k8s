@@ -12,7 +12,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -65,7 +64,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	return &ReconcileElasticsearch{
 		Client:   client,
 		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder(name),
+		recorder: mgr.GetEventRecorderFor(name),
 
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
@@ -205,7 +204,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
-	selector := labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
+	selector := map[string]string{label.ClusterNameLabelName: es.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		return reconcile.Result{}, err

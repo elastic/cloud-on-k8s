@@ -21,9 +21,12 @@ import (
 // EnterpriseLicensesOrErrors lists all Enterprise licenses and all errors encountered during retrieval.
 func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 	licenseList := corev1.SecretList{}
-	err := c.List(&client.ListOptions{
-		LabelSelector: NewLicenseByTypeSelector(string(LicenseTypeEnterprise)),
-	}, &licenseList)
+	// TODO (sabo) fix this
+	// err := c.List(&client.ListOptions{
+	// 	LabelSelector: NewLicenseByTypeSelector(string(LicenseTypeEnterprise)),
+	// }, &licenseList)
+	labels := map[string]string{string(LicenseLabelType): string(LicenseTypeEnterprise)}
+	err := c.List(&licenseList, client.MatchingLabels(labels))
 	if err != nil {
 		return nil, []error{err}
 	}

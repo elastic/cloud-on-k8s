@@ -15,13 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/cloud-on-k8s/pkg/apis/associations/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -198,9 +196,9 @@ func TestNewerAnnotation(t *testing.T) {
 // setupScheme creates a scheme to use for our fake clients so they know about our custom resources
 func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
-	err := assoctype.SchemeBuilder.AddToScheme(sc)
-	require.NoError(t, err)
-	err = apmtype.SchemeBuilder.AddToScheme(sc)
+	// err := ifs.SchemeBuilder.AddToScheme(sc)
+	// require.NoError(t, err)
+	err := apmtype.AddToScheme(sc)
 	require.NoError(t, err)
 	err = estype.SchemeBuilder.AddToScheme(sc)
 	require.NoError(t, err)
@@ -209,6 +207,6 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 	return sc
 }
 
-func getElasticsearchSelector(es *v1alpha1.Elasticsearch) labels.Selector {
-	return labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
+func getElasticsearchSelector(es *v1alpha1.Elasticsearch) map[string]string {
+	return map[string]string{label.ClusterNameLabelName: es.Name}
 }

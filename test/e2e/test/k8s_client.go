@@ -11,7 +11,7 @@ import (
 	"os"
 
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/cloud-on-k8s/pkg/apis/associations/v1alpha1"
+	assoctype "github.com/elastic/cloud-on-k8s/pkg/interfaces"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"

@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
@@ -178,7 +177,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// compare what has been updated in the apiserver with what we would expect
 	var actual appsv1.StatefulSetList
-	err := k8sClient.List(&client.ListOptions{}, &actual)
+	err := k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
@@ -187,7 +186,7 @@ func TestHandleDownscale(t *testing.T) {
 	require.False(t, results.HasError())
 	require.Equal(t, requeueResults, results)
 	// no StatefulSet should have been updated
-	err = k8sClient.List(&client.ListOptions{}, &actual)
+	err = k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
@@ -204,7 +203,7 @@ func TestHandleDownscale(t *testing.T) {
 	// one less master
 	ssetMaster3ReplicasExpectedAfterDownscale.Spec.Replicas = common.Int32(1)
 	expectedAfterDownscale = []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
-	err = k8sClient.List(&client.ListOptions{}, &actual)
+	err = k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 	// simulate master pod deletion
@@ -216,7 +215,7 @@ func TestHandleDownscale(t *testing.T) {
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
-	err = k8sClient.List(&client.ListOptions{}, &actual)
+	err = k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
@@ -231,7 +230,7 @@ func TestHandleDownscale(t *testing.T) {
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
-	err = k8sClient.List(&client.ListOptions{}, &actual)
+	err = k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
@@ -650,7 +649,7 @@ func Test_attemptDownscale(t *testing.T) {
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList
-			err = k8sClient.List(&client.ListOptions{}, &ssets)
+			err = k8sClient.List(&ssets)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatefulSets, ssets.Items)
 		})
@@ -690,7 +689,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 
 	// sset resource should be updated
 	var ssets appsv1.StatefulSetList
-	err = k8sClient.List(&client.ListOptions{}, &ssets)
+	err = k8sClient.List(&ssets)
 	require.NoError(t, err)
 	require.Equal(t, []appsv1.StatefulSet{expectedSset1, sset2}, ssets.Items)
 

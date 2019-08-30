@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -150,7 +149,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				list := corev1.SecretList{}
-				assert.NoError(t, c.List(&client.ListOptions{}, &list))
+				assert.NoError(t, c.List(&list))
 				assert.Equal(t, 3, len(list.Items))
 				s := user.GetSecret(list, types.NamespacedName{Namespace: "other", Name: userSecretName})
 				assert.NotNil(t, s)

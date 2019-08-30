@@ -5,7 +5,7 @@
 package association
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,7 +15,7 @@ import (
 // against an Elasticsearch cluster.
 func ElasticsearchAuthSettings(
 	c k8s.Client,
-	associated v1alpha1.Associated,
+	associated ifs.Associated,
 ) (username, password string, err error) {
 	auth := associated.ElasticsearchAuth()
 	// if auth is provided via a secret, resolve credentials from it.
