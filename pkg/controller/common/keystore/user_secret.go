@@ -140,9 +140,9 @@ func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystor
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secret corev1.SecretVolumeSource) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc corev1.SecretVolumeSource) (*corev1.Secret, bool, error) {
 	namespace := hasKeystore.GetNamespace()
-	secretName := secret.SecretName
+	secretName := secretSrc.SecretName
 
 	var userSecret corev1.Secret
 	err := c.Get(types.NamespacedName{Namespace: namespace, Name: secretName}, &userSecret)
@@ -156,11 +156,11 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 	}
 
 	// If no items, return the whole user secret
-	if secret.Items == nil {
+	if secretSrc.Items == nil {
 		return &userSecret, true, nil
 	}
 
-	if len(secret.Items) == 0 {
+	if len(secretSrc.Items) == 0 {
 		return nil, false, fmt.Errorf("items is empty in secure settings secret %s", secretName)
 	}
 
@@ -169,7 +169,7 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 		ObjectMeta: userSecret.ObjectMeta,
 		Data:       map[string][]byte{},
 	}
-	for _, item := range secret.Items {
+	for _, item := range secretSrc.Items {
 		if item.Key == "" {
 			return nil, false, fmt.Errorf("key is empty in secure settings secret %s", secretName)
 		}
