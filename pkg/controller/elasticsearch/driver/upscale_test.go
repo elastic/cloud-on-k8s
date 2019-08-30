@@ -37,6 +37,12 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 				},
 				Spec: appsv1.StatefulSetSpec{
 					Replicas: common.Int32(3),
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+							Partition: common.Int32(3),
+						},
+					},
 				},
 			},
 			HeadlessService: corev1.Service{
@@ -55,6 +61,12 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 				},
 				Spec: appsv1.StatefulSetSpec{
 					Replicas: common.Int32(4),
+					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+						Type: appsv1.RollingUpdateStatefulSetStrategyType,
+						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+							Partition: common.Int32(4),
+						},
+					},
 				},
 			},
 			HeadlessService: corev1.Service{
@@ -92,6 +104,8 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
+	// partition should be kept to the original 4 replicas
+	require.Equal(t, common.Int32(4), sset2.Spec.UpdateStrategy.RollingUpdate.Partition)
 
 	// apply a spec change
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
@@ -100,6 +114,8 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, "b", sset2.Spec.Template.Labels["a"])
+	// partition should be updated to 10 so current pods don't get rotated automatically
+	require.Equal(t, common.Int32(10), sset2.Spec.UpdateStrategy.RollingUpdate.Partition)
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
@@ -112,4 +128,6 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
+	// partition should be updated to 10 so current pods don't get rotated automatically
+	require.Equal(t, common.Int32(10), sset2.Spec.UpdateStrategy.RollingUpdate.Partition)
 }

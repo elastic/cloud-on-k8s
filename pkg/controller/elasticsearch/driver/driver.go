@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"time"
 
+	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -28,7 +31,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
@@ -88,6 +90,24 @@ type defaultDriver struct {
 	DefaultDriverParameters
 }
 
+func (d *defaultDriver) K8sClient() k8s.Client {
+	return d.Client
+}
+
+func (d *defaultDriver) Scheme() *runtime.Scheme {
+	return d.DefaultDriverParameters.Scheme
+}
+
+func (d *defaultDriver) DynamicWatches() watches.DynamicWatches {
+	return d.DefaultDriverParameters.DynamicWatches
+}
+
+func (d *defaultDriver) Recorder() record.EventRecorder {
+	return d.DefaultDriverParameters.Recorder
+}
+
+var _ commondriver.Interface = &defaultDriver{}
+
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *defaultDriver) Reconcile() *reconciler.Results {
 	results := &reconciler.Results{}
@@ -97,19 +117,17 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := configmap.ReconcileScriptsConfigMap(d.Client, d.Scheme, d.ES); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(d.Client, d.Scheme(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	externalService, err := common.ReconcileService(d.Client, d.Scheme, services.NewExternalService(d.ES), &d.ES)
+	externalService, err := common.ReconcileService(d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	certificateResources, res := certificates.Reconcile(
-		d.Client,
-		d.Scheme,
-		d.DynamicWatches,
+		d,
 		d.ES,
 		[]corev1.Service{*externalService},
 		d.OperatorParameters.CACertRotation,
@@ -119,7 +137,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results
 	}
 
-	internalUsers, err := user.ReconcileUsers(d.Client, d.Scheme, d.ES)
+	internalUsers, err := user.ReconcileUsers(d.Client, d.Scheme(), d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -141,7 +159,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	observedState := d.Observers.ObservedStateResolver(
 		k8s.ExtractNamespacedName(&d.ES),
 		d.newElasticsearchClient(
-			*externalService,
+			resourcesState,
 			internalUsers.ControllerUser,
 			*min,
 			certificateResources.TrustedHTTPCertificates,
@@ -152,7 +170,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	}
 
-	if err := pdb.Reconcile(d.Client, d.Scheme, d.ES); err != nil {
+	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 
@@ -162,7 +180,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
-		*externalService,
+		resourcesState,
 		internalUsers.ControllerUser,
 		*min,
 		certificateResources.TrustedHTTPCertificates,
@@ -196,16 +214,16 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	)
 
 	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
 
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
-		d.Client,
-		d.Recorder,
-		d.DynamicWatches,
+		d,
 		&d.ES,
+		name.ESNamer,
+		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
 		initcontainer.KeystoreParams,
 	)
 	if err != nil {
@@ -224,12 +242,12 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
-	service corev1.Service,
+	state *reconcile.ResourcesState,
 	user user.User,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
-	url := fmt.Sprintf("https://%s.%s.svc:%d", service.Name, service.Namespace, network.HTTPPort)
+	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
 	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
 }
 

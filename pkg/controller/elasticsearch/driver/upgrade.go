@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -163,9 +164,8 @@ func (d *defaultDriver) upgradeStatefulSetPartition(
 		"from", statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition,
 		"to", &newPartition,
 	)
-	statefulSet.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
-		Partition: &newPartition,
-	}
+
+	nodespec.UpdatePartition(statefulSet, &newPartition)
 	if err := d.Client.Update(statefulSet); err != nil {
 		return err
 	}

@@ -91,10 +91,6 @@ spec:
               required:
               - name
               type: object
-            featureFlags:
-              description: FeatureFlags are apm-specific flags that enable or disable
-                specific experimental features
-              type: object
             http:
               description: HTTP contains settings for HTTP.
               properties:
@@ -163,15 +159,17 @@ spec:
                 NodeSpec.
               type: object
             secureSettings:
-              description: SecureSettings reference a secret containing secure settings,
+              description: SecureSettings references secrets containing secure settings,
                 to be injected into the APM keystore on each node. Each individual
-                key/value entry in the referenced secret is considered as an individual
+                key/value entry in the referenced secrets is considered as an individual
                 secure setting to be injected. The secret must exist in the same namespace
                 as the APM resource.
-              properties:
-                secretName:
-                  type: string
-              type: object
+              items:
+                properties:
+                  secretName:
+                    type: string
+                type: object
+              type: array
             version:
               description: Version represents the version of the APM Server
               type: string

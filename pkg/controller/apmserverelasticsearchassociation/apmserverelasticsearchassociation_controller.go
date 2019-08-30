@@ -171,6 +171,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	selector := map[string]string{labels.ApmServerNameLabelName: apmServer.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, &apmServer, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, &apmServer, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -248,7 +249,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	// syncing of user credentials across namespaces
 	err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(assocKey),
-		Watched: elasticsearchRef.NamespacedName(),
+		Watched: []types.NamespacedName{elasticsearchRef.NamespacedName()},
 		Watcher: assocKey,
 	})
 	if err != nil {
@@ -258,7 +259,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	var es estype.Elasticsearch
 	err = r.Get(elasticsearchRef.NamespacedName(), &es)
 	if err != nil {
-		r.recorder.Eventf(&apmServer, corev1.EventTypeWarning, events.EventAssociationError,
+		k8s.EmitErrorEvent(r.recorder, err, &apmServer, events.EventAssociationError,
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// Es not found, could be deleted or not yet created? Recheck in a while
@@ -313,7 +314,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(apmKey),
-		Watched: http.PublicCertsSecretRef(esname.ESNamer, es),
+		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
 		Watcher: apmKey,
 	}); err != nil {
 		return "", err

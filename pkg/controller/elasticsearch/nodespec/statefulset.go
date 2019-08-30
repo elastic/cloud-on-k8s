@@ -107,3 +107,19 @@ func BuildStatefulSet(
 
 	return sset, nil
 }
+
+// UpdateReplicas updates the given StatefulSet with the given replicas,
+// and modifies the template hash label accordingly.
+func UpdateReplicas(statefulSet *appsv1.StatefulSet, replicas *int32) {
+	statefulSet.Spec.Replicas = replicas
+	statefulSet.Labels = hash.SetTemplateHashLabel(statefulSet.Labels, statefulSet.Spec)
+}
+
+// UpdateReplicas updates the given StatefulSet with the given rolling update partition,
+// and modifies the template hash label accordingly.
+func UpdatePartition(statefulSet *appsv1.StatefulSet, partition *int32) {
+	statefulSet.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{
+		Partition: partition,
+	}
+	statefulSet.Labels = hash.SetTemplateHashLabel(statefulSet.Labels, statefulSet.Spec)
+}

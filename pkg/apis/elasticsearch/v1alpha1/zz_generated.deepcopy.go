@@ -141,13 +141,6 @@ func (in *ElasticsearchSpec) DeepCopyInto(out *ElasticsearchSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.FeatureFlags != nil {
-		in, out := &in.FeatureFlags, &out.FeatureFlags
-		*out = make(commonv1alpha1.FeatureFlags, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	in.UpdateStrategy.DeepCopyInto(&out.UpdateStrategy)
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
@@ -156,8 +149,8 @@ func (in *ElasticsearchSpec) DeepCopyInto(out *ElasticsearchSpec) {
 	}
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
-		*out = new(commonv1alpha1.SecretRef)
-		**out = **in
+		*out = make([]commonv1alpha1.SecretRef, len(*in))
+		copy(*out, *in)
 	}
 }
 

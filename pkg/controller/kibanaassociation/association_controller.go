@@ -168,6 +168,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	selector := map[string]string{label.KibanaNameLabelName: kibana.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, &kibana, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -176,6 +177,10 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	newStatus, err := r.reconcileInternal(kibana)
+	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventReconciliationError, "Reconciliation error: %v", err)
+	}
+
 	// maybe update status
 	if !reflect.DeepEqual(kibana.Status.AssociationStatus, newStatus) {
 		oldStatus := kibana.Status.AssociationStatus
@@ -233,7 +238,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (ifs.Asso
 	// watch the referenced ES cluster for future reconciliations
 	if err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(kibanaKey),
-		Watched: esRefKey,
+		Watched: []types.NamespacedName{esRefKey},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return ifs.AssociationFailed, err
@@ -243,7 +248,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (ifs.Asso
 	// watch the user secret in the ES namespace
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(kibanaKey),
-		Watched: userSecretKey,
+		Watched: []types.NamespacedName{userSecretKey},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return ifs.AssociationFailed, err
@@ -251,7 +256,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (ifs.Asso
 
 	var es estype.Elasticsearch
 	if err := r.Get(esRefKey, &es); err != nil {
-		r.recorder.Eventf(&kibana, corev1.EventTypeWarning, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
+		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
 		if apierrors.IsNotFound(err) {
 			// ES not found. 2 options:
 			// - not created yet: that's ok, we'll reconcile on creation event
@@ -311,7 +316,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana kbtype.Kibana, es
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(kibanaKey),
-		Watched: http.PublicCertsSecretRef(esname.ESNamer, es),
+		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return "", err

@@ -90,11 +90,8 @@ func (d *AksDriver) Execute() error {
 				return err
 			}
 
-			if !d.plan.ServiceAccount {
-				// it's already set for the ServiceAccount
-				if err := d.configureDocker(); err != nil {
-					return err
-				}
+			if err := d.configureDocker(); err != nil {
+				return err
 			}
 		}
 
@@ -175,24 +172,29 @@ func (d *AksDriver) configureDocker() error {
 		return err
 	}
 
-	cmd := `az aks show --resource-group {{.ResourceGroup}} --name {{.ClusterName}} --query "servicePrincipalProfile.clientId" --output tsv`
-	clientIds, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
-	if err != nil {
-		return err
+	if !d.plan.ServiceAccount {
+		// it's already set for the ServiceAccount
+		cmd := `az aks show --resource-group {{.ResourceGroup}} --name {{.ClusterName}} --query "servicePrincipalProfile.clientId" --output tsv`
+		clientIds, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+		if err != nil {
+			return err
+		}
+
+		cmd = `az acr show --resource-group {{.ResourceGroup}} --name {{.AcrName}} --query "id" --output tsv`
+		acrIds, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
+		if err != nil {
+			return err
+		}
+
+		return NewCommand(`az role assignment create --assignee {{.ClientId}} --role acrpull --scope {{.AcrId}}`).
+			AsTemplate(map[string]interface{}{
+				"ClientId": clientIds[0],
+				"AcrId":    acrIds[0],
+			}).
+			Run()
 	}
 
-	cmd = `az acr show --resource-group {{.ResourceGroup}} --name {{.AcrName}} --query "id" --output tsv`
-	acrIds, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
-	if err != nil {
-		return err
-	}
-
-	return NewCommand(`az role assignment create --assignee {{.ClientId}} --role acrpull --scope {{.AcrId}}`).
-		AsTemplate(map[string]interface{}{
-			"ClientId": clientIds[0],
-			"AcrId":    acrIds[0],
-		}).
-		Run()
+	return nil
 }
 
 func (d *AksDriver) GetCredentials() error {

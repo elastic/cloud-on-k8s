@@ -65,7 +65,7 @@ kind: <Kind>
 metadata:
   name: hulk
 spec:
-  version: 7.2.0
+  version: 7.3.0
   http:
     service:
       spec:

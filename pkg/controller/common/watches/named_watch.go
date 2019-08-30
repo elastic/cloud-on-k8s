@@ -18,8 +18,8 @@ import (
 type NamedWatch struct {
 	// Name identifies this watch for easier removal and deduplication.
 	Name string
-	// Watched is the resource being watched.
-	Watched types.NamespacedName
+	// Watched are the resources being watched.
+	Watched []types.NamespacedName
 	// Watcher is the receiver of the reconcile.Request
 	Watcher types.NamespacedName
 }
@@ -64,11 +64,13 @@ func (w NamedWatch) Key() string {
 
 // EventHandler transforms the event for object to one or many reconcile.Request if relevant.
 func (w NamedWatch) toReconcileRequest(object metav1.Object) []reconcile.Request {
-	if object.GetName() == w.Watched.Name && object.GetNamespace() == w.Watched.Namespace {
-		return []reconcile.Request{
-			{
-				NamespacedName: w.Watcher,
-			},
+	for _, watched := range w.Watched {
+		if object.GetName() == watched.Name && object.GetNamespace() == watched.Namespace {
+			return []reconcile.Request{
+				{
+					NamespacedName: w.Watcher,
+				},
+			}
 		}
 	}
 	return nil

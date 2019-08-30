@@ -178,7 +178,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 
 	// Add a watch for the first object
 	require.NoError(t, d.AddHandler(NamedWatch{
-		Watched: nsn1,
+		Watched: []types.NamespacedName{nsn1},
 		Watcher: watching,
 		Name:    "test-watch-1",
 	}))
@@ -225,7 +225,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 
 	// register a second watch for the second object
 	require.NoError(t, d.AddHandler(NamedWatch{
-		Watched: nsn2,
+		Watched: []types.NamespacedName{nsn2},
 		Watcher: watching,
 		Name:    "test-watch-2",
 	}))
@@ -264,6 +264,39 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	}, q)
 	assertReconcileReq(watching)
 
+	// let's combine both objects in a single watch
+	require.NoError(t, d.AddHandler(NamedWatch{
+		Name:    "test-watch-1",
+		Watched: []types.NamespacedName{nsn1, nsn2},
+		Watcher: watching,
+	}))
+
+	// update on the first object should register
+	d.Update(event.UpdateEvent{
+		MetaOld:   testObject1.GetObjectMeta(),
+		ObjectOld: testObject1,
+		MetaNew:   updated1.GetObjectMeta(),
+		ObjectNew: updated1,
+	}, q)
+	assertReconcileReq(watching)
+
+	// update on the second object should register too
+	d.Update(event.UpdateEvent{
+		MetaOld:   testObject2.GetObjectMeta(),
+		ObjectOld: testObject2,
+		MetaNew:   updated2.GetObjectMeta(),
+		ObjectNew: updated2,
+	}, q)
+	assertReconcileReq(watching)
+
+	// going back to watching object 1 only
+	require.NoError(t, d.AddHandler(NamedWatch{
+		Watched: []types.NamespacedName{nsn1},
+		Watcher: watching,
+		Name:    "test-watch-1",
+	}))
+	assertEmptyQueue()
+
 	// setup an owner watch where owner is testObject1
 	require.NoError(t, d.AddHandler(&OwnerWatch{
 		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
@@ -300,7 +333,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	// for a single event
 	// add a named watch on object 2
 	require.NoError(t, d.AddHandler(NamedWatch{
-		Watched: nsn2,
+		Watched: []types.NamespacedName{nsn2},
 		Watcher: watching,
 		Name:    "test-watch-2",
 	}))

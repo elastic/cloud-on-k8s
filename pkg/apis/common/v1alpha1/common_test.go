@@ -67,3 +67,68 @@ func TestTLSOptions_Enabled(t *testing.T) {
 		})
 	}
 }
+
+func TestHTTPConfig_Scheme(t *testing.T) {
+	type fields struct {
+		TLS TLSOptions
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{
+			name: "enabled",
+			fields: fields{
+				TLS: TLSOptions{
+					SelfSignedCertificate: &SelfSignedCertificate{
+						Disabled: false,
+					},
+				},
+			},
+			want: "https",
+		},
+		{
+			name: "enabled: custom certs and self-signed disabled",
+			fields: fields{
+				TLS: TLSOptions{
+					SelfSignedCertificate: &SelfSignedCertificate{
+						Disabled: true,
+					},
+					Certificate: SecretRef{
+						SecretName: "my-custom-certs",
+					},
+				},
+			},
+			want: "https",
+		},
+		{
+			name: "disabled",
+			fields: fields{
+				TLS: TLSOptions{
+					SelfSignedCertificate: &SelfSignedCertificate{
+						Disabled: true,
+					},
+				},
+			},
+			want: "http",
+		},
+		{
+			name: "default",
+			fields: fields{
+				TLS: TLSOptions{},
+			},
+			want: "https",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			http := HTTPConfig{
+				TLS: tt.fields.TLS,
+			}
+			if got := http.Scheme(); got != tt.want {
+				t.Errorf("Scheme() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

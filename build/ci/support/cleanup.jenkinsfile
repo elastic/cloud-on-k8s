@@ -22,7 +22,7 @@ pipeline {
             }
             steps {
                 sh """
-                    cat >operators/run-config.yml <<EOF
+                    cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: delete
@@ -34,8 +34,8 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
+                    make -C build/ci TARGET=run-deployer ci
                 """
-                sh 'make -C build/ci ci-run-deployer'
             }
         }
     }

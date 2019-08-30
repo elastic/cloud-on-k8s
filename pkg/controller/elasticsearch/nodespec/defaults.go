@@ -7,6 +7,7 @@ package nodespec
 import (
 	"path"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,17 +43,19 @@ var (
 			corev1.ResourceMemory: resource.MustParse("2Gi"),
 		},
 	}
+)
 
-	// EnvVars are environment variables injected into Elasticsearch pods.
-	EnvVars = append(
+// DefaultEnvVars are environment variables injected into Elasticsearch pods.
+func DefaultEnvVars(httpCfg v1alpha1.HTTPConfig) []corev1.EnvVar {
+	return append(
 		defaults.PodDownwardEnvVars,
 		[]corev1.EnvVar{
 			{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.InternalProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.InternalProbeUserName},
-			{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
+			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Scheme()},
 		}...,
 	)
-)
+}
 
 // DefaultAffinity returns the default affinity for pods in a cluster.
 func DefaultAffinity(esName string) *corev1.Affinity {

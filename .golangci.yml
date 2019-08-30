@@ -1,5 +1,5 @@
 run:
-  deadline: 90s
+  deadline: 300s
   skip-dirs:
     - config
     - hack

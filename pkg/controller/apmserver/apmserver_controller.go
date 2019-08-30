@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -163,6 +164,24 @@ type ReconcileApmServer struct {
 	iteration int64
 }
 
+func (r *ReconcileApmServer) K8sClient() k8s.Client {
+	return r.Client
+}
+
+func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
+	return r.dynamicWatches
+}
+
+func (r *ReconcileApmServer) Recorder() record.EventRecorder {
+	return r.recorder
+}
+
+func (r *ReconcileApmServer) Scheme() *runtime.Scheme {
+	return r.scheme
+}
+
+var _ driver.Interface = &ReconcileApmServer{}
+
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -209,6 +228,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	selector := map[string]string{labels.ApmServerNameLabelName: as.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, as, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
 	if !compat {
@@ -226,9 +246,11 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	results := apmcerts.Reconcile(r.Client, r.scheme, *as, r.dynamicWatches, []corev1.Service{*svc}, r.CACertRotation)
+	results := apmcerts.Reconcile(r, *as, []corev1.Service{*svc}, r.CACertRotation)
 	if results.HasError() {
-		return results.Aggregate()
+		res, err := results.Aggregate()
+		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		return res, err
 	}
 
 	state, err = r.reconcileApmServerDeployment(state, as)
@@ -237,6 +259,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 			log.V(1).Info("Conflict while updating status")
 			return reconcile.Result{Requeue: true}, nil
 		}
+		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
 		return state.Result, err
 	}
 
@@ -403,10 +426,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	}
 
 	keystoreResources, err := keystore.NewResources(
-		r.Client,
-		r.recorder,
-		r.dynamicWatches,
+		r,
 		as,
+		apmname.APMNamer,
+		labels.NewLabels(as.Name),
 		initContainerParameters,
 	)
 	if err != nil {
