@@ -113,6 +113,7 @@ func (d *DynamicEnqueueRequest) Update(evt event.UpdateEvent, q workqueue.RateLi
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.registrations {
+		// TODO SABO why is this sometimes panicking?
 		v.EventHandler().Update(evt, q)
 	}
 }

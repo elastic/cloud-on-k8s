@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -30,8 +31,10 @@ func RetrieveActualStatefulSets(c k8s.Client, es types.NamespacedName) (Stateful
 	// 	Namespace:     es.Namespace,
 	// 	LabelSelector: label.NewLabelSelectorForElasticsearchClusterName(es.Name),
 	// }, &ssets)
+
 	ns := client.InNamespace(es.Namespace)
-	err := c.List(&ssets, ns)
+	matchLabels := label.NewLabelSelectorForElasticsearchClusterName(es.Name)
+	err := c.List(&ssets, ns, matchLabels)
 	return StatefulSetList(ssets.Items), err
 }
 

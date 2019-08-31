@@ -9,18 +9,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
+
+	// k8slabels "k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // UserFinalizer ensures that any external user created for an associated object is removed.
-func UserFinalizer(c k8s.Client, selector labels.Selector) finalizer.Finalizer {
+// TODO: Consider changing this from a selector to ...client.ListOptions
+func UserFinalizer(c k8s.Client, opts ...client.ListOption) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: "users.finalizers.associations.k8s.elastic.co",
 		Execute: func() error {
 			var secrets corev1.SecretList
-			// TODO sabo fix this and actually use the label selector
-			if err := c.List(&secrets); err != nil {
-				// if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+			// matchLabel := labels.SelectorToMatchingLabels(selector)
+			if err := c.List(&secrets, opts...); err != nil {
 				return err
 			}
 			for _, s := range secrets.Items {

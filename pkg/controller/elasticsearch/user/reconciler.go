@@ -89,15 +89,9 @@ func ReconcileUsers(
 	}
 
 	var customUsers corev1.SecretList
-	// TODO sabo fix
-	// if err := c.List(&client.ListOptions{
-	// 	LabelSelector: user.NewLabelSelectorForElasticsearch(es),
-	// 	Namespace:     es.Namespace,
-	// }, &customUsers); err != nil {
-	// 	return nil, err
-	// }
 	ns := client.InNamespace(es.Namespace)
-	if err := c.List(&customUsers, ns); err != nil {
+	matchLabels := user.NewLabelSelectorForElasticsearch(es)
+	if err := c.List(&customUsers, ns, matchLabels); err != nil {
 		return nil, err
 	}
 

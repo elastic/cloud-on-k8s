@@ -9,7 +9,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	// "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -21,10 +22,10 @@ const (
 )
 
 // NewResourceSelector selects resources labeled as related to the named association.
-func NewResourceSelector(name string) labels.Selector {
-	return labels.Set(map[string]string{
+func NewResourceSelector(name string) client.MatchingLabels {
+	return client.MatchingLabels(map[string]string{
 		AssociationLabelName: name,
-	}).AsSelector()
+	})
 }
 
 func hasBeenCreatedBy(object metav1.Object, kibana v1alpha1.Kibana) bool {
@@ -40,8 +41,8 @@ func hasBeenCreatedBy(object metav1.Object, kibana v1alpha1.Kibana) bool {
 
 func NewUserLabelSelector(
 	namespacedName types.NamespacedName,
-) labels.Selector {
-	return labels.SelectorFromSet(
+) client.MatchingLabels {
+	return client.MatchingLabels(
 		map[string]string{
 			AssociationLabelName:      namespacedName.Name,
 			AssociationLabelNamespace: namespacedName.Namespace,

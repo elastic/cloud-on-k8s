@@ -28,12 +28,11 @@ type failingClient struct {
 	Error error
 }
 
-func (f *failingClient) List(opts *client.ListOptions, list runtime.Object) error {
+func (f *failingClient) List(list runtime.Object, opts ...client.ListOption) error {
 	return f.Error
 }
 
-// TODO SABO
-// var _ k8s.Client = &failingClient{}
+var _ k8s.Client = &failingClient{}
 
 func Test_listAffectedLicenses(t *testing.T) {
 	s := scheme.Scheme
@@ -91,10 +90,9 @@ func Test_listAffectedLicenses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
-			// TODO sabo
-			// if tt.injectedError != nil {
-			// 	client = &failingClient{Client: client, Error: tt.injectedError}
-			// }
+			if tt.injectedError != nil {
+				client = &failingClient{Client: client, Error: tt.injectedError}
+			}
 
 			got, err := listAffectedLicenses(client, tt.args.license)
 			if (err != nil) != tt.wantErr {

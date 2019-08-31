@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -19,16 +20,22 @@ const (
 )
 
 // NewResourceSelector selects resources labeled as related to the named association.
+// TODO sabo can we remove this?
 func NewResourceSelector(name string) labels.Selector {
 	return labels.Set(map[string]string{
 		AssociationLabelName: name,
 	}).AsSelector()
 }
 
+// TODO SABO does this exist somewhere else?
+func NewResourceLabels(name string) map[string]string {
+	return map[string]string{AssociationLabelName: name}
+}
+
 func NewUserLabelSelector(
 	namespacedName types.NamespacedName,
-) labels.Selector {
-	return labels.SelectorFromSet(
+) client.MatchingLabels {
+	return client.MatchingLabels(
 		map[string]string{
 			AssociationLabelName:      namespacedName.Name,
 			AssociationLabelNamespace: namespacedName.Namespace,

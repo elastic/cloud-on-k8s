@@ -6,7 +6,7 @@ package license
 
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -36,14 +36,14 @@ func LabelsForType(licenseType LicenseType) map[string]string {
 }
 
 // NewLicenseByNameSelector is a list selector to filter by a label containing the license name.
-func NewLicenseByNameSelector(licenseName string) labels.Selector {
-	return labels.Set(map[string]string{
+func NewLicenseByNameSelector(licenseName string) client.MatchingLabels {
+	return client.MatchingLabels(map[string]string{
 		LicenseLabelName: licenseName,
-	}).AsSelector()
+	})
 }
 
-func NewLicenseByTypeSelector(licenseType string) labels.Selector {
-	return labels.Set(map[string]string{
+func NewLicenseByTypeSelector(licenseType string) client.MatchingLabels {
+	return client.MatchingLabels(map[string]string{
 		LicenseLabelType: licenseType,
-	}).AsSelector()
+	})
 }

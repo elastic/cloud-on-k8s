@@ -15,18 +15,13 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // EnterpriseLicensesOrErrors lists all Enterprise licenses and all errors encountered during retrieval.
 func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 	licenseList := corev1.SecretList{}
-	// TODO (sabo) fix this
-	// err := c.List(&client.ListOptions{
-	// 	LabelSelector: NewLicenseByTypeSelector(string(LicenseTypeEnterprise)),
-	// }, &licenseList)
-	labels := map[string]string{string(LicenseLabelType): string(LicenseTypeEnterprise)}
-	err := c.List(&licenseList, client.MatchingLabels(labels))
+	matchingLabels := NewLicenseByTypeSelector(string(LicenseTypeEnterprise))
+	err := c.List(&licenseList, matchingLabels)
 	if err != nil {
 		return nil, []error{err}
 	}

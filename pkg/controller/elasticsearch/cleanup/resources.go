@@ -37,15 +37,9 @@ func IsTooYoungForGC(object metav1.Object) bool {
 // DeleteOrphanedSecrets cleans up secrets that are not needed anymore for the given es cluster.
 func DeleteOrphanedSecrets(c k8s.Client, es v1alpha1.Elasticsearch) error {
 	var secrets corev1.SecretList
-	// TODO sabo fix this
-	// if err := c.List(&client.ListOptions{
-	// 	Namespace:     es.Namespace,
-	// 	LabelSelector: label.NewLabelSelectorForElasticsearch(es),
-	// }, &secrets); err != nil {
-	// 	return err
-	// }
 	ns := client.InNamespace(es.Namespace)
-	if err := c.List(&secrets, ns); err != nil {
+	matchLabels := label.NewLabelSelectorForElasticsearch(es)
+	if err := c.List(&secrets, ns, matchLabels); err != nil {
 		return err
 	}
 	resources := make([]runtime.Object, len(secrets.Items))

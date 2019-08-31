@@ -16,10 +16,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
+	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -344,7 +344,8 @@ func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 	// 	return err
 	// }
 	ns := client.InNamespace(apm.Namespace)
-	if err := c.List(&secrets, ns); err != nil {
+	matchLabels := client.MatchingLabels(NewResourceLabels(apm.Name))
+	if err := c.List(&secrets, ns, matchLabels); err != nil {
 		return err
 	}
 
