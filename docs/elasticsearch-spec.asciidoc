@@ -239,15 +239,29 @@ $ kubectl create secret tls my-cert --cert tls.crt --key tls.key
 [id="{p}-es-secure-settings"]
 === Secure settings
 
-You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with a Kubernetes secret.
-The secret should contain a key-value pair for each secure setting you want to add. Reference that secret in the Elasticsearch
+You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with Kubernetes secrets.
+The secrets should contain a key-value pair for each secure setting you want to add. Reference that secrets in the Elasticsearch
 resource specification for ECK to automatically inject those settings into the keystore on each node before it starts Elasticsearch.
 
 [source,yaml]
 ----
 spec:
   secureSettings:
-    secretName: your-secure-settings-secret
+  - secretName: one-secure-settings-secret
+  - secretName: two-secure-settings-secret
+----
+
+You can export a subset of secret keys and also project keys to specific paths using the `items`, `key` and `path` fields:
+
+[source,yaml]
+----
+spec:
+  secureSettings:
+  - secretName: your-secure-settings-secret
+    items:
+    - key: value1
+      path: newkey
+    type: array
 ----
 
 See link:k8s-snapshot.html[How to create automated snapshots] for an example use case.
