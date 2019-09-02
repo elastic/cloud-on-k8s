@@ -1,11 +1,12 @@
 [id="{p}-uninstall"]
 == Uninstall ECK
 
-Before uninstalling the operator, remove all Elastic resources:
+Before uninstalling the operator, remove all Elastic resources in all namespaces:
 
 [source,shell]
 ----
-kubectl delete elastic --all --all-namespaces
+kubectl get namespaces --no-headers -o custom-columns=:metadata.name \
+  | xargs -n1 kubectl delete elastic --all -n
 ----
 
 This deletes all underlying Elasticsearch, Kibana, and APM Server resources (pods, secrets, services, etc.).
