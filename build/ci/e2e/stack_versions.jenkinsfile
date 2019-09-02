@@ -13,62 +13,42 @@ pipeline {
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        OPERATOR_IMAGE = "${IMAGE}"
-        LATEST_RELEASED_IMG = "${IMAGE}"
-        SKIP_DOCKER_COMMAND = 'true'
-        REGISTRY = "eu.gcr.io"
     }
 
     stages {
         stage('Run tests for different ELK stack versions in GKE') {
             parallel {
                 stage("6.8.2") {
-                    environment {
-                        STACK_VERSION = "6.8.2"
-                    }
                     steps {
                         checkout scm
-                        createRunConfig("${BUILD_TAG}-682")
-                        sh 'make -C build/ci ci-e2e'
+                        runWith("${BUILD_TAG}-682", "6.8.2")
                     }
                 }
                 stage("7.1.1") {
                     agent {
                         label 'linux'
                     }
-                    environment {
-                        STACK_VERSION = "7.1.1"
-                    }
                     steps {
                         checkout scm
-                        createRunConfig("${BUILD_TAG}-711")
-                        sh 'make -C build/ci ci-e2e'
+                        runWith("${BUILD_TAG}-711", "7.1.1")
                     }
                 }
                 stage("7.2.1") {
                     agent {
                         label 'linux'
                     }
-                    environment {
-                        STACK_VERSION = "7.2.1"
-                    }
                     steps {
                         checkout scm
-                        createRunConfig("${BUILD_TAG}-721")
-                        sh 'make -C build/ci ci-e2e'
+                        runWith("${BUILD_TAG}-721", "7.2.1")
                     }
                 }
                 stage("7.3.0") {
                     agent {
                         label 'linux'
                     }
-                    environment {
-                        STACK_VERSION = "7.3.0"
-                    }
                     steps {
                         checkout scm
-                        createRunConfig("${BUILD_TAG}-730")
-                        sh 'make -C build/ci ci-e2e'
+                        runWith("${BUILD_TAG}-730", "7.3.0")
                     }
                 }
             }
@@ -101,8 +81,17 @@ pipeline {
 
 }
 
-def createRunConfig(clusterName) {
+def runWith(clusterName, stackVersion) {
     sh """
+        cat >.env <<EOF
+OPERATOR_IMAGE = "${IMAGE}"
+LATEST_RELEASED_IMG = "${IMAGE}"
+GCLOUD_PROJECT = "$GCLOUD_PROJECT"
+STACK_VERSION = "${stackVersion}"
+SKIP_DOCKER_COMMAND = true
+REGISTRY = eu.gcr.io
+REPOSITORY = "$GCLOUD_PROJECT"
+EOF
         cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
@@ -115,5 +104,6 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
+        make -C build/ci TARGET=ci-e2e ci
     """
 }

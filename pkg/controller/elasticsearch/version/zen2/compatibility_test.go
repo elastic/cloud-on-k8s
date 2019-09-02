@@ -16,7 +16,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -76,26 +76,26 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 		{
 			name: "only v7 master nodes",
 			pods: []runtime.Object{
-				nodespec.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
-				nodespec.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
-				nodespec.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
 			},
 			want: true,
 		},
 		{
 			name: "only v6 master nodes (with v7 data nodes)",
 			pods: []runtime.Object{
-				nodespec.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
-				nodespec.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
-				nodespec.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node2", ClusterName: es.Name, Version: "7.2.0", Data: true}.BuildPtr(),
 			},
 			want: false,
 		},
 		{
 			name: "mixed v6/v7 masters",
 			pods: []runtime.Object{
-				nodespec.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
-				nodespec.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node0", ClusterName: es.Name, Version: "7.2.0", Master: true}.BuildPtr(),
+				sset.TestPod{Namespace: es.Namespace, Name: "node1", ClusterName: es.Name, Version: "6.8.0", Master: true}.BuildPtr(),
 			},
 			want: false,
 		},

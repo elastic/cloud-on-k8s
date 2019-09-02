@@ -55,9 +55,6 @@ type KibanaSpec struct {
 	// entries and the `path` field to change the target path of a secret entry key.
 	// The secret must exist in the same namespace as the Kibana resource.
 	SecureSettings []corev1.SecretVolumeSource `json:"secureSettings,omitempty"`
-
-	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
-	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 }
 
 // BackendElasticsearch contains configuration for an Elasticsearch backend for Kibana

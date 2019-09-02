@@ -42,12 +42,20 @@ func (s *ObjectSelector) IsDefined() bool {
 	return s != nil && s.Name != ""
 }
 
-// HTTPConfig configures a HTTP-based service.
+// HTTPConfig configures an HTTP-based service.
 type HTTPConfig struct {
 	// Service is a template for the Kubernetes Service
 	Service ServiceTemplate `json:"service,omitempty"`
 	// TLS describe additional options to consider when generating HTTP TLS certificates.
 	TLS TLSOptions `json:"tls,omitempty"`
+}
+
+// Scheme returns the scheme for this HTTP config
+func (http HTTPConfig) Scheme() string {
+	if http.TLS.Enabled() {
+		return "https"
+	}
+	return "http"
 }
 
 type TLSOptions struct {

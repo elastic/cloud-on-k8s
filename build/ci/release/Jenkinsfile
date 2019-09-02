@@ -12,13 +12,6 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
-        REGISTRY = "push.docker.elastic.co"
-        REPOSITORY = "eck"
-        IMG_NAME = "eck-operator"
-        OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
-        LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
-        VERSION = "${TAG_NAME}"
-        SNAPSHOT = "false"
     }
 
     stages {
@@ -31,12 +24,27 @@ pipeline {
             stages {
                 stage('Build and push release image') {
                     steps {
-                        sh 'make -C build/ci ci-release'
+                        sh """
+                            cat >.env <<EOF
+OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
+LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
+VERSION = "${TAG_NAME}"
+REGISTRY = push.docker.elastic.co
+REPOSITORY = eck
+IMG_NAME = eck-operator
+SNAPSHOT = false
+GO_TAGS = release
+LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
+USE_ELASTIC_DOCKER_REGISTRY = true
+ELASTIC_DOCKER_LOGIN = eckadmin
+EOF
+                            make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
+                        """
                     }
                 }
                 stage('Upload yaml to S3') {
                     steps {
-                        sh 'make -C build/ci yaml-upload'
+                        sh 'make -C build/ci TARGET=yaml-upload ci'
                     }
                 }
                 stage('Send message to Slack') {

@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/go-test/deep"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -86,7 +87,7 @@ var sampleES = v1alpha1.Elasticsearch{
 
 func TestBuildPodTemplateSpec(t *testing.T) {
 	nodeSpec := sampleES.Spec.Nodes[0]
-	cfg, err := settings.NewMergedESConfig(sampleES.Name, *nodeSpec.Config)
+	cfg, err := settings.NewMergedESConfig(sampleES.Name, sampleES.Spec.HTTP, *nodeSpec.Config)
 	require.NoError(t, err)
 
 	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.Nodes[0], cfg, nil)
@@ -134,7 +135,8 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":                        "elasticsearch",
 				"elasticsearch.k8s.elastic.co/cluster-name":         "name",
-				"elasticsearch.k8s.elastic.co/config-template-hash": "349152269",
+				"elasticsearch.k8s.elastic.co/config-template-hash": "590139466",
+				"elasticsearch.k8s.elastic.co/http-scheme":          "https",
 				"elasticsearch.k8s.elastic.co/node-data":            "false",
 				"elasticsearch.k8s.elastic.co/node-ingest":          "true",
 				"elasticsearch.k8s.elastic.co/node-master":          "true",
@@ -166,7 +168,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 						{Name: "http", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
 						{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},
 					},
-					Env:            append(EnvVars, corev1.EnvVar{Name: "my-env", Value: "my-value"}),
+					Env:            append(DefaultEnvVars(sampleES.Spec.HTTP), corev1.EnvVar{Name: "my-env", Value: "my-value"}),
 					Resources:      DefaultResources,
 					VolumeMounts:   volumeMounts,
 					ReadinessProbe: NewReadinessProbe(),
@@ -178,5 +180,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, expected, actual)
+	deep.MaxDepth = 25
+	require.Nil(t, deep.Equal(expected, actual))
 }

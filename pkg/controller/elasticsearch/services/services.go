@@ -5,6 +5,8 @@
 package services
 
 import (
+	"fmt"
+	"math/rand"
 	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
@@ -31,7 +33,7 @@ func ExternalServiceName(esName string) string {
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
 func ExternalServiceURL(es v1alpha1.Elasticsearch) string {
-	return stringsutil.Concat("https://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
+	return stringsutil.Concat(es.Spec.HTTP.Scheme(), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }
 
 // NewExternalService returns the external service associated to the given cluster
@@ -89,4 +91,28 @@ func GetExternalService(c k8s.Client, es v1alpha1.Elasticsearch) (corev1.Service
 	}
 
 	return svc, nil
+}
+
+// ElasticsearchURL calculates the base url for Elasticsearch, taking into account the currently running pods.
+// If there is an HTTP scheme mismatch between spec and pods we switch to requesting individual pods directly
+// otherwise this delegates to ExternalServiceURL.
+func ElasticsearchURL(es v1alpha1.Elasticsearch, pods []corev1.Pod) string {
+	var schemeChange bool
+	for _, p := range pods {
+		scheme, exists := p.Labels[label.HTTPSchemeLabelName]
+		if exists && scheme != es.Spec.HTTP.Scheme() {
+			// scheme in existing pods does not match scheme in spec, user toggled HTTP(S)
+			schemeChange = true
+		}
+	}
+	if schemeChange {
+		// switch to sending requests directly to a random pod instead of going through the service
+		randomPod := pods[rand.Intn(len(pods))]
+		scheme, hasScheme := randomPod.Labels[label.HTTPSchemeLabelName]
+		sset, hasSset := randomPod.Labels[label.StatefulSetNameLabelName]
+		if hasScheme && hasSset {
+			return fmt.Sprintf("%s://%s.%s.%s:%d", scheme, randomPod.Name, sset, randomPod.Namespace, network.HTTPPort)
+		}
+	}
+	return ExternalServiceURL(es)
 }

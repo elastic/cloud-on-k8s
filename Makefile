@@ -6,8 +6,8 @@
 ##  --      Variables      --  ##
 #################################
 
-
-ROOT_DIR = $(shell dirname $(CURDIR))
+# reads file '.env', ignores if it doesn't exist
+-include .env
 
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
@@ -27,11 +27,8 @@ LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
 # on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
-	REPOSITORY = ${GCLOUD_PROJECT}
-else ifneq ($(findstring azmk8s.io:443,$(shell kubectl config view --minify -o=jsonpath={.clusters[*].cluster.server} 2> /dev/null)),)
-	REGISTRY ?= cloudonk8s.azurecr.io
-	REPOSITORY ?= operators
-else ifeq ($(REGISTRY),)
+	REPOSITORY ?= ${GCLOUD_PROJECT}
+else
 	# default to local registry
 	REGISTRY ?= localhost:5000
 endif
@@ -40,11 +37,6 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --short --verify HEAD)
-
-ifeq ($(OPERATOR_IMAGE),)
-	# we never want this empty
-	OPERATOR_IMAGE := $(IMG):$(VERSION)-$(TAG)
-endif
 OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
 
 
@@ -302,9 +294,7 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-ifeq ($(STACK_VERSION),)
-	STACK_VERSION = 7.3.0
-endif
+STACK_VERSION ?= 7.3.0
 
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
@@ -346,16 +336,12 @@ e2e-local:
 ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
-ci-e2e: run-deployer
-	$(MAKE) IMG_SUFFIX=-ci install-crds apply-psp e2e
+ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e
 
 run-deployer: dep-vendor-only build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
 
-ci-release: export GO_TAGS = release
-ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
-ci-release:
-	@ $(MAKE) dep-vendor-only generate docker-build docker-push
+ci-release: clean dep-vendor-only generate build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################
@@ -366,7 +352,7 @@ check-requisites:
 	@ hack/check-requisites.sh
 
 check-license-header:
-	../build/check-license-header.sh
+	./build/check-license-header.sh
 
 # Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
@@ -404,20 +390,27 @@ kind-cluster-%: kind-node-variable-check
 ## Same as above but build and deploy the operator image
 kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-with-operator-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
-kind-with-operator-%: kind-node-variable-check docker-build
+kind-with-operator-%: kind-node-variable-check dep-vendor-only docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
 		make install-crds apply-operators
 
 ## Run all the e2e tests in a Kind cluster
+set-kind-e2e-image:
+ifneq ($(ECK_IMAGE),)
+	$(eval OPERATOR_IMAGE=$(ECK_IMAGE))
+	@docker pull $(OPERATOR_IMAGE)
+else
+	$(MAKE) docker-build
+endif
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-e2e: kind-node-variable-check docker-build e2e-docker-build
+kind-e2e: kind-node-variable-check set-kind-e2e-image dep-vendor-only e2e-docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
 		--nodes 3 \
-		make e2e-run
+		make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 
 ## Cleanup
 delete-kind:

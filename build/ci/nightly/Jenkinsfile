@@ -16,14 +16,25 @@ pipeline {
         REGISTRY = "push.docker.elastic.co"
         REPOSITORY = "eck-snapshots"
         IMG_NAME = "eck-operator"
-        SNAPSHOT = "true"
-        DOCKER_IMAGE_NO_TAG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}"
     }
 
     stages {
         stage('Run unit and integration tests') {
             steps {
-                sh 'make -C build/ci ci-pr'
+                sh """
+                    cat > .env <<EOF
+GCLOUD_PROJECT = $GCLOUD_PROJECT
+REGISTRY = "push.docker.elastic.co"
+REPOSITORY = "eck-snapshots"
+IMG_NAME = "eck-operator"
+SNAPSHOT = "true"
+LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
+IMG_SUFFIX = -ci
+USE_ELASTIC_DOCKER_REGISTRY = true
+ELASTIC_DOCKER_LOGIN = eckadmin
+EOF
+                    make -C build/ci TARGET=ci ci
+                """
             }
         }
         stage('Build and push Docker image') {
@@ -33,7 +44,11 @@ pipeline {
                     export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     export LATEST_RELEASED_IMG=docker.elastic.co/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     echo \$LATEST_RELEASED_IMG > eck_image.txt
-                    make -C build/ci ci-release
+                    cat >> .env <<EOF
+OPERATOR_IMAGE = "\$OPERATOR_IMAGE"
+LATEST_RELEASED_IMG = "\$LATEST_RELEASED_IMG"
+EOF
+                    make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
                 """
             }
         }
@@ -58,5 +73,4 @@ pipeline {
             cleanWs()
         }
     }
-
 }

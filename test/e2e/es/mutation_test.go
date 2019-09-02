@@ -13,6 +13,33 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
+// TestMutationHTTPToHTTPS creates a 3 node cluster running without TLS on the HTTP layer,
+// then mutates it to a 3 node cluster running with TLS.
+func TestMutationHTTPToHTTPS(t *testing.T) {
+	// create a 3 md node cluster
+	b := elasticsearch.NewBuilder("test-mutation-http-to-https").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithTLSDisabled(true)
+
+	// mutate to https
+	mutated := b.WithTLSDisabled(false)
+
+	test.RunMutation(t, b, mutated)
+}
+
+// TestMutationHTTPSToHTTP creates a 3 node cluster
+// then mutates it to a 3 node cluster running without TLS on the HTTP layer.
+func TestMutationHTTPSToHTTP(t *testing.T) {
+	// create a 3 md node cluster
+	b := elasticsearch.NewBuilder("test-mutation-http-to-https").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	// mutate to http
+	mutated := b.WithTLSDisabled(true)
+
+	test.RunMutation(t, b, mutated)
+}
+
 // TestMdiToDedicatedMutation creates a 1 master + data cluster,
 // then mutates it to 1 dedicated master + 1 dedicated data cluster
 func TestMutationMdiToDedicated(t *testing.T) {

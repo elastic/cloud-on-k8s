@@ -12,6 +12,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
@@ -150,8 +151,6 @@ func calculatePerformableDownscale(
 	downscale ssetDownscale,
 	allLeavingNodes []string,
 ) ssetDownscale {
-	// TODO: only one master node downscale at a time
-
 	// create another downscale based on the provided one, for which we'll slowly decrease target replicas
 	performableDownscale := ssetDownscale{
 		statefulSet:     downscale.statefulSet,
@@ -189,7 +188,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 		return err
 	}
 
-	downscale.statefulSet.Spec.Replicas = &downscale.targetReplicas
+	nodespec.UpdateReplicas(&downscale.statefulSet, &downscale.targetReplicas)
 	if err := downscaleCtx.k8sClient.Update(&downscale.statefulSet); err != nil {
 		return err
 	}

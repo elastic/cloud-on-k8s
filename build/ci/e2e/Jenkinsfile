@@ -12,11 +12,7 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
-        REGISTRY = "eu.gcr.io"
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        CLUSTER_VERSION = '1.12'
-        CLUSTER_NAME = "${BUILD_TAG}"
-        SKIP_DOCKER_COMMAND = "false"
     }
 
     stages {
@@ -33,11 +29,18 @@ pipeline {
             }
             steps {
                 sh """
+                    cat >.env <<EOF
+GCLOUD_PROJECT = "$GCLOUD_PROJECT"
+REGISTRY = eu.gcr.io
+REPOSITORY = "$GCLOUD_PROJECT"
+SKIP_DOCKER_COMMAND = false
+IMG_SUFFIX = -ci
+EOF
                     cat >run-config.yml <<EOF
 id: gke-ci
 overrides:
-  kubernetesVersion: "$CLUSTER_VERSION"
-  clusterName: $CLUSTER_NAME
+  kubernetesVersion: "1.12"
+  clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
@@ -45,7 +48,7 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci ci-e2e
+                    make -C build/ci TARGET=ci-e2e ci
                 """
             }
         }
@@ -66,7 +69,7 @@ EOF
             script {
                 if (notOnlyDocs()) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'GKE_CLUSTER', value: "${CLUSTER_NAME}")],
+                        parameters: [string(name: 'GKE_CLUSTER', value: "${BUILD_TAG}")],
                         wait: false
                 }
             }
@@ -74,7 +77,6 @@ EOF
             cleanWs()
         }
     }
-
 }
 
 def notOnlyDocs() {
