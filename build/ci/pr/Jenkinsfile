@@ -50,7 +50,10 @@ pipeline {
                     }
                     steps {
                         createKindConfig()
-                        sh 'make -C build/ci TARGET=kind-e2e ci'
+                        sh """
+                            make kind-e2e-cluster
+                            make -C build/ci TARGET=kind-e2e-run ci
+                        """
                     }
                 }
             }

@@ -32,10 +32,10 @@ ci-internal: ci-build-image
 	@ docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+		-v ${HOME}/.kube:${HOME}/.kube \
 		-w $(GO_MOUNT_PATH) \
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)"
-
 
 # reads Docker password from Vault,
 # checks if Docker image exists by trying to pull it. If there is no image, then build and push it.
