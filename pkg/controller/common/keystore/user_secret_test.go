@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -341,19 +342,19 @@ func Test_retrieveUserSecrets(t *testing.T) {
 			Namespace: "ns",
 		},
 		Spec: v1alpha1.KibanaSpec{
-			SecureSettings: []corev1.SecretVolumeSource{},
+			SecureSettings: []commonv1alpha1.SecretSource{},
 		},
 	}
 
 	tests := []struct {
 		name    string
-		args    []corev1.SecretVolumeSource
+		args    []commonv1alpha1.SecretSource
 		want    []corev1.Secret
 		wantErr bool
 	}{
 		{
 			name: "secure settings secret with only secret name should be retrieved",
-			args: []corev1.SecretVolumeSource{
+			args: []commonv1alpha1.SecretSource{
 				{
 					SecretName: testSecretName,
 				},
@@ -363,10 +364,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 		{
 			name: "secure settings secret with empty items should fail",
-			args: []corev1.SecretVolumeSource{
+			args: []commonv1alpha1.SecretSource{
 				{
 					SecretName: testSecretName,
-					Items:      []corev1.KeyToPath{},
+					Entries:    []commonv1alpha1.KeyToPath{},
 				},
 			},
 			want:    nil,
@@ -374,10 +375,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 		{
 			name: "secure settings secret with invalid key should fail",
-			args: []corev1.SecretVolumeSource{
+			args: []commonv1alpha1.SecretSource{
 				{
 					SecretName: testSecretName,
-					Items: []corev1.KeyToPath{
+					Entries: []commonv1alpha1.KeyToPath{
 						{Key: "unknown"},
 					},
 				},
@@ -387,10 +388,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 		{
 			name: "secure settings secret with valid key should be retrieved",
-			args: []corev1.SecretVolumeSource{
+			args: []commonv1alpha1.SecretSource{
 				{
 					SecretName: testSecretName,
-					Items: []corev1.KeyToPath{
+					Entries: []commonv1alpha1.KeyToPath{
 						{Key: "key2"},
 					},
 				},
@@ -408,10 +409,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 		{
 			name: "secure settings secret with valid key and path should be retrieved",
-			args: []corev1.SecretVolumeSource{
+			args: []commonv1alpha1.SecretSource{
 				{
 					SecretName: testSecretName,
-					Items: []corev1.KeyToPath{
+					Entries: []commonv1alpha1.KeyToPath{
 						{Key: "key1"},
 						{Key: "key3", Path: "newKey"},
 					},

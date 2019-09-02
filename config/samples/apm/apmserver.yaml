@@ -17,6 +17,6 @@ spec:
 #   - secretName: ref-to-secret
 #   - secretName: another-ref-to-secret
 #     # expose only a subset of the secret keys (optional)
-#     items:
+#     entries:
 #     - key: value1
 #       path: newkey # project a key to a specific path (optional)

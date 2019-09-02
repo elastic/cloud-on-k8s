@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
@@ -140,7 +141,7 @@ func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystor
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc corev1.SecretVolumeSource) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1alpha1.SecretSource) (*corev1.Secret, bool, error) {
 	namespace := hasKeystore.GetNamespace()
 	secretName := secretSrc.SecretName
 
@@ -155,13 +156,13 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 		return nil, false, err
 	}
 
-	// If no items, return the whole user secret
-	if secretSrc.Items == nil {
+	// If no entries, return the whole user secret
+	if secretSrc.Entries == nil {
 		return &userSecret, true, nil
 	}
 
-	if len(secretSrc.Items) == 0 {
-		return nil, false, fmt.Errorf("items is empty in secure settings secret %s", secretName)
+	if len(secretSrc.Entries) == 0 {
+		return nil, false, fmt.Errorf("set is empty in secure settings secret %s", secretName)
 	}
 
 	// Else if items is defined, return only a subset of the user secret
@@ -169,19 +170,19 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 		ObjectMeta: userSecret.ObjectMeta,
 		Data:       map[string][]byte{},
 	}
-	for _, item := range secretSrc.Items {
-		if item.Key == "" {
+	for _, entry := range secretSrc.Entries {
+		if entry.Key == "" {
 			return nil, false, fmt.Errorf("key is empty in secure settings secret %s", secretName)
 		}
 
-		newKey := item.Path
+		newKey := entry.Path
 		if newKey == "" {
-			newKey = item.Key
+			newKey = entry.Key
 		}
 
-		value, ok := userSecret.Data[item.Key]
+		value, ok := userSecret.Data[entry.Key]
 		if !ok {
-			return nil, false, fmt.Errorf("key %s not found in secure settings secret %s", item.Key, secretName)
+			return nil, false, fmt.Errorf("key %s not found in secure settings secret %s", entry.Key, secretName)
 		}
 
 		projectionSecret.Data[newKey] = value
@@ -205,7 +206,7 @@ func secureSettingsWatchName(namespacedName types.NamespacedName) string {
 // Only one watch per cluster is registered:
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
-func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []corev1.SecretVolumeSource, nn types.NamespacedName) error {
+func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1alpha1.SecretSource, nn types.NamespacedName) error {
 	watchName := secureSettingsWatchName(nn)
 	if secureSettingsRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)

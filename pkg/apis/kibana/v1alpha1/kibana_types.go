@@ -51,10 +51,10 @@ type KibanaSpec struct {
 	// into Kibana keystore on each node.
 	// Each individual key/value entry in the referenced secrets is considered as an
 	// individual secure setting to be injected.
-	// You can use the `items` and `key` fields to consider only a subset of the secret
+	// You can use the `entries` and `key` fields to consider only a subset of the secret
 	// entries and the `path` field to change the target path of a secret entry key.
 	// The secret must exist in the same namespace as the Kibana resource.
-	SecureSettings []corev1.SecretVolumeSource `json:"secureSettings,omitempty"`
+	SecureSettings []commonv1alpha1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 // BackendElasticsearch contains configuration for an Elasticsearch backend for Kibana
@@ -109,7 +109,7 @@ func (k *Kibana) ElasticsearchRef() commonv1alpha1.ObjectSelector {
 	return k.Spec.ElasticsearchRef
 }
 
-func (k *Kibana) SecureSettings() []corev1.SecretVolumeSource {
+func (k *Kibana) SecureSettings() []commonv1alpha1.SecretSource {
 	return k.Spec.SecureSettings
 }
 

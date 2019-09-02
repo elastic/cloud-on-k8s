@@ -49,10 +49,10 @@ type ElasticsearchSpec struct {
 	// into Elasticsearch keystore on each node.
 	// Each individual key/value entry in the referenced secrets is considered as an
 	// individual secure setting to be injected.
-	// You can use the `items` and `key` fields to consider only a subset of the secret
+	// You can use the `entries` and `key` fields to consider only a subset of the secret
 	// entries and the `path` field to change the target path of a secret entry key.
 	// The secret must exist in the same namespace as the Elasticsearch resource.
-	SecureSettings []corev1.SecretVolumeSource `json:"secureSettings,omitempty"`
+	SecureSettings []commonv1alpha1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -259,7 +259,7 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 	return !e.DeletionTimestamp.IsZero()
 }
 
-func (e Elasticsearch) SecureSettings() []corev1.SecretVolumeSource {
+func (e Elasticsearch) SecureSettings() []commonv1alpha1.SecretSource {
 	return e.Spec.SecureSettings
 }
 

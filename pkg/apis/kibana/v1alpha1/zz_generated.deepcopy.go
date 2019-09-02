@@ -9,7 +9,7 @@
 package v1alpha1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -105,7 +105,7 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
-		*out = make([]v1.SecretVolumeSource, len(*in))
+		*out = make([]commonv1alpha1.SecretSource, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

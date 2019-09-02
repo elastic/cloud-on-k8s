@@ -118,3 +118,29 @@ type PodDisruptionBudgetTemplate struct {
 	// +optional
 	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
 }
+
+type SecretSource struct {
+	// Name of the secret in the pod's namespace to use.
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
+	SecretName string `json:"secretName"`
+	// If unspecified, each key-value pair in the Data field of the referenced
+	// Secret will be projected into the volume as a file whose name is the
+	// key and content is the value. If specified, the listed keys will be
+	// projected into the specified paths, and unlisted keys will not be
+	// present.
+	// +optional
+	Entries []KeyToPath `json:"entries,omitempty"`
+}
+
+// Maps a string key to a path within a volume.
+type KeyToPath struct {
+	// The key to project.
+	Key string `json:"key"`
+
+	// The relative path of the file to map the key to.
+	// May not be an absolute path.
+	// May not contain the path element '..'.
+	// May not start with the string '..'.
+	// +optional
+	Path string `json:"path,omitempty"`
+}
