@@ -28,9 +28,6 @@ scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 function check_kind() {
   echo "Check if Kind is installed..."
   echo $PATH
-  cd /usr/local/bin
-  ls -an
-  which kind
   if ! kind --help > /dev/null; then
     echo "Looks like Kind is not installed."
     exit 1
