@@ -49,6 +49,7 @@ pipeline {
                         label 'eck'
                     }
                     steps {
+                        sh 'kind create cluster'
                         createKindConfig()
                         sh """
                             make -C build/ci TARGET=dep-vendor-only ci
