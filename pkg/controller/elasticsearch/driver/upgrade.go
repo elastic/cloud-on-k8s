@@ -23,12 +23,10 @@ import (
 
 func (d *defaultDriver) handleRollingUpgrades(
 	esClient esclient.Client,
+	esState ESState,
 	statefulSets sset.StatefulSetList,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
-
-	// We need an up-to-date ES state, but avoid requesting information we may not need.
-	esState := NewMemoizingESState(esClient)
 
 	// Maybe upgrade some of the nodes.
 	res := newRollingUpgrade(d, esClient, esState, statefulSets).run()
@@ -280,11 +278,11 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	}
 
 	// Make sure all pods scheduled for upgrade have been upgraded.
-	scheduledUpgradesDone, err := sset.ScheduledUpgradesDone(d.Client, statefulSets)
+	done, err := statefulSets.PodReconciliationDone(d.Client)
 	if err != nil {
 		return results.WithError(err)
 	}
-	if !scheduledUpgradesDone {
+	if !done {
 		log.V(1).Info(
 			"Rolling upgrade not over yet, some pods don't have the updated revision, keeping shard allocations disabled",
 			"namespace", d.ES.Namespace,

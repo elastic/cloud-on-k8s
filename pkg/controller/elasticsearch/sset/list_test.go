@@ -14,8 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -91,41 +89,7 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 }
 
 func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
-	es := v1alpha1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"},
-	}
-	statefulSet1 := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset1"},
-		Spec: appsv1.StatefulSetSpec{
-			Replicas: common.Int32(2),
-		},
-	}
-	statefulSet2 := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "sset2"},
-		Spec: appsv1.StatefulSetSpec{
-			Replicas: common.Int32(1),
-		},
-	}
-	sset1Pod0 := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: "sset1-0", Labels: map[string]string{
-			label.ClusterNameLabelName: es.Name,
-		}},
-	}
-	sset1Pod1 := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: "sset1-1", Labels: map[string]string{
-			label.ClusterNameLabelName: es.Name,
-		}},
-	}
-	sset1Pod2 := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: "sset1-2", Labels: map[string]string{
-			label.ClusterNameLabelName: es.Name,
-		}},
-	}
-	sset2Pod0 := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Namespace: es.Namespace, Name: "sset2-0", Labels: map[string]string{
-			label.ClusterNameLabelName: es.Name,
-		}},
-	}
+	// more detailed cases covered in PodReconciliationDoneForSset(), called by the function we test here
 	tests := []struct {
 		name string
 		l    StatefulSetList
@@ -141,37 +105,43 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 		{
 			name: "some pods, no sset",
 			l:    nil,
-			c:    k8s.WrapClient(fake.NewFakeClient(&sset1Pod0)),
-			want: false,
+			c: k8s.WrapClient(fake.NewFakeClient(
+				TestPod{Namespace: "ns", Name: "sset-0", StatefulSetName: "sset", Revision: "current-rev"}.BuildPtr(),
+			)),
+			want: true,
 		},
 		{
 			name: "some statefulSets, no pod",
-			l:    StatefulSetList{statefulSet1, statefulSet2},
-			c:    k8s.WrapClient(fake.NewFakeClient(&statefulSet1, &statefulSet2)),
+			l:    StatefulSetList{TestSset{Name: "sset1", Replicas: 3}.Build()},
+			c:    k8s.WrapClient(fake.NewFakeClient(TestSset{Name: "sset1", Replicas: 3}.BuildPtr())),
 			want: false,
 		},
 		{
-			name: "missing sset1Pod1",
-			l:    StatefulSetList{statefulSet1, statefulSet2},
-			c:    k8s.WrapClient(fake.NewFakeClient(&statefulSet1, &statefulSet2, &sset1Pod0, &sset2Pod0)),
-			want: false,
-		},
-		{
-			name: "additional pod sset1Pod2 that shouldn't be there",
-			l:    StatefulSetList{statefulSet1, statefulSet2},
-			c:    k8s.WrapClient(fake.NewFakeClient(&statefulSet1, &statefulSet2, &sset1Pod0, &sset1Pod1, &sset1Pod2, &sset2Pod0)),
-			want: false,
-		},
-		{
-			name: "pods match sset spec",
-			l:    StatefulSetList{statefulSet1, statefulSet2},
-			c:    k8s.WrapClient(fake.NewFakeClient(&statefulSet1, &statefulSet2, &sset1Pod0, &sset1Pod1, &sset2Pod0)),
+			name: "sset has its pods",
+			l: StatefulSetList{
+				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
+			},
+			c: k8s.WrapClient(fake.NewFakeClient(
+				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
+				TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
+			)),
 			want: true,
 		},
+		{
+			name: "sset is missing a pod",
+			l: StatefulSetList{
+				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
+			},
+			c: k8s.WrapClient(fake.NewFakeClient(
+				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
+			)),
+			want: false,
+		},
+		// TODO: test more than one StatefulSet once https://github.com/kubernetes-sigs/controller-runtime/pull/311 is available
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.l.PodReconciliationDone(tt.c, es)
+			got, err := tt.l.PodReconciliationDone(tt.c)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
