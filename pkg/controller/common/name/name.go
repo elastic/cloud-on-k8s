@@ -67,9 +67,7 @@ func (n Namer) WithDefaultSuffixes(defaultSuffixes ...string) Namer {
 	return n
 }
 
-// Suffix a resource name.
-//
-// Panics if the suffix exceeds the suffix limits.
+// Suffix generates a resource name by appending the specified suffixes.
 func (n Namer) Suffix(ownerName string, suffixes ...string) string {
 	suffixedName, err := n.SafeSuffix(ownerName, suffixes...)
 	if err != nil {
@@ -102,7 +100,7 @@ func (n Namer) SafeSuffix(ownerName string, suffixes ...string) (string, error) 
 		suffix = truncate(suffix, n.MaxSuffixLength)
 	}
 
-	maxPrefixLength := validation.LabelValueMaxLength - len(suffix)
+	maxPrefixLength := validation.DNS1123SubdomainMaxLength - len(suffix)
 	if len(ownerName) > maxPrefixLength {
 		err = multierror.Append(err, newNameLengthError("owner name exceeds max length", maxPrefixLength, ownerName))
 		ownerName = truncate(ownerName, maxPrefixLength)

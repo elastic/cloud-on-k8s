@@ -79,7 +79,6 @@ func Validate(es v1alpha1.Elasticsearch) error {
 	}
 
 	// validate other suffixes
-	// it would be better to use the actual naming functions here but they panic on error
 	for _, suffix := range suffixes {
 		if _, err := ESNamer.SafeSuffix(esName, suffix); err != nil {
 			return err

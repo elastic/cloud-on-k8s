@@ -69,8 +69,7 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 type NodeSpec struct {
 	// Name is a logical name for this set of nodes. Used as a part of the managed Elasticsearch node.name setting.
 	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+
-	// +kubebuilder:validation:MaxLength=19
-	// TODO: refactor and explain name length conventions
+	// +kubebuilder:validation:MaxLength=23
 	Name string `json:"name"`
 
 	// Config represents Elasticsearch configuration.
