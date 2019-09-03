@@ -24,6 +24,7 @@ func TestNamer_WithDefaultSuffixes(t *testing.T) {
 			name: "should replace suffixes",
 			namer: Namer{
 				MaxSuffixLength: 27,
+				MaxNameLength:   36,
 				DefaultSuffixes: []string{"foo"},
 			},
 			args: args{
@@ -36,6 +37,7 @@ func TestNamer_WithDefaultSuffixes(t *testing.T) {
 		{
 			name: "should add suffixes when there is no suffix to begin with",
 			namer: Namer{
+				MaxNameLength:   36,
 				MaxSuffixLength: 27,
 			},
 			args: args{
@@ -68,6 +70,7 @@ func TestNamer_Suffix(t *testing.T) {
 		{
 			name: "simple suffix",
 			namer: Namer{
+				MaxNameLength:   36,
 				MaxSuffixLength: 20,
 			},
 			args: args{ownerName: "foo", suffixes: []string{"bar"}},
@@ -76,6 +79,7 @@ func TestNamer_Suffix(t *testing.T) {
 		{
 			name: "multiple suffixes",
 			namer: Namer{
+				MaxNameLength:   36,
 				MaxSuffixLength: 20,
 			},
 			args: args{ownerName: "foo", suffixes: []string{"bar", "baz"}},
@@ -84,6 +88,7 @@ func TestNamer_Suffix(t *testing.T) {
 		{
 			name: "default suffix",
 			namer: Namer{
+				MaxNameLength:   36,
 				MaxSuffixLength: 20,
 				DefaultSuffixes: []string{"default"},
 			},
@@ -110,14 +115,14 @@ func TestNamerSafeSuffixErrors(t *testing.T) {
 	}{
 		{
 			name:      "long owner name",
-			namer:     Namer{MaxSuffixLength: 20, DefaultSuffixes: []string{"es"}},
+			namer:     Namer{MaxSuffixLength: 20, MaxNameLength: 36, DefaultSuffixes: []string{"es"}},
 			ownerName: "extremely-long-and-unwieldy-name-for-owner-that-exceeds-the-limit",
 			suffixes:  []string{"bar", "baz"},
-			wantName:  "extremely-long-and-unwieldy-name-for-owner-that-exce-es-bar-baz",
+			wantName:  "extremely-long-and-unwiel-es-bar-baz",
 		},
 		{
 			name:      "long suffixes",
-			namer:     Namer{MaxSuffixLength: 20, DefaultSuffixes: []string{"es"}},
+			namer:     Namer{MaxSuffixLength: 20, MaxNameLength: 36, DefaultSuffixes: []string{"es"}},
 			ownerName: "test",
 			suffixes:  []string{"bar", "baz", "very-long-suffix-exceeding-the-limit"},
 			wantName:  "test-es-bar-baz-very-lon",

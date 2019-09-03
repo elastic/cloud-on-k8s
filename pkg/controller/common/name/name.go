@@ -49,10 +49,8 @@ func (nle nameLengthError) Error() string {
 // Namer assists with constructing names for K8s resources and avoiding collisions by ensuring that certain suffixes
 // are always used, and prevents the use of too long suffixes.
 type Namer struct {
-	// MaxSuffixLength is the maximum allowable length of a suffix.
 	MaxSuffixLength int
-
-	// DefaultSuffixes are suffixes that should be added by default before the provided suffixes when Suffix is called.
+	MaxNameLength   int
 	DefaultSuffixes []string
 }
 
@@ -60,6 +58,7 @@ type Namer struct {
 func NewNamer(defaultSuffixes ...string) Namer {
 	return Namer{
 		MaxSuffixLength: MaxSuffixLength,
+		MaxNameLength:   validation.DNS1123SubdomainMaxLength,
 		DefaultSuffixes: defaultSuffixes,
 	}
 }
@@ -103,7 +102,7 @@ func (n Namer) SafeSuffix(ownerName string, suffixes ...string) (string, error) 
 		suffix = truncate(suffix, n.MaxSuffixLength)
 	}
 
-	maxPrefixLength := validation.DNS1123SubdomainMaxLength - len(suffix)
+	maxPrefixLength := n.MaxNameLength - len(suffix)
 	if len(ownerName) > maxPrefixLength {
 		err = multierror.Append(err, newNameLengthError("owner name exceeds max length", maxPrefixLength, ownerName))
 		ownerName = truncate(ownerName, maxPrefixLength)
