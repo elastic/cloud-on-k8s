@@ -150,6 +150,23 @@ func (cs ClusterState) GetShards() []Shard {
 	return result
 }
 
+// GetShardsByNode returns shards by node.
+func (cs ClusterState) GetShardsByNode() map[string][]Shard {
+	result := make(map[string][]Shard)
+	for _, index := range cs.RoutingTable.Indices {
+		for _, shards := range index.Shards {
+			for _, shard := range shards {
+				if len(shard.Node) == 0 {
+					continue
+				}
+				shard.Node = cs.Nodes[shard.Node].Name
+				result[shard.Node] = append(result[shard.Node], shard)
+			}
+		}
+	}
+	return result
+}
+
 // MasterNodeName is the name of the current master node in the Elasticsearch cluster.
 func (cs ClusterState) MasterNodeName() string {
 	return cs.Nodes[cs.MasterNode].Name

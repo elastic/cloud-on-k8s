@@ -6,6 +6,11 @@ package driver
 
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (d *defaultDriver) expectationsMet(actualStatefulSets sset.StatefulSetList) (bool, error) {
@@ -32,5 +37,25 @@ func (d *defaultDriver) expectationsMet(actualStatefulSets sset.StatefulSetList)
 		// wrong assumptions (especially on master-eligible and ES version mismatches).
 		return false, nil
 	}
-	return true, nil
+
+	// The last step here is to check if some Pods are being deleted.
+	// We should wait for them to be recreated after a rolling upgrade.
+	return d.Expectations.SatisfiedDeletions(k8s.ExtractNamespacedName(&d.ES), d)
+}
+
+func (d *defaultDriver) CanRemoveExpectation(meta metav1.ObjectMeta) (bool, error) {
+	key := types.NamespacedName{
+		Namespace: meta.Namespace,
+		Name:      meta.Name,
+	}
+	// Try to get the Pod
+	var currentPod corev1.Pod
+	err := d.Client.Get(key, &currentPod)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	return currentPod.UID != meta.UID, nil
 }

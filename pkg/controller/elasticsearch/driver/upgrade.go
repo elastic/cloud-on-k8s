@@ -7,46 +7,89 @@ package driver
 import (
 	"context"
 
-	appsv1 "k8s.io/api/apps/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func (d *defaultDriver) handleRollingUpgrades(
 	esClient esclient.Client,
 	esState ESState,
 	statefulSets sset.StatefulSetList,
+	expectedMaster []string,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
+	// We need to check that all the expectations are met before continuing.
+	// This is to be sure that none of the previous steps has changed the state and
+	// that we are not running with a stale cache.
+	ok, err := d.expectationsMet(statefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !ok {
+		return results.WithResult(defaultRequeue)
+	}
+
+	// Get the healthy Pods (from a K8S point of view + in the ES cluster)
+	healthyPods, err := healthyPods(d.Client, statefulSets, esState)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// Get the pods to upgrade
+	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	// Maybe upgrade some of the nodes.
-	res := newRollingUpgrade(d, esClient, esState, statefulSets).run()
-	results.WithResults(res)
+	deletedPods, err := newRollingUpgrade(
+		d,
+		esClient,
+		esState,
+		statefulSets,
+		d.Expectations,
+		expectedMaster,
+		podsToUpgrade,
+		healthyPods,
+	).run()
+	if err != nil {
+		return results.WithError(err)
+	}
+	if len(deletedPods) > 0 {
+		// Some Pods have just been deleted, we don't need to try to enable shards allocation.
+		return results.WithResult(defaultRequeue)
+	}
+	if len(podsToUpgrade) > len(deletedPods) {
+		// Some Pods have not been update, ensure that we retry later
+		results.WithResult(defaultRequeue)
+	}
 
 	// Maybe re-enable shards allocation if upgraded nodes are back into the cluster.
-	res = d.MaybeEnableShardsAllocation(esClient, esState, statefulSets)
+	res := d.MaybeEnableShardsAllocation(esClient, esState, statefulSets)
 	results.WithResults(res)
 
 	return results
 }
 
 type rollingUpgradeCtx struct {
-	client         k8s.Client
-	ES             v1alpha1.Elasticsearch
-	statefulSets   sset.StatefulSetList
-	esClient       esclient.Client
-	esState        ESState
-	podUpgradeDone func(k8s.Client, ESState, types.NamespacedName, string) (bool, error)
-	upgrader       func(statefulSet *appsv1.StatefulSet, newPartition int32) error
+	client          k8s.Client
+	ES              v1alpha1.Elasticsearch
+	statefulSets    sset.StatefulSetList
+	esClient        esclient.Client
+	esState         ESState
+	expectations    *expectations.Expectations
+	expectedMasters []string
+	podUpgradeDone  func(pod corev1.Pod, expectedRevision string) (bool, error)
+	podsToUpgrade   []corev1.Pod
+	healthyPods     map[string]corev1.Pod
 }
 
 func newRollingUpgrade(
@@ -54,124 +97,109 @@ func newRollingUpgrade(
 	esClient esclient.Client,
 	esState ESState,
 	statefulSets sset.StatefulSetList,
+	expectations *expectations.Expectations,
+	expectedMaster []string,
+	podsToUpgrade []corev1.Pod,
+	healthyPods map[string]corev1.Pod,
 ) rollingUpgradeCtx {
 	return rollingUpgradeCtx{
-		client:         d.Client,
-		ES:             d.ES,
-		statefulSets:   statefulSets,
-		esClient:       esClient,
-		esState:        esState,
-		podUpgradeDone: podUpgradeDone,
-		upgrader:       d.upgradeStatefulSetPartition,
+		client:          d.Client,
+		ES:              d.ES,
+		statefulSets:    statefulSets,
+		esClient:        esClient,
+		esState:         esState,
+		expectations:    expectations,
+		podUpgradeDone:  podUpgradeDone,
+		expectedMasters: expectedMaster,
+		podsToUpgrade:   podsToUpgrade,
+		healthyPods:     healthyPods,
 	}
 }
 
-func (ctx rollingUpgradeCtx) run() *reconciler.Results {
-	results := &reconciler.Results{}
+func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
+	deletionDriver := NewDeletionDriver(
+		ctx.client,
+		ctx.esClient,
+		&ctx.ES,
+		ctx.statefulSets,
+		ctx.esState,
+		ctx.expectedMasters,
+		ctx.healthyPods,
+		ctx.podsToUpgrade,
+		ctx.expectations,
+	)
+	deletedPods, err := deletionDriver.Delete(ctx.podsToUpgrade)
+	if errors.IsConflict(err) || errors.IsNotFound(err) {
+		// Cache is not up to date or Pod has been deleted by someone else
+		// (could be the statefulset controller)
+		// TODO: should we at least log this one in debug mode ?
+		return deletedPods, nil
+	}
+	if err != nil {
+		return deletedPods, err
+	}
+	return deletedPods, nil
+}
 
-	// TODO: deal with multiple restarts at once, taking the changeBudget into account.
-	//  We'd need to stop checking cluster health and do something smarter, since cluster health green check
-	//  should be done **in between** restarts to make sense, which is pretty hard to do since we don't
-	//  trigger restarts but just allow the sset controller to do it at its own pace.
-	//  Instead of green health, we could look at shards status, taking into account nodes
-	//  we scheduled for a restart (maybe not restarted yet).
+func healthyPods(
+	client k8s.Client,
+	statefulSets sset.StatefulSetList,
+	esState ESState,
+) (map[string]corev1.Pod, error) {
+	healthyPods := make(map[string]corev1.Pod)
+	currentPods, err := statefulSets.GetActualPods(client)
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range currentPods {
+		if !pod.DeletionTimestamp.IsZero() || !k8s.IsPodReady(pod) {
+			continue
+		}
+		// has the node joined the cluster yet?
+		inCluster, err := esState.NodesInCluster([]string{pod.Name})
+		if err != nil {
+			return nil, err
+		}
+		if inCluster {
+			healthyPods[pod.Name] = pod
+		}
+	}
+	return healthyPods, nil
+}
 
-	maxConcurrentUpgrades := 1
-	scheduledUpgrades := 0
-
-	// Only update 1 master node at a time, for safety and zen settings convenience.
-	// This can slow down the upgrade, but the number of master nodes should be small anyway.
-	maxMasterNodeUpgrades := 1
-	scheduledMasterNodeUpgrades := 0
-
-	for _, statefulSet := range ctx.statefulSets.ToUpdate() {
-		// Inspect each pod, starting from the highest ordinal, and decrement the partition to allow
+func podsToUpgrade(
+	client k8s.Client,
+	statefulSets sset.StatefulSetList,
+) ([]corev1.Pod, error) {
+	var toBeDeletedPods []corev1.Pod
+	toUpdate := statefulSets.ToUpdate()
+	for _, statefulSet := range toUpdate {
+		// Inspect each pod, starting from the highest ordinal, and decrement the idx to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
-		for partition := sset.GetPartition(statefulSet); partition >= 0; partition-- {
-			if partition >= sset.GetReplicas(statefulSet) {
-				continue
-			}
-			if scheduledUpgrades >= maxConcurrentUpgrades {
-				return results.WithResult(defaultRequeue)
-			}
-			if label.IsMasterNodeSet(statefulSet) && scheduledMasterNodeUpgrades >= maxMasterNodeUpgrades {
-				return results.WithResult(defaultRequeue)
-			}
-
+		for idx := sset.GetReplicas(statefulSet) - 1; idx >= 0; idx-- {
 			// Do we need to upgrade that pod?
-			podName := sset.PodName(statefulSet.Name, partition)
+			podName := sset.PodName(statefulSet.Name, idx)
 			podRef := types.NamespacedName{Namespace: statefulSet.Namespace, Name: podName}
-			alreadyUpgraded, err := ctx.podUpgradeDone(ctx.client, ctx.esState, podRef, statefulSet.Status.UpdateRevision)
-			if err != nil {
-				return results.WithError(err)
+			// retrieve pod to inspect its revision label
+			var pod corev1.Pod
+			err := client.Get(podRef, &pod)
+			if err != nil && !errors.IsNotFound(err) {
+				return toBeDeletedPods, err
 			}
-			if alreadyUpgraded {
+			if errors.IsNotFound(err) {
+				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
 				continue
 			}
-
-			// An upgrade is required for that pod.
-			scheduledUpgrades++
-
-			// Is the pod upgrade already scheduled?
-			if partition == sset.GetPartition(statefulSet) {
-				continue
-			}
-
-			// Is the cluster ready for the node upgrade?
-			clusterReady, err := clusterReadyForNodeRestart(ctx.ES, ctx.esState)
+			alreadyUpgraded, err := podUpgradeDone(pod, statefulSet.Status.UpdateRevision)
 			if err != nil {
-				return results.WithError(err)
+				return toBeDeletedPods, err
 			}
-			if !clusterReady {
-				// retry later
-				return results.WithResult(defaultRequeue)
-			}
-
-			log.Info("Preparing cluster for node restart", "namespace", ctx.ES.Namespace, "es_name", ctx.ES.Name)
-			if err := prepareClusterForNodeRestart(ctx.esClient, ctx.esState); err != nil {
-				return results.WithError(err)
-			}
-
-			if label.IsMasterNodeSet(statefulSet) {
-				scheduledMasterNodeUpgrades++
-				// TODO if the node is a master:
-				//  - zen1: update minimum_master_node to account for master node deletion. Otherwise upgrading a 2-masters
-				//   cluster provokes downtime since m_m_n=2.
-				//   Problem: how to prevent this to be reverted at the next reconciliation, before the pod gets deleted?
-				//  - zen2: set voting config exclusions: same problem, this is not easy. But since we only delete
-				//   one master at a time, maybe it's not required?
-			}
-
-			// Upgrade the pod.
-			if err := ctx.upgrader(&statefulSet, partition); err != nil {
-				return results.WithError(err)
+			if !alreadyUpgraded {
+				toBeDeletedPods = append(toBeDeletedPods, pod)
 			}
 		}
 	}
-	return results
-}
-
-func (d *defaultDriver) upgradeStatefulSetPartition(
-	statefulSet *appsv1.StatefulSet,
-	newPartition int32,
-) error {
-	// Node can be removed, update the StatefulSet rollingUpdate.Partition ordinal.
-	log.Info("Updating rollingUpdate.Partition",
-		"namespace", statefulSet.Namespace,
-		"name", statefulSet.Name,
-		"from", statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition,
-		"to", &newPartition,
-	)
-
-	nodespec.UpdatePartition(statefulSet, &newPartition)
-	if err := d.Client.Update(statefulSet); err != nil {
-		return err
-	}
-
-	// Register the updated sset generation to deal with out-of-date sset cache.
-	d.Expectations.ExpectGeneration(statefulSet.ObjectMeta)
-
-	return nil
+	return toBeDeletedPods, nil
 }
 
 func prepareClusterForNodeRestart(esClient esclient.Client, esState ESState) error {
@@ -216,37 +244,14 @@ func clusterReadyForNodeRestart(es v1alpha1.Elasticsearch, esState ESState) (boo
 }
 
 // podUpgradeDone inspects the given pod and returns true if it was successfully upgraded.
-func podUpgradeDone(c k8s.Client, esState ESState, podRef types.NamespacedName, expectedRevision string) (bool, error) {
+func podUpgradeDone(pod corev1.Pod, expectedRevision string) (bool, error) {
 	if expectedRevision == "" {
 		// no upgrade scheduled for the sset
-		return false, nil
-	}
-	// retrieve pod to inspect its revision label
-	var pod corev1.Pod
-	err := c.Get(podRef, &pod)
-	if err != nil && !errors.IsNotFound(err) {
-		return false, err
-	}
-	if errors.IsNotFound(err) || !pod.DeletionTimestamp.IsZero() {
-		// pod is terminating
 		return false, nil
 	}
 	if sset.PodRevision(pod) != expectedRevision {
 		// pod revision does not match the sset upgrade revision
 		return false, nil
-	}
-	// is the pod ready?
-	if !k8s.IsPodReady(pod) {
-		return false, nil
-	}
-	// has the node joined the cluster yet?
-	inCluster, err := esState.NodesInCluster([]string{podRef.Name})
-	if err != nil {
-		return false, err
-	}
-	if !inCluster {
-		log.V(1).Info("Node has not joined the cluster yet", "namespace", podRef.Namespace, "name", podRef.Name)
-		return false, err
 	}
 	return true, nil
 }
@@ -285,6 +290,20 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	if !done {
 		log.V(1).Info(
 			"Rolling upgrade not over yet, some pods don't have the updated revision, keeping shard allocations disabled",
+			"namespace", d.ES.Namespace,
+			"es_name", d.ES.Name,
+		)
+		return results.WithResult(defaultRequeue)
+	}
+
+	// Check if we have some deletions in progress
+	satisfiedDeletion, err := d.Expectations.SatisfiedDeletions(k8s.ExtractNamespacedName(&d.ES), d)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !satisfiedDeletion {
+		log.V(1).Info(
+			"Rolling upgrade not over yet, still waiting for some Pods to be deleted, keeping shard allocations disabled",
 			"namespace", d.ES.Namespace,
 			"es_name", d.ES.Name,
 		)
