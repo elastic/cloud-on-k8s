@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	v1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -52,7 +53,6 @@ func removeUUIDAnnotation(client k8s.Client, elasticsearch *v1alpha1.Elasticsear
 	annotatations := elasticsearch.Annotations
 	if annotatations == nil {
 		return nil
-
 	}
 	delete(elasticsearch.Annotations, ClusterUUIDAnnotationName)
 	return client.Update(elasticsearch)
@@ -66,7 +66,11 @@ func clusterNeedsReBootstrap(client k8s.Client, es *v1alpha1.Elasticsearch) (boo
 	if err != nil {
 		return false, err
 	}
-	currentMasters, err := sset.GetActualMastersForCluster(client, *es)
+	var currentMasters []v1.Pod
+	currentMasters, err = sset.GetActualMastersForCluster(client, *es)
+	if err != nil {
+		return false, err
+	}
 	return len(currentMasters) == 1 && initialZen2Upgrade, nil
 }
 
