@@ -62,6 +62,10 @@ func (mc *MasterChangeBudgetCheck) Verify(maxRateOfChange int) error {
 		cur := mc.Observations[i]
 		abs := int(math.Abs(float64(cur - prev)))
 		if abs > maxRateOfChange {
+			// This is ofc potentially flaky if we miss an observation and see suddenly more than one master
+			// node popping up. This is due the fact that this check is depending on timing, the underlying
+			// assumption being that the observation interval is always shorter than the time an Elasticsearch
+			// node needs to boot.
 			return fmt.Errorf("%d master changes in one observation, expected max %d", abs, maxRateOfChange)
 		}
 	}
