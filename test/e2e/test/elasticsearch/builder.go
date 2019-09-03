@@ -159,9 +159,9 @@ func (b Builder) WithNodeSpec(nodeSpec estype.NodeSpec) Builder {
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
-	refs := make([]corev1.SecretVolumeSource, 0, len(secretNames))
+	refs := make([]commonv1alpha1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
-		refs = append(refs, corev1.SecretVolumeSource{SecretName: secretNames[i]})
+		refs = append(refs, commonv1alpha1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Elasticsearch.Spec.SecureSettings = refs
 	return b

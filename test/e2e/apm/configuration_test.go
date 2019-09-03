@@ -112,7 +112,7 @@ func TestUpdateConfiguration(t *testing.T) {
 
 					var apm apmtype.ApmServer
 					require.NoError(t, k.Client.Get(apmNamespacedName, &apm))
-					apm.Spec.SecureSettings = []corev1.SecretVolumeSource{
+					apm.Spec.SecureSettings = []commonv1alpha1.SecretSource{
 						{SecretName: secureSettingsSecretName},
 					}
 					require.NoError(t, k.Client.Update(&apm))
