@@ -16,8 +16,11 @@ import (
 )
 
 const (
+	// MaxResourceNameLength is the max length of a name that will keep all its child resources under the K8S max label
+	// length after accounting for the longest suffix that could be added by the operator. See https://git.io/fjpFl.
 	MaxResourceNameLength = 36
-	MaxSuffixLength       = validation.LabelValueMaxLength - MaxResourceNameLength
+	// MaxSuffixLength is the max allowed suffix length that will keep a name within K8S label length restrictions.
+	MaxSuffixLength = validation.LabelValueMaxLength - MaxResourceNameLength
 )
 
 var log = logf.Log.WithName("name")
