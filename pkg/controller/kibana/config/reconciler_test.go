@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,7 +51,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 				}},
 			},
 			assertions: func(secrets corev1.SecretList) error {
-				assert.Equal(t, 1, len(secrets.Items))
+				require.Equal(t, 1, len(secrets.Items))
 				assert.NotNil(t, secrets.Items[0].Data[SettingsFilename])
 				return nil
 			},
@@ -70,7 +71,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			},
 
 			assertions: func(secrets corev1.SecretList) error {
-				assert.Equal(t, 1, len(secrets.Items))
+				require.Equal(t, 1, len(secrets.Items))
 				assert.NotNil(t, secrets.Items[0].Data[SettingsFilename])
 				return nil
 			},
@@ -92,7 +93,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			},
 
 			assertions: func(secrets corev1.SecretList) error {
-				assert.Equal(t, 1, len(secrets.Items))
+				require.Equal(t, 1, len(secrets.Items))
 				assert.NotNil(t, secrets.Items[0].Data[SettingsFilename])
 				assert.NotEqual(t, "eW8h", secrets.Items[0].Data[SettingsFilename])
 				return nil
