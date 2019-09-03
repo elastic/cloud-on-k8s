@@ -48,13 +48,13 @@ func ReconcileClusterUUID(c k8s.Client, cluster *v1alpha1.Elasticsearch, observe
 	return nil
 }
 
-func removeUUIDAnnotation(client k8s.Client, elasticsearch *v1alpha1.Elasticsearch) error {
-	annotations := elasticsearch.Annotations
+func removeUUIDAnnotation(client k8s.Client, es *v1alpha1.Elasticsearch) error {
+	annotations := es.Annotations
 	if annotations == nil {
 		return nil
 	}
-	delete(elasticsearch.Annotations, ClusterUUIDAnnotationName)
-	return client.Update(elasticsearch)
+	delete(es.Annotations, ClusterUUIDAnnotationName)
+	return client.Update(es)
 }
 
 // clusterNeedsReBootstrap is true if we are updating a single master cluster from 6.x to 7.x
