@@ -7,7 +7,6 @@ package elasticsearch
 import (
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -174,19 +173,13 @@ type ReconcileElasticsearch struct {
 	expectations *reconciler.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration int64
+	iteration uint64
 }
 
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// atomically update the iteration to support concurrent runs.
-	currentIteration := atomic.AddInt64(&r.iteration, 1)
-	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "es_name", request.Name)
-	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_name", request.Name)
-	}()
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// Fetch the Elasticsearch instance
 	es := elasticsearchv1alpha1.Elasticsearch{}
@@ -202,7 +195,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	if common.IsPaused(es.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name, "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return common.PauseRequeue, nil
 	}
 
@@ -288,7 +281,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es elasticsearchv1alpha1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", es.Namespace, "es_name", es.Name)
+	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", es.Namespace, "es_name", es.Name)
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)

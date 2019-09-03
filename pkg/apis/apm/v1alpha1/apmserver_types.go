@@ -36,10 +36,6 @@ type ApmServerSpec struct {
 	// If the namespace is not specified, the current resource namespace will be used.
 	ElasticsearchRef commonv1alpha1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// Elasticsearch configures how the APM server connects to Elasticsearch
-	// +optional
-	Elasticsearch ElasticsearchOutput `json:"elasticsearch,omitempty"`
-
 	// PodTemplate can be used to propagate configuration to APM Server pods.
 	// This allows specifying custom annotations, labels, environment variables,
 	// affinity, resources, etc. for the pods created from this NodeSpec.
@@ -52,19 +48,6 @@ type ApmServerSpec struct {
 	// individual secure setting to be injected.
 	// The secret must exist in the same namespace as the APM resource.
 	SecureSettings []commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
-}
-
-// Elasticsearch contains configuration for the Elasticsearch output
-type ElasticsearchOutput struct {
-
-	// Hosts are the URLs of the output Elasticsearch nodes.
-	Hosts []string `json:"hosts,omitempty"`
-
-	// Auth configures authentication for APM Server to use.
-	Auth commonv1alpha1.ElasticsearchAuth `json:"auth,omitempty"`
-
-	// SSL configures TLS-related configuration for Elasticsearch
-	SSL ElasticsearchOutputSSL `json:"ssl,omitempty"`
 }
 
 // ElasticsearchOutputSSL contains TLS-related configuration for Elasticsearch
@@ -101,11 +84,6 @@ func (as ApmServerStatus) IsDegraded(prev ApmServerStatus) bool {
 	return prev.Health == ApmServerGreen && as.Health != ApmServerGreen
 }
 
-// IsConfigured returns true if the output configuration is populated with non-default values.
-func (e ElasticsearchOutput) IsConfigured() bool {
-	return len(e.Hosts) > 0
-}
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -121,8 +99,9 @@ type ApmServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ApmServerSpec   `json:"spec,omitempty"`
-	Status ApmServerStatus `json:"status,omitempty"`
+	Spec      ApmServerSpec   `json:"spec,omitempty"`
+	Status    ApmServerStatus `json:"status,omitempty"`
+	assocConf *commonv1alpha1.AssociationConf
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -143,10 +122,6 @@ func (as *ApmServer) IsMarkedForDeletion() bool {
 	return !as.DeletionTimestamp.IsZero()
 }
 
-func (as *ApmServer) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
-	return as.Spec.Elasticsearch.Auth
-}
-
 func (as *ApmServer) ElasticsearchRef() commonv1alpha1.ObjectSelector {
 	return as.Spec.ElasticsearchRef
 }
@@ -159,4 +134,12 @@ func (as *ApmServer) SecureSettings() []commonv1alpha1.SecretRef {
 // see https://github.com/kubernetes-sigs/controller-runtime/issues/406
 func (as *ApmServer) Kind() string {
 	return Kind
+}
+
+func (as *ApmServer) AssociationConf() *commonv1alpha1.AssociationConf {
+	return as.assocConf
+}
+
+func (as *ApmServer) SetAssociationConf(assocConf *commonv1alpha1.AssociationConf) {
+	as.assocConf = assocConf
 }

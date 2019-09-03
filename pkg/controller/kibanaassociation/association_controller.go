@@ -6,7 +6,6 @@ package kibanaassociation
 
 import (
 	"reflect"
-	"sync/atomic"
 	"time"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
@@ -106,7 +105,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 var _ reconcile.Reconciler = &ReconcileAssociation{}
 
-// ReconcileAssociation reconciles a Kibana resource for association with Elasticsearch
+// ReconcileAssociation reconciles a Kibana resource for amssociation with Elasticsearch
 type ReconcileAssociation struct {
 	k8s.Client
 	scheme   *runtime.Scheme
@@ -114,37 +113,26 @@ type ReconcileAssociation struct {
 	watches  watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration int64
+	iteration uint64
 }
 
 // Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
 // the Association.Spec
 func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// atomically update the iteration to support concurrent runs.
-	currentIteration := atomic.AddInt64(&r.iteration, 1)
-	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "kibana_name", request.Name)
-	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "kibana_name", request.Name)
-	}()
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
-	// retrieve Kibana resource
 	var kibana kbtype.Kibana
-	err := r.Get(request.NamespacedName, &kibana)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			return reconcile.Result{}, nil
-		}
+	if ok, err := association.FetchWithAssociation(r.Client, request, &kibana); !ok {
 		return reconcile.Result{}, err
 	}
 
 	// register or execute watch finalizers
 	h := finalizer.NewHandler(r)
-	err = h.Handle(
+	kbName := k8s.ExtractNamespacedName(&kibana)
+	err := h.Handle(
 		&kibana,
-		watchFinalizer(k8s.ExtractNamespacedName(&kibana), r.watches),
-		user.UserFinalizer(r.Client, NewUserLabelSelector(k8s.ExtractNamespacedName(&kibana))),
+		watchFinalizer(kbName, r.watches),
+		user.UserFinalizer(r.Client, NewUserLabelSelector(kbName)),
 	)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -162,22 +150,16 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	if common.IsPaused(kibana.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", kibana.Namespace, "kibana_name", kibana.Name, "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		return common.PauseRequeue, nil
 	}
 
-	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kibana.Name}).AsSelector()
-	compat, err := annotation.ReconcileCompatibility(r.Client, &kibana, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventCompatCheckError, "Error during compatibility check: %v", err)
+	compatible, err := r.isCompatible(&kibana)
+	if err != nil || !compatible {
 		return reconcile.Result{}, err
 	}
-	if !compat {
-		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
-		return reconcile.Result{}, nil
-	}
 
-	newStatus, err := r.reconcileInternal(kibana)
+	newStatus, err := r.reconcileInternal(&kibana)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
@@ -213,8 +195,18 @@ func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result 
 	}
 }
 
-func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1alpha1.AssociationStatus, error) {
-	kibanaKey := k8s.ExtractNamespacedName(&kibana)
+func (r *ReconcileAssociation) isCompatible(kibana *kbtype.Kibana) (bool, error) {
+	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kibana.Name}).AsSelector()
+	compat, err := annotation.ReconcileCompatibility(r.Client, kibana, selector, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, kibana, events.EventCompatCheckError, "Error during compatibility check: %v", err)
+	}
+
+	return compat, err
+}
+
+func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv1alpha1.AssociationStatus, error) {
+	kibanaKey := k8s.ExtractNamespacedName(kibana)
 
 	// garbage collect leftover resources that are not required anymore
 	if err := deleteOrphanedResources(r, kibana); err != nil {
@@ -245,7 +237,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationFailed, err
 	}
 
-	userSecretKey := association.UserKey(&kibana, kibanaUserSuffix)
+	userSecretKey := association.UserKey(kibana, kibanaUserSuffix)
 	// watch the user secret in the ES namespace
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(kibanaKey),
@@ -257,20 +249,19 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	var es estype.Elasticsearch
 	if err := r.Get(esRefKey, &es); err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
+		k8s.EmitErrorEvent(r.recorder, err, kibana, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
 		if apierrors.IsNotFound(err) {
 			// ES not found. 2 options:
 			// - not created yet: that's ok, we'll reconcile on creation event
 			// - deleted: existing resources will be garbage collected
 			// in any case, since the user explicitly requested a managed association,
 			// remove connection details if they are set
-			if (kibana.Spec.Elasticsearch != kbtype.BackendElasticsearch{}) {
-				kibana.Spec.Elasticsearch = kbtype.BackendElasticsearch{}
-				log.Info("Removing Elasticsearch configuration from managed association", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
-				if err := r.Update(&kibana); err != nil {
-					return commonv1alpha1.AssociationPending, err
-				}
+			if err := association.RemoveAssociationConf(r.Client, kibana); err != nil {
+				log.Error(err, "Failed to remove Elasticsearch configuration from Kibana object",
+					"namespace", kibana.Namespace, "kibana_name", kibana.Name)
+				return commonv1alpha1.AssociationPending, err
 			}
+
 			return commonv1alpha1.AssociationPending, nil
 		}
 		return commonv1alpha1.AssociationFailed, err
@@ -279,7 +270,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 	if err := association.ReconcileEsUser(
 		r.Client,
 		r.scheme,
-		&kibana,
+		kibana,
 		map[string]string{
 			AssociationLabelName:      kibana.Name,
 			AssociationLabelNamespace: kibana.Namespace,
@@ -295,25 +286,30 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationPending, err
 	}
 
-	// update Kibana resource with ES access details
-	var expectedEsConfig kbtype.BackendElasticsearch
-	expectedEsConfig.CertificateAuthorities.SecretName = caSecretName
-	expectedEsConfig.URL = services.ExternalServiceURL(es)
-	expectedEsConfig.Auth.SecretKeyRef = association.ClearTextSecretKeySelector(&kibana, kibanaUserSuffix)
+	// construct the expected association configuration
+	authSecret := association.ClearTextSecretKeySelector(kibana, kibanaUserSuffix)
+	expectedESAssoc := &commonv1alpha1.AssociationConf{
+		AuthSecretName: authSecret.Name,
+		AuthSecretKey:  authSecret.Key,
+		CASecretName:   caSecretName,
+		URL:            services.ExternalServiceURL(es),
+	}
 
-	if !reflect.DeepEqual(kibana.Spec.Elasticsearch, expectedEsConfig) {
-		kibana.Spec.Elasticsearch = expectedEsConfig
+	// update the association configuration if necessary
+	if !reflect.DeepEqual(expectedESAssoc, kibana.AssociationConf()) {
 		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
-		if err := r.Update(&kibana); err != nil {
+		if err := association.UpdateAssociationConf(r.Client, kibana, expectedESAssoc); err != nil {
+			log.Error(err, "Failed to update association configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 			return commonv1alpha1.AssociationPending, err
 		}
+		kibana.SetAssociationConf(expectedESAssoc)
 	}
 
 	return commonv1alpha1.AssociationEstablished, nil
 }
 
-func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana kbtype.Kibana, es types.NamespacedName) (string, error) {
-	kibanaKey := k8s.ExtractNamespacedName(&kibana)
+func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, es types.NamespacedName) (string, error) {
+	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(kibanaKey),
@@ -328,7 +324,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana kbtype.Kibana, es
 	return association.ReconcileCASecret(
 		r.Client,
 		r.scheme,
-		&kibana,
+		kibana,
 		es,
 		labels,
 		ElasticsearchCASecretSuffix,
@@ -337,7 +333,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana kbtype.Kibana, es
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
 // attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
-func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
+func deleteOrphanedResources(c k8s.Client, kibana *kbtype.Kibana) error {
 	var secrets corev1.SecretList
 	selector := NewResourceSelector(kibana.Name)
 	if err := c.List(&client.ListOptions{LabelSelector: selector, Namespace: kibana.Namespace}, &secrets); err != nil {
@@ -353,7 +349,7 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	}
 
 	for _, s := range secrets.Items {
-		if metav1.IsControlledBy(&s, &kibana) || hasBeenCreatedBy(&s, kibana) {
+		if metav1.IsControlledBy(&s, kibana) || hasBeenCreatedBy(&s, kibana) {
 			if !kibana.Spec.ElasticsearchRef.IsDefined() {
 				// look for association secrets owned by this kibana instance
 				// which should not exist since no ES referenced in the spec
