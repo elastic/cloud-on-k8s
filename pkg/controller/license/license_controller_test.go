@@ -105,6 +105,9 @@ func enterpriseLicense(t *testing.T, licenseType commonlicense.ElasticsearchLice
 	bytes, err := json.Marshal(license)
 	require.NoError(t, err)
 	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: commonlicense.LabelsForType(commonlicense.LicenseLabelEnterprise),
+		},
 		Data: map[string][]byte{
 			commonlicense.FileName: bytes,
 		},
