@@ -309,7 +309,6 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrapClient(fake.NewFakeClientWithScheme(s, tt.initialObjects...))
 			if err := deleteOrphanedResources(c, tt.kibana); (err != nil) != tt.wantErr {
-				// todo sabo i think we're basically testing the behavior of list here -- we may want to check that its instead 0 items returned? need to double check
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

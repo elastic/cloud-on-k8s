@@ -338,8 +338,8 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana kbtype.Kibana, es
 // attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
 func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	var secrets corev1.SecretList
+	ns := client.InNamespace(kibana.Namespace)
 	matchLabels := NewResourceSelector(kibana.Name)
-	ns := client.InNamespace(kibana.Name)
 	if err := c.List(&secrets, ns, matchLabels); err != nil {
 		return err
 	}

@@ -338,11 +338,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 // combinations and deletes them.
 func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 	var secrets corev1.SecretList
-	// TODO sabo fix this
-	// selector := NewResourceSelector(apm.Name)
-	// if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
-	// 	return err
-	// }
 	ns := client.InNamespace(apm.Namespace)
 	matchLabels := client.MatchingLabels(NewResourceLabels(apm.Name))
 	if err := c.List(&secrets, ns, matchLabels); err != nil {

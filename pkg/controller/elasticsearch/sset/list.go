@@ -12,9 +12,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
@@ -26,12 +26,6 @@ type StatefulSetList []appsv1.StatefulSet
 // RetrieveActualStatefulSets returns the list of existing StatefulSets labeled for the given es cluster.
 func RetrieveActualStatefulSets(c k8s.Client, es types.NamespacedName) (StatefulSetList, error) {
 	var ssets appsv1.StatefulSetList
-	// TODO sabo fix this
-	// err := c.List(&client.ListOptions{
-	// 	Namespace:     es.Namespace,
-	// 	LabelSelector: label.NewLabelSelectorForElasticsearchClusterName(es.Name),
-	// }, &ssets)
-
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearchClusterName(es.Name)
 	err := c.List(&ssets, ns, matchLabels)

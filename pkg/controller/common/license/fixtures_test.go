@@ -45,6 +45,8 @@ func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "test-system",
 				Name:      "test-license",
+				// TODO (sabo): is this EnterpriseLicense.Type -> License.Type cast safe?
+				Labels: LabelsForType(LicenseType(l.License.Type)),
 			},
 			Data: map[string][]byte{
 				FileName: bytes,
