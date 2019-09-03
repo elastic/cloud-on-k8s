@@ -16,7 +16,7 @@ func TestVersionUpgrade680To720(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion("7.2.0").
+		WithVersion("7.3.0").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
@@ -28,7 +28,7 @@ func TestVersionUpgradeSingle680To720(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion("7.2.0").
+		WithVersion("7.3.0").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
@@ -40,7 +40,7 @@ func TestVersionUpgradeSingle710To720(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion("7.2.0").
+		WithVersion("7.3.0").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)

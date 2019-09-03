@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	v1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -50,8 +49,8 @@ func ReconcileClusterUUID(c k8s.Client, cluster *v1alpha1.Elasticsearch, observe
 }
 
 func removeUUIDAnnotation(client k8s.Client, elasticsearch *v1alpha1.Elasticsearch) error {
-	annotatations := elasticsearch.Annotations
-	if annotatations == nil {
+	annotations := elasticsearch.Annotations
+	if annotations == nil {
 		return nil
 	}
 	delete(elasticsearch.Annotations, ClusterUUIDAnnotationName)
@@ -66,8 +65,7 @@ func clusterNeedsReBootstrap(client k8s.Client, es *v1alpha1.Elasticsearch) (boo
 	if err != nil {
 		return false, err
 	}
-	var currentMasters []v1.Pod
-	currentMasters, err = sset.GetActualMastersForCluster(client, *es)
+	currentMasters, err := sset.GetActualMastersForCluster(client, *es)
 	if err != nil {
 		return false, err
 	}
