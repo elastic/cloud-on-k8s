@@ -65,6 +65,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-kb-config",
 							Namespace: "test-ns",
+							Labels:    map[string]string{label.KibanaNameLabelName: defaultKibana.Name},
 						},
 						Data: map[string][]byte{},
 					}},
@@ -85,6 +86,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-kb-config",
 							Namespace: "test-ns",
+							Labels:    map[string]string{label.KibanaNameLabelName: defaultKibana.Name},
 						},
 						Data: map[string][]byte{
 							SettingsFilename: []byte("eW8h"),
@@ -112,10 +114,10 @@ func TestReconcileConfigSecret(t *testing.T) {
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList
-			labelSelector := client.MatchingLabels(map[string]string{label.KibanaNameLabelName: defaultKibana.Name})
+			// TODO sabo are there funcs that can generate this, or also generate the labels in the test cases?
+			labelSelector := client.MatchingLabels(map[string]string{label.KibanaNameLabelName: tt.args.kb.Name})
 			err = k8sClient.List(&secrets, labelSelector)
 			assert.NoError(t, err)
-
 			err = tt.assertions(secrets)
 			assert.NoError(t, err)
 		})
