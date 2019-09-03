@@ -133,6 +133,33 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 	RunESMutation(t, b, mutated)
 }
 
+// TestMutationSecondMasterSet add a separate set of dedicated masters
+// to an existing cluster.
+func TestMutationSecondMasterSet(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-mutation-2nd-master-set").
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
+	// add a second master sset
+	mutated := b.WithNoESTopology().
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
+		WithESMasterNodes(3, elasticsearch.DefaultResources)
+
+	RunESMutation(t, b, mutated)
+}
+
+// TestMutationSecondMasterSetDown test a downscale of a separate set of dedicated masters.
+func TestMutationSecondMasterSetDown(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-mutation-2nd-master-set").
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
+		WithESMasterNodes(3, elasticsearch.DefaultResources)
+
+	// scale down to single node
+	mutated := b.WithNoESTopology().
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	RunESMutation(t, b, mutated)
+}
+
 // TestVersionUpgrade680To720 creates a cluster in version 6.8.0,
 // and upgrades it to 7.2.0.
 func TestVersionUpgrade680To720(t *testing.T) {

@@ -38,6 +38,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
+	var masterChangeBudgetCheck *MasterChangeBudgetCheck
 
 	return test.StepList{
 		test.Step{
@@ -56,6 +57,13 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				continuousHealthChecks.Start()
 			},
 		},
+		test.Step{
+			Name: "Start tracking master additions and removals",
+			Test: func(t *testing.T) {
+				masterChangeBudgetCheck = NewMasterChangeBudgetCheck(b.Elasticsearch, 10*time.Second, k.Client)
+				masterChangeBudgetCheck.Start()
+			},
+		},
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
 	}.
 		WithSteps(b.UpgradeTestSteps(k)).
@@ -63,6 +71,13 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
 			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
+			test.Step{
+				Name: "Master change budget must not have been exceeded",
+				Test: func(t *testing.T) {
+					masterChangeBudgetCheck.Stop()
+					require.NoError(t, masterChangeBudgetCheck.Verify(1)) // fixed budget of 1 master node added/removed at a time
+				},
+			},
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
 				Test: func(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -233,6 +234,12 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
+					},
+				},
 				actualStatefulSets: sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
@@ -241,6 +248,12 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "same StatefulSet already exists",
 			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
+					},
+				},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
@@ -249,6 +262,12 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "downscale case",
 			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
+					},
+				},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
@@ -282,14 +301,26 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			},
 			want: sset.TestSset{Name: "sset", Replicas: 4, Partition: 3, Master: true, Data: true}.Build(),
 		},
+		{
+			name: "upscale case: new additional master sset - one by one",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2, Master: true, Data: true}.Build()},
+				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
+			},
+			want: sset.TestSset{Name: "sset-2", Replicas: 1, Partition: 0, Master: true, Data: true}.Build(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := adjustStatefulSetReplicas(tt.args.ctx, tt.args.actualStatefulSets, tt.args.expected)
 			require.NoError(t, err)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("adjustStatefulSetReplicas() got = %v, want %v", got, tt.want)
-			}
+			require.Nil(t, deep.Equal(got, tt.want))
 		})
 	}
 }
