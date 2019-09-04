@@ -5,8 +5,6 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -15,69 +13,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// DeletionDriver is a controller that given a context uses a plugable strategy
-// to determine which Pods can be safely deleted.
-type DeletionDriver interface {
-	// Delete goes thought the candidates and actually deletes the ones
-	Delete(candidates []*corev1.Pod) (deletedPods []*corev1.Pod, err error)
-}
-
-// DefaultDeletionDriver is the default deletion driver.
-type DefaultDeletionDriver struct {
-	client       k8s.Client
-	esClient     esclient.Client
-	es           *v1alpha1.Elasticsearch
-	statefulSets sset.StatefulSetList
-	state        ESState
-	healthyPods  map[string]corev1.Pod
-	strategy     DeletionStrategy
-	expectations *expectations.Expectations
-}
-
-// NewDeletionDriver creates a new default deletion driver.
-func NewDeletionDriver(
-	client k8s.Client,
-	esClient esclient.Client,
-	es *v1alpha1.Elasticsearch,
-	statefulSets sset.StatefulSetList,
-	state ESState,
-	masterNodesNames []string,
-	healthyPods map[string]corev1.Pod,
-	podsToUpgrade []corev1.Pod,
-	expectations *expectations.Expectations,
-) *DefaultDeletionDriver {
-	return &DefaultDeletionDriver{
-		client:       client,
-		esClient:     esClient,
-		es:           es,
-		statefulSets: statefulSets,
-		state:        state,
-		healthyPods:  healthyPods,
-		expectations: expectations,
-		strategy:     NewDefaultDeletionStrategy(state, healthyPods, podsToUpgrade, masterNodesNames),
-	}
-}
-
 // Delete runs through a list of potential candidates and select the ones that can be deleted.
 // Do not run this function unless driver expectations are met.
-func (d *DefaultDeletionDriver) Delete(candidates []corev1.Pod) (deletedPods []corev1.Pod, err error) {
+func (ctx *rollingUpgradeCtx) Delete() (deletedPods []corev1.Pod, err error) {
+	candidates := ctx.podsToUpgrade
 	if len(candidates) == 0 {
 		return deletedPods, nil
 	}
-	es := k8s.ExtractNamespacedName(d.es)
 
 	// Check if we are not over disruption budget
 	// Upscale is done, we should have the required number of Pods
-	statefulSets, err := sset.RetrieveActualStatefulSets(d.client, es)
+	statefulSets, err := sset.RetrieveActualStatefulSets(ctx.client, k8s.ExtractNamespacedName(&ctx.ES))
 	if err != nil {
 		return deletedPods, err
 	}
 	expectedPods := statefulSets.PodNames()
-	unhealthyPods := len(expectedPods) - len(d.healthyPods)
+	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
 	maxUnavailable := 1
 	// TODO: use GroupingDefinition
-	if d.es.Spec.UpdateStrategy.ChangeBudget != nil {
-		maxUnavailable = d.es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
+	if ctx.ES.Spec.UpdateStrategy.ChangeBudget != nil {
+		maxUnavailable = ctx.ES.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
 	}
 	allowedDeletions := maxUnavailable - unhealthyPods
 	// If maxUnavailable is reached the deletion driver still allows one unhealthy Pod to be restarted.
@@ -85,20 +40,20 @@ func (d *DefaultDeletionDriver) Delete(candidates []corev1.Pod) (deletedPods []c
 	maxUnavailableReached := (maxUnavailable - unhealthyPods) <= 0
 
 	// Step 2. Sort the Pods to get the ones with the higher priority
-	err = d.strategy.SortFunction()(candidates, d.state)
+	err = ctx.strategy.SortFunction()(candidates, ctx.esState)
 	if err != nil {
 		return deletedPods, err
 	}
 
 	// Step 3: Apply predicates
-	predicates := d.strategy.Predicates()
+	predicates := ctx.strategy.Predicates()
 	for _, candidate := range candidates {
 		if ok, err := runPredicates(candidate, deletedPods, predicates, maxUnavailableReached); err != nil {
 			return deletedPods, err
 		} else if ok {
 			candidate := candidate
 			// Remove from healthy nodes if it was there
-			delete(d.healthyPods, candidate.Name)
+			delete(ctx.healthyPods, candidate.Name)
 			// Append to the deletedPods list
 			deletedPods = append(deletedPods, candidate)
 			allowedDeletions = allowedDeletions - 1
@@ -109,20 +64,20 @@ func (d *DefaultDeletionDriver) Delete(candidates []corev1.Pod) (deletedPods []c
 	}
 
 	if len(deletedPods) == 0 {
-		log.Info("no pod deleted", "es_name", d.es.Name, "es_namespace", d.es.Namespace)
+		log.Info("no pod deleted", "es_name", ctx.ES.Name, "es_namespace", ctx.ES.Namespace)
 		return deletedPods, nil
 	}
 
 	// Disable shard allocation
-	if err := d.prepareClusterForNodeRestart(d.esClient, d.state); err != nil {
+	if err := ctx.prepareClusterForNodeRestart(ctx.esClient, ctx.esState); err != nil {
 		return deletedPods, err
 	}
 	// TODO: If master is changed into a data node (or the opposite) it must be excluded or we should update m_m_n
 	for _, deletedPod := range deletedPods {
-		d.expectations.ExpectDeletion(deletedPod)
-		err := d.delete(&deletedPod)
+		ctx.expectations.ExpectDeletion(deletedPod)
+		err := ctx.delete(&deletedPod)
 		if err != nil {
-			d.expectations.CancelExpectedDeletion(deletedPod)
+			ctx.expectations.CancelExpectedDeletion(deletedPod)
 			return deletedPods, err
 		}
 	}
@@ -130,10 +85,10 @@ func (d *DefaultDeletionDriver) Delete(candidates []corev1.Pod) (deletedPods []c
 	return deletedPods, nil
 }
 
-func (d *DefaultDeletionDriver) delete(pod *corev1.Pod) error {
+func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
 	uid := pod.UID
-	log.Info("delete pod", "es_name", d.es.Name, "es_namespace", d.es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
-	return d.client.Delete(pod, func(options *client.DeleteOptions) {
+	log.Info("delete pod", "es_name", ctx.ES.Name, "es_namespace", ctx.ES.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
+	return ctx.client.Delete(pod, func(options *client.DeleteOptions) {
 		if options.Preconditions == nil {
 			options.Preconditions = &metav1.Preconditions{}
 		}
@@ -162,14 +117,14 @@ func runPredicates(
 	return true, nil
 }
 
-func (d *DefaultDeletionDriver) prepareClusterForNodeRestart(esClient esclient.Client, esState ESState) error {
+func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Client, esState ESState) error {
 	// Disable shard allocations to avoid shards moving around while the node is temporarily down
 	shardsAllocationEnabled, err := esState.ShardAllocationsEnabled()
 	if err != nil {
 		return err
 	}
 	if shardsAllocationEnabled {
-		log.Info("Disabling shards allocation", "es_name", d.es.Name, "es_namespace", d.es.Namespace)
+		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "es_namespace", ctx.ES.Namespace)
 		if err := disableShardsAllocation(esClient); err != nil {
 			return err
 		}

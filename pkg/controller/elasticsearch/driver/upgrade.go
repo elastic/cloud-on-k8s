@@ -90,6 +90,7 @@ type rollingUpgradeCtx struct {
 	podUpgradeDone  func(pod corev1.Pod, expectedRevision string) (bool, error)
 	podsToUpgrade   []corev1.Pod
 	healthyPods     map[string]corev1.Pod
+	strategy        DeletionStrategy
 }
 
 func newRollingUpgrade(
@@ -113,22 +114,12 @@ func newRollingUpgrade(
 		expectedMasters: expectedMaster,
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
+		strategy:        NewDefaultDeletionStrategy(esState, healthyPods, podsToUpgrade, expectedMaster),
 	}
 }
 
 func (ctx rollingUpgradeCtx) run() ([]corev1.Pod, error) {
-	deletionDriver := NewDeletionDriver(
-		ctx.client,
-		ctx.esClient,
-		&ctx.ES,
-		ctx.statefulSets,
-		ctx.esState,
-		ctx.expectedMasters,
-		ctx.healthyPods,
-		ctx.podsToUpgrade,
-		ctx.expectations,
-	)
-	deletedPods, err := deletionDriver.Delete(ctx.podsToUpgrade)
+	deletedPods, err := ctx.Delete()
 	if errors.IsConflict(err) || errors.IsNotFound(err) {
 		// Cache is not up to date or Pod has been deleted by someone else
 		// (could be the statefulset controller)
