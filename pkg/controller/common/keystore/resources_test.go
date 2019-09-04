@@ -76,7 +76,7 @@ func TestResources(t *testing.T) {
 		{
 			name:           "no secure settings specified: no resources",
 			client:         k8s.WrapClient(fake.NewFakeClient()),
-			kb:             v1alpha1.Kibana{},
+			kb:             testKibana,
 			wantContainers: nil,
 			wantVersion:    "",
 			wantNil:        true,

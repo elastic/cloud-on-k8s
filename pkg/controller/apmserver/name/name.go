@@ -9,11 +9,6 @@ import (
 )
 
 const (
-	// APM name, used as prefix, is limited to 36 characters,
-	MaxAPMNameLength = 36
-	// this leaves common_name.MaxNameLength - 36 characters for a suffix.
-	MaxSuffixLength = common_name.MaxNameLength - MaxAPMNameLength
-
 	secretTokenSuffix = "token"
 	httpServiceSuffix = "http"
 	configSuffix      = "config"
@@ -21,10 +16,7 @@ const (
 )
 
 // APMNamer is a Namer that is configured with the defaults for resources related to an APM resource.
-var APMNamer = common_name.Namer{
-	MaxSuffixLength: MaxSuffixLength,
-	DefaultSuffixes: []string{"apm"},
-}
+var APMNamer = common_name.NewNamer("apm")
 
 func SecretToken(apmName string) string {
 	return APMNamer.Suffix(apmName, secretTokenSuffix)

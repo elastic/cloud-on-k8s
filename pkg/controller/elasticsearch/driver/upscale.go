@@ -106,13 +106,11 @@ func adjustStatefulSetReplicas(
 	if alreadyExists {
 		expected = adaptForExistingStatefulSet(actual, expected)
 	}
-	if alreadyExists && isReplicaIncrease(actual, expected) {
-		upscaleState, err := ctx.upscaleStateBuilder.InitOnce(ctx.k8sClient, ctx.es, ctx.esState)
-		if err != nil {
-			return appsv1.StatefulSet{}, err
-		}
-		expected = upscaleState.limitMasterNodesCreation(actualStatefulSets, expected)
+	upscaleState, err := ctx.upscaleStateBuilder.InitOnce(ctx.k8sClient, ctx.es, ctx.esState)
+	if err != nil {
+		return appsv1.StatefulSet{}, err
 	}
+	expected = upscaleState.limitMasterNodesCreation(actualStatefulSets, expected)
 	return expected, nil
 }
 
