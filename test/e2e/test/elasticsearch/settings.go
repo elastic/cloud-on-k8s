@@ -24,7 +24,7 @@ func MustNumDataNodes(es v1alpha1.Elasticsearch) int {
 			panic(err)
 		}
 		if nodeCfg.Node.Data {
-			numNodes++
+			numNodes = numNodes + int(n.NodeCount)
 		}
 	}
 	return numNodes
