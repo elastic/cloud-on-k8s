@@ -40,7 +40,7 @@ var (
 			"key1": []byte("value1"),
 		},
 	}
-	testSecureSettingsSecretRef = commonv1alpha1.SecretRef{
+	testSecureSettingsSecretRef = commonv1alpha1.SecretSource{
 		SecretName: testSecureSettingsSecretName,
 	}
 	testKibana = v1alpha1.Kibana{
@@ -55,7 +55,7 @@ var (
 		},
 		ObjectMeta: testKibana.ObjectMeta,
 		Spec: v1alpha1.KibanaSpec{
-			SecureSettings: []commonv1alpha1.SecretRef{testSecureSettingsSecretRef},
+			SecureSettings: []commonv1alpha1.SecretSource{testSecureSettingsSecretRef},
 		},
 	}
 )
