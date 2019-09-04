@@ -90,7 +90,6 @@ type rollingUpgradeCtx struct {
 	podUpgradeDone  func(pod corev1.Pod, expectedRevision string) (bool, error)
 	podsToUpgrade   []corev1.Pod
 	healthyPods     map[string]corev1.Pod
-	strategy        DeletionStrategy
 }
 
 func newRollingUpgrade(
@@ -114,7 +113,6 @@ func newRollingUpgrade(
 		expectedMasters: expectedMaster,
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
-		strategy:        NewDefaultDeletionStrategy(esState, healthyPods, podsToUpgrade, expectedMaster),
 	}
 }
 
@@ -191,47 +189,6 @@ func podsToUpgrade(
 		}
 	}
 	return toBeDeletedPods, nil
-}
-
-func prepareClusterForNodeRestart(esClient esclient.Client, esState ESState) error {
-	// Disable shard allocations to avoid shards moving around while the node is temporarily down
-	shardsAllocationEnabled, err := esState.ShardAllocationsEnabled()
-	if err != nil {
-		return err
-	}
-	if shardsAllocationEnabled {
-		if err := disableShardsAllocation(esClient); err != nil {
-			return err
-		}
-	}
-
-	// Request a sync flush to optimize indices recovery when the node restarts.
-	if err := doSyncFlush(esClient); err != nil {
-		return err
-	}
-
-	// TODO: halt ML jobs on that node
-	return nil
-}
-
-// clusterReadyForNodeRestart returns true if the ES cluster allows a node to be restarted
-// with minimized downtime and no unexpected data loss.
-func clusterReadyForNodeRestart(es v1alpha1.Elasticsearch, esState ESState) (bool, error) {
-	// Check the cluster health: only allow node restart if health is green.
-	// This would cause downtime if some shards have 0 replicas, but we consider that's on the user.
-	// TODO: we could technically still restart a node if the cluster is yellow,
-	//  as long as there are other copies of the shards in-sync on other nodes
-	// TODO: the fact we rely on a cached health here would prevent more than 1 restart
-	//  in a single reconciliation
-	green, err := esState.GreenHealth()
-	if err != nil {
-		return false, err
-	}
-	if !green {
-		log.Info("Skipping node rolling upgrade since cluster is not green", "namespace", es.Namespace, "name", es.Name)
-		return false, nil
-	}
-	return true, nil
 }
 
 // podUpgradeDone inspects the given pod and returns true if it was successfully upgraded.

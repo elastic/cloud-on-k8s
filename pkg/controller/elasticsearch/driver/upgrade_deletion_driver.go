@@ -40,15 +40,12 @@ func (ctx *rollingUpgradeCtx) Delete() (deletedPods []corev1.Pod, err error) {
 	maxUnavailableReached := (maxUnavailable - unhealthyPods) <= 0
 
 	// Step 2. Sort the Pods to get the ones with the higher priority
-	err = ctx.strategy.SortFunction()(candidates, ctx.esState)
-	if err != nil {
-		return deletedPods, err
-	}
+	sortCandidates(candidates)
 
 	// Step 3: Apply predicates
-	predicates := ctx.strategy.Predicates()
+	predicateContext := NewPredicateContext(ctx.esState, ctx.healthyPods, ctx.podsToUpgrade, ctx.expectedMasters, maxUnavailableReached)
 	for _, candidate := range candidates {
-		if ok, err := runPredicates(candidate, deletedPods, predicates, maxUnavailableReached); err != nil {
+		if ok, err := runPredicates(predicateContext, candidate); err != nil {
 			return deletedPods, err
 		} else if ok {
 			candidate := candidate
@@ -56,7 +53,7 @@ func (ctx *rollingUpgradeCtx) Delete() (deletedPods []corev1.Pod, err error) {
 			delete(ctx.healthyPods, candidate.Name)
 			// Append to the deletedPods list
 			deletedPods = append(deletedPods, candidate)
-			allowedDeletions = allowedDeletions - 1
+			allowedDeletions--
 			if allowedDeletions <= 0 {
 				break
 			}
@@ -97,18 +94,16 @@ func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
 }
 
 func runPredicates(
+	ctx PredicateContext,
 	candidate corev1.Pod,
-	deletedPods []corev1.Pod,
-	predicates map[string]Predicate,
-	maxUnavailableReached bool,
 ) (bool, error) {
-	for name, predicate := range predicates {
-		canDelete, err := predicate(candidate, deletedPods, maxUnavailableReached)
+	for _, predicate := range predicates {
+		canDelete, err := predicate.fn(ctx, candidate)
 		if err != nil {
 			return false, err
 		}
 		if !canDelete {
-			log.Info("predicate failed", "pod_name", candidate.Name, "predicate_name", name)
+			log.Info("predicate failed", "pod_name", candidate.Name, "predicate_name", predicate.name)
 			//skip this Pod, it can't be deleted for the moment
 			return false, nil
 		}

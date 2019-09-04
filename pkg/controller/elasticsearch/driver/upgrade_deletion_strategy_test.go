@@ -35,7 +35,7 @@ func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
 	return result
 }
 
-func (u upgradeTestPods) toToUpdate() []corev1.Pod {
+func (u upgradeTestPods) toUpgrade() []corev1.Pod {
 	var result []corev1.Pod
 	for _, pod := range u {
 		pod := pod
@@ -120,7 +120,6 @@ func TestDeletionStrategy_Predicates(t *testing.T) {
 	}
 	type args struct {
 		candidate             corev1.Pod
-		deletedPods           []corev1.Pod
 		maxUnavailableReached bool
 	}
 	tests := []struct {
@@ -224,13 +223,14 @@ func TestDeletionStrategy_Predicates(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		s := NewDefaultDeletionStrategy(
+		ctx := NewPredicateContext(
 			tt.fields.esState,
 			tt.fields.upgradeTestPods.toHealthyPods(),
-			tt.fields.upgradeTestPods.toToUpdate(),
+			tt.fields.upgradeTestPods.toUpgrade(),
 			tt.fields.upgradeTestPods.toMasters(),
+			tt.args.maxUnavailableReached,
 		)
-		deleted, err := runPredicates(tt.args.candidate, tt.args.deletedPods, s.Predicates(), tt.args.maxUnavailableReached)
+		deleted, err := runPredicates(ctx, tt.args.candidate)
 		if (err != nil) != tt.wantErr {
 			t.Errorf("runPredicates error = %v, wantErr %v", err, tt.wantErr)
 			return
@@ -247,10 +247,9 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 		esState         ESState
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		want    []string // for this test we just compare the pod names
-		wantErr bool
+		name   string
+		fields fields
+		want   []string // for this test we just compare the pod names
 	}{
 		{
 			name: "Mixed nodes",
@@ -290,18 +289,12 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &DefaultDeletionStrategy{
-				masterNodesNames: tt.fields.upgradeTestPods.toMasters(),
-				healthyPods:      tt.fields.upgradeTestPods.toHealthyPods(),
-				toUpdate:         tt.fields.upgradeTestPods.toToUpdate(),
-				esState:          tt.fields.esState,
-			}
-			err := d.SortFunction()(d.toUpdate, d.esState)
-			assert.Equal(t, tt.wantErr, err != nil)
-			assert.Equal(t, len(tt.want), len(d.toUpdate))
+			toUpgrade := tt.fields.upgradeTestPods.toUpgrade()
+			sortCandidates(toUpgrade)
+			assert.Equal(t, len(tt.want), len(toUpgrade))
 			for i := range tt.want {
-				if tt.want[i] != d.toUpdate[i].Name {
-					t.Errorf("DefaultDeletionStrategy.SortFunction() = %v, want %v", names(d.toUpdate), tt.want)
+				if tt.want[i] != toUpgrade[i].Name {
+					t.Errorf("DeletionStrategyContext.SortFunction() = %v, want %v", names(toUpgrade), tt.want)
 				}
 			}
 		})
