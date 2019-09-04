@@ -1,5 +1,5 @@
 # Run e2e tests
-FROM golang:1.11
+FROM golang:1.13
 
 # Create the go test cache directory
 RUN mkdir -p /.cache && chmod 777 /.cache
