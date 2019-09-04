@@ -62,7 +62,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 			name:        "no secure settings specified in Kibana spec: should return nothing",
 			c:           k8s.WrapClient(fake.NewFakeClient()),
 			w:           createWatches(""),
-			kb:          v1alpha1.Kibana{},
+			kb:          testKibana,
 			wantVolume:  nil,
 			wantVersion: "",
 			wantWatches: []string{},

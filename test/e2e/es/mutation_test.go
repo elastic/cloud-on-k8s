@@ -133,6 +133,33 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 	RunESMutation(t, b, mutated)
 }
 
+// TestMutationSecondMasterSet add a separate set of dedicated masters
+// to an existing cluster.
+func TestMutationSecondMasterSet(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-mutation-2nd-master-set").
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
+
+	// add a second master sset
+	mutated := b.WithNoESTopology().
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
+		WithESMasterNodes(3, elasticsearch.DefaultResources)
+
+	RunESMutation(t, b, mutated)
+}
+
+// TestMutationSecondMasterSetDown test a downscale of a separate set of dedicated masters.
+func TestMutationSecondMasterSetDown(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-mutation-2nd-master-set").
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources).
+		WithESMasterNodes(3, elasticsearch.DefaultResources)
+
+	// scale down to single node
+	mutated := b.WithNoESTopology().
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	RunESMutation(t, b, mutated)
+}
+
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
 	mutateTo.MutatedFrom = &toCreate
 	test.RunMutation(t, toCreate, mutateTo)
