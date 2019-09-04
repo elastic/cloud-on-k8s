@@ -37,6 +37,16 @@ func notBootstrappedES() *v1alpha1.Elasticsearch {
 	}
 }
 
+func reBootstrappingES() *v1alpha1.Elasticsearch {
+	return &v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "cluster",
+			Annotations: map[string]string{},
+		},
+		Spec: v1alpha1.ElasticsearchSpec{Version: "7.3.0"},
+	}
+}
+
 func TestAnnotatedForBootstrap(t *testing.T) {
 	require.True(t, AnnotatedForBootstrap(*bootstrappedES()))
 	require.False(t, AnnotatedForBootstrap(*notBootstrappedES()))
@@ -106,11 +116,21 @@ func TestReconcileClusterUUID(t *testing.T) {
 				}.BuildPtr())),
 			cluster:       bootstrappedES(),
 			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: "uuid"}},
-			wantCluster: func() *v1alpha1.Elasticsearch {
-				es := bootstrappedES().DeepCopy()
-				es.Annotations = make(map[string]string) // simulate removed annotation
-				return es
-			}(),
+			wantCluster:   reBootstrappingES(),
+		},
+		{
+			name: "not annotated, bootstrapped, but still on pre-upgrade version",
+			c: k8s.WrapClient(fake.NewFakeClient(
+				reBootstrappingES(),
+				sset.TestPod{
+					ClusterName: "cluster",
+					Version:     "6.8.0",
+					Master:      true,
+				}.BuildPtr(),
+			)),
+			cluster:       reBootstrappingES(),
+			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: "uuid"}},
+			wantCluster:   reBootstrappingES(),
 		},
 	}
 	for _, tt := range tests {

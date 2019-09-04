@@ -24,11 +24,12 @@ func AnnotatedForBootstrap(cluster v1alpha1.Elasticsearch) bool {
 }
 
 func ReconcileClusterUUID(c k8s.Client, cluster *v1alpha1.Elasticsearch, observedState observer.State) error {
+	reBootstrap, err := clusterNeedsReBootstrap(c, cluster)
+	if err != nil {
+		return err
+	}
+
 	if AnnotatedForBootstrap(*cluster) {
-		reBootstrap, err := clusterNeedsReBootstrap(c, cluster)
-		if err != nil {
-			return err
-		}
 		if reBootstrap {
 			log.Info("cluster re-bootstrap necessary",
 				"version", cluster.Spec.Version,
@@ -40,7 +41,7 @@ func ReconcileClusterUUID(c k8s.Client, cluster *v1alpha1.Elasticsearch, observe
 		// already annotated, nothing to do.
 		return nil
 	}
-	if clusterIsBootstrapped(observedState) {
+	if clusterIsBootstrapped(observedState) && !reBootstrap {
 		// cluster bootstrapped but not annotated yet
 		return annotateWithUUID(cluster, observedState, c)
 	}
