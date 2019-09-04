@@ -10,12 +10,10 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -65,12 +63,12 @@ type DefaultDeletionStrategy struct {
 }
 
 // SortFunction is the default sort function, masters have lower priority as
-// we want to update the nodes first.
+// we want to update the data nodes first.
 // If 2 Pods are of the same type then use the reverse ordinal order.
 // TODO: Add some priority to unhealthy (bootlooping) Pods
 func (d *DefaultDeletionStrategy) SortFunction() Sort {
 	return func(allPods []corev1.Pod, state ESState) (err error) {
-		sort.Slice(allPods[:], func(i, j int) bool {
+		sort.Slice(allPods, func(i, j int) bool {
 			pod1 := allPods[i]
 			pod2 := allPods[j]
 			if (label.IsMasterNode(pod1) && label.IsMasterNode(pod2)) ||
@@ -90,7 +88,7 @@ func (d *DefaultDeletionStrategy) SortFunction() Sort {
 				return strings.Compare(ssetName1, ssetName2) == -1
 			}
 			if label.IsMasterNode(pod1) && !label.IsMasterNode(pod2) {
-				// pod2 has higher priority since it is a node
+				// pod2 has higher priority since it is a data node
 				return false
 			}
 			return true
@@ -198,14 +196,10 @@ func (d *DefaultDeletionStrategy) Predicates() map[string]Predicate {
 					if !label.IsMasterNode(healthyPod) {
 						continue
 					}
-					master := types.NamespacedName{
-						Name:      expectedMaster,
-						Namespace: candidate.Namespace,
-					}
 					if candidate.Name == healthyPodName {
 						candidateIsHealthy = true
 					}
-					if healthyPodName == master.Name {
+					if healthyPodName == expectedMaster {
 						healthyMasters = append(healthyMasters, healthyPod)
 					}
 				}
