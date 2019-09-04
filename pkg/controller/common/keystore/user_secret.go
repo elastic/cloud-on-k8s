@@ -165,7 +165,7 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 		return nil, false, fmt.Errorf("set is empty in secure settings secret %s", secretName)
 	}
 
-	// Else if items is defined, return only a subset of the user secret
+	// Else if entries is defined, return only a subset of the user secret
 	projectionSecret := corev1.Secret{
 		ObjectMeta: userSecret.ObjectMeta,
 		Data:       map[string][]byte{},
