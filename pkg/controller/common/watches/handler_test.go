@@ -7,18 +7,20 @@ package watches
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 type fakeHandler struct {
@@ -150,6 +152,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 
 	d := NewDynamicEnqueueRequest()
 	require.NoError(t, d.InjectScheme(scheme.Scheme))
+	require.NoError(t, d.InjectMapper(getRESTMapper()))
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	assertEmptyQueue := func() {
@@ -377,6 +380,7 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 
 	d := NewDynamicEnqueueRequest()
 	require.NoError(t, d.InjectScheme(scheme.Scheme))
+	require.NoError(t, d.InjectMapper(getRESTMapper()))
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	assertEmptyQueue := func() {
@@ -410,14 +414,12 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 		Meta:   testObject1.GetObjectMeta(),
 		Object: testObject1,
 	}, q)
-	// todo sabo this panics
 	d.Create(event.CreateEvent{
 		Meta:   testObject2.GetObjectMeta(),
 		Object: testObject2,
 	}, q)
 
 	// an update on object 2 should enqueue a request for object 1 (the owner)
-	// TODO SABO this line is panicking
 	d.Update(event.UpdateEvent{
 		MetaOld:   testObject2.GetObjectMeta(),
 		ObjectOld: testObject2,
@@ -425,4 +427,25 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 		ObjectNew: updated2,
 	}, q)
 	assertReconcileReq(nsn1)
+}
+
+// getRESTMapper returns a RESTMapper used to inject a mapper into a dynamic queue request
+func getRESTMapper() meta.RESTMapper {
+	resources := []*restmapper.APIGroupResources{
+		{
+			Group: metav1.APIGroup{
+				Versions: []metav1.GroupVersionForDiscovery{
+					{Version: "v1"},
+				},
+				PreferredVersion: metav1.GroupVersionForDiscovery{Version: "v1"},
+			},
+			VersionedResources: map[string][]metav1.APIResource{
+				"v1": {
+					{Name: "secrets", Namespaced: true, Kind: "Secret"},
+				},
+			},
+		},
+	}
+
+	return restmapper.NewDiscoveryRESTMapper(resources)
 }

@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -79,7 +78,7 @@ func TestReconcile(t *testing.T) {
 	// give the client some time to sync up
 	test.RetryUntilSuccess(t, func() error {
 		var secs corev1.SecretList
-		err := c.List(&client.ListOptions{}, &secs)
+		err := c.List(&secs)
 		if err != nil {
 			return err
 		}
