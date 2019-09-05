@@ -199,7 +199,7 @@ var predicates = [...]Predicate{
 					continue
 				}
 				if label.IsMasterNode(pod) {
-					// There's some others master alive, allow this one to be deleted
+					// There are some other masters alive, allow this one to be deleted
 					return true, nil
 				}
 			}
@@ -229,7 +229,7 @@ var predicates = [...]Predicate{
 			if len(context.masterNodesNames) < 2 {
 				return true, nil
 			}
-			var healthyMasters []corev1.Pod
+			healthyMasters := 0
 			candidateIsHealthy := false
 			for _, expectedMaster := range context.masterNodesNames {
 				for healthyPodName, healthyPod := range context.healthyPods {
@@ -240,11 +240,11 @@ var predicates = [...]Predicate{
 						candidateIsHealthy = true
 					}
 					if healthyPodName == expectedMaster {
-						healthyMasters = append(healthyMasters, healthyPod)
+						healthyMasters++
 					}
 				}
 			}
-			if candidateIsHealthy && (len(healthyMasters) == 1) {
+			if candidateIsHealthy && (healthyMasters == 1) {
 				// Last healthy one, don't delete
 				return false, nil
 			}
