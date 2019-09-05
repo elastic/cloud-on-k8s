@@ -126,7 +126,6 @@ func (k *Kibana) Kind() string {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Kibana is the Schema for the kibanas API
-// +k8s:openapi-gen=true
 // +kubebuilder:categories=elastic
 // +kubebuilder:resource:shortName=kb
 // +kubebuilder:subresource:status

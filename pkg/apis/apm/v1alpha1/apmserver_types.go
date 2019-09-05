@@ -116,7 +116,6 @@ func (e ElasticsearchOutput) IsConfigured() bool {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ApmServer is the Schema for the apmservers API
-// +k8s:openapi-gen=true
 // +kubebuilder:categories=elastic
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
