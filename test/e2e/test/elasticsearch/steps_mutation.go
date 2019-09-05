@@ -60,7 +60,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		test.Step{
 			Name: "Start tracking master additions and removals",
 			Test: func(t *testing.T) {
-				masterChangeBudgetCheck = NewMasterChangeBudgetCheck(b.Elasticsearch, 10*time.Second, k.Client)
+				masterChangeBudgetCheck = NewMasterChangeBudgetCheck(b.Elasticsearch, 1*time.Second, k.Client)
 				masterChangeBudgetCheck.Start()
 			},
 		},
