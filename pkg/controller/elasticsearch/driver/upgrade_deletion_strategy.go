@@ -171,14 +171,13 @@ var predicates = [...]Predicate{
 			// Get the expected masters
 			expectedMasters := len(context.masterNodesNames)
 			// Get the healthy masters
-			var healthyMasters []corev1.Pod
+			healthyMasters := 0
 			for _, pod := range context.healthyPods {
 				if label.IsMasterNode(pod) {
-					pod := pod
-					healthyMasters = append(healthyMasters, pod)
+					healthyMasters++
 				}
 			}
-			return len(healthyMasters) == expectedMasters, nil
+			return healthyMasters == expectedMasters, nil
 		},
 	},
 	{
@@ -209,44 +208,6 @@ var predicates = [...]Predicate{
 					// There's still a data node to update
 					return false, nil
 				}
-			}
-			return true, nil
-		},
-	},
-	{
-		name: "do_not_delete_last_healthy_master",
-		fn: func(
-			context PredicateContext,
-			candidate corev1.Pod,
-			deletedPods []corev1.Pod,
-			maxUnavailableReached bool,
-		) (b bool, e error) {
-			// If candidate is not a master then we don't care
-			if !label.IsMasterNode(candidate) {
-				return true, nil
-			}
-			// If only one master node is expected this cluster is not H.A.
-			if len(context.masterNodesNames) < 2 {
-				return true, nil
-			}
-			healthyMasters := 0
-			candidateIsHealthy := false
-			for _, expectedMaster := range context.masterNodesNames {
-				for healthyPodName, healthyPod := range context.healthyPods {
-					if !label.IsMasterNode(healthyPod) {
-						continue
-					}
-					if candidate.Name == healthyPodName {
-						candidateIsHealthy = true
-					}
-					if healthyPodName == expectedMaster {
-						healthyMasters++
-					}
-				}
-			}
-			if candidateIsHealthy && (healthyMasters == 1) {
-				// Last healthy one, don't delete
-				return false, nil
 			}
 			return true, nil
 		},

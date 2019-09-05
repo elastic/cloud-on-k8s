@@ -400,6 +400,24 @@ func TestDeletionStrategy_Predicates(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Do not delete last healthy master",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newPod("ns1", "masters-0", true, false, true),
+					newPod("ns1", "masters-1", true, false, false),
+				),
+				esState: &testESState{
+					inCluster: []string{"masters-0"},
+					green:     true,
+				},
+			},
+			args: args{
+				candidates: []corev1.Pod{newPod("ns1", "masters-0", true, false, true)},
+			},
+			deleted: []bool{false},
+			wantErr: false,
+		},
+		{
 			name: "Do not delete Pods that share some shards",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
