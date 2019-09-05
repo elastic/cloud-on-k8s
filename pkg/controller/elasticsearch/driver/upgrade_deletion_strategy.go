@@ -204,6 +204,9 @@ var predicates = [...]Predicate{
 			}
 			// This is the last master, check if all data nodes are up to date
 			for _, pod := range context.toUpdate {
+				if candidate.Name == pod.Name {
+					continue
+				}
 				if label.IsDataNode(pod) {
 					// There's still a data node to update
 					return false, nil

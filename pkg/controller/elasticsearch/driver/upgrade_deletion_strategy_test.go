@@ -338,6 +338,24 @@ func TestDeletionStrategy_Predicates(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "3 healthy master and data nodes, allow the last to be upgraded",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					testPod{"masters-2", true, true, true, false, true},
+					testPod{"masters-1", true, true, true, false, true},
+					testPod{"masters-0", true, true, true, true, true},
+				),
+
+				green: true,
+			},
+			args: args{
+				maxUnavailableReached: false,
+				allowedDeletions:      1,
+			},
+			deleted: []string{"masters-0"},
+			wantErr: false,
+		},
+		{
 			name: "3 healthy masters, allow the deletion of 1",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
