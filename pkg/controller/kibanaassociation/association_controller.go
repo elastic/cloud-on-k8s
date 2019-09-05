@@ -105,7 +105,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 var _ reconcile.Reconciler = &ReconcileAssociation{}
 
-// ReconcileAssociation reconciles a Kibana resource for amssociation with Elasticsearch
+// ReconcileAssociation reconciles a Kibana resource for association with Elasticsearch
 type ReconcileAssociation struct {
 	k8s.Client
 	scheme   *runtime.Scheme
