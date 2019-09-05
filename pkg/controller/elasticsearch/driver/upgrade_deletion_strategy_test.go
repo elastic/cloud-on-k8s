@@ -339,7 +339,7 @@ func TestDeletionStrategy_Predicates(t *testing.T) {
 		deleted []string
 		wantErr bool
 	}{
-		/*{
+		{
 			name: "3 healthy masters, allow the deletion of 1",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
@@ -355,7 +355,7 @@ func TestDeletionStrategy_Predicates(t *testing.T) {
 			},
 			deleted: []string{"masters-2"},
 			wantErr: false,
-		},*/
+		},
 		{
 			name: "2 healthy masters out of 3, do not allow deletion",
 			fields: fields{
