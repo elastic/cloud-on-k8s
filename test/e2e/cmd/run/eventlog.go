@@ -19,7 +19,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/controller/volume/events"
+	// TODO SABO remove this?
+	// "k8s.io/kubernetes/pkg/controller/volume/events"
 )
 
 type eventLogEntry struct {
@@ -136,7 +137,14 @@ func (el *eventLogger) runEventProcessor() {
 // isInterestingEvent determines whether an event is worthy of logging.
 func (el *eventLogger) isInterestingEvent(evt *corev1.Event) bool {
 	// special case for event generated when attempting to reuse a deleted PV
-	if evt.Reason == events.VolumeDelete {
+	// TODO sabo remove this? it is the only one that is under this path
+// 	go: finding github.com/elastic/cloud-on-k8s/pkg/interfaces latest
+// go: finding github.com/elastic/cloud-on-k8s/pkg latest
+// go: k8s.io/kubernetes@v1.15.3 requires
+// 	k8s.io/api@v0.0.0: reading k8s.io/api/go.mod at revision v0.0.0: unknown revision v0.0.0
+
+	if evt.Reason == "VolumeDelete"{
+	// if evt.Reason == events.VolumeDelete {
 		return true
 	}
 

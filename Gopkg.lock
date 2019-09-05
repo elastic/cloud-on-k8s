@@ -925,9 +925,11 @@
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
+    "pkg/api/validation",
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
+    "pkg/apis/meta/v1/validation",
     "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
@@ -1237,14 +1239,6 @@
   revision = "0317810137be915b9cf888946c6e115c1bfac693"
 
 [[projects]]
-  digest = "1:17316c2e91c840fa9975f229b5f1a6393e1cce5206320ccd0ff0896a480d4493"
-  name = "k8s.io/kubernetes"
-  packages = ["pkg/controller/volume/events"]
-  pruneopts = "T"
-  revision = "4485c6f18cee9a5d3c3b4e523bd27972b1b53892"
-  version = "v1.15.1"
-
-[[projects]]
   branch = "master"
   digest = "1:75ea823fa8126ea20f2c34040f3f34876a1e52427f5831045da3605d97610b7e"
   name = "k8s.io/utils"
@@ -1359,6 +1353,7 @@
     "github.com/ghodss/yaml",
     "github.com/go-logr/logr",
     "github.com/go-test/deep",
+    "github.com/hashicorp/go-multierror",
     "github.com/hashicorp/vault/api",
     "github.com/imdario/mergo",
     "github.com/magiconair/properties/assert",
@@ -1375,6 +1370,7 @@
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
+    "k8s.io/apimachinery/pkg/api/validation",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/labels",
@@ -1386,6 +1382,7 @@
     "k8s.io/apimachinery/pkg/util/rand",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/uuid",
+    "k8s.io/apimachinery/pkg/util/validation",
     "k8s.io/apimachinery/pkg/util/version",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/util/yaml",
@@ -1408,7 +1405,6 @@
     "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
-    "k8s.io/kubernetes/pkg/controller/volume/events",
     "sigs.k8s.io/controller-runtime",
     "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/apiutil",

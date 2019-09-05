@@ -11,7 +11,6 @@ import (
 	"os"
 
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/cloud-on-k8s/pkg/interfaces"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
@@ -74,9 +73,10 @@ func CreateClient() (k8s.Client, error) {
 	if err := kbtype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
-	if err := assoctype.AddToScheme(scheme.Scheme); err != nil {
-		return nil, err
-	}
+	// TODO sabo remove this
+	// if err := assoctype.AddToScheme(scheme.Scheme); err != nil {
+	// 	return nil, err
+	// }
 	if err := apmtype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
