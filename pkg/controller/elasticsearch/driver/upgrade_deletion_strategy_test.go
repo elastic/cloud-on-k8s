@@ -208,29 +208,29 @@ func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
 }
 
 func (u upgradeTestPods) toUpgrade() []corev1.Pod {
-	var result []corev1.Pod
-	for _, pod := range u {
-		pod := pod
-		result = append(result, pod)
+	result := make([]corev1.Pod, len(u))
+	for i, pod := range u {
+		result[i] = pod
 	}
 	return result
 }
 
 func (u upgradeTestPods) toMasters() []string {
-	var result []string
+	result := make([]string, len(u))
+	i := 0
 	for _, pod := range u {
 		if label.IsMasterNode(pod) {
-			pod := pod
-			result = append(result, pod.Name)
+			result[i] = pod.Name
+			i++
 		}
 	}
 	return result
 }
 
 func names(pods []corev1.Pod) []string {
-	var result []string
-	for _, pod := range pods {
-		result = append(result, pod.Name)
+	result := make([]string, len(pods))
+	for i, pod := range pods {
+		result[i] = pod.Name
 	}
 	return result
 }
