@@ -5,11 +5,18 @@
 package expectations
 
 import (
+	"errors"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+)
+
+var (
+	log = logf.Log.WithName("expectations")
 )
 
 type deleteExpectations map[types.NamespacedName]map[types.NamespacedName]metav1.ObjectMeta
@@ -37,6 +44,10 @@ func NewExpectations() *Expectations {
 func (e *Expectations) ExpectDeletion(pod v1.Pod) {
 	cluster, exists := label.ClusterFromResourceLabels(pod.GetObjectMeta())
 	if !exists {
+		log.Error(errors.New("cannot find the cluster label on Pod"),
+			"Failed to get cluster from Pod annotation",
+			"pod_name", pod.Name,
+			"pod_namespace", pod.Namespace)
 		return // Should not happen as all Pods should have the correct labels
 	}
 	var expectedPods map[types.NamespacedName]metav1.ObjectMeta
