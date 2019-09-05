@@ -96,11 +96,11 @@ type SubjectAlternativeName struct {
 type ServiceTemplate struct {
 	// ObjectMeta is metadata for the service.
 	// The name and namespace provided here is managed by ECK and will be ignored.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the behavior of the service.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Spec v1.ServiceSpec `json:"spec,omitempty"`
 }
 
@@ -111,11 +111,11 @@ var DefaultPodDisruptionBudgetMaxUnavailable = intstr.FromInt(1)
 type PodDisruptionBudgetTemplate struct {
 	// ObjectMeta is metadata for the service.
 	// The name and namespace provided here is managed by ECK and will be ignored.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec of the desired behavior of the PodDisruptionBudget
-	// +optional
+	// +kubebuilder:validation:Optional
 	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
 }
 
@@ -128,7 +128,7 @@ type SecretSource struct {
 	// key and content is the value. If specified, the listed keys will be
 	// projected into the specified paths, and unlisted keys will not be
 	// present.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Entries []KeyToPath `json:"entries,omitempty"`
 }
 
@@ -141,6 +141,6 @@ type KeyToPath struct {
 	// May not be an absolute path.
 	// May not contain the path element '..'.
 	// May not start with the string '..'.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Path string `json:"path,omitempty"`
 }

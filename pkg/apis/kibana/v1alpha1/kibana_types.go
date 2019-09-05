@@ -35,7 +35,7 @@ type KibanaSpec struct {
 	ElasticsearchRef commonv1alpha1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// Elasticsearch configures how Kibana connects to Elasticsearch
-	// +optional
+	// +kubebuilder:validation:Optional
 	Elasticsearch BackendElasticsearch `json:"elasticsearch,omitempty"`
 
 	// Config represents Kibana configuration.
@@ -47,7 +47,7 @@ type KibanaSpec struct {
 	// PodTemplate can be used to propagate configuration to Kibana pods.
 	// This allows specifying custom annotations, labels, environment variables,
 	// affinity, resources, etc. for the pods created from this NodeSpec.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// SecureSettings references secrets containing secure settings, to be injected

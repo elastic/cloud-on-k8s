@@ -6,9 +6,9 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 )
 
 const (
@@ -38,13 +38,13 @@ type ApmServerSpec struct {
 	ElasticsearchRef commonv1alpha1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// Elasticsearch configures how the APM server connects to Elasticsearch
-	// +optional
+	// +kubebuilder:validation:Optional
 	Elasticsearch ElasticsearchOutput `json:"elasticsearch,omitempty"`
 
 	// PodTemplate can be used to propagate configuration to APM Server pods.
 	// This allows specifying custom annotations, labels, environment variables,
 	// affinity, resources, etc. for the pods created from this NodeSpec.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// SecureSettings references secrets containing secure settings, to be injected
