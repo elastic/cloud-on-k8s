@@ -232,7 +232,7 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 	return es.Health.Less(prev.Health)
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Elasticsearch is the Schema for the elasticsearches API
 // +kubebuilder:subresource:status
@@ -266,7 +266,7 @@ func (e Elasticsearch) Kind() string {
 	return Kind
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // ElasticsearchList contains a list of Elasticsearch clusters
 type ElasticsearchList struct {

@@ -122,7 +122,7 @@ func (k *Kibana) Kind() string {
 	return Kind
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Kibana is the Schema for the kibanas API
 // +kubebuilder:categories=elastic
@@ -140,7 +140,7 @@ type Kibana struct {
 	Status KibanaStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // KibanaList contains a list of Kibana
 type KibanaList struct {

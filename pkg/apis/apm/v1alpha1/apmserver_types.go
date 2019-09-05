@@ -112,8 +112,6 @@ func (e ElasticsearchOutput) IsConfigured() bool {
 // TODO (SABO) remove everything but this line?
 // +kubebuilder:object:root=true
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // ApmServer is the Schema for the apmservers API
 // +kubebuilder:categories=elastic
 // +kubebuilder:subresource:status
@@ -128,9 +126,6 @@ type ApmServer struct {
 	Spec   ApmServerSpec   `json:"spec,omitempty"`
 	Status ApmServerStatus `json:"status,omitempty"`
 }
-
-// todo sabo same
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // +kubebuilder:object:root=true
 
