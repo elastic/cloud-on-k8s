@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
@@ -22,7 +21,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "K8S should be accessible",
 			Test: func(t *testing.T) {
 				pods := corev1.PodList{}
-				err := k.Client.List(&client.ListOptions{}, &pods)
+				err := k.Client.List(&pods)
 				require.NoError(t, err)
 			},
 		},
@@ -33,7 +32,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					&kbtype.KibanaList{},
 				}
 				for _, crd := range crds {
-					err := k.Client.List(&client.ListOptions{}, crd)
+					err := k.Client.List(crd)
 					require.NoError(t, err)
 				}
 			},
@@ -50,7 +49,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				}
 				// wait for Kibana pods to disappear
 				test.Eventually(func() error {
-					return k.CheckPodCount(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name), 0)
+					return k.CheckPodCount(0, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
 				})(t)
 			},
 		},

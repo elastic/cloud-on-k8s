@@ -59,7 +59,7 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES pods should eventually have a certificate",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			if err != nil {
 				return err
 			}
@@ -79,7 +79,7 @@ func CheckESPodsRunning(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES pods should eventually be running",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			if err != nil {
 				return err
 			}
@@ -99,7 +99,7 @@ func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES version should be the expected one",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			if err != nil {
 				return err
 			}
@@ -125,7 +125,7 @@ func CheckESPodsReady(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES pods should eventually be ready",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name))
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			if err != nil {
 				return err
 			}

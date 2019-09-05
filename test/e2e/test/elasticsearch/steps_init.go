@@ -15,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // InitTestSteps includes pre-requisite tests (eg. is k8s accessible),
@@ -26,7 +25,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "K8S should be accessible",
 			Test: func(t *testing.T) {
 				pods := corev1.PodList{}
-				err := k.Client.List(&client.ListOptions{}, &pods)
+				err := k.Client.List(&pods)
 				require.NoError(t, err)
 			},
 		},
@@ -38,7 +37,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					&estype.ElasticsearchList{},
 				}
 				for _, crd := range crds {
-					err := k.Client.List(&client.ListOptions{}, crd)
+					err := k.Client.List(crd)
 					require.NoError(t, err)
 				}
 			},
@@ -56,7 +55,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				}
 				// wait for ES pods to disappear
 				test.Eventually(func() error {
-					return k.CheckPodCount(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), 0)
+					return k.CheckPodCount(0, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 				})(t)
 
 				// it may take some extra time for Elasticsearch to be fully deleted

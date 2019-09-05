@@ -25,8 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/version"
@@ -73,10 +71,6 @@ func CreateClient() (k8s.Client, error) {
 	if err := kbtype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
-	// TODO sabo remove this
-	// if err := assoctype.AddToScheme(scheme.Scheme); err != nil {
-	// 	return nil, err
-	// }
 	if err := apmtype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
@@ -99,9 +93,9 @@ func ServerVersion() (*version.Info, error) {
 	return dc.ServerVersion()
 }
 
-func (k *K8sClient) GetPods(listOpts k8sclient.ListOptions) ([]corev1.Pod, error) {
+func (k *K8sClient) GetPods(opts ...k8sclient.ListOption) ([]corev1.Pod, error) {
 	var podList corev1.PodList
-	if err := k.Client.List(&listOpts, &podList); err != nil {
+	if err := k.Client.List(&podList, opts...); err != nil {
 		return nil, err
 	}
 	return podList.Items, nil
@@ -119,8 +113,8 @@ func (k *K8sClient) DeletePod(pod corev1.Pod) error {
 	return k.Client.Delete(&pod)
 }
 
-func (k *K8sClient) CheckPodCount(listOpts k8sclient.ListOptions, expectedCount int) error {
-	pods, err := k.GetPods(listOpts)
+func (k *K8sClient) CheckPodCount(expectedCount int, opts ...k8sclient.ListOption) error {
+	pods, err := k.GetPods(opts...)
 	if err != nil {
 		return err
 	}
@@ -155,9 +149,9 @@ func (k *K8sClient) GetEndpoints(namespace, name string) (*corev1.Endpoints, err
 	return &endpoints, nil
 }
 
-func (k *K8sClient) GetEvents(listOpts k8sclient.ListOptions) ([]corev1.Event, error) {
+func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]corev1.Event, error) {
 	var eventList corev1.EventList
-	if err := k.Client.List(&listOpts, &eventList); err != nil {
+	if err := k.Client.List(&eventList, opts...); err != nil {
 		return nil, err
 	}
 	return eventList.Items, nil
@@ -312,40 +306,41 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 	return stdout.String(), stderr.String(), err
 }
 
-func ESPodListOptions(esNamespace, esName string) k8sclient.ListOptions {
-	return k8sclient.ListOptions{
-		Namespace: esNamespace,
-		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			common.TypeLabelName:       label.Type,
-			label.ClusterNameLabelName: esName,
-		}))}
+func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(esNamespace)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		common.TypeLabelName:       label.Type,
+		label.ClusterNameLabelName: esName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
 }
 
-func KibanaPodListOptions(kbNamespace, kbName string) k8sclient.ListOptions {
-	return k8sclient.ListOptions{
-		Namespace: kbNamespace,
-		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			kblabel.KibanaNameLabelName: kbName,
-		}))}
+func KibanaPodListOptions(kbNamespace, kbName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(kbNamespace)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		kblabel.KibanaNameLabelName: kbName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
 }
 
-func ApmServerPodListOptions(apmNamespace, apmName string) k8sclient.ListOptions {
-	return k8sclient.ListOptions{
-		Namespace: apmNamespace,
-		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			common.TypeLabelName:             apmlabels.Type,
-			apmlabels.ApmServerNameLabelName: apmName,
-		}))}
+func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(apmNamespace)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		common.TypeLabelName:             apmlabels.Type,
+		apmlabels.ApmServerNameLabelName: apmName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
+
 }
 
-func EventListOptions(namespace, name string) k8sclient.ListOptions {
-	return k8sclient.ListOptions{
-		Namespace: namespace,
-		FieldSelector: fields.SelectorFromSet(fields.Set(map[string]string{
-			"involvedObject.name":      name,
-			"involvedObject.namespace": namespace,
-		})),
-	}
+func EventListOptions(namespace, name string) []k8sclient.ListOption {
+
+	ns := k8sclient.InNamespace(namespace)
+	matchFields := k8sclient.MatchingFields(map[string]string{
+		"involvedObject.name":      name,
+		"involvedObject.namespace": namespace,
+	})
+	return []k8sclient.ListOption{ns, matchFields}
 }
 
 func GetFirstPodMatching(pods []corev1.Pod, predicate func(pod corev1.Pod) bool) (corev1.Pod, bool) {

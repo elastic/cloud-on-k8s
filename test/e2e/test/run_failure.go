@@ -56,14 +56,14 @@ func runFailureScenario(t *testing.T, recoverable bool, failureSteps StepsFunc, 
 	steps.RunSequential(t)
 }
 
-func KillNodeSteps(listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) StepsFunc {
+func KillNodeSteps(podMatch func(p corev1.Pod) bool, opts ...client.ListOption) StepsFunc {
 	var killedPod corev1.Pod
 	return func(k *K8sClient) StepList {
 		return StepList{
 			{
 				Name: "Kill a node",
 				Test: func(t *testing.T) {
-					pods, err := k.GetPods(listOptions)
+					pods, err := k.GetPods(opts...)
 					require.NoError(t, err)
 					var found bool
 					killedPod, found = GetFirstPodMatching(pods, podMatch)

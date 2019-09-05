@@ -27,7 +27,7 @@ func TestKillOneDataNode(t *testing.T) {
 	}
 
 	test.RunRecoverableFailureScenario(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchDataNode),
+		test.KillNodeSteps(matchDataNode, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...),
 		b)
 }
 
@@ -42,7 +42,7 @@ func TestKillOneMasterNode(t *testing.T) {
 	}
 
 	test.RunRecoverableFailureScenario(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchMasterNode),
+		test.KillNodeSteps(matchMasterNode, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...),
 		b)
 }
 
@@ -55,7 +55,7 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 	}
 
 	test.RunRecoverableFailureScenario(t,
-		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), matchNode),
+		test.KillNodeSteps(matchNode, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...),
 		b)
 }
 
