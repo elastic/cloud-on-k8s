@@ -50,6 +50,10 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		ctx.podsToUpgrade,
 		ctx.expectedMasters,
 	)
+	log.V(1).Info("applying predicates",
+		"maxUnavailableReached", maxUnavailableReached,
+		"allowedDeletions", allowedDeletions,
+	)
 	deletedPods, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions)
 	if err != nil {
 		return deletedPods, err
@@ -118,7 +122,7 @@ func runPredicates(
 			return false, err
 		}
 		if !canDelete {
-			log.Info("predicate failed", "pod_name", candidate.Name, "predicate_name", predicate.name)
+			log.V(1).Info("predicate failed", "pod_name", candidate.Name, "predicate_name", predicate.name)
 			//skip this Pod, it can't be deleted for the moment
 			return false, nil
 		}
