@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -95,7 +94,8 @@ var predicates = [...]Predicate{
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
-			if maxUnavailableReached && k8s.IsPodReady(candidate) {
+			_, healthy := context.healthyPods[candidate.Name]
+			if maxUnavailableReached && healthy {
 				return false, nil
 			}
 			return true, nil
@@ -137,7 +137,8 @@ var predicates = [...]Predicate{
 			if green {
 				return true, nil
 			}
-			if !k8s.IsPodReady(candidate) {
+			_, healthy := context.healthyPods[candidate.Name]
+			if !healthy {
 				return true, nil
 			}
 			return false, nil
