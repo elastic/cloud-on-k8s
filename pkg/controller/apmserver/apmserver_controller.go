@@ -209,31 +209,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
-	state := NewState(request, &as)
-	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(as), &as)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	results := apmcerts.Reconcile(r, &as, []corev1.Service{*svc}, r.CACertRotation)
-	if results.HasError() {
-		res, err := results.Aggregate()
-		k8s.EmitErrorEvent(r.recorder, err, &as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
-		return res, err
-	}
-
-	state, err = r.reconcileApmServerDeployment(state, &as)
-	if err != nil {
-		if errors.IsConflict(err) {
-			log.V(1).Info("Conflict while updating status")
-			return reconcile.Result{Requeue: true}, nil
-		}
-		k8s.EmitErrorEvent(r.recorder, err, &as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
-		return state.Result, err
-	}
-
-	state.UpdateApmServerExternalService(*svc)
-
-	return r.updateStatus(state)
+	return r.doReconcile(request, &as)
 }
 
 func (r *ReconcileApmServer) isCompatible(as *apmv1alpha1.ApmServer) (bool, error) {
