@@ -232,7 +232,6 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 	return es.Health.Less(prev.Health)
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Elasticsearch is the Schema for the elasticsearches API

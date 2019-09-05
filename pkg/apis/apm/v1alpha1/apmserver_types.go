@@ -112,7 +112,6 @@ func (e ElasticsearchOutput) IsConfigured() bool {
 // TODO (SABO) remove everything but this line?
 // +kubebuilder:object:root=true
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ApmServer is the Schema for the apmservers API

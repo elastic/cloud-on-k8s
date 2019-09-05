@@ -122,7 +122,6 @@ func (k *Kibana) Kind() string {
 	return Kind
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Kibana is the Schema for the kibanas API
