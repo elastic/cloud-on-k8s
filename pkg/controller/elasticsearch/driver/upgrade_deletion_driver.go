@@ -15,17 +15,16 @@ import (
 
 // Delete runs through a list of potential candidates and select the ones that can be deleted.
 // Do not run this function unless driver expectations are met.
-func (ctx *rollingUpgradeCtx) Delete() (deletedPods []corev1.Pod, err error) {
-	candidates := ctx.podsToUpgrade
-	if len(candidates) == 0 {
-		return deletedPods, nil
+func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
+	if len(ctx.podsToUpgrade) == 0 {
+		return nil, nil
 	}
 
 	// Check if we are not over disruption budget
 	// Upscale is done, we should have the required number of Pods
 	statefulSets, err := sset.RetrieveActualStatefulSets(ctx.client, k8s.ExtractNamespacedName(&ctx.ES))
 	if err != nil {
-		return deletedPods, err
+		return nil, err
 	}
 	expectedPods := statefulSets.PodNames()
 	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
@@ -40,6 +39,8 @@ func (ctx *rollingUpgradeCtx) Delete() (deletedPods []corev1.Pod, err error) {
 	maxUnavailableReached := (maxUnavailable - unhealthyPods) <= 0
 
 	// Step 2. Sort the Pods to get the ones with the higher priority
+	candidates := make([]corev1.Pod, len(ctx.podsToUpgrade)) // work on a copy in order to have no side effect
+	copy(candidates, ctx.podsToUpgrade)
 	sortCandidates(candidates)
 
 	// Step 3: Apply predicates
@@ -49,20 +50,9 @@ func (ctx *rollingUpgradeCtx) Delete() (deletedPods []corev1.Pod, err error) {
 		ctx.podsToUpgrade,
 		ctx.expectedMasters,
 	)
-	for _, candidate := range candidates {
-		if ok, err := runPredicates(predicateContext, candidate, deletedPods, maxUnavailableReached); err != nil {
-			return deletedPods, err
-		} else if ok {
-			candidate := candidate
-			// Remove from healthy nodes if it was there
-			delete(ctx.healthyPods, candidate.Name)
-			// Append to the deletedPods list
-			deletedPods = append(deletedPods, candidate)
-			allowedDeletions--
-			if allowedDeletions <= 0 {
-				break
-			}
-		}
+	deletedPods, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions)
+	if err != nil {
+		return deletedPods, err
 	}
 
 	if len(deletedPods) == 0 {
@@ -83,7 +73,25 @@ func (ctx *rollingUpgradeCtx) Delete() (deletedPods []corev1.Pod, err error) {
 			return deletedPods, err
 		}
 	}
+	return deletedPods, nil
+}
 
+func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailableReached bool, allowedDeletions int) (deletedPods []corev1.Pod, err error) {
+	for _, candidate := range candidates {
+		if ok, err := runPredicates(ctx, candidate, deletedPods, maxUnavailableReached); err != nil {
+			return deletedPods, err
+		} else if ok {
+			candidate := candidate
+			// Remove from healthy nodes if it was there
+			delete(ctx.healthyPods, candidate.Name)
+			// Append to the deletedPods list
+			deletedPods = append(deletedPods, candidate)
+			allowedDeletions--
+			if allowedDeletions <= 0 {
+				break
+			}
+		}
+	}
 	return deletedPods, nil
 }
 

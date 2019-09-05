@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -186,9 +187,13 @@ const (
 `
 )
 
-type upgradeTestPods []corev1.Pod
+type testPod struct {
+	namespace, name                             string
+	master, data, healthy, toUpgrade, inCluster bool
+}
+type upgradeTestPods []testPod
 
-func newUpgradeTestPods(pods ...corev1.Pod) upgradeTestPods {
+func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 	result := make(upgradeTestPods, len(pods))
 	for i := range pods {
 		result[i] = pods[i]
@@ -198,7 +203,8 @@ func newUpgradeTestPods(pods ...corev1.Pod) upgradeTestPods {
 
 func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
 	result := make(map[string]corev1.Pod)
-	for _, pod := range u {
+	for _, testPod := range u {
+		pod := testPod.toPod()
 		if k8s.IsPodReady(pod) {
 			pod := pod
 			result[pod.Name] = pod
@@ -208,20 +214,33 @@ func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
 }
 
 func (u upgradeTestPods) toUpgrade() []corev1.Pod {
-	result := make([]corev1.Pod, len(u))
-	for i, pod := range u {
-		result[i] = pod
+	var result []corev1.Pod
+	for _, testPod := range u {
+		pod := testPod.toPod()
+		if testPod.toUpgrade {
+			result = append(result, pod)
+		}
+	}
+	return result
+}
+
+func (u upgradeTestPods) inCluster() []string {
+	var result []string
+	for _, testPod := range u {
+		pod := testPod.toPod()
+		if testPod.inCluster {
+			result = append(result, pod.Name)
+		}
 	}
 	return result
 }
 
 func (u upgradeTestPods) toMasters() []string {
-	result := make([]string, len(u))
-	i := 0
-	for _, pod := range u {
+	var result []string
+	for _, testPod := range u {
+		pod := testPod.toPod()
 		if label.IsMasterNode(pod) {
-			result[i] = pod.Name
-			i++
+			result = append(result, pod.Name)
 		}
 	}
 	return result
@@ -235,18 +254,30 @@ func names(pods []corev1.Pod) []string {
 	return result
 }
 
-func newPod(namespace, name string, master, data, healthy bool) corev1.Pod {
+func newTestPod(namespace, name string, master, data, healthy, toUpgrade, inCluster bool) testPod {
+	return testPod{
+		namespace: namespace,
+		name:      name,
+		master:    master,
+		data:      data,
+		healthy:   healthy,
+		toUpgrade: toUpgrade,
+		inCluster: inCluster,
+	}
+}
+
+func (t testPod) toPod() corev1.Pod {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:      t.name,
+			Namespace: t.namespace,
 		},
 	}
 	labels := map[string]string{}
-	label.NodeTypesMasterLabelName.Set(master, labels)
-	label.NodeTypesDataLabelName.Set(data, labels)
+	label.NodeTypesMasterLabelName.Set(t.master, labels)
+	label.NodeTypesDataLabelName.Set(t.data, labels)
 	pod.Labels = labels
-	if healthy {
+	if t.healthy {
 		pod.Status = corev1.PodStatus{
 			Conditions: []corev1.PodCondition{
 				{
@@ -294,181 +325,159 @@ func (t *testESState) GetClusterState() (*esclient.ClusterState, error) {
 func TestDeletionStrategy_Predicates(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
-		esState         ESState
+		ES              v1alpha1.Elasticsearch
+		green           bool
 	}
 	type args struct {
-		candidates            []corev1.Pod
 		maxUnavailableReached bool
+		allowedDeletions      int
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		deleted []bool
+		deleted []string
 		wantErr bool
 	}{
-		{
+		/*{
 			name: "3 healthy masters, allow the deletion of 1",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "masters-0", true, true, true),
-					newPod("ns1", "masters-1", true, true, true),
-					newPod("ns1", "masters-2", true, true, true),
+					newTestPod("ns1", "masters-2", true, true, true, true, true),
+					newTestPod("ns1", "masters-1", true, true, true, true, true),
+					newTestPod("ns1", "masters-0", true, true, true, true, true),
 				),
-				esState: &testESState{
-					inCluster: []string{"masters-0", "masters-1", "masters-2"},
-					green:     true,
-				},
+				green: true,
 			},
 			args: args{
-				candidates: []corev1.Pod{newPod("ns1", "masters-2", true, true, true)},
+				maxUnavailableReached: false,
+				allowedDeletions:      1,
 			},
-			deleted: []bool{true},
+			deleted: []string{"masters-2"},
 			wantErr: false,
-		},
+		},*/
 		{
 			name: "2 healthy masters out of 3, do not allow deletion",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "masters-0", true, true, true),
-					newPod("ns1", "masters-1", true, true, true),
-					newPod("ns1", "masters-2", true, true, false),
+					newTestPod("ns1", "masters-0", true, true, true, true, true),
+					newTestPod("ns1", "masters-1", true, true, true, true, true),
+					newTestPod("ns1", "masters-2", true, true, false, false, false),
 				),
-				esState: &testESState{
-					inCluster: []string{"masters-0", "masters-1"},
-					green:     true,
-				},
+
+				green: true,
 			},
 			args: args{
-				candidates: []corev1.Pod{newPod("ns1", "masters-1", true, true, true)},
+				maxUnavailableReached: false,
+				allowedDeletions:      1,
 			},
-			deleted: []bool{false},
+			deleted: []string{},
 			wantErr: false,
 		},
 		{
 			name: "1 master and 1 node, wait for the node to be upgraded first",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "masters-0", true, false, true),
-					newPod("ns1", "node-0", false, true, false),
+					newTestPod("ns1", "masters-0", true, false, true, true, true),
+					newTestPod("ns1", "node-0", false, true, false, true, true),
 				),
-				esState: &testESState{
-					inCluster: []string{"masters-0"},
-					green:     true,
-				},
+				green: true,
 			},
 			args: args{
-				candidates: []corev1.Pod{newPod("ns1", "masters-0", true, true, true)},
+				maxUnavailableReached: false,
+				allowedDeletions:      1,
 			},
-			deleted: []bool{false},
+			deleted: []string{"node-0"},
 			wantErr: false,
 		},
 		{
 			name: "Do not delete healthy node if not green",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "masters-0", true, false, true),
+					newTestPod("ns1", "masters-0", true, false, true, true, true),
 				),
-				esState: &testESState{
-					inCluster: []string{"masters-0"},
-					green:     false,
-				},
+				green: false,
 			},
 			args: args{
-				candidates: []corev1.Pod{newPod("ns1", "masters-0", true, true, true)},
+				maxUnavailableReached: true,
+				allowedDeletions:      1,
 			},
-			deleted: []bool{false},
+			deleted: []string{},
 			wantErr: false,
 		},
 		{
 			name: "Allow deletion of unhealthy node if not green",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "masters-0", true, true, true),
-					newPod("ns1", "masters-1", true, true, true),
-					newPod("ns1", "masters-2", true, true, false),
+					newTestPod("ns1", "masters-0", true, true, true, true, true),
+					newTestPod("ns1", "masters-1", true, true, true, true, true),
+					newTestPod("ns1", "masters-2", true, true, false, true, true),
 				),
-				esState: &testESState{
-					inCluster: []string{"masters-0", "masters-1"},
-					green:     false,
-				},
+				green: false,
 			},
 			args: args{
-				candidates: []corev1.Pod{newPod("ns1", "masters-2", true, true, false)},
+				maxUnavailableReached: true,
+				allowedDeletions:      1,
 			},
-			deleted: []bool{true},
+			deleted: []string{"masters-2"},
 			wantErr: false,
 		},
 		{
 			name: "Do not delete last healthy master",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "masters-0", true, false, true),
-					newPod("ns1", "masters-1", true, false, false),
+					newTestPod("ns1", "masters-0", true, false, true, true, true),
+					newTestPod("ns1", "masters-1", true, false, false, true, false),
 				),
-				esState: &testESState{
-					inCluster: []string{"masters-0"},
-					green:     true,
-				},
+				green: true,
 			},
 			args: args{
-				candidates: []corev1.Pod{newPod("ns1", "masters-0", true, false, true)},
+				maxUnavailableReached: false,
+				allowedDeletions:      1,
 			},
-			deleted: []bool{false},
+			deleted: []string{"masters-1"},
 			wantErr: false,
 		},
 		{
 			name: "Do not delete Pods that share some shards",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "elasticsearch-sample-es-masters-0", true, false, true),
-					newPod("ns1", "elasticsearch-sample-es-masters-1", true, false, true),
-					newPod("ns1", "elasticsearch-sample-es-masters-3", true, false, true),
-					newPod("ns1", "elasticsearch-sample-es-nodes-0", false, true, true),
-					newPod("ns1", "elasticsearch-sample-es-nodes-1", false, true, true),
-					newPod("ns1", "elasticsearch-sample-es-nodes-2", false, true, true),
-					newPod("ns1", "elasticsearch-sample-es-nodes-3", false, true, true),
-					newPod("ns1", "elasticsearch-sample-es-nodes-4", false, true, true),
+					newTestPod("ns1", "elasticsearch-sample-es-nodes-4", false, true, true, true, true),
+					newTestPod("ns1", "elasticsearch-sample-es-nodes-3", false, true, true, true, true),
+					newTestPod("ns1", "elasticsearch-sample-es-nodes-2", false, true, true, true, true),
+					newTestPod("ns1", "elasticsearch-sample-es-nodes-1", false, true, true, true, true),
+					newTestPod("ns1", "elasticsearch-sample-es-nodes-0", false, true, true, true, true),
+					newTestPod("ns1", "elasticsearch-sample-es-masters-2", true, false, true, true, true),
+					newTestPod("ns1", "elasticsearch-sample-es-masters-1", true, false, true, true, true),
+					newTestPod("ns1", "elasticsearch-sample-es-masters-0", true, false, true, true, true),
 				),
-				esState: &testESState{
-					inCluster: []string{
-						"elasticsearch-sample-es-masters-0", "elasticsearch-sample-es-masters-1", "elasticsearch-sample-es-masters-3",
-						"elasticsearch-sample-es-nodes-0", "elasticsearch-sample-es-nodes-1", "elasticsearch-sample-es-nodes-2",
-						"elasticsearch-sample-es-nodes-3", "elasticsearch-sample-es-nodes-4"},
-					green: true,
-				},
+				green: true,
 			},
 			args: args{
-				candidates: []corev1.Pod{
-					newPod("ns1", "elasticsearch-sample-es-nodes-4", false, true, true),
-					newPod("ns1", "elasticsearch-sample-es-nodes-3", false, true, true),
-				},
+				maxUnavailableReached: false,
+				allowedDeletions:      2,
 			},
-			deleted: []bool{true, false},
+			deleted: []string{"elasticsearch-sample-es-nodes-4", "elasticsearch-sample-es-nodes-2"},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
+		esState := &testESState{
+			inCluster: tt.fields.upgradeTestPods.inCluster(),
+			green:     tt.fields.green,
+		}
 		ctx := NewPredicateContext(
-			tt.fields.esState,
+			esState,
 			tt.fields.upgradeTestPods.toHealthyPods(),
 			tt.fields.upgradeTestPods.toUpgrade(),
 			tt.fields.upgradeTestPods.toMasters(),
 		)
-		var deletedPods []corev1.Pod
-		for i, candidate := range tt.args.candidates {
-			deleted, err := runPredicates(ctx, candidate, deletedPods, tt.args.maxUnavailableReached)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("runPredicates error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if deleted != tt.deleted[i] {
-				t.Errorf("name = %s, runPredicates = %v, want %v", tt.name, deleted, tt.deleted)
-			}
-			if deleted {
-				deletedPods = append(deletedPods, candidate)
-			}
+		deleted, err := applyPredicates(ctx, tt.fields.upgradeTestPods.toUpgrade(), tt.args.maxUnavailableReached, tt.args.allowedDeletions)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("runPredicates error = %v, wantErr %v", err, tt.wantErr)
+			return
 		}
+		assert.ElementsMatch(t, names(deleted), tt.deleted, tt.name)
 	}
 }
 
@@ -486,11 +495,11 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 			name: "Mixed nodes",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "masters-0", true, true, true),
-					newPod("ns1", "data-0", false, true, true),
-					newPod("ns1", "masters-1", true, true, true),
-					newPod("ns1", "data-1", false, true, true),
-					newPod("ns1", "masters-2", true, true, false),
+					newTestPod("ns1", "masters-0", true, true, true, true, true),
+					newTestPod("ns1", "data-0", false, true, true, true, true),
+					newTestPod("ns1", "masters-1", true, true, true, true, true),
+					newTestPod("ns1", "data-1", false, true, true, true, true),
+					newTestPod("ns1", "masters-2", true, true, false, true, true),
 				),
 				esState: &testESState{
 					inCluster: []string{"data-1", "data-0", "masters-2", "masters-1", "masters-0"},
@@ -503,12 +512,12 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 			name: "Masters first",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newPod("ns1", "masters-0", true, true, true),
-					newPod("ns1", "masters-1", true, true, true),
-					newPod("ns1", "masters-2", true, true, false),
-					newPod("ns1", "data-0", false, true, true),
-					newPod("ns1", "data-1", false, true, true),
-					newPod("ns1", "data-2", false, true, true),
+					newTestPod("ns1", "masters-0", true, true, true, true, true),
+					newTestPod("ns1", "masters-1", true, true, true, true, true),
+					newTestPod("ns1", "masters-2", true, true, false, true, true),
+					newTestPod("ns1", "data-0", false, true, true, true, true),
+					newTestPod("ns1", "data-1", false, true, true, true, true),
+					newTestPod("ns1", "data-2", false, true, true, true, true),
 				),
 				esState: &testESState{
 					inCluster: []string{"data-2", "data-1", "data-0", "masters-2", "masters-1", "masters-0"},
