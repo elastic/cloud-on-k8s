@@ -6,7 +6,6 @@ package driver
 
 import (
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -32,7 +31,7 @@ type PredicateContext struct {
 	esState          ESState
 }
 
-// Predicate is a function that indicates if a Pod can be (or not) deleted.
+// Predicate is a function that indicates if a Pod can be deleted (or not).
 type Predicate struct {
 	name string
 	fn   func(context PredicateContext, candidate corev1.Pod, deletedPods []corev1.Pod, maxUnavailableReached bool) (bool, error)
@@ -70,11 +69,11 @@ func sortCandidates(allPods []corev1.Pod) {
 			if err != nil {
 				return false
 			}
-			if strings.Compare(ssetName1, ssetName2) == 0 {
+			if ssetName1 == ssetName2 {
 				// same name, compare ordinal, higher first
 				return ord1 > ord2
 			}
-			return strings.Compare(ssetName1, ssetName2) == -1
+			return ssetName1 < ssetName2
 		}
 		if label.IsMasterNode(pod1) && !label.IsMasterNode(pod2) {
 			// pod2 has higher priority since it is a data node
@@ -88,7 +87,7 @@ var predicates = [...]Predicate{
 	{
 		// If MaxUnavailable is reached, allow for an unhealthy Pod to be deleted.
 		// This is to prevent a situation where MaxUnavailable is reached and we
-		// can't make some progress even if the user has updated the spec.
+		// can't make progress even if the user has updated the spec.
 		name: "do_not_restart_healthy_node_if_MaxUnavailable_reached",
 		fn: func(
 			context PredicateContext,

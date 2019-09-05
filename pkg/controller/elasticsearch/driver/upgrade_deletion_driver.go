@@ -36,7 +36,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 	allowedDeletions := maxUnavailable - unhealthyPods
 	// If maxUnavailable is reached the deletion driver still allows one unhealthy Pod to be restarted.
 	// TODO: Should we make the difference between MaxUnavailable and MaxConcurrentRestarting ?
-	maxUnavailableReached := (maxUnavailable - unhealthyPods) <= 0
+	maxUnavailableReached := allowedDeletions <= 0
 
 	// Step 2. Sort the Pods to get the ones with the higher priority
 	candidates := make([]corev1.Pod, len(ctx.podsToUpgrade)) // work on a copy in order to have no side effect
