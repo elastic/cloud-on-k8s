@@ -25,17 +25,17 @@ func TestGenerationsExpectations(t *testing.T) {
 		Namespace:  "namespace",
 		Generation: 2,
 	}
-	require.True(t, expectations.GenerationExpected(obj))
+	require.True(t, expectations.ExpectedGeneration(obj))
 	// set expectations
 	expectations.ExpectGeneration(obj)
 	// check expectations are met for this object
-	require.True(t, expectations.GenerationExpected(obj))
+	require.True(t, expectations.ExpectedGeneration(obj))
 	// but not for the same object with a smaller generation
 	obj.Generation = 1
-	require.False(t, expectations.GenerationExpected(obj))
+	require.False(t, expectations.ExpectedGeneration(obj))
 	// a different object (different UID) should have expectations met
 	obj.UID = types.UID("another")
-	require.True(t, expectations.GenerationExpected(obj))
+	require.True(t, expectations.ExpectedGeneration(obj))
 }
 
 func newPod(clusterName types.NamespacedName, podName string) corev1.Pod {

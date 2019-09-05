@@ -14,7 +14,7 @@ import (
 )
 
 func (d *defaultDriver) expectationsMet(actualStatefulSets sset.StatefulSetList) (bool, error) {
-	if !d.Expectations.GenerationExpected(actualStatefulSets.ObjectMetas()...) {
+	if !d.Expectations.ExpectedGeneration(actualStatefulSets.ObjectMetas()...) {
 		// Our cache of StatefulSets is out of date compared to previous reconciliation operations.
 		// Continuing with the reconciliation at this point may lead to:
 		// - errors on rejected sset updates (conflict since cached resource out of date): that's ok

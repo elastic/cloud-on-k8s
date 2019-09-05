@@ -105,7 +105,7 @@ func (e *Expectations) ExpectGeneration(meta metav1.ObjectMeta) {
 	e.generations[meta.UID] = meta.Generation
 }
 
-func (e *Expectations) GenerationExpected(metaObjs ...metav1.ObjectMeta) bool {
+func (e *Expectations) ExpectedGeneration(metaObjs ...metav1.ObjectMeta) bool {
 	for _, meta := range metaObjs {
 		if expectedGen, exists := e.generations[meta.UID]; exists && meta.Generation < expectedGen {
 			return false

@@ -675,7 +675,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	nodespec.UpdateReplicas(&expectedSset1, &downscale.targetReplicas)
 
 	// no expectation is currently set
-	require.True(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.True(t, downscaleCtx.expectations.ExpectedGeneration(sset1.ObjectMeta))
 
 	// do the downscale
 	err := doDownscale(downscaleCtx, downscale, sset.StatefulSetList{sset1, sset2})
@@ -688,10 +688,10 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	require.Equal(t, []appsv1.StatefulSet{expectedSset1, sset2}, ssets.Items)
 
 	// expectations should have been be registered
-	require.True(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.True(t, downscaleCtx.expectations.ExpectedGeneration(sset1.ObjectMeta))
 	// not ok for a sset whose generation == 1
 	sset1.Generation = 1
-	require.False(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.False(t, downscaleCtx.expectations.ExpectedGeneration(sset1.ObjectMeta))
 }
 
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
