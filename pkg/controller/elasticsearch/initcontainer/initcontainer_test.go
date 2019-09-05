@@ -70,7 +70,7 @@ func TestNewInitContainers(t *testing.T) {
 				tt.args.elasticsearchImage,
 				tt.args.SetVMMaxMapCount,
 				volume.SecretVolume{},
-				"clusterName",
+				"clustername",
 				tt.args.keystoreResources,
 			)
 			assert.NoError(t, err)

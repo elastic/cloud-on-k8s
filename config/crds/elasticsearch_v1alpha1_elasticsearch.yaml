@@ -117,10 +117,9 @@ spec:
                     description: Config represents Elasticsearch configuration.
                     type: object
                   name:
-                    description: 'Name is a logical name for this set of nodes. Used
-                      as a part of the managed Elasticsearch node.name setting. TODO:
-                      refactor and explain name length conventions'
-                    maxLength: 19
+                    description: Name is a logical name for this set of nodes. Used
+                      as a part of the managed Elasticsearch node.name setting.
+                    maxLength: 23
                     pattern: '[a-zA-Z0-9-]+'
                     type: string
                   nodeCount:
@@ -167,12 +166,38 @@ spec:
               description: SecureSettings references secrets containing secure settings,
                 to be injected into Elasticsearch keystore on each node. Each individual
                 key/value entry in the referenced secrets is considered as an individual
-                secure setting to be injected. The secret must exist in the same namespace
-                as the Elasticsearch resource.
+                secure setting to be injected. You can use the `entries` and `key`
+                fields to consider only a subset of the secret entries and the `path`
+                field to change the target path of a secret entry key. The secret
+                must exist in the same namespace as the Elasticsearch resource.
               items:
                 properties:
+                  entries:
+                    description: If unspecified, each key-value pair in the Data field
+                      of the referenced Secret will be projected into the volume as
+                      a file whose name is the key and content is the value. If specified,
+                      the listed keys will be projected into the specified paths,
+                      and unlisted keys will not be present.
+                    items:
+                      properties:
+                        key:
+                          description: The key to project.
+                          type: string
+                        path:
+                          description: The relative path of the file to map the key
+                            to. May not be an absolute path. May not contain the path
+                            element '..'. May not start with the string '..'.
+                          type: string
+                      required:
+                      - key
+                      type: object
+                    type: array
                   secretName:
+                    description: 'Name of the secret in the pod''s namespace to use.
+                      More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
                     type: string
+                required:
+                - secretName
                 type: object
               type: array
             setVmMaxMapCount:

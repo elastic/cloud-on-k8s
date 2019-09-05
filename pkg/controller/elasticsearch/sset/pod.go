@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 // PodName returns the name of the pod with the given ordinal for this StatefulSet.
@@ -85,29 +86,57 @@ func GetActualMastersForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]core
 	return label.FilterMasterNodePods(pods), nil
 }
 
-// ScheduledUpgradesDone returns true if all pods scheduled for upgrade have been upgraded.
-// This is done by checking the revision of pods whose ordinal is higher or equal than the StatefulSet
-// rollingUpdate.Partition index.
-func ScheduledUpgradesDone(c k8s.Client, statefulSets StatefulSetList) (bool, error) {
-	for _, s := range statefulSets {
-		if s.Status.UpdateRevision == "" {
-			// no upgrade scheduled
-			continue
+func PodReconciliationDoneForSset(c k8s.Client, statefulSet appsv1.StatefulSet) (bool, error) {
+	// check all expected pods are there: no more, no less
+	actualPods, err := GetActualPodsForStatefulSet(c, statefulSet)
+	if err != nil {
+		return false, err
+	}
+	actualPodNames := k8s.PodNames(actualPods)
+	expectedPodNames := PodNames(statefulSet)
+	if !(len(actualPodNames) == len(expectedPodNames) && stringsutil.StringsInSlice(expectedPodNames, actualPodNames)) {
+		log.V(1).Info(
+			"Some pods still need to be created/deleted",
+			"namespace", statefulSet.Namespace, "statefulset_name", statefulSet.Name,
+			"expected_pods", expectedPodNames, "actual_pods", actualPodNames,
+		)
+		return false, nil
+	}
+
+	// check pods revision match what is specified in the StatefulSet
+	done, err := scheduledUpgradeDone(c, statefulSet)
+	if err != nil {
+		return false, err
+	}
+	if !done {
+		log.V(1).Info(
+			"Some pods still need to be upgraded",
+			"namespace", statefulSet.Namespace, "statefulset_name", statefulSet.Name,
+		)
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func scheduledUpgradeDone(c k8s.Client, statefulSet appsv1.StatefulSet) (bool, error) {
+	if statefulSet.Status.UpdateRevision == "" {
+		// no upgrade scheduled
+		return true, nil
+	}
+	partition := GetPartition(statefulSet)
+	for i := GetReplicas(statefulSet) - 1; i >= partition; i-- {
+		var pod corev1.Pod
+		err := c.Get(types.NamespacedName{Namespace: statefulSet.Namespace, Name: PodName(statefulSet.Name, i)}, &pod)
+		if errors.IsNotFound(err) {
+			// pod probably being terminated
+			return false, nil
 		}
-		partition := GetPartition(s)
-		for i := GetReplicas(s) - 1; i >= partition; i-- {
-			var pod corev1.Pod
-			err := c.Get(types.NamespacedName{Namespace: s.Namespace, Name: PodName(s.Name, i)}, &pod)
-			if errors.IsNotFound(err) {
-				// pod probably being terminated
-				return false, nil
-			}
-			if err != nil {
-				return false, err
-			}
-			if PodRevision(pod) != s.Status.UpdateRevision {
-				return false, nil
-			}
+		if err != nil {
+			return false, err
+		}
+		if PodRevision(pod) != statefulSet.Status.UpdateRevision {
+			return false, nil
 		}
 	}
 	return true, nil

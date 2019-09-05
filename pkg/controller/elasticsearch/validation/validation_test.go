@@ -108,10 +108,15 @@ func TestValidate(t *testing.T) {
 			name: "happy path",
 			args: args{
 				es: estype.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "test-es",
+					},
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
 						Nodes: []estype.NodeSpec{
 							{
+								Name: "default",
 								Config: &common.Config{
 									Data: map[string]interface{}{
 										estype.NodeMaster: "true",
@@ -131,6 +136,10 @@ func TestValidate(t *testing.T) {
 			name: "single failure",
 			args: args{
 				es: estype.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "test-es",
+					},
 					Spec: estype.ElasticsearchSpec{Version: "7.0.0"},
 				},
 			},
@@ -176,7 +185,7 @@ func TestValidate(t *testing.T) {
 			},
 			wantErr: false,
 			errContains: []string{
-				"name length cannot exceed the limit",
+				invalidNamesErrMsg,
 				masterRequiredMsg,
 				"unsupported version",
 				"is not user configurable",

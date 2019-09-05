@@ -85,8 +85,10 @@ func (in *ApmServerSpec) DeepCopyInto(out *ApmServerSpec) {
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
-		*out = make([]commonv1alpha1.SecretRef, len(*in))
-		copy(*out, *in)
+		*out = make([]commonv1alpha1.SecretSource, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 }
 

@@ -22,6 +22,14 @@ type Builder struct {
 var _ test.Builder = Builder{}
 
 func NewBuilder(name string) Builder {
+	return newBuilder(name, rand.String(4))
+}
+
+func NewBuilderWithoutSuffix(name string) Builder {
+	return newBuilder(name, "")
+}
+
+func newBuilder(name, randSuffix string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
@@ -44,11 +52,13 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}.WithSuffix(rand.String(4))
+	}.WithSuffix(randSuffix)
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
-	b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
+	if suffix != "" {
+		b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
+	}
 	return b
 }
 

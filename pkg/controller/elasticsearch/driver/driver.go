@@ -230,6 +230,12 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	// set an annotation with the ClusterUUID, if bootstrapped
+	if err := ReconcileClusterUUID(d.Client, &d.ES, observedState); err != nil {
+		return results.WithError(err)
+	}
+
+	// reconcile StatefulSets and nodes configuration
 	res = d.reconcileNodeSpecs(esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources)
 	if results.WithResults(res).HasError() {
 		return results

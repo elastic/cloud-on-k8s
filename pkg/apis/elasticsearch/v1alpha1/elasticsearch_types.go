@@ -49,8 +49,10 @@ type ElasticsearchSpec struct {
 	// into Elasticsearch keystore on each node.
 	// Each individual key/value entry in the referenced secrets is considered as an
 	// individual secure setting to be injected.
+	// You can use the `entries` and `key` fields to consider only a subset of the secret
+	// entries and the `path` field to change the target path of a secret entry key.
 	// The secret must exist in the same namespace as the Elasticsearch resource.
-	SecureSettings []commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
+	SecureSettings []commonv1alpha1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -66,8 +68,7 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 type NodeSpec struct {
 	// Name is a logical name for this set of nodes. Used as a part of the managed Elasticsearch node.name setting.
 	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+
-	// +kubebuilder:validation:MaxLength=19
-	// TODO: refactor and explain name length conventions
+	// +kubebuilder:validation:MaxLength=23
 	Name string `json:"name"`
 
 	// Config represents Elasticsearch configuration.
@@ -257,7 +258,7 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 	return !e.DeletionTimestamp.IsZero()
 }
 
-func (e Elasticsearch) SecureSettings() []commonv1alpha1.SecretRef {
+func (e Elasticsearch) SecureSettings() []commonv1alpha1.SecretSource {
 	return e.Spec.SecureSettings
 }
 

@@ -5,13 +5,12 @@
 package zen2
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	appsv1 "k8s.io/api/apps/v1"
 )
 
 // zen2VersionMatch returns true if the given Elasticsearch versionCompatibleWithZen2 is compatible with zen2.
@@ -45,4 +44,28 @@ func AllMastersCompatibleWithZen2(c k8s.Client, es v1alpha1.Elasticsearch) (bool
 		}
 	}
 	return true, nil
+}
+
+// IsInitialZen2Upgrade detects whether this is an initial upgrade of a non zen2 cluster (6.x) to a zen2 compatible version (7.x +)
+func IsInitialZen2Upgrade(c k8s.Client, es v1alpha1.Elasticsearch) (bool, error) {
+	newVersion, err := version.Parse(es.Spec.Version)
+	if err != nil || !versionCompatibleWithZen2(*newVersion) {
+		return false, err
+	}
+	// look at pods currently in the cluster as opposed to sset revision data
+	masters, err := sset.GetActualMastersForCluster(c, es)
+	if err != nil {
+		return false, err
+	}
+	var containsZen2Masters bool
+	for _, pod := range masters {
+		v, err := label.ExtractVersion(pod.Labels)
+		if err != nil {
+			return false, err
+		}
+		if versionCompatibleWithZen2(*v) {
+			containsZen2Masters = true
+		}
+	}
+	return !containsZen2Masters, nil
 }

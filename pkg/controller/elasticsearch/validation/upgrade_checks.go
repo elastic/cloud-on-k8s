@@ -52,3 +52,7 @@ func validUpgradePath(ctx Context) validation.Result {
 	}
 	return validation.OK
 }
+
+func invalidName(err error) string {
+	return fmt.Sprintf("%s: %v", invalidNamesErrMsg, err)
+}
