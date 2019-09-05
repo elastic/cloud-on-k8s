@@ -276,7 +276,5 @@ type ElasticsearchList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(
-		&Elasticsearch{}, &ElasticsearchList{},
-	)
+	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
 }
