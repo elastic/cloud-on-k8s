@@ -11,9 +11,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_defaultDriver_expectationsMet(t *testing.T) {

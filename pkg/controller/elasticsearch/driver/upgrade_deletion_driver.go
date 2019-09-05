@@ -43,9 +43,14 @@ func (ctx *rollingUpgradeCtx) Delete() (deletedPods []corev1.Pod, err error) {
 	sortCandidates(candidates)
 
 	// Step 3: Apply predicates
-	predicateContext := NewPredicateContext(ctx.esState, ctx.healthyPods, ctx.podsToUpgrade, ctx.expectedMasters, maxUnavailableReached)
+	predicateContext := NewPredicateContext(
+		ctx.esState,
+		ctx.healthyPods,
+		ctx.podsToUpgrade,
+		ctx.expectedMasters,
+	)
 	for _, candidate := range candidates {
-		if ok, err := runPredicates(predicateContext, candidate); err != nil {
+		if ok, err := runPredicates(predicateContext, candidate, deletedPods, maxUnavailableReached); err != nil {
 			return deletedPods, err
 		} else if ok {
 			candidate := candidate
@@ -96,9 +101,11 @@ func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
 func runPredicates(
 	ctx PredicateContext,
 	candidate corev1.Pod,
+	deletedPods []corev1.Pod,
+	maxUnavailableReached bool,
 ) (bool, error) {
 	for _, predicate := range predicates {
-		canDelete, err := predicate.fn(ctx, candidate)
+		canDelete, err := predicate.fn(ctx, candidate, deletedPods, maxUnavailableReached)
 		if err != nil {
 			return false, err
 		}

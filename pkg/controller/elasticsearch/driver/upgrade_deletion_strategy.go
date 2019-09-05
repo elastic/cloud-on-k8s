@@ -26,18 +26,16 @@ const (
 )
 
 type PredicateContext struct {
-	masterNodesNames      []string
-	healthyPods           map[string]corev1.Pod
-	toUpdate              []corev1.Pod
-	esState               ESState
-	expectedDeletions     []corev1.Pod
-	maxUnavailableReached bool
+	masterNodesNames []string
+	healthyPods      map[string]corev1.Pod
+	toUpdate         []corev1.Pod
+	esState          ESState
 }
 
 // Predicate is a function that indicates if a Pod can be (or not) deleted.
 type Predicate struct {
 	name string
-	fn   func(context PredicateContext, candidate corev1.Pod) (bool, error)
+	fn   func(context PredicateContext, candidate corev1.Pod, deletedPods []corev1.Pod, maxUnavailableReached bool) (bool, error)
 }
 
 func NewPredicateContext(
@@ -45,15 +43,12 @@ func NewPredicateContext(
 	healthyPods map[string]corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	masterNodesNames []string,
-	maxUnavailableReached bool,
 ) PredicateContext {
 	return PredicateContext{
-		masterNodesNames:      masterNodesNames,
-		healthyPods:           healthyPods,
-		toUpdate:              podsToUpgrade,
-		esState:               state,
-		expectedDeletions:     nil,
-		maxUnavailableReached: maxUnavailableReached,
+		masterNodesNames: masterNodesNames,
+		healthyPods:      healthyPods,
+		toUpdate:         podsToUpgrade,
+		esState:          state,
 	}
 }
 
@@ -96,9 +91,12 @@ var predicates = [...]Predicate{
 		// can't make some progress even if the user has updated the spec.
 		name: "do_not_restart_healthy_node_if_MaxUnavailable_reached",
 		fn: func(
-			context PredicateContext, candidate corev1.Pod,
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
 		) (b bool, e error) {
-			if context.maxUnavailableReached && k8s.IsPodReady(candidate) {
+			if maxUnavailableReached && k8s.IsPodReady(candidate) {
 				return false, nil
 			}
 			return true, nil
@@ -107,7 +105,10 @@ var predicates = [...]Predicate{
 	{
 		name: "skip_unknown_or_long_terminating_pods",
 		fn: func(
-			context PredicateContext, candidate corev1.Pod,
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
 		) (b bool, e error) {
 			if candidate.DeletionTimestamp != nil && candidate.Status.Reason == NodeUnreachablePodReason {
 				// kubelet is unresponsive, Unknown Pod, do not try to delete it
@@ -125,7 +126,10 @@ var predicates = [...]Predicate{
 		// a Pod has to be restarted a second time.
 		name: "do_not_restart_healthy_node_if_not_green",
 		fn: func(
-			context PredicateContext, candidate corev1.Pod,
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
 		) (b bool, e error) {
 			green, err := context.esState.GreenHealth()
 			if err != nil {
@@ -144,7 +148,10 @@ var predicates = [...]Predicate{
 		// One master at a time
 		name: "one_master_at_a_time",
 		fn: func(
-			context PredicateContext, candidate corev1.Pod,
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
 		) (b bool, e error) {
 			// If candidate is not a master then we don't care
 			if !label.IsMasterNode(candidate) {
@@ -156,7 +163,7 @@ var predicates = [...]Predicate{
 				return true, nil
 			}
 
-			for _, pod := range context.expectedDeletions {
+			for _, pod := range deletedPods {
 				if label.IsMasterNode(pod) {
 					return false, nil
 				}
@@ -178,7 +185,10 @@ var predicates = [...]Predicate{
 		// Force an upgrade of all the data nodes before upgrading the last master
 		name: "do_not_delete_last_master_if_datanodes_are_not_upgraded",
 		fn: func(
-			context PredicateContext, candidate corev1.Pod,
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
 		) (b bool, e error) {
 			// If candidate is not a master then we don't care
 			if !label.IsMasterNode(candidate) {
@@ -206,7 +216,10 @@ var predicates = [...]Predicate{
 	{
 		name: "do_not_delete_last_healthy_master",
 		fn: func(
-			context PredicateContext, candidate corev1.Pod,
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
 		) (b bool, e error) {
 			// If candidate is not a master then we don't care
 			if !label.IsMasterNode(candidate) {
@@ -242,9 +255,12 @@ var predicates = [...]Predicate{
 		// We should not delete 2 Pods with the same shards
 		name: "do_not_delete_pods_with_same_shards",
 		fn: func(
-			context PredicateContext, candidate corev1.Pod,
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
 		) (b bool, e error) {
-			if len(context.expectedDeletions) == 0 {
+			if len(deletedPods) == 0 {
 				// Do not do unnecessary request
 				return true, nil
 			}
@@ -259,7 +275,7 @@ var predicates = [...]Predicate{
 				return true, nil
 			}
 
-			for _, deletedPod := range context.expectedDeletions {
+			for _, deletedPod := range deletedPods {
 				shardsOnDeletePod, ok := shards[deletedPod.Name]
 				if !ok {
 					// No shards on the deleted pod
