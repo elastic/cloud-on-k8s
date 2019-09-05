@@ -115,3 +115,92 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 		})
 	}
 }
+
+func TestIsInitialZen2Upgrade(t *testing.T) {
+	type args struct {
+		c  k8s.Client
+		es v1alpha1.Elasticsearch
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "new 7.x",
+			args: args{
+				c:  k8s.WrapClient(fake.NewFakeClient()),
+				es: v1alpha1.Elasticsearch{Spec: v1alpha1.ElasticsearchSpec{Version: "7.3.0"}},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "6.x to 7.x",
+			args: args{
+				c: k8s.WrapClient(fake.NewFakeClient(sset.TestPod{
+					Namespace:       "default",
+					Name:            "pod-0",
+					ClusterName:     "es",
+					StatefulSetName: "masters",
+					Version:         "6.8.0",
+					Master:          true,
+				}.BuildPtr())),
+				es: v1alpha1.Elasticsearch{
+					Spec: v1alpha1.ElasticsearchSpec{Version: "7.3.0"},
+				},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "7.x to 7.x",
+			args: args{
+				c: k8s.WrapClient(fake.NewFakeClient(sset.TestPod{
+					Namespace:       "default",
+					Name:            "pod-0",
+					ClusterName:     "es",
+					StatefulSetName: "masters",
+					Version:         "7.1.0",
+					Master:          true,
+				}.BuildPtr())),
+				es: v1alpha1.Elasticsearch{
+					Spec: v1alpha1.ElasticsearchSpec{Version: "7.3.0"},
+				},
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "6.x to 6.x",
+			args: args{
+				c: k8s.WrapClient(fake.NewFakeClient(sset.TestPod{
+					Namespace:       "default",
+					Name:            "pod-0",
+					ClusterName:     "es",
+					StatefulSetName: "masters",
+					Version:         "6.8.0",
+					Master:          true,
+				}.BuildPtr())),
+				es: v1alpha1.Elasticsearch{
+					Spec: v1alpha1.ElasticsearchSpec{Version: "6.8.1"},
+				},
+			},
+			want:    false,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := IsInitialZen2Upgrade(tt.args.c, tt.args.es)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IsInitialZen2Upgrade() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("IsInitialZen2Upgrade() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -126,9 +126,9 @@ func reconcileSecureSettings(
 
 func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore) ([]corev1.Secret, error) {
 	userSecrets := make([]corev1.Secret, 0, len(hasKeystore.SecureSettings()))
-	for _, userSecretRef := range hasKeystore.SecureSettings() {
+	for _, userSecretsRef := range hasKeystore.SecureSettings() {
 		// retrieve the secret referenced by the user in the same namespace
-		userSecret, exists, err := retrieveUserSecret(c, recorder, hasKeystore, userSecretRef.SecretName)
+		userSecret, exists, err := retrieveUserSecret(c, recorder, hasKeystore, userSecretsRef)
 		if err != nil {
 			return nil, err
 		}
@@ -141,8 +141,9 @@ func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystor
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretName string) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1alpha1.SecretSource) (*corev1.Secret, bool, error) {
 	namespace := hasKeystore.GetNamespace()
+	secretName := secretSrc.SecretName
 
 	var userSecret corev1.Secret
 	err := c.Get(types.NamespacedName{Namespace: namespace, Name: secretName}, &userSecret)
@@ -154,7 +155,40 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 	} else if err != nil {
 		return nil, false, err
 	}
-	return &userSecret, true, nil
+
+	// If no entries, return the whole user secret
+	if secretSrc.Entries == nil {
+		return &userSecret, true, nil
+	}
+
+	if len(secretSrc.Entries) == 0 {
+		return nil, false, fmt.Errorf("set is empty in secure settings secret %s", secretName)
+	}
+
+	// Else if entries is defined, return only a subset of the user secret
+	projectionSecret := corev1.Secret{
+		ObjectMeta: userSecret.ObjectMeta,
+		Data:       map[string][]byte{},
+	}
+	for _, entry := range secretSrc.Entries {
+		if entry.Key == "" {
+			return nil, false, fmt.Errorf("key is empty in secure settings secret %s", secretName)
+		}
+
+		newKey := entry.Path
+		if newKey == "" {
+			newKey = entry.Key
+		}
+
+		value, ok := userSecret.Data[entry.Key]
+		if !ok {
+			return nil, false, fmt.Errorf("key %s not found in secure settings secret %s", entry.Key, secretName)
+		}
+
+		projectionSecret.Data[newKey] = value
+	}
+
+	return &projectionSecret, true, nil
 }
 
 func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string {
@@ -172,7 +206,7 @@ func secureSettingsWatchName(namespacedName types.NamespacedName) string {
 // Only one watch per cluster is registered:
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
-func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1alpha1.SecretRef, nn types.NamespacedName) error {
+func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1alpha1.SecretSource, nn types.NamespacedName) error {
 	watchName := secureSettingsWatchName(nn)
 	if secureSettingsRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)
