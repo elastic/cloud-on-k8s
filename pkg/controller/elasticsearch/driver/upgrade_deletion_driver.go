@@ -119,11 +119,11 @@ func runPredicates(
 		}
 		if !canDelete {
 			log.V(1).Info("predicate failed", "pod_name", candidate.Name, "predicate_name", predicate.name)
-			//skip this Pod, it can't be deleted for the moment
+			// Skip this Pod, it can't be deleted for the moment
 			return false, nil
 		}
 	}
-	// All predicates passed !
+	// All predicates passed!
 	return true, nil
 }
 
