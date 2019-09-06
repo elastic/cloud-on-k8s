@@ -177,6 +177,8 @@ var predicates = [...]Predicate{
 					healthyMasters++
 				}
 			}
+			// We are relying here on the expectations that give us the guarantee
+			// that there is no upscale or downscale in progress.
 			return healthyMasters == expectedMasters, nil
 		},
 	},
