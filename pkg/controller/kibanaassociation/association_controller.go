@@ -27,6 +27,7 @@ import (
 	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -256,7 +257,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 			// - deleted: existing resources will be garbage collected
 			// in any case, since the user explicitly requested a managed association,
 			// remove connection details if they are set
-			if err := association.RemoveAssociationConf(r.Client, kibana); err != nil {
+			if err := association.RemoveAssociationConf(r.Client, kibana); err != nil && !errors.IsConflict(err) {
 				log.Error(err, "Failed to remove Elasticsearch configuration from Kibana object",
 					"namespace", kibana.Namespace, "kibana_name", kibana.Name)
 				return commonv1alpha1.AssociationPending, err
@@ -299,6 +300,9 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 	if !reflect.DeepEqual(expectedESAssoc, kibana.AssociationConf()) {
 		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		if err := association.UpdateAssociationConf(r.Client, kibana, expectedESAssoc); err != nil {
+			if errors.IsConflict(err) {
+				return commonv1alpha1.AssociationPending, nil
+			}
 			log.Error(err, "Failed to update association configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 			return commonv1alpha1.AssociationPending, err
 		}

@@ -50,13 +50,6 @@ type ApmServerSpec struct {
 	SecureSettings []commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
 }
 
-// ElasticsearchOutputSSL contains TLS-related configuration for Elasticsearch
-type ElasticsearchOutputSSL struct {
-	// CertificateAuthorities is a secret that contains a `tls.crt` entry that contain certificates for server
-	// verifications.
-	CertificateAuthorities commonv1alpha1.SecretRef `json:"certificateAuthorities,omitempty"`
-}
-
 // ApmServerHealth expresses the status of the Apm Server instances.
 type ApmServerHealth string
 
