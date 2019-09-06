@@ -6,8 +6,6 @@ package driver
 
 import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,11 +20,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 
 	// Check if we are not over disruption budget
 	// Upscale is done, we should have the required number of Pods
-	statefulSets, err := sset.RetrieveActualStatefulSets(ctx.client, k8s.ExtractNamespacedName(&ctx.ES))
-	if err != nil {
-		return nil, err
-	}
-	expectedPods := statefulSets.PodNames()
+	expectedPods := ctx.statefulSets.PodNames()
 	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
 	maxUnavailable := 1
 	// TODO: use GroupingDefinition
@@ -54,28 +48,30 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
-	deletedPods, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions)
+	podsToDelete, err := applyPredicates(predicateContext, candidates, maxUnavailableReached, allowedDeletions)
 	if err != nil {
-		return deletedPods, err
+		return podsToDelete, err
 	}
 
-	if len(deletedPods) == 0 {
+	if len(podsToDelete) == 0 {
 		log.Info("no pod deleted", "es_name", ctx.ES.Name, "es_namespace", ctx.ES.Namespace)
-		return deletedPods, nil
+		return podsToDelete, nil
 	}
 
 	// Disable shard allocation
 	if err := ctx.prepareClusterForNodeRestart(ctx.esClient, ctx.esState); err != nil {
-		return deletedPods, err
+		return podsToDelete, err
 	}
 	// TODO: If master is changed into a data node (or the opposite) it must be excluded or we should update m_m_n
-	for _, deletedPod := range deletedPods {
-		ctx.expectations.ExpectDeletion(deletedPod)
-		err := ctx.delete(&deletedPod)
+	deletedPods := []corev1.Pod{}
+	for _, podToDelete := range podsToDelete {
+		ctx.expectations.ExpectDeletion(podToDelete)
+		err := ctx.delete(&podToDelete)
 		if err != nil {
-			ctx.expectations.CancelExpectedDeletion(deletedPod)
+			ctx.expectations.CancelExpectedDeletion(podToDelete)
 			return deletedPods, err
 		}
+		deletedPods = append(deletedPods, podToDelete)
 	}
 	return deletedPods, nil
 }

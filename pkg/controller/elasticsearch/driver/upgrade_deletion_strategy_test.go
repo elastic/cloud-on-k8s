@@ -5,337 +5,222 @@
 package driver
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"path/filepath"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-type testPod struct {
-	name                                        string
-	master, data, healthy, toUpgrade, inCluster bool
-}
-type upgradeTestPods []testPod
-
-func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
-	result := make(upgradeTestPods, len(pods))
-	for i := range pods {
-		result[i] = pods[i]
-	}
-	return result
-}
-
-func (u upgradeTestPods) toPods() []runtime.Object {
-	result := make([]runtime.Object, len(u))
-	i := 0
-	for _, testPod := range u {
-		pod := testPod.toPod()
-		result[i] = &pod
-		i++
-	}
-	return result
-}
-
-func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
-	result := make(map[string]corev1.Pod)
-	for _, testPod := range u {
-		pod := testPod.toPod()
-		if k8s.IsPodReady(pod) {
-			result[pod.Name] = pod
-		}
-	}
-	return result
-}
-
-func (u upgradeTestPods) toUpgrade() []corev1.Pod {
-	var result []corev1.Pod
-	for _, testPod := range u {
-		pod := testPod.toPod()
-		if testPod.toUpgrade {
-			result = append(result, pod)
-		}
-	}
-	return result
-}
-
-func (u upgradeTestPods) inCluster() []string {
-	var result []string
-	for _, testPod := range u {
-		pod := testPod.toPod()
-		if testPod.inCluster {
-			result = append(result, pod.Name)
-		}
-	}
-	return result
-}
-
-func (u upgradeTestPods) toMasters() []string {
-	var result []string
-	for _, testPod := range u {
-		pod := testPod.toPod()
-		if label.IsMasterNode(pod) {
-			result = append(result, pod.Name)
-		}
-	}
-	return result
-}
-
-func names(pods []corev1.Pod) []string {
-	result := make([]string, len(pods))
-	for i, pod := range pods {
-		result[i] = pod.Name
-	}
-	return result
-}
-
-func (t testPod) toPod() corev1.Pod {
-	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      t.name,
-			Namespace: testNamespace,
-		},
-	}
-	labels := map[string]string{}
-	label.NodeTypesMasterLabelName.Set(t.master, labels)
-	label.NodeTypesDataLabelName.Set(t.data, labels)
-	pod.Labels = labels
-	if t.healthy {
-		pod.Status = corev1.PodStatus{
-			Conditions: []corev1.PodCondition{
-				{
-					Type:   corev1.PodReady,
-					Status: corev1.ConditionTrue,
-				},
-				{
-					Type:   corev1.ContainersReady,
-					Status: corev1.ConditionTrue,
-				},
-			},
-		}
-	}
-	return pod
-}
-
-type testESState struct {
-	inCluster []string
-	green     bool
-	ESState
-}
-
-func (t *testESState) GreenHealth() (bool, error) {
-	return t.green, nil
-}
-
-func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {
-	for _, nodeName := range nodeNames {
-		for _, inClusterPods := range t.inCluster {
-			if nodeName == inClusterPods {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
-}
-
-func loadFileBytes(fileName string) []byte {
-	contents, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
-	if err != nil {
-		panic(err)
-	}
-
-	return contents
-}
-
-func (t *testESState) GetClusterState() (*esclient.ClusterState, error) {
-	var cs esclient.ClusterState
-	sampleClusterState := loadFileBytes("cluster_state.json")
-	err := json.Unmarshal(sampleClusterState, &cs)
-	return &cs, err
-}
-
-func TestDeletionStrategy_Predicates(t *testing.T) {
+func TestUpgradePodsDeletion_Delete(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
 		ES              v1alpha1.Elasticsearch
 		green           bool
-	}
-	type args struct {
-		maxUnavailableReached bool
-		allowedDeletions      int
+		maxUnavailable  int
+		podFilter       filter
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		deleted []string
-		wantErr bool
+		name                         string
+		fields                       fields
+		deleted                      []string
+		wantErr                      bool
+		wantShardsAllocationDisabled bool
 	}{
+		{
+			name: "All Pods are upgraded",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+				),
+				maxUnavailable: 1,
+				green:          true,
+				podFilter:      nothing,
+			},
+			deleted:                      []string{},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: false,
+		},
 		{
 			name: "3 healthy master and data nodes, allow the last to be upgraded",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-2", true, true, true, false, true},
-					testPod{"masters-1", true, true, true, false, true},
-					testPod{"masters-0", true, true, true, true, true},
+					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-
-				green: true,
+				maxUnavailable: 1,
+				green:          true,
+				podFilter:      nothing,
 			},
-			args: args{
-				maxUnavailableReached: false,
-				allowedDeletions:      1,
-			},
-			deleted: []string{"masters-0"},
-			wantErr: false,
+			deleted:                      []string{"masters-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
 		},
 		{
 			name: "3 healthy masters, allow the deletion of 1",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-2", true, true, true, true, true},
-					testPod{"masters-1", true, true, true, true, true},
-					testPod{"masters-0", true, true, true, true, true},
+					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-				green: true,
+				maxUnavailable: 1,
+				green:          true,
+				podFilter:      nothing,
 			},
-			args: args{
-				maxUnavailableReached: false,
-				allowedDeletions:      1,
-			},
-			deleted: []string{"masters-2"},
-			wantErr: false,
+			deleted:                      []string{"masters-2"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
 		},
 		{
-			name: "2 healthy masters out of 3, do not allow deletion",
+			name: "2 healthy masters out of 3, allow the deletion of the unhealthy one",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-0", true, true, true, true, true},
-					testPod{"masters-1", true, true, true, true, true},
-					testPod{"masters-2", true, true, false, false, false},
+					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
+					newTestPod("master-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-
-				green: true,
+				maxUnavailable: 1,
+				green:          true,
+				podFilter:      nothing,
 			},
-			args: args{
-				maxUnavailableReached: false,
-				allowedDeletions:      1,
-			},
-			deleted: []string{},
-			wantErr: false,
+			deleted:                      []string{"master-1"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
 		},
 		{
 			name: "1 master and 1 node, wait for the node to be upgraded first",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-0", true, false, true, true, true},
-					testPod{"node-0", false, true, false, true, true},
+					newTestPod("master-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("node-0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-				green: true,
+				maxUnavailable: 1,
+				green:          true,
+				podFilter:      nothing,
 			},
-			args: args{
-				maxUnavailableReached: false,
-				allowedDeletions:      1,
-			},
-			deleted: []string{"node-0"},
-			wantErr: false,
+			deleted:                      []string{"node-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
 		},
 		{
 			name: "Do not delete healthy node if not green",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-0", true, false, true, true, true},
+					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-				green: false,
+				maxUnavailable: 1,
+				green:          false,
+				podFilter:      nothing,
 			},
-			args: args{
-				maxUnavailableReached: true,
-				allowedDeletions:      1,
-			},
-			deleted: []string{},
-			wantErr: false,
+			deleted:                      []string{},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: false,
 		},
 		{
 			name: "Allow deletion of unhealthy node if not green",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-0", true, true, true, true, true},
-					testPod{"masters-1", true, true, true, true, true},
-					testPod{"masters-2", true, true, false, true, true},
+					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
+					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-				green: false,
+				maxUnavailable: 1,
+				green:          false,
+				podFilter:      nothing,
 			},
-			args: args{
-				maxUnavailableReached: true,
-				allowedDeletions:      1,
-			},
-			deleted: []string{"masters-2"},
-			wantErr: false,
+			deleted:                      []string{"masters-2"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
 		},
 		{
 			name: "Do not delete last healthy master",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-0", true, false, true, true, true},
-					testPod{"masters-1", true, false, false, true, false},
+					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
 				),
-				green: true,
+				maxUnavailable: 1,
+				green:          true,
+				podFilter:      nothing,
 			},
-			args: args{
-				maxUnavailableReached: false,
-				allowedDeletions:      1,
+			deleted:                      []string{"masters-1"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
+			name: "Pod deleted while upgrading",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 1,
+				green:          true,
+				podFilter:      byName("masters-2"),
 			},
-			deleted: []string{"masters-1"},
-			wantErr: false,
+			deleted:                      []string{},
+			wantErr:                      true,
+			wantShardsAllocationDisabled: true,
 		},
 		{
 			name: "Do not delete Pods that share some shards",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"elasticsearch-sample-es-nodes-4", false, true, true, true, true},
-					testPod{"elasticsearch-sample-es-nodes-3", false, true, true, true, true},
-					testPod{"elasticsearch-sample-es-nodes-2", false, true, true, true, true},
-					testPod{"elasticsearch-sample-es-nodes-1", false, true, true, true, true},
-					testPod{"elasticsearch-sample-es-nodes-0", false, true, true, true, true},
-					testPod{"elasticsearch-sample-es-masters-2", true, false, true, true, true},
-					testPod{"elasticsearch-sample-es-masters-1", true, false, true, true, true},
-					testPod{"elasticsearch-sample-es-masters-0", true, false, true, true, true},
+					// 5 data nodes
+					newTestPod("elasticsearch-sample-es-nodes-4").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-3").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-2").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-1").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-nodes-0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					// 3 masters
+					newTestPod("elasticsearch-sample-es-masters-2").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-masters-1").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("elasticsearch-sample-es-masters-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-				green: true,
+				maxUnavailable: 2, // Allow 2 to be upgraded at the same time
+				green:          true,
+				podFilter:      nothing,
 			},
-			args: args{
-				maxUnavailableReached: false,
-				allowedDeletions:      2,
-			},
-			deleted: []string{"elasticsearch-sample-es-nodes-4", "elasticsearch-sample-es-nodes-2"},
-			wantErr: false,
+			// elasticsearch-sample-es-nodes-3 must be skipped
+			deleted:                      []string{"elasticsearch-sample-es-nodes-4", "elasticsearch-sample-es-nodes-2"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
 		},
 	}
 	for _, tt := range tests {
 		esState := &testESState{
-			inCluster: tt.fields.upgradeTestPods.inCluster(),
+			inCluster: tt.fields.upgradeTestPods.podsInCluster(),
 			green:     tt.fields.green,
 		}
-		ctx := NewPredicateContext(
-			esState,
-			tt.fields.upgradeTestPods.toHealthyPods(),
-			tt.fields.upgradeTestPods.toUpgrade(),
-			tt.fields.upgradeTestPods.toMasters(),
-		)
-		deleted, err := applyPredicates(ctx, tt.fields.upgradeTestPods.toUpgrade(), tt.args.maxUnavailableReached, tt.args.allowedDeletions)
+		esClient := &fakeESClient{}
+		ctx := rollingUpgradeCtx{
+			client: k8s.WrapClient(
+				fake.NewFakeClient(tt.fields.upgradeTestPods.toPods(tt.fields.podFilter)...),
+			),
+			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),
+			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
+			esClient:        esClient,
+			esState:         esState,
+			expectations:    expectations.NewExpectations(),
+			expectedMasters: tt.fields.upgradeTestPods.toMasters(),
+			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
+			healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),
+		}
+
+		deleted, err := ctx.Delete()
 		if (err != nil) != tt.wantErr {
 			t.Errorf("runPredicates error = %v, wantErr %v", err, tt.wantErr)
 			return
 		}
 		assert.ElementsMatch(t, names(deleted), tt.deleted, tt.name)
+		assert.Equal(t, tt.wantShardsAllocationDisabled, esClient.DisableReplicaShardsAllocationCalled, tt.name)
 	}
 }
 
@@ -353,11 +238,11 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 			name: "Mixed nodes",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-0", true, true, true, true, true},
-					testPod{"data-0", false, true, true, true, true},
-					testPod{"masters-1", true, true, true, true, true},
-					testPod{"data-1", false, true, true, true, true},
-					testPod{"masters-2", true, true, false, true, true},
+					newTestPod("masters-0").needsUpgrade(true),
+					newTestPod("data-0").needsUpgrade(true),
+					newTestPod("masters-1").needsUpgrade(true),
+					newTestPod("data-1").needsUpgrade(true),
+					newTestPod("masters-2").needsUpgrade(true),
 				),
 				esState: &testESState{
 					inCluster: []string{"data-1", "data-0", "masters-2", "masters-1", "masters-0"},
@@ -370,12 +255,12 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 			name: "Masters first",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					testPod{"masters-0", true, true, true, true, true},
-					testPod{"masters-1", true, true, true, true, true},
-					testPod{"masters-2", true, true, false, true, true},
-					testPod{"data-0", false, true, true, true, true},
-					testPod{"data-1", false, true, true, true, true},
-					testPod{"data-2", false, true, true, true, true},
+					newTestPod("masters-0").needsUpgrade(true),
+					newTestPod("masters-1").needsUpgrade(true),
+					newTestPod("masters-2").needsUpgrade(true),
+					newTestPod("data-0").needsUpgrade(true),
+					newTestPod("data-1").needsUpgrade(true),
+					newTestPod("data-2").needsUpgrade(true),
 				),
 				esState: &testESState{
 					inCluster: []string{"data-2", "data-1", "data-0", "masters-2", "masters-1", "masters-0"},

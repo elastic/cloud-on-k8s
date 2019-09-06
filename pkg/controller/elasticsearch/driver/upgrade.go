@@ -52,6 +52,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
 		d,
+		statefulSets,
 		esClient,
 		esState,
 		expectedMaster,
@@ -85,13 +86,13 @@ type rollingUpgradeCtx struct {
 	esState         ESState
 	expectations    *expectations.Expectations
 	expectedMasters []string
-	podUpgradeDone  func(pod corev1.Pod, expectedRevision string) (bool, error)
 	podsToUpgrade   []corev1.Pod
 	healthyPods     map[string]corev1.Pod
 }
 
 func newRollingUpgrade(
 	d *defaultDriver,
+	statefulSets sset.StatefulSetList,
 	esClient esclient.Client,
 	esState ESState,
 	expectedMaster []string,
@@ -101,10 +102,10 @@ func newRollingUpgrade(
 	return rollingUpgradeCtx{
 		client:          d.Client,
 		ES:              d.ES,
+		statefulSets:    statefulSets,
 		esClient:        esClient,
 		esState:         esState,
 		expectations:    d.Expectations,
-		podUpgradeDone:  podUpgradeDone,
 		expectedMasters: expectedMaster,
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
@@ -174,10 +175,7 @@ func podsToUpgrade(
 				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
 				continue
 			}
-			alreadyUpgraded, err := podUpgradeDone(pod, statefulSet.Status.UpdateRevision)
-			if err != nil {
-				return toBeDeletedPods, err
-			}
+			alreadyUpgraded := podUpgradeDone(pod, statefulSet.Status.UpdateRevision)
 			if !alreadyUpgraded {
 				toBeDeletedPods = append(toBeDeletedPods, pod)
 			}
@@ -187,16 +185,16 @@ func podsToUpgrade(
 }
 
 // podUpgradeDone inspects the given pod and returns true if it was successfully upgraded.
-func podUpgradeDone(pod corev1.Pod, expectedRevision string) (bool, error) {
+func podUpgradeDone(pod corev1.Pod, expectedRevision string) bool {
 	if expectedRevision == "" {
 		// no upgrade scheduled for the sset
-		return false, nil
+		return false
 	}
 	if sset.PodRevision(pod) != expectedRevision {
 		// pod revision does not match the sset upgrade revision
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }
 
 func disableShardsAllocation(esClient esclient.Client) error {

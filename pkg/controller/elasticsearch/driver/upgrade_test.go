@@ -73,7 +73,7 @@ func Test_podsToUpgrade(t *testing.T) {
 			want: []string{"masters-0", "masters-1"},
 		},
 		{
-			name: "only a1node need to be upgraded",
+			name: "only 1 node need to be upgraded",
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{Name: "masters", Replicas: 2, Master: true, Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b"}}.Build(),
@@ -114,9 +114,9 @@ func Test_healthyPods(t *testing.T) {
 			name: "All Pods are healthy",
 			args: args{
 				pods: newUpgradeTestPods(
-					testPod{"masters-2", true, false, true, true, true},
-					testPod{"masters-1", true, false, true, true, true},
-					testPod{"masters-0", true, false, true, true, true},
+					newTestPod("masters-2").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{Name: "masters", Replicas: 3}.Build(),
@@ -127,9 +127,9 @@ func Test_healthyPods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			esState := &testESState{
-				inCluster: tt.args.pods.inCluster(),
+				inCluster: tt.args.pods.podsInCluster(),
 			}
-			client := k8s.WrapClient(fake.NewFakeClient(tt.args.pods.toPods()...))
+			client := k8s.WrapClient(fake.NewFakeClient(tt.args.pods.toPods(nothing)...))
 			got, err := healthyPods(client, tt.args.statefulSets, esState)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("healthyPods() error = %v, wantErr %v", err, tt.wantErr)
