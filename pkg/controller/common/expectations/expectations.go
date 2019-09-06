@@ -42,12 +42,8 @@ func NewExpectations() *Expectations {
 
 // ExpectDeletion registers an expected deletion for the given Pod.
 func (e *Expectations) ExpectDeletion(pod v1.Pod) {
-	cluster, exists := label.ClusterFromResourceLabels(pod.GetObjectMeta())
+	cluster, exists := getClusterFromPodLabel(pod)
 	if !exists {
-		log.Error(errors.New("cannot find the cluster label on Pod"),
-			"Failed to get cluster from Pod annotation",
-			"pod_name", pod.Name,
-			"pod_namespace", pod.Namespace)
 		return // Should not happen as all Pods should have the correct labels
 	}
 	var expectedPods map[types.NamespacedName]metav1.ObjectMeta
@@ -61,7 +57,7 @@ func (e *Expectations) ExpectDeletion(pod v1.Pod) {
 
 // CancelExpectedDeletion removes an expected deletion for the given Pod.
 func (e *Expectations) CancelExpectedDeletion(pod v1.Pod) {
-	cluster, exists := label.ClusterFromResourceLabels(pod.GetObjectMeta())
+	cluster, exists := getClusterFromPodLabel(pod)
 	if !exists {
 		return // Should not happen as all Pods should have the correct labels
 	}
@@ -71,6 +67,17 @@ func (e *Expectations) CancelExpectedDeletion(pod v1.Pod) {
 		return
 	}
 	delete(expectedPods, k8s.ExtractNamespacedName(&pod))
+}
+
+func getClusterFromPodLabel(pod v1.Pod) (types.NamespacedName, bool) {
+	cluster, exists := label.ClusterFromResourceLabels(pod.GetObjectMeta())
+	if !exists {
+		log.Error(errors.New("cannot find the cluster label on Pod"),
+			"Failed to get cluster from Pod annotation",
+			"pod_name", pod.Name,
+			"pod_namespace", pod.Namespace)
+	}
+	return cluster, exists
 }
 
 // DeletionChecker is used to check if a Pod can be remove from the deletions expectations.
