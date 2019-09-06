@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/go-test/deep"
+
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -172,6 +174,111 @@ func Test_isReplicaIncrease(t *testing.T) {
 			if got := isReplicaIncrease(tt.actual, tt.expected); got != tt.want {
 				t.Errorf("isReplicaIncrease() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_adjustStatefulSetReplicas(t *testing.T) {
+	type args struct {
+		ctx                upscaleCtx
+		actualStatefulSets sset.StatefulSetList
+		expected           appsv1.StatefulSet
+	}
+	tests := []struct {
+		name string
+		args args
+		want appsv1.StatefulSet
+	}{
+		{
+			name: "new StatefulSet to create",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{},
+				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
+			},
+			want: sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
+		},
+		{
+			name: "same StatefulSet already exists",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
+				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
+			},
+			want: sset.TestSset{Name: "sset", Replicas: 3}.Build(),
+		},
+		{
+			name: "downscale case",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
+				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
+			},
+			want: sset.TestSset{Name: "sset", Replicas: 3}.Build(),
+		},
+		{
+			name: "upscale case: data nodes",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
+				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
+			},
+			want: sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
+		},
+		{
+			name: "upscale case: master nodes - one by one",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
+				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
+			},
+			want: sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
+		},
+		{
+			name: "upscale case: new additional master sset - one by one",
+			args: args{
+				ctx: upscaleCtx{
+					upscaleStateBuilder: &upscaleStateBuilder{
+						once:         onceDone,
+						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
+					},
+				},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
+				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
+			},
+			want: sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := adjustStatefulSetReplicas(tt.args.ctx, tt.args.actualStatefulSets, tt.args.expected)
+			require.NoError(t, err)
+			require.Nil(t, deep.Equal(got, tt.want))
 		})
 	}
 }

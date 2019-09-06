@@ -101,7 +101,7 @@ func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailab
 
 func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
 	uid := pod.UID
-	log.Info("delete pod", "es_name", ctx.ES.Name, "es_namespace", ctx.ES.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
+	log.Info("delete pod", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	return ctx.client.Delete(pod, func(options *client.DeleteOptions) {
 		if options.Preconditions == nil {
 			options.Preconditions = &metav1.Preconditions{}
@@ -138,7 +138,7 @@ func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Cli
 		return err
 	}
 	if shardsAllocationEnabled {
-		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "es_namespace", ctx.ES.Namespace)
+		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
 		if err := disableShardsAllocation(esClient); err != nil {
 			return err
 		}
