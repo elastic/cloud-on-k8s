@@ -19,6 +19,7 @@ const (
 	PathData = "path.data"
 	PathLogs = "path.logs"
 
+	XPackSecurityAuthcRealmsFileFile1Order          = "xpack.security.authc.realms.file.file1.order"
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
 	XPackSecurityEnabled                            = "xpack.security.enabled"
 	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"

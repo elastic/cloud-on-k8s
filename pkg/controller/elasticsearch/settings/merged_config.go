@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
-// NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived  from the given
+// NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived from the given
 // parameters.
 func NewMergedESConfig(
 	clusterName string,
@@ -61,6 +61,9 @@ func xpackConfig(httpCfg v1alpha1.HTTPConfig) *CanonicalConfig {
 		XPackSecurityEnabled:                      "true",
 		XPackSecurityAuthcReservedRealmEnabled:    "false",
 		XPackSecurityTransportSslVerificationMode: "certificate",
+
+		// x-pack security file realm enabled first by default
+		XPackSecurityAuthcRealmsFileFile1Order: -100,
 
 		// x-pack security http settings
 		XPackSecurityHttpSslEnabled:     httpCfg.TLS.Enabled(),
