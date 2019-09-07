@@ -19,15 +19,14 @@ var (
 	log = logf.Log.WithName("expectations")
 )
 
-type deleteExpectations map[types.NamespacedName]map[types.NamespacedName]metav1.ObjectMeta
+type deleteExpectations map[types.NamespacedName]map[types.NamespacedName]types.UID
 
 // Note: expectations are NOT thread-safe.
 // TODO: garbage collect/finalize deprecated expectation
 type Expectations struct {
 	// StatefulSet -> generation
 	generations map[types.UID]int64
-	// Cluster -> Pod
-	// We could only keep UID in memory, purpose of ObjectMeta is logging and debugging
+	// Cluster -> Pod -> UID
 	deletions deleteExpectations
 }
 
@@ -46,13 +45,13 @@ func (e *Expectations) ExpectDeletion(pod v1.Pod) {
 	if !exists {
 		return // Should not happen as all Pods should have the correct labels
 	}
-	var expectedPods map[types.NamespacedName]metav1.ObjectMeta
+	var expectedPods map[types.NamespacedName]types.UID
 	expectedPods, exists = e.deletions[cluster]
 	if !exists {
-		expectedPods = map[types.NamespacedName]metav1.ObjectMeta{}
+		expectedPods = map[types.NamespacedName]types.UID{}
 		e.deletions[cluster] = expectedPods
 	}
-	expectedPods[k8s.ExtractNamespacedName(&pod)] = pod.ObjectMeta
+	expectedPods[k8s.ExtractNamespacedName(&pod)] = pod.UID
 }
 
 // CancelExpectedDeletion removes an expected deletion for the given Pod.
@@ -61,7 +60,7 @@ func (e *Expectations) CancelExpectedDeletion(pod v1.Pod) {
 	if !exists {
 		return // Should not happen as all Pods should have the correct labels
 	}
-	var expectedPods map[types.NamespacedName]metav1.ObjectMeta
+	var expectedPods map[types.NamespacedName]types.UID
 	expectedPods, exists = e.deletions[cluster]
 	if !exists {
 		return
@@ -82,7 +81,7 @@ func getClusterFromPodLabel(pod v1.Pod) (types.NamespacedName, bool) {
 
 // DeletionChecker is used to check if a Pod can be remove from the deletions expectations.
 type DeletionChecker interface {
-	CanRemoveExpectation(meta metav1.ObjectMeta) (bool, error)
+	CanRemoveExpectation(podName types.NamespacedName, uid types.UID) (bool, error)
 }
 
 // SatisfiedDeletions uses the provided DeletionChecker to check if the delete expectations are satisfied.
@@ -92,8 +91,8 @@ func (e *Expectations) SatisfiedDeletions(cluster types.NamespacedName, checker 
 	if !ok {
 		return true, nil
 	}
-	for pod, meta := range deletions {
-		canRemove, err := checker.CanRemoveExpectation(meta)
+	for pod, uid := range deletions {
+		canRemove, err := checker.CanRemoveExpectation(pod, uid)
 		if err != nil {
 			return false, err
 		}

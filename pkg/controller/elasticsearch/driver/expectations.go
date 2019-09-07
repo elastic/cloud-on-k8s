@@ -9,7 +9,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -43,19 +42,15 @@ func (d *defaultDriver) expectationsMet(actualStatefulSets sset.StatefulSetList)
 	return d.Expectations.SatisfiedDeletions(k8s.ExtractNamespacedName(&d.ES), d)
 }
 
-func (d *defaultDriver) CanRemoveExpectation(meta metav1.ObjectMeta) (bool, error) {
-	key := types.NamespacedName{
-		Namespace: meta.Namespace,
-		Name:      meta.Name,
-	}
+func (d *defaultDriver) CanRemoveExpectation(podName types.NamespacedName, uid types.UID) (bool, error) {
 	// Try to get the Pod
 	var currentPod corev1.Pod
-	err := d.Client.Get(key, &currentPod)
+	err := d.Client.Get(podName, &currentPod)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err
 	}
-	return currentPod.UID != meta.UID, nil
+	return currentPod.UID != uid, nil
 }

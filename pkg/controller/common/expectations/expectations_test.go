@@ -50,8 +50,8 @@ func newPod(clusterName types.NamespacedName, podName string) corev1.Pod {
 
 type cluster1DeletionChecker struct{}
 
-func (c cluster1DeletionChecker) CanRemoveExpectation(meta metav1.ObjectMeta) (bool, error) {
-	if meta.Namespace == "ns1" {
+func (c cluster1DeletionChecker) CanRemoveExpectation(podName types.NamespacedName, uid types.UID) (bool, error) {
+	if podName.Namespace == "ns1" {
 		return true, nil
 	}
 	return false, nil
