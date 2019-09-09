@@ -148,6 +148,20 @@ go-run:
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
 			-tags "$(GO_TAGS)" \
+			./main.go manager \
+				--development --operator-roles=global,namespace \
+				--enable-debug-logs=true \
+				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
+				--operator-namespace=default --namespace= \
+				--auto-install-webhooks=false
+
+# TODO sabo this was go-run
+go-run-old:
+    # Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
+	AUTO_PORT_FORWARD=true \
+		go run \
+			-ldflags "$(GO_LDFLAGS)" \
+			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
 				--development --operator-roles=global,namespace \
 				--enable-debug-logs=true \

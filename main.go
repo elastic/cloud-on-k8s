@@ -19,6 +19,7 @@ import (
 	"flag"
 	"os"
 
+	"github.com/elastic/cloud-on-k8s/pkg/about"
 	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	esv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
@@ -28,6 +29,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -60,8 +62,8 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.Logger(true))
-
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	cfg := ctrl.GetConfigOrDie()
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		LeaderElection:     enableLeaderElection,
@@ -71,7 +73,23 @@ func main() {
 		os.Exit(1)
 	}
 	// TODO sabo make this actually get parameters
-	params := operator.Parameters{}
+	// Setup a client to get information cluster info for operator
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		// TODO sabo change setup log to just log?
+		setupLog.Error(err, "unable to create k8s clientset")
+		os.Exit(1)
+	}
+	operatorNamespace := ""
+	roles := []string{}
+	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace, roles)
+	// TODO sabo why isnt ld_flags setting this?
+	operatorInfo.BuildInfo.Version = "0.10.0-SNAPSHOT"
+	params := operator.Parameters{
+		OperatorInfo: operatorInfo,
+	}
+	// TODO sabo
+	// setupLog.Info("manager scheme", "scheme", mgr.GetScheme())
 	if err = (apmserver.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ApmSErver")
 		os.Exit(1)

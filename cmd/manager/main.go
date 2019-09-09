@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	// to do sabo remove this
+	"github.com/elastic/cloud-on-k8s/pkg/apis"
 	"github.com/elastic/cloud-on-k8s/pkg/controller"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -28,6 +30,7 @@ import (
 	kbv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -231,9 +234,26 @@ func execute() {
 		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
 	}
 
-	mgr, err := manager.New(cfg, opts)
+	// should this be?
+	// mgr, err := manager.New(cfg, opts)
+	// if err != nil {
+	// 	log.Error(err, "unable to set up overall controller manager")
+	// 	os.Exit(1)
+	// }
+
+	// new one
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), opts)
 	if err != nil {
-		log.Error(err, "unable to set up overall controller manager")
+		log.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	// end
+
+	// Setup Scheme for all resources
+	log.Info("Setting up scheme")
+	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "unable add APIs to scheme")
 		os.Exit(1)
 	}
 
@@ -260,7 +280,6 @@ func execute() {
 		log.Error(err, "unable to get operator info")
 		os.Exit(1)
 	}
-
 	log.Info("Setting up controllers", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
 		Dialer:            dialer,
