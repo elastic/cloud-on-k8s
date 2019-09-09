@@ -22,6 +22,9 @@ SNAPSHOT   	?= true
 
 LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
 
+# Default to debug logging
+LOG_VERBOSITY ?= 1
+
 ## -- Docker image
 
 # on GKE, use GCR and GCLOUD_PROJECT
@@ -76,7 +79,7 @@ dep:
 
 dep-vendor-only:
 	# don't attempt to upgrade Gopkg.lock
-	dep ensure --vendor-only 
+	dep ensure --vendor-only
 
 # Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
 generate:
@@ -131,7 +134,7 @@ go-run:
 			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
 				--development --operator-roles=global,namespace \
-				--enable-debug-logs=true \
+				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false
@@ -310,7 +313,8 @@ e2e-run:
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
-		--elastic-stack-version=$(STACK_VERSION)
+		--elastic-stack-version=$(STACK_VERSION) \
+		--log-verbosity=$(LOG_VERBOSITY)
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
@@ -326,7 +330,8 @@ e2e-local:
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
-		--local
+		--local \
+		--log-verbosity=$(LOG_VERBOSITY)
 	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
