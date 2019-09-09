@@ -11,6 +11,10 @@
           name: VERSION
           default: 1.12
           description: "Kubernetes version, default is 1.12"
+      - bool:
+          name: SEND_NOTIFICATIONS
+          default: true
+          description: "Specified if job should send notifications to Slack. Enabled by default."
     concurrent: true
     pipeline-scm:
       scm:
