@@ -7,6 +7,10 @@
       - string:
           name: ECK_IMAGE
           description: "Docker image with ECK operator"
+      - string:
+          name: MAX_USER_WATCHES
+          default: 32768
+          description: "Used to set /proc/sys/fs/inotify/max_user_watches"
       - bool:
           name: SEND_NOTIFICATIONS
           default: true
