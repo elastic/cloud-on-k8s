@@ -63,6 +63,14 @@ function cleanup_kind_cluster() {
   kind delete cluster --name=${CLUSTER_NAME}
 }
 
+function collect_logs() {
+  dir_logs="/tmp/${CLUSTER_NAME}"
+  kind export logs "${dir_logs}" --name "${CLUSTER_NAME}"
+  echo "== ${CLUSTER_NAME}-control-plane/journal.log =="
+  cat "${dir_logs}/${CLUSTER_NAME}-control-plane/journal.log"
+  echo "==============================================="
+}
+
 function setup_kind_cluster() {
   if [ -z "${NODE_IMAGE}" ]; then
       echo "NODE_IMAGE is not set"
@@ -88,6 +96,9 @@ function setup_kind_cluster() {
   # Create Kind cluster
   if ! (kind create cluster --name=${CLUSTER_NAME} ${config_opts} --loglevel "${KIND_LOG_LEVEL}" --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
+    if [[ ${KIND_LOG_LEVEL} == "debug" ]] || [[ ${KIND_LOG_LEVEL} == "trace" ]]; then
+      collect_logs
+    fi
     exit 1
   fi
 
