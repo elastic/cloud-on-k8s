@@ -42,16 +42,20 @@ import (
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const name = "elasticsearch-controller"
 
 var log = logf.Log.WithName(name)
 
+// TODO sabo do we remove this in favor of setup with manager?
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
+// this is also called by cmd/main.go
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler(mgr, params)
+	reconciler := NewReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -59,8 +63,28 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
+// TODO sabo add kubebuilder:rbac markers?
+// the example has the markers above the func (Reconciler) Reconcile()
+// TODO sabo does it make sense to keep with the newReconciler() function? the new paradigm seems to be that main.go
+// creates the struct directly, then calls SetupWithManager on it. I think if we keep this we should probably just export newReconciler
+func (r *ReconcileElasticsearch) SetupWithManager(mgr ctrl.Manager) error {
+	err := ctrl.NewControllerManagedBy(mgr).
+		For(&elasticsearchv1alpha1.Elasticsearch{}).
+		Complete(r)
+	if err != nil {
+		return err
+	}
+	// todo sabo figure out how to refactor this, since this is not how we add the reconciler to the controller now i dont think
+	// but this is still essentially the method referred to here:
+	// https://github.com/kubernetes-sigs/controller-runtime/blob/master/examples/builtins/main.go#L61
+	// and https://github.com/kubernetes-sigs/kubebuilder/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+watch#issuecomment-513063597
+	// TODO monday repeat this for kibana and APM
+	c, err := add(mgr, r)
+	return addWatches(c, r)
+}
+
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileElasticsearch{
 		Client:   client,

@@ -75,16 +75,24 @@ var (
 
 // TODO: sabo: how do we add watches?
 func (r *ReconcileApmServer) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	err := ctrl.NewControllerManagedBy(mgr).
 		For(&apmv1alpha1.ApmServer{}).
 		Complete(r)
+	if err != nil {
+		return err
+	}
+	c, err := add(mgr, r)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, r)
 }
 
 // TODO(sabo): remove this?
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler(mgr, params)
+	reconciler := NewReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -93,7 +101,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
 		Client:         client,

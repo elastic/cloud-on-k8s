@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -43,7 +45,7 @@ var log = logf.Log.WithName(name)
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler(mgr, params)
+	reconciler := NewReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -51,8 +53,25 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
+// TODO sabo add kubebuilder:rbac markers?
+// the example has the markers above the func (Reconciler) Reconcile()
+func (r *ReconcileKibana) SetupWithManager(mgr ctrl.Manager) error {
+	err := ctrl.NewControllerManagedBy(mgr).
+		For(&kibanav1alpha1.Kibana{}).
+		Complete(r)
+	if err != nil {
+		return err
+	}
+	c, err := add(mgr, r)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, r)
+
+}
+
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileKibana{
 		Client:         client,
