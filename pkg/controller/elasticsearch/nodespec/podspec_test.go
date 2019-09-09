@@ -135,7 +135,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":                        "elasticsearch",
 				"elasticsearch.k8s.elastic.co/cluster-name":         "name",
-				"elasticsearch.k8s.elastic.co/config-template-hash": "590139466",
+				"elasticsearch.k8s.elastic.co/config-template-hash": "2449560134",
 				"elasticsearch.k8s.elastic.co/http-scheme":          "https",
 				"elasticsearch.k8s.elastic.co/node-data":            "false",
 				"elasticsearch.k8s.elastic.co/node-ingest":          "true",
