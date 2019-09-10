@@ -95,6 +95,22 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
+			name: "3 healthy masters, allow the deletion of 1 even if maxUnavailable > 1",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 2,
+				green:          true,
+				podFilter:      nothing,
+			},
+			deleted:                      []string{"masters-2"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
 			name: "2 healthy masters out of 3, allow the deletion of the unhealthy one",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
