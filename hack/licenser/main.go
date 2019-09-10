@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	depFile = flag.String("f", "go.mod", "File with the list of dependencies")
+	depFile = flag.String("f", "modules.txt", "File with the list of dependencies")
 	dir     = flag.String("d", "", "Project directory")
 )
 
@@ -35,7 +35,7 @@ func main() {
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	deps, err := loadFile(filepath.Join(*dir, *depFile))
+	deps, err := loadFile(filepath.Join(*dir, "vendor", *depFile))
 	if err != nil {
 		log.Fatalf("Can't open file with dependencies: %s", err.Error())
 	}
@@ -62,12 +62,10 @@ func loadFile(path string) (*Dependencies, error) {
 	}
 
 	deps := &Dependencies{}
-	for i, v := range lines {
-		if i > 4 && i < (len(lines)-1) {
+	for _, v := range lines {
+		if strings.HasPrefix(v, "#") {
 			dep := strings.Split(v, " ")
-			path := dep[0]
-			path = strings.Replace(path, "	", "", -1)
-			deps.List = append(deps.List, &Dependency{Name: path, Version: dep[1]})
+			deps.List = append(deps.List, &Dependency{Name: dep[1], Version: dep[2]})
 		}
 	}
 
