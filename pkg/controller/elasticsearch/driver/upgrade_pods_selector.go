@@ -6,21 +6,11 @@ package driver
 
 import (
 	"sort"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	corev1 "k8s.io/api/core/v1"
-)
-
-const (
-	// NodeUnreachablePodReason is the reason on a pod when its state cannot be confirmed as kubelet is unresponsive
-	// on the node it is (was) running.
-	NodeUnreachablePodReason = "NodeLost"
-
-	// TerminatingPodTimeout is used to filter out Pods stuck in a Terminating state.
-	TerminatingPodTimeout = 5 * time.Minute
 )
 
 type PredicateContext struct {
@@ -102,15 +92,15 @@ var predicates = [...]Predicate{
 		},
 	},
 	{
-		name: "skip_unknown_or_long_terminating_pods",
+		name: "skip_already_terminating_pods",
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
-			if candidate.DeletionTimestamp != nil && candidate.Status.Reason == NodeUnreachablePodReason {
-				// kubelet is unresponsive, Unknown Pod, do not try to delete it
+			if candidate.DeletionTimestamp != nil {
+				// Pod is already terminating, skip it
 				return false, nil
 			}
 			return true, nil
