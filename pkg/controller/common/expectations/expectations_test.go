@@ -7,13 +7,16 @@ package expectations
 import (
 	"testing"
 
-	"github.com/magiconair/properties/assert"
+	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestGenerationsExpectations(t *testing.T) {
@@ -43,18 +46,10 @@ func newPod(clusterName types.NamespacedName, podName string) corev1.Pod {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: clusterName.Namespace,
 			Name:      podName,
+			UID:       uuid.NewUUID(),
 			Labels:    label.NewLabels(clusterName),
 		},
 	}
-}
-
-type cluster1DeletionChecker struct{}
-
-func (c cluster1DeletionChecker) CanRemoveExpectation(podName types.NamespacedName, uid types.UID) (bool, error) {
-	if podName.Namespace == "ns1" {
-		return true, nil
-	}
-	return false, nil
 }
 
 func TestExpectations_ExpectDeletion(t *testing.T) {
@@ -76,42 +71,53 @@ func TestExpectations_ExpectDeletion(t *testing.T) {
 	assert.Equal(t, len(e.deletions[testCluster1]), 0)
 	assert.Equal(t, len(e.deletions[testCluster2]), 0)
 
-	e.ExpectDeletion(newPod(testCluster1, "pod1_1"))
+	cluster1Pod1 := newPod(testCluster1, "cluster1Pod1")
+	e.ExpectDeletion(cluster1Pod1)
 	assert.Equal(t, len(e.deletions[testCluster1]), 1)
 	assert.Equal(t, len(e.deletions[testCluster2]), 0)
 
-	e.ExpectDeletion(newPod(testCluster2, "pod2_1"))
+	cluster2Pod1 := newPod(testCluster2, "cluster2Pod1")
+	e.ExpectDeletion(cluster2Pod1)
 	assert.Equal(t, len(e.deletions[testCluster1]), 1)
 	assert.Equal(t, len(e.deletions[testCluster2]), 1)
 
-	e.ExpectDeletion(newPod(testCluster1, "pod1_2"))
+	cluster1Pod2 := newPod(testCluster1, "cluster1Pod2")
+	e.ExpectDeletion(cluster1Pod2)
 	assert.Equal(t, len(e.deletions[testCluster1]), 2)
 	assert.Equal(t, len(e.deletions[testCluster2]), 1)
 
-	e.ExpectDeletion(newPod(testCluster1, "pod1_3"))
+	cluster1Pod3 := newPod(testCluster1, "cluster1Pod3")
+	e.ExpectDeletion(cluster1Pod3)
 	assert.Equal(t, len(e.deletions[testCluster1]), 3)
 	assert.Equal(t, len(e.deletions[testCluster2]), 1)
 
-	e.CancelExpectedDeletion(newPod(testCluster1, "pod1_1"))
+	e.CancelExpectedDeletion(cluster1Pod1)
 	assert.Equal(t, len(e.deletions[testCluster1]), 2)
 	assert.Equal(t, len(e.deletions[testCluster2]), 1)
 
-	e.CancelExpectedDeletion(newPod(testCluster1, "pod1_2"))
+	e.CancelExpectedDeletion(cluster1Pod2)
 	assert.Equal(t, len(e.deletions[testCluster1]), 1)
 	assert.Equal(t, len(e.deletions[testCluster2]), 1)
 
-	e.CancelExpectedDeletion(newPod(testCluster3, "pod3_1"))
+	cluster3Pod1 := newPod(testCluster1, "cluster3Pod1")
+	e.CancelExpectedDeletion(cluster3Pod1)
 	assert.Equal(t, len(e.deletions[testCluster1]), 1)
 	assert.Equal(t, len(e.deletions[testCluster2]), 1)
 	assert.Equal(t, len(e.deletions[testCluster3]), 0)
 
-	checker := cluster1DeletionChecker{}
-	satisfied, err := e.SatisfiedDeletions(testCluster1, checker)
+	// Create a fake client with new UID for the last remaining Pod in cluster1
+	cluster1Pod3 = newPod(testCluster1, "cluster1Pod3")
+	client := k8s.WrapClient(fake.NewFakeClient(&cluster1Pod3, &cluster2Pod1))
+
+	// UID has changed for the last Pod of cluster1, expectation must be satisfied
+	satisfied, err := e.SatisfiedDeletions(client, testCluster1)
 	require.NoError(t, err)
 	assert.Equal(t, satisfied, true)
 	cluster1deletions := e.deletions[testCluster1]
 	assert.Equal(t, len(cluster1deletions), 0)
-	satisfied, err = e.SatisfiedDeletions(testCluster2, checker)
+
+	// We still have a remaining Pod for cluster2
+	satisfied, err = e.SatisfiedDeletions(client, testCluster2)
 	require.NoError(t, err)
 	assert.Equal(t, satisfied, false)
 }

@@ -9,7 +9,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -40,7 +41,7 @@ func NewExpectations() *Expectations {
 // -- Deletions expectations
 
 // ExpectDeletion registers an expected deletion for the given Pod.
-func (e *Expectations) ExpectDeletion(pod v1.Pod) {
+func (e *Expectations) ExpectDeletion(pod corev1.Pod) {
 	cluster, exists := getClusterFromPodLabel(pod)
 	if !exists {
 		return // Should not happen as all Pods should have the correct labels
@@ -55,7 +56,7 @@ func (e *Expectations) ExpectDeletion(pod v1.Pod) {
 }
 
 // CancelExpectedDeletion removes an expected deletion for the given Pod.
-func (e *Expectations) CancelExpectedDeletion(pod v1.Pod) {
+func (e *Expectations) CancelExpectedDeletion(pod corev1.Pod) {
 	cluster, exists := getClusterFromPodLabel(pod)
 	if !exists {
 		return // Should not happen as all Pods should have the correct labels
@@ -68,7 +69,7 @@ func (e *Expectations) CancelExpectedDeletion(pod v1.Pod) {
 	delete(expectedDeletions, k8s.ExtractNamespacedName(&pod))
 }
 
-func getClusterFromPodLabel(pod v1.Pod) (types.NamespacedName, bool) {
+func getClusterFromPodLabel(pod corev1.Pod) (types.NamespacedName, bool) {
 	cluster, exists := label.ClusterFromResourceLabels(pod.GetObjectMeta())
 	if !exists {
 		log.Error(errors.New("cannot find the cluster label on Pod"),
@@ -79,20 +80,15 @@ func getClusterFromPodLabel(pod v1.Pod) (types.NamespacedName, bool) {
 	return cluster, exists
 }
 
-// DeletionChecker is used to check if a Pod can be removed from the deletions expectations.
-type DeletionChecker interface {
-	CanRemoveExpectation(podName types.NamespacedName, uid types.UID) (bool, error)
-}
-
 // SatisfiedDeletions uses the provided DeletionChecker to check if the delete expectations are satisfied.
-func (e *Expectations) SatisfiedDeletions(cluster types.NamespacedName, checker DeletionChecker) (bool, error) {
+func (e *Expectations) SatisfiedDeletions(client k8s.Client, cluster types.NamespacedName) (bool, error) {
 	// Get all the deletions expected for this cluster
 	deletions, ok := e.deletions[cluster]
 	if !ok {
 		return true, nil
 	}
 	for pod, uid := range deletions {
-		canRemove, err := checker.CanRemoveExpectation(pod, uid)
+		canRemove, err := canRemoveExpectation(client, pod, uid)
 		if err != nil {
 			return false, err
 		}
@@ -103,6 +99,18 @@ func (e *Expectations) SatisfiedDeletions(cluster types.NamespacedName, checker 
 		}
 	}
 	return len(deletions) == 0, nil
+}
+func canRemoveExpectation(client k8s.Client, podName types.NamespacedName, uid types.UID) (bool, error) {
+	// Try to get the Pod
+	var currentPod corev1.Pod
+	err := client.Get(podName, &currentPod)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	return currentPod.UID != uid, nil
 }
 
 // -- Generations expectations

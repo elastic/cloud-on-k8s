@@ -238,7 +238,7 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	}
 
 	// Check if we have some deletions in progress
-	satisfiedDeletion, err := d.Expectations.SatisfiedDeletions(k8s.ExtractNamespacedName(&d.ES), d)
+	satisfiedDeletion, err := d.Expectations.SatisfiedDeletions(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return results.WithError(err)
 	}
