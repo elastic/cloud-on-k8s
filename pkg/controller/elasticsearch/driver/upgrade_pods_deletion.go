@@ -17,17 +17,8 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		return nil, nil
 	}
 
-	// Check if we are not over disruption budget
-	// Upscale is done, we should have the required number of Pods
-	expectedPods := ctx.statefulSets.PodNames()
-	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
-	maxUnavailable := 1
-	if ctx.ES.Spec.UpdateStrategy.ChangeBudget != nil {
-		maxUnavailable = ctx.ES.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
-	}
-	allowedDeletions := maxUnavailable - unhealthyPods
-	// If maxUnavailable is reached the deletion driver still allows one unhealthy Pod to be restarted.
-	maxUnavailableReached := allowedDeletions <= 0
+	// Get allowed deletions and check if maxUnavailable has been reached.
+	allowedDeletions, maxUnavailableReached := ctx.getAllowedDeletions()
 
 	// Step 1. Sort the Pods to get the ones with the higher priority
 	candidates := make([]corev1.Pod, len(ctx.podsToUpgrade)) // work on a copy in order to have no side effect
@@ -75,6 +66,22 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		deletedPods = append(deletedPods, podToDelete)
 	}
 	return deletedPods, nil
+}
+
+// getAllowedDeletions returns the number of deletions that can be done and if maxUnavailable has been reached.
+func (ctx *rollingUpgradeCtx) getAllowedDeletions() (int, bool) {
+	// Check if we are not over disruption budget
+	// Upscale is done, we should have the required number of Pods
+	expectedPods := ctx.statefulSets.PodNames()
+	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
+	maxUnavailable := 1
+	if ctx.ES.Spec.UpdateStrategy.ChangeBudget != nil {
+		maxUnavailable = ctx.ES.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
+	}
+	allowedDeletions := maxUnavailable - unhealthyPods
+	// If maxUnavailable is reached the deletion driver still allows one unhealthy Pod to be restarted.
+	maxUnavailableReached := allowedDeletions <= 0
+	return allowedDeletions, maxUnavailableReached
 }
 
 func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailableReached bool, allowedDeletions int) (deletedPods []corev1.Pod, err error) {
