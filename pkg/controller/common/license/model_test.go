@@ -10,12 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func TestLicense_IsValidAt(t *testing.T) {
@@ -138,7 +137,7 @@ var expectedLicenseSpec = EnterpriseLicense{
 }
 
 func Test_unmarshalModel(t *testing.T) {
-	require.NoError(t, apis.AddToScheme(scheme.Scheme))
+	controllerscheme.SetupScheme()
 	type args struct {
 		licenseFile string
 	}

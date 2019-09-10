@@ -13,30 +13,27 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	// to do sabo remove this
-	"github.com/elastic/cloud-on-k8s/pkg/apis"
-	"github.com/elastic/cloud-on-k8s/pkg/controller"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 
 	// todo (sabo)
 	// "github.com/elastic/cloud-on-k8s/pkg/webhook"
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	esv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	kbv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
-	"k8s.io/apimachinery/pkg/runtime"
+
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
@@ -198,31 +195,15 @@ func execute() {
 
 	// Get a config to talk to the apiserver
 	log.Info("Setting up client for manager")
-	cfg, err := config.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to set up client config")
-		os.Exit(1)
-	}
+	cfg := ctrl.GetConfigOrDie()
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
-	// TODO sabo remove this
-	// if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-	// 	log.Error(err, "unable add APIs to scheme")
-	// 	os.Exit(1)
-	// }
-	scheme := runtime.NewScheme()
-	_ = clientgoscheme.AddToScheme(scheme)
-
-	_ = apmv1alpha1.AddToScheme(scheme)
-	// _ = assnv1alpha1.AddToScheme(scheme)
-	_ = commonv1alpha1.AddToScheme(scheme)
-	_ = esv1alpha1.AddToScheme(scheme)
-	_ = kbv1alpha1.AddToScheme(scheme)
+	_ = controllerscheme.SetupScheme()
 
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("Setting up manager")
-	opts := manager.Options{
-		Scheme: scheme,
+	opts := ctrl.Options{
+		Scheme: clientgoscheme.Scheme,
 		// restrict the operator to watch resources within a single namespace, unless empty
 		Namespace: viper.GetString(NamespaceFlagName),
 	}
@@ -234,32 +215,16 @@ func execute() {
 		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
 	}
 
-	// should this be?
-	// mgr, err := manager.New(cfg, opts)
-	// if err != nil {
-	// 	log.Error(err, "unable to set up overall controller manager")
-	// 	os.Exit(1)
-	// }
-
-	// new one
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), opts)
+	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
-		log.Error(err, "unable to start manager")
-		os.Exit(1)
-	}
-
-	// end
-
-	// Setup Scheme for all resources
-	log.Info("Setting up scheme")
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "unable add APIs to scheme")
+		log.Error(err, "unable to create controller manager")
 		os.Exit(1)
 	}
 
 	// Verify cert validity options
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(CACertValidityFlag, CACertRotateBeforeFlag)
 	certValidity, certRotateBefore := ValidateCertExpirationFlags(CertValidityFlag, CertRotateBeforeFlag)
+
 	// Setup all Controllers
 	roles := viper.GetStringSlice(operator.RoleFlag)
 	err = operator.ValidateRoles(roles)
@@ -281,7 +246,7 @@ func execute() {
 		os.Exit(1)
 	}
 	log.Info("Setting up controllers", "roles", roles)
-	if err := controller.AddToManager(mgr, roles, operator.Parameters{
+	params := operator.Parameters{
 		Dialer:            dialer,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
@@ -293,10 +258,26 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
-	}); err != nil {
-		log.Error(err, "unable to register controllers to the manager")
+	}
+
+	if err = (apmserver.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+		log.Error(err, "unable to create controller", "controller", "ApmSErver")
 		os.Exit(1)
 	}
+	if err = (elasticsearch.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+		log.Error(err, "unable to create controller", "controller", "Elasticsearch")
+		os.Exit(1)
+	}
+	if err = (kibana.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+		log.Error(err, "unable to create controller", "controller", "Kibana")
+		os.Exit(1)
+	}
+
+	// need to set up these Add funcs
+	// "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
+	// "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
+	// 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
+	// "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
 
 	// todo sabo
 	// log.Info("Setting up webhooks")

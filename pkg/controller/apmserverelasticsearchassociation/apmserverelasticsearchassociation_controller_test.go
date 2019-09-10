@@ -53,10 +53,6 @@ var apmFixture = apmtype.ApmServer{
 
 func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
-	// todo sabo fix this?
-	// if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
-	// 	assert.Fail(t, "failed to add assoc types")
-	// }
 	if err := apmtype.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to add apm types")
 	}

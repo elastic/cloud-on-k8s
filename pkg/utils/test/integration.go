@@ -10,11 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -33,11 +32,7 @@ var Config *rest.Config
 
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M, crdPath string) {
-	if err := apis.AddToScheme(scheme.Scheme); err != nil {
-		fmt.Println("fail to add scheme")
-		panic(err)
-	}
-
+	controllerscheme.SetupScheme()
 	logf.SetLogger(logf.ZapLogger(true))
 	t := &envtest.Environment{
 		CRDDirectoryPaths:        []string{crdPath},
