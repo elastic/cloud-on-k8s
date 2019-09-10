@@ -76,7 +76,7 @@ func setLogger(v *int, debug *bool) {
 		encoderConf.EncodeTime = zapcore.ISO8601TimeEncoder
 		encoder = zapcore.NewJSONEncoder(encoderConf)
 
-		opts = append(opts, zap.AddStacktrace(zap.WarnLevel))
+		opts = append(opts, zap.AddStacktrace(zap.ErrorLevel))
 		if zapLevel.Level() > zap.DebugLevel {
 			opts = append(opts, zap.WrapCore(func(core zapcore.Core) zapcore.Core {
 				return zapcore.NewSampler(core, time.Second, 100, 100)
