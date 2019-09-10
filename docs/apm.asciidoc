@@ -124,7 +124,7 @@ spec:
   version: 7.3.0
   nodeCount: 1
   secureSettings:
-    secretName: apm-secret-settings
+  - secretName: apm-secret-settings
   config:
     output:
       elasticsearch:
@@ -163,7 +163,7 @@ spec:
   version: 7.3.0
   nodeCount: 1
   secureSettings:
-    secretName: apm-secret-settings
+  - secretName: apm-secret-settings
   config:
     output:
       elasticsearch:

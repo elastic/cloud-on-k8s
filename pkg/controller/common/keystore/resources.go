@@ -7,14 +7,13 @@ package keystore
 import (
 	"strings"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 )
 
 var log = logf.Log.WithName("keystore")
@@ -34,7 +33,7 @@ type Resources struct {
 type HasKeystore interface {
 	metav1.Object
 	runtime.Object
-	SecureSettings() []commonv1alpha1.SecretRef
+	SecureSettings() []commonv1alpha1.SecretSource
 	// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
 	// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
 	Kind() string

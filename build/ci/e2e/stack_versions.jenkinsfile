@@ -42,13 +42,13 @@ pipeline {
                         runWith("${BUILD_TAG}-721", "7.2.1")
                     }
                 }
-                stage("7.3.0") {
+                stage("7.3.1") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-730", "7.3.0")
+                        runWith("${BUILD_TAG}-731", "7.3.1")
                     }
                 }
             }
@@ -58,17 +58,19 @@ pipeline {
     post {
         unsuccessful {
             script {
-                def msg = "E2E tests for different Elastic stack versions failed!\r\n" + env.BUILD_URL
-                slackSend botUser: true,
-                      channel: '#cloud-k8s',
-                      color: 'danger',
-                      message: msg,
-                      tokenCredentialId: 'cloud-ci-slack-integration-token'
+                if (params.SEND_NOTIFICATIONS) {
+                    def msg = "E2E tests for different Elastic stack versions failed!\r\n" + env.BUILD_URL
+                    slackSend botUser: true,
+                        channel: '#cloud-k8s',
+                        color: 'danger',
+                        message: msg,
+                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                }
             }
         }
         cleanup {
             script {
-                clusters = ["${BUILD_TAG}-682", "${BUILD_TAG}-711", "${BUILD_TAG}-721", "${BUILD_TAG}-730"]
+                clusters = ["${BUILD_TAG}-682", "${BUILD_TAG}-711", "${BUILD_TAG}-721", "${BUILD_TAG}-731"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],

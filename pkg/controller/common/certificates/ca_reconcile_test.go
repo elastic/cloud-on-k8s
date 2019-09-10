@@ -20,11 +20,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var testNamer = name.Namer{
+	MaxNameLength:   validation.LabelValueMaxLength,
 	MaxSuffixLength: 27, // from a prefix length of 36
 	DefaultSuffixes: []string{"test"},
 }

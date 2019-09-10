@@ -182,15 +182,6 @@ func TestHandleDownscale(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
-	// running the downscale again should requeue since some pods are not terminated yet
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
-	require.False(t, results.HasError())
-	require.Equal(t, requeueResults, results)
-	// no StatefulSet should have been updated
-	err = k8sClient.List(&client.ListOptions{}, &actual)
-	require.NoError(t, err)
-	require.Equal(t, expectedAfterDownscale, actual.Items)
-
 	// simulate pods deletion that would be done by the StatefulSet controller
 	require.NoError(t, k8sClient.Delete(&podsSsetMaster3Replicas[2]))
 	require.NoError(t, k8sClient.Delete(&podsSsetData4Replicas[3]))

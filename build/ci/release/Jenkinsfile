@@ -35,8 +35,10 @@ IMG_NAME = eck-operator
 SNAPSHOT = false
 GO_TAGS = release
 LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
+USE_ELASTIC_DOCKER_REGISTRY = true
+ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
-                            make -C build/ci get-elastic-public-key TARGET=ci-release ci
+                            make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
                         """
                     }
                 }
