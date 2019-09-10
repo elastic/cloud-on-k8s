@@ -37,7 +37,7 @@ func InitLogger() {
 	setLogger(verbosity, enableDebugLogs)
 }
 
-// ChangeVerbosity replaces the global logger with a new logger set to the sepcified verbosity level.
+// ChangeVerbosity replaces the global logger with a new logger set to the specified verbosity level.
 // Verbosity levels from 2 are custom levels that increase the verbosity as the value increases.
 // Standard levels are as follows:
 // level | Zap level | name
@@ -52,13 +52,13 @@ func ChangeVerbosity(v int) {
 }
 
 func setLogger(v *int, debug *bool) {
-	level := determineLogLevel(v, debug)
+	zapLevel := determineLogLevel(v, debug)
 
-	// if the level is higher than 1 set the klog level to the same level
-	if level.Level() < zap.DebugLevel {
+	// if the Zap custom level is less than debug (verbosity level 2 and above) set the klog level to the same level
+	if zapLevel.Level() < zap.DebugLevel {
 		flagset := flag.NewFlagSet("", flag.ContinueOnError)
 		klog.InitFlags(flagset)
-		_ = flagset.Set("v", strconv.Itoa(int(level.Level())*-1))
+		_ = flagset.Set("v", strconv.Itoa(int(zapLevel.Level())*-1))
 	}
 
 	var encoder zapcore.Encoder
@@ -77,7 +77,7 @@ func setLogger(v *int, debug *bool) {
 		encoder = zapcore.NewJSONEncoder(encoderConf)
 
 		opts = append(opts, zap.AddStacktrace(zap.WarnLevel))
-		if level.Level() > zap.DebugLevel {
+		if zapLevel.Level() > zap.DebugLevel {
 			opts = append(opts, zap.WrapCore(func(core zapcore.Core) zapcore.Core {
 				return zapcore.NewSampler(core, time.Second, 100, 100)
 			}))
@@ -86,7 +86,7 @@ func setLogger(v *int, debug *bool) {
 
 	sink := zapcore.AddSync(os.Stderr)
 	opts = append(opts, zap.AddCallerSkip(1), zap.ErrorOutput(sink))
-	log := zap.New(zapcore.NewCore(&crlog.KubeAwareEncoder{Encoder: encoder, Verbose: dev.Enabled}, sink, level))
+	log := zap.New(zapcore.NewCore(&crlog.KubeAwareEncoder{Encoder: encoder, Verbose: dev.Enabled}, sink, zapLevel))
 	log = log.WithOptions(opts...)
 	log = log.With(zap.String("ver", getVersionString()))
 
