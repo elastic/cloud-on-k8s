@@ -22,9 +22,9 @@ import (
 )
 
 type testPod struct {
-	name                                        string
-	master, data, healthy, toUpgrade, inCluster bool
-	uid                                         types.UID
+	name                                                     string
+	master, data, healthy, toUpgrade, inCluster, terminating bool
+	uid                                                      types.UID
 }
 
 func newTestPod(name string) testPod {
@@ -34,11 +34,12 @@ func newTestPod(name string) testPod {
 	}
 }
 
-func (t testPod) isMaster(v bool) testPod     { t.master = v; return t }
-func (t testPod) isData(v bool) testPod       { t.data = v; return t }
-func (t testPod) isInCluster(v bool) testPod  { t.inCluster = v; return t }
-func (t testPod) isHealthy(v bool) testPod    { t.healthy = v; return t }
-func (t testPod) needsUpgrade(v bool) testPod { t.toUpgrade = v; return t }
+func (t testPod) isMaster(v bool) testPod      { t.master = v; return t }
+func (t testPod) isData(v bool) testPod        { t.data = v; return t }
+func (t testPod) isInCluster(v bool) testPod   { t.inCluster = v; return t }
+func (t testPod) isHealthy(v bool) testPod     { t.healthy = v; return t }
+func (t testPod) needsUpgrade(v bool) testPod  { t.toUpgrade = v; return t }
+func (t testPod) isTerminating(v bool) testPod { t.terminating = v; return t }
 
 // filter to simulate a Pod that has been removed while upgrading
 // unfortunately fake client does not support predicate
@@ -119,7 +120,7 @@ func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
 	result := make(map[string]corev1.Pod)
 	for _, testPod := range u {
 		pod := testPod.toPod()
-		if k8s.IsPodReady(pod) && testPod.inCluster {
+		if pod.DeletionTimestamp.IsZero() && k8s.IsPodReady(pod) && testPod.inCluster {
 			result[pod.Name] = pod
 		}
 	}
@@ -168,11 +169,17 @@ func names(pods []corev1.Pod) []string {
 }
 
 func (t testPod) toPod() corev1.Pod {
+	var deletionTimestamp *metav1.Time
+	if t.terminating {
+		now := metav1.Now()
+		deletionTimestamp = &now
+	}
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      t.name,
-			Namespace: "testNS",
-			UID:       t.uid,
+			Name:              t.name,
+			Namespace:         "testNS",
+			UID:               t.uid,
+			DeletionTimestamp: deletionTimestamp,
 		},
 	}
 	labels := map[string]string{}

@@ -30,6 +30,23 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		wantShardsAllocationDisabled bool
 	}{
 		{
+			name: "Do not attempt to delete an already terminating Pod",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("master-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("node-0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("node-1").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("node-2").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true),
+				),
+				maxUnavailable: 2,
+				green:          true,
+				podFilter:      nothing,
+			},
+			deleted:                      []string{"node-1"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
 			name: "All Pods are upgraded",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(

@@ -123,6 +123,19 @@ func Test_healthyPods(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "One Pod is terminating",
+			args: args{
+				pods: newUpgradeTestPods(
+					newTestPod("masters-2").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true),
+					newTestPod("masters-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				statefulSets: sset.StatefulSetList{
+					sset.TestSset{Name: "masters", Replicas: 3}.Build(),
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
