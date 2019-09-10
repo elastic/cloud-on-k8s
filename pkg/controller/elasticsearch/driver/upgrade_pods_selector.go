@@ -74,7 +74,7 @@ func sortCandidates(allPods []corev1.Pod) {
 
 var predicates = [...]Predicate{
 	{
-		// If MaxUnavailable is reached, allow for an unhealthy Pod to be deleted.
+		// If MaxUnavailable is reached, only allow unhealthy Pods to be deleted.
 		// This is to prevent a situation where MaxUnavailable is reached and we
 		// can't make progress even if the user has updated the spec.
 		name: "do_not_restart_healthy_node_if_MaxUnavailable_reached",
