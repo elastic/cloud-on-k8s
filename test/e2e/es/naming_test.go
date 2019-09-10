@@ -82,14 +82,22 @@ func testRejectionOfLongName(t *testing.T) {
 			Name: "default",
 		})
 
+	objectCreated := false
+
 	testSteps := test.StepList{
 		test.Step{
 			Name: "Creating an Elasticsearch object should fail validation",
 			Test: func(t *testing.T) {
 				for _, obj := range esBuilder.RuntimeObjects() {
 					err := k.Client.Create(obj)
-					require.NoError(t, err)
+					if err != nil {
+						// validating webhook is active and rejected the request
+						require.Contains(t, err.Error(), `admission webhook "validation.elasticsearch.elastic.co" denied the request`)
+						return
+					}
 
+					// if the validating webhook is not active, operator's own validation check should set the object phase to "Invalid"
+					objectCreated = true
 					test.Eventually(func() error {
 						var createdES estype.Elasticsearch
 						if err := k.Client.Get(k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES); err != nil {
@@ -107,6 +115,11 @@ func testRejectionOfLongName(t *testing.T) {
 		test.Step{
 			Name: "Deleting an invalid Elasticsearch object should succeed",
 			Test: func(t *testing.T) {
+				// if the validating webhook rejected the request, we have nothing to delete
+				if !objectCreated {
+					return
+				}
+
 				for _, obj := range esBuilder.RuntimeObjects() {
 					err := k.Client.Delete(obj)
 					require.NoError(t, err)
