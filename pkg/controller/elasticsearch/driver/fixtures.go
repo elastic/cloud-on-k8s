@@ -40,7 +40,7 @@ func (t testPod) isInCluster(v bool) testPod  { t.inCluster = v; return t }
 func (t testPod) isHealthy(v bool) testPod    { t.healthy = v; return t }
 func (t testPod) needsUpgrade(v bool) testPod { t.toUpgrade = v; return t }
 
-// filter to simulate a Pod tha has been removed while upgrading
+// filter to simulate a Pod that has been removed while upgrading
 // unfortunately fake client does not support predicate
 type filter func(pod corev1.Pod) bool
 

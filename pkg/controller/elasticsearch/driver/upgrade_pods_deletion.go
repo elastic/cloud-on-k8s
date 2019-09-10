@@ -5,7 +5,6 @@
 package driver
 
 import (
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,28 +22,26 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 	expectedPods := ctx.statefulSets.PodNames()
 	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
 	maxUnavailable := 1
-	// TODO: use GroupingDefinition
 	if ctx.ES.Spec.UpdateStrategy.ChangeBudget != nil {
 		maxUnavailable = ctx.ES.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
 	}
 	allowedDeletions := maxUnavailable - unhealthyPods
 	// If maxUnavailable is reached the deletion driver still allows one unhealthy Pod to be restarted.
-	// TODO: Should we make the difference between MaxUnavailable and MaxConcurrentRestarting ?
 	maxUnavailableReached := allowedDeletions <= 0
 
-	// Step 2. Sort the Pods to get the ones with the higher priority
+	// Step 1. Sort the Pods to get the ones with the higher priority
 	candidates := make([]corev1.Pod, len(ctx.podsToUpgrade)) // work on a copy in order to have no side effect
 	copy(candidates, ctx.podsToUpgrade)
 	sortCandidates(candidates)
 
-	// Step 3: Apply predicates
+	// Step 2: Apply predicates
 	predicateContext := NewPredicateContext(
 		ctx.esState,
 		ctx.healthyPods,
 		ctx.podsToUpgrade,
 		ctx.expectedMasters,
 	)
-	log.V(1).Info("applying predicates",
+	log.V(1).Info("Applying predicates",
 		"maxUnavailableReached", maxUnavailableReached,
 		"allowedDeletions", allowedDeletions,
 	)
@@ -54,7 +51,11 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 	}
 
 	if len(podsToDelete) == 0 {
-		log.Info("no pod deleted", "es_name", ctx.ES.Name, "es_namespace", ctx.ES.Namespace)
+		log.V(1).Info(
+			"No pod deleted during rolling upgrade",
+			"es_name", ctx.ES.Name,
+			"namespace", ctx.ES.Namespace,
+		)
 		return podsToDelete, nil
 	}
 
@@ -97,11 +98,14 @@ func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailab
 
 func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
 	uid := pod.UID
-	log.Info("delete pod", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
+	log.Info("Deleting pod for rolling upgrade", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	return ctx.client.Delete(pod, func(options *client.DeleteOptions) {
 		if options.Preconditions == nil {
 			options.Preconditions = &metav1.Preconditions{}
 		}
+		// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
+		// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
+		// If not it means that we are running with a stale cache.
 		options.Preconditions.UID = &uid
 	})
 }
@@ -118,33 +122,11 @@ func runPredicates(
 			return false, err
 		}
 		if !canDelete {
-			log.V(1).Info("predicate failed", "pod_name", candidate.Name, "predicate_name", predicate.name)
+			log.V(1).Info("Predicate failed", "pod_name", candidate.Name, "predicate_name", predicate.name)
 			// Skip this Pod, it can't be deleted for the moment
 			return false, nil
 		}
 	}
 	// All predicates passed!
 	return true, nil
-}
-
-func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Client, esState ESState) error {
-	// Disable shard allocations to avoid shards moving around while the node is temporarily down
-	shardsAllocationEnabled, err := esState.ShardAllocationsEnabled()
-	if err != nil {
-		return err
-	}
-	if shardsAllocationEnabled {
-		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
-		if err := disableShardsAllocation(esClient); err != nil {
-			return err
-		}
-	}
-
-	// Request a sync flush to optimize indices recovery when the node restarts.
-	if err := doSyncFlush(esClient); err != nil {
-		return err
-	}
-
-	// TODO: halt ML jobs on that node
-	return nil
 }

@@ -45,13 +45,13 @@ func (e *Expectations) ExpectDeletion(pod v1.Pod) {
 	if !exists {
 		return // Should not happen as all Pods should have the correct labels
 	}
-	var expectedPods map[types.NamespacedName]types.UID
-	expectedPods, exists = e.deletions[cluster]
+	var expectedDeletions map[types.NamespacedName]types.UID
+	expectedDeletions, exists = e.deletions[cluster]
 	if !exists {
-		expectedPods = map[types.NamespacedName]types.UID{}
-		e.deletions[cluster] = expectedPods
+		expectedDeletions = map[types.NamespacedName]types.UID{}
+		e.deletions[cluster] = expectedDeletions
 	}
-	expectedPods[k8s.ExtractNamespacedName(&pod)] = pod.UID
+	expectedDeletions[k8s.ExtractNamespacedName(&pod)] = pod.UID
 }
 
 // CancelExpectedDeletion removes an expected deletion for the given Pod.
@@ -60,12 +60,12 @@ func (e *Expectations) CancelExpectedDeletion(pod v1.Pod) {
 	if !exists {
 		return // Should not happen as all Pods should have the correct labels
 	}
-	var expectedPods map[types.NamespacedName]types.UID
-	expectedPods, exists = e.deletions[cluster]
+	var expectedDeletions map[types.NamespacedName]types.UID
+	expectedDeletions, exists = e.deletions[cluster]
 	if !exists {
 		return
 	}
-	delete(expectedPods, k8s.ExtractNamespacedName(&pod))
+	delete(expectedDeletions, k8s.ExtractNamespacedName(&pod))
 }
 
 func getClusterFromPodLabel(pod v1.Pod) (types.NamespacedName, bool) {
@@ -79,7 +79,7 @@ func getClusterFromPodLabel(pod v1.Pod) (types.NamespacedName, bool) {
 	return cluster, exists
 }
 
-// DeletionChecker is used to check if a Pod can be remove from the deletions expectations.
+// DeletionChecker is used to check if a Pod can be removed from the deletions expectations.
 type DeletionChecker interface {
 	CanRemoveExpectation(podName types.NamespacedName, uid types.UID) (bool, error)
 }
@@ -111,7 +111,7 @@ func (e *Expectations) ExpectGeneration(meta metav1.ObjectMeta) {
 	e.generations[meta.UID] = meta.Generation
 }
 
-func (e *Expectations) ExpectedGeneration(metaObjs ...metav1.ObjectMeta) bool {
+func (e *Expectations) SatisfiedGenerations(metaObjs ...metav1.ObjectMeta) bool {
 	for _, meta := range metaObjs {
 		if expectedGen, exists := e.generations[meta.UID]; exists && meta.Generation < expectedGen {
 			return false

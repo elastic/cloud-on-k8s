@@ -67,7 +67,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 		return results.WithResult(defaultRequeue)
 	}
 	if len(podsToUpgrade) > len(deletedPods) {
-		// Some Pods have not been update, ensure that we retry later
+		// Some Pods have not been updated, ensure that we retry later
 		results.WithResult(defaultRequeue)
 	}
 
@@ -156,7 +156,7 @@ func podsToUpgrade(
 	client k8s.Client,
 	statefulSets sset.StatefulSetList,
 ) ([]corev1.Pod, error) {
-	var toBeDeletedPods []corev1.Pod
+	var toUpgrade []corev1.Pod
 	toUpdate := statefulSets.ToUpdate()
 	for _, statefulSet := range toUpdate {
 		// Inspect each pod, starting from the highest ordinal, and decrement the idx to allow
@@ -169,7 +169,7 @@ func podsToUpgrade(
 			var pod corev1.Pod
 			err := client.Get(podRef, &pod)
 			if err != nil && !errors.IsNotFound(err) {
-				return toBeDeletedPods, err
+				return toUpgrade, err
 			}
 			if errors.IsNotFound(err) {
 				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
@@ -177,11 +177,11 @@ func podsToUpgrade(
 			}
 			alreadyUpgraded := podUpgradeDone(pod, statefulSet.Status.UpdateRevision)
 			if !alreadyUpgraded {
-				toBeDeletedPods = append(toBeDeletedPods, pod)
+				toUpgrade = append(toUpgrade, pod)
 			}
 		}
 	}
-	return toBeDeletedPods, nil
+	return toUpgrade, nil
 }
 
 // podUpgradeDone inspects the given pod and returns true if it was successfully upgraded.
@@ -273,4 +273,26 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	}
 
 	return results
+}
+
+func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Client, esState ESState) error {
+	// Disable shard allocations to avoid shards moving around while the node is temporarily down
+	shardsAllocationEnabled, err := esState.ShardAllocationsEnabled()
+	if err != nil {
+		return err
+	}
+	if shardsAllocationEnabled {
+		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
+		if err := disableShardsAllocation(esClient); err != nil {
+			return err
+		}
+	}
+
+	// Request a sync flush to optimize indices recovery when the node restarts.
+	if err := doSyncFlush(esClient); err != nil {
+		return err
+	}
+
+	// TODO: halt ML jobs on that node
+	return nil
 }

@@ -79,8 +79,8 @@ func TestShardsByNode(t *testing.T) {
 			name: "Can parse populated routing table",
 			args: fixtures.ClusterStateSample,
 			want: map[string][]Shard{
-				"stack-sample-es-lkrjf7224s": {{Index: "sample-data-2", Shard: 0, Primary: true, State: STARTED, Node: "stack-sample-es-lkrjf7224s"}},
-				"stack-sample-es-4fxm76vnwj": {{Index: "sample-data-2", Shard: 1, Primary: false, State: STARTED, Node: "stack-sample-es-4fxm76vnwj"}},
+				"stack-sample-es-lkrjf7224s": {{Index: "sample-data-2", Shard: 0, Primary: true, State: STARTED, Node: "4cHWfQAwQQKTvKV1vrtbDQ"}},
+				"stack-sample-es-4fxm76vnwj": {{Index: "sample-data-2", Shard: 1, Primary: false, State: STARTED, Node: "SaGT6YMJQyS409ZhonOLhQ"}},
 			},
 		},
 	}

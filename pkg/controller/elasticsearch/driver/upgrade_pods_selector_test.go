@@ -94,7 +94,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
-			name: "1 master and 1 node, wait for the node to be upgraded first",
+			name: "1 master and 1 data node, wait for the node to be upgraded first",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("master-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),

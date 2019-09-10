@@ -25,17 +25,17 @@ func TestGenerationsExpectations(t *testing.T) {
 		Namespace:  "namespace",
 		Generation: 2,
 	}
-	require.True(t, expectations.ExpectedGeneration(obj))
+	require.True(t, expectations.SatisfiedGenerations(obj))
 	// set expectations
 	expectations.ExpectGeneration(obj)
 	// check expectations are met for this object
-	require.True(t, expectations.ExpectedGeneration(obj))
+	require.True(t, expectations.SatisfiedGenerations(obj))
 	// but not for the same object with a smaller generation
 	obj.Generation = 1
-	require.False(t, expectations.ExpectedGeneration(obj))
+	require.False(t, expectations.SatisfiedGenerations(obj))
 	// a different object (different UID) should have expectations met
 	obj.UID = types.UID("another")
-	require.True(t, expectations.ExpectedGeneration(obj))
+	require.True(t, expectations.SatisfiedGenerations(obj))
 }
 
 func newPod(clusterName types.NamespacedName, podName string) corev1.Pod {
@@ -109,6 +109,8 @@ func TestExpectations_ExpectDeletion(t *testing.T) {
 	satisfied, err := e.SatisfiedDeletions(testCluster1, checker)
 	require.NoError(t, err)
 	assert.Equal(t, satisfied, true)
+	cluster1deletions := e.deletions[testCluster1]
+	assert.Equal(t, len(cluster1deletions), 0)
 	satisfied, err = e.SatisfiedDeletions(testCluster2, checker)
 	require.NoError(t, err)
 	assert.Equal(t, satisfied, false)

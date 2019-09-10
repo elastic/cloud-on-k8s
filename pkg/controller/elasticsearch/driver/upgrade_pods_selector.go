@@ -50,7 +50,7 @@ func NewPredicateContext(
 	}
 }
 
-// SortFunction is the default sort function, masters have lower priority as
+// sortCandidates is the default sort function, masters have lower priority as
 // we want to update the data nodes first.
 // If 2 Pods are of the same type then use the reverse ordinal order.
 // TODO: Add some priority to unhealthy (bootlooping) Pods
@@ -113,9 +113,6 @@ var predicates = [...]Predicate{
 				// kubelet is unresponsive, Unknown Pod, do not try to delete it
 				return false, nil
 			}
-			if candidate.DeletionTimestamp != nil && time.Now().After(candidate.DeletionTimestamp.Add(TerminatingPodTimeout)) {
-				return false, nil
-			}
 			return true, nil
 		},
 	},
@@ -157,7 +154,7 @@ var predicates = [...]Predicate{
 			if !label.IsMasterNode(candidate) {
 				return true, nil
 			}
-			// If candidate is not healthy we want give it a chance to restart
+			// If candidate is not healthy we want to give it a chance to restart
 			_, healthy := context.healthyPods[candidate.Name]
 			if !healthy {
 				return true, nil
@@ -184,7 +181,7 @@ var predicates = [...]Predicate{
 	},
 	{
 		// Force an upgrade of all the data nodes before upgrading the last master
-		name: "do_not_delete_last_master_if_datanodes_are_not_upgraded",
+		name: "do_not_delete_last_master_if_data_nodes_are_not_upgraded",
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
@@ -242,12 +239,12 @@ var predicates = [...]Predicate{
 			}
 
 			for _, deletedPod := range deletedPods {
-				shardsOnDeletePod, ok := shards[deletedPod.Name]
+				shardsOnDeletedPod, ok := shards[deletedPod.Name]
 				if !ok {
 					// No shards on the deleted pod
 					continue
 				}
-				if conflict(shardsOnCandidate, shardsOnDeletePod) {
+				if conflictingShards(shardsOnCandidate, shardsOnDeletedPod) {
 					return false, nil
 				}
 			}
@@ -256,7 +253,7 @@ var predicates = [...]Predicate{
 	},
 }
 
-func conflict(shards1, shards2 []client.Shard) bool {
+func conflictingShards(shards1, shards2 []client.Shard) bool {
 	for _, shards1 := range shards1 {
 		for _, shards2 := range shards2 {
 			if shards1.Index == shards2.Index && shards1.Shard == shards2.Shard {

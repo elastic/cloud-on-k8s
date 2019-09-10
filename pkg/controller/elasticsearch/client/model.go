@@ -151,16 +151,19 @@ func (cs ClusterState) GetShards() []Shard {
 }
 
 // GetShardsByNode returns shards by node.
+// The result is a map with the name of the nodes as keys and the list of shards on the nodes as values.
 func (cs ClusterState) GetShardsByNode() map[string][]Shard {
 	result := make(map[string][]Shard)
 	for _, index := range cs.RoutingTable.Indices {
 		for _, shards := range index.Shards {
+			// for each shard, check if it assigned to a node
 			for _, shard := range shards {
 				if len(shard.Node) == 0 {
 					continue
 				}
-				shard.Node = cs.Nodes[shard.Node].Name
-				result[shard.Node] = append(result[shard.Node], shard)
+				// shard.Node is the id of the node, get the corresponding node name
+				nodeName := cs.Nodes[shard.Node].Name
+				result[nodeName] = append(result[nodeName], shard)
 			}
 		}
 	}
