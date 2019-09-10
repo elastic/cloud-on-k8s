@@ -117,6 +117,8 @@ var predicates = [...]Predicate{
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
+			// Green health is retrieved only once from the cluster.
+			// We rely on "shard conflict" predicate to avoid to delete to ES nodes that share some shards.
 			green, err := context.esState.GreenHealth()
 			if err != nil {
 				return false, err
