@@ -4,7 +4,7 @@
 :idprefix: k8s-
 :s: k8s
 
-include::{asciidoc-dir}/../../shared/versions70.asciidoc[]
+include::{asciidoc-dir}/../../shared/versions/stack/{source_branch}.asciidoc[]
 include::{asciidoc-dir}/../../shared/attributes.asciidoc[]
 include::overview.asciidoc[]
 include::k8s-quickstart.asciidoc[]
