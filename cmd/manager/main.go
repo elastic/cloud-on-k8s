@@ -16,11 +16,15 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
+	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
+	licensetrial "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -261,7 +265,7 @@ func execute() {
 	}
 
 	if err = (apmserver.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
-		log.Error(err, "unable to create controller", "controller", "ApmSErver")
+		log.Error(err, "unable to create controller", "controller", "ApmServer")
 		os.Exit(1)
 	}
 	if err = (elasticsearch.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
@@ -273,11 +277,25 @@ func execute() {
 		os.Exit(1)
 	}
 
-	// need to set up these Add funcs
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
-	// 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
+	if err = (asesassn.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+		log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
+		os.Exit(1)
+	}
+
+	if err = (kbassn.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+		os.Exit(1)
+	}
+
+	if err = (license.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+		log.Error(err, "unable to create controller", "controller", "License")
+		os.Exit(1)
+	}
+
+	if err = (licensetrial.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+		log.Error(err, "unable to create controller", "controller", "LicenseTrial")
+		os.Exit(1)
+	}
 
 	// todo sabo
 	// log.Info("Setting up webhooks")

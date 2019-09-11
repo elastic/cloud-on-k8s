@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -54,8 +55,23 @@ var (
 
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
+// TODO sabo remove this or migrate the add watches into NewReconciler?
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := newReconciler(mgr, params)
+	r := NewReconciler(mgr, params)
+	c, err := add(mgr, r)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, r)
+}
+
+func (r *ReconcileApmServerElasticsearchAssociation) SetupWithManager(mgr ctrl.Manager) error {
+	err := ctrl.NewControllerManagedBy(mgr).
+		For(&apmtype.ApmServer{}).
+		Complete(r)
+	if err != nil {
+		return err
+	}
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -64,7 +80,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServerElasticsearchAssociation {
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServerElasticsearchAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServerElasticsearchAssociation{
 		Client:   client,

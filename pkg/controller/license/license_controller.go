@@ -30,6 +30,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -61,17 +63,27 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
-	return add(mgr, newReconciler(mgr, p.OperatorNamespace))
+	return add(mgr, NewReconciler(mgr, p))
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, ns string) reconcile.Reconciler {
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{
 		Client:  c,
 		scheme:  mgr.GetScheme(),
-		checker: license.NewLicenseChecker(c, ns),
+		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
+}
+
+func (r *ReconcileLicenses) SetupWithManager(mgr ctrl.Manager) error {
+	err := ctrl.NewControllerManagedBy(mgr).
+		For(&v1alpha1.Elasticsearch{}).
+		Complete(r)
+	if err != nil {
+		return err
+	}
+	return add(mgr, r)
 }
 
 func nextReconcile(expiry time.Time, safety time.Duration) reconcile.Result {

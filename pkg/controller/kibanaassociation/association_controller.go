@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -73,7 +74,7 @@ var (
 // Add creates a new Association Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := newReconciler(mgr, params)
+	r := NewReconciler(mgr, params)
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -81,8 +82,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, r)
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAssociation {
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileAssociation{
 		Client:     client,
@@ -91,6 +92,20 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAs
 		recorder:   mgr.GetEventRecorderFor(name),
 		Parameters: params,
 	}
+}
+
+func (r *ReconcileAssociation) SetupWithManager(mgr ctrl.Manager) error {
+	err := ctrl.NewControllerManagedBy(mgr).
+		For(&kbtype.Kibana{}).
+		Complete(r)
+	if err != nil {
+		return err
+	}
+	c, err := add(mgr, r)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, r)
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler

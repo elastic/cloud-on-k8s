@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -72,6 +73,8 @@ type ReconcileTrials struct {
 // Reconcile watches a trial status secret. If it finds a trial license it checks whether a trial has been started.
 // If not it starts the trial period if the user has expressed intent to do so.
 // If a trial is already running it validates the trial license.
+
+// todo sabo how do we get the functionality in add() watches to be similar in kubebuilder v2? watching for all secrets fails
 func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -154,7 +157,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 
 }
 
-func newReconciler(mgr manager.Manager, _ operator.Parameters) *ReconcileTrials {
+func NewReconciler(mgr manager.Manager, _ operator.Parameters) *ReconcileTrials {
 	return &ReconcileTrials{
 		Client:   k8s.WrapClient(mgr.GetClient()),
 		scheme:   mgr.GetScheme(),
@@ -205,10 +208,22 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 	return nil
 }
 
+// todo sabo how do we get the functionality in add() watches to be similar in kubebuilder v2? watching for all secrets fails
+// maybe we use .Watches instead of .For and get the event handler somehow?
+func (r *ReconcileTrials) SetupWithManager(mgr ctrl.Manager) error {
+	err := ctrl.NewControllerManagedBy(mgr).
+		For(&corev1.Secret{}).
+		Complete(r)
+	if err != nil {
+		return err
+	}
+	return add(mgr, r)
+}
+
 // Add creates a new Trial Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
-	r := newReconciler(mgr, p)
+	r := NewReconciler(mgr, p)
 	return add(mgr, r)
 }
 
