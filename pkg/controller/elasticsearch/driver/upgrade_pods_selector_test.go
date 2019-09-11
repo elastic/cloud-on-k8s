@@ -203,6 +203,8 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
+			// This test is relying on the cluster state to check if some shards (master and replica) are shared by
+			// some nodes. The fake cluster state used in this test is in the testdata/cluster_state.json
 			name: "Do not delete Pods that share some shards",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
@@ -221,7 +223,9 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				green:          true,
 				podFilter:      nothing,
 			},
-			// elasticsearch-sample-es-nodes-3 must be skipped
+			// elasticsearch-sample-es-nodes-3 must be skipped because it shares a shard with elasticsearch-sample-es-nodes-4
+			// elasticsearch-sample-es-nodes-2 can be deleted because 2 nodes are allowed to be unavailable and it does not share
+			// some shards with elasticsearch-sample-es-nodes-4
 			deleted:                      []string{"elasticsearch-sample-es-nodes-4", "elasticsearch-sample-es-nodes-2"},
 			wantErr:                      false,
 			wantShardsAllocationDisabled: true,

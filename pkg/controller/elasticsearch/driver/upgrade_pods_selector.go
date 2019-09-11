@@ -189,7 +189,7 @@ var predicates = [...]Predicate{
 					continue
 				}
 				if label.IsMasterNode(pod) {
-					// There are some other masters alive, allow this one to be deleted
+					// There are some other masters to upgrades, allow this one to be deleted
 					return true, nil
 				}
 			}
