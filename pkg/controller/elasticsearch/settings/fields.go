@@ -19,7 +19,9 @@ const (
 	PathData = "path.data"
 	PathLogs = "path.logs"
 
-	XPackSecurityAuthcRealmsFileFile1Order          = "xpack.security.authc.realms.file.file1.order"
+	XPackSecurityAuthcRealmsFileFile1Order          = "xpack.security.authc.realms.file.file1.order" // 7.x realm syntax
+	XPackSecurityAuthcRealmsFile1Order              = "xpack.security.authc.realms.file1.order"      // 6.x realm syntax
+	XPackSecurityAuthcRealmsFile1Type               = "xpack.security.authc.realms.file1.type"       // 6.x realm syntax
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
 	XPackSecurityEnabled                            = "xpack.security.enabled"
 	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"
