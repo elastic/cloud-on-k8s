@@ -9,6 +9,26 @@ import (
 	"sync/atomic"
 	"time"
 
+	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
+	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
+	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,27 +42,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
-
-	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
-	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const name = "elasticsearch-controller"
@@ -72,7 +71,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 
 		finalizers:     finalizer.NewHandler(client),
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   reconciler.NewExpectations(),
+		expectations:   expectations.NewExpectations(),
 
 		Parameters: params,
 	}
@@ -171,7 +170,7 @@ type ReconcileElasticsearch struct {
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
-	expectations *reconciler.Expectations
+	expectations *expectations.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64

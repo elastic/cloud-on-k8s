@@ -7,6 +7,10 @@
       - string:
           name: IMAGE
           description: "Docker image with ECK"
+      - bool:
+          name: SEND_NOTIFICATIONS
+          default: true
+          description: "Specified if job should send notifications to Slack. Enabled by default."
     pipeline-scm:
       scm:
         - git:

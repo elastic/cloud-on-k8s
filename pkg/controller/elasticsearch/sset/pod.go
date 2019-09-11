@@ -6,12 +6,12 @@ package sset
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
@@ -94,41 +94,13 @@ func PodReconciliationDoneForSset(c k8s.Client, statefulSet appsv1.StatefulSet) 
 		return false, nil
 	}
 
-	// check pods revision match what is specified in the StatefulSet
-	done, err := scheduledUpgradeDone(c, statefulSet)
-	if err != nil {
-		return false, err
-	}
-	if !done {
-		log.V(1).Info(
-			"Some pods still need to be upgraded",
-			"namespace", statefulSet.Namespace, "statefulset_name", statefulSet.Name,
-		)
-		return false, nil
-	}
-
 	return true, nil
 }
 
-func scheduledUpgradeDone(c k8s.Client, statefulSet appsv1.StatefulSet) (bool, error) {
-	if statefulSet.Status.UpdateRevision == "" {
-		// no upgrade scheduled
-		return true, nil
-	}
-	partition := GetPartition(statefulSet)
-	for i := GetReplicas(statefulSet) - 1; i >= partition; i-- {
-		var pod corev1.Pod
-		err := c.Get(types.NamespacedName{Namespace: statefulSet.Namespace, Name: PodName(statefulSet.Name, i)}, &pod)
-		if errors.IsNotFound(err) {
-			// pod probably being terminated
-			return false, nil
-		}
-		if err != nil {
-			return false, err
-		}
-		if PodRevision(pod) != statefulSet.Status.UpdateRevision {
-			return false, nil
-		}
-	}
-	return true, nil
+// StatefulSetName returns the name of the statefulset a Pod belongs to.
+func StatefulSetName(podName string) (ssetName string, ordinal int32, err error) {
+	ordinalPos := strings.LastIndex(podName, "-")
+	ordinalAsString := podName[ordinalPos+1:]
+	ordinalAsInt, err := strconv.Atoi(ordinalAsString)
+	return podName[:ordinalPos], int32(ordinalAsInt), err
 }

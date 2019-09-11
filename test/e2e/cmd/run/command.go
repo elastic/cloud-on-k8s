@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -33,6 +34,7 @@ type runFlags struct {
 	autoPortForwarding  bool
 	skipCleanup         bool
 	local               bool
+	logVerbosity        int
 }
 
 var log logr.Logger
@@ -52,7 +54,8 @@ func Command() *cobra.Command {
 
 			return nil
 		},
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			flags.logVerbosity, _ = cmd.PersistentFlags().GetInt("log-verbosity")
 			return doRun(flags)
 		},
 	}
@@ -71,6 +74,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.scratchDirRoot, "scratch-dir", "/tmp/eck-e2e", "Path under which temporary files should be created")
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
+	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables
 	_ = viper.BindPFlags(cmd.Flags())
