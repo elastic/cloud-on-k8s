@@ -52,30 +52,6 @@ spec:
             config:
               description: Config represents Kibana configuration.
               type: object
-            elasticsearch:
-              description: Elasticsearch configures how Kibana connects to Elasticsearch
-              properties:
-                auth:
-                  description: Auth configures authentication for Kibana to use.
-                  properties:
-                    secret:
-                      description: SecretKeyRef is a secret that contains the credentials
-                        to use.
-                      type: object
-                  type: object
-                certificateAuthorities:
-                  description: CertificateAuthorities names a secret that contains
-                    a CA file entry to use.
-                  properties:
-                    secretName:
-                      type: string
-                  type: object
-                url:
-                  description: ElasticsearchURL is the URL to the target Elasticsearch
-                  type: string
-              required:
-              - url
-              type: object
             elasticsearchRef:
               description: ElasticsearchRef references an Elasticsearch resource in
                 the Kubernetes cluster. If the namespace is not specified, the current
