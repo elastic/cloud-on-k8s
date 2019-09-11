@@ -6,10 +6,11 @@ package driver
 
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func (d *defaultDriver) expectationsMet(actualStatefulSets sset.StatefulSetList) (bool, error) {
-	if !d.Expectations.GenerationExpected(actualStatefulSets.ObjectMetas()...) {
+	if !d.Expectations.SatisfiedGenerations(actualStatefulSets.ObjectMetas()...) {
 		// Our cache of StatefulSets is out of date compared to previous reconciliation operations.
 		// Continuing with the reconciliation at this point may lead to:
 		// - errors on rejected sset updates (conflict since cached resource out of date): that's ok
@@ -32,5 +33,8 @@ func (d *defaultDriver) expectationsMet(actualStatefulSets sset.StatefulSetList)
 		// wrong assumptions (especially on master-eligible and ES version mismatches).
 		return false, nil
 	}
-	return true, nil
+
+	// The last step here is to check if some Pods are being deleted.
+	// We should wait for them to be recreated after a rolling upgrade.
+	return d.Expectations.SatisfiedDeletions(d.Client, k8s.ExtractNamespacedName(&d.ES))
 }

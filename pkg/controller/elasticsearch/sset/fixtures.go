@@ -19,7 +19,6 @@ type TestSset struct {
 	Replicas    int32
 	Master      bool
 	Data        bool
-	Partition   int32
 	Status      appsv1.StatefulSetStatus
 }
 
@@ -42,10 +41,7 @@ func (t TestSset) Build() appsv1.StatefulSet {
 				},
 			},
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: "RollingUpdate",
-				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-					Partition: &t.Partition,
-				},
+				Type: "OnDelete",
 			},
 		},
 		Status: t.Status,

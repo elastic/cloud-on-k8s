@@ -5,18 +5,10 @@
 package driver
 
 import (
-	"reflect"
 	"sync"
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -26,6 +18,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var onceDone = &sync.Once{}
@@ -122,8 +121,6 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
-	// partition should be kept to the original 4 replicas
-	require.Equal(t, common.Int32(4), sset2.Spec.UpdateStrategy.RollingUpdate.Partition)
 
 	// apply a spec change
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
@@ -132,8 +129,6 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, "b", sset2.Spec.Template.Labels["a"])
-	// partition should be updated to 10 so current pods don't get rotated automatically
-	require.Equal(t, common.Int32(10), sset2.Spec.UpdateStrategy.RollingUpdate.Partition)
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
@@ -146,43 +141,6 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
-	// partition should be updated to 10 so current pods don't get rotated automatically
-	require.Equal(t, common.Int32(10), sset2.Spec.UpdateStrategy.RollingUpdate.Partition)
-}
-
-func Test_adaptForExistingStatefulSet(t *testing.T) {
-	tests := []struct {
-		name        string
-		actualSset  appsv1.StatefulSet
-		ssetToApply appsv1.StatefulSet
-		want        appsv1.StatefulSet
-	}{
-		{
-			name:        "nothing to do",
-			actualSset:  sset.TestSset{Replicas: 3, Partition: 3}.Build(),
-			ssetToApply: sset.TestSset{Replicas: 3}.Build(),
-			want:        sset.TestSset{Replicas: 3, Partition: 3}.Build(),
-		},
-		{
-			name:        "upscale: set Partition to the actual replicas",
-			actualSset:  sset.TestSset{Replicas: 3, Partition: 1}.Build(),
-			ssetToApply: sset.TestSset{Replicas: 10}.Build(),
-			want:        sset.TestSset{Replicas: 10, Partition: 3}.Build(),
-		},
-		{
-			name:        "downscale: set replicas to the actual replicas",
-			actualSset:  sset.TestSset{Replicas: 3, Partition: 1}.Build(),
-			ssetToApply: sset.TestSset{Replicas: 1}.Build(),
-			want:        sset.TestSset{Replicas: 3, Partition: 3}.Build(),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := adaptForExistingStatefulSet(tt.actualSset, tt.ssetToApply); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("adaptForExistingStatefulSet() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
 
 func Test_isReplicaIncrease(t *testing.T) {
@@ -257,7 +215,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
-			want: sset.TestSset{Name: "sset", Replicas: 3, Partition: 3}.Build(),
+			want: sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 		},
 		{
 			name: "downscale case",
@@ -268,10 +226,10 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
 					},
 				},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2}.Build()},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
-			want: sset.TestSset{Name: "sset", Replicas: 3, Partition: 3}.Build(),
+			want: sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 		},
 		{
 			name: "upscale case: data nodes",
@@ -282,10 +240,10 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
 					},
 				},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2, Master: false, Data: true}.Build()},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
-			want: sset.TestSset{Name: "sset", Replicas: 5, Partition: 3, Master: false, Data: true}.Build(),
+			want: sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 		},
 		{
 			name: "upscale case: master nodes - one by one",
@@ -296,10 +254,10 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
 					},
 				},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2, Master: true, Data: true}.Build()},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
-			want: sset.TestSset{Name: "sset", Replicas: 4, Partition: 3, Master: true, Data: true}.Build(),
+			want: sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
 		},
 		{
 			name: "upscale case: new additional master sset - one by one",
@@ -310,10 +268,10 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
 					},
 				},
-				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Partition: 2, Master: true, Data: true}.Build()},
+				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
-			want: sset.TestSset{Name: "sset-2", Replicas: 1, Partition: 0, Master: true, Data: true}.Build(),
+			want: sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
 		},
 	}
 	for _, tt := range tests {
@@ -385,32 +343,4 @@ func Test_adjustZenConfig(t *testing.T) {
 			}
 		})
 	}
-}
-
-func Test_adjustResources(t *testing.T) {
-	actualSset := sset.StatefulSetList{sset.TestSset{Version: "6.8.0", Replicas: 3, Master: true, Partition: 2}.Build()}
-	resources := nodespec.ResourcesList{
-		{
-			// upscale to 10 replicas
-			StatefulSet: sset.TestSset{Version: "6.8.0", Replicas: 10, Master: true, Partition: 2}.Build(),
-			Config:      settings.NewCanonicalConfig(),
-		},
-	}
-	upscaleCtx := upscaleCtx{
-		upscaleStateBuilder: &upscaleStateBuilder{
-			once:         onceDone,
-			upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
-		},
-	}
-	adjusted, err := adjustResources(upscaleCtx, actualSset, resources)
-	require.NoError(t, err)
-
-	// should have added one more master
-	expectedSset := sset.TestSset{Version: "6.8.0", Replicas: 4, Master: true, Partition: 3}.Build()
-	require.Equal(t, expectedSset, adjusted.StatefulSets()[0])
-	// and set minimum master nodes
-	require.NotEmpty(t, adjusted[0].Config.HasKeys([]string{settings.DiscoveryZenMinimumMasterNodes}))
-
-	// original sset should be kept unmodified
-	require.Equal(t, sset.TestSset{Version: "6.8.0", Replicas: 10, Master: true, Partition: 2}.Build(), resources[0].StatefulSet)
 }

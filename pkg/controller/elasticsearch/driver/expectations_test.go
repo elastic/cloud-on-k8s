@@ -7,19 +7,17 @@ package driver
 import (
 	"testing"
 
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_defaultDriver_expectationsMet(t *testing.T) {
 	d := &defaultDriver{DefaultDriverParameters{
-		Expectations: reconciler.NewExpectations(),
+		Expectations: expectations.NewExpectations(),
 		Client:       k8s.WrapClient(fake.NewFakeClient()),
 	}}
 

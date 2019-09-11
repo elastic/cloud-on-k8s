@@ -104,8 +104,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Phase 3: handle rolling upgrades.
-	// Control nodes restart (upgrade) by manually decrementing rollingUpdate.Partition.
-	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esState, actualStatefulSets)
+	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esState, actualStatefulSets, expectedResources.MasterNodesNames())
 	results.WithResults(rollingUpgradesRes)
 	if rollingUpgradesRes.HasError() {
 		return results

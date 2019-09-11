@@ -68,6 +68,42 @@ func TestParseRoutingTable(t *testing.T) {
 
 }
 
+func TestShardsByNode(t *testing.T) {
+
+	tests := []struct {
+		name string
+		args string
+		want map[string][]Shard
+	}{
+		{
+			name: "Can parse populated routing table",
+			args: fixtures.ClusterStateSample,
+			want: map[string][]Shard{
+				"stack-sample-es-lkrjf7224s": {{Index: "sample-data-2", Shard: 0, Primary: true, State: STARTED, Node: "4cHWfQAwQQKTvKV1vrtbDQ"}},
+				"stack-sample-es-4fxm76vnwj": {{Index: "sample-data-2", Shard: 1, Primary: false, State: STARTED, Node: "SaGT6YMJQyS409ZhonOLhQ"}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		var clusterState ClusterState
+		b := []byte(tt.args)
+		err := json.Unmarshal(b, &clusterState)
+		if err != nil {
+			t.Error(err)
+		}
+		shardsByNode := clusterState.GetShardsByNode()
+		assert.True(t, len(shardsByNode) == len(tt.want))
+		for node, shards := range shardsByNode {
+			expected, ok := tt.want[node]
+			assert.True(t, ok)
+			assert.EqualValues(t, expected, shards)
+		}
+
+	}
+
+}
+
 func errorResponses(statusCodes []int) RoundTripFunc {
 	i := 0
 	return func(req *http.Request) *http.Response {
