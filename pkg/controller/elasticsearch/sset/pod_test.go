@@ -7,10 +7,12 @@ package sset
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -147,4 +149,44 @@ func Test_PodReconciliationDoneForSset(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test that we actually filter on the sset name and the namespace
+func TestGetActualPodsForStatefulSet(t *testing.T) {
+	objs := []runtime.Object{
+		getPodSample("pod0", "ns0", "sset0", "clus0", "0"),
+		getPodSample("pod1", "ns1", "sset0", "clus0", "0"),
+		getPodSample("pod2", "ns0", "sset1", "clus1", "0"),
+		getPodSample("pod3", "ns0", "sset1", "clus0", "0"),
+	}
+	c := k8s.WrapClient(fake.NewFakeClient(objs...))
+	sset0 := getSsetSample("sset0", "ns0", "clus0")
+	pods, err := GetActualPodsForStatefulSet(c, sset0)
+	require.NoError(t, err)
+	// only one pod is in the same stateful set and namespace
+	assert.Equal(t, 1, len(pods))
+}
+
+func getSsetSample(name, namespace, clusterName string) appsv1.StatefulSet {
+	return TestSset{
+		Name:        name,
+		Namespace:   namespace,
+		ClusterName: clusterName,
+		Replicas:    3,
+		Partition:   1,
+		Status: appsv1.StatefulSetStatus{
+			CurrentRevision: "1",
+			UpdateRevision:  "1",
+		},
+	}.Build()
+}
+
+func getPodSample(name, namespace, ssetName, clusterName, revision string) *corev1.Pod {
+	return TestPod{
+		Namespace:       namespace,
+		Name:            name,
+		ClusterName:     clusterName,
+		StatefulSetName: ssetName,
+		Revision:        revision,
+	}.BuildPtr()
 }

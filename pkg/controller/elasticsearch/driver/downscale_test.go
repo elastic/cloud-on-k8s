@@ -29,66 +29,88 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	clusterName             = "cluster"
-	ssetMaster3Replicas     = sset.TestSset{Name: "ssetMaster3Replicas", Version: "7.2.0", Replicas: 3, Master: true, Data: false}.Build()
+	clusterName         = "cluster"
+	ssetMaster3Replicas = sset.TestSset{
+		Name:      "ssetMaster3Replicas",
+		Namespace: "ns",
+		Version:   "7.2.0",
+		Replicas:  3,
+		Master:    true,
+		Data:      false,
+	}.Build()
 	podsSsetMaster3Replicas = []corev1.Pod{
 		sset.TestPod{
-			Namespace:   ssetMaster3Replicas.Namespace,
-			Name:        sset.PodName(ssetMaster3Replicas.Name, 0),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Master:      true,
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            sset.PodName(ssetMaster3Replicas.Name, 0),
+			StatefulSetName: ssetMaster3Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Master:          true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetMaster3Replicas.Namespace,
-			Name:        sset.PodName(ssetMaster3Replicas.Name, 1),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Master:      true,
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            sset.PodName(ssetMaster3Replicas.Name, 1),
+			StatefulSetName: ssetMaster3Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Master:          true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetMaster3Replicas.Namespace,
-			Name:        sset.PodName(ssetMaster3Replicas.Name, 2),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Master:      true,
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            sset.PodName(ssetMaster3Replicas.Name, 2),
+			StatefulSetName: ssetMaster3Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Master:          true,
 		}.Build(),
 	}
-	ssetData4Replicas     = sset.TestSset{Name: "ssetData4Replicas", Version: "7.2.0", Replicas: 4, Master: false, Data: true}.Build()
+	ssetData4Replicas = sset.TestSset{
+		Name:      "ssetData4Replicas",
+		Namespace: "ns",
+		Version:   "7.2.0",
+		Replicas:  4,
+		Master:    false,
+		Data:      true,
+	}.Build()
 	podsSsetData4Replicas = []corev1.Pod{
 		sset.TestPod{
-			Namespace:   ssetData4Replicas.Namespace,
-			Name:        sset.PodName(ssetData4Replicas.Name, 0),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Data:        true,
+			Namespace:       ssetData4Replicas.Namespace,
+			Name:            sset.PodName(ssetData4Replicas.Name, 0),
+			StatefulSetName: ssetData4Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Data:            true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetData4Replicas.Namespace,
-			Name:        sset.PodName(ssetData4Replicas.Name, 1),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Data:        true,
+			Namespace:       ssetData4Replicas.Namespace,
+			Name:            sset.PodName(ssetData4Replicas.Name, 1),
+			StatefulSetName: ssetData4Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Data:            true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetData4Replicas.Namespace,
-			Name:        sset.PodName(ssetData4Replicas.Name, 2),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Data:        true,
+			Namespace:       ssetData4Replicas.Namespace,
+			Name:            sset.PodName(ssetData4Replicas.Name, 2),
+			StatefulSetName: ssetData4Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Data:            true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetData4Replicas.Namespace,
-			Name:        sset.PodName(ssetData4Replicas.Name, 3),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Data:        true,
+			Namespace:       ssetData4Replicas.Namespace,
+			Name:            sset.PodName(ssetData4Replicas.Name, 3),
+			StatefulSetName: ssetData4Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Data:            true,
 		}.Build(),
 	}
 	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
+
 	requeueResults = (&reconciler.Results{}).WithResult(defaultRequeue)
 	emptyResults   = &reconciler.Results{}
 )

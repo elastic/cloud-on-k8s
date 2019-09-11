@@ -211,12 +211,14 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 // todo sabo how do we get the functionality in add() watches to be similar in kubebuilder v2? watching for all secrets fails
 // maybe we use .Watches instead of .For and get the event handler somehow?
 func (r *ReconcileTrials) SetupWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewControllerManagedBy(mgr).
-		For(&corev1.Secret{}).
-		Complete(r)
-	if err != nil {
-		return err
-	}
+	// TODO sabo do we need to do the ctrl.NewControllerManagedBy since watches are also added by the func add() ?
+	// err := ctrl.NewControllerManagedBy(mgr).
+	// 	For(&corev1.Secret{}).
+	// 	Complete(r)
+	// ctrl.NewControllerManagedBy(mgr).Watches()
+	// if err != nil {
+	// 	return err
+	// }
 	return add(mgr, r)
 }
 

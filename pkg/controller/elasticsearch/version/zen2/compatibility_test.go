@@ -166,6 +166,10 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 					Master:          true,
 				}.BuildPtr())),
 				es: v1alpha1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "es",
+						Namespace: "default",
+					},
 					Spec: v1alpha1.ElasticsearchSpec{Version: "7.3.0"},
 				},
 			},

@@ -251,65 +251,12 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 		wantAllocationEnabled bool
 	}{
 		{
-			name: "still update pending",
-			args: args{
-				statefulSets: sset.StatefulSetList{
-					sset.TestSset{
-						Name:      "default",
-						Version:   "7.3.0",
-						Replicas:  1,
-						Master:    true,
-						Data:      true,
-						Partition: 0, // upgrade rolled out
-						Status: appsv1.StatefulSetStatus{
-							CurrentRevision: "a",
-							UpdateRevision:  "b",
-						},
-					}.Build(),
-				},
-				esState: defaultESState,
-			},
-			runtimeObjects: nil, // but no corresponding pod in runtime objects
-			want:           success().WithResult(defaultRequeue),
-		},
-		{
-			name: "update done but node not in cluster",
-			args: args{
-				statefulSets: sset.StatefulSetList{
-					sset.TestSset{
-						Name:      "default",
-						Replicas:  1,
-						Master:    true,
-						Data:      true,
-						Partition: 0, // upgrade rolled out
-						Status: appsv1.StatefulSetStatus{
-							CurrentRevision: "a",
-							UpdateRevision:  "b",
-						},
-					}.Build(),
-				},
-				esState: mockESState{
-					shardAllocationsEnabled: false,
-					green:                   false,
-					nodeNames:               nil, // no node here
-				},
-			},
-			runtimeObjects: []runtime.Object{
-				sset.TestPod{
-					Name:     "default-0",
-					Revision: "b", // pod at latest revision
-					Master:   true,
-					Data:     true,
-				}.BuildPtr(),
-			},
-			want: success().WithResult(defaultRequeue),
-		},
-		{
 			name: "should enable shard allocations",
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
-						Name:      "default",
+						Name:      "sset0",
+						Namespace: "ns",
 						Replicas:  1,
 						Master:    true,
 						Data:      true,
@@ -322,15 +269,17 @@ func Test_defaultDriver_MaybeEnableShardsAllocation(t *testing.T) {
 				},
 				esState: mockESState{
 					shardAllocationsEnabled: false,
-					nodeNames:               []string{"default-0"},
+					nodeNames:               []string{"sset0-0"},
 				},
 			},
 			runtimeObjects: []runtime.Object{
 				sset.TestPod{
-					Name:     "default-0",
-					Revision: "b", // pod at latest revision
-					Master:   true,
-					Data:     true,
+					Name:            "sset0-0",
+					Namespace:       "ns",
+					StatefulSetName: "sset0",
+					Revision:        "b", // pod at latest revision
+					Master:          true,
+					Data:            true,
 				}.BuildPtr(),
 			},
 			want:                  success(),

@@ -24,7 +24,6 @@ var (
 )
 
 // MarkPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
-// todo sabo make this variadic
 func MarkPodsAsUpdated(
 	c k8s.Client,
 	podListOptions ...client.ListOption,

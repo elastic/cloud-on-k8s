@@ -42,17 +42,11 @@ func PodRevision(pod corev1.Pod) string {
 // The returned pods may not match the expected StatefulSet replicas in a transient situation.
 func GetActualPodsForStatefulSet(c k8s.Client, sset appsv1.StatefulSet) ([]corev1.Pod, error) {
 	var pods corev1.PodList
-	// TODO sabo fix this
-	// if err := c.List(&client.ListOptions{
-	// 	Namespace: sset.Namespace,
-	// 	LabelSelector: labels.SelectorFromSet(map[string]string{
-	// 		label.StatefulSetNameLabelName: sset.Name,
-	// 	}),
-	// }, &pods); err != nil {
-	// 	return nil, err
-	// }
 	ns := client.InNamespace(sset.Namespace)
-	if err := c.List(&pods, ns); err != nil {
+	matchLabels := client.MatchingLabels(map[string]string{
+		label.StatefulSetNameLabelName: sset.Name,
+	})
+	if err := c.List(&pods, matchLabels, ns); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
@@ -61,17 +55,12 @@ func GetActualPodsForStatefulSet(c k8s.Client, sset appsv1.StatefulSet) ([]corev
 // GetActualPodsForCluster return the existing pods associated to this cluster.
 func GetActualPodsForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.Pod, error) {
 	var pods corev1.PodList
-	// if err := c.List(&client.ListOptions{
-	// 	Namespace: es.Namespace,
-	// 	LabelSelector: labels.SelectorFromSet(map[string]string{
-	// 		label.ClusterNameLabelName: es.Name,
-	// 	}),
-	// }, &pods); err != nil {
-	// 	return nil, err
-	// }
-	// TODO sabo fix
+
 	ns := client.InNamespace(es.Namespace)
-	if err := c.List(&pods, ns); err != nil {
+	matchLabels := client.MatchingLabels(map[string]string{
+		label.ClusterNameLabelName: es.Name,
+	})
+	if err := c.List(&pods, ns, matchLabels); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
