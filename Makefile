@@ -101,9 +101,18 @@ clean:
 unit: clean
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
+unit_xml: clean
+	go test --json ./pkg/... ./cmd/... -coverprofile cover.out > unit-tests.json
+	gotestsum --junitfile unit-tests.xml --raw-command cat unit-tests.json
+
 integration: GO_TAGS += integration
 integration: clean generate
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
+
+integration_xml: GO_TAGS += integration
+integration_xml: clean generate
+	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
+	gotestsum --junitfile integration-tests.xml --raw-command cat integration-tests.json
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)
