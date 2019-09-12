@@ -714,8 +714,24 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 }
 
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
-	ssetMasters := sset.TestSset{Name: "masters", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build()
-	ssetData := sset.TestSset{Name: "datas", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build()
+	ssetMasters := sset.TestSset{
+		Name:        "masters",
+		Namespace:   "ns",
+		ClusterName: "es",
+		Version:     "7.1.0",
+		Replicas:    3,
+		Master:      true,
+		Data:        false,
+	}.Build()
+	ssetData := sset.TestSset{
+		Name:        "datas",
+		Namespace:   "ns",
+		ClusterName: "es",
+		Version:     "7.1.0",
+		Replicas:    3,
+		Master:      false,
+		Data:        true,
+	}.Build()
 	tests := []struct {
 		name               string
 		downscale          ssetDownscale
@@ -759,6 +775,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 						label.ClusterNameLabelName:             es.Name,
 						string(label.NodeTypesMasterLabelName): "true",
 						label.VersionLabelName:                 "7.1.0",
+						label.StatefulSetNameLabelName:         ssetMasters.Name,
 					},
 				},
 			}
