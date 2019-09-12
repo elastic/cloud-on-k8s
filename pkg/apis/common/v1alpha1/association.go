@@ -26,6 +26,78 @@ const (
 type Associated interface {
 	metav1.Object
 	runtime.Object
-	ElasticsearchAuth() ElasticsearchAuth
 	ElasticsearchRef() ObjectSelector
+	AssociationConf() *AssociationConf
+}
+
+// Associator describes an object that allows its association to be set.
+type Associator interface {
+	metav1.Object
+	runtime.Object
+	SetAssociationConf(*AssociationConf)
+}
+
+// AssociationConf holds the association configuration of an Elasticsearch cluster.
+type AssociationConf struct {
+	AuthSecretName string `json:"authSecretName"`
+	AuthSecretKey  string `json:"authSecretKey"`
+	CASecretName   string `json:"caSecretName"`
+	URL            string `json:"url"`
+}
+
+// IsConfigured returns true if all the fields are set.
+func (esac *AssociationConf) IsConfigured() bool {
+	return esac.AuthIsConfigured() && esac.CAIsConfigured() && esac.URLIsConfigured()
+}
+
+// AuthIsConfigured returns true if all the auth fields are set.
+func (esac *AssociationConf) AuthIsConfigured() bool {
+	if esac == nil {
+		return false
+	}
+	return esac.AuthSecretName != "" && esac.AuthSecretKey != ""
+}
+
+// CAIsConfigured returns true if the CA field is set.
+func (esac *AssociationConf) CAIsConfigured() bool {
+	if esac == nil {
+		return false
+	}
+	return esac.CASecretName != ""
+}
+
+// URLIsConfigured returns true if the URL field is set.
+func (esac *AssociationConf) URLIsConfigured() bool {
+	if esac == nil {
+		return false
+	}
+	return esac.URL != ""
+}
+
+func (esac *AssociationConf) GetAuthSecretName() string {
+	if esac == nil {
+		return ""
+	}
+	return esac.AuthSecretName
+}
+
+func (esac *AssociationConf) GetAuthSecretKey() string {
+	if esac == nil {
+		return ""
+	}
+	return esac.AuthSecretKey
+}
+
+func (esac *AssociationConf) GetCASecretName() string {
+	if esac == nil {
+		return ""
+	}
+	return esac.CASecretName
+}
+
+func (esac *AssociationConf) GetURL() string {
+	if esac == nil {
+		return ""
+	}
+	return esac.URL
 }

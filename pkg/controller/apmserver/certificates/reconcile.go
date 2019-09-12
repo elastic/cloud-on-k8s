@@ -20,7 +20,7 @@ import (
 
 func Reconcile(
 	driver driver.Interface,
-	apm v1alpha1.ApmServer,
+	apm *v1alpha1.ApmServer,
 	services []coverv1.Service,
 	rotation certificates.RotationParams,
 ) reconciler.Results {
@@ -37,7 +37,7 @@ func Reconcile(
 		driver.K8sClient(),
 		driver.Scheme(),
 		name.APMNamer,
-		&apm,
+		apm,
 		labels,
 		certificates.HTTPCAType,
 		rotation,
@@ -54,7 +54,7 @@ func Reconcile(
 	// discover and maybe reconcile for the http certificates to use
 	httpCertificates, err := http.ReconcileHTTPCertificates(
 		driver,
-		&apm,
+		apm,
 		name.APMNamer,
 		httpCa,
 		apm.Spec.HTTP.TLS,
@@ -66,6 +66,6 @@ func Reconcile(
 		return *results.WithError(err)
 	}
 	// reconcile http public cert secret
-	results.WithError(http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &apm, name.APMNamer, httpCertificates))
+	results.WithError(http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), apm, name.APMNamer, httpCertificates))
 	return results
 }

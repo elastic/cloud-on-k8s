@@ -53,7 +53,7 @@ pipeline {
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    def msg = "E2E tests for different k8s versions in GKE failed!\r\n" + env.BUILD_URL
+                    def msg = "E2E tests for different k8s versions in GKE failed!\r\n" + env.RUN_DISPLAY_URL
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
                         color: 'danger',
