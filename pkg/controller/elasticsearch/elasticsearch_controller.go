@@ -216,6 +216,12 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 
 	state := esreconcile.NewState(es)
 	results := r.internalReconcile(es, state)
+	if results.HasError() {
+		res, err := results.Aggregate()
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+		return res, err
+	}
+
 	err = r.updateStatus(es, state)
 	if err != nil {
 		if apierrors.IsConflict(err) {
