@@ -1,7 +1,10 @@
-package interfaces
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
+package v1alpha1
 
 import (
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -20,6 +23,7 @@ const (
 // An associated object needs some credentials to establish a connection to the Elasticsearch cluster and usually it
 // offers a keystore which in ECK is represented with an underlying Secret.
 // Kibana and the APM server are two examples of associated objects.
+// +kubebuilder:object:generate=false
 type Associated interface {
 	metav1.Object
 	runtime.Object
@@ -28,6 +32,7 @@ type Associated interface {
 }
 
 // Associator describes an object that allows its association to be set.
+// +kubebuilder:object:generate=false
 type Associator interface {
 	metav1.Object
 	runtime.Object

@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -222,9 +221,9 @@ func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) fin
 	}
 }
 
-func resultFromStatus(status ifs.AssociationStatus) reconcile.Result {
+func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
 	switch status {
-	case ifs.AssociationPending:
+	case commonv1alpha1.AssociationPending:
 		return defaultRequeue // retry
 	default:
 		return reconcile.Result{} // we are done or there is not much we can do
@@ -232,7 +231,7 @@ func resultFromStatus(status ifs.AssociationStatus) reconcile.Result {
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) isCompatible(apmServer *apmtype.ApmServer) (bool, error) {
-	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: apmServer.Name}).AsSelector()
+	selector := map[string]string{labels.ApmServerNameLabelName: apmServer.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, apmServer, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, apmServer, events.EventCompatCheckError, "Error during compatibility check: %v", err)
@@ -244,7 +243,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.ElasticsearchRef
 	if !elasticsearchRef.IsDefined() {
-		return ifs.AssociationUnknown, nil
+		return commonv1alpha1.AssociationUnknown, nil
 	}
 	if elasticsearchRef.Namespace == "" {
 		// no namespace provided: default to the APM server namespace
@@ -260,7 +259,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		Watcher: assocKey,
 	})
 	if err != nil {
-		return ifs.AssociationFailed, err
+		return commonv1alpha1.AssociationFailed, err
 	}
 
 	var es estype.Elasticsearch
@@ -277,7 +276,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 
 			return commonv1alpha1.AssociationPending, nil
 		}
-		return ifs.AssociationFailed, err
+		return commonv1alpha1.AssociationFailed, err
 	}
 
 	if err := association.ReconcileEsUser(
@@ -292,12 +291,12 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		apmUserSuffix,
 		es,
 	); err != nil { // TODO distinguish conflicts and non-recoverable errors here
-		return ifs.AssociationPending, err
+		return commonv1alpha1.AssociationPending, err
 	}
 
 	caSecretName, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
 	if err != nil {
-		return ifs.AssociationPending, err // maybe not created yet
+		return commonv1alpha1.AssociationPending, err // maybe not created yet
 	}
 
 	// construct the expected ES output configuration
@@ -325,7 +324,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		log.Error(err, "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
 	}
 
-	return ifs.AssociationEstablished, nil
+	return commonv1alpha1.AssociationEstablished, nil
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmtype.ApmServer, es types.NamespacedName) (string, error) {

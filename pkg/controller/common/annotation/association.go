@@ -5,14 +5,13 @@
 package annotation
 
 import (
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 )
 
 const (
 	// CurrAssocStatusAnnotation describes the currently observed association status of an object.
-	CurrAssocStatusAnnotation = "ifs.k8s.elastic.co/current-status"
+	CurrAssocStatusAnnotation = "commonv1alpha1.k8s.elastic.co/current-status"
 	// PrevAssocStatusAnnotation describes the previously observed association status of an object.
 	PrevAssocStatusAnnotation = "association.k8s.elastic.co/previous-status"
 	// AssociationConfAnnotation is the annotation used to define the config for associated Elasticsearch cluster.
@@ -20,7 +19,7 @@ const (
 )
 
 // ForAssociationStatusChange constructs the annotation map for an association status change event.
-func ForAssociationStatusChange(prevStatus, currStatus ifs.AssociationStatus) map[string]string {
+func ForAssociationStatusChange(prevStatus, currStatus commonv1alpha1.AssociationStatus) map[string]string {
 	return map[string]string{
 		CurrAssocStatusAnnotation: string(currStatus),
 		PrevAssocStatusAnnotation: string(prevStatus),
@@ -28,12 +27,12 @@ func ForAssociationStatusChange(prevStatus, currStatus ifs.AssociationStatus) ma
 }
 
 // ExtractAssociationStatus extracts the association status values from the provided meta object.
-func ExtractAssociationStatus(obj metav1.ObjectMeta) (prevStatus, currStatus ifs.AssociationStatus) {
+func ExtractAssociationStatus(obj metav1.ObjectMeta) (prevStatus, currStatus commonv1alpha1.AssociationStatus) {
 	if obj.Annotations == nil {
-		return ifs.AssociationUnknown, ifs.AssociationUnknown
+		return commonv1alpha1.AssociationUnknown, commonv1alpha1.AssociationUnknown
 	}
 
-	prevStatus = ifs.AssociationStatus(obj.Annotations[PrevAssocStatusAnnotation])
-	currStatus = ifs.AssociationStatus(obj.Annotations[CurrAssocStatusAnnotation])
+	prevStatus = commonv1alpha1.AssociationStatus(obj.Annotations[PrevAssocStatusAnnotation])
+	currStatus = commonv1alpha1.AssociationStatus(obj.Annotations[CurrAssocStatusAnnotation])
 	return
 }

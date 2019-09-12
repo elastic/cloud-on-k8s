@@ -6,7 +6,6 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -72,7 +71,7 @@ type ApmServerStatus struct {
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
-	Association ifs.AssociationStatus
+	Association commonv1alpha1.AssociationStatus
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

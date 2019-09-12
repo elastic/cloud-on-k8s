@@ -7,9 +7,10 @@ package association
 import (
 	"reflect"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +22,7 @@ import (
 
 // ElasticsearchCACertSecretName returns the name of the secret holding the certificate chain used
 // by the associated resource to establish and validate a secured HTTP connection to Elasticsearch.
-func ElasticsearchCACertSecretName(associated ifs.Associated, suffix string) string {
+func ElasticsearchCACertSecretName(associated commonv1alpha1.Associated, suffix string) string {
 	return associated.GetName() + "-" + suffix
 }
 
@@ -30,7 +31,7 @@ func ElasticsearchCACertSecretName(associated ifs.Associated, suffix string) str
 func ReconcileCASecret(
 	client k8s.Client,
 	scheme *runtime.Scheme,
-	associated ifs.Associated,
+	associated commonv1alpha1.Associated,
 	es types.NamespacedName,
 	labels map[string]string,
 	suffix string,

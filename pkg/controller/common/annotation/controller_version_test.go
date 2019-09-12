@@ -196,7 +196,7 @@ func TestNewerAnnotation(t *testing.T) {
 // setupScheme creates a scheme to use for our fake clients so they know about our custom resources
 func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
-	// err := ifs.SchemeBuilder.AddToScheme(sc)
+	// err := commonv1alpha1.SchemeBuilder.AddToScheme(sc)
 	// require.NoError(t, err)
 	err := apmtype.AddToScheme(sc)
 	require.NoError(t, err)

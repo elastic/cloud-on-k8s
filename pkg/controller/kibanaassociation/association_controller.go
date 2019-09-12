@@ -16,11 +16,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	elasticsearchuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
@@ -202,9 +202,9 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	return resultFromStatus(newStatus), err
 }
 
-func resultFromStatus(status ifs.AssociationStatus) reconcile.Result {
+func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
 	switch status {
-	case ifs.AssociationPending:
+	case commonv1alpha1.AssociationPending:
 		return defaultRequeue // retry
 	default:
 		return reconcile.Result{} // we are done or there is not much we can do
@@ -233,7 +233,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 		// stop watching any ES cluster previously referenced for this Kibana resource
 		r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
 		// other leftover resources are already garbage-collected
-		return ifs.AssociationUnknown, nil
+		return commonv1alpha1.AssociationUnknown, nil
 	}
 
 	// this Kibana instance references an Elasticsearch cluster
@@ -250,7 +250,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 		Watched: []types.NamespacedName{esRefKey},
 		Watcher: kibanaKey,
 	}); err != nil {
-		return ifs.AssociationFailed, err
+		return commonv1alpha1.AssociationFailed, err
 	}
 
 	userSecretKey := association.UserKey(kibana, kibanaUserSuffix)
@@ -260,7 +260,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 		Watched: []types.NamespacedName{userSecretKey},
 		Watcher: kibanaKey,
 	}); err != nil {
-		return ifs.AssociationFailed, err
+		return commonv1alpha1.AssociationFailed, err
 	}
 
 	var es estype.Elasticsearch
@@ -280,7 +280,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 
 			return commonv1alpha1.AssociationPending, nil
 		}
-		return ifs.AssociationFailed, err
+		return commonv1alpha1.AssociationFailed, err
 	}
 
 	if err := association.ReconcileEsUser(
@@ -294,12 +294,12 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 		elasticsearchuser.KibanaSystemUserBuiltinRole,
 		kibanaUserSuffix,
 		es); err != nil {
-		return ifs.AssociationPending, err
+		return commonv1alpha1.AssociationPending, err
 	}
 
 	caSecretName, err := r.reconcileElasticsearchCA(kibana, esRefKey)
 	if err != nil {
-		return ifs.AssociationPending, err
+		return commonv1alpha1.AssociationPending, err
 	}
 
 	// construct the expected association configuration
@@ -324,7 +324,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 		kibana.SetAssociationConf(expectedESAssoc)
 	}
 
-	return ifs.AssociationEstablished, nil
+	return commonv1alpha1.AssociationEstablished, nil
 }
 
 func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, es types.NamespacedName) (string, error) {

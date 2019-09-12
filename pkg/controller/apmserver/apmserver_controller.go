@@ -230,7 +230,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 }
 
 func (r *ReconcileApmServer) isCompatible(as *apmv1alpha1.ApmServer) (bool, error) {
-	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: as.Name}).AsSelector()
+	selector := map[string]string{labels.ApmServerNameLabelName: as.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventCompatCheckError, "Error during compatibility check: %v", err)

@@ -6,9 +6,8 @@ package association
 
 import (
 	"bytes"
-
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	ifs "github.com/elastic/cloud-on-k8s/pkg/controller/common/interfaces"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	commonuser "github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -20,7 +19,7 @@ import (
 )
 
 // elasticsearchUserName identifies the associated user in Elasticsearch namespace.
-func elasticsearchUserName(associated ifs.Associated, userSuffix string) string {
+func elasticsearchUserName(associated commonv1alpha1.Associated, userSuffix string) string {
 	// must be namespace-aware since we might have several associated instances running in
 	// different namespaces with the same name: we need one user for each
 	// in the Elasticsearch namespace
@@ -28,13 +27,13 @@ func elasticsearchUserName(associated ifs.Associated, userSuffix string) string 
 }
 
 // userSecretObjectName identifies the associated secret object.
-func userSecretObjectName(associated ifs.Associated, userSuffix string) string {
+func userSecretObjectName(associated commonv1alpha1.Associated, userSuffix string) string {
 	// does not need to be namespace aware, since it lives in associated object namespace.
 	return associated.GetName() + "-" + userSuffix
 }
 
 // UserKey is the namespaced name to identify the user resource created by the controller.
-func UserKey(associated ifs.Associated, userSuffix string) types.NamespacedName {
+func UserKey(associated commonv1alpha1.Associated, userSuffix string) types.NamespacedName {
 	esNamespace := associated.ElasticsearchRef().Namespace
 	if esNamespace == "" {
 		// no namespace given, default to the associated object's one
@@ -49,7 +48,7 @@ func UserKey(associated ifs.Associated, userSuffix string) types.NamespacedName 
 
 // secretKey is the namespaced name to identify the secret containing the password for the user.
 // It uses the same resource name as the associated user.
-func secretKey(associated ifs.Associated, userSuffix string) types.NamespacedName {
+func secretKey(associated commonv1alpha1.Associated, userSuffix string) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: associated.GetNamespace(),
 		Name:      userSecretObjectName(associated, userSuffix),
@@ -57,7 +56,7 @@ func secretKey(associated ifs.Associated, userSuffix string) types.NamespacedNam
 }
 
 // ClearTextSecretKeySelector creates a SecretKeySelector for the associated user secret
-func ClearTextSecretKeySelector(associated ifs.Associated, userSuffix string) *corev1.SecretKeySelector {
+func ClearTextSecretKeySelector(associated commonv1alpha1.Associated, userSuffix string) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: userSecretObjectName(associated, userSuffix),
@@ -70,7 +69,7 @@ func ClearTextSecretKeySelector(associated ifs.Associated, userSuffix string) *c
 func ReconcileEsUser(
 	c k8s.Client,
 	s *runtime.Scheme,
-	associated ifs.Associated,
+	associated commonv1alpha1.Associated,
 	labels map[string]string,
 	userRoles string,
 	userObjectSuffix string,
