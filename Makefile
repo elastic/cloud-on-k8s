@@ -347,7 +347,7 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
+ci: dep-vendor-only check-fmt lint generate check-local-changes unit_xml integration_xml e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
 ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e
