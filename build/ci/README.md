@@ -49,7 +49,7 @@ overrides:
     gCloudProject: $GCLOUD_PROJECT
 EOF
 
-make -C build/ci COMMAND=ci-e2e ci
+make -C build/ci TARGET=ci-e2e ci
 ```
 
 CI makefile will take care of setting up correct credentials in the .env and deployer-config.yml file.
