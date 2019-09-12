@@ -363,7 +363,7 @@ check-local-changes:
 # Kind specific targets #
 #########################
 KIND_NODES ?= 0
-KIND_NODE_IMAGE ?= kindest/node:v1.15.0
+KIND_NODE_IMAGE ?= kindest/node:v1.15.3
 KIND_CLUSTER_NAME ?= eck
 
 kind-node-variable-check:
