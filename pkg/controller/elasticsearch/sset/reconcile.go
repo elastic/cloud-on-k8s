@@ -26,10 +26,15 @@ func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elas
 			if len(reconciled.Labels) == 0 {
 				return true
 			}
-			return expected.Labels[hash.TemplateHashLabelName] != reconciled.Labels[hash.TemplateHashLabelName]
+			return !EqualTemplateHashLabels(expected, reconciled)
 		},
 		UpdateReconciled: func() {
 			expected.DeepCopyInto(&reconciled)
 		},
 	})
+}
+
+// EqualTemplateHashLabels reports whether actual and expected StatefulSets have the same template hash label value.
+func EqualTemplateHashLabels(expected, actual appsv1.StatefulSet) bool {
+	return expected.Labels[hash.TemplateHashLabelName] == actual.Labels[hash.TemplateHashLabelName]
 }

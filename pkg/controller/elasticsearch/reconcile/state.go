@@ -73,9 +73,13 @@ func (s *State) UpdateElasticsearchState(
 func (s *State) UpdateElasticsearchOperational(
 	resourcesState ResourcesState,
 	observedState observer.State,
-
 ) *State {
 	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, resourcesState, observedState)
+}
+
+// IsElasticsearchOperational reports if the Elasticsearch is operational.
+func (s *State) IsElasticsearchOperational(observedState observer.State) bool {
+	return s.status.Phase == v1alpha1.ElasticsearchOperationalPhase
 }
 
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
