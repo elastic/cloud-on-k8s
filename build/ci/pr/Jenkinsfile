@@ -53,6 +53,7 @@ pipeline {
                     }
                     steps {
                         createKindConfig()
+                        sh 'kind version' //for debug
                         sh """
                             make -C build/ci TARGET=dep-vendor-only ci
                             make kind-e2e-cluster

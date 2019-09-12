@@ -31,6 +31,8 @@ function check_kind() {
     echo "Looks like Kind is not installed."
     exit 1
   fi
+  echo "Check fs.inotify.max_user_watches value"
+  cat /proc/sys/fs/inotify/max_user_watches
 }
 
 function create_manifest() {
