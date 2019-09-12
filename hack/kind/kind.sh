@@ -25,11 +25,6 @@ workers=
 
 scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 
-if [[ -n "${MAX_USER_WATCHES}" ]]; then
-  echo "Setting fs.inotify.max_user_watches to ${MAX_USER_WATCHES}"
-  sudo sysctl fs.inotify.max_user_watches="${MAX_USER_WATCHES}"
-fi
-
 function check_kind() {
   echo "Check if Kind is installed..."
   if ! kind --help > /dev/null; then
