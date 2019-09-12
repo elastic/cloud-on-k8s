@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"sync/atomic"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
@@ -50,13 +49,7 @@ var log = logf.Log.WithName(name)
 // In any case it schedules a new reconcile request to be processed when the license is about to expire.
 // This happens independently from any watch triggered reconcile request.
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// atomically update the iteration to support concurrent runs.
-	currentIteration := atomic.AddInt64(&r.iteration, 1)
-	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "es_name", request.Name)
-	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_name", request.Name)
-	}()
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
 	return r.reconcileInternal(request)
 }
 
@@ -164,7 +157,7 @@ type ReconcileLicenses struct {
 	k8s.Client
 	scheme *runtime.Scheme
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration int64
+	iteration uint64
 	checker   license.Checker
 }
 

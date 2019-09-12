@@ -47,7 +47,6 @@ var apmFixture = apmtype.ApmServer{
 			Name:      "es",
 			Namespace: "default",
 		},
-		Elasticsearch: apmtype.ElasticsearchOutput{},
 	},
 }
 
@@ -151,7 +150,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrapClient(fake.NewFakeClientWithScheme(s, tt.initialObjects...))
-			if err := deleteOrphanedResources(c, tt.args); (err != nil) != tt.wantErr {
+			if err := deleteOrphanedResources(c, &tt.args); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

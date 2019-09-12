@@ -7,11 +7,11 @@ package kibana
 import (
 	"reflect"
 	"sync/atomic"
-	"time"
 
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -141,50 +141,34 @@ type ReconcileKibana struct {
 	params operator.Parameters
 
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration int64
+	iteration uint64
 }
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// atomically update the iteration to support concurrent runs.
-	currentIteration := atomic.AddInt64(&r.iteration, 1)
-	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "kibana_name", request.Name)
-	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "kibana_name", request.Name)
-	}()
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
-	// Fetch the Kibana instance
-	kb := &kibanav1alpha1.Kibana{}
-	err := r.Get(request.NamespacedName, kb)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
+	// retrieve the kibana object
+	var kb kibanav1alpha1.Kibana
+	if ok, err := association.FetchWithAssociation(r.Client, request, &kb); !ok {
 		return reconcile.Result{}, err
 	}
 
+	// skip reconciliation if paused
 	if common.IsPaused(kb.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name, "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return common.PauseRequeue, nil
 	}
 
-	selector := map[string]string{label.KibanaNameLabelName: kb.Name}
-	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
+	// check for compatibility with the operator version
+	compatible, err := r.isCompatible(&kb)
+	if err != nil || !compatible {
 		return reconcile.Result{}, err
 	}
-	if !compat {
-		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
-		return reconcile.Result{}, nil
-	}
 
-	if err := r.finalizers.Handle(kb, r.finalizersFor(*kb)...); err != nil {
+	// run finalizers
+	if err := r.finalizers.Handle(&kb, r.finalizersFor(&kb)...); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and should be resolved on next loop
 			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "kibana_name", kb.Name)
@@ -193,19 +177,35 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
+	// Kibana will be deleted nothing to do other than run finalizers
 	if kb.IsMarkedForDeletion() {
-		// Kibana will be deleted nothing to do other than run finalizers
 		return reconcile.Result{}, nil
 	}
 
-	ver, err := version.Parse(kb.Spec.Version)
+	// update controller version annotation if necessary
+	err = annotation.UpdateControllerVersion(r.Client, &kb, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
 		return reconcile.Result{}, err
 	}
 
-	err = annotation.UpdateControllerVersion(r.Client, kb, r.params.OperatorInfo.BuildInfo.Version)
+	// main reconciliation logic
+	return r.doReconcile(request, &kb)
+}
+
+func (r *ReconcileKibana) isCompatible(kb *kibanav1alpha1.Kibana) (bool, error) {
+	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kb.Name}).AsSelector()
+	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
+	}
+
+	return compat, err
+}
+
+func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kibanav1alpha1.Kibana) (reconcile.Result, error) {
+	ver, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
 		return reconcile.Result{}, err
 	}
 
@@ -237,14 +237,14 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 	if state.Kibana.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", state.Kibana.Namespace, "kibana_name", state.Kibana.Name)
+	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", state.Kibana.Namespace, "kibana_name", state.Kibana.Name)
 	return r.Status().Update(state.Kibana)
 }
 
 // finalizersFor returns the list of finalizers applying to a given Kibana deployment
-func (r *ReconcileKibana) finalizersFor(kb kibanav1alpha1.Kibana) []finalizer.Finalizer {
+func (r *ReconcileKibana) finalizersFor(kb *kibanav1alpha1.Kibana) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
-		secretWatchFinalizer(kb, r.dynamicWatches),
-		keystore.Finalizer(k8s.ExtractNamespacedName(&kb), r.dynamicWatches, kb.Kind()),
+		secretWatchFinalizer(*kb, r.dynamicWatches),
+		keystore.Finalizer(k8s.ExtractNamespacedName(kb), r.dynamicWatches, kb.Kind()),
 	}
 }

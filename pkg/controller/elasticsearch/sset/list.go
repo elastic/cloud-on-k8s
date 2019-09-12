@@ -86,7 +86,6 @@ func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 // It may return false if there are pods in the process of being:
 // - created (but not there in our resources cache)
 // - removed (but still there in our resources cache)
-// - upgraded (pod revision should match statefulset revision, but doesn't in our resources cache)
 // Status of the pods (running, error, etc.) is ignored.
 func (l StatefulSetList) PodReconciliationDone(c k8s.Client) (bool, error) {
 	for _, s := range l {

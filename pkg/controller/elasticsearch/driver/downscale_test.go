@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -129,7 +131,7 @@ func TestHandleDownscale(t *testing.T) {
 	actualStatefulSets := sset.StatefulSetList{ssetMaster3Replicas, ssetData4Replicas}
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
-		expectations:   reconciler.NewExpectations(),
+		expectations:   expectations.NewExpectations(),
 		reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 		observedState: observer.State{
 			ClusterState: &esclient.ClusterState{
@@ -647,7 +649,7 @@ func Test_attemptDownscale(t *testing.T) {
 			k8sClient := k8s.WrapClient(fake.NewFakeClient(runtimeObjs...))
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
-				expectations:   reconciler.NewExpectations(),
+				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				observedState: observer.State{
 					// all migrations are over
@@ -677,7 +679,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	k8sClient := k8s.WrapClient(fake.NewFakeClient(&sset1, &sset2))
 	downscaleCtx := downscaleContext{
 		k8sClient:    k8sClient,
-		expectations: reconciler.NewExpectations(),
+		expectations: expectations.NewExpectations(),
 		esClient:     &fakeESClient{},
 	}
 
@@ -694,7 +696,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	nodespec.UpdateReplicas(&expectedSset1, &downscale.targetReplicas)
 
 	// no expectation is currently set
-	require.True(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.True(t, downscaleCtx.expectations.SatisfiedGenerations(sset1.ObjectMeta))
 
 	// do the downscale
 	err := doDownscale(downscaleCtx, downscale, sset.StatefulSetList{sset1, sset2})
@@ -707,10 +709,10 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	require.Equal(t, []appsv1.StatefulSet{expectedSset1, sset2}, ssets.Items)
 
 	// expectations should have been be registered
-	require.True(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.True(t, downscaleCtx.expectations.SatisfiedGenerations(sset1.ObjectMeta))
 	// not ok for a sset whose generation == 1
 	sset1.Generation = 1
-	require.False(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.False(t, downscaleCtx.expectations.SatisfiedGenerations(sset1.ObjectMeta))
 }
 
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
@@ -783,7 +785,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
-				expectations:   reconciler.NewExpectations(),
+				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				esClient:       esClient,
 			}
@@ -879,7 +881,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
-				expectations:   reconciler.NewExpectations(),
+				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				esClient:       esClient,
 			}

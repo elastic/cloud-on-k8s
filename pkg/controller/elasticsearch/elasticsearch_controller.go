@@ -7,28 +7,13 @@ package elasticsearch
 import (
 	"fmt"
 	"sync/atomic"
-	"time"
-
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -41,9 +26,22 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
+	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const name = "elasticsearch-controller"
@@ -95,7 +93,7 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 
 		finalizers:     finalizer.NewHandler(client),
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   reconciler.NewExpectations(),
+		expectations:   expectations.NewExpectations(),
 
 		Parameters: params,
 	}
@@ -194,22 +192,16 @@ type ReconcileElasticsearch struct {
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
-	expectations *reconciler.Expectations
+	expectations *expectations.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration int64
+	iteration uint64
 }
 
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// atomically update the iteration to support concurrent runs.
-	currentIteration := atomic.AddInt64(&r.iteration, 1)
-	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "es_name", request.Name)
-	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_name", request.Name)
-	}()
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// Fetch the Elasticsearch instance
 	es := elasticsearchv1alpha1.Elasticsearch{}
@@ -225,7 +217,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	if common.IsPaused(es.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name, "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return common.PauseRequeue, nil
 	}
 
@@ -311,7 +303,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es elasticsearchv1alpha1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", es.Namespace, "es_name", es.Name)
+	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", es.Namespace, "es_name", es.Name)
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
