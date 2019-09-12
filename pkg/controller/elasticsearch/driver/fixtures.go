@@ -45,6 +45,8 @@ func (t testPod) isTerminating(v bool) testPod { t.terminating = v; return t }
 // unfortunately fake client does not support predicate
 type filter func(pod corev1.Pod) bool
 
+// -- Filters
+
 var nothing = func(pod corev1.Pod) bool {
 	return false
 }
@@ -52,6 +54,38 @@ var nothing = func(pod corev1.Pod) bool {
 func byName(name string) filter {
 	return func(pod corev1.Pod) bool {
 		return pod.Name == name
+	}
+}
+
+// - Mutations are used to simulate a type change on a set of Pods, e.g. MD -> D or D -> MD
+
+type mutation func(pod corev1.Pod) corev1.Pod
+
+var noMutation = func(pod corev1.Pod) corev1.Pod {
+	return pod
+}
+
+func removeMasterType(ssetName string) mutation {
+	return func(pod corev1.Pod) corev1.Pod {
+		podSsetname, _, _ := sset.StatefulSetName(pod.Name)
+		if podSsetname == ssetName {
+			pod := pod.DeepCopy()
+			label.NodeTypesMasterLabelName.Set(false, pod.Labels)
+			return *pod
+		}
+		return pod
+	}
+}
+
+func addMasterType(ssetName string) mutation {
+	return func(pod corev1.Pod) corev1.Pod {
+		podSsetname, _, _ := sset.StatefulSetName(pod.Name)
+		if podSsetname == ssetName {
+			pod := pod.DeepCopy()
+			label.NodeTypesMasterLabelName.Set(true, pod.Labels)
+			return *pod
+		}
+		return pod
 	}
 }
 
@@ -116,6 +150,17 @@ func (u upgradeTestPods) toPods(f filter) []runtime.Object {
 	return result
 }
 
+func (u upgradeTestPods) toMasterPods() []corev1.Pod {
+	var result []corev1.Pod
+	for _, testPod := range u {
+		pod := testPod.toPod()
+		if label.IsMasterNode(pod) {
+			result = append(result, pod)
+		}
+	}
+	return result
+}
+
 func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
 	result := make(map[string]corev1.Pod)
 	for _, testPod := range u {
@@ -149,10 +194,10 @@ func (u upgradeTestPods) podsInCluster() []string {
 	return result
 }
 
-func (u upgradeTestPods) toMasters() []string {
+func (u upgradeTestPods) toMasters(mutation mutation) []string {
 	var result []string
 	for _, testPod := range u {
-		pod := testPod.toPod()
+		pod := mutation(testPod.toPod())
 		if label.IsMasterNode(pod) {
 			result = append(result, pod.Name)
 		}

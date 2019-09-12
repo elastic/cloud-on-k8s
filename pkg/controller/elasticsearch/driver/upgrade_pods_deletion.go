@@ -35,6 +35,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		ctx.healthyPods,
 		ctx.podsToUpgrade,
 		ctx.expectedMasters,
+		ctx.actualMasters,
 	)
 	log.V(1).Info("Applying predicates",
 		"maxUnavailableReached", maxUnavailableReached,

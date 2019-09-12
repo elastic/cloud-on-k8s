@@ -14,6 +14,70 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
+	type fields struct {
+		upgradeTestPods upgradeTestPods
+		ES              v1alpha1.Elasticsearch
+		green           bool
+		mutation        mutation
+		maxUnavailable  int
+	}
+	tests := []struct {
+		name                         string
+		fields                       fields
+		deleted                      []string
+		wantErr                      bool
+		wantShardsAllocationDisabled bool
+	}{
+		{
+			// This unit test basically reproduces the e2e test
+			// It start with 2 master+data nodes, the second one is changed to master only.
+			name: "Do not attempt to delete an already terminating Pod",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masterdata-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("other-master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 1,
+				green:          true,
+				mutation:       removeMasterType("other-master"),
+			},
+			deleted:                      []string{"other-master-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+	}
+	for _, tt := range tests {
+		esState := &testESState{
+			inCluster: tt.fields.upgradeTestPods.podsInCluster(),
+			green:     tt.fields.green,
+		}
+		esClient := &fakeESClient{}
+		ctx := rollingUpgradeCtx{
+			client: k8s.WrapClient(
+				fake.NewFakeClient(tt.fields.upgradeTestPods.toPods(nothing)...),
+			),
+			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),
+			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
+			esClient:        esClient,
+			esState:         esState,
+			expectations:    expectations.NewExpectations(),
+			expectedMasters: tt.fields.upgradeTestPods.toMasters(tt.fields.mutation),
+			actualMasters:   tt.fields.upgradeTestPods.toMasterPods(),
+			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
+			healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),
+		}
+
+		deleted, err := ctx.Delete()
+		if (err != nil) != tt.wantErr {
+			t.Errorf("runPredicates error = %v, wantErr %v", err, tt.wantErr)
+			return
+		}
+		assert.ElementsMatch(t, names(deleted), tt.deleted, tt.name)
+		assert.Equal(t, tt.wantShardsAllocationDisabled, esClient.DisableReplicaShardsAllocationCalled, tt.name)
+	}
+}
+
 func TestUpgradePodsDeletion_Delete(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
@@ -111,14 +175,16 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
-			name: "2 healthy masters out of 3, allow the deletion of the unhealthy one",
+			name: "2 healthy masters out of 5, maxUnavailable is 2, allow the deletion of the unhealthy one",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("master-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
 					newTestPod("master-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-3").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-4").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-				maxUnavailable: 1,
+				maxUnavailable: 2,
 				green:          true,
 				podFilter:      nothing,
 			},
@@ -246,7 +312,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			esClient:        esClient,
 			esState:         esState,
 			expectations:    expectations.NewExpectations(),
-			expectedMasters: tt.fields.upgradeTestPods.toMasters(),
+			expectedMasters: tt.fields.upgradeTestPods.toMasters(noMutation),
 			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
 			healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),
 		}

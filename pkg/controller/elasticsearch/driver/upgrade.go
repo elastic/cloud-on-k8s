@@ -49,6 +49,12 @@ func (d *defaultDriver) handleRollingUpgrades(
 		return results.WithError(err)
 	}
 
+	// Get current masters
+	actualMasters, err := sset.GetActualMastersForCluster(d.Client, d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
 		d,
@@ -56,6 +62,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 		esClient,
 		esState,
 		expectedMaster,
+		actualMasters,
 		podsToUpgrade,
 		healthyPods,
 	).run()
@@ -86,6 +93,7 @@ type rollingUpgradeCtx struct {
 	esState         ESState
 	expectations    *expectations.Expectations
 	expectedMasters []string
+	actualMasters   []corev1.Pod
 	podsToUpgrade   []corev1.Pod
 	healthyPods     map[string]corev1.Pod
 }
@@ -96,6 +104,7 @@ func newRollingUpgrade(
 	esClient esclient.Client,
 	esState ESState,
 	expectedMaster []string,
+	actualMasters []corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 ) rollingUpgradeCtx {
@@ -107,6 +116,7 @@ func newRollingUpgrade(
 		esState:         esState,
 		expectations:    d.Expectations,
 		expectedMasters: expectedMaster,
+		actualMasters:   actualMasters,
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
 	}
@@ -157,8 +167,8 @@ func podsToUpgrade(
 	statefulSets sset.StatefulSetList,
 ) ([]corev1.Pod, error) {
 	var toUpgrade []corev1.Pod
-	toUpdate := statefulSets.ToUpdate()
-	for _, statefulSet := range toUpdate {
+	//toUpdate := statefulSets.ToUpdate()
+	for _, statefulSet := range statefulSets {
 		// Inspect each pod, starting from the highest ordinal, and decrement the idx to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
 		for idx := sset.GetReplicas(statefulSet) - 1; idx >= 0; idx-- {
