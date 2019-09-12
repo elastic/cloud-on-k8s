@@ -22,7 +22,7 @@ pipeline {
             }
             steps {
                 sh """
-                    cat >run-config.yml <<EOF
+                    cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: delete

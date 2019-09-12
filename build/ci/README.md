@@ -26,7 +26,7 @@ export VAULT_ADDR=YOUR_VAULT_INSTANCE_ADDRESS
 export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 ``` 
 
-Per repro, depending on the job, set up .env and run-config.yml files. E.g.: to repro e2e tests run, look at its [Jenkinsfile](e2e/Jenkinsfile) and rerun the script locally in repo root: 
+Per repro, depending on the job, set up .env and deployer-config.yml files. E.g.: to repro e2e tests run, look at its [Jenkinsfile](e2e/Jenkinsfile) and rerun the script locally in repo root: 
 ```
 cat >.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
@@ -36,7 +36,7 @@ SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
 EOF
 
-cat >run-config.yml <<EOF
+cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   kubernetesVersion: "1.12"
@@ -52,7 +52,7 @@ EOF
 make -C build/ci COMMAND=ci-e2e ci
 ```
 
-CI makefile will take care of setting up correct credentials in the .env and run-config.yml file.
+CI makefile will take care of setting up correct credentials in the .env and deployer-config.yml file.
 
 This will run e2e test using the same:
 1. container

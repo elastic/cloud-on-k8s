@@ -232,14 +232,14 @@ ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set)
 endif
 
-DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --run-config-file=hack/deployer/config/run-config.yml
+DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --config-file=hack/deployer/config/deployer-config.yml
 
 build-deployer:
 	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
 
 setup-deployer-for-gke-once: require-gcloud-project build-deployer
-ifeq (,$(wildcard hack/deployer/config/run-config.yml))
-	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/run-config.yml
+ifeq (,$(wildcard hack/deployer/config/deployer-config.yml))
+	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/deployer-config.yml
 endif
 
 credentials: setup-deployer-for-gke-once
@@ -344,7 +344,7 @@ ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration
 ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e
 
 run-deployer: dep-vendor-only build-deployer
-	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
+	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 ci-release: clean dep-vendor-only generate build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
