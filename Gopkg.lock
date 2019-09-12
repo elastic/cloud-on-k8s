@@ -858,6 +858,14 @@
   version = "v2.2.2"
 
 [[projects]]
+  branch = "v3"
+  digest = "1:698122d666025ff02316a3ca307e35b9889fa54789d617718fbff3264fd34663"
+  name = "gopkg.in/yaml.v3"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "827449938966de02e59eecfd53d81305d5a5f78a"
+
+[[projects]]
   digest = "1:bbd4fd8b2a8a552b0c8ac509c3993c83c22897804bb262ae176e6bd202ab9f6b"
   name = "k8s.io/api"
   packages = [
@@ -1251,7 +1259,7 @@
   revision = "6c36bc71fc4aeb1f49801054e71aebdaef1fbeb4"
 
 [[projects]]
-  digest = "1:e31911fc785e76bdbfab6a4fff412660edc894856ff1416c6bbfee7258fa78f0"
+  digest = "1:57ba0ac1fe6337a216cfccd60f180149966969752501b2a31fc815da391232f9"
   name = "sigs.k8s.io/controller-runtime"
   packages = [
     ".",
@@ -1296,11 +1304,11 @@
     "pkg/webhook/internal/metrics",
   ]
   pruneopts = "T"
-  revision = "e1159d6655b260c4812fd0792cd1344ecc96a57e"
-  version = "v0.2.0"
+  revision = "1592b5ee945140d042351098bf3217d71f36cace"
+  version = "v0.2.1"
 
 [[projects]]
-  digest = "1:62f9f980972580259076f4a84b1034d537e04e1f57a57331728df2bcfbce82b0"
+  digest = "1:6cafacc8221c3e70c935f34753ac363735e158849f18ea164696145cc299bb8e"
   name = "sigs.k8s.io/controller-tools"
   packages = [
     "cmd/controller-gen",
@@ -1313,11 +1321,13 @@
     "pkg/loader",
     "pkg/markers",
     "pkg/rbac",
+    "pkg/schemapatcher",
+    "pkg/schemapatcher/internal/yaml",
     "pkg/webhook",
   ]
   pruneopts = "T"
-  revision = "a653df4cae21d140ed307073ccbfb1d7e245d3a6"
-  version = "v0.2.0"
+  revision = "ba11932048e4538f6e435f5ca0cdea19bf458338"
+  version = "v0.2.1"
 
 [[projects]]
   digest = "1:290b4da306982122bcdff12dbababbb95c6e4a94a2995db88baf235ef2f6e93e"
@@ -1419,6 +1429,7 @@
     "sigs.k8s.io/controller-runtime/pkg/envtest",
     "sigs.k8s.io/controller-runtime/pkg/event",
     "sigs.k8s.io/controller-runtime/pkg/handler",
+    "sigs.k8s.io/controller-runtime/pkg/log/zap",
     "sigs.k8s.io/controller-runtime/pkg/manager",
     "sigs.k8s.io/controller-runtime/pkg/reconcile",
     "sigs.k8s.io/controller-runtime/pkg/runtime/inject",

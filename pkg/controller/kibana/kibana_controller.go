@@ -193,7 +193,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 }
 
 func (r *ReconcileKibana) isCompatible(kb *kibanav1alpha1.Kibana) (bool, error) {
-	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kb.Name}).AsSelector()
+	selector := map[string]string{label.KibanaNameLabelName: kb.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)

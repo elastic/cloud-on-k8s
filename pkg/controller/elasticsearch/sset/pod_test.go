@@ -95,7 +95,8 @@ func getSsetSample(name, namespace, clusterName string) appsv1.StatefulSet {
 		Namespace:   namespace,
 		ClusterName: clusterName,
 		Replicas:    3,
-		Partition:   1,
+		// todo sabo merge
+		// Partition:   1,
 		Status: appsv1.StatefulSetStatus{
 			CurrentRevision: "1",
 			UpdateRevision:  "1",

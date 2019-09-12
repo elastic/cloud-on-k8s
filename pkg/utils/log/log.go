@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"k8s.io/klog"
 	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var (
@@ -86,7 +87,7 @@ func setLogger(v *int, debug *bool) {
 
 	sink := zapcore.AddSync(os.Stderr)
 	opts = append(opts, zap.AddCallerSkip(1), zap.ErrorOutput(sink))
-	log := zap.New(zapcore.NewCore(&crlog.KubeAwareEncoder{Encoder: encoder, Verbose: dev.Enabled}, sink, zapLevel))
+	log := zap.New(zapcore.NewCore(&crzap.KubeAwareEncoder{Encoder: encoder, Verbose: dev.Enabled}, sink, zapLevel))
 	log = log.WithOptions(opts...)
 	log = log.With(zap.String("ver", getVersionString()))
 
