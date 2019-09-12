@@ -3,206 +3,14 @@
 == API Reference
 
 .Packages
-****
-- xref:kibana-k8s-elastic-co-v1alpha1[kibana.k8s.elastic.co/v1alpha1]
-- xref:apm-k8s-elastic-co-v1alpha1[apm.k8s.elastic.co/v1alpha1]
-- xref:common-k8s-elastic-co-v1alpha1[common.k8s.elastic.co/v1alpha1]
-- xref:elasticsearch-k8s-elastic-co-v1alpha1[elasticsearch.k8s.elastic.co/v1alpha1]
-****
+* xref:apm-k8s-elastic-co-v1alpha1[apm.k8s.elastic.co/v1alpha1]
+* xref:common-k8s-elastic-co-v1alpha1[common.k8s.elastic.co/v1alpha1]
+* xref:elasticsearch-k8s-elastic-co-v1alpha1[elasticsearch.k8s.elastic.co/v1alpha1]
+* xref:kibana-k8s-elastic-co-v1alpha1[kibana.k8s.elastic.co/v1alpha1]
+
+'''
 
 
-[id="kibana-k8s-elastic-co-v1alpha1"]
-[float]
-=== kibana.k8s.elastic.co/v1alpha1
-Package v1alpha1 contains API Schema definitions for the kibana v1alpha1 API group
-
-.Resource Types
---
-- link:#kibana-k8s-elastic-co-v1alpha1-kibana[$$Kibana$$]
---
-
-[id="kibana-k8s-elastic-co-v1alpha1-kibana"]
-[float]
-==== Kibana
-
-Kibana is the Schema for the kibanas API
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `kibana.k8s.elastic.co/v1alpha1`
-
-| *`kind`*  +
-_string_
-| `Kibana`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_link:#kibana-k8s-elastic-co-v1alpha1-kibanaspec[$$KibanaSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version represents the version of Kibana
-*`image`*  _string_::
-Image represents the docker image that will be used.
-*`nodeCount`*  _int32_::
-NodeCount defines how many nodes the Kibana deployment must have.
-*`elasticsearchRef`* _link:#common-k8s-elastic-co-v1alpha1-objectselector[$$ObjectSelector$$]_::
-ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
-If the namespace is not specified, the current resource namespace will be used.
-*`elasticsearch`* _link:#kibana-k8s-elastic-co-v1alpha1-backendelasticsearch[$$BackendElasticsearch$$]_::
-_(Optional)_
-Elasticsearch configures how Kibana connects to Elasticsearch
-*`config`* _link:#common-k8s-elastic-co-v1alpha1-config[$$Config$$]_::
-Config represents Kibana configuration.
-*`http`* _link:#common-k8s-elastic-co-v1alpha1-httpconfig[$$HTTPConfig$$]_::
-HTTP contains settings for HTTP.
-*`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-_(Optional)_
-PodTemplate can be used to propagate configuration to Kibana pods.
-This allows specifying custom annotations, labels, environment variables,
-affinity, resources, etc. for the pods created from this NodeSpec.
-*`secureSettings`* _link:#common-k8s-elastic-co-v1alpha1-secretsource[$$[]SecretSource$$]_::
-SecureSettings references secrets containing secure settings, to be injected
-into Kibana keystore on each node.
-Each individual key/value entry in the referenced secrets is considered as an
-individual secure setting to be injected.
-You can use the `entries` and `key` fields to consider only a subset of the secret
-entries and the `path` field to change the target path of a secret entry key.
-The secret must exist in the same namespace as the Kibana resource.
-| *`status`* +
-_link:#kibana-k8s-elastic-co-v1alpha1-kibanastatus[$$KibanaStatus$$]_
-|
----
-|===
-
-[id="kibana-k8s-elastic-co-v1alpha1-backendelasticsearch"]
-[float]
-==== BackendElasticsearch
-(*Appears on:*
-link:#kibana-k8s-elastic-co-v1alpha1-kibanaspec[KibanaSpec]
-)
-
-BackendElasticsearch contains configuration for an Elasticsearch backend for Kibana
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`url`* +
-_string_
-|
-ElasticsearchURL is the URL to the target Elasticsearch
-| *`auth`* +
-_link:#common-k8s-elastic-co-v1alpha1-elasticsearchauth[$$ElasticsearchAuth$$]_
-|
-Auth configures authentication for Kibana to use.
-| *`certificateAuthorities`* +
-_link:#common-k8s-elastic-co-v1alpha1-secretref[$$SecretRef$$]_
-|
-CertificateAuthorities names a secret that contains a CA file entry to use.
-|===
-
-[id="kibana-k8s-elastic-co-v1alpha1-kibanahealth"]
-[float]
-==== KibanaHealth(`string` alias)
-(*Appears on:*
-link:#kibana-k8s-elastic-co-v1alpha1-kibanastatus[KibanaStatus]
-)
-
-KibanaHealth expresses the status of the Kibana instances.
-
-[id="kibana-k8s-elastic-co-v1alpha1-kibanaspec"]
-[float]
-==== KibanaSpec
-(*Appears on:*
-link:#kibana-k8s-elastic-co-v1alpha1-kibana[Kibana]
-)
-
-KibanaSpec defines the desired state of Kibana
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`version`* +
-_string_
-|
-Version represents the version of Kibana
-| *`image`* +
-_string_
-|
-Image represents the docker image that will be used.
-| *`nodeCount`* +
-_int32_
-|
-NodeCount defines how many nodes the Kibana deployment must have.
-| *`elasticsearchRef`* +
-_link:#common-k8s-elastic-co-v1alpha1-objectselector[$$ObjectSelector$$]_
-|
-ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
-If the namespace is not specified, the current resource namespace will be used.
-| *`elasticsearch`* +
-_link:#kibana-k8s-elastic-co-v1alpha1-backendelasticsearch[$$BackendElasticsearch$$]_
-|
-_(Optional)_
-Elasticsearch configures how Kibana connects to Elasticsearch
-| *`config`* +
-_link:#common-k8s-elastic-co-v1alpha1-config[$$Config$$]_
-|
-Config represents Kibana configuration.
-| *`http`* +
-_link:#common-k8s-elastic-co-v1alpha1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP contains settings for HTTP.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-_(Optional)_
-PodTemplate can be used to propagate configuration to Kibana pods.
-This allows specifying custom annotations, labels, environment variables,
-affinity, resources, etc. for the pods created from this NodeSpec.
-| *`secureSettings`* +
-_link:#common-k8s-elastic-co-v1alpha1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings references secrets containing secure settings, to be injected
-into Kibana keystore on each node.
-Each individual key/value entry in the referenced secrets is considered as an
-individual secure setting to be injected.
-You can use the `entries` and `key` fields to consider only a subset of the secret
-entries and the `path` field to change the target path of a secret entry key.
-The secret must exist in the same namespace as the Kibana resource.
-|===
-
-[id="kibana-k8s-elastic-co-v1alpha1-kibanastatus"]
-[float]
-==== KibanaStatus
-(*Appears on:*
-link:#kibana-k8s-elastic-co-v1alpha1-kibana[Kibana]
-)
-
-KibanaStatus defines the observed state of Kibana
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`ReconcilerStatus`* +
-_link:#common-k8s-elastic-co-v1alpha1-reconcilerstatus[$$ReconcilerStatus$$]_
-|
----
-| *`health`* +
-_link:#kibana-k8s-elastic-co-v1alpha1-kibanahealth[$$KibanaHealth$$]_
-|
----
-| *`associationStatus`* +
-_link:#common-k8s-elastic-co-v1alpha1-associationstatus[$$AssociationStatus$$]_
-|
----
-|===
 [id="apm-k8s-elastic-co-v1alpha1"]
 [float]
 === apm.k8s.elastic.co/v1alpha1
@@ -252,9 +60,6 @@ HTTP contains settings for HTTP.
 *`elasticsearchRef`* _link:#common-k8s-elastic-co-v1alpha1-objectselector[$$ObjectSelector$$]_::
 ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
 If the namespace is not specified, the current resource namespace will be used.
-*`elasticsearch`* _link:#apm-k8s-elastic-co-v1alpha1-elasticsearchoutput[$$ElasticsearchOutput$$]_::
-_(Optional)_
-Elasticsearch configures how the APM server connects to Elasticsearch
 *`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
 _(Optional)_
 PodTemplate can be used to propagate configuration to APM Server pods.
@@ -270,6 +75,10 @@ entries and the `path` field to change the target path of a secret entry key.
 The secret must exist in the same namespace as the APM resource.
 | *`status`* +
 _link:#apm-k8s-elastic-co-v1alpha1-apmserverstatus[$$ApmServerStatus$$]_
+|
+---
+| *`assocConf`* +
+_link:#common-k8s-elastic-co-v1alpha1-associationconf[$$AssociationConf$$]_
 |
 ---
 |===
@@ -320,11 +129,6 @@ _link:#common-k8s-elastic-co-v1alpha1-objectselector[$$ObjectSelector$$]_
 |
 ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
 If the namespace is not specified, the current resource namespace will be used.
-| *`elasticsearch`* +
-_link:#apm-k8s-elastic-co-v1alpha1-elasticsearchoutput[$$ElasticsearchOutput$$]_
-|
-_(Optional)_
-Elasticsearch configures how the APM server connects to Elasticsearch
 | *`podTemplate`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
 |
@@ -377,51 +181,6 @@ _link:#common-k8s-elastic-co-v1alpha1-associationstatus[$$AssociationStatus$$]_
 |
 Association is the status of any auto-linking to Elasticsearch clusters.
 |===
-
-[id="apm-k8s-elastic-co-v1alpha1-elasticsearchoutput"]
-[float]
-==== ElasticsearchOutput
-(*Appears on:*
-link:#apm-k8s-elastic-co-v1alpha1-apmserverspec[ApmServerSpec]
-)
-
-Elasticsearch contains configuration for the Elasticsearch output
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`hosts`* +
-_[]string_
-|
-Hosts are the URLs of the output Elasticsearch nodes.
-| *`auth`* +
-_link:#common-k8s-elastic-co-v1alpha1-elasticsearchauth[$$ElasticsearchAuth$$]_
-|
-Auth configures authentication for APM Server to use.
-| *`ssl`* +
-_link:#apm-k8s-elastic-co-v1alpha1-elasticsearchoutputssl[$$ElasticsearchOutputSSL$$]_
-|
-SSL configures TLS-related configuration for Elasticsearch
-|===
-
-[id="apm-k8s-elastic-co-v1alpha1-elasticsearchoutputssl"]
-[float]
-==== ElasticsearchOutputSSL
-(*Appears on:*
-link:#apm-k8s-elastic-co-v1alpha1-elasticsearchoutput[ElasticsearchOutput]
-)
-
-ElasticsearchOutputSSL contains TLS-related configuration for Elasticsearch
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`certificateAuthorities`* +
-_link:#common-k8s-elastic-co-v1alpha1-secretref[$$SecretRef$$]_
-|
-CertificateAuthorities is a secret that contains a `tls.crt` entry that contain certificates for server
-verifications.
-|===
 [id="common-k8s-elastic-co-v1alpha1"]
 [float]
 === common.k8s.elastic.co/v1alpha1
@@ -440,6 +199,37 @@ An associated object needs some credentials to establish a connection to the Ela
 offers a keystore which in ECK is represented with an underlying Secret.
 Kibana and the APM server are two examples of associated objects.
 
+[id="common-k8s-elastic-co-v1alpha1-associationconf"]
+[float]
+==== AssociationConf
+(*Appears on:*
+link:#apm-k8s-elastic-co-v1alpha1-apmserver[ApmServer], 
+link:#kibana-k8s-elastic-co-v1alpha1-kibana[Kibana]
+)
+
+AssociationConf holds the association configuration of an Elasticsearch cluster.
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`authSecretName`* +
+_string_
+|
+---
+| *`authSecretKey`* +
+_string_
+|
+---
+| *`caSecretName`* +
+_string_
+|
+---
+| *`url`* +
+_string_
+|
+---
+|===
+
 [id="common-k8s-elastic-co-v1alpha1-associationstatus"]
 [float]
 ==== AssociationStatus(`string` alias)
@@ -449,6 +239,12 @@ link:#kibana-k8s-elastic-co-v1alpha1-kibanastatus[KibanaStatus]
 )
 
 AssociationStatus is the status of an association resource.
+
+[id="common-k8s-elastic-co-v1alpha1-associator"]
+[float]
+==== Associator
+
+Associator describes an object that allows its association to be set.
 
 [id="common-k8s-elastic-co-v1alpha1-config"]
 [float]
@@ -468,25 +264,6 @@ Config represents untyped YAML configuration inside a spec.
 _map[string]interface{}_
 |
 This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/issues/528
-|===
-
-[id="common-k8s-elastic-co-v1alpha1-elasticsearchauth"]
-[float]
-==== ElasticsearchAuth
-(*Appears on:*
-link:#kibana-k8s-elastic-co-v1alpha1-backendelasticsearch[BackendElasticsearch], 
-link:#apm-k8s-elastic-co-v1alpha1-elasticsearchoutput[ElasticsearchOutput]
-)
-
-ElasticsearchAuth contains auth config for Kibana to use with an Elasticsearch cluster
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`secret`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#secretkeyselector-v1-core[$$Kubernetes core/v1.SecretKeySelector$$]_
-|
-SecretKeyRef is a secret that contains the credentials to use.
 |===
 
 [id="common-k8s-elastic-co-v1alpha1-httpconfig"]
@@ -629,8 +406,6 @@ _int_
 [float]
 ==== SecretRef
 (*Appears on:*
-link:#kibana-k8s-elastic-co-v1alpha1-backendelasticsearch[BackendElasticsearch], 
-link:#apm-k8s-elastic-co-v1alpha1-elasticsearchoutputssl[ElasticsearchOutputSSL], 
 link:#common-k8s-elastic-co-v1alpha1-tlsoptions[TLSOptions]
 )
 
@@ -865,7 +640,9 @@ managed by the operator.
 _link:#common-k8s-elastic-co-v1alpha1-secretref[$$SecretRef$$]_
 |
 Certificate is a reference to a secret that contains the certificate and private key to be used.
+
 The secret should have the following content:
+
 - `ca.crt`: The certificate authority (optional)
 - `tls.crt`: The certificate (or a chain).
 - `tls.key`: The private key to the first certificate in the certificate chain.
@@ -924,6 +701,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 *`podDisruptionBudget`* _link:#common-k8s-elastic-co-v1alpha1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
 _(Optional)_
 PodDisruptionBudget allows full control of the default pod disruption budget.
+
 The default budget selects all cluster pods and sets maxUnavailable to 1.
 To disable it entirely, set to the empty value (`{}` in YAML).
 *`secureSettings`* _link:#common-k8s-elastic-co-v1alpha1-secretsource[$$[]SecretSource$$]_::
@@ -1080,6 +858,7 @@ _link:#common-k8s-elastic-co-v1alpha1-poddisruptionbudgettemplate[$$PodDisruptio
 |
 _(Optional)_
 PodDisruptionBudget allows full control of the default pod disruption budget.
+
 The default budget selects all cluster pods and sets maxUnavailable to 1.
 To disable it entirely, set to the empty value (`{}` in YAML).
 | *`secureSettings`* +
@@ -1265,6 +1044,168 @@ link:#elasticsearch-k8s-elastic-co-v1alpha1-elasticsearchstatus[ElasticsearchSta
 
 | *`minimumMasterNodes`* +
 _int_
+|
+---
+|===
+[id="kibana-k8s-elastic-co-v1alpha1"]
+[float]
+=== kibana.k8s.elastic.co/v1alpha1
+Package v1alpha1 contains API Schema definitions for the kibana v1alpha1 API group
+
+.Resource Types
+--
+- link:#kibana-k8s-elastic-co-v1alpha1-kibana[$$Kibana$$]
+--
+
+[id="kibana-k8s-elastic-co-v1alpha1-kibana"]
+[float]
+==== Kibana
+
+Kibana is the Schema for the kibanas API
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+| *`apiVersion`*  +
+_string_
+| `kibana.k8s.elastic.co/v1alpha1`
+
+| *`kind`*  +
+_string_
+| `Kibana`
+
+| *`metadata`* +
+_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
+|
+---
+Refer to the Kubernetes API documentation for the fields of the `metadata` field.
+| *`spec`* +
+_link:#kibana-k8s-elastic-co-v1alpha1-kibanaspec[$$KibanaSpec$$]_
+|
+---
+
+*`version`*  _string_::
+Version represents the version of Kibana
+*`image`*  _string_::
+Image represents the docker image that will be used.
+*`nodeCount`*  _int32_::
+NodeCount defines how many nodes the Kibana deployment must have.
+*`elasticsearchRef`* _link:#common-k8s-elastic-co-v1alpha1-objectselector[$$ObjectSelector$$]_::
+ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
+If the namespace is not specified, the current resource namespace will be used.
+*`config`* _link:#common-k8s-elastic-co-v1alpha1-config[$$Config$$]_::
+Config represents Kibana configuration.
+*`http`* _link:#common-k8s-elastic-co-v1alpha1-httpconfig[$$HTTPConfig$$]_::
+HTTP contains settings for HTTP.
+*`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
+_(Optional)_
+PodTemplate can be used to propagate configuration to Kibana pods.
+This allows specifying custom annotations, labels, environment variables,
+affinity, resources, etc. for the pods created from this NodeSpec.
+*`secureSettings`* _link:#common-k8s-elastic-co-v1alpha1-secretsource[$$[]SecretSource$$]_::
+SecureSettings references secrets containing secure settings, to be injected
+into Kibana keystore on each node.
+Each individual key/value entry in the referenced secrets is considered as an
+individual secure setting to be injected.
+You can use the `entries` and `key` fields to consider only a subset of the secret
+entries and the `path` field to change the target path of a secret entry key.
+The secret must exist in the same namespace as the Kibana resource.
+| *`status`* +
+_link:#kibana-k8s-elastic-co-v1alpha1-kibanastatus[$$KibanaStatus$$]_
+|
+---
+| *`assocConf`* +
+_link:#common-k8s-elastic-co-v1alpha1-associationconf[$$AssociationConf$$]_
+|
+---
+|===
+
+[id="kibana-k8s-elastic-co-v1alpha1-kibanahealth"]
+[float]
+==== KibanaHealth(`string` alias)
+(*Appears on:*
+link:#kibana-k8s-elastic-co-v1alpha1-kibanastatus[KibanaStatus]
+)
+
+KibanaHealth expresses the status of the Kibana instances.
+
+[id="kibana-k8s-elastic-co-v1alpha1-kibanaspec"]
+[float]
+==== KibanaSpec
+(*Appears on:*
+link:#kibana-k8s-elastic-co-v1alpha1-kibana[Kibana]
+)
+
+KibanaSpec defines the desired state of Kibana
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`version`* +
+_string_
+|
+Version represents the version of Kibana
+| *`image`* +
+_string_
+|
+Image represents the docker image that will be used.
+| *`nodeCount`* +
+_int32_
+|
+NodeCount defines how many nodes the Kibana deployment must have.
+| *`elasticsearchRef`* +
+_link:#common-k8s-elastic-co-v1alpha1-objectselector[$$ObjectSelector$$]_
+|
+ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
+If the namespace is not specified, the current resource namespace will be used.
+| *`config`* +
+_link:#common-k8s-elastic-co-v1alpha1-config[$$Config$$]_
+|
+Config represents Kibana configuration.
+| *`http`* +
+_link:#common-k8s-elastic-co-v1alpha1-httpconfig[$$HTTPConfig$$]_
+|
+HTTP contains settings for HTTP.
+| *`podTemplate`* +
+_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
+|
+_(Optional)_
+PodTemplate can be used to propagate configuration to Kibana pods.
+This allows specifying custom annotations, labels, environment variables,
+affinity, resources, etc. for the pods created from this NodeSpec.
+| *`secureSettings`* +
+_link:#common-k8s-elastic-co-v1alpha1-secretsource[$$[]SecretSource$$]_
+|
+SecureSettings references secrets containing secure settings, to be injected
+into Kibana keystore on each node.
+Each individual key/value entry in the referenced secrets is considered as an
+individual secure setting to be injected.
+You can use the `entries` and `key` fields to consider only a subset of the secret
+entries and the `path` field to change the target path of a secret entry key.
+The secret must exist in the same namespace as the Kibana resource.
+|===
+
+[id="kibana-k8s-elastic-co-v1alpha1-kibanastatus"]
+[float]
+==== KibanaStatus
+(*Appears on:*
+link:#kibana-k8s-elastic-co-v1alpha1-kibana[Kibana]
+)
+
+KibanaStatus defines the observed state of Kibana
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`ReconcilerStatus`* +
+_link:#common-k8s-elastic-co-v1alpha1-reconcilerstatus[$$ReconcilerStatus$$]_
+|
+---
+| *`health`* +
+_link:#kibana-k8s-elastic-co-v1alpha1-kibanahealth[$$KibanaHealth$$]_
+|
+---
+| *`associationStatus`* +
+_link:#common-k8s-elastic-co-v1alpha1-associationstatus[$$AssociationStatus$$]_
 |
 ---
 |===

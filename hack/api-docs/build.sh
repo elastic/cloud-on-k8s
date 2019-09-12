@@ -18,8 +18,8 @@ install_refdocs() {
     local INSTALL_DIR=$(mktemp -d)
     (
         cd $INSTALL_DIR
-        go mod init github.com/elastic/eck-refdocs
-        go get -u "${REFDOCS_PKG}@${REFDOCS_VER}"
+        GO111MODULE=on go mod init github.com/elastic/eck-refdocs
+        GO111MODULE=on go get -u "${REFDOCS_PKG}@${REFDOCS_VER}"
     )
 }
 
@@ -30,7 +30,7 @@ build_docs() {
         -out-file=$TEMP_OUT_FILE \
         -config="${SCRIPT_DIR}/config.json"
 
-    sed -e 's|\(<br/>\)\+|\n|g' $TEMP_OUT_FILE > "${DOCS_DIR}/api-docs.asciidoc"
+    mv $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
 }
 
 if [[ ! -x "$REFDOCS_BIN" ]]; then

@@ -365,7 +365,7 @@ check-license-header:
 
 # Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
-	@ [[ "$$(git status --porcelain | grep -v 'docs/api-docs.asciidoc')" == "" ]] \
+	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
 
 #########################

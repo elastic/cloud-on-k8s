@@ -4,12 +4,13 @@
 == API Reference
 {{ with .packages }}
 .Packages
-****
+
 {{- range . }}
-- xref:{{ packageAnchorID . | safeIdentifier }}[{{ packageDisplayName . }}]
+* xref:{{ packageAnchorID . | safeIdentifier }}[{{ packageDisplayName . }}]
 {{- end }}
 {{- end }}
-****
+
+'''
 
 {{ range .packages }}
 [id="{{ packageAnchorID . | safeIdentifier }}"]
