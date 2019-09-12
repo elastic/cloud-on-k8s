@@ -50,7 +50,6 @@ pipeline {
                     }
                     environment {
                         KIND_LOG_LEVEL = "debug"
-                        MAX_USER_WATCHES = 32768
                     }
                     steps {
                         createKindConfig()
