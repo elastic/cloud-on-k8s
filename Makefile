@@ -101,9 +101,19 @@ clean:
 unit: clean
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
+unit_json: clean
+	go test --json ./pkg/... ./cmd/... -coverprofile cover.out > unit-tests.json
+
 integration: GO_TAGS += integration
 integration: clean generate
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
+
+integration_json: GO_TAGS += integration
+integration_json: clean generate
+	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
+
+generate-xml:
+	gotestsum --junitfile $(TEST_OUTPUT_XML) --raw-command cat $(TEST_OUTPUT_JSON)
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)
@@ -302,6 +312,9 @@ STACK_VERSION ?= 7.3.0
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
 
+# Run e2e tests locally
+e2e-local: build-operator-image e2e-docker-build e2e-docker-push e2e-run-local
+
 e2e-docker-build:
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
@@ -324,7 +337,7 @@ e2e-compile:
 # that can reach ES services running in the k8s cluster through port-forwarding.
 LOCAL_E2E_CTX:=/tmp/e2e-local.json
 
-e2e-local:
+e2e-run-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
 		--test-context-out=$(LOCAL_E2E_CTX) \
@@ -338,10 +351,13 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
+ci: dep-vendor-only check-fmt lint generate check-local-changes unit_json integration_json e2e-compile docker-build
 
-# Run e2e tests in a dedicated cluster.
+# Run e2e tests in a dedicated cluster as batch job.
 ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e
+
+# Run e2e tests in a dedicated cluster locally.
+ci-e2e-local: dep-vendor-only run-deployer install-crds apply-psp e2e-local
 
 run-deployer: dep-vendor-only build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
