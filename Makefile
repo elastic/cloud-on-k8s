@@ -86,6 +86,10 @@ generate:
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 	$(MAKE) --no-print-directory generate-all-in-one
+	$(MAKE) --no-print-directory generate-api-docs
+
+generate-api-docs:
+	@hack/api-docs/build.sh
 
 elastic-operator: generate
 	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
