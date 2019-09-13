@@ -19,7 +19,7 @@ overrides:
     gCloudProject: %s
 `
 
-func CreateCommand() *cobra.Command{
+func CreateCommand() *cobra.Command {
 	var path string
 
 	var createCommand = &cobra.Command{
