@@ -8,7 +8,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
@@ -113,7 +112,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// When not reconciled, set the phase to pending only if it's operational to avoid to
 	// override another "not operational" phase like MigratingData.
-	if Reconciled(expectedResources.StatefulSets(), actualStatefulSets, resourcesState) {
+	if Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
 		reconcileState.UpdateElasticsearchOperational(resourcesState, observedState)
 	} else if reconcileState.IsElasticsearchOperational(observedState) {
 		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods)
@@ -126,31 +125,31 @@ func (d *defaultDriver) reconcileNodeSpecs(
 }
 
 // Reconciled reports whether the actual StatefulSets are reconciled to match the expected StatefulSets
-// by checking that the expected template hash label is reconciled for all StatefulSets and all their
-// associated pods.
-func Reconciled(expectedStatefulSets, actualStatefulSets sset.StatefulSetList, resourcesState reconcile.ResourcesState) bool {
+// by checking that the expected template hash label is reconciled for all StatefulSets, there are no
+// pod upgrades in progress and all pods are running.
+func Reconciled(expectedStatefulSets, actualStatefulSets sset.StatefulSetList, client k8s.Client) bool {
+	// actual sset should have the expected sset template hash label
 	for _, expectedSset := range expectedStatefulSets {
 		actualSset, ok := actualStatefulSets.GetByName(expectedSset.Name)
 		if !ok {
 			return false
 		}
-		// actual sset should have the expected sset template hash label
 		if !sset.EqualTemplateHashLabels(expectedSset, actualSset) {
 			log.V(1).Info("Statefulset not reconciled",
 				"statefulset_name", expectedSset.Name, "reason", "template hash not equal")
 			return false
 		}
-		// pods should have the expected sset template hash label
-		ssetConfigTplHash := expectedSset.Spec.Template.Labels[label.ConfigTemplateHashLabelName]
-		for _, pod := range resourcesState.AllPods {
-			if pod.Labels[label.ConfigTemplateHashLabelName] != ssetConfigTplHash {
-				log.V(1).Info("Statefulset not reconciled",
-					"statefulset_name", expectedSset.Name, "reason", "pod not upgraded", "pod_name", pod.Name,
-					"pod_label", pod.Labels[label.ConfigTemplateHashLabelName], "sset_label", ssetConfigTplHash)
-				return false
-			}
-		}
-
 	}
+
+	// all pods should have been upgraded
+	pods, err := podsToUpgrade(client, actualStatefulSets)
+	if err != nil {
+		return false
+	}
+	if len(pods) > 0 {
+		log.V(1).Info("Statefulset not reconciled", "reason", "pod not upgraded")
+		return false
+	}
+
 	return true
 }
