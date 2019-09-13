@@ -41,6 +41,8 @@ pipeline {
                     steps {
                         createConfig()
                         sh 'make -C build/ci TARGET=ci ci'
+                        junit "unit-tests.xml"
+                        junit "integration-tests.xml"
                     }
                 }
                 stage("Run smoke E2E tests") {
