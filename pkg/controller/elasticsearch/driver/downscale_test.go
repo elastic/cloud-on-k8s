@@ -8,24 +8,26 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -855,6 +857,39 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			require.Equal(t, tt.wantZen1CalledWith, esClient.SetMinimumMasterNodesCalledWith)
 			// check zen2 was not called
 			require.False(t, esClient.AddVotingConfigExclusionsCalled)
+		})
+	}
+}
+
+func Test_removeStatefulSetResources(t *testing.T) {
+	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
+	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
+	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
+	svc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), sset.Name)
+
+	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+	tests := []struct {
+		name      string
+		resources []runtime.Object
+	}{
+		{
+			name:      "happy path: delete 3 resources",
+			resources: []runtime.Object{&es, &sset, &cfg, &svc},
+		},
+		{
+			name:      "cfg and service were already deleted: should not return an error",
+			resources: []runtime.Object{&es, &sset},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
+			err := removeStatefulSetResources(k8sClient, es, sset)
+			require.NoError(t, err)
+			// sset, cfg and headless services should not be there anymore
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&sset), &sset)))
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&cfg), &cfg)))
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&svc), &svc)))
 		})
 	}
 }
