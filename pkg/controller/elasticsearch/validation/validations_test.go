@@ -37,7 +37,7 @@ func Test_hasMaster(t *testing.T) {
 		{
 			name: "no topology",
 			args: args{
-				esCluster: *es("6.7.0"),
+				esCluster: *es("6.8.0"),
 			},
 			want: failedValidation,
 		},
@@ -334,7 +334,7 @@ func TestValidNames(t *testing.T) {
 						Namespace: "default",
 						Name:      "that-is-a-very-long-name-with-37chars",
 					},
-					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+					Spec: estype.ElasticsearchSpec{Version: "6.8.0"},
 				},
 			},
 			want: validation.Result{
@@ -350,7 +350,7 @@ func TestValidNames(t *testing.T) {
 						Namespace: "default",
 						Name:      "that-is-a-very-long-name-with-36char",
 					},
-					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+					Spec: estype.ElasticsearchSpec{Version: "6.8.0"},
 				},
 			},
 			want: validation.OK,
@@ -380,7 +380,7 @@ func Test_validSanIP(t *testing.T) {
 		{
 			name: "no SAN IP: OK",
 			esCluster: estype.Elasticsearch{
-				Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+				Spec: estype.ElasticsearchSpec{Version: "6.8.0"},
 			},
 			want: validation.OK,
 		},
@@ -388,7 +388,7 @@ func Test_validSanIP(t *testing.T) {
 			name: "valid SAN IPs: OK",
 			esCluster: estype.Elasticsearch{
 				Spec: estype.ElasticsearchSpec{
-					Version: "6.7.0",
+					Version: "6.8.0",
 					HTTP: common.HTTPConfig{
 						TLS: common.TLSOptions{
 							SelfSignedCertificate: &common.SelfSignedCertificate{
@@ -414,7 +414,7 @@ func Test_validSanIP(t *testing.T) {
 			name: "invalid SAN IPs: NOT OK",
 			esCluster: estype.Elasticsearch{
 				Spec: estype.ElasticsearchSpec{
-					Version: "6.7.0",
+					Version: "6.8.0",
 					HTTP: common.HTTPConfig{
 						TLS: common.TLSOptions{
 							SelfSignedCertificate: &common.SelfSignedCertificate{

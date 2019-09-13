@@ -31,7 +31,7 @@ func TestSupportedVersions(t *testing.T) {
 		unsupported []version.Version
 	}{
 		{
-			name: "6.X",
+			name: "6.x",
 			args: args{
 				v: version.MustParse("6.8.0"),
 			},
