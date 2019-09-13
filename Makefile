@@ -116,7 +116,7 @@ integration_json: GO_TAGS += integration
 integration_json: clean generate
 	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
 
-generate-xml:
+generate-test-xml:
 	gotestsum --junitfile $(TEST_OUTPUT_XML) --raw-command cat $(TEST_OUTPUT_JSON)
 
 check-fmt:

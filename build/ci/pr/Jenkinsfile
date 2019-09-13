@@ -40,9 +40,17 @@ pipeline {
                     }
                     steps {
                         createConfig()
-                        sh 'make -C build/ci TARGET=ci ci'
-                        junit "unit-tests.xml"
-                        junit "integration-tests.xml"
+                        script {
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
+
+                            sh 'TEST_OUTPUT_XML=unit-tests.xml TEST_OUTPUT_JSON=unit-tests.json make -C build/ci TARGET=generate-test-xml ci'
+                            junit "unit-tests.xml"
+
+                            sh 'TEST_OUTPUT_XML=integration-tests.xml TEST_OUTPUT_JSON=integration-tests.json make -C build/ci TARGET=generate-test-xml ci'
+                            junit "integration-tests.xml"
+
+                            sh 'exit $SHELL_EXIT_CODE'
+                        }
                     }
                 }
                 stage("Run smoke E2E tests") {
@@ -51,9 +59,6 @@ pipeline {
                             checkout scm
                             notOnlyDocs()
                         }
-                    }
-                    agent {
-                        label 'linux'
                     }
                     steps {
                         createConfig()
@@ -70,8 +75,15 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                            make -C build/ci TARGET=ci-e2e ci
                         """
+                        script {
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+
+                            sh 'TEST_OUTPUT_XML=e2e-tests.xml TEST_OUTPUT_JSON=e2e-tests.json make -C build/ci TARGET=generate-test-xml ci'
+                            junit "e2e-tests.xml"
+
+                            sh 'exit $SHELL_EXIT_CODE'
+                        }
                     }
                 }
             }
