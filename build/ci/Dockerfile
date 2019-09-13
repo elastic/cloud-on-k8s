@@ -6,6 +6,7 @@ ENV GCLOUD_VERSION=232.0.0
 ENV KUBECTL_VERSION=1.13.6
 ENV DOCKER_VERSION=18.03.1-ce
 ENV GOLANGCILINT_VERSION=1.17.1
+ENV GOTESTSUM_VERSION=0.3.5
 
 # Download required golang tools
 RUN go get github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
@@ -49,6 +50,12 @@ RUN apt-get update && apt-get --no-install-recommends -y install \
 
 # Download Azure CLI
 RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
+
+# Install gotestsum to generate xUnit compatible XML for tests
+RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_VERSION}/gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \
+    tar xzf gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \
+    mv gotestsum /usr/local/bin/gotestsum && chmod +x /usr/local/bin/gotestsum && \
+    rm gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz
 
 # Add Go dependencies to Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s

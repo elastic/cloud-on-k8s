@@ -86,6 +86,10 @@ generate:
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 	$(MAKE) --no-print-directory generate-all-in-one
+	$(MAKE) --no-print-directory generate-api-docs
+
+generate-api-docs:
+	@hack/api-docs/build.sh
 
 elastic-operator: generate
 	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
@@ -101,19 +105,32 @@ clean:
 unit: clean
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
+<<<<<<< HEAD
 unit_json: clean
 	go test --json ./pkg/... ./cmd/... -coverprofile cover.out > unit-tests.json
+=======
+unit_xml: clean
+	go test --json ./pkg/... ./cmd/... -coverprofile cover.out > unit-tests.json
+	gotestsum --junitfile unit-tests.xml --raw-command cat unit-tests.json
+>>>>>>> 28c4974de6e7a37856951464669af9c3492a125d
 
 integration: GO_TAGS += integration
 integration: clean generate
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
 
+<<<<<<< HEAD
 integration_json: GO_TAGS += integration
 integration_json: clean generate
 	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
 
 generate-xml:
 	gotestsum --junitfile $(TEST_OUTPUT_XML) --raw-command cat $(TEST_OUTPUT_JSON)
+=======
+integration_xml: GO_TAGS += integration
+integration_xml: clean generate
+	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
+	gotestsum --junitfile integration-tests.xml --raw-command cat integration-tests.json
+>>>>>>> 28c4974de6e7a37856951464669af9c3492a125d
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)

@@ -41,7 +41,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 		{
 			name: "no validation on create",
 			args: args{
-				toValidate: *es("6.7.0"),
+				toValidate: *es("6.8.0"),
 			},
 			current: nil,
 			want:    validation.OK,
