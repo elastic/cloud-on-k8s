@@ -31,12 +31,11 @@ func TestSupportedVersions(t *testing.T) {
 		unsupported []version.Version
 	}{
 		{
-			name: "6.x",
+			name: "6.X",
 			args: args{
 				v: version.MustParse("6.8.0"),
 			},
 			supported: []version.Version{
-				version.MustParse("6.7.0"),
 				version.MustParse("6.8.0"),
 				version.MustParse("6.99.99"),
 			},
@@ -51,7 +50,7 @@ func TestSupportedVersions(t *testing.T) {
 				v: version.MustParse("7.1.0"),
 			},
 			supported: []version.Version{
-				version.MustParse("6.7.0"), //wire compat
+				version.MustParse("6.8.0"), //wire compat
 				version.MustParse("7.2.0"),
 				version.MustParse("7.99.99"),
 			},

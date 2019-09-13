@@ -159,7 +159,7 @@ func Test_supportedVersion(t *testing.T) {
 		{
 			name: "supported OK",
 			args: args{
-				esCluster: *es("6.7.0"),
+				esCluster: *es("6.8.0"),
 			},
 			want: validation.OK,
 		},
