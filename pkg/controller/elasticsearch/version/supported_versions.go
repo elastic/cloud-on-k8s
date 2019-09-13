@@ -24,15 +24,15 @@ func SupportedVersions(v version.Version) *LowestHighestSupportedVersions {
 	switch v.Major {
 	case 6:
 		return &LowestHighestSupportedVersions{
-			// Min. version is 6.7.0.
-			LowestSupportedVersion: version.MustParse("6.7.0"),
+			// Min. version is 6.8.0.
+			LowestSupportedVersion: version.MustParse("6.8.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
 			HighestSupportedVersion: version.MustParse("6.99.99"),
 		}
 	case 7:
 		return &LowestHighestSupportedVersions{
-			// 6.7.0 is the lowest wire compatibility version for 7.x
-			LowestSupportedVersion: version.MustParse("6.7.0"),
+			// 6.8.0 is the lowest wire compatibility version for 7.x
+			LowestSupportedVersion: version.MustParse("6.8.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
 			HighestSupportedVersion: version.MustParse("7.99.99"),
 		}

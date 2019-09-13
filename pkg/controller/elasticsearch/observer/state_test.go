@@ -21,7 +21,7 @@ import (
 )
 
 func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Client {
-	return client.NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
+	return client.NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
 		statusCode := 200
 		var respBody io.ReadCloser
 
