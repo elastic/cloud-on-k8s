@@ -33,7 +33,7 @@ REPOSITORY = "$GCLOUD_PROJECT"
 IMG_SUFFIX = -ci
 SKIP_DOCKER_COMMAND = true
 EOF
-                    cat >run-config.yml <<EOF
+                    cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   kubernetesVersion: "1.12"

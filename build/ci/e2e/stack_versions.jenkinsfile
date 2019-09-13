@@ -94,7 +94,7 @@ SKIP_DOCKER_COMMAND = true
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 EOF
-        cat >run-config.yml <<EOF
+        cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: create
