@@ -205,12 +205,11 @@ func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.S
 		return nil
 	}
 
-	actualPods, err := sset.GetActualPodsForCluster(ctx.k8sClient, ctx.es)
+	actualMasters, err := sset.GetActualMastersForCluster(ctx.k8sClient, ctx.es)
 	if err != nil {
 		return err
 	}
-	masters := label.FilterMasterNodePods(actualPods)
-	if len(masters) != 2 {
+	if len(actualMasters) != 2 {
 		// not in the 2->1 situation
 		return nil
 	}

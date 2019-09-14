@@ -121,6 +121,15 @@ func sortCandidates(allPods []corev1.Pod) {
 	})
 }
 
+// handleMasterScaleChange attempts to update
+/*func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
+	//masterScaleUp := !label.IsMasterNode(pod) && stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
+	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
+	if masterScaleDown {
+		zen1.AtLeastOneNodeCompatibleWithZen1(ctx.statefulSets)
+	}
+}*/
+
 func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
 	uid := pod.UID
 	log.Info("Deleting pod for rolling upgrade", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)

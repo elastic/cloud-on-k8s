@@ -32,7 +32,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 		{
 			// This unit test basically reproduces the e2e test
 			// It start with 2 master+data nodes, the second one is changed to master only.
-			name: "Do not attempt to delete an already terminating Pod",
+			name: "Risky mutation",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masterdata-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
