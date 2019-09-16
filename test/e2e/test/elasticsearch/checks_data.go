@@ -59,6 +59,18 @@ func (dc *DataIntegrityCheck) Init() error {
     }
 }
 `
+	// delete index if running check multiple times
+	indexDeletion, err := http.NewRequest(
+		http.MethodDelete,
+		fmt.Sprintf("/%s", dc.indexName),
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+	// delete the index but ignore errors (e.g. if it did not exist yet)
+	_, _ = esClient.Request(context.Background(), indexDeletion)
+
 	// create the index with controlled settings
 	indexCreation, err := http.NewRequest(
 		http.MethodPut,

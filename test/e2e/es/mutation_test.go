@@ -160,6 +160,21 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 	RunESMutation(t, b, mutated)
 }
 
+func TestMutationAndReversal(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-reverted-mutation").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	mutation := b.WithNoESTopology().WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithAdditionalConfig(map[string]map[string]interface{}{
+			"masterdata": map[string]interface{}{
+				"node.attr.box_type": "mixed",
+			},
+		})
+	mutation.MutatedFrom = &b
+	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, b})
+
+}
+
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
 	mutateTo.MutatedFrom = &toCreate
 	test.RunMutation(t, toCreate, mutateTo)

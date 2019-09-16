@@ -29,8 +29,9 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 		steps = steps.WithSteps(mutateTo.MutationTestSteps(k))
 	}
 
-	for _, mutateTo := range mutationBuilders {
-		steps = steps.WithSteps(mutateTo.DeletionTestSteps(k))
+	// Delete using the original builder (so that we can use it as a mutation builder as well)
+	for _, toCreate := range creationBuilders {
+		steps = steps.WithSteps(toCreate.DeletionTestSteps(k))
 	}
 
 	steps.RunSequential(t)
