@@ -118,9 +118,8 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector map[
 	return false, nil
 }
 
-// checkExistingResources returns a bool indicating if there are existing resources created for a given resource
-// the labels provided must exactly match
-// todo sabo do we want to keep it generic enough to allow a selector?
+// checkExistingResources returns a bool indicating if there are existing resources created for a given resource.
+// The labels provided must exactly match.
 func checkExistingResources(client k8s.Client, obj runtime.Object, labels map[string]string) (bool, error) {
 
 	accessor := meta.NewAccessor()

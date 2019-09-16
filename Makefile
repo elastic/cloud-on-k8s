@@ -32,7 +32,6 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-# TODO (sabo) move this somewhere appropriate
 # find or download controller-gen
 # download controller-gen if necessary
 controller-gen:

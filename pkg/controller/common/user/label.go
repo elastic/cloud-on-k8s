@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -22,12 +23,7 @@ const (
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by
 // NewLabels for the provided cluster name and of for a resource of type "user"
 func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) client.MatchingLabels {
-	return client.MatchingLabels(map[string]string{
-		label.ClusterNameLabelName: es.Name,
-		common.TypeLabelName:       UserType,
-	})
-	// TODO sabo why does this not work? says it is missing GetAnnotations because it has a pointer receiver
-	// return client.MatchingLabels(NewLabels(k8s.ExtractNamespacedName(es)))
+	return client.MatchingLabels(NewLabels(k8s.ExtractNamespacedName(&es)))
 }
 
 // NewLabels constructs a new set of labels from an Elasticsearch cluster name for a resource of type "user".

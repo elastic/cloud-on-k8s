@@ -137,14 +137,11 @@ func (el *eventLogger) runEventProcessor() {
 // isInterestingEvent determines whether an event is worthy of logging.
 func (el *eventLogger) isInterestingEvent(evt *corev1.Event) bool {
 	// special case for event generated when attempting to reuse a deleted PV
-	// TODO sabo remove this? it is the only one that is under this path
-// 	go: finding github.com/elastic/cloud-on-k8s/pkg/interfaces latest
-// go: finding github.com/elastic/cloud-on-k8s/pkg latest
-// go: k8s.io/kubernetes@v1.15.3 requires
-// 	k8s.io/api@v0.0.0: reading k8s.io/api/go.mod at revision v0.0.0: unknown revision v0.0.0
-
-	if evt.Reason == "VolumeDelete"{
-	// if evt.Reason == events.VolumeDelete {
+	// This constant is defined in "k8s.io/kubernetes/pkg/controller/volume/events".VolumeDelete
+	// but importing that with go modules is painful, see here:
+	// https://github.com/golang/go/issues/32776#issuecomment-505607726
+	// I did not see this defined anywhere else and nothing else in our code base uses the package, so seemed reasonable to copy/paste
+	if evt.Reason == "VolumeDelete" {
 		return true
 	}
 

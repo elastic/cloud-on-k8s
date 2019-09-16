@@ -7,7 +7,6 @@ package apmserverelasticsearchassociation
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -19,15 +18,7 @@ const (
 	AssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
 )
 
-// NewResourceSelector selects resources labeled as related to the named association.
-// TODO sabo can we remove this?
-func NewResourceSelector(name string) labels.Selector {
-	return labels.Set(map[string]string{
-		AssociationLabelName: name,
-	}).AsSelector()
-}
-
-// TODO SABO does this exist somewhere else?
+// NewResourceLabels returns the labels to identify an APM association
 func NewResourceLabels(name string) map[string]string {
 	return map[string]string{AssociationLabelName: name}
 }
