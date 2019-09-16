@@ -33,7 +33,7 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	clusterName         = "cluster"
+	clusterName         = "cluster-name"
 	ssetMaster3Replicas = sset.TestSset{
 		Name:      "ssetMaster3Replicas",
 		Namespace: "ns",
@@ -114,7 +114,6 @@ var (
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
-
 	requeueResults = (&reconciler.Results{}).WithResult(defaultRequeue)
 	emptyResults   = &reconciler.Results{}
 )
@@ -137,7 +136,7 @@ func TestHandleDownscale(t *testing.T) {
 		reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 		observedState: observer.State{
 			ClusterState: &esclient.ClusterState{
-				ClusterName: "cluster-name",
+				ClusterName: clusterName,
 				Nodes: map[string]esclient.ClusterStateNode{
 					// nodes from 1st sset
 					"ssetMaster3Replicas-0": {Name: "ssetMaster3Replicas-0"},
@@ -164,6 +163,12 @@ func TestHandleDownscale(t *testing.T) {
 			},
 		},
 		esClient: esClient,
+		es: v1alpha1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      clusterName,
+				Namespace: "ns",
+			},
+		},
 	}
 
 	// request master nodes downscale from 3 to 1 replicas
@@ -790,6 +795,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				esClient:       esClient,
+				es:             es,
 			}
 			// do the downscale
 			err := doDownscale(downscaleCtx, tt.downscale, sset.StatefulSetList{ssetMasters, ssetData})
@@ -886,6 +892,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				esClient:       esClient,
+				es:             es,
 			}
 			// do the downscale
 			err := doDownscale(downscaleCtx, tt.downscale, tt.statefulSets)
