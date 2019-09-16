@@ -231,7 +231,7 @@ func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []com
 //  to be reliable with controller-runtime < v0.2.0-beta.4
 func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches, kind string) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "secure-settings.finalizers." + strings.ToLower(kind) + ".k8s.elastic.co",
+		Name: "finalizer." + strings.ToLower(kind) + ".k8s.elastic.co/secure-settings-secret",
 		Execute: func() error {
 			watched.Secrets.RemoveHandlerForKey(secureSettingsWatchName(namespacedName))
 			return nil
