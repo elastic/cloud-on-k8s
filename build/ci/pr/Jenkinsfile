@@ -82,6 +82,10 @@ EOF
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
 
                             sh 'ls -an' // for debug
+                            sh """
+                                cd $WORKSPACE/test/e2e
+                                ls -an
+                            """ // for debug
 
                             sh 'make -C build/ci TARGET=generate-test-xml ci'
                             junit "e2e-tests.xml"
