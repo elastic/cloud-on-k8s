@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -619,16 +620,23 @@ func TestIsConflict(t *testing.T) {
 		{
 			name: "200 is not a conflict",
 			args: args{
-				err: &APIError{response: NewMockResponse(200, nil, "")},
+				err: &APIError{response: NewMockResponse(200, nil, "")}, // nolint
 			},
 			want: false,
 		},
 		{
 			name: "409 is a conflict",
 			args: args{
-				err: &APIError{response: NewMockResponse(409, nil, "")},
+				err: &APIError{response: NewMockResponse(409, nil, "")}, // nolint
 			},
 			want: true,
+		},
+		{
+			name: "no api error",
+			args: args{
+				err: errors.New("not an api error"),
+			},
+			want: false,
 		},
 	}
 	for _, tt := range tests {
