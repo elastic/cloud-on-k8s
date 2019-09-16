@@ -40,11 +40,15 @@ pipeline {
                     }
                     steps {
                         script {
-                            createConfig("unit-integration-tests")
-
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
+
+                            createConfig("unit-tests")
                             sh 'make -C build/ci TARGET=generate-test-xml ci'
-                            junit "unit-integration-tests.xml"
+                            junit "unit-tests.xml"
+
+                            createConfig("integration-tests")
+                            sh 'make -C build/ci TARGET=generate-test-xml ci'
+                            junit "integration-tests.xml"
 
                             sh 'exit $SHELL_EXIT_CODE'
                         }
