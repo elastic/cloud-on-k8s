@@ -15,7 +15,7 @@ With Elastic Cloud on Kubernetes you can streamline all those critical operation
 Supported versions:
 
 . Kubernetes: 1.11+
-. Elasticsearch: 6.8, 7.1+
+. Elasticsearch: 6.8.x, 7.1+
 
 Learn more about ECK:
 
