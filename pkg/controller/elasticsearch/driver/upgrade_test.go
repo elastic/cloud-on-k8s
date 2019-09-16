@@ -45,8 +45,14 @@ func Test_podsToUpgrade(t *testing.T) {
 			name: "all pods need to be upgraded",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					sset.TestSset{Name: "masters", Replicas: 2, Master: true, Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b"}}.Build(),
-					sset.TestSset{Name: "nodes", Replicas: 3, Master: true, Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b"}}.Build(),
+					sset.TestSset{
+						Name: "masters", Replicas: 2, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2},
+					}.Build(),
+					sset.TestSset{
+						Name: "nodes", Replicas: 3, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 3},
+					}.Build(),
 				},
 				pods: []runtime.Object{
 					podWithRevision("masters-0", "rev-a"),
@@ -62,8 +68,14 @@ func Test_podsToUpgrade(t *testing.T) {
 			name: "only a sset needs to be upgraded",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					sset.TestSset{Name: "masters", Replicas: 2, Master: true, Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b"}}.Build(),
-					sset.TestSset{Name: "nodes", Replicas: 3, Master: true, Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b"}}.Build(),
+					sset.TestSset{
+						Name: "masters", Replicas: 2, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2},
+					}.Build(),
+					sset.TestSset{
+						Name: "nodes", Replicas: 3, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 3, Replicas: 3},
+					}.Build(),
 				},
 				pods: []runtime.Object{
 					podWithRevision("masters-0", "rev-a"),
@@ -76,8 +88,14 @@ func Test_podsToUpgrade(t *testing.T) {
 			name: "only 1 node need to be upgraded",
 			args: args{
 				statefulSets: sset.StatefulSetList{
-					sset.TestSset{Name: "masters", Replicas: 2, Master: true, Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b"}}.Build(),
-					sset.TestSset{Name: "nodes", Replicas: 3, Master: true, Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b"}}.Build(),
+					sset.TestSset{
+						Name: "masters", Replicas: 2, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 1, Replicas: 2},
+					}.Build(),
+					sset.TestSset{
+						Name: "nodes", Replicas: 3, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 3, Replicas: 3},
+					}.Build(),
 				},
 				pods: []runtime.Object{
 					podWithRevision("masters-0", "rev-b"),
