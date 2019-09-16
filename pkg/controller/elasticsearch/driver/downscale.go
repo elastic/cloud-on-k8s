@@ -259,7 +259,5 @@ func maybeUpdateZen1ForDownscale(
 		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1
-	//TODO: we should also update m_m_n in the configuration file, otherwise if we are unlucky the remaining master
-	// may restart and wait for 2 masters.
 	return zen1.UpdateMinimumMasterNodesTo(es, esClient, reconcileState, minimumMasterNodes)
 }
