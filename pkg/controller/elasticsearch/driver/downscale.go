@@ -5,8 +5,6 @@
 package driver
 
 import (
-	v1 "k8s.io/api/core/v1"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -16,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
+	v1 "k8s.io/api/core/v1"
 )
 
 // HandleDownscale attempts to downscale actual StatefulSets towards expected ones.
@@ -201,8 +200,9 @@ func updateZenSettingsForDownscale(ctx downscaleContext, downscale ssetDownscale
 
 // maybeUpdateZen1ForDownscale updates zen1 minimum master nodes if we are downscaling from 2 to 1 master node.
 func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.StatefulSetList) error {
-	if !zen1.AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
-		return nil
+	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
+	if zen1compatible, err := zen1.AtLeastOneNodeCompatibleWithZen1(actualStatefulSets, ctx.k8sClient, ctx.es); !zen1compatible || err != nil {
+		return err
 	}
 
 	actualMasters, err := sset.GetActualMastersForCluster(ctx.k8sClient, ctx.es)
@@ -224,5 +224,5 @@ func maybeUpdateZen1ForDownscale(ctx downscaleContext, actualStatefulSets sset.S
 		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1
-	return zen1.UpdateMinimumMasterNodesTo(ctx.es, ctx.esClient, actualStatefulSets, ctx.reconcileState, minimumMasterNodes)
+	return zen1.UpdateMinimumMasterNodesTo(ctx.es, ctx.esClient, ctx.reconcileState, minimumMasterNodes)
 }

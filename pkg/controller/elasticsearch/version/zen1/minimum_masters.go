@@ -8,17 +8,15 @@ import (
 	"context"
 	"strconv"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var (
@@ -27,13 +25,21 @@ var (
 
 // SetupMinimumMasterNodesConfig modifies the ES config of the given resources to setup
 // zen1 minimum master nodes.
-func SetupMinimumMasterNodesConfig(nodeSpecResources nodespec.ResourcesList) error {
+// This is function should not be called unless all the expectations are met.
+func SetupMinimumMasterNodesConfig(
+	c k8s.Client,
+	es v1alpha1.Elasticsearch,
+	nodeSpecResources nodespec.ResourcesList,
+) error {
+	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
+	if zen1compatible, err := AtLeastOneNodeCompatibleWithZen1(nodeSpecResources.StatefulSets(), c, es); !zen1compatible || err != nil {
+		return err
+	}
+
 	masters := nodeSpecResources.MasterNodesNames()
 	quorum := settings.Quorum(len(masters))
-	for i, res := range nodeSpecResources {
-		if !IsCompatibleWithZen1(res.StatefulSet) {
-			continue
-		}
+
+	for i := range nodeSpecResources {
 		// patch config with the expected minimum master nodes
 		if err := nodeSpecResources[i].Config.MergeWith(
 			common.MustNewSingleValue(
@@ -57,24 +63,22 @@ func UpdateMinimumMasterNodes(
 	actualStatefulSets sset.StatefulSetList,
 	reconcileState *reconcile.State,
 ) (bool, error) {
-	if !AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
-		// nothing to do
-		return false, nil
+	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
+	if zen1compatible, err := AtLeastOneNodeCompatibleWithZen1(actualStatefulSets, c, es); !zen1compatible || err != nil {
+		return false, err
 	}
 
-	pods, err := actualStatefulSets.GetActualPods(c)
+	actualMasters, err := sset.GetActualMastersForCluster(c, es)
 	if err != nil {
 		return false, err
 	}
+
 	// Get current master nodes count
-	currentMasterCount := 0
+	currentMasterCount := len(actualMasters)
 	currentAvailableMasterCount := 0
-	for _, p := range pods {
-		if label.IsMasterNode(p) {
-			currentMasterCount++
-			if k8s.IsPodReady(p) {
-				currentAvailableMasterCount++
-			}
+	for _, p := range actualMasters {
+		if k8s.IsPodReady(p) {
+			currentAvailableMasterCount++
 		}
 	}
 	// Calculate minimum_master_nodes based on that.
@@ -93,23 +97,18 @@ func UpdateMinimumMasterNodes(
 		return true, nil
 	}
 
-	return false, UpdateMinimumMasterNodesTo(es, esClient, actualStatefulSets, reconcileState, minimumMasterNodes)
+	return false, UpdateMinimumMasterNodesTo(es, esClient, reconcileState, minimumMasterNodes)
 }
 
 // UpdateMinimumMasterNodesTo calls the ES API to update the value of zen1 minimum_master_nodes
 // to the given value, if the cluster is using zen1.
+// Should only be called it there are some Zen1 compatible masters
 func UpdateMinimumMasterNodesTo(
 	es v1alpha1.Elasticsearch,
 	esClient client.Client,
-	actualStatefulSets sset.StatefulSetList,
 	reconcileState *reconcile.State,
 	minimumMasterNodes int,
 ) error {
-	if !AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
-		// nothing to do
-		return nil
-	}
-
 	// Check if we really need to update minimum_master_nodes with an API call
 	if minimumMasterNodes == reconcileState.GetZen1MinimumMasterNodes() {
 		return nil

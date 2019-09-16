@@ -77,15 +77,15 @@ func adjustResources(
 		adjustedResources = append(adjustedResources, nodeSpecRes)
 	}
 	// adapt resources configuration to match adjusted replicas
-	if err := adjustZenConfig(ctx.es, adjustedResources); err != nil {
+	if err := adjustZenConfig(ctx.k8sClient, ctx.es, adjustedResources); err != nil {
 		return nil, err
 	}
 	return adjustedResources, nil
 }
 
-func adjustZenConfig(es v1alpha1.Elasticsearch, resources nodespec.ResourcesList) error {
+func adjustZenConfig(k8sClient k8s.Client, es v1alpha1.Elasticsearch, resources nodespec.ResourcesList) error {
 	// patch configs to consider zen1 minimum master nodes
-	if err := zen1.SetupMinimumMasterNodesConfig(resources); err != nil {
+	if err := zen1.SetupMinimumMasterNodesConfig(k8sClient, es, resources); err != nil {
 		return err
 	}
 	// patch configs to consider zen2 initial master nodes if cluster is not bootstrapped yet
