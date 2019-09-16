@@ -29,8 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -67,16 +65,6 @@ func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLi
 		scheme:  mgr.GetScheme(),
 		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
-}
-
-func (r *ReconcileLicenses) SetupWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.Elasticsearch{}).
-		Complete(r)
-	if err != nil {
-		return err
-	}
-	return add(mgr, r)
 }
 
 func nextReconcile(expiry time.Time, safety time.Duration) reconcile.Result {

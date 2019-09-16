@@ -265,35 +265,65 @@ func execute() {
 		},
 	}
 
-	if err = (apmserver.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	// if err = (apmserver.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	// 	log.Error(err, "unable to create controller", "controller", "ApmServer")
+	// 	os.Exit(1)
+	// }
+	// if err = (elasticsearch.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	// 	log.Error(err, "unable to create controller", "controller", "Elasticsearch")
+	// 	os.Exit(1)
+	// }
+	// if err = (kibana.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	// 	log.Error(err, "unable to create controller", "controller", "Kibana")
+	// 	os.Exit(1)
+	// }
+
+	// if err = (asesassn.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	// 	log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
+	// 	os.Exit(1)
+	// }
+
+	// if err = (kbassn.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	// 	log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+	// 	os.Exit(1)
+	// }
+
+	// if err = (license.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	// 	log.Error(err, "unable to create controller", "controller", "License")
+	// 	os.Exit(1)
+	// }
+
+	// if err = (licensetrial.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	// 	log.Error(err, "unable to create controller", "controller", "LicenseTrial")
+	// 	os.Exit(1)
+	// }
+
+	// TODO see if we can move to the new Builder in controller-runtime
+	if err = apmserver.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ApmServer")
 		os.Exit(1)
 	}
-	if err = (elasticsearch.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	if err = elasticsearch.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "Elasticsearch")
 		os.Exit(1)
 	}
-	if err = (kibana.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	if err = kibana.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "Kibana")
 		os.Exit(1)
 	}
-
-	if err = (asesassn.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	if err = asesassn.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
 		os.Exit(1)
 	}
-
-	if err = (kbassn.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	if err = kbassn.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
 		os.Exit(1)
 	}
-
-	if err = (license.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	if err = license.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "License")
 		os.Exit(1)
 	}
-
-	if err = (licensetrial.NewReconciler(mgr, params)).SetupWithManager(mgr); err != nil {
+	if err = licensetrial.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "LicenseTrial")
 		os.Exit(1)
 	}

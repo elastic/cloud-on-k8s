@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -57,20 +56,6 @@ var (
 // TODO sabo remove this or migrate the add watches into NewReconciler?
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := NewReconciler(mgr, params)
-	c, err := add(mgr, r)
-	if err != nil {
-		return err
-	}
-	return addWatches(c, r)
-}
-
-func (r *ReconcileApmServerElasticsearchAssociation) SetupWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewControllerManagedBy(mgr).
-		For(&apmtype.ApmServer{}).
-		Complete(r)
-	if err != nil {
-		return err
-	}
 	c, err := add(mgr, r)
 	if err != nil {
 		return err

@@ -31,8 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -51,23 +49,6 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 		return err
 	}
 	return addWatches(c, reconciler)
-}
-
-// TODO sabo add kubebuilder:rbac markers?
-// the example has the markers above the func (Reconciler) Reconcile()
-func (r *ReconcileKibana) SetupWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewControllerManagedBy(mgr).
-		For(&kibanav1alpha1.Kibana{}).
-		Complete(r)
-	if err != nil {
-		return err
-	}
-	c, err := add(mgr, r)
-	if err != nil {
-		return err
-	}
-	return addWatches(c, r)
-
 }
 
 // NewReconciler returns a new reconcile.Reconciler

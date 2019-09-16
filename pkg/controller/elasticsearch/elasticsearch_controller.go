@@ -35,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -59,27 +58,6 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 		return err
 	}
 	return addWatches(c, reconciler)
-}
-
-// TODO sabo add kubebuilder:rbac markers?
-// the example has the markers above the func (Reconciler) Reconcile()
-// TODO sabo does it make sense to keep with the newReconciler() function? the new paradigm seems to be that main.go
-// creates the struct directly, then calls SetupWithManager on it. I think if we keep this we should probably just export newReconciler
-func (r *ReconcileElasticsearch) SetupWithManager(mgr ctrl.Manager) error {
-	err := ctrl.NewControllerManagedBy(mgr).
-		For(&elasticsearchv1alpha1.Elasticsearch{}).
-		Complete(r)
-	if err != nil {
-		return err
-	}
-	// todo sabo figure out how to refactor this, since this is not how we add the reconciler to the controller now i dont think
-	// but this is still essentially the method referred to here:
-	// https://github.com/kubernetes-sigs/controller-runtime/blob/master/examples/builtins/main.go#L61
-	// and https://github.com/kubernetes-sigs/kubebuilder/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+watch#issuecomment-513063597
-	// TODO monday repeat this for kibana and APM
-	// this is also failing lints because err does nothing
-	c, err := add(mgr, r)
-	return addWatches(c, r)
 }
 
 // NewReconciler returns a new reconcile.Reconciler

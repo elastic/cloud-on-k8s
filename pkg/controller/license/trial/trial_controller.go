@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -208,24 +207,10 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 	return nil
 }
 
-// todo sabo how do we get the functionality in add() watches to be similar in kubebuilder v2? watching for all secrets fails
-// maybe we use .Watches instead of .For and get the event handler somehow?
-func (r *ReconcileTrials) SetupWithManager(mgr ctrl.Manager) error {
-	// TODO sabo do we need to do the ctrl.NewControllerManagedBy since watches are also added by the func add() ?
-	// err := ctrl.NewControllerManagedBy(mgr).
-	// 	For(&corev1.Secret{}).
-	// 	Complete(r)
-	// ctrl.NewControllerManagedBy(mgr).Watches()
-	// if err != nil {
-	// 	return err
-	// }
-	return add(mgr, r)
-}
-
 // Add creates a new Trial Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, p operator.Parameters) error {
-	r := NewReconciler(mgr, p)
+func Add(mgr manager.Manager, params operator.Parameters) error {
+	r := NewReconciler(mgr, params)
 	return add(mgr, r)
 }
 
