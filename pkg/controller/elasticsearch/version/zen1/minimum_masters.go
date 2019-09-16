@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -32,12 +33,37 @@ func SetupMinimumMasterNodesConfig(
 	nodeSpecResources nodespec.ResourcesList,
 ) error {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
-	if zen1compatible, err := AtLeastOneNodeCompatibleWithZen1(nodeSpecResources.StatefulSets(), c, es); !zen1compatible || err != nil {
+	if zen1compatible, err := AtLeastOneNodeCompatibleWithZen1(
+		nodeSpecResources.StatefulSets(), c, es,
+	); !zen1compatible || err != nil {
 		return err
 	}
 
-	masters := nodeSpecResources.MasterNodesNames()
-	quorum := settings.Quorum(len(masters))
+	// There are 2 possible situations here:
+	// 1. The StatefulSet contains some masters: use the replicas to set m_m_n in the configuration file.
+	// 2. The StatefulSet does not contain any master but there are some existing Pods: we should NOT rely on the spec
+	//    of the StatefulSet since it might not reflect the situation, the node type "master" might just have changed
+	//    and a rolling upgrade is maybe in progress.
+	//    In this case some masters are maybe still alive, decreasing m_m_n in the config could lead to a split brain
+	//    situation if the container (not the Pod) restarts.
+	masters := 0
+	for _, resource := range nodeSpecResources {
+		if label.IsMasterNodeSet(resource.StatefulSet) {
+			// First situation: just check for the replicas
+			masters += int(sset.GetReplicas(resource.StatefulSet))
+		} else {
+			// Second situation: not a sset of masters, but we check if there are some of them waiting for a rolling upgrade
+			actualPods, err := sset.GetActualPodsForStatefulSet(c, resource.StatefulSet)
+			if err != nil {
+				return err
+			}
+			actualMasters := len(label.FilterMasterNodePods(actualPods))
+			masters += actualMasters
+		}
+
+	}
+
+	quorum := settings.Quorum(masters)
 
 	for i := range nodeSpecResources {
 		// patch config with the expected minimum master nodes
