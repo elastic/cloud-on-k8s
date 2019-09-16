@@ -99,20 +99,14 @@ dep-vendor-only:
 	# don't attempt to upgrade Gopkg.lock
 	dep ensure --vendor-only
 
-# TODO (sabo): delete this old version
-# Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
-# generate:
-# 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
-# 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-# 	$(MAKE) --no-print-directory generate-all-in-one
-
 # Generate code
 generate: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	$(MAKE) --no-print-directory generate-all-in-one
-	$(MAKE) --no-print-directory generate-api-docs
+	# todo sabo reenable when new tag is cut and can work with the new repo path
+	# $(MAKE) --no-print-directory generate-api-docs
 
 generate-api-docs:
 	@hack/api-docs/build.sh
