@@ -39,15 +39,12 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        createConfig()
                         script {
+                            createConfig("unit-integration-tests")
+
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
-
-                            sh 'TEST_OUTPUT_XML=unit-tests.xml TEST_OUTPUT_JSON=unit-tests.json make -C build/ci TARGET=generate-test-xml ci'
-                            junit "unit-tests.xml"
-
-                            sh 'TEST_OUTPUT_XML=integration-tests.xml TEST_OUTPUT_JSON=integration-tests.json make -C build/ci TARGET=generate-test-xml ci'
-                            junit "integration-tests.xml"
+                            sh 'make -C build/ci TARGET=generate-test-xml ci'
+                            junit "unit-integration-tests.xml"
 
                             sh 'exit $SHELL_EXIT_CODE'
                         }
@@ -61,7 +58,6 @@ pipeline {
                         }
                     }
                     steps {
-                        createConfig()
                         sh """
                             cat >deployer-config.yml <<EOF
 id: gke-ci
@@ -77,9 +73,10 @@ overrides:
 EOF
                         """
                         script {
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+                            createConfig("e2e-tests")
 
-                            sh 'TEST_OUTPUT_XML=e2e-tests.xml TEST_OUTPUT_JSON=e2e-tests.json make -C build/ci TARGET=generate-test-xml ci'
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+                            sh 'make -C build/ci TARGET=generate-test-xml ci'
                             junit "e2e-tests.xml"
 
                             sh 'exit $SHELL_EXIT_CODE'
@@ -112,7 +109,7 @@ def notOnlyDocs() {
     ) == 0
 }
 
-void createConfig() {
+void createConfig(def testFileName = null) {
     sh """
         cat >.env <<EOF
 REGISTRY = eu.gcr.io
@@ -122,4 +119,11 @@ SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
 EOF
     """
+    if (testFileName != null) {
+        env.TEST_FILE_NAME = testFileName
+        sh """
+            echo TEST_OUTPUT_JSON=$TEST_FILE_NAME.json >> .env
+            echo TEST_OUTPUT_XML=$TEST_FILE_NAME.xml >> .env
+        """
+    }
 }
