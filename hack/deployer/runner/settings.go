@@ -17,7 +17,7 @@ type Plans struct {
 
 // Plan encapsulates information needed to provision a cluster
 type Plan struct {
-	Id                string `yaml:"id"`
+	Id                string `yaml:"id"` //nolint
 	Operation         string `yaml:"operation"`
 	ClusterName       string `yaml:"clusterName"`
 	Provider          string `yaml:"provider"`
@@ -26,7 +26,7 @@ type Plan struct {
 	ServiceAccount    bool   `yaml:"serviceAccount"`
 
 	Psp      bool `yaml:"psp"`
-	VmMapMax bool `yaml:"vmMapMax"`
+	VmMapMax bool `yaml:"vmMapMax"` //nolint
 
 	Gke *GkeSettings `yaml:"gke,omitempty"`
 	Aks *AksSettings `yaml:"aks,omitempty"`
@@ -36,8 +36,8 @@ type Plan struct {
 
 type VaultInfo struct {
 	Address  string `yaml:"address"`
-	RoleId   string `yaml:"roleId"`
-	SecretId string `yaml:"secretId"`
+	RoleId   string `yaml:"roleId"`   //nolint
+	SecretId string `yaml:"secretId"` //nolint
 	Token    string `yaml:"token"`
 }
 
@@ -60,7 +60,7 @@ type AksSettings struct {
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
 type RunConfig struct {
-	Id        string                 `yaml:"id"`
+	Id        string                 `yaml:"id"` //nolint
 	Overrides map[string]interface{} `yaml:"overrides"`
 }
 

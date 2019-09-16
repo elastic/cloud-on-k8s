@@ -203,10 +203,17 @@ func disableShardsAllocation(esClient esclient.Client) error {
 	return esClient.DisableReplicaShardsAllocation(ctx)
 }
 
-func doSyncFlush(esClient esclient.Client) error {
+func doSyncFlush(es v1alpha1.Elasticsearch, esClient esclient.Client) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
-	return esClient.SyncedFlush(ctx)
+	err := esClient.SyncedFlush(ctx)
+	if esclient.IsConflict(err) {
+		// Elasticsearch returns an error if the synced flush fails due to concurrent indexing operations.
+		// The HTTP status code in that case will be 409 CONFLICT. We ignore that and consider synced flush best effort.
+		log.Info("synced flush failed with 409 CONFLICT. Ignoring.", "namespace", es.Namespace, "es_name", es.Name)
+		return nil
+	}
+	return err
 }
 
 func (d *defaultDriver) MaybeEnableShardsAllocation(
@@ -289,7 +296,7 @@ func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Cli
 	}
 
 	// Request a sync flush to optimize indices recovery when the node restarts.
-	if err := doSyncFlush(esClient); err != nil {
+	if err := doSyncFlush(ctx.ES, esClient); err != nil {
 		return err
 	}
 

@@ -13,8 +13,8 @@ import (
 )
 
 type TestSset struct {
-	Name        string
 	Namespace   string
+	Name        string
 	ClusterName string
 	Version     string
 	Replicas    int32

@@ -5,17 +5,22 @@
 package driver
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // HandleDownscale attempts to downscale actual StatefulSets towards expected ones.
@@ -101,8 +106,7 @@ func attemptDownscale(
 ) (bool, error) {
 	switch {
 	case downscale.isRemoval():
-		ssetLogger(downscale.statefulSet).Info("Deleting statefulset")
-		return false, ctx.k8sClient.Delete(&downscale.statefulSet)
+		return false, removeStatefulSetResources(ctx.k8sClient, ctx.es, downscale.statefulSet)
 
 	case downscale.isReplicaDecrease():
 		// adjust the theoretical downscale to one we can safely perform
@@ -119,6 +123,24 @@ func attemptDownscale(
 		// nothing to do
 		return false, nil
 	}
+}
+
+// removeStatefulSetResources deletes the given StatefulSet along with the corresponding
+// headless service and configuration secret.
+func removeStatefulSetResources(k8sClient k8s.Client, es v1alpha1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+	headlessSvc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
+	err := k8sClient.Delete(&headlessSvc)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	err = settings.DeleteConfig(k8sClient, es.Namespace, statefulSet.Name)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	ssetLogger(statefulSet).Info("Deleting statefulset")
+	return k8sClient.Delete(&statefulSet)
 }
 
 // calculatePerformableDownscale updates the given downscale target replicas to account for nodes

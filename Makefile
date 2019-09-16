@@ -104,6 +104,11 @@ generate: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
+	$(MAKE) --no-print-directory generate-all-in-one
+	$(MAKE) --no-print-directory generate-api-docs
+
+generate-api-docs:
+	@hack/api-docs/build.sh
 
 elastic-operator: generate
 	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
@@ -119,9 +124,18 @@ clean:
 unit: clean
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
+unit_xml: clean
+	go test --json ./pkg/... ./cmd/... -coverprofile cover.out > unit-tests.json
+	gotestsum --junitfile unit-tests.xml --raw-command cat unit-tests.json
+
 integration: GO_TAGS += integration
 integration: clean generate
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
+
+integration_xml: GO_TAGS += integration
+integration_xml: clean generate
+	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
+	gotestsum --junitfile integration-tests.xml --raw-command cat integration-tests.json
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)
@@ -250,14 +264,14 @@ ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set)
 endif
 
-DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --run-config-file=hack/deployer/config/run-config.yml
+DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --config-file=hack/deployer/config/deployer-config.yml
 
 build-deployer:
 	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
 
 setup-deployer-for-gke-once: require-gcloud-project build-deployer
-ifeq (,$(wildcard hack/deployer/config/run-config.yml))
-	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/run-config.yml
+ifeq (,$(wildcard hack/deployer/config/deployer-config.yml))
+	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/deployer-config.yml
 endif
 
 credentials: setup-deployer-for-gke-once
@@ -356,13 +370,13 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
+ci: dep-vendor-only check-fmt lint generate check-local-changes unit_xml integration_xml e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
 ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e
 
 run-deployer: dep-vendor-only build-deployer
-	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
+	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 ci-release: clean dep-vendor-only generate build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!

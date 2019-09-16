@@ -41,6 +41,8 @@ pipeline {
                     steps {
                         createConfig()
                         sh 'make -C build/ci TARGET=ci ci'
+                        junit "unit-tests.xml"
+                        junit "integration-tests.xml"
                     }
                 }
                 stage("Run smoke E2E tests") {
@@ -56,7 +58,7 @@ pipeline {
                     steps {
                         createConfig()
                         sh """
-                            cat >run-config.yml <<EOF
+                            cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   kubernetesVersion: "1.12"

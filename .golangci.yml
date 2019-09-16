@@ -2,7 +2,6 @@ run:
   deadline: 300s
   skip-dirs:
     - config
-    - hack
   skip-files:
     - utils/chrono/millis\.test\.go
 linters:

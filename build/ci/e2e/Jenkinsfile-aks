@@ -28,7 +28,7 @@ REGISTRY = cloudonk8s.azurecr.io
 REPOSITORY = operators
 IMG_SUFFIX = -ci
 EOF
-                    cat >run-config.yml <<EOF
+                    cat >deployer-config.yml <<EOF
 id: aks-ci
 overrides:
   kubernetesVersion: "1.12.8"
@@ -48,7 +48,7 @@ EOF
         cleanup {
             script {
                 sh """
-                    cat >run-config.yml <<EOF
+                    cat >deployer-config.yml <<EOF
 id: aks-ci
 overrides:
   operation: delete
