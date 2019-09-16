@@ -166,7 +166,7 @@ func TestMutationAndReversal(t *testing.T) {
 
 	mutation := b.WithNoESTopology().WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithAdditionalConfig(map[string]map[string]interface{}{
-			"masterdata": map[string]interface{}{
+			"masterdata": {
 				"node.attr.box_type": "mixed",
 			},
 		})

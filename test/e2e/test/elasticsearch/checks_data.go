@@ -69,7 +69,10 @@ func (dc *DataIntegrityCheck) Init() error {
 		return err
 	}
 	// delete the index but ignore errors (e.g. if it did not exist yet)
-	_, _ = esClient.Request(context.Background(), indexDeletion)
+	resp, err := esClient.Request(context.Background(), indexDeletion)
+	if err == nil {
+		resp.Body.Close()
+	}
 
 	// create the index with controlled settings
 	indexCreation, err := http.NewRequest(
@@ -80,7 +83,7 @@ func (dc *DataIntegrityCheck) Init() error {
 	if err != nil {
 		return err
 	}
-	resp, err := esClient.Request(context.Background(), indexCreation)
+	resp, err = esClient.Request(context.Background(), indexCreation)
 	if err != nil {
 		return err
 	}
