@@ -6,7 +6,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -96,7 +95,7 @@ type TemplateParams struct {
 }
 
 func fetch(url string, out interface{}) (string, error) {
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) //#nosec
 	if err != nil {
 		return "", err
 	}
@@ -105,7 +104,7 @@ func fetch(url string, out interface{}) (string, error) {
 	nextLink := extractNextLink(resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", errors.New(fmt.Sprintf("%s: %d %s ", url, resp.StatusCode, resp.Status))
+		return "", fmt.Errorf("%s: %d %s ", url, resp.StatusCode, resp.Status)
 	}
 
 	if err = json.NewDecoder(resp.Body).Decode(&out); err != nil {

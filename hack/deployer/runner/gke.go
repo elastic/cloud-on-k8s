@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	GkeDriverId                     = "gke"
+	GkeDriverID                     = "gke"
 	GkeVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-gcp-k8s-operator"
 	GkeServiceAccountVaultFieldName = "service-account"
 )
 
 func init() {
-	drivers[GkeDriverId] = &GkeDriverFactory{}
+	drivers[GkeDriverID] = &GkeDriverFactory{}
 }
 
 type GkeDriverFactory struct {
@@ -67,7 +67,7 @@ func (d *GkeDriver) Execute() error {
 		if exists {
 			log.Printf("not creating as cluster exists")
 		} else {
-			if err := d.configSsh(); err != nil {
+			if err := d.configSSH(); err != nil {
 				return err
 			}
 
@@ -120,19 +120,19 @@ func (d *GkeDriver) auth() error {
 		}
 
 		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
-	} else {
-		log.Println("Authenticating as user...")
-		accounts, err := NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
-		if err != nil {
-			return err
-		}
-
-		if len(accounts) > 0 {
-			return nil
-		}
-
-		return NewCommand("gcloud auth login").Run()
 	}
+
+	log.Println("Authenticating as user...")
+	accounts, err := NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
+	if err != nil {
+		return err
+	}
+
+	if len(accounts) > 0 {
+		return nil
+	}
+
+	return NewCommand("gcloud auth login").Run()
 }
 
 func (d *GkeDriver) clusterExists() (bool, error) {
@@ -147,7 +147,7 @@ func (d *GkeDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-func (d *GkeDriver) configSsh() error {
+func (d *GkeDriver) configSSH() error {
 	log.Println("Configuring ssh...")
 	return NewCommand("gcloud --quiet --project {{.GCloudProject}} compute config-ssh").AsTemplate(d.ctx).Run()
 }
