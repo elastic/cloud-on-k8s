@@ -32,7 +32,7 @@ var Config *rest.Config
 
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M, crdPath string) {
-	controllerscheme.SetupScheme()
+	_ = controllerscheme.SetupScheme()
 	logf.SetLogger(logf.ZapLogger(true))
 	t := &envtest.Environment{
 		CRDDirectoryPaths:        []string{crdPath},

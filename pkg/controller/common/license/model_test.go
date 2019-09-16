@@ -137,7 +137,7 @@ var expectedLicenseSpec = EnterpriseLicense{
 }
 
 func Test_unmarshalModel(t *testing.T) {
-	controllerscheme.SetupScheme()
+	_ = controllerscheme.SetupScheme()
 	type args struct {
 		licenseFile string
 	}

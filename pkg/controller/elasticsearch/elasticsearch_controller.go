@@ -77,6 +77,7 @@ func (r *ReconcileElasticsearch) SetupWithManager(mgr ctrl.Manager) error {
 	// https://github.com/kubernetes-sigs/controller-runtime/blob/master/examples/builtins/main.go#L61
 	// and https://github.com/kubernetes-sigs/kubebuilder/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+watch#issuecomment-513063597
 	// TODO monday repeat this for kibana and APM
+	// this is also failing lints because err does nothing
 	c, err := add(mgr, r)
 	return addWatches(c, r)
 }
