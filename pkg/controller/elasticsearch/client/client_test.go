@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -604,5 +605,45 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 		if (err != nil) != tt.wantErr {
 			t.Errorf("Client.SetMinimumMasterNodes() error = %v, wantErr %v", err, tt.wantErr)
 		}
+	}
+}
+
+func TestIsConflict(t *testing.T) {
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "200 is not a conflict",
+			args: args{
+				err: &APIError{response: NewMockResponse(200, nil, "")}, // nolint
+			},
+			want: false,
+		},
+		{
+			name: "409 is a conflict",
+			args: args{
+				err: &APIError{response: NewMockResponse(409, nil, "")}, // nolint
+			},
+			want: true,
+		},
+		{
+			name: "no api error",
+			args: args{
+				err: errors.New("not an api error"),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsConflict(tt.args.err); got != tt.want {
+				t.Errorf("IsConflict() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
