@@ -148,7 +148,7 @@ func TestState_Apply(t *testing.T) {
 			name:    "no degraded health event on cluster formation",
 			cluster: v1alpha1.Elasticsearch{},
 			effects: func(s *State) {
-				s.UpdateElasticsearchPending([]corev1.Pod{})
+				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
 			},
 			wantEvents: []events.Event{},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
@@ -156,7 +156,7 @@ func TestState_Apply(t *testing.T) {
 					AvailableNodes: 0,
 				},
 				Health: v1alpha1.ElasticsearchRedHealth,
-				Phase:  v1alpha1.ElasticsearchPendingPhase,
+				Phase:  v1alpha1.ElasticsearchApplyingChangesPhase,
 			},
 		},
 		{
@@ -189,7 +189,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateElasticsearchPending([]corev1.Pod{})
+				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
 			},
 			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnhealthy, Message: "Elasticsearch cluster health degraded"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
@@ -197,7 +197,7 @@ func TestState_Apply(t *testing.T) {
 					AvailableNodes: 0,
 				},
 				Health: v1alpha1.ElasticsearchRedHealth,
-				Phase:  v1alpha1.ElasticsearchPendingPhase,
+				Phase:  v1alpha1.ElasticsearchApplyingChangesPhase,
 			},
 		},
 		{
@@ -209,7 +209,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateElasticsearchOperational(ResourcesState{}, observer.State{
+				s.UpdateElasticsearchReady(ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -224,7 +224,7 @@ func TestState_Apply(t *testing.T) {
 					AvailableNodes: 0,
 				},
 				Health:      v1alpha1.ElasticsearchRedHealth,
-				Phase:       v1alpha1.ElasticsearchOperationalPhase,
+				Phase:       v1alpha1.ElasticsearchReadyPhase,
 				ClusterUUID: "new",
 			},
 		},
@@ -236,7 +236,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateElasticsearchOperational(ResourcesState{}, observer.State{
+				s.UpdateElasticsearchReady(ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -251,7 +251,7 @@ func TestState_Apply(t *testing.T) {
 					AvailableNodes: 0,
 				},
 				Health:      v1alpha1.ElasticsearchRedHealth,
-				Phase:       v1alpha1.ElasticsearchOperationalPhase,
+				Phase:       v1alpha1.ElasticsearchReadyPhase,
 				ClusterUUID: "new",
 			},
 		},
@@ -264,7 +264,7 @@ func TestState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *State) {
-				s.UpdateElasticsearchOperational(ResourcesState{}, observer.State{
+				s.UpdateElasticsearchReady(ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -279,7 +279,7 @@ func TestState_Apply(t *testing.T) {
 					AvailableNodes: 0,
 				},
 				Health:      v1alpha1.ElasticsearchRedHealth,
-				Phase:       v1alpha1.ElasticsearchOperationalPhase,
+				Phase:       v1alpha1.ElasticsearchReadyPhase,
 				ClusterUUID: "old",
 			},
 		},
@@ -289,7 +289,7 @@ func TestState_Apply(t *testing.T) {
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:     v1alpha1.ElasticsearchRedHealth,
 					MasterNode: "old",
-					Phase:      v1alpha1.ElasticsearchOperationalPhase,
+					Phase:      v1alpha1.ElasticsearchReadyPhase,
 				},
 			},
 			effects: func(s *State) {
@@ -311,7 +311,7 @@ func TestState_Apply(t *testing.T) {
 					AvailableNodes: 0,
 				},
 				Health:     v1alpha1.ElasticsearchRedHealth,
-				Phase:      v1alpha1.ElasticsearchOperationalPhase,
+				Phase:      v1alpha1.ElasticsearchReadyPhase,
 				MasterNode: "new",
 			},
 		},
@@ -321,7 +321,7 @@ func TestState_Apply(t *testing.T) {
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:     v1alpha1.ElasticsearchRedHealth,
 					MasterNode: "old",
-					Phase:      v1alpha1.ElasticsearchOperationalPhase,
+					Phase:      v1alpha1.ElasticsearchReadyPhase,
 				},
 			},
 			effects: func(s *State) {
@@ -340,7 +340,7 @@ func TestState_Apply(t *testing.T) {
 					AvailableNodes: 0,
 				},
 				Health:     v1alpha1.ElasticsearchRedHealth,
-				Phase:      v1alpha1.ElasticsearchOperationalPhase,
+				Phase:      v1alpha1.ElasticsearchReadyPhase,
 				MasterNode: "",
 			},
 		},
@@ -381,11 +381,11 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 			name: "phase is not changed by default",
 			cluster: v1alpha1.Elasticsearch{
 				Status: v1alpha1.ElasticsearchStatus{
-					Phase: v1alpha1.ElasticsearchPendingPhase,
+					Phase: v1alpha1.ElasticsearchApplyingChangesPhase,
 				},
 			},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, v1alpha1.ElasticsearchPendingPhase, s.status.Phase)
+				assert.EqualValues(t, v1alpha1.ElasticsearchApplyingChangesPhase, s.status.Phase)
 			},
 		},
 		{

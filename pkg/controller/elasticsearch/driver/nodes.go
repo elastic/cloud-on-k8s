@@ -64,7 +64,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if !esReachable {
 		// Cannot perform next operations if we cannot request Elasticsearch.
 		log.Info("ES external service not ready yet for further reconciliation, re-queuing.", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods)
+		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
 		return results.WithResult(defaultRequeue)
 	}
 
@@ -113,9 +113,9 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// When not reconciled, set the phase to pending only if it's operational to avoid to
 	// override another "not operational" phase like MigratingData.
 	if Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
-		reconcileState.UpdateElasticsearchOperational(resourcesState, observedState)
-	} else if reconcileState.IsElasticsearchOperational(observedState) {
-		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods)
+		reconcileState.UpdateElasticsearchReady(resourcesState, observedState)
+	} else if reconcileState.IsElasticsearchReady(observedState) {
+		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
 	}
 
 	// TODO:

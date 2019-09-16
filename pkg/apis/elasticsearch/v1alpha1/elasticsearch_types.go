@@ -202,10 +202,10 @@ func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
 type ElasticsearchOrchestrationPhase string
 
 const (
-	// ElasticsearchOperationalPhase is operating at the desired spec.
-	ElasticsearchOperationalPhase ElasticsearchOrchestrationPhase = "Operational"
-	// ElasticsearchPendingPhase controller is working towards a desired state, cluster can be unavailable.
-	ElasticsearchPendingPhase ElasticsearchOrchestrationPhase = "Pending"
+	// ElasticsearchReadyPhase is operating at the desired spec.
+	ElasticsearchReadyPhase ElasticsearchOrchestrationPhase = "Ready"
+	// ElasticsearchApplyingChangesPhase controller is working towards a desired state, cluster can be unavailable.
+	ElasticsearchApplyingChangesPhase ElasticsearchOrchestrationPhase = "ApplyingChanges"
 	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
 	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
 	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
