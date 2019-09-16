@@ -120,10 +120,10 @@ IMG_SUFFIX = -ci
 EOF
     """
     if (testFileName != null) {
-        env.TEST_FILE_NAME = testFileName
+        env.TEST_FILE_NAME = testFileName.toString()
         sh """
-            echo TEST_OUTPUT_JSON=$TEST_FILE_NAME.json >> .env
-            echo TEST_OUTPUT_XML=$TEST_FILE_NAME.xml >> .env
+            echo TEST_OUTPUT_JSON = ${TEST_FILE_NAME}.json >> .env
+            echo TEST_OUTPUT_XML = ${TEST_FILE_NAME}.xml >> .env
         """
     }
 }
