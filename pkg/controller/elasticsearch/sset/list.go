@@ -54,11 +54,10 @@ func (l StatefulSetList) ObjectMetas() []metav1.ObjectMeta {
 func (l StatefulSetList) ToUpdate() StatefulSetList {
 	toUpdate := StatefulSetList{}
 	for _, s := range l {
-		// When using on delete current revision is never reset to update revision
-		// just looking that the update/current revision therefore does not work when reverting
-		// to previous revision and gives constant false positives after an initial update.
-		// Either updated replicas != replicas expresses the fact that
-		// an update is still pending.
+		// When using an OnDelete strategy current revision is never reset to update revision.
+		// Just looking that the revision to detect updates does therefore does not work when reverting
+		// to a previous revision and gives constant false positives after an initial update.
+		// Only updated replicas != replicas expresses the fact that an update is still pending.
 		if s.Status.UpdatedReplicas != s.Status.Replicas {
 			toUpdate = append(toUpdate, s)
 		}
