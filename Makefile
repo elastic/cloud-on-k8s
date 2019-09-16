@@ -25,6 +25,13 @@ LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
+
 # TODO (sabo) move this somewhere appropriate
 # find or download controller-gen
 # download controller-gen if necessary
