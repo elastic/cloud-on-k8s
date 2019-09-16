@@ -46,6 +46,10 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
+	if err := GarbageCollectPVCs(d.K8sClient(), d.Scheme(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
+		return results.WithError(err)
+	}
+
 	esState := NewMemoizingESState(esClient)
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
