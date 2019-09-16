@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,9 +63,11 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 	// TODO: If master is changed into a data node (or the opposite) it must be excluded or we should update m_m_n
 	deletedPods := []corev1.Pod{}
 	for _, podToDelete := range podsToDelete {
+		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
+			return deletedPods, err
+		}
 		ctx.expectations.ExpectDeletion(podToDelete)
-		err := ctx.delete(&podToDelete)
-		if err != nil {
+		if err := ctx.delete(&podToDelete); err != nil {
 			ctx.expectations.CancelExpectedDeletion(podToDelete)
 			return deletedPods, err
 		}
@@ -122,13 +125,24 @@ func sortCandidates(allPods []corev1.Pod) {
 }
 
 // handleMasterScaleChange attempts to update
-/*func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
-	//masterScaleUp := !label.IsMasterNode(pod) && stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
+func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
 	if masterScaleDown {
-		zen1.AtLeastOneNodeCompatibleWithZen1(ctx.statefulSets)
+		if err := updateZenSettingsForDownscale(
+			ctx.client,
+			ctx.esClient,
+			ctx.ES,
+			ctx.reconcileState,
+			ctx.statefulSets,
+			pod.Name,
+		); err != nil {
+			return err
+		}
 	}
-}*/
+	//masterScaleUp := !label.IsMasterNode(pod) && stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
+	//TODO: With Zen1 we must update m_m_n in the configuration now, otherwise the Pod may restart with m_m_n too low
+	return nil
+}
 
 func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
 	uid := pod.UID
