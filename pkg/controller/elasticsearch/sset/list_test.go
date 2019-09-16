@@ -195,19 +195,15 @@ func TestStatefulSetList_GetByName(t *testing.T) {
 func TestStatefulSetList_ToUpdate(t *testing.T) {
 	toUpdate1 := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Name: "toUpdate1"},
-		Status:     appsv1.StatefulSetStatus{UpdateRevision: "update-rev", CurrentRevision: "current-rev"},
+		Status:     appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 2},
 	}
 	toUpdate2 := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{Name: "toUpdate2"},
-		Status:     appsv1.StatefulSetStatus{UpdateRevision: "update-rev", CurrentRevision: "current-rev"},
-	}
-	noUpdateRev := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "noUpdateRev"},
-		Status:     appsv1.StatefulSetStatus{UpdateRevision: "", CurrentRevision: "current-rev"},
+		Status:     appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 2},
 	}
 	updateMatchCurrent := appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{Name: "noUpdateRev"},
-		Status:     appsv1.StatefulSetStatus{UpdateRevision: "update-rev", CurrentRevision: "update-rev"},
+		ObjectMeta: metav1.ObjectMeta{Name: "updateMatchCurrent"},
+		Status:     appsv1.StatefulSetStatus{UpdatedReplicas: 1, Replicas: 1},
 	}
 	tests := []struct {
 		name string
@@ -220,8 +216,8 @@ func TestStatefulSetList_ToUpdate(t *testing.T) {
 			want: StatefulSetList{},
 		},
 		{
-			name: "2/4 StatefulSets to update",
-			l:    StatefulSetList{noUpdateRev, toUpdate1, updateMatchCurrent, toUpdate2},
+			name: "2/3 StatefulSets to update",
+			l:    StatefulSetList{toUpdate1, updateMatchCurrent, toUpdate2},
 			want: StatefulSetList{toUpdate1, toUpdate2},
 		},
 	}

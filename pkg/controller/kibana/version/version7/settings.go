@@ -12,6 +12,6 @@ import (
 // SettingsFactory returns Kibana settings for a 7.x Kibana.
 func SettingsFactory(kb kbtype.Kibana) map[string]interface{} {
 	return map[string]interface{}{
-		config.ElasticsearchHosts: kb.Spec.Elasticsearch.URL,
+		config.ElasticsearchHosts: kb.AssociationConf().GetURL(),
 	}
 }

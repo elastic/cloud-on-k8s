@@ -109,9 +109,8 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	}
 
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
-	if kb.Spec.Elasticsearch.Auth.SecretKeyRef != nil {
-		ref := kb.Spec.Elasticsearch.Auth.SecretKeyRef
-		esAuthSecret := types.NamespacedName{Name: ref.Name, Namespace: kb.Namespace}
+	if kb.AssociationConf().AuthIsConfigured() {
+		esAuthSecret := types.NamespacedName{Name: kb.AssociationConf().GetAuthSecretName(), Namespace: kb.Namespace}
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
 			Name:    secretWatchKey(*kb),
 			Watched: []types.NamespacedName{esAuthSecret},
@@ -123,15 +122,14 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		if err := d.client.Get(esAuthSecret, &sec); err != nil {
 			return nil, err
 		}
-		_, _ = configChecksum.Write(sec.Data[ref.Key])
+		_, _ = configChecksum.Write(sec.Data[kb.AssociationConf().GetAuthSecretKey()])
 	} else {
 		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(*kb))
 	}
 
-	if kb.Spec.Elasticsearch.CertificateAuthorities.SecretName != "" {
-
+	if kb.AssociationConf().CAIsConfigured() {
 		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.Spec.Elasticsearch.CertificateAuthorities.SecretName}
+		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
 		// watch for changes in the CA secret
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
 			Name:    secretWatchKey(*kb),
@@ -215,7 +213,7 @@ func (d *driver) Reconcile(
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.Results{}
-	if !kb.Spec.Elasticsearch.IsConfigured() {
+	if !kb.AssociationConf().IsConfigured() {
 		d.recorder.Event(kb, corev1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
 		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return &results

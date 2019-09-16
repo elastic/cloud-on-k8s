@@ -12,6 +12,6 @@ import (
 // SettingsFactory returns Kibana settings for a 6.x Kibana.
 func SettingsFactory(kb kbtype.Kibana) map[string]interface{} {
 	return map[string]interface{}{
-		config.ElasticsearchURL: kb.Spec.Elasticsearch.URL,
+		config.ElasticsearchURL: kb.AssociationConf().GetURL(),
 	}
 }

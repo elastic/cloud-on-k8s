@@ -59,7 +59,7 @@ pipeline {
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    def msg = "E2E tests for different Elastic stack versions failed!\r\n" + env.BUILD_URL
+                    def msg = "E2E tests for different Elastic stack versions failed!\r\n" + env.RUN_DISPLAY_URL
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
                         color: 'danger',
@@ -94,7 +94,7 @@ SKIP_DOCKER_COMMAND = true
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 EOF
-        cat >run-config.yml <<EOF
+        cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: create

@@ -33,7 +33,7 @@ const (
 	APMServerSSLCertificate = "apm-server.ssl.certificate"
 )
 
-func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.CanonicalConfig, error) {
+func NewConfigFromSpec(c k8s.Client, as *v1alpha1.ApmServer) (*settings.CanonicalConfig, error) {
 	specConfig := as.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1alpha1.Config{}
@@ -45,15 +45,15 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 	}
 
 	outputCfg := settings.NewCanonicalConfig()
-	if as.Spec.Elasticsearch.IsConfigured() {
+	if as.AssociationConf().IsConfigured() {
 		// Get username and password
-		username, password, err := association.ElasticsearchAuthSettings(c, &as)
+		username, password, err := association.ElasticsearchAuthSettings(c, as)
 		if err != nil {
 			return nil, err
 		}
 		outputCfg = settings.MustCanonicalConfig(
 			map[string]interface{}{
-				"output.elasticsearch.hosts":                       as.Spec.Elasticsearch.Hosts,
+				"output.elasticsearch.hosts":                       []string{as.AssociationConf().GetURL()},
 				"output.elasticsearch.username":                    username,
 				"output.elasticsearch.password":                    password,
 				"output.elasticsearch.ssl.certificate_authorities": []string{filepath.Join(CertificatesDir, certificates.CertFileName)},
@@ -82,7 +82,7 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 	return cfg, nil
 }
 
-func tlsSettings(as v1alpha1.ApmServer) map[string]interface{} {
+func tlsSettings(as *v1alpha1.ApmServer) map[string]interface{} {
 	if !as.Spec.HTTP.TLS.Enabled() {
 		return nil
 	}

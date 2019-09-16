@@ -27,7 +27,7 @@ var log = logf.Log.WithName("apmserver-config")
 func Reconcile(client k8s.Client, scheme *runtime.Scheme, as *v1alpha1.ApmServer) (*corev1.Secret, error) {
 
 	// Create a new configuration from the APM object spec.
-	cfg, err := NewConfigFromSpec(client, *as)
+	cfg, err := NewConfigFromSpec(client, as)
 	if err != nil {
 		return nil, err
 	}

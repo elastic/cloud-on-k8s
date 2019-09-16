@@ -13,6 +13,7 @@ import (
 )
 
 type TestSset struct {
+	Namespace   string
 	Name        string
 	ClusterName string
 	Version     string
@@ -31,7 +32,8 @@ func (t TestSset) Build() appsv1.StatefulSet {
 	label.NodeTypesDataLabelName.Set(t.Data, labels)
 	statefulSet := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: t.Name,
+			Name:      t.Name,
+			Namespace: t.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &t.Replicas,

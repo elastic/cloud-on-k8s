@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -134,7 +135,7 @@ func requestAssertion(test func(req *http.Request)) RoundTripFunc {
 func TestClientErrorHandling(t *testing.T) {
 	// 303 would lead to a redirect to another error response if we would also set the Location header
 	codes := []int{100, 303, 400, 404, 500}
-	testClient := NewMockClient(version.MustParse("6.7.0"), errorResponses(codes))
+	testClient := NewMockClient(version.MustParse("6.8.0"), errorResponses(codes))
 	requests := []func() (string, error){
 		func() (string, error) {
 			_, err := testClient.GetClusterState(context.Background())
@@ -155,7 +156,7 @@ func TestClientErrorHandling(t *testing.T) {
 }
 
 func TestClientUsesJsonContentType(t *testing.T) {
-	testClient := NewMockClient(version.MustParse("6.7.0"), requestAssertion(func(req *http.Request) {
+	testClient := NewMockClient(version.MustParse("6.8.0"), requestAssertion(func(req *http.Request) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
 
@@ -196,7 +197,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testClient := NewMockClientWithUser(version.MustParse("6.7.0"),
+		testClient := NewMockClientWithUser(version.MustParse("6.8.0"),
 			tt.args,
 			requestAssertion(func(req *http.Request) {
 				username, password, ok := req.BasicAuth()
@@ -281,7 +282,7 @@ func TestAPIError_Error(t *testing.T) {
 
 func TestClientGetNodes(t *testing.T) {
 	expectedPath := "/_nodes/_all/jvm,settings"
-	testClient := NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
+	testClient := NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
@@ -300,7 +301,7 @@ func TestClientGetNodes(t *testing.T) {
 
 func TestClientGetNodesStats(t *testing.T) {
 	expectedPath := "/_nodes/_all/stats/os"
-	testClient := NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
+	testClient := NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
@@ -343,7 +344,7 @@ func TestClient_Equal(t *testing.T) {
 		return ca.Cert
 	}
 	dummyCACerts := []*x509.Certificate{createCert()}
-	v6 := version.MustParse("6.7.0")
+	v6 := version.MustParse("6.8.0")
 	v7 := version.MustParse("7.0.0")
 	x509.NewCertPool()
 	tests := []struct {
@@ -427,7 +428,7 @@ func TestClient_UpdateLicense(t *testing.T) {
 	}{
 		{
 			expectedPath: "/_xpack/license",
-			version:      version.MustParse("6.7.0"),
+			version:      version.MustParse("6.8.0"),
 		},
 		{
 			expectedPath: "/_license",
@@ -473,7 +474,7 @@ func TestClient_GetLicense(t *testing.T) {
 	}{
 		{
 			expectedPath: "/_xpack/license",
-			version:      version.MustParse("6.7.0"),
+			version:      version.MustParse("6.8.0"),
 		},
 		{
 			expectedPath: "/_license",
@@ -513,7 +514,7 @@ func TestClient_AddVotingConfigExclusions(t *testing.T) {
 	}{
 		{
 			expectedPath: "",
-			version:      version.MustParse("6.7.0"),
+			version:      version.MustParse("6.8.0"),
 			wantErr:      true,
 		},
 		{
@@ -546,7 +547,7 @@ func TestClient_DeleteVotingConfigExclusions(t *testing.T) {
 	}{
 		{
 			expectedPath: "",
-			version:      version.MustParse("6.7.0"),
+			version:      version.MustParse("6.8.0"),
 			wantErr:      true,
 		},
 		{
@@ -581,7 +582,7 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 		{
 			name:         "mininum master nodes is essential in v6",
 			expectedPath: "/_cluster/settings",
-			version:      version.MustParse("6.7.0"),
+			version:      version.MustParse("6.8.0"),
 			wantErr:      false,
 		},
 		{
@@ -604,5 +605,45 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 		if (err != nil) != tt.wantErr {
 			t.Errorf("Client.SetMinimumMasterNodes() error = %v, wantErr %v", err, tt.wantErr)
 		}
+	}
+}
+
+func TestIsConflict(t *testing.T) {
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "200 is not a conflict",
+			args: args{
+				err: &APIError{response: NewMockResponse(200, nil, "")}, // nolint
+			},
+			want: false,
+		},
+		{
+			name: "409 is a conflict",
+			args: args{
+				err: &APIError{response: NewMockResponse(409, nil, "")}, // nolint
+			},
+			want: true,
+		},
+		{
+			name: "no api error",
+			args: args{
+				err: errors.New("not an api error"),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsConflict(tt.args.err); got != tt.want {
+				t.Errorf("IsConflict() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

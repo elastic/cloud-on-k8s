@@ -68,7 +68,7 @@ func baseSettings(kb v1alpha1.Kibana) map[string]interface{} {
 	return map[string]interface{}{
 		ServerName:         kb.Name,
 		ServerHost:         "0",
-		ElasticSearchHosts: []string{kb.Spec.Elasticsearch.URL},
+		ElasticSearchHosts: []string{kb.AssociationConf().GetURL()},
 		XpackMonitoringUiContainerElasticsearchEnabled: true,
 	}
 }

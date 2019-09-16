@@ -180,6 +180,13 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 		},
 	}
 
+	// pods built with BuildPodTemplateSpec sort env vars, so our expected result must be sorted as well.
+	for _, container := range expected.Spec.Containers {
+		sort.SliceStable(container.Env, func(i, j int) bool {
+			return container.Env[i].Name < container.Env[j].Name
+		})
+	}
+
 	deep.MaxDepth = 25
 	require.Nil(t, deep.Equal(expected, actual))
 }

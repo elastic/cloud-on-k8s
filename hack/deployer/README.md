@@ -4,7 +4,7 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
 
 At the moment it support GKE and AKS.
 
-Default values for settings are kept in config/plans.yml file. More settings and setting overrides are provided via run-config.yml file.
+Default values for settings are kept in config/plans.yml file. More settings and setting overrides are provided via deployer-config.yml file.
 
 ## Typical usage
 
@@ -19,7 +19,7 @@ Run once with your GCLOUD_PROJECT:
 make dep-vendor-only
 cd hack/deployer
 go build
-cat > run-config.yml << EOF
+cat > deployer-config.yml << EOF
 id: gke-ci
 overrides:
   clusterName: dkowalski-dev-cluster
@@ -40,18 +40,18 @@ overrides:
   operation: delete
 ...
 ``` 
-to your run-config.yml and run `./deployer` again.
+to your deployer-config.yml and run `./deployer` again.
 
 
 ## CI usage
 
-CI will populate run-config with vault login information and deployer will fetch the needed secrets. Secrets will differ depending on the provider chosen.
+CI will populate deployer-config with vault login information and deployer will fetch the needed secrets. Secrets will differ depending on the provider chosen.
 
 ## CI impersonation
 
 To facilitate testing locally, developers can run "as CI". While the credentials and vault login method are different it does allow fetching the same credentials and logging in as the same service account as CI would. This aims to shorten the dev cycle for CI related work and debugging.
 
-To achieve the above, add the following to your run-config.yml, where TOKEN is your GitHub personal access token.
+To achieve the above, add the following to your deployer-config.yml, where TOKEN is your GitHub personal access token.
 
 ```
 overrides:
