@@ -161,7 +161,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	err := handler.Handle(
 		&apmServer,
 		watchFinalizer(apmName, r.watches),
-		user.UserFinalizer(r.Client, NewUserLabelSelector(apmName)),
+		user.UserFinalizer(r.Client, apmServer.Kind(), NewUserLabelSelector(apmName)),
 	)
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
@@ -212,7 +212,7 @@ func esCAWatchName(apm types.NamespacedName) string {
 // because the association to the APM server has been deleted.
 func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "dynamic-watches.finalizers.apm.k8s.elastic.co",
+		Name: "finalizer.association.apmserver.k8s.elastic.co/elasticsearch",
 		Execute: func() error {
 			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocKey))
 			w.Secrets.RemoveHandlerForKey(esCAWatchName(assocKey))

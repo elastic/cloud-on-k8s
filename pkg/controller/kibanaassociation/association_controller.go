@@ -147,7 +147,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	err := h.Handle(
 		&kibana,
 		watchFinalizer(kbName, r.watches),
-		user.UserFinalizer(r.Client, NewUserLabelSelector(kbName)),
+		user.UserFinalizer(r.Client, kibana.Kind(), NewUserLabelSelector(kbName)),
 	)
 	if err != nil {
 		if apierrors.IsConflict(err) {

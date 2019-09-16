@@ -58,7 +58,7 @@ func esCAWatchName(kibana types.NamespacedName) string {
 // because not referenced by any Kibana resource.
 func watchFinalizer(kibanaKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "dynamic-watches.finalizers.associations.k8s.elastic.co",
+		Name: "finalizer.association.kibana.k8s.elastic.co/elasticsearch",
 		Execute: func() error {
 			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
 			w.Secrets.RemoveHandlerForKey(esCAWatchName(kibanaKey))
