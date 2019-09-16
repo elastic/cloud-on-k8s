@@ -206,7 +206,14 @@ func disableShardsAllocation(esClient esclient.Client) error {
 func doSyncFlush(esClient esclient.Client) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
-	return esClient.SyncedFlush(ctx)
+	err := esClient.SyncedFlush(ctx)
+	if esclient.IsConflict(err) {
+		// Elasticsearch returns an error if the synced flush fails due to concurrent indexing operations.
+		// The HTTP status code in that case will be 409 CONFLICT. We ignore that and consider synced flush best effort.
+		log.Info("synced flush failed with 409 CONFLICT")
+		return nil
+	}
+	return err
 }
 
 func (d *defaultDriver) MaybeEnableShardsAllocation(

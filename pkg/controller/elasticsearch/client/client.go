@@ -183,3 +183,13 @@ func IsNotFound(err error) bool {
 		return false
 	}
 }
+
+// IsConflict checks whether the error was an HTTP 409 error.
+func IsConflict(err error) bool {
+	switch err := err.(type) {
+	case *APIError:
+		return err.response.StatusCode == http.StatusConflict
+	default:
+		return false
+	}
+}

@@ -606,3 +606,36 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 		}
 	}
 }
+
+func TestIsConflict(t *testing.T) {
+	type args struct {
+		err error
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "200 is not a conflict",
+			args: args{
+				err: &APIError{response: NewMockResponse(200, nil, "")},
+			},
+			want: false,
+		},
+		{
+			name: "409 is a conflict",
+			args: args{
+				err: &APIError{response: NewMockResponse(409, nil, "")},
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsConflict(tt.args.err); got != tt.want {
+				t.Errorf("IsConflict() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
