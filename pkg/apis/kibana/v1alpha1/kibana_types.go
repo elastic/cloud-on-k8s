@@ -66,7 +66,7 @@ const (
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
 	commonv1alpha1.ReconcilerStatus
-	Health            KibanaHealth          `json:"health,omitempty"`
+	Health            KibanaHealth                     `json:"health,omitempty"`
 	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
