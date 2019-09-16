@@ -40,6 +40,7 @@ pipeline {
                     }
                     steps {
                         script {
+                            createConfig()
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
 
                             createConfig("unit-tests")
