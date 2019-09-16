@@ -5,6 +5,8 @@
 package user
 
 import (
+	"strings"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -14,9 +16,9 @@ import (
 )
 
 // UserFinalizer ensures that any external user created for an associated object is removed.
-func UserFinalizer(c k8s.Client, selector labels.Selector) finalizer.Finalizer {
+func UserFinalizer(c k8s.Client, selector labels.Selector, kind string) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "users.finalizers.associations.k8s.elastic.co",
+		Name: "finalizer.association." + strings.ToLower(kind) + ".k8s.elastic.co/external-user",
 		Execute: func() error {
 			var secrets corev1.SecretList
 			if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {

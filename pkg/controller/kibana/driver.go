@@ -77,7 +77,7 @@ func secretWatchKey(kibana kbtype.Kibana) string {
 
 func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "es-auth-secret.finalizers.kibana.k8s.elastic.co",
+		Name: "finalizer.kibana.k8s.elastic.co/es-auth-secret",
 		Execute: func() error {
 			watches.Secrets.RemoveHandlerForKey(secretWatchKey(kibana))
 			return nil
