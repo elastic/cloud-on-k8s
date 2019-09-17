@@ -80,6 +80,10 @@ EOF
                         script {
                             createConfig("e2e-tests")
 
+                            sh """
+                                touch e2e-tests.json
+                                chmod 777 e2e-tests.json
+                            """
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
                             sh 'make -C build/ci TARGET=generate-test-xml ci'
                             junit "e2e-tests.xml"
