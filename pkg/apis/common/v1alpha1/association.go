@@ -41,63 +41,71 @@ type Associator interface {
 type AssociationConf struct {
 	AuthSecretName string `json:"authSecretName"`
 	AuthSecretKey  string `json:"authSecretKey"`
+	CACertProvided bool   `json:"caCertProvided"`
 	CASecretName   string `json:"caSecretName"`
 	URL            string `json:"url"`
 }
 
 // IsConfigured returns true if all the fields are set.
-func (esac *AssociationConf) IsConfigured() bool {
-	return esac.AuthIsConfigured() && esac.CAIsConfigured() && esac.URLIsConfigured()
+func (ac *AssociationConf) IsConfigured() bool {
+	return ac.AuthIsConfigured() && ac.CAIsConfigured() && ac.URLIsConfigured()
 }
 
 // AuthIsConfigured returns true if all the auth fields are set.
-func (esac *AssociationConf) AuthIsConfigured() bool {
-	if esac == nil {
+func (ac *AssociationConf) AuthIsConfigured() bool {
+	if ac == nil {
 		return false
 	}
-	return esac.AuthSecretName != "" && esac.AuthSecretKey != ""
+	return ac.AuthSecretName != "" && ac.AuthSecretKey != ""
 }
 
 // CAIsConfigured returns true if the CA field is set.
-func (esac *AssociationConf) CAIsConfigured() bool {
-	if esac == nil {
+func (ac *AssociationConf) CAIsConfigured() bool {
+	if ac == nil {
 		return false
 	}
-	return esac.CASecretName != ""
+	return ac.CASecretName != ""
 }
 
 // URLIsConfigured returns true if the URL field is set.
-func (esac *AssociationConf) URLIsConfigured() bool {
-	if esac == nil {
+func (ac *AssociationConf) URLIsConfigured() bool {
+	if ac == nil {
 		return false
 	}
-	return esac.URL != ""
+	return ac.URL != ""
 }
 
-func (esac *AssociationConf) GetAuthSecretName() string {
-	if esac == nil {
+func (ac *AssociationConf) GetAuthSecretName() string {
+	if ac == nil {
 		return ""
 	}
-	return esac.AuthSecretName
+	return ac.AuthSecretName
 }
 
-func (esac *AssociationConf) GetAuthSecretKey() string {
-	if esac == nil {
+func (ac *AssociationConf) GetAuthSecretKey() string {
+	if ac == nil {
 		return ""
 	}
-	return esac.AuthSecretKey
+	return ac.AuthSecretKey
 }
 
-func (esac *AssociationConf) GetCASecretName() string {
-	if esac == nil {
-		return ""
+func (ac *AssociationConf) GetCACertProvided() bool {
+	if ac == nil {
+		return false
 	}
-	return esac.CASecretName
+	return ac.CACertProvided
 }
 
-func (esac *AssociationConf) GetURL() string {
-	if esac == nil {
+func (ac *AssociationConf) GetCASecretName() string {
+	if ac == nil {
 		return ""
 	}
-	return esac.URL
+	return ac.CASecretName
+}
+
+func (ac *AssociationConf) GetURL() string {
+	if ac == nil {
+		return ""
+	}
+	return ac.URL
 }

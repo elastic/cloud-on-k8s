@@ -24,12 +24,12 @@ elasticsearch:
   username: ""
   password: ""
   ssl:
-    certificateAuthorities: /usr/share/kibana/config/elasticsearch-certs/tls.crt
+    certificateAuthorities: /usr/share/kibana/config/elasticsearch-certs/ca.crt
     verificationMode: certificate
 server:
   host: "0"
   name: ""
-  ssl: 
+  ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
     certificate: /mnt/elastic-internal/http-certs/tls.crt
@@ -44,7 +44,7 @@ xpack:
 func TestNewConfigSettings(t *testing.T) {
 	type args struct {
 		client k8s.Client
-		kb     v1alpha1.Kibana
+		kb     func() v1alpha1.Kibana
 	}
 	tests := []struct {
 		name    string
@@ -55,15 +55,16 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "default config",
 			args: args{
-				kb: v1alpha1.Kibana{},
+				kb: mkKibana,
 			},
 			want: defaultConfig,
 		},
 		{
 			name: "without TLS",
 			args: args{
-				kb: v1alpha1.Kibana{
-					Spec: v1alpha1.KibanaSpec{
+				kb: func() v1alpha1.Kibana {
+					kb := mkKibana()
+					kb.Spec = v1alpha1.KibanaSpec{
 						HTTP: commonv1alpha1.HTTPConfig{
 							TLS: commonv1alpha1.TLSOptions{
 								SelfSignedCertificate: &commonv1alpha1.SelfSignedCertificate{
@@ -71,7 +72,8 @@ func TestNewConfigSettings(t *testing.T) {
 								},
 							},
 						},
-					},
+					}
+					return kb
 				},
 			},
 			want: func() []byte {
@@ -87,16 +89,39 @@ func TestNewConfigSettings(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "without Elasticsearch CA",
+			args: args{
+				kb: func() v1alpha1.Kibana {
+					kb := mkKibana()
+					kb.SetAssociationConf(&commonv1alpha1.AssociationConf{CACertProvided: false})
+					return kb
+				},
+			},
+			want: func() []byte {
+				cfg, err := settings.ParseConfig(defaultConfig)
+				require.NoError(t, err)
+				removed, err := (*ucfg.Config)(cfg).Remove("elasticsearch.ssl.certificateAuthorities", -1, settings.Options...)
+				require.True(t, removed)
+				require.NoError(t, err)
+				bytes, err := cfg.Render()
+				require.NoError(t, err)
+				return bytes
+			}(),
+			wantErr: false,
+		},
+		{
 			name: "with user config",
 			args: args{
-				kb: v1alpha1.Kibana{
-					Spec: v1alpha1.KibanaSpec{
+				kb: func() v1alpha1.Kibana {
+					kb := mkKibana()
+					kb.Spec = v1alpha1.KibanaSpec{
 						Config: &commonv1alpha1.Config{
 							Data: map[string]interface{}{
 								"foo": "bar",
 							},
 						},
-					},
+					}
+					return kb
 				},
 			},
 			want: append(defaultConfig, []byte(`foo: bar`)...),
@@ -104,7 +129,7 @@ func TestNewConfigSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewConfigSettings(tt.args.client, tt.args.kb)
+			got, err := NewConfigSettings(tt.args.client, tt.args.kb())
 			if tt.wantErr {
 				require.NotNil(t, err)
 			}
@@ -124,4 +149,10 @@ func TestNewConfigSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+func mkKibana() v1alpha1.Kibana {
+	kb := v1alpha1.Kibana{}
+	kb.SetAssociationConf(&commonv1alpha1.AssociationConf{CACertProvided: true})
+	return kb
 }
