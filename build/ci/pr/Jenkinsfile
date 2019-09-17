@@ -80,7 +80,7 @@ EOF
                         script {
                             createConfig("e2e-tests")
 
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'sudo make -C build/ci TARGET=ci-e2e ci')
                             sh 'make -C build/ci TARGET=generate-test-xml ci'
                             junit "e2e-tests.xml"
 
