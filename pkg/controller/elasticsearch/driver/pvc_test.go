@@ -9,7 +9,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -18,71 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
-
-func Test_reconcilePVCsOwnerRef(t *testing.T) {
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
-	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
-	tests := []struct {
-		name      string
-		k8sClient k8s.Client
-		pvcs      []corev1.PersistentVolumeClaim
-	}{
-		{
-			name:      "no pvcs",
-			k8sClient: k8s.WrapClient(fake.NewFakeClient()),
-			pvcs:      nil,
-		},
-		{
-			name: "3 PVCs with ownerRef not set",
-			k8sClient: k8s.WrapClient(fake.NewFakeClient(
-				buildPVCPtr("pvc1"), buildPVCPtr("pvc2"), buildPVCPtr("pvc3"))),
-			pvcs: []corev1.PersistentVolumeClaim{
-				buildPVC("pvc1"), buildPVC("pvc2"), buildPVC("pvc3")},
-		},
-		{
-			name: "2nd PVC has ownerRef already set",
-			k8sClient: k8s.WrapClient(fake.NewFakeClient(
-				buildPVCPtr("pvc1"), buildPVCPtr("pvc2", es.Name), buildPVCPtr("pvc3"))),
-			pvcs: []corev1.PersistentVolumeClaim{
-				buildPVC("pvc1"), buildPVC("pvc2", es.Name), buildPVC("pvc3")},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, reconcilePVCsOwnerRef(tt.k8sClient, scheme.Scheme, es, tt.pvcs))
-			// check all pvcs have an owner reference
-			var pvcs corev1.PersistentVolumeClaimList
-			require.NoError(t, tt.k8sClient.List(&client.ListOptions{}, &pvcs))
-			require.Equal(t, len(tt.pvcs), len(pvcs.Items))
-			for _, pvc := range pvcs.Items {
-				require.NotEmpty(t, pvc.OwnerReferences)
-				require.Equal(t, es.Name, pvc.OwnerReferences[0].Name)
-			}
-		})
-	}
-}
-
-func Test_setPVCOwnerRef(t *testing.T) {
-	// Test_reconcilePVCsOwnerRef covers most of the logic already.
-	// This test focuses on testing that no update is issued if the owner ref is already set.
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
-	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
-	// simulate no PVC in the apiserver: the update would fail if it happens
-	k8sClient := k8s.WrapClient(fake.NewFakeClient())
-	// pass a PVC whose owner ref is already set
-	err := setPVCOwnerRef(k8sClient, scheme.Scheme, es, corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "pvc2",
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					Name: es.Name,
-				},
-			}}},
-	)
-	// the call should not attempt to update the resource: no error returned here
-	require.NoError(t, err)
-}
 
 func buildSsetWithClaims(name string, replicas int32, claims ...string) appsv1.StatefulSet {
 	s := appsv1.StatefulSet{
@@ -195,23 +129,20 @@ func Test_pvcsToRemove(t *testing.T) {
 }
 
 func TestGarbageCollectPVCs(t *testing.T) {
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+	// Test_pvcsToRemove covers most of the testing logic,
+	// let's just checked everything is correctly plugged to the k8s api here.
 	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	existingPVCS := []runtime.Object{
-		buildPVCPtr("claim1-sset1-0"),   // should have its ownerRef patched
-		buildPVCPtr("claim1-sset2-0"),   // should have its ownerRef patched
+		buildPVCPtr("claim1-sset1-0"),   // should not be removed
 		buildPVCPtr("claim1-oldsset-0"), // should be removed
 	}
 	actualSsets := sset.StatefulSetList{buildSsetWithClaims("sset1", 1, "claim1")}
 	expectedSsets := sset.StatefulSetList{buildSsetWithClaims("sset2", 1, "claim1")}
 	k8sClient := k8s.WrapClient(fake.NewFakeClient(existingPVCS...))
-	err := GarbageCollectPVCs(k8sClient, scheme.Scheme, es, actualSsets, expectedSsets)
+	err := GarbageCollectPVCs(k8sClient, es, actualSsets, expectedSsets)
 	require.NoError(t, err)
 
 	var retrievedPVCs corev1.PersistentVolumeClaimList
 	require.NoError(t, k8sClient.List(&client.ListOptions{}, &retrievedPVCs))
-	require.Equal(t, 2, len(retrievedPVCs.Items))
-	for _, pvc := range retrievedPVCs.Items {
-		require.Equal(t, es.Name, pvc.OwnerReferences[0].Name)
-	}
+	require.Equal(t, 1, len(retrievedPVCs.Items))
 }

@@ -5,6 +5,8 @@
 package nodespec
 
 import (
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
@@ -18,6 +20,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -48,6 +51,7 @@ func BuildStatefulSet(
 	nodeSpec v1alpha1.NodeSpec,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
+	scheme *runtime.Scheme,
 ) (appsv1.StatefulSet, error) {
 	statefulSetName := name.StatefulSet(es.Name, nodeSpec.Name)
 
@@ -69,6 +73,16 @@ func BuildStatefulSet(
 	ssetLabels := make(map[string]string)
 	for k, v := range ssetSelector {
 		ssetLabels[k] = v
+	}
+
+	// set the owner reference of all volume claims to the ES resource,
+	// so PVC get deleted automatically upon Elasticsearch resource deletion
+	claims := make([]corev1.PersistentVolumeClaim, 0, len(nodeSpec.VolumeClaimTemplates))
+	for _, claim := range nodeSpec.VolumeClaimTemplates {
+		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
+			return appsv1.StatefulSet{}, err
+		}
+		claims = append(claims, claim)
 	}
 
 	sset := appsv1.StatefulSet{
@@ -93,7 +107,7 @@ func BuildStatefulSet(
 			},
 
 			Replicas:             &nodeSpec.NodeCount,
-			VolumeClaimTemplates: nodeSpec.VolumeClaimTemplates,
+			VolumeClaimTemplates: claims,
 			Template:             podTemplate,
 		},
 	}
