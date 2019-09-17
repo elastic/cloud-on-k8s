@@ -7,6 +7,7 @@ package runner
 import (
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -19,7 +20,8 @@ type VaultClient struct {
 }
 
 func NewClient(info VaultInfo) (*VaultClient, error) {
-	client, err := api.NewClient(&api.Config{Address: info.Address})
+	// Timeout is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
+	client, err := api.NewClient(&api.Config{Address: info.Address, Timeout: 120 * time.Second})
 	if err != nil {
 		return nil, err
 	}
