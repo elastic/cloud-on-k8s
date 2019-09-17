@@ -24,9 +24,9 @@ func IsCompatibleWithZen1(statefulSet appsv1.StatefulSet) bool {
 	return sset.ESVersionMatch(statefulSet, versionCompatibleWithZen1)
 }
 
-// AtLeastOneNodeCompatibleWithZen1 returns true if there is at least one 6.x node  in the actual masters
-// or if the given StatefulSetList contains at least one StatefulSet compatible with zen1.
-// Fix https://github.com/elastic/cloud-on-k8s/issues/1628
+// AtLeastOneNodeCompatibleWithZen1 returns true if at least one of the following condition is true:
+// 1. There is at least one 6.x node in the actual masters.
+// 2. The given StatefulSetList contains at least one StatefulSet compatible with zen1.
 func AtLeastOneNodeCompatibleWithZen1(
 	statefulSets sset.StatefulSetList,
 	c k8s.Client,

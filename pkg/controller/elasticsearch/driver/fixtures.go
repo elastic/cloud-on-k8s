@@ -22,7 +22,7 @@ import (
 )
 
 type testPod struct {
-	name                                                     string
+	name, version                                            string
 	master, data, healthy, toUpgrade, inCluster, terminating bool
 	uid                                                      types.UID
 }
@@ -40,6 +40,7 @@ func (t testPod) isInCluster(v bool) testPod   { t.inCluster = v; return t }
 func (t testPod) isHealthy(v bool) testPod     { t.healthy = v; return t }
 func (t testPod) needsUpgrade(v bool) testPod  { t.toUpgrade = v; return t }
 func (t testPod) isTerminating(v bool) testPod { t.terminating = v; return t }
+func (t testPod) withVersion(v string) testPod { t.version = v; return t }
 
 // filter to simulate a Pod that has been removed while upgrading
 // unfortunately fake client does not support predicate
@@ -228,6 +229,7 @@ func (t testPod) toPod() corev1.Pod {
 		},
 	}
 	labels := map[string]string{}
+	labels[label.VersionLabelName] = t.version
 	label.NodeTypesMasterLabelName.Set(t.master, labels)
 	label.NodeTypesDataLabelName.Set(t.data, labels)
 	pod.Labels = labels

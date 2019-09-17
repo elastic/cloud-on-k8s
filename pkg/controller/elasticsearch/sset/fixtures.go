@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type TestSset struct {
@@ -21,6 +22,27 @@ type TestSset struct {
 	Master      bool
 	Data        bool
 	Status      appsv1.StatefulSetStatus
+}
+
+func (t TestSset) Pods() []runtime.Object {
+	podNames := PodNames(t.Build())
+	pods := make([]runtime.Object, t.Replicas)
+	for i, podName := range podNames {
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      podName,
+				Namespace: t.Namespace,
+				Labels: map[string]string{
+					label.VersionLabelName:     t.Version,
+					label.ClusterNameLabelName: t.ClusterName,
+				},
+			},
+		}
+		label.NodeTypesMasterLabelName.Set(t.Master, pod.Labels)
+		label.NodeTypesDataLabelName.Set(t.Data, pod.Labels)
+		pods[i] = pod
+	}
+	return pods
 }
 
 func (t TestSset) Build() appsv1.StatefulSet {

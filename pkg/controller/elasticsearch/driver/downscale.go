@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
@@ -184,15 +185,17 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 		"to", downscale.targetReplicas,
 	)
 
-	if err := updateZenSettingsForDownscale(
-		downscaleCtx.k8sClient,
-		downscaleCtx.esClient,
-		downscaleCtx.es,
-		downscaleCtx.reconcileState,
-		actualStatefulSets,
-		downscale.leavingNodeNames()...,
-	); err != nil {
-		return err
+	if label.IsMasterNodeSet(downscale.statefulSet) {
+		if err := updateZenSettingsForDownscale(
+			downscaleCtx.k8sClient,
+			downscaleCtx.esClient,
+			downscaleCtx.es,
+			downscaleCtx.reconcileState,
+			actualStatefulSets,
+			downscale.leavingNodeNames()...,
+		); err != nil {
+			return err
+		}
 	}
 
 	nodespec.UpdateReplicas(&downscale.statefulSet, &downscale.targetReplicas)
