@@ -18,7 +18,7 @@ pipeline {
     stages {
         stage('Run tests for different k8s versions in GKE') {
             parallel {
-                stage("1.11") {
+                stage("1.12") {
                     agent {
                         label 'linux'
                     }
@@ -27,16 +27,16 @@ pipeline {
                         runWith('1.12', "${BUILD_TAG}-12")
                     }
                 }
-                stage("1.12") {
+                stage("1.13") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         checkout scm
-                        runWith('1.13', "${BUILD_TAG}-14")
+                        runWith('1.13', "${BUILD_TAG}-13")
                     }
                 }
-                stage("1.13") {
+                stage("1.14") {
                     agent {
                         label 'linux'
                     }
