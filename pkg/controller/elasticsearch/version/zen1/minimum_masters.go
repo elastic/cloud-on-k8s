@@ -42,7 +42,7 @@ func SetupMinimumMasterNodesConfig(
 	// There are 2 possible situations here:
 	// 1. The StatefulSet contains some masters: use the replicas to set m_m_n in the configuration file.
 	// 2. The StatefulSet does not contain any master but there are some existing Pods: we should NOT rely on the spec
-	//    of the StatefulSet since it might not reflect the situation, the node type "master" might just have changed
+	//    of the StatefulSet since it might not reflect the situation, the node type "master" might just have been changed
 	//    and a rolling upgrade is maybe in progress.
 	//    In this case some masters are maybe still alive, decreasing m_m_n in the config could lead to a split brain
 	//    situation if the container (not the Pod) restarts.

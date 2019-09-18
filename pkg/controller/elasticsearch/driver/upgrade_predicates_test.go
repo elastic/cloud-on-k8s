@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-// The tests in this function are focused on "type changes", i.e. when the type of the set of nodes is changed.
+// These tests are focused on "type changes", i.e. when the type of a nodeSet is changed.
 func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
