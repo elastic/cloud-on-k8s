@@ -5,6 +5,7 @@
 package nodespec
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
@@ -37,13 +38,18 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 func BuildExpectedResources(es v1alpha1.Elasticsearch, keystoreResources *keystore.Resources) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.Nodes))
 
+	ver, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, nodeSpec := range es.Spec.Nodes {
 		// build es config
 		userCfg := commonv1alpha1.Config{}
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, es.Spec.HTTP, userCfg)
+		cfg, err := settings.NewMergedESConfig(es.Name, *ver, es.Spec.HTTP, userCfg)
 		if err != nil {
 			return nil, err
 		}
