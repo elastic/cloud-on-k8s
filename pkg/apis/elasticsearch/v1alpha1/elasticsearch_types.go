@@ -105,11 +105,6 @@ func (n NodeSpec) GetESContainerTemplate() *corev1.Container {
 
 // UpdateStrategy specifies how updates to the cluster should be performed.
 type UpdateStrategy struct {
-	// Groups is a list of groups that should have their cluster mutations considered in a fair manner with a strict
-	// change budget (not allowing any surge or unavailability) before the entire cluster is reconciled with the
-	// full change budget.
-	Groups []GroupingDefinition `json:"groups,omitempty"`
-
 	// ChangeBudget is the change budget that should be used when performing mutations to the cluster.
 	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
 }
@@ -121,12 +116,6 @@ func (s UpdateStrategy) ResolveChangeBudget() ChangeBudget {
 	}
 
 	return DefaultChangeBudget
-}
-
-// GroupingDefinition is used to select a group of pods.
-type GroupingDefinition struct {
-	// Selector is the selector used to match pods.
-	Selector metav1.LabelSelector `json:"selector,omitempty"`
 }
 
 // ChangeBudget defines how Pods in a single group should be updated.
@@ -158,13 +147,6 @@ type ChangeBudget struct {
 	// new group can be scaled up further, ensuring that total number of pods running
 	// at any time during the update is at most 130% of the target number of pods.
 	MaxSurge int `json:"maxSurge"`
-}
-
-// DefaultFallbackGroupingDefinition is the grouping definition that is used if no user-defined groups are specified or
-// there are pods that are not selected by the user-defined groups.
-var DefaultFallbackGroupingDefinition = GroupingDefinition{
-	// use a selector that matches everything
-	Selector: metav1.LabelSelector{},
 }
 
 // DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in

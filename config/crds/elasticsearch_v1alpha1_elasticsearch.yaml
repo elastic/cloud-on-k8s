@@ -250,18 +250,6 @@ spec:
                   - maxUnavailable
                   - maxSurge
                   type: object
-                groups:
-                  description: Groups is a list of groups that should have their cluster
-                    mutations considered in a fair manner with a strict change budget
-                    (not allowing any surge or unavailability) before the entire cluster
-                    is reconciled with the full change budget.
-                  items:
-                    properties:
-                      selector:
-                        description: Selector is the selector used to match pods.
-                        type: object
-                    type: object
-                  type: array
               type: object
             version:
               description: Version represents the version of the stack
