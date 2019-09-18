@@ -90,7 +90,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			wantShardsAllocationDisabled: false,
 		},
 		{
-			name: "Two data nodes converted into master+data nodes: only 1 at a time is allowed",
+			name: "Two data nodes converted into master+data nodes, step 1: only 1 at a time is allowed",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
@@ -102,6 +102,22 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 				mutation:       addMasterType("data-to-masters"),
 			},
 			deleted:                      []string{"data-to-masters-1"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
+			name: "Two data nodes converted into master+data nodes, step 2: upgrade the remaining one",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("data-to-masters-0").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+				),
+				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
+				green:          true,
+				mutation:       addMasterType("data-to-masters"),
+			},
+			deleted:                      []string{"data-to-masters-0"},
 			wantErr:                      false,
 			wantShardsAllocationDisabled: true,
 		},
