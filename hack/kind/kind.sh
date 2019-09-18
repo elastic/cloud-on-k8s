@@ -72,9 +72,6 @@ function collect_logs() {
 }
 
 function setup_storage() {
-  KUBECONFIG="$(kind get kubeconfig-path --name="${CLUSTER_NAME}")"
-  export KUBECONFIG
-
   kubectl delete storageclass standard || true
   kubectl apply -f "${scriptpath}/local-path-storage.yaml"
 }
