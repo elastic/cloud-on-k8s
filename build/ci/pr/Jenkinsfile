@@ -67,7 +67,6 @@ pipeline {
         always {
             script {
                 if (notOnlyDocs()) {
-                    createConfig()
                     deployerConfig("auth")
                     sh 'make -C build/ci TARGET=eck-dump ci'
 
