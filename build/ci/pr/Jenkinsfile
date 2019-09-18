@@ -13,7 +13,6 @@ pipeline {
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        GCS_BUCKET = credentials('gcs-bucket')
     }
 
     stages {
@@ -70,7 +69,7 @@ pipeline {
                     deployerConfig("auth")
                     sh 'make -C build/ci TARGET=eck-dump ci'
 
-                    googleStorageUpload bucket: "gs://${GCS_BUCKET}/eck/data-dump",
+                    googleStorageUpload bucket: "gs://devops-ci-artifacts/eck/data-dump",
                         credentialsId: "devops-ci-gcs-plugin",
                         pattern: "*.tgz",
                         sharedPublicly: true,
