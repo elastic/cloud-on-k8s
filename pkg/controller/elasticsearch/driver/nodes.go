@@ -110,8 +110,8 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results
 	}
 
-	// When not reconciled, set the phase to pending only if it's operational to avoid to
-	// override another "not operational" phase like MigratingData.
+	// When not reconciled, set the phase to ApplyingChanges only if it was Ready to avoid to
+	// override another "not Ready" phase like MigratingData.
 	if Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
 		reconcileState.UpdateElasticsearchReady(resourcesState, observedState)
 	} else if reconcileState.IsElasticsearchReady(observedState) {

@@ -69,7 +69,7 @@ func (s *State) UpdateElasticsearchState(
 	return s.updateWithPhase(s.status.Phase, resourcesState, observedState)
 }
 
-// UpdateElasticsearchReady marks Elasticsearch as being operational in the resource status.
+// UpdateElasticsearchReady marks Elasticsearch as being ready in the resource status.
 func (s *State) UpdateElasticsearchReady(
 	resourcesState ResourcesState,
 	observedState observer.State,
@@ -77,12 +77,12 @@ func (s *State) UpdateElasticsearchReady(
 	return s.updateWithPhase(v1alpha1.ElasticsearchReadyPhase, resourcesState, observedState)
 }
 
-// IsElasticsearchReady reports if the Elasticsearch is operational.
+// IsElasticsearchReady reports if Elasticsearch is ready.
 func (s *State) IsElasticsearchReady(observedState observer.State) bool {
 	return s.status.Phase == v1alpha1.ElasticsearchReadyPhase
 }
 
-// UpdateElasticsearchApplyingChanges marks Elasticsearch as being the pending phase in the resource status.
+// UpdateElasticsearchApplyingChanges marks Elasticsearch as being the applying changes phase in the resource status.
 func (s *State) UpdateElasticsearchApplyingChanges(pods []corev1.Pod) *State {
 	s.status.AvailableNodes = len(AvailableElasticsearchNodes(pods))
 	s.status.Phase = v1alpha1.ElasticsearchApplyingChangesPhase
