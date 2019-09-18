@@ -7,7 +7,6 @@ package runner
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 )
 
@@ -57,6 +56,12 @@ func (d *GkeDriver) Execute() error {
 	}
 
 	switch d.plan.Operation {
+	case "auth":
+		log.Printf("Authorizing GKE access...")
+		if err := d.GetCredentials(); err != nil {
+			return err
+		}
+		log.Printf("GKE access granted!")
 	case "delete":
 		if exists {
 			err = d.delete()
@@ -109,15 +114,16 @@ func (d *GkeDriver) auth() error {
 		log.Println("Authenticating as service account...")
 
 		client, err := NewClient(*d.plan.VaultInfo)
+		_ = client
 		if err != nil {
 			return err
 		}
 
 		keyFileName := "gke_service_account_key.json"
-		defer os.Remove(keyFileName)
-		if err := client.ReadIntoFile(keyFileName, GkeVaultPath, GkeServiceAccountVaultFieldName); err != nil {
-			return err
-		}
+		//defer os.Remove(keyFileName)
+		//if err := client.ReadIntoFile(keyFileName, GkeVaultPath, GkeServiceAccountVaultFieldName); err != nil {
+		//	return err
+		//}
 
 		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
 	}

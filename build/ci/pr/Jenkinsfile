@@ -13,6 +13,7 @@ pipeline {
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
+        GCS_BUCKET = credentials('gcs-bucket')
     }
 
     stages {
@@ -52,26 +53,10 @@ pipeline {
                             notOnlyDocs()
                         }
                     }
-                    agent {
-                        label 'linux'
-                    }
                     steps {
                         createConfig()
-                        sh """
-                            cat >deployer-config.yml <<EOF
-id: gke-ci
-overrides:
-  kubernetesVersion: "1.12"
-  clusterName: $BUILD_TAG
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-                            make -C build/ci TARGET=ci-e2e ci
-                        """
+                        deployerConfig()
+                        sh 'make -C build/ci TARGET=ci-e2e ci'
                     }
                 }
             }
@@ -79,6 +64,21 @@ EOF
     }
 
     post {
+        always {
+            script {
+                if (notOnlyDocs()) {
+                    createConfig()
+                    deployerConfig("auth")
+                    sh 'make -C build/ci TARGET=eck-dump ci'
+
+                    googleStorageUpload bucket: "gs://${GCS_BUCKET}/eck/data-dump",
+                        credentialsId: "devops-ci-gcs-plugin",
+                        pattern: "*.tgz",
+                        sharedPublicly: true,
+                        showInline: true
+                }
+            }
+        }
         cleanup {
             script {
                 if (notOnlyDocs()) {
@@ -108,6 +108,25 @@ REPOSITORY = "$GCLOUD_PROJECT"
 TESTS_MATCH = TestSmoke
 SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
+CLUSTER_NAME = "$BUILD_TAG"
 EOF
     """
+}
+
+def deployerConfig(def operation = "create") {
+    sh """
+        cat >deployer-config.yml <<EOF
+id: gke-ci
+overrides:
+  operation: ${operation}
+  kubernetesVersion: "1.12"
+  clusterName: $BUILD_TAG
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+EOF
+   """
 }

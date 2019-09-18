@@ -362,6 +362,9 @@ run-deployer: dep-vendor-only build-deployer
 ci-release: clean dep-vendor-only generate build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
+eck-dump: run-deployer
+	@ hack/eck-dump.sh -z -o $(CLUSTER_NAME)
+
 ##########################
 ##  --   Helpers    --  ##
 ##########################
