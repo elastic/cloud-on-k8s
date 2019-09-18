@@ -55,16 +55,12 @@ func loadFile(path string) (*Dependencies, error) {
 	}
 	defer f.Close()
 
-	var lines []string
+	deps := &Dependencies{}
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	deps := &Dependencies{}
-	for _, v := range lines {
-		if strings.HasPrefix(v, "#") {
-			dep := strings.Split(v, " ")
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") {
+			dep := strings.Split(line, " ")
 			deps.List = append(deps.List, &Dependency{Name: dep[1], Version: dep[2]})
 		}
 	}
