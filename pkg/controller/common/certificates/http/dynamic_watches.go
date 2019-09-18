@@ -5,6 +5,8 @@
 package http
 
 import (
+	"strings"
+
 	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -43,9 +45,9 @@ func reconcileDynamicWatches(dynamicWatches watches.DynamicWatches, owner types.
 }
 
 // DynamicWatchesFinalizer returns a Finalizer for dynamic watches related to http certificates
-func DynamicWatchesFinalizer(dynamicWatches watches.DynamicWatches, ownerName string, namer name.Namer) finalizer.Finalizer {
+func DynamicWatchesFinalizer(dynamicWatches watches.DynamicWatches, kind string, ownerName string, namer name.Namer) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "dynamic-watches.finalizers.k8s.elastic.co/http-certificates",
+		Name: "finalizer." + strings.ToLower(kind) + ".k8s.elastic.co/http-certificates-secret",
 		Execute: func() error {
 			// es resource is being finalized, so we no longer need the dynamic watch
 			dynamicWatches.Secrets.RemoveHandlerForKey(httpCertificateWatchKey(namer, ownerName))

@@ -18,15 +18,6 @@ pipeline {
     stages {
         stage('Run tests for different k8s versions in GKE') {
             parallel {
-                stage("1.11") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        runWith('1.11', "${BUILD_TAG}-11")
-                    }
-                }
                 stage("1.12") {
                     agent {
                         label 'linux'
@@ -43,6 +34,15 @@ pipeline {
                     steps {
                         checkout scm
                         runWith('1.13', "${BUILD_TAG}-13")
+                    }
+                }
+                stage("1.14") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+                        runWith('1.14', "${BUILD_TAG}-14")
                     }
                 }
             }
@@ -64,7 +64,7 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["${BUILD_TAG}-11", "${BUILD_TAG}-12", "${BUILD_TAG}-13"]
+                clusters = ["${BUILD_TAG}-12", "${BUILD_TAG}-13", "${BUILD_TAG}-14"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
