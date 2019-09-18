@@ -21,6 +21,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
+const (
+	TestEsName      = "TestES"
+	TestEsNamespace = "TestNS"
+)
+
 type testPod struct {
 	name, version                                            string
 	master, data, healthy, toUpgrade, inCluster, terminating bool
@@ -223,13 +228,14 @@ func (t testPod) toPod() corev1.Pod {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              t.name,
-			Namespace:         "testNS",
+			Namespace:         TestEsNamespace,
 			UID:               t.uid,
 			DeletionTimestamp: deletionTimestamp,
 		},
 	}
 	labels := map[string]string{}
 	labels[label.VersionLabelName] = t.version
+	labels[label.ClusterNameLabelName] = TestEsName
 	label.NodeTypesMasterLabelName.Set(t.master, labels)
 	label.NodeTypesDataLabelName.Set(t.data, labels)
 	pod.Labels = labels
@@ -248,6 +254,11 @@ func (t testPod) toPod() corev1.Pod {
 		}
 	}
 	return pod
+}
+
+func (t testPod) toPodPtr() *corev1.Pod {
+	pod := t.toPod()
+	return &pod
 }
 
 type testESState struct {

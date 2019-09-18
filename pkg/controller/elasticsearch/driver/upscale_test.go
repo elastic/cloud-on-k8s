@@ -284,7 +284,13 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 }
 
 func Test_adjustZenConfig(t *testing.T) {
-	bootstrappedES := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"}}}
+	bootstrappedES := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        TestEsName,
+			Namespace:   TestEsNamespace,
+			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
+		},
+	}
 	notBootstrappedES := v1alpha1.Elasticsearch{}
 
 	tests := []struct {
@@ -299,6 +305,18 @@ func Test_adjustZenConfig(t *testing.T) {
 			name:                      "adjust zen1 minimum_master_nodes",
 			es:                        bootstrappedES,
 			statefulSet:               sset.TestSset{Version: "6.8.0", Replicas: 3, Master: true, Data: true},
+			wantMinimumMasterNodesSet: true,
+			wantInitialMasterNodesSet: false,
+		},
+		{
+			name:        "adjust zen1 minimum_master_nodes if some 6.8.x are still in flight",
+			es:          bootstrappedES,
+			statefulSet: sset.TestSset{Name: "masters", Version: "7.2.0", Replicas: 3, Master: true, Data: true},
+			pods: []runtime.Object{
+				newTestPod("masters-0").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
+				newTestPod("masters-1").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
+				newTestPod("masters-2").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
+			},
 			wantMinimumMasterNodesSet: true,
 			wantInitialMasterNodesSet: false,
 		},
@@ -325,7 +343,11 @@ func Test_adjustZenConfig(t *testing.T) {
 					Config:      settings.NewCanonicalConfig(),
 				},
 			}
-			client := k8s.WrapClient(fake.NewFakeClient(tt.statefulSet.Pods()...))
+			pods := tt.pods
+			if pods == nil {
+				pods = tt.statefulSet.Pods()
+			}
+			client := k8s.WrapClient(fake.NewFakeClient(pods...))
 			err := adjustZenConfig(client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {
