@@ -73,7 +73,6 @@ var (
 
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// TODO see if we can move to the new Builder in controller-runtime
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := NewReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
@@ -83,7 +82,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{

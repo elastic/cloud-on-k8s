@@ -131,16 +131,6 @@ func checkExistingResources(client k8s.Client, obj runtime.Object, labels map[st
 	labelSelector := ctrlclient.MatchingLabels(labels)
 	nsSelector := ctrlclient.InNamespace(namespace)
 	// if there's no controller version annotation on the object, then we need to see maybe the object has been reconciled by an older, incompatible controller version
-	// opts := ctrlclient.ListOptions{
-	// 	LabelSelector: selector,
-	// 	Namespace:     namespace,
-	// }
-	// ctrlclient.MatchingLabels()
-	// this is hard because ctrlclient.ListOptions doesnt satisfy the ctrlclient.ListOption interface -- it does not define ApplyToList() and instead
-	// leaves that to wrapper types such as MatchingLabels, MatchingField, and InNamespace. it might be worth making our own listoption wrapper to keep it generic?
-	// there's no function to go from a ListOptions directly to something that satisfies the ListOption interface, or to just accept a random label selector
-	//  instead you must use a wrapper type MatchingLabels
-	// theres no function to go from a labels.Selector to a
 	var svcs corev1.ServiceList
 	err = client.List(&svcs, labelSelector, nsSelector)
 	if err != nil {

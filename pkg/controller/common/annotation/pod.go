@@ -32,10 +32,7 @@ func MarkPodsAsUpdated(
 	var podList corev1.PodList
 	err := c.List(&podList, podListOptions...)
 	if err != nil {
-		log.Error(
-			err, "failed to list pods for annotation update",
-			// "namespace", podListOptions.Namespace,
-		)
+		log.Error(err, "failed to list pods for annotation update")
 		return
 	}
 	// Update annotation

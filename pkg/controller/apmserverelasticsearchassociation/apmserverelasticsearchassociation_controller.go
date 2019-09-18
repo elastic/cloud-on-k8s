@@ -62,15 +62,14 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, r)
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServerElasticsearchAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServerElasticsearchAssociation{
-		Client:   client,
-		scheme:   mgr.GetScheme(),
-		watches:  watches.NewDynamicWatches(),
-		recorder: mgr.GetEventRecorderFor(name),
-		// recorder:   mgr.GetRecorder(name),
+		Client:     client,
+		scheme:     mgr.GetScheme(),
+		watches:    watches.NewDynamicWatches(),
+		recorder:   mgr.GetEventRecorderFor(name),
 		Parameters: params,
 	}
 }
