@@ -54,7 +54,7 @@ func pvcsToRemove(
 	// by checking expectations earlier in the process.
 	// Then, just return existing PVCs that are not part of that list.
 	expectedPVCs := stringsutil.SliceToMap(append(actualStatefulSets.PVCNames(), expectedStatefulSets.PVCNames()...))
-	var toRemove []corev1.PersistentVolumeClaim
+	var toRemove []corev1.PersistentVolumeClaim // nolint
 	for _, pvc := range pvcs {
 		if _, exists := expectedPVCs[pvc.Name]; exists {
 			continue

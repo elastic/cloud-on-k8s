@@ -91,10 +91,10 @@ func TestRemoveStringInSlice(t *testing.T) {
 func TestSliceToMap(t *testing.T) {
 	// happy path
 	expected := map[string]struct{}{
-		"a": struct{}{},
-		"b": struct{}{},
+		"a": {},
+		"b": {},
 	}
-	require.Equal(t, expected, SliceToMap([]string{"a", "b"}))
+	require.Equal(t, expected, SliceToMap([]string{"a", "b", "b"}))
 
 	// empty input
 	require.Equal(t, map[string]struct{}{}, SliceToMap(nil))
