@@ -106,7 +106,7 @@ spec:
     # ...
     # Inject secure settings into Elasticsearch nodes from a k8s secret reference
     secureSettings:
-      secretName: "gcs-credentials"
+    - secretName: gcs-credentials
 ----
 
 . Apply the modifications:

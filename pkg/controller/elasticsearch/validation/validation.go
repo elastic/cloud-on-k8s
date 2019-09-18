@@ -13,12 +13,12 @@ import (
 
 const (
 	cfgInvalidMsg            = "configuration invalid"
-	nameTooLongErrMsg        = "Elasticsearch name length cannot exceed the limit of %d characters"
 	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
 	invalidSanIPErrMsg       = "invalid SAN IP address"
 	pvcImmutableMsg          = "Volume claim templates cannot be modified"
+	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
 )
 
 // Validation is a function from a currently stored Elasticsearch spec and proposed new spec

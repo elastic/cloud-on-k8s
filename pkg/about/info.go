@@ -74,12 +74,7 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string, operator
 		OperatorRoles:           operatorRoles,
 		CustomOperatorNamespace: customOperatorNs,
 		Distribution:            distribution,
-		BuildInfo: BuildInfo{
-			version,
-			buildHash,
-			buildDate,
-			buildSnapshot,
-		},
+		BuildInfo:               GetBuildInfo(),
 	}, nil
 }
 
@@ -140,4 +135,14 @@ func getDistribution(clientset kubernetes.Interface) (string, error) {
 	}
 
 	return version.GitVersion, nil
+}
+
+// GetBuildInfo returns information about the current build.
+func GetBuildInfo() BuildInfo {
+	return BuildInfo{
+		version,
+		buildHash,
+		buildDate,
+		buildSnapshot,
+	}
 }

@@ -19,7 +19,7 @@ var eSCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 func CaCertSecretVolume(kb v1alpha1.Kibana) volume.SecretVolume {
 	// TODO: this is a little ugly as it reaches into the ES controller bits
 	return volume.NewSecretVolumeWithMountPath(
-		kb.Spec.Elasticsearch.CertificateAuthorities.SecretName,
+		kb.AssociationConf().GetCASecretName(),
 		"elasticsearch-certs",
 		eSCertsVolumeMountPath,
 	)
@@ -28,7 +28,7 @@ func CaCertSecretVolume(kb v1alpha1.Kibana) volume.SecretVolume {
 // GetAuthSecret returns the Elasticsearch auth secret for the given Kibana resource.
 func GetAuthSecret(client k8s.Client, kb v1alpha1.Kibana) (*corev1.Secret, error) {
 	esAuthSecret := types.NamespacedName{
-		Name:      kb.Spec.Elasticsearch.Auth.SecretKeyRef.Name,
+		Name:      kb.AssociationConf().GetAuthSecretName(),
 		Namespace: kb.Namespace,
 	}
 	var secret corev1.Secret

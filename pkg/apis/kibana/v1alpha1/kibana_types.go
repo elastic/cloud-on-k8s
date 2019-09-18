@@ -31,10 +31,6 @@ type KibanaSpec struct {
 	// If the namespace is not specified, the current resource namespace will be used.
 	ElasticsearchRef commonv1alpha1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// Elasticsearch configures how Kibana connects to Elasticsearch
-	// +optional
-	Elasticsearch BackendElasticsearch `json:"elasticsearch,omitempty"`
-
 	// Config represents Kibana configuration.
 	Config *commonv1alpha1.Config `json:"config,omitempty"`
 
@@ -51,28 +47,10 @@ type KibanaSpec struct {
 	// into Kibana keystore on each node.
 	// Each individual key/value entry in the referenced secrets is considered as an
 	// individual secure setting to be injected.
+	// You can use the `entries` and `key` fields to consider only a subset of the secret
+	// entries and the `path` field to change the target path of a secret entry key.
 	// The secret must exist in the same namespace as the Kibana resource.
-	SecureSettings []commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
-
-	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
-	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
-}
-
-// BackendElasticsearch contains configuration for an Elasticsearch backend for Kibana
-type BackendElasticsearch struct {
-	// ElasticsearchURL is the URL to the target Elasticsearch
-	URL string `json:"url"`
-
-	// Auth configures authentication for Kibana to use.
-	Auth commonv1alpha1.ElasticsearchAuth `json:"auth,omitempty"`
-
-	// CertificateAuthorities names a secret that contains a CA file entry to use.
-	CertificateAuthorities commonv1alpha1.SecretRef `json:"certificateAuthorities,omitempty"`
-}
-
-// IsConfigured returns true if the backend configuration is populated with non-default values.
-func (b BackendElasticsearch) IsConfigured() bool {
-	return b.URL != "" && b.Auth.IsConfigured() && b.CertificateAuthorities.SecretName != ""
+	SecureSettings []commonv1alpha1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 // KibanaHealth expresses the status of the Kibana instances.
@@ -102,15 +80,11 @@ func (k Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
 }
 
-func (k *Kibana) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
-	return k.Spec.Elasticsearch.Auth
-}
-
 func (k *Kibana) ElasticsearchRef() commonv1alpha1.ObjectSelector {
 	return k.Spec.ElasticsearchRef
 }
 
-func (k *Kibana) SecureSettings() []commonv1alpha1.SecretRef {
+func (k *Kibana) SecureSettings() []commonv1alpha1.SecretSource {
 	return k.Spec.SecureSettings
 }
 
@@ -118,6 +92,14 @@ func (k *Kibana) SecureSettings() []commonv1alpha1.SecretRef {
 // see https://github.com/kubernetes-sigs/controller-runtime/issues/406
 func (k *Kibana) Kind() string {
 	return Kind
+}
+
+func (k *Kibana) AssociationConf() *commonv1alpha1.AssociationConf {
+	return k.assocConf
+}
+
+func (k *Kibana) SetAssociationConf(assocConf *commonv1alpha1.AssociationConf) {
+	k.assocConf = assocConf
 }
 
 // +genclient
@@ -136,8 +118,9 @@ type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   KibanaSpec   `json:"spec,omitempty"`
-	Status KibanaStatus `json:"status,omitempty"`
+	Spec      KibanaSpec   `json:"spec,omitempty"`
+	Status    KibanaStatus `json:"status,omitempty"`
+	assocConf *commonv1alpha1.AssociationConf
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

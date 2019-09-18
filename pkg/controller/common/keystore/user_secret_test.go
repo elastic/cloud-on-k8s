@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -62,7 +63,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 			name:        "no secure settings specified in Kibana spec: should return nothing",
 			c:           k8s.WrapClient(fake.NewFakeClient()),
 			w:           createWatches(""),
-			kb:          v1alpha1.Kibana{},
+			kb:          testKibana,
 			wantVolume:  nil,
 			wantVersion: "",
 			wantWatches: []string{},
@@ -315,6 +316,132 @@ func Test_reconcileSecureSettings(t *testing.T) {
 			got, err := reconcileSecureSettings(tt.args.c, s, tt.args.hasKeystore, tt.args.userSecrets, tt.args.namer, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileSecureSettings() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			require.Nil(t, deep.Equal(got, tt.want))
+		})
+	}
+}
+
+func Test_retrieveUserSecrets(t *testing.T) {
+	testSecretName := "some-user-secret"
+	testSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      testSecretName,
+		},
+		Data: map[string][]byte{
+			"key1": []byte("value1"),
+			"key2": []byte("value2"),
+			"key3": []byte("value3"),
+		},
+	}
+	testKibana := &v1alpha1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kb",
+			Namespace: "ns",
+		},
+		Spec: v1alpha1.KibanaSpec{
+			SecureSettings: []commonv1alpha1.SecretSource{},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		args    []commonv1alpha1.SecretSource
+		want    []corev1.Secret
+		wantErr bool
+	}{
+		{
+			name: "secure settings secret with only secret name should be retrieved",
+			args: []commonv1alpha1.SecretSource{
+				{
+					SecretName: testSecretName,
+				},
+			},
+			want:    []corev1.Secret{testSecret},
+			wantErr: false,
+		},
+		{
+			name: "secure settings secret with empty items should fail",
+			args: []commonv1alpha1.SecretSource{
+				{
+					SecretName: testSecretName,
+					Entries:    []commonv1alpha1.KeyToPath{},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "secure settings secret with invalid key should fail",
+			args: []commonv1alpha1.SecretSource{
+				{
+					SecretName: testSecretName,
+					Entries: []commonv1alpha1.KeyToPath{
+						{Key: "unknown"},
+					},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "secure settings secret with valid key should be retrieved",
+			args: []commonv1alpha1.SecretSource{
+				{
+					SecretName: testSecretName,
+					Entries: []commonv1alpha1.KeyToPath{
+						{Key: "key2"},
+					},
+				},
+			},
+			want: []corev1.Secret{{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      testSecretName,
+				},
+				Data: map[string][]byte{
+					"key2": []byte("value2"),
+				},
+			}},
+			wantErr: false,
+		},
+		{
+			name: "secure settings secret with valid key and path should be retrieved",
+			args: []commonv1alpha1.SecretSource{
+				{
+					SecretName: testSecretName,
+					Entries: []commonv1alpha1.KeyToPath{
+						{Key: "key1"},
+						{Key: "key3", Path: "newKey"},
+					},
+				},
+			},
+			want: []corev1.Secret{{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      testSecretName,
+				},
+				Data: map[string][]byte{
+					"key1":   []byte("value1"),
+					"newKey": []byte("value3"),
+				},
+			}},
+			wantErr: false,
+		},
+	}
+
+	recorder := record.NewFakeRecorder(100)
+	client := k8s.WrapClient(fake.NewFakeClient(&testSecret))
+	hasKeystore := testKibana
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hasKeystore.Spec.SecureSettings = tt.args
+			got, err := retrieveUserSecrets(client, recorder, hasKeystore)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("retrieveUserSecrets() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			require.Nil(t, deep.Equal(got, tt.want))

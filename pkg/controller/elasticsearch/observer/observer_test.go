@@ -23,7 +23,7 @@ import (
 )
 
 func fakeEsClient200(user client.UserAuth) client.Client {
-	return client.NewMockClientWithUser(version.MustParse("6.7.0"),
+	return client.NewMockClientWithUser(version.MustParse("6.8.0"),
 		user,
 		func(req *http.Request) *http.Response {
 			return &http.Response{

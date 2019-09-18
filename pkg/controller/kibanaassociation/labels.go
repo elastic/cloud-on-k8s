@@ -27,7 +27,7 @@ func NewResourceSelector(name string) labels.Selector {
 	}).AsSelector()
 }
 
-func hasBeenCreatedBy(object metav1.Object, kibana v1alpha1.Kibana) bool {
+func hasBeenCreatedBy(object metav1.Object, kibana *v1alpha1.Kibana) bool {
 	labels := object.GetLabels()
 	if name, ok := labels[AssociationLabelName]; !ok || name != kibana.Name {
 		return false

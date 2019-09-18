@@ -11,7 +11,7 @@ import (
 
 const (
 	// FinalizerName registered for each elasticsearch resource
-	FinalizerName = "observer.finalizers.elasticsearch.k8s.elastic.co"
+	FinalizerName = "finalizer.elasticsearch.k8s.elastic.co/observer"
 )
 
 // Finalizer returns a finalizer to be executed upon deletion of the given cluster,

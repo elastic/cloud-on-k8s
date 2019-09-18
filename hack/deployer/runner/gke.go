@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	GkeDriverId                     = "gke"
+	GkeDriverID                     = "gke"
 	GkeVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-gcp-k8s-operator"
 	GkeServiceAccountVaultFieldName = "service-account"
 )
 
 func init() {
-	drivers[GkeDriverId] = &GkeDriverFactory{}
+	drivers[GkeDriverID] = &GkeDriverFactory{}
 }
 
 type GkeDriverFactory struct {
@@ -67,7 +67,7 @@ func (d *GkeDriver) Execute() error {
 		if exists {
 			log.Printf("not creating as cluster exists")
 		} else {
-			if err := d.configSsh(); err != nil {
+			if err := d.configSSH(); err != nil {
 				return err
 			}
 
@@ -93,6 +93,10 @@ func (d *GkeDriver) Execute() error {
 		if err := d.configureDocker(); err != nil {
 			return err
 		}
+
+		if err := d.patchStorageClass(); err != nil {
+			return err
+		}
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -116,19 +120,19 @@ func (d *GkeDriver) auth() error {
 		}
 
 		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
-	} else {
-		log.Println("Authenticating as user...")
-		accounts, err := NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
-		if err != nil {
-			return err
-		}
-
-		if len(accounts) > 0 {
-			return nil
-		}
-
-		return NewCommand("gcloud auth login").Run()
 	}
+
+	log.Println("Authenticating as user...")
+	accounts, err := NewCommand(`gcloud auth list "--format=value(account)"`).StdoutOnly().WithoutStreaming().Output()
+	if err != nil {
+		return err
+	}
+
+	if len(accounts) > 0 {
+		return nil
+	}
+
+	return NewCommand("gcloud auth login").Run()
 }
 
 func (d *GkeDriver) clusterExists() (bool, error) {
@@ -143,7 +147,7 @@ func (d *GkeDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-func (d *GkeDriver) configSsh() error {
+func (d *GkeDriver) configSSH() error {
 	log.Println("Configuring ssh...")
 	return NewCommand("gcloud --quiet --project {{.GCloudProject}} compute config-ssh").AsTemplate(d.ctx).Run()
 }
@@ -218,6 +222,57 @@ func (d *GkeDriver) GetCredentials() error {
 	log.Println("Getting credentials...")
 	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
+}
+
+// patchStorageClass based on standard storageclass, creates new default with "volumeBindingMode: WaitForFirstConsumer"
+func (d *GkeDriver) patchStorageClass() error {
+	log.Println("Patching storage class...")
+
+	if exists, err := NewCommand("kubectl get sc").OutputContainsAny("standard-customized"); err != nil {
+		return err
+	} else if exists {
+		return nil
+	}
+
+	defaultName := ""
+	for _, annotation := range []string{
+		`storageclass\.kubernetes\.io/is-default-class`,
+		`storageclass\.beta\.kubernetes\.io/is-default-class`,
+	} {
+		template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
+		baseScs, err := NewCommand(fmt.Sprintf(template, annotation)).OutputList()
+		if err != nil {
+			return err
+		}
+
+		if len(baseScs) != 0 {
+			defaultName = baseScs[0]
+			break
+		}
+	}
+
+	if defaultName == "" {
+		return fmt.Errorf("default storageclass not found")
+	}
+
+	sc, err := NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
+	if err != nil {
+		return err
+	}
+
+	sc = strings.Replace(sc, fmt.Sprintf("name: %s", defaultName), "name: standard-customized", -1)
+	sc = strings.Replace(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer", -1)
+	err = NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
+%s
+EOF`, sc)).Run()
+	if err != nil {
+		return err
+	}
+
+	cmd := fmt.Sprintf(
+		`kubectl patch storageclass %s -p '{ "metadata": { "annotations": { "storageclass.beta.kubernetes.io/is-default-class":"false"} } }'`,
+		defaultName)
+	return NewCommand(cmd).Run()
 }
 
 func (d *GkeDriver) delete() error {

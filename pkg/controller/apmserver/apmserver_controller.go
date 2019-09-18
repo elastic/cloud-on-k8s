@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"sync/atomic"
-	"time"
 
 	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
 	apmcerts "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/certificates"
@@ -19,6 +18,7 @@ import (
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -152,7 +152,7 @@ type ReconcileApmServer struct {
 	finalizers     finalizer.Handler
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration int64
+	iteration uint64
 }
 
 func (r *ReconcileApmServer) K8sClient() k8s.Client {
@@ -176,34 +176,19 @@ var _ driver.Interface = &ReconcileApmServer{}
 // Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// atomically update the iteration to support concurrent runs.
-	currentIteration := atomic.AddInt64(&r.iteration, 1)
-	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "as_name", request.Name)
-	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "as_name", request.Name)
-	}()
+	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
-	// Fetch the ApmServer resource
-	as := &apmv1alpha1.ApmServer{}
-	err := r.Get(request.NamespacedName, as)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
+	var as apmv1alpha1.ApmServer
+	if ok, err := association.FetchWithAssociation(r.Client, request, &as); !ok {
 		return reconcile.Result{}, err
 	}
 
 	if common.IsPaused(as.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name, "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
 		return common.PauseRequeue, nil
 	}
 
-	if err := r.finalizers.Handle(as, r.finalizersFor(*as)...); err != nil {
+	if err := r.finalizers.Handle(&as, r.finalizersFor(as)...); err != nil {
 		if errors.IsConflict(err) {
 			log.V(1).Info("Conflict while handling secret watch finalizer")
 			return reconcile.Result{Requeue: true}, nil
@@ -216,28 +201,33 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, nil
 	}
 
+	if compatible, err := r.isCompatible(&as); err != nil || !compatible {
+		return reconcile.Result{}, err
+	}
+
+	if err := annotation.UpdateControllerVersion(r.Client, &as, r.OperatorInfo.BuildInfo.Version); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	return r.doReconcile(request, &as)
+}
+
+func (r *ReconcileApmServer) isCompatible(as *apmv1alpha1.ApmServer) (bool, error) {
 	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: as.Name}).AsSelector()
 	compat, err := annotation.ReconcileCompatibility(r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-		return reconcile.Result{}, err
 	}
-	if !compat {
-		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
-		return reconcile.Result{}, nil
-	}
+	return compat, err
+}
 
-	err = annotation.UpdateControllerVersion(r.Client, as, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
+func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1alpha1.ApmServer) (reconcile.Result, error) {
 	state := NewState(request, as)
 	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(*as), as)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	results := apmcerts.Reconcile(r, *as, []corev1.Service{*svc}, r.CACertRotation)
+	results := apmcerts.Reconcile(r, as, []corev1.Service{*svc}, r.CACertRotation)
 	if results.HasError() {
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
@@ -330,8 +320,8 @@ func (r *ReconcileApmServer) deploymentParams(
 		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
 	}
 
-	esCASecretName := as.Spec.Elasticsearch.SSL.CertificateAuthorities.SecretName
-	if esCASecretName != "" {
+	if as.AssociationConf().CAIsConfigured() {
+		esCASecretName := as.AssociationConf().GetCASecretName()
 		// TODO: use apmServerCa to generate cert for deployment
 
 		// TODO: this is a little ugly as it reaches into the ES controller bits
@@ -460,7 +450,7 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 	if state.ApmServer.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
-	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "as_name", state.ApmServer.Name, "iteration", atomic.LoadInt64(&r.iteration))
+	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "as_name", state.ApmServer.Name, "iteration", atomic.LoadUint64(&r.iteration))
 	err := r.Status().Update(state.ApmServer)
 	if err != nil && errors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status")

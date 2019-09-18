@@ -11,6 +11,8 @@ import (
 	"os"
 	"sync"
 
+	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
+	"github.com/go-logr/logr"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -20,11 +22,12 @@ var (
 	testContextPath = flag.String("testContextPath", "", "Path to the test context file")
 	ctxInit         sync.Once
 	ctx             Context
-	log             = logf.Log.WithName("e2e")
+	log             logr.Logger
 )
 
 func init() {
-	logf.SetLogger(logf.ZapLogger(true))
+	logutil.InitLogger()
+	log = logf.Log.WithName("e2e")
 }
 
 // Ctx returns the current test context.
@@ -51,6 +54,7 @@ func initializeContext() {
 		panic(fmt.Errorf("failed to decode test context: %v", err))
 	}
 
+	logutil.ChangeVerbosity(ctx.LogVerbosity)
 	log.Info("Test context initialized", "context", ctx)
 }
 
@@ -90,6 +94,7 @@ type Context struct {
 	E2ENamespace        string              `json:"e2e_namespace"`
 	E2EServiceAccount   string              `json:"e2e_service_account"`
 	ElasticStackVersion string              `json:"elastic_stack_version"`
+	LogVerbosity        int                 `json:"log_verbosity"`
 	OperatorImage       string              `json:"operator_image"`
 	TestLicence         string              `json:"test_licence"`
 	TestRegex           string              `json:"test_regex"`

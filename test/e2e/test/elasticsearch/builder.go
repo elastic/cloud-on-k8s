@@ -40,6 +40,14 @@ type Builder struct {
 var _ test.Builder = Builder{}
 
 func NewBuilder(name string) Builder {
+	return newBuilder(name, rand.String(4))
+}
+
+func NewBuilderWithoutSuffix(name string) Builder {
+	return newBuilder(name, "")
+}
+
+func newBuilder(name, randSuffix string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
@@ -52,11 +60,13 @@ func NewBuilder(name string) Builder {
 				Version:          test.Ctx().ElasticStackVersion,
 			},
 		},
-	}.WithSuffix(rand.String(4))
+	}.WithSuffix(randSuffix)
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
-	b.Elasticsearch.ObjectMeta.Name = b.Elasticsearch.ObjectMeta.Name + "-" + suffix
+	if suffix != "" {
+		b.Elasticsearch.ObjectMeta.Name = b.Elasticsearch.ObjectMeta.Name + "-" + suffix
+	}
 	return b
 }
 
@@ -159,9 +169,9 @@ func (b Builder) WithNodeSpec(nodeSpec estype.NodeSpec) Builder {
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
-	refs := make([]commonv1alpha1.SecretRef, 0, len(secretNames))
+	refs := make([]commonv1alpha1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
-		refs = append(refs, commonv1alpha1.SecretRef{SecretName: secretNames[i]})
+		refs = append(refs, commonv1alpha1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Elasticsearch.Spec.SecureSettings = refs
 	return b

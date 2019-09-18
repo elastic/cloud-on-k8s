@@ -33,7 +33,7 @@ REPOSITORY = "$GCLOUD_PROJECT"
 IMG_SUFFIX = -ci
 SKIP_DOCKER_COMMAND = true
 EOF
-                    cat >run-config.yml <<EOF
+                    cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   kubernetesVersion: "1.12"
@@ -54,12 +54,14 @@ EOF
     post {
         unsuccessful {
             script {
-                def msg = "E2E tests failed!\r\n" + env.BUILD_URL
-                slackSend botUser: true,
-                      channel: '#cloud-k8s',
-                      color: 'danger',
-                      message: msg,
-                      tokenCredentialId: 'cloud-ci-slack-integration-token'
+                if (params.SEND_NOTIFICATIONS) {
+                    def msg = "E2E tests failed!\r\n" + env.BUILD_URL
+                    slackSend botUser: true,
+                        channel: '#cloud-k8s',
+                        color: 'danger',
+                        message: msg,
+                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                }
             }
         }
         cleanup {

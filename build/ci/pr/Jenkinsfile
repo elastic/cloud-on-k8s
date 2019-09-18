@@ -37,6 +37,8 @@ pipeline {
                     steps {
                         createConfig()
                         sh 'make -C build/ci TARGET=ci ci'
+                        junit "unit-tests.xml"
+                        junit "integration-tests.xml"
                     }
                 }
                 stage("Run smoke E2E tests") {
@@ -53,7 +55,6 @@ pipeline {
                     }
                     steps {
                         createKindConfig()
-                        sh 'kind version' //for debug
                         sh """
                             make -C build/ci TARGET=dep-vendor-only ci
                             make kind-e2e-cluster

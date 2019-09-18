@@ -12,11 +12,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 var log = logf.Log.WithName("statefulset")
@@ -56,7 +54,11 @@ func (l StatefulSetList) ObjectMetas() []metav1.ObjectMeta {
 func (l StatefulSetList) ToUpdate() StatefulSetList {
 	toUpdate := StatefulSetList{}
 	for _, s := range l {
-		if s.Status.UpdateRevision != "" && (s.Status.UpdateRevision != s.Status.CurrentRevision) {
+		// When using an OnDelete strategy current revision is never reset to update revision.
+		// Just looking that the revision to detect updates does therefore does not work when reverting
+		// to a previous revision and gives constant false positives after an initial update.
+		// Only updated replicas != replicas expresses the fact that an update is still pending.
+		if s.Status.UpdatedReplicas != s.Status.Replicas {
 			toUpdate = append(toUpdate, s)
 		}
 	}
@@ -86,29 +88,18 @@ func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 }
 
 // PodReconciliationDone returns true if actual existing pods match what is specified in the StatefulSetList.
-// It may return false if there are pods in the process of being created (but not created yet)
-// or terminated (but not removed yet).
-func (l StatefulSetList) PodReconciliationDone(c k8s.Client, es v1alpha1.Elasticsearch) (bool, error) {
-	// pods we expect to be there based on StatefulSets spec
-	expectedPods := l.PodNames()
-	// pods that are there for this cluster
-	actualRawPods, err := GetActualPodsForCluster(c, es)
-	if err != nil {
-		return false, err
+// It may return false if there are pods in the process of being:
+// - created (but not there in our resources cache)
+// - removed (but still there in our resources cache)
+// Status of the pods (running, error, etc.) is ignored.
+func (l StatefulSetList) PodReconciliationDone(c k8s.Client) (bool, error) {
+	for _, s := range l {
+		done, err := PodReconciliationDoneForSset(c, s)
+		if err != nil || !done {
+			return done, err
+		}
 	}
-	actualPods := k8s.PodNames(actualRawPods)
-
-	// check if they match
-	match := len(expectedPods) == len(actualPods) && stringsutil.StringsInSlice(expectedPods, actualPods)
-	if !match {
-		log.V(1).Info(
-			"Pod reconciliation is not done yet",
-			"namespace", es.Namespace, "es_name", es.Name,
-			"expected_pods", expectedPods, "actual_pods", actualPods,
-		)
-	}
-
-	return match, nil
+	return true, nil
 }
 
 // DeepCopy returns a copy of the StatefulSetList with no reference to the original StatefulSetList.

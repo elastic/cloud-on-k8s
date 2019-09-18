@@ -7,13 +7,16 @@
 ROOT_DIR = $(CURDIR)/../..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
+# This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
+VAULT_CLIENT_TIMEOUT = 120
+
 # BUILD_ID is present during run on Jenkins machine, but not on dev box, hence using it here to distinguish between those cases
 ifdef BUILD_ID
 VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
 else
 VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
-NOT_USED = $(shell test -e ../../run-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" ../../run-config.yml)
+NOT_USED = $(shell test -e ../../deployer-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" ../../deployer-config.yml)
 endif
 
 CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
@@ -58,3 +61,6 @@ yaml-upload:
 # reads Elastic public key from Vault into license.key
 get-elastic-public-key:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=pubkey secret/release/license | base64 --decode > license.key
+
+get-docker-creds:
+	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ../../.env

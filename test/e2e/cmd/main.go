@@ -7,10 +7,10 @@ package main
 import (
 	"os"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 		Short:        "E2E testing utilities",
 		SilenceUsage: true,
 		PersistentPreRun: func(_ *cobra.Command, _ []string) {
-			logf.SetLogger(logf.ZapLogger(false))
+			log.InitLogger()
 		},
 	}
 

@@ -5,17 +5,22 @@
 package driver
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // HandleDownscale attempts to downscale actual StatefulSets towards expected ones.
@@ -25,14 +30,6 @@ func HandleDownscale(
 	actualStatefulSets sset.StatefulSetList,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
-
-	canProceed, err := noOnGoingDeletion(downscaleCtx, actualStatefulSets)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !canProceed {
-		return results.WithResult(defaultRequeue)
-	}
 
 	// compute the list of StatefulSet downscales to perform
 	downscales := calculateDownscales(expectedStatefulSets, actualStatefulSets)
@@ -62,19 +59,6 @@ func HandleDownscale(
 	}
 
 	return results
-}
-
-// noOnGoingDeletion returns true if some pods deletion or creation may still be in progress
-func noOnGoingDeletion(downscaleCtx downscaleContext, actualStatefulSets sset.StatefulSetList) (bool, error) {
-	// Pods we have may not match replicas specified in the StatefulSets spec.
-	// This can happen if, for example, replicas were recently downscaled to remove a node,
-	// but the node isn't completely terminated yet, and may still be part of the cluster.
-	// Moving on with downscaling more nodes may lead to complications when dealing with
-	// Elasticsearch shards allocation excludes (should not be cleared if the ghost node isn't removed yet)
-	// or zen settings (must consider terminating masters that are still there).
-	// Let's retry once expected pods are there.
-	// PodReconciliationDone also matches any pod not created yet, for which we'll also requeue.
-	return actualStatefulSets.PodReconciliationDone(downscaleCtx.k8sClient, downscaleCtx.es)
 }
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of ssetDownscale.
@@ -122,8 +106,7 @@ func attemptDownscale(
 ) (bool, error) {
 	switch {
 	case downscale.isRemoval():
-		ssetLogger(downscale.statefulSet).Info("Deleting statefulset")
-		return false, ctx.k8sClient.Delete(&downscale.statefulSet)
+		return false, removeStatefulSetResources(ctx.k8sClient, ctx.es, downscale.statefulSet)
 
 	case downscale.isReplicaDecrease():
 		// adjust the theoretical downscale to one we can safely perform
@@ -140,6 +123,24 @@ func attemptDownscale(
 		// nothing to do
 		return false, nil
 	}
+}
+
+// removeStatefulSetResources deletes the given StatefulSet along with the corresponding
+// headless service and configuration secret.
+func removeStatefulSetResources(k8sClient k8s.Client, es v1alpha1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+	headlessSvc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
+	err := k8sClient.Delete(&headlessSvc)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	err = settings.DeleteConfig(k8sClient, es.Namespace, statefulSet.Name)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+
+	ssetLogger(statefulSet).Info("Deleting statefulset")
+	return k8sClient.Delete(&statefulSet)
 }
 
 // calculatePerformableDownscale updates the given downscale target replicas to account for nodes

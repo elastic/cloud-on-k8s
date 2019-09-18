@@ -21,7 +21,7 @@ import (
 )
 
 func TestConfigSecretName(t *testing.T) {
-	require.Equal(t, "ssetName-es-config", ConfigSecretName("ssetName"))
+	require.Equal(t, "ssetname-es-config", ConfigSecretName("ssetname"))
 }
 
 func TestGetESConfigContent(t *testing.T) {

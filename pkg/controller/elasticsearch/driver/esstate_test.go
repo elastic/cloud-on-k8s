@@ -30,6 +30,8 @@ type fakeESClient struct { //nolint:maligned
 	ExcludeFromShardAllocationCalled     bool
 	ExcludeFromShardAllocationCalledWith string
 
+	DisableReplicaShardsAllocationCalled bool
+
 	EnableShardAllocationCalled bool
 
 	SyncedFlushCalled bool
@@ -59,6 +61,11 @@ func (f *fakeESClient) AddVotingConfigExclusions(ctx context.Context, nodeNames 
 func (f *fakeESClient) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
 	f.ExcludeFromShardAllocationCalled = true
 	f.ExcludeFromShardAllocationCalledWith = nodes
+	return nil
+}
+
+func (f *fakeESClient) DisableReplicaShardsAllocation(_ context.Context) error {
+	f.DisableReplicaShardsAllocationCalled = true
 	return nil
 }
 

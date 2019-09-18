@@ -7,27 +7,29 @@ package runner
 import (
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"github.com/hashicorp/vault/api"
 )
 
 type VaultClient struct {
 	client   *api.Client
-	roleId   string
-	secretId string
+	roleID   string
+	secretID string
 	token    string
 }
 
 func NewClient(info VaultInfo) (*VaultClient, error) {
-	client, err := api.NewClient(&api.Config{Address: info.Address})
+	// Timeout is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
+	client, err := api.NewClient(&api.Config{Address: info.Address, Timeout: 120 * time.Second})
 	if err != nil {
 		return nil, err
 	}
 
 	return &VaultClient{
 		client:   client,
-		roleId:   info.RoleId,
-		secretId: info.SecretId,
+		roleID:   info.RoleId,
+		secretID: info.SecretId,
 		token:    info.Token,
 	}, nil
 }
@@ -41,13 +43,14 @@ func (v *VaultClient) auth() error {
 	var data map[string]interface{}
 	var method string
 
-	if v.token != "" {
+	switch {
+	case v.token != "":
 		method = "github"
 		data = map[string]interface{}{"token": v.token}
-	} else if v.roleId != "" && v.secretId != "" {
+	case v.roleID != "" && v.secretID != "":
 		method = "approle"
-		data = map[string]interface{}{"role_id": v.roleId, "secret_id": v.secretId}
-	} else {
+		data = map[string]interface{}{"role_id": v.roleID, "secret_id": v.secretID}
+	default:
 		return fmt.Errorf("vault auth info not present")
 	}
 

@@ -52,30 +52,6 @@ spec:
             config:
               description: Config represents Kibana configuration.
               type: object
-            elasticsearch:
-              description: Elasticsearch configures how Kibana connects to Elasticsearch
-              properties:
-                auth:
-                  description: Auth configures authentication for Kibana to use.
-                  properties:
-                    secret:
-                      description: SecretKeyRef is a secret that contains the credentials
-                        to use.
-                      type: object
-                  type: object
-                certificateAuthorities:
-                  description: CertificateAuthorities names a secret that contains
-                    a CA file entry to use.
-                  properties:
-                    secretName:
-                      type: string
-                  type: object
-                url:
-                  description: ElasticsearchURL is the URL to the target Elasticsearch
-                  type: string
-              required:
-              - url
-              type: object
             elasticsearchRef:
               description: ElasticsearchRef references an Elasticsearch resource in
                 the Kubernetes cluster. If the namespace is not specified, the current
@@ -87,10 +63,6 @@ spec:
                   type: string
               required:
               - name
-              type: object
-            featureFlags:
-              description: FeatureFlags are instance-specific flags that enable or
-                disable specific experimental features
               type: object
             http:
               description: HTTP contains settings for HTTP.
@@ -163,12 +135,38 @@ spec:
               description: SecureSettings references secrets containing secure settings,
                 to be injected into Kibana keystore on each node. Each individual
                 key/value entry in the referenced secrets is considered as an individual
-                secure setting to be injected. The secret must exist in the same namespace
-                as the Kibana resource.
+                secure setting to be injected. You can use the `entries` and `key`
+                fields to consider only a subset of the secret entries and the `path`
+                field to change the target path of a secret entry key. The secret
+                must exist in the same namespace as the Kibana resource.
               items:
                 properties:
+                  entries:
+                    description: If unspecified, each key-value pair in the Data field
+                      of the referenced Secret will be projected into the volume as
+                      a file whose name is the key and content is the value. If specified,
+                      the listed keys will be projected into the specified paths,
+                      and unlisted keys will not be present.
+                    items:
+                      properties:
+                        key:
+                          description: The key to project.
+                          type: string
+                        path:
+                          description: The relative path of the file to map the key
+                            to. May not be an absolute path. May not contain the path
+                            element '..'. May not start with the string '..'.
+                          type: string
+                      required:
+                      - key
+                      type: object
+                    type: array
                   secretName:
+                    description: 'Name of the secret in the pod''s namespace to use.
+                      More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
                     type: string
+                required:
+                - secretName
                 type: object
               type: array
             version:

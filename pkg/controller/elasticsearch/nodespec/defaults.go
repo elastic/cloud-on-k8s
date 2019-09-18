@@ -53,6 +53,19 @@ func DefaultEnvVars(httpCfg v1alpha1.HTTPConfig) []corev1.EnvVar {
 			{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.InternalProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.InternalProbeUserName},
 			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Scheme()},
+
+			// Disable curl/libnss use of sqlite caching to avoid triggering an issue in linux/kubernetes
+			// where the kernel's dentry cache grows by 5mb every time curl is invoked. This cache usage
+			// is charged against the pod which created it. In our case, the elasticsearch nodes trigger
+			// this problem with the readinessProbe invoking curl.
+			//
+			// In production testing, no negative impact on curl's behavior is observed from this setting.
+			// This setting is primarily targeted at curl invocation in the readinessProbe.
+			// References:
+			//   https://github.com/elastic/cloud-on-k8s/issues/1581#issuecomment-525527334
+			//   https://github.com/elastic/cloud-on-k8s/issues/1635
+			//   https://issuetracker.google.com/issues/140577001
+			{Name: "NSS_SDB_USE_CACHE", Value: "no"},
 		}...,
 	)
 }

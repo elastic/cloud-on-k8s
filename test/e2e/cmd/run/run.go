@@ -129,6 +129,7 @@ func (h *helper) initTestContext() error {
 			Namespace: fmt.Sprintf("%s-elastic-system", h.testRunName),
 		},
 		Local:              h.local,
+		LogVerbosity:       h.logVerbosity,
 		NamespaceOperators: make([]test.NamespaceOperator, len(h.managedNamespaces)),
 		OperatorImage:      h.operatorImage,
 		TestLicence:        h.testLicence,

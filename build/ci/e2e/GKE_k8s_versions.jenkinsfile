@@ -18,15 +18,6 @@ pipeline {
     stages {
         stage('Run tests for different k8s versions in GKE') {
             parallel {
-                stage("1.11") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        runWith('1.11', "${BUILD_TAG}-11")
-                    }
-                }
                 stage("1.12") {
                     agent {
                         label 'linux'
@@ -45,6 +36,15 @@ pipeline {
                         runWith('1.13', "${BUILD_TAG}-13")
                     }
                 }
+                stage("1.14") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+                        runWith('1.14', "${BUILD_TAG}-14")
+                    }
+                }
             }
         }
     }
@@ -52,17 +52,19 @@ pipeline {
     post {
         unsuccessful {
             script {
-                def msg = "E2E tests for different k8s versions in GKE failed!\r\n" + env.BUILD_URL
-                slackSend botUser: true,
-                    channel: '#cloud-k8s',
-                    color: 'danger',
-                    message: msg,
-                    tokenCredentialId: 'cloud-ci-slack-integration-token'
+                if (params.SEND_NOTIFICATIONS) {
+                    def msg = "E2E tests for different k8s versions in GKE failed!\r\n" + env.RUN_DISPLAY_URL
+                    slackSend botUser: true,
+                        channel: '#cloud-k8s',
+                        color: 'danger',
+                        message: msg,
+                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                }
             }
         }
         cleanup {
             script {
-                clusters = ["${BUILD_TAG}-11", "${BUILD_TAG}-12", "${BUILD_TAG}-13"]
+                clusters = ["${BUILD_TAG}-12", "${BUILD_TAG}-13", "${BUILD_TAG}-14"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
@@ -84,7 +86,7 @@ REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 SKIP_DOCKER_COMMAND = true
 EOF
-        cat >run-config.yml <<EOF
+        cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: create

@@ -10,13 +10,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
-// NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived  from the given
+// NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived from the given
 // parameters.
 func NewMergedESConfig(
 	clusterName string,
+	ver version.Version,
 	httpConfig v1alpha1.HTTPConfig,
 	userConfig v1alpha1.Config,
 ) (CanonicalConfig, error) {
@@ -26,7 +28,7 @@ func NewMergedESConfig(
 	}
 	err = config.MergeWith(
 		baseConfig(clusterName).CanonicalConfig,
-		xpackConfig(httpConfig).CanonicalConfig,
+		xpackConfig(ver, httpConfig).CanonicalConfig,
 	)
 	if err != nil {
 		return CanonicalConfig{}, err
@@ -54,7 +56,7 @@ func baseConfig(clusterName string) *CanonicalConfig {
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(httpCfg v1alpha1.HTTPConfig) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg v1alpha1.HTTPConfig) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -83,5 +85,16 @@ func xpackConfig(httpCfg v1alpha1.HTTPConfig) *CanonicalConfig {
 			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
 		},
 	}
+
+	// always enable the built-in file internal realm for user auth, ordered as first
+	if ver.Major < 7 {
+		// 6.x syntax
+		cfg[XPackSecurityAuthcRealmsFile1Type] = "file"
+		cfg[XPackSecurityAuthcRealmsFile1Order] = -100
+	} else {
+		// 7.x syntax
+		cfg[XPackSecurityAuthcRealmsFileFile1Order] = -100
+	}
+
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }

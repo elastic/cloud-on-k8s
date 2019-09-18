@@ -17,9 +17,9 @@ import (
 	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -37,7 +37,7 @@ func Test_hasMaster(t *testing.T) {
 		{
 			name: "no topology",
 			args: args{
-				esCluster: *es("6.7.0"),
+				esCluster: *es("6.8.0"),
 			},
 			want: failedValidation,
 		},
@@ -159,7 +159,7 @@ func Test_supportedVersion(t *testing.T) {
 		{
 			name: "supported OK",
 			args: args{
-				esCluster: *es("6.7.0"),
+				esCluster: *es("6.8.0"),
 			},
 			want: validation.OK,
 		},
@@ -317,7 +317,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 	}
 }
 
-func Test_nameLength(t *testing.T) {
+func TestValidNames(t *testing.T) {
 	type args struct {
 		esCluster estype.Elasticsearch
 	}
@@ -334,10 +334,13 @@ func Test_nameLength(t *testing.T) {
 						Namespace: "default",
 						Name:      "that-is-a-very-long-name-with-37chars",
 					},
-					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+					Spec: estype.ElasticsearchSpec{Version: "6.8.0"},
 				},
 			},
-			want: validation.Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)},
+			want: validation.Result{
+				Allowed: false,
+				Reason:  invalidName(fmt.Errorf("name exceeds maximum allowed length of %d", common_name.MaxResourceNameLength)),
+			},
 		},
 		{
 			name: "name length OK",
@@ -347,7 +350,7 @@ func Test_nameLength(t *testing.T) {
 						Namespace: "default",
 						Name:      "that-is-a-very-long-name-with-36char",
 					},
-					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+					Spec: estype.ElasticsearchSpec{Version: "6.8.0"},
 				},
 			},
 			want: validation.OK,
@@ -357,7 +360,7 @@ func Test_nameLength(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, err := NewValidationContext(nil, tt.args.esCluster)
 			require.NoError(t, err)
-			if got := nameLength(*ctx); !reflect.DeepEqual(got, tt.want) {
+			if got := validName(*ctx); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
 			}
 		})
@@ -377,7 +380,7 @@ func Test_validSanIP(t *testing.T) {
 		{
 			name: "no SAN IP: OK",
 			esCluster: estype.Elasticsearch{
-				Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+				Spec: estype.ElasticsearchSpec{Version: "6.8.0"},
 			},
 			want: validation.OK,
 		},
@@ -385,7 +388,7 @@ func Test_validSanIP(t *testing.T) {
 			name: "valid SAN IPs: OK",
 			esCluster: estype.Elasticsearch{
 				Spec: estype.ElasticsearchSpec{
-					Version: "6.7.0",
+					Version: "6.8.0",
 					HTTP: common.HTTPConfig{
 						TLS: common.TLSOptions{
 							SelfSignedCertificate: &common.SelfSignedCertificate{
@@ -411,7 +414,7 @@ func Test_validSanIP(t *testing.T) {
 			name: "invalid SAN IPs: NOT OK",
 			esCluster: estype.Elasticsearch{
 				Spec: estype.ElasticsearchSpec{
-					Version: "6.7.0",
+					Version: "6.8.0",
 					HTTP: common.HTTPConfig{
 						TLS: common.TLSOptions{
 							SelfSignedCertificate: &common.SelfSignedCertificate{

@@ -36,8 +36,8 @@ docs/html/*
 
 # ignore deployer files
 hack/deployer/deployer
-hack/deployer/config/run-config.yml
+hack/deployer/config/deployer-config.yml
 
 # ignore CI config files
-run-config.yml
+deployer-config.yml
 .env

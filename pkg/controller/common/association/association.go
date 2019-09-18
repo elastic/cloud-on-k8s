@@ -17,17 +17,15 @@ func ElasticsearchAuthSettings(
 	c k8s.Client,
 	associated v1alpha1.Associated,
 ) (username, password string, err error) {
-	auth := associated.ElasticsearchAuth()
-	// if auth is provided via a secret, resolve credentials from it.
-	if auth.SecretKeyRef != nil {
-		secretObjKey := types.NamespacedName{Namespace: associated.GetNamespace(), Name: auth.SecretKeyRef.Name}
-		var secret v1.Secret
-		if err := c.Get(secretObjKey, &secret); err != nil {
-			return "", "", err
-		}
-		return auth.SecretKeyRef.Key, string(secret.Data[auth.SecretKeyRef.Key]), nil
+	assocConf := associated.AssociationConf()
+	if !assocConf.AuthIsConfigured() {
+		return "", "", nil
 	}
 
-	// no authentication method provided, return an empty credential
-	return "", "", nil
+	secretObjKey := types.NamespacedName{Namespace: associated.GetNamespace(), Name: assocConf.AuthSecretName}
+	var secret v1.Secret
+	if err := c.Get(secretObjKey, &secret); err != nil {
+		return "", "", err
+	}
+	return assocConf.AuthSecretKey, string(secret.Data[assocConf.AuthSecretKey]), nil
 }

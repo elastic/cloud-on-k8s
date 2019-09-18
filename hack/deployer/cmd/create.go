@@ -19,7 +19,7 @@ overrides:
     gCloudProject: %s
 `
 
-func CreateCommand() *cobra.Command{
+func CreateCommand() *cobra.Command {
 	var path string
 
 	var createCommand = &cobra.Command{
@@ -50,7 +50,7 @@ func CreateCommand() *cobra.Command{
 		},
 	}
 
-	createDefaultConfigCommand.Flags().StringVar(&path, "path", "config/run-config.yml", "Path where file should be created.")
+	createDefaultConfigCommand.Flags().StringVar(&path, "path", "config/deployer-config.yml", "Path where file should be created.")
 	createCommand.AddCommand(createDefaultConfigCommand)
 
 	return createCommand

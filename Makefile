@@ -22,6 +22,9 @@ SNAPSHOT   	?= true
 
 LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
 
+# Default to debug logging
+LOG_VERBOSITY ?= 1
+
 ## -- Docker image
 
 # on GKE, use GCR and GCLOUD_PROJECT
@@ -76,13 +79,17 @@ dep:
 
 dep-vendor-only:
 	# don't attempt to upgrade Gopkg.lock
-	dep ensure --vendor-only 
+	dep ensure --vendor-only
 
 # Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
 generate:
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 	$(MAKE) --no-print-directory generate-all-in-one
+	$(MAKE) --no-print-directory generate-api-docs
+
+generate-api-docs:
+	@hack/api-docs/build.sh
 
 elastic-operator: generate
 	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
@@ -98,9 +105,18 @@ clean:
 unit: clean
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
+unit_xml: clean
+	go test --json ./pkg/... ./cmd/... -coverprofile cover.out > unit-tests.json
+	gotestsum --junitfile unit-tests.xml --raw-command cat unit-tests.json
+
 integration: GO_TAGS += integration
 integration: clean generate
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
+
+integration_xml: GO_TAGS += integration
+integration_xml: clean generate
+	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
+	gotestsum --junitfile integration-tests.xml --raw-command cat integration-tests.json
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)
@@ -131,7 +147,7 @@ go-run:
 			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
 				--development --operator-roles=global,namespace \
-				--enable-debug-logs=true \
+				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false
@@ -229,14 +245,14 @@ ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set)
 endif
 
-DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --run-config-file=hack/deployer/config/run-config.yml
+DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --config-file=hack/deployer/config/deployer-config.yml
 
 build-deployer:
 	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
 
 setup-deployer-for-gke-once: require-gcloud-project build-deployer
-ifeq (,$(wildcard hack/deployer/config/run-config.yml))
-	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/run-config.yml
+ifeq (,$(wildcard hack/deployer/config/deployer-config.yml))
+	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/deployer-config.yml
 endif
 
 credentials: setup-deployer-for-gke-once
@@ -310,7 +326,8 @@ e2e-run:
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
-		--elastic-stack-version=$(STACK_VERSION)
+		--elastic-stack-version=$(STACK_VERSION) \
+		--log-verbosity=$(LOG_VERBOSITY)
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
@@ -326,20 +343,21 @@ e2e-local:
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
-		--local
+		--local \
+		--log-verbosity=$(LOG_VERBOSITY)
 	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
+ci: dep-vendor-only check-fmt lint generate check-local-changes unit_xml integration_xml e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
 ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e
 
 run-deployer: dep-vendor-only build-deployer
-	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --run-config-file run-config.yml
+	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
 ci-release: clean dep-vendor-only generate build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!

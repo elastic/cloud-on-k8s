@@ -22,6 +22,14 @@ type Builder struct {
 var _ test.Builder = Builder{}
 
 func NewBuilder(name string) Builder {
+	return newBuilder(name, rand.String(4))
+}
+
+func NewBuilderWithoutSuffix(name string) Builder {
+	return newBuilder(name, "")
+}
+
+func newBuilder(name, randSuffix string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
@@ -38,11 +46,13 @@ func NewBuilder(name string) Builder {
 				},
 			},
 		},
-	}.WithSuffix(rand.String(4))
+	}.WithSuffix(randSuffix)
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
-	b.Kibana.ObjectMeta.Name = b.Kibana.ObjectMeta.Name + "-" + suffix
+	if suffix != "" {
+		b.Kibana.ObjectMeta.Name = b.Kibana.ObjectMeta.Name + "-" + suffix
+	}
 	return b
 }
 
@@ -73,9 +83,9 @@ func (b Builder) WithNodeCount(count int) Builder {
 }
 
 func (b Builder) WithKibanaSecureSettings(secretNames ...string) Builder {
-	refs := make([]commonv1alpha1.SecretRef, 0, len(secretNames))
+	refs := make([]commonv1alpha1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
-		refs = append(refs, commonv1alpha1.SecretRef{SecretName: secretNames[i]})
+		refs = append(refs, commonv1alpha1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Kibana.Spec.SecureSettings = refs
 	return b

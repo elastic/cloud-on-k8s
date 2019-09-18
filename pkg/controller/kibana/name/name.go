@@ -8,22 +8,10 @@ import (
 	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 )
 
-const (
-	// Whatever the named resource, it must never exceed 63 characters to be used as a label.
-	MaxLabelLength = 63
-	// Elasticsearch name, used as prefix, is limited to 36 characters,
-	MaxElasticsearchNameLength = 36
-	// this leaves 63 - 36 = 27 characters for a suffix.
-	MaxSuffixLength = MaxLabelLength - MaxElasticsearchNameLength
-
-	httpServiceSuffix = "http"
-)
+const httpServiceSuffix = "http"
 
 // KBNamer is a Namer that is configured with the defaults for resources related to a Kibana resource.
-var KBNamer = common_name.Namer{
-	MaxSuffixLength: MaxSuffixLength,
-	DefaultSuffixes: []string{"kb"},
-}
+var KBNamer = common_name.NewNamer("kb")
 
 func HTTPService(kbName string) string {
 	return KBNamer.Suffix(kbName, httpServiceSuffix)

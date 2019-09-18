@@ -11,19 +11,23 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -108,7 +112,7 @@ func TestHandleDownscale(t *testing.T) {
 	actualStatefulSets := sset.StatefulSetList{ssetMaster3Replicas, ssetData4Replicas}
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
-		expectations:   reconciler.NewExpectations(),
+		expectations:   expectations.NewExpectations(),
 		reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 		observedState: observer.State{
 			ClusterState: &esclient.ClusterState{
@@ -179,15 +183,6 @@ func TestHandleDownscale(t *testing.T) {
 	// compare what has been updated in the apiserver with what we would expect
 	var actual appsv1.StatefulSetList
 	err := k8sClient.List(&client.ListOptions{}, &actual)
-	require.NoError(t, err)
-	require.Equal(t, expectedAfterDownscale, actual.Items)
-
-	// running the downscale again should requeue since some pods are not terminated yet
-	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
-	require.False(t, results.HasError())
-	require.Equal(t, requeueResults, results)
-	// no StatefulSet should have been updated
-	err = k8sClient.List(&client.ListOptions{}, &actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
@@ -635,7 +630,7 @@ func Test_attemptDownscale(t *testing.T) {
 			k8sClient := k8s.WrapClient(fake.NewFakeClient(runtimeObjs...))
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
-				expectations:   reconciler.NewExpectations(),
+				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				observedState: observer.State{
 					// all migrations are over
@@ -665,7 +660,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	k8sClient := k8s.WrapClient(fake.NewFakeClient(&sset1, &sset2))
 	downscaleCtx := downscaleContext{
 		k8sClient:    k8sClient,
-		expectations: reconciler.NewExpectations(),
+		expectations: expectations.NewExpectations(),
 		esClient:     &fakeESClient{},
 	}
 
@@ -682,7 +677,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	nodespec.UpdateReplicas(&expectedSset1, &downscale.targetReplicas)
 
 	// no expectation is currently set
-	require.True(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.True(t, downscaleCtx.expectations.SatisfiedGenerations(sset1.ObjectMeta))
 
 	// do the downscale
 	err := doDownscale(downscaleCtx, downscale, sset.StatefulSetList{sset1, sset2})
@@ -695,10 +690,10 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	require.Equal(t, []appsv1.StatefulSet{expectedSset1, sset2}, ssets.Items)
 
 	// expectations should have been be registered
-	require.True(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.True(t, downscaleCtx.expectations.SatisfiedGenerations(sset1.ObjectMeta))
 	// not ok for a sset whose generation == 1
 	sset1.Generation = 1
-	require.False(t, downscaleCtx.expectations.GenerationExpected(sset1.ObjectMeta))
+	require.False(t, downscaleCtx.expectations.SatisfiedGenerations(sset1.ObjectMeta))
 }
 
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
@@ -754,7 +749,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
-				expectations:   reconciler.NewExpectations(),
+				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				esClient:       esClient,
 			}
@@ -850,7 +845,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
-				expectations:   reconciler.NewExpectations(),
+				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				esClient:       esClient,
 			}
@@ -862,6 +857,39 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			require.Equal(t, tt.wantZen1CalledWith, esClient.SetMinimumMasterNodesCalledWith)
 			// check zen2 was not called
 			require.False(t, esClient.AddVotingConfigExclusionsCalled)
+		})
+	}
+}
+
+func Test_removeStatefulSetResources(t *testing.T) {
+	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
+	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
+	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
+	svc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), sset.Name)
+
+	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+	tests := []struct {
+		name      string
+		resources []runtime.Object
+	}{
+		{
+			name:      "happy path: delete 3 resources",
+			resources: []runtime.Object{&es, &sset, &cfg, &svc},
+		},
+		{
+			name:      "cfg and service were already deleted: should not return an error",
+			resources: []runtime.Object{&es, &sset},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k8sClient := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
+			err := removeStatefulSetResources(k8sClient, es, sset)
+			require.NoError(t, err)
+			// sset, cfg and headless services should not be there anymore
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&sset), &sset)))
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&cfg), &cfg)))
+			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&svc), &svc)))
 		})
 	}
 }
