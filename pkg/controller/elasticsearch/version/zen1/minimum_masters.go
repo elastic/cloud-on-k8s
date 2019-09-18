@@ -26,7 +26,7 @@ var (
 
 // SetupMinimumMasterNodesConfig modifies the ES config of the given resources to setup
 // zen1 minimum master nodes.
-// This is function should not be called unless all the expectations are met.
+// This function should not be called unless all the expectations are met.
 func SetupMinimumMasterNodesConfig(
 	c k8s.Client,
 	es v1alpha1.Elasticsearch,
