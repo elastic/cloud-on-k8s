@@ -23,16 +23,16 @@ Managing both APM Server and Elasticsearch by ECK allows a smooth and secured in
 
 . To deploy an APM Server and connect it to the cluster `quickstart` created in the link:k8s-quickstart.html[quickstart], apply the following specification:
 +
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 cat <<EOF | kubectl apply -f -
-apiVersion: apm.k8s.elastic.co/v1alpha1
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
 kind: ApmServer
 metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: 7.3.0
+  version: {version}
   nodeCount: 1
   elasticsearchRef:
     name: quickstart
@@ -50,10 +50,10 @@ You can retrieve details about the APM Server instance:
 kubectl get apmservers
 ----
 +
-[source,sh]
+[source,sh,subs="attributes"]
 ----
 NAME                     HEALTH    NODES    VERSION   AGE
-apm-server-quickstart    green     1         7.3.0     8m
+apm-server-quickstart    green     1        {version}      8m
 ----
 +
 And you can list all the Pods belonging to a given deployment:
@@ -78,15 +78,15 @@ apm-server-quickstart-apm-server-69b447ddc5-fflc6   1/1     Running   0         
 
 You can customize the configuration of the APM Server using a `config` element in the specification:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: apm.k8s.elastic.co/v1alpha1
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
 kind: ApmServer
 metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: 7.3.0
+  version: {version}
   nodeCount: 1
   config:
     output:
@@ -113,15 +113,15 @@ kubectl create secret generic apm-secret-settings --from-literal=ES_PASSWORD=ase
 
 . In the specification of the APM Server add a reference to the previously created secret within a `spec.secureSettings` section. Then reference the key in the APM Server configuration as it is described in the https://www.elastic.co/guide/en/apm/server/current/keystore.html[Secrets keystore for secure settings].
 +
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: apm.k8s.elastic.co/v1alpha1
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
 kind: ApmServer
 metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: 7.3.0
+  version: {version}
   nodeCount: 1
   secureSettings:
   - secretName: apm-secret-settings
@@ -152,15 +152,15 @@ NOTE: the file `elasticsearch-ca.crt` must contain the CA certificate of the Ela
 +
 Here is a complete example with a password stored in the Keystore as described in the previous section:
 +
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: apm.k8s.elastic.co/v1alpha1
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
 kind: ApmServer
 metadata:
   name: apm-server-quickstart
   namespace: default
 spec:
-  version: 7.3.0
+  version: {version}
   nodeCount: 1
   secureSettings:
   - secretName: apm-secret-settings
