@@ -74,7 +74,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
-			// Same test as above but the remaining
+			// Same test as above but the remaining master is unhealthy, nothing should be done
 			name: "Risky mutation with an unhealthy master",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(

@@ -130,7 +130,7 @@ func sortCandidates(allPods []corev1.Pod) {
 // * We exclude the master for Zen2
 // In case of a master scale up there's nothing else to do:
 // * If there are some Zen1 nodes m_m_n is updated prior the update of the StatefulSet in HandleUpscaleAndSpecChanges
-// * Because of the design of Zen2 nothing else to do for it.
+// * Because of the design of Zen2 there's nothing else to do for it.
 func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
 	if masterScaleDown {
