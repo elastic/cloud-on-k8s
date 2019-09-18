@@ -50,9 +50,6 @@ pipeline {
                     agent {
                         label 'eck'
                     }
-                    environment {
-                        KIND_LOG_LEVEL = "debug"
-                    }
                     steps {
                         createKindConfig()
                         sh """
