@@ -141,8 +141,6 @@ var predicates = [...]Predicate{
 			// than one master at a time.
 			if !label.IsMasterNode(candidate) {
 				if stringsutil.StringInSlice(candidate.Name, context.masterNodesNames) {
-					// TODO: if this one is becoming a master we probably want to check here if the candidate is healthy,
-					//  reason is that adding a new master that can't start could break the quorum (at least for Zen1).
 					return !context.masterUpdateInProgress, nil
 				}
 				// It is just a data node and it will not become a master: we don't care
