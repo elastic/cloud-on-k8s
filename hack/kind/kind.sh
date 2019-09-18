@@ -71,6 +71,14 @@ function collect_logs() {
   echo "==============================================="
 }
 
+function setup_storage() {
+  KUBECONFIG="$(kind get kubeconfig-path --name="${CLUSTER_NAME}")"
+  export KUBECONFIG
+
+  kubectl delete storageclass standard || true
+  kubectl apply -f "${scriptpath}/local-path-storage.yaml"
+}
+
 function setup_kind_cluster() {
   if [ -z "${NODE_IMAGE}" ]; then
       echo "NODE_IMAGE is not set"
@@ -102,13 +110,6 @@ function setup_kind_cluster() {
     exit 1
   fi
 
-  KUBECONFIG="$(kind get kubeconfig-path --name="${CLUSTER_NAME}")"
-  export KUBECONFIG
-
-  # setup storage
-  kubectl delete storageclass standard || true
-  kubectl apply -f "${scriptpath}/local-path-storage.yaml"
-
   echo "Kind setup complete"
 }
 
@@ -116,6 +117,10 @@ while (( "$#" )); do
   case "$1" in
     --stop) # just stop and exit
       cleanup_kind_cluster
+      exit 0
+    ;;
+    --setup-storage) # setup storage for cluster
+      setup_storage
       exit 0
     ;;
     --skip-setup)
