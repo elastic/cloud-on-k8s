@@ -30,7 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 
-	// todo (sabo)
+	// TODO (sabo): re-enable when webhooks are usable
 	// "github.com/elastic/cloud-on-k8s/pkg/webhook"
 
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -328,7 +328,7 @@ func execute() {
 		os.Exit(1)
 	}
 
-	// todo sabo
+	// TODO (sabo): re-enable when webhooks are usable
 	// log.Info("Setting up webhooks")
 	// if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
 	// 	log.Error(err, "unable to register webhooks to the manager")
@@ -345,7 +345,7 @@ func execute() {
 	}
 }
 
-// todo sabo
+// TODO (sabo): re-enable when webhooks are usable
 // func newWebhookParameters() (*webhook.Parameters, error) {
 // 	autoInstall := viper.GetBool(AutoInstallWebhooksFlag)
 // 	ns := viper.GetString(OperatorNamespaceFlag)

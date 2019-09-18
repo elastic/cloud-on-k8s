@@ -104,7 +104,7 @@ generate: controller-gen
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	$(MAKE) --no-print-directory generate-all-in-one
-	# todo sabo reenable when new tag is cut and can work with the new repo path
+	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
 	# $(MAKE) --no-print-directory generate-api-docs
 
 generate-api-docs:

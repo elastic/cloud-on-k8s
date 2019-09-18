@@ -47,7 +47,6 @@ const name = "elasticsearch-controller"
 
 var log = logf.Log.WithName(name)
 
-// TODO sabo do we remove this in favor of setup with manager?
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
 // this is also called by cmd/main.go

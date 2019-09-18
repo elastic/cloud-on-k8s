@@ -19,8 +19,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	// TODO SABO remove this?
-	// "k8s.io/kubernetes/pkg/controller/volume/events"
 )
 
 type eventLogEntry struct {

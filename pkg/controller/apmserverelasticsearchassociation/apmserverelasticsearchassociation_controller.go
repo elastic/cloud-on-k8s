@@ -53,7 +53,6 @@ var (
 
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// TODO sabo remove this or migrate the add watches into NewReconciler?
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := NewReconciler(mgr, params)
 	c, err := add(mgr, r)

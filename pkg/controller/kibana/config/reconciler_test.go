@@ -114,7 +114,6 @@ func TestReconcileConfigSecret(t *testing.T) {
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList
-			// TODO sabo are there funcs that can generate this, or also generate the labels in the test cases?
 			labelSelector := client.MatchingLabels(map[string]string{label.KibanaNameLabelName: tt.args.kb.Name})
 			err = k8sClient.List(&secrets, labelSelector)
 			assert.NoError(t, err)

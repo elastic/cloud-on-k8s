@@ -10,12 +10,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // ToObjectMeta returns an ObjectMeta based on the given NamespacedName.
@@ -43,31 +40,6 @@ func IsPodReady(pod corev1.Pod) bool {
 		}
 	}
 	return conditionsTrue == 2
-}
-
-// GetPods returns the list of pods given a NamespacedName and a field selector.
-// TODO sabo update this to take client.ListOptions...
-func GetPods(
-	c Client,
-	namespace string,
-	labelSelector labels.Selector,
-	fieldSelector fields.Selector,
-) ([]corev1.Pod, error) {
-	var podList corev1.PodList
-
-	// listOpts := client.ListOptions{
-	// 	Namespace:     namespace,
-	// 	LabelSelector: labelSelector,
-	// 	FieldSelector: fieldSelector,
-	// }
-
-	ns := client.InNamespace(namespace)
-
-	if err := c.List(&podList, ns); err != nil {
-		return nil, err
-	}
-
-	return podList.Items, nil
 }
 
 // PodsByName returns a map of pod names to pods

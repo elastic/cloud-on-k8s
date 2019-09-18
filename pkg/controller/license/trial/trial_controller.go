@@ -48,32 +48,10 @@ type ReconcileTrials struct {
 	trialPubKey *rsa.PublicKey
 }
 
-// Aggregate came from the webhook trial license pkg which was removed
-// TODO (sabo) what do?
-// func Aggregate(results []commonvalidation.Result) types.Response {
-// 	response := commonvalidation.Result{Allowed: true}
-// 	for _, r := range results {
-// 		if !r.Allowed {
-// 			response.Allowed = false
-// 			if r.Error != nil {
-// 				log.Error(r.Error, r.Reason)
-// 			}
-// 			if response.Reason == "" {
-// 				response.Reason = r.Reason
-// 				continue
-// 			}
-// 			response.Reason = response.Reason + ". " + r.Reason
-// 		}
-// 	}
-// 	log.V(1).Info("Admission validation response", "allowed", response.Allowed, "reason", response.Reason)
-// 	return admission.ValidationResponse(response.Allowed, response.Reason)
-// }
-
 // Reconcile watches a trial status secret. If it finds a trial license it checks whether a trial has been started.
 // If not it starts the trial period if the user has expressed intent to do so.
 // If a trial is already running it validates the trial license.
 
-// todo sabo how do we get the functionality in add() watches to be similar in kubebuilder v2? watching for all secrets fails
 func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -93,9 +71,8 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		if secret.Annotations == nil {
 			secret.Annotations = map[string]string{}
 		}
-		// TODO (sabo) what do? this is the only call
+		// TODO (sabo): this is the only dependency on the license_validation, which was removed as part of removing the webhook package
 		// res := license_validation.Aggregate(violations)
-		// res := Aggregate(violations)
 		// secret.Annotations[licensing.LicenseInvalidAnnotation] = string(res.Response.Result.Reason)
 		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
 	}
