@@ -11,6 +11,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/go-test/deep"
@@ -87,7 +88,9 @@ var sampleES = v1alpha1.Elasticsearch{
 
 func TestBuildPodTemplateSpec(t *testing.T) {
 	nodeSpec := sampleES.Spec.Nodes[0]
-	cfg, err := settings.NewMergedESConfig(sampleES.Name, sampleES.Spec.HTTP, *nodeSpec.Config)
+	ver, err := version.Parse(sampleES.Spec.Version)
+	require.NoError(t, err)
+	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSpec.Config)
 	require.NoError(t, err)
 
 	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.Nodes[0], cfg, nil)
@@ -135,7 +138,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			Labels: map[string]string{
 				"common.k8s.elastic.co/type":                        "elasticsearch",
 				"elasticsearch.k8s.elastic.co/cluster-name":         "name",
-				"elasticsearch.k8s.elastic.co/config-template-hash": "590139466",
+				"elasticsearch.k8s.elastic.co/config-template-hash": "2449560134",
 				"elasticsearch.k8s.elastic.co/http-scheme":          "https",
 				"elasticsearch.k8s.elastic.co/node-data":            "false",
 				"elasticsearch.k8s.elastic.co/node-ingest":          "true",

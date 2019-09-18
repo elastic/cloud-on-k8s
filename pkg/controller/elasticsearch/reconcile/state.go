@@ -69,19 +69,23 @@ func (s *State) UpdateElasticsearchState(
 	return s.updateWithPhase(s.status.Phase, resourcesState, observedState)
 }
 
-// UpdateElasticsearchOperational marks Elasticsearch as being operational in the resource status.
-func (s *State) UpdateElasticsearchOperational(
+// UpdateElasticsearchReady marks Elasticsearch as being ready in the resource status.
+func (s *State) UpdateElasticsearchReady(
 	resourcesState ResourcesState,
 	observedState observer.State,
-
 ) *State {
-	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, resourcesState, observedState)
+	return s.updateWithPhase(v1alpha1.ElasticsearchReadyPhase, resourcesState, observedState)
 }
 
-// UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
-func (s *State) UpdateElasticsearchPending(pods []corev1.Pod) *State {
+// IsElasticsearchReady reports if Elasticsearch is ready.
+func (s *State) IsElasticsearchReady(observedState observer.State) bool {
+	return s.status.Phase == v1alpha1.ElasticsearchReadyPhase
+}
+
+// UpdateElasticsearchApplyingChanges marks Elasticsearch as being the applying changes phase in the resource status.
+func (s *State) UpdateElasticsearchApplyingChanges(pods []corev1.Pod) *State {
 	s.status.AvailableNodes = len(AvailableElasticsearchNodes(pods))
-	s.status.Phase = v1alpha1.ElasticsearchPendingPhase
+	s.status.Phase = v1alpha1.ElasticsearchApplyingChangesPhase
 	s.status.Health = v1alpha1.ElasticsearchRedHealth
 	return s
 }

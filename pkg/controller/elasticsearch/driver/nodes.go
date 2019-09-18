@@ -64,7 +64,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if !esReachable {
 		// Cannot perform next operations if we cannot request Elasticsearch.
 		log.Info("ES external service not ready yet for further reconciliation, re-queuing.", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods)
+		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
 		return results.WithResult(defaultRequeue)
 	}
 
@@ -110,8 +110,46 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results
 	}
 
+	// When not reconciled, set the phase to ApplyingChanges only if it was Ready to avoid to
+	// override another "not Ready" phase like MigratingData.
+	if Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
+		reconcileState.UpdateElasticsearchReady(resourcesState, observedState)
+	} else if reconcileState.IsElasticsearchReady(observedState) {
+		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
+	}
+
 	// TODO:
 	//  - change budget
 	//  - grow and shrink
 	return results
+}
+
+// Reconciled reports whether the actual StatefulSets are reconciled to match the expected StatefulSets
+// by checking that the expected template hash label is reconciled for all StatefulSets, there are no
+// pod upgrades in progress and all pods are running.
+func Reconciled(expectedStatefulSets, actualStatefulSets sset.StatefulSetList, client k8s.Client) bool {
+	// actual sset should have the expected sset template hash label
+	for _, expectedSset := range expectedStatefulSets {
+		actualSset, ok := actualStatefulSets.GetByName(expectedSset.Name)
+		if !ok {
+			return false
+		}
+		if !sset.EqualTemplateHashLabels(expectedSset, actualSset) {
+			log.V(1).Info("Statefulset not reconciled",
+				"statefulset_name", expectedSset.Name, "reason", "template hash not equal")
+			return false
+		}
+	}
+
+	// all pods should have been upgraded
+	pods, err := podsToUpgrade(client, actualStatefulSets)
+	if err != nil {
+		return false
+	}
+	if len(pods) > 0 {
+		log.V(1).Info("Statefulset not reconciled", "reason", "pod not upgraded")
+		return false
+	}
+
+	return true
 }
