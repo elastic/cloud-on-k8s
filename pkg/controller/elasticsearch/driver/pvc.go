@@ -53,10 +53,10 @@ func pvcsToRemove(
 	// consider Pods in the process of being deleted (but not deleted yet), since already covered
 	// by checking expectations earlier in the process.
 	// Then, just return existing PVCs that are not part of that list.
-	expectedPVCs := stringsutil.SliceToMap(append(actualStatefulSets.PVCNames(), expectedStatefulSets.PVCNames()...))
+	toKeep := stringsutil.SliceToMap(append(actualStatefulSets.PVCNames(), expectedStatefulSets.PVCNames()...))
 	var toRemove []corev1.PersistentVolumeClaim // nolint
 	for _, pvc := range pvcs {
-		if _, exists := expectedPVCs[pvc.Name]; exists {
+		if _, exists := toKeep[pvc.Name]; exists {
 			continue
 		}
 		toRemove = append(toRemove, pvc)
