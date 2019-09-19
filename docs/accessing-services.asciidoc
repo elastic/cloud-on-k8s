@@ -58,14 +58,14 @@ hulk-kb-http        ClusterIP      10.19.247.151   <none>           5601:31380/T
 You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of the resource manifest.
 On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur costs.
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: <kind>.k8s.elastic.co/v1alpha1
+apiVersion: <kind>.k8s.elastic.co/{eck_crd_version}
 kind: <Kind>
 metadata:
   name: hulk
 spec:
-  version: 7.3.0
+  version: {version}
   http:
     service:
       spec:

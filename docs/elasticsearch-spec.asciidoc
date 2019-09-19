@@ -417,14 +417,14 @@ A default PDB of 1 `maxUnavailable` Pod on the entire cluster is enforced by def
 
 This default can be tweaked in the Elasticsearch specification:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 3
   podDisruptionBudget:
@@ -437,14 +437,14 @@ spec:
 
 It can also be explicitly disabled:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 3
   podDisruptionBudget: {}

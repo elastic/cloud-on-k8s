@@ -26,9 +26,9 @@ Before deploying an Elasticsearch cluster with ECK, make sure you correctly appl
 === Deploy the operator
 . Apply the all-in-one template, as described in the link:k8s-quickstart.html[quickstart].
 +
-[source,shell]
+[source,shell,subs="attributes"]
 ----
-oc apply -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
+oc apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
 
 . [Optional] If the Software Defined Network is configured with the `ovs-multitenant` plug-in, you must allow the `elastic-system` namespace to access other Pods and Services in the cluster:
@@ -50,7 +50,7 @@ By default the operator watches and creates resources in the `default` namespace
 [source,shell]
 ----
 kubectl patch statefulset/elastic-operator \
-  -n elastic-system \ 
+  -n elastic-system \
   --type='json' \
   --patch '[{"op":"add","path":"/spec/template/spec/containers/0/env/-","value": {"name": "NAMESPACE", "value": "elastic"}}]'
 ----
@@ -72,16 +72,16 @@ In the example above the user `developer` is allowed to manage Elastic resources
 
 Use the following code to create an Elasticsearch cluster `elasticsearch-sample` and a "passthrough" route to access it:
 
-[source,shell]
+[source,shell,subs="attributes"]
 ----
 cat <<EOF | oc apply -n elastic -f -
 # This sample sets up an Elasticsearch cluster with an OpenShift route
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.3.0
+  version: {version}
   setVmMaxMapCount: false
   nodes:
   - config:
@@ -110,15 +110,15 @@ EOF
 
 Use the following code to create a Kibana instance and a "passthrough" route to access it:
 
-[source,shell]
+[source,shell,subs="attributes"]
 ----
 cat <<EOF | oc apply -n elastic -f -
-apiVersion: kibana.k8s.elastic.co/v1alpha1
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: 7.3.0
+  version: {version}
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
@@ -178,15 +178,15 @@ scc "anyuid" added to: ["system:serviceaccount:elastic:apm-server"]
 ----
 . Deploy an APM Server and a route with the following manifest
 +
-[source,shell]
+[source,shell,subs="attributes"]
 ----
 cat <<EOF | oc apply -n elastic -f -
-apiVersion: apm.k8s.elastic.co/v1alpha1
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
 kind: ApmServer
 metadata:
   name: apm-server-sample
 spec:
-  version: 7.3.0
+  version: {version}
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
