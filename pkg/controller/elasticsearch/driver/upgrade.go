@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -49,6 +50,12 @@ func (d *defaultDriver) handleRollingUpgrades(
 		return results.WithError(err)
 	}
 
+	// Get current masters
+	actualMasters, err := sset.GetActualMastersForCluster(d.Client, d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
 		d,
@@ -56,6 +63,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 		esClient,
 		esState,
 		expectedMaster,
+		actualMasters,
 		podsToUpgrade,
 		healthyPods,
 	).run()
@@ -85,7 +93,9 @@ type rollingUpgradeCtx struct {
 	esClient        esclient.Client
 	esState         ESState
 	expectations    *expectations.Expectations
+	reconcileState  *reconcile.State
 	expectedMasters []string
+	actualMasters   []corev1.Pod
 	podsToUpgrade   []corev1.Pod
 	healthyPods     map[string]corev1.Pod
 }
@@ -96,6 +106,7 @@ func newRollingUpgrade(
 	esClient esclient.Client,
 	esState ESState,
 	expectedMaster []string,
+	actualMasters []corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	healthyPods map[string]corev1.Pod,
 ) rollingUpgradeCtx {
@@ -106,7 +117,9 @@ func newRollingUpgrade(
 		esClient:        esClient,
 		esState:         esState,
 		expectations:    d.Expectations,
+		reconcileState:  d.ReconcileState,
 		expectedMasters: expectedMaster,
+		actualMasters:   actualMasters,
 		podsToUpgrade:   podsToUpgrade,
 		healthyPods:     healthyPods,
 	}
@@ -157,8 +170,7 @@ func podsToUpgrade(
 	statefulSets sset.StatefulSetList,
 ) ([]corev1.Pod, error) {
 	var toUpgrade []corev1.Pod
-	toUpdate := statefulSets.ToUpdate()
-	for _, statefulSet := range toUpdate {
+	for _, statefulSet := range statefulSets {
 		// Inspect each pod, starting from the highest ordinal, and decrement the idx to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
 		for idx := sset.GetReplicas(statefulSet) - 1; idx >= 0; idx-- {

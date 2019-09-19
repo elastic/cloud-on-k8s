@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/go-test/deep"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -18,10 +16,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -284,58 +284,73 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 }
 
 func Test_adjustZenConfig(t *testing.T) {
-	bootstrappedES := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"}}}
+	bootstrappedES := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        TestEsName,
+			Namespace:   TestEsNamespace,
+			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
+		},
+	}
 	notBootstrappedES := v1alpha1.Elasticsearch{}
 
 	tests := []struct {
 		name                      string
 		es                        v1alpha1.Elasticsearch
-		resources                 nodespec.ResourcesList
+		statefulSet               sset.TestSset
+		pods                      []runtime.Object
 		wantMinimumMasterNodesSet bool
 		wantInitialMasterNodesSet bool
 	}{
 		{
-			name: "adjust zen1 minimum_master_nodes",
-			es:   bootstrappedES,
-			resources: nodespec.ResourcesList{
-				{
-					StatefulSet: sset.TestSset{Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build(),
-					Config:      settings.NewCanonicalConfig(),
-				},
+			name:                      "adjust zen1 minimum_master_nodes",
+			es:                        bootstrappedES,
+			statefulSet:               sset.TestSset{Version: "6.8.0", Replicas: 3, Master: true, Data: true},
+			wantMinimumMasterNodesSet: true,
+			wantInitialMasterNodesSet: false,
+		},
+		{
+			name:        "adjust zen1 minimum_master_nodes if some 6.8.x are still in flight",
+			es:          bootstrappedES,
+			statefulSet: sset.TestSset{Name: "masters", Version: "7.2.0", Replicas: 3, Master: true, Data: true},
+			pods: []runtime.Object{
+				newTestPod("masters-0").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
+				newTestPod("masters-1").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
+				newTestPod("masters-2").withVersion("6.8.0").isMaster(true).isData(true).toPodPtr(),
 			},
 			wantMinimumMasterNodesSet: true,
 			wantInitialMasterNodesSet: false,
 		},
 		{
-			name: "adjust zen2 initial master nodes when cluster is not bootstrapped yet",
-			es:   notBootstrappedES,
-			resources: nodespec.ResourcesList{
-				{
-					StatefulSet: sset.TestSset{Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build(),
-					Config:      settings.NewCanonicalConfig(),
-				},
-			},
+			name:                      "adjust zen2 initial master nodes when cluster is not bootstrapped yet",
+			es:                        notBootstrappedES,
+			statefulSet:               sset.TestSset{Version: "7.2.0", Replicas: 3, Master: true, Data: true},
 			wantMinimumMasterNodesSet: false,
 			wantInitialMasterNodesSet: true,
 		},
 		{
-			name: "don't adjust zen2 initial master nodes when cluster is already bootstrapped",
-			es:   bootstrappedES,
-			resources: nodespec.ResourcesList{
-				{
-					StatefulSet: sset.TestSset{Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build(),
-					Config:      settings.NewCanonicalConfig(),
-				},
-			},
+			name:                      "don't adjust zen2 initial master nodes when cluster is already bootstrapped",
+			es:                        bootstrappedES,
+			statefulSet:               sset.TestSset{Version: "7.2.0", Replicas: 3, Master: true, Data: true},
 			wantMinimumMasterNodesSet: false,
 			wantInitialMasterNodesSet: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := adjustZenConfig(tt.es, tt.resources)
+			resources := nodespec.ResourcesList{
+				{
+					StatefulSet: tt.statefulSet.Build(),
+					Config:      settings.NewCanonicalConfig(),
+				},
+			}
+			pods := tt.pods
+			if pods == nil {
+				pods = tt.statefulSet.Pods()
+			}
+			client := k8s.WrapClient(fake.NewFakeClient(pods...))
+			err := adjustZenConfig(client, tt.es, resources)
 			require.NoError(t, err)
-			for _, res := range tt.resources {
+			for _, res := range resources {
 				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{settings.DiscoveryZenMinimumMasterNodes})) > 0
 				require.Equal(t, tt.wantMinimumMasterNodesSet, hasMinimumMasterNodes)
 				hasInitialMasterNodes := len(res.Config.HasKeys([]string{settings.ClusterInitialMasterNodes})) > 0

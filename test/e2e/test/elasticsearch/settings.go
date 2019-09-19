@@ -13,19 +13,26 @@ import (
 func MustNumDataNodes(es v1alpha1.Elasticsearch) int {
 	var numNodes int
 	for _, n := range es.Spec.Nodes {
-		config, err := common.NewCanonicalConfigFrom(n.Config.Data)
-		if err != nil {
-			panic(err)
-		}
-		nodeCfg, err := settings.CanonicalConfig{
-			CanonicalConfig: config,
-		}.Unpack()
-		if err != nil {
-			panic(err)
-		}
-		if nodeCfg.Node.Data {
+		if isDataNode(n) {
 			numNodes += int(n.NodeCount)
 		}
 	}
 	return numNodes
+}
+
+func isDataNode(node v1alpha1.NodeSpec) bool {
+	if node.Config == nil {
+		return v1alpha1.DefaultCfg.Node.Data // if not specified use the default
+	}
+	config, err := common.NewCanonicalConfigFrom(node.Config.Data)
+	if err != nil {
+		panic(err)
+	}
+	nodeCfg, err := settings.CanonicalConfig{
+		CanonicalConfig: config,
+	}.Unpack()
+	if err != nil {
+		panic(err)
+	}
+	return nodeCfg.Node.Data
 }

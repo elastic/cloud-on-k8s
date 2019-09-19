@@ -41,8 +41,12 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources)
+	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme())
 	if err != nil {
+		return results.WithError(err)
+	}
+
+	if err := GarbageCollectPVCs(d.K8sClient(), d.ES, actualStatefulSets, expectedResources.StatefulSets()); err != nil {
 		return results.WithError(err)
 	}
 

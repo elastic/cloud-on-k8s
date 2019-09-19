@@ -19,7 +19,6 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-bundles-plugins>>
 - <<{p}-init-containers-plugin-downloads>>
 - <<{p}-update-strategy>>
-- <<{p}-group-definitions>>
 - <<{p}-pod-disruption-budget>>
 - <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
 - <<{p}-snapshot,Create automated snapshots>>
@@ -408,82 +407,6 @@ So under certain circumstances ECK ignores the change budget. For example, a saf
 
 It is possible to configure the `changeBudget` to optimize the reuse of persistent volumes, instead of migrating data across nodes. This feature is not supported yet, more details to come in the next release.
 
-[id="{p}-group-definitions"]
-=== Group definitions
-
-To optimize upgrades for highly available setups, ECK can take into account arbitrary nodes grouping. It prioritizes recovery of availability zones in catastrophic scenarios.
-
-For example, let's create a zone-aware Elasticsearch cluster. Some nodes are created in `europe-west3-a`, and some others in `europe-west3-b`:
-
-[source,yaml]
-----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
-kind: Elasticsearch
-metadata:
-  name: quickstart
-spec:
-  version: 7.3.0
-  nodes:
-  - nodeCount: 3
-    config:
-      node.attr.zone: europe-west3-a
-      cluster.routing.allocation.awareness.attributes: zone
-    podTemplate:
-      meta:
-        labels:
-          nodesGroup: group-a
-      spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-              - matchExpressions:
-                - key: failure-domain.beta.kubernetes.io/zone
-                  operator: In
-                  values:
-                  - europe-west3-a
-  - nodeCount: 3
-    config:
-      node.attr.zone: europe-west3-b
-      cluster.routing.allocation.awareness.attributes: zone
-    podTemplate:
-      meta:
-        labels:
-          nodesGroup: group-b
-      spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-              - matchExpressions:
-                - key: failure-domain.beta.kubernetes.io/zone
-                  operator: In
-                  values:
-                  - europe-west3-b
-  updateStrategy:
-    changeBudget:
-      maxSurge: 1
-      maxUnavailable: 0
-    groups:
-    - selector:
-        matchLabels:
-          nodesGroup: group-a
-    - selector:
-        matchLabels:
-          nodesGroup: group-b
-----
-
-If a modification is applied to the Elasticsearch configuration of these 6 nodes, ECK slowly upgrades the cluster nodes, taking the provided `changeBudget` into account.
-In this example, it will spawn one node at a time, and migrate data away from one node at a time.
-
-Imagine a catastrophic situation occurs while the mutation is in progress: all nodes in `europe-west3-b` suddenly disappear.
-ECK detects it, and recreates the 3 missing nodes as expected. However, since a cluster upgrade is already in progress, the current `changeBudget` might already be maxed out, preventing new nodes to be created in `europe-west3-b`.
-
-In this situation, it is preferable to first recreate the missing nodes in `europe-west-3b`, then continue the cluster upgrade.
-
-To do so, ECK must know about the logical grouping of nodes. Since this is an arbitrary setting (can represent availability zones, but also nodes roles, hot-warm topologies, etc.), it must be specified in the `updateStrategy.groups` section of the Elasticsearch specification.
-Nodes grouping is expressed through labels on the resources. In the example above, 3 Pods are labeled with `group-a`, and the 3 Pods with `group-b`.
-
 [id="{p}-pod-disruption-budget"]
 === Pod disruption budget
 
@@ -494,14 +417,14 @@ A default PDB of 1 `maxUnavailable` Pod on the entire cluster is enforced by def
 
 This default can be tweaked in the Elasticsearch specification:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 3
   podDisruptionBudget:
@@ -514,14 +437,14 @@ spec:
 
 It can also be explicitly disabled:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 3
   podDisruptionBudget: {}
