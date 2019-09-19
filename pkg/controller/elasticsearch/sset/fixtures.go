@@ -28,19 +28,15 @@ func (t TestSset) Pods() []runtime.Object {
 	podNames := PodNames(t.Build())
 	pods := make([]runtime.Object, t.Replicas)
 	for i, podName := range podNames {
-		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      podName,
-				Namespace: t.Namespace,
-				Labels: map[string]string{
-					label.VersionLabelName:     t.Version,
-					label.ClusterNameLabelName: t.ClusterName,
-				},
-			},
-		}
-		label.NodeTypesMasterLabelName.Set(t.Master, pod.Labels)
-		label.NodeTypesDataLabelName.Set(t.Data, pod.Labels)
-		pods[i] = pod
+		pods[i] = TestPod{
+			Namespace:       t.Namespace,
+			Name:            podName,
+			StatefulSetName: t.Name,
+			Master:          t.Master,
+			Data:            t.Data,
+			Version:         t.Version,
+			ClusterName:     t.ClusterName,
+		}.BuildPtr()
 	}
 	return pods
 }
