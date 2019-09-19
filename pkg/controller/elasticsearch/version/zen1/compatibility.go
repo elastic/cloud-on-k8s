@@ -24,7 +24,7 @@ func IsCompatibleWithZen1(statefulSet appsv1.StatefulSet) bool {
 	return sset.ESVersionMatch(statefulSet, versionCompatibleWithZen1)
 }
 
-// AtLeastOneNodeCompatibleWithZen1 returns true if at least one of the following condition is true:
+// AtLeastOneNodeCompatibleWithZen1 returns true if at least one of the following conditions is true:
 // 1. There is at least one 6.x node in the actual masters.
 // 2. The given StatefulSetList contains at least one StatefulSet compatible with zen1.
 func AtLeastOneNodeCompatibleWithZen1(

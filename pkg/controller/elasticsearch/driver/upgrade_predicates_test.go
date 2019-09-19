@@ -111,7 +111,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
 					newTestPod("data-to-masters-0").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
 				),
 				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
 				green:          true,

@@ -48,7 +48,7 @@ func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailab
 			return deletedPods, err
 		} else if ok {
 			candidate := candidate
-			if label.IsMasterNode(candidate) || stringsutil.StringInSlice(candidate.Name, ctx.masterNodesNames) {
+			if label.IsMasterNode(candidate) || willBecomeMasterNode(candidate.Name, ctx.masterNodesNames) {
 				// It is a mutation on an already existing or future master.
 				ctx.masterUpdateInProgress = true
 			}
@@ -140,7 +140,7 @@ var predicates = [...]Predicate{
 			// In this case we account for a master creation as we want to avoid creating more
 			// than one master at a time.
 			if !label.IsMasterNode(candidate) {
-				if stringsutil.StringInSlice(candidate.Name, context.masterNodesNames) {
+				if willBecomeMasterNode(candidate.Name, context.masterNodesNames) {
 					return !context.masterUpdateInProgress, nil
 				}
 				// It is just a data node and it will not become a master: we don't care
@@ -162,7 +162,7 @@ var predicates = [...]Predicate{
 			// If Pod is not an expected master it means that we are downscaling the masters
 			// by changing the type of the node.
 			// In this case we still check that other masters are healthy to avoid degrading the situation.
-			if !stringsutil.StringInSlice(candidate.Name, context.masterNodesNames) {
+			if !willBecomeMasterNode(candidate.Name, context.masterNodesNames) {
 				// We still need to ensure that others masters are healthy
 				for _, actualMaster := range context.actualMasters {
 					_, healthyMaster := context.healthyPods[actualMaster.Name]
@@ -274,6 +274,10 @@ var predicates = [...]Predicate{
 			return true, nil
 		},
 	},
+}
+
+func willBecomeMasterNode(name string, masters []string) bool {
+	return stringsutil.StringInSlice(name, masters)
 }
 
 func conflictingShards(shards1, shards2 []client.Shard) bool {
