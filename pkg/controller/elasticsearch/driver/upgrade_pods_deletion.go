@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,6 +36,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		ctx.healthyPods,
 		ctx.podsToUpgrade,
 		ctx.expectedMasters,
+		ctx.actualMasters,
 	)
 	log.V(1).Info("Applying predicates",
 		"maxUnavailableReached", maxUnavailableReached,
@@ -61,9 +63,11 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 	// TODO: If master is changed into a data node (or the opposite) it must be excluded or we should update m_m_n
 	deletedPods := []corev1.Pod{}
 	for _, podToDelete := range podsToDelete {
+		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
+			return deletedPods, err
+		}
 		ctx.expectations.ExpectDeletion(podToDelete)
-		err := ctx.delete(&podToDelete)
-		if err != nil {
+		if err := ctx.delete(&podToDelete); err != nil {
 			ctx.expectations.CancelExpectedDeletion(podToDelete)
 			return deletedPods, err
 		}
@@ -118,6 +122,30 @@ func sortCandidates(allPods []corev1.Pod) {
 		}
 		return true
 	})
+}
+
+// handleMasterScaleChange handles Zen updates when a type change results in the addition or the removal of a master:
+// In case of a master scale down it shares the same logic that a "traditional" scale down:
+// * We proactively set m_m_n to the value of 1 if there are 2 Zen1 masters left
+// * We exclude the master for Zen2
+// In case of a master scale up there's nothing else to do:
+// * If there are Zen1 nodes m_m_n is updated prior the update of the StatefulSet in HandleUpscaleAndSpecChanges
+// * Because of the design of Zen2 there's nothing else to do for it.
+func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
+	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
+	if masterScaleDown {
+		if err := updateZenSettingsForDownscale(
+			ctx.client,
+			ctx.esClient,
+			ctx.ES,
+			ctx.reconcileState,
+			ctx.statefulSets,
+			pod.Name,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {

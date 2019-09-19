@@ -21,8 +21,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
+const (
+	TestEsName      = "TestES"
+	TestEsNamespace = "TestNS"
+)
+
 type testPod struct {
-	name                                                     string
+	name, version                                            string
 	master, data, healthy, toUpgrade, inCluster, terminating bool
 	uid                                                      types.UID
 }
@@ -40,10 +45,13 @@ func (t testPod) isInCluster(v bool) testPod   { t.inCluster = v; return t }
 func (t testPod) isHealthy(v bool) testPod     { t.healthy = v; return t }
 func (t testPod) needsUpgrade(v bool) testPod  { t.toUpgrade = v; return t }
 func (t testPod) isTerminating(v bool) testPod { t.terminating = v; return t }
+func (t testPod) withVersion(v string) testPod { t.version = v; return t }
 
 // filter to simulate a Pod that has been removed while upgrading
 // unfortunately fake client does not support predicate
 type filter func(pod corev1.Pod) bool
+
+// -- Filters
 
 var nothing = func(pod corev1.Pod) bool {
 	return false
@@ -52,6 +60,38 @@ var nothing = func(pod corev1.Pod) bool {
 func byName(name string) filter {
 	return func(pod corev1.Pod) bool {
 		return pod.Name == name
+	}
+}
+
+// - Mutations are used to simulate a type change on a set of Pods, e.g. MD -> D or D -> MD
+
+type mutation func(pod corev1.Pod) corev1.Pod
+
+var noMutation = func(pod corev1.Pod) corev1.Pod {
+	return pod
+}
+
+func removeMasterType(ssetName string) mutation {
+	return func(pod corev1.Pod) corev1.Pod {
+		podSsetname, _, _ := sset.StatefulSetName(pod.Name)
+		if podSsetname == ssetName {
+			pod := pod.DeepCopy()
+			label.NodeTypesMasterLabelName.Set(false, pod.Labels)
+			return *pod
+		}
+		return pod
+	}
+}
+
+func addMasterType(ssetName string) mutation {
+	return func(pod corev1.Pod) corev1.Pod {
+		podSsetname, _, _ := sset.StatefulSetName(pod.Name)
+		if podSsetname == ssetName {
+			pod := pod.DeepCopy()
+			label.NodeTypesMasterLabelName.Set(true, pod.Labels)
+			return *pod
+		}
+		return pod
 	}
 }
 
@@ -116,6 +156,17 @@ func (u upgradeTestPods) toPods(f filter) []runtime.Object {
 	return result
 }
 
+func (u upgradeTestPods) toMasterPods() []corev1.Pod {
+	var result []corev1.Pod
+	for _, testPod := range u {
+		pod := testPod.toPod()
+		if label.IsMasterNode(pod) {
+			result = append(result, pod)
+		}
+	}
+	return result
+}
+
 func (u upgradeTestPods) toHealthyPods() map[string]corev1.Pod {
 	result := make(map[string]corev1.Pod)
 	for _, testPod := range u {
@@ -149,10 +200,10 @@ func (u upgradeTestPods) podsInCluster() []string {
 	return result
 }
 
-func (u upgradeTestPods) toMasters() []string {
+func (u upgradeTestPods) toMasters(mutation mutation) []string {
 	var result []string
 	for _, testPod := range u {
-		pod := testPod.toPod()
+		pod := mutation(testPod.toPod())
 		if label.IsMasterNode(pod) {
 			result = append(result, pod.Name)
 		}
@@ -177,12 +228,14 @@ func (t testPod) toPod() corev1.Pod {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              t.name,
-			Namespace:         "testNS",
+			Namespace:         TestEsNamespace,
 			UID:               t.uid,
 			DeletionTimestamp: deletionTimestamp,
 		},
 	}
 	labels := map[string]string{}
+	labels[label.VersionLabelName] = t.version
+	labels[label.ClusterNameLabelName] = TestEsName
 	label.NodeTypesMasterLabelName.Set(t.master, labels)
 	label.NodeTypesDataLabelName.Set(t.data, labels)
 	pod.Labels = labels
@@ -201,6 +254,11 @@ func (t testPod) toPod() corev1.Pod {
 		}
 	}
 	return pod
+}
+
+func (t testPod) toPodPtr() *corev1.Pod {
+	pod := t.toPod()
+	return &pod
 }
 
 type testESState struct {

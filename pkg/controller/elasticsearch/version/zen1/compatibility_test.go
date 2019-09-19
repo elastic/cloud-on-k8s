@@ -7,12 +7,15 @@ package zen1
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func createStatefulSetWithVersion(version string) appsv1.StatefulSet {
@@ -23,6 +26,32 @@ func createStatefulSetWithVersion(version string) appsv1.StatefulSet {
 			},
 		},
 	}}}
+}
+
+var testES = v1alpha1.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "es1",
+		Namespace: "default",
+	},
+}
+
+func createMasterPodsWithVersion(ssetName, version string, replicas int32) []runtime.Object {
+	pods := make([]runtime.Object, replicas)
+	for i := int32(0); i < replicas; i++ {
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      sset.PodName(ssetName, i),
+				Namespace: "default",
+				Labels: map[string]string{
+					label.VersionLabelName:     version,
+					label.ClusterNameLabelName: "es1",
+				},
+			},
+		}
+		label.NodeTypesMasterLabelName.Set(true, pod.Labels)
+		pods[i] = pod
+	}
+	return pods
 }
 
 func TestIsCompatibleWithZen1(t *testing.T) {
@@ -61,32 +90,49 @@ func TestAtLeastOneNodeCompatibleWithZen1(t *testing.T) {
 	tests := []struct {
 		name         string
 		statefulSets sset.StatefulSetList
+		client       k8s.Client
 		want         bool
+		wantErr      bool
 	}{
 		{
 			name:         "no sset",
 			statefulSets: nil,
+			client:       k8s.WrapClient(fake.NewFakeClient()),
 			want:         false,
 		},
 		{
 			name:         "none compatible",
 			statefulSets: sset.StatefulSetList{createStatefulSetWithVersion("7.0.0"), createStatefulSetWithVersion("7.1.0")},
+			client:       k8s.WrapClient(fake.NewFakeClient()),
 			want:         false,
 		},
 		{
 			name:         "one compatible",
 			statefulSets: sset.StatefulSetList{createStatefulSetWithVersion("6.8.0"), createStatefulSetWithVersion("7.1.0")},
+			client:       k8s.WrapClient(fake.NewFakeClient()),
 			want:         true,
 		},
 		{
 			name:         "all compatible",
 			statefulSets: sset.StatefulSetList{createStatefulSetWithVersion("6.8.0"), createStatefulSetWithVersion("6.9.0")},
+			client:       k8s.WrapClient(fake.NewFakeClient()),
+			want:         true,
+		},
+		{
+			name:         "Version in StatefulSet spec in 7.2.0 but there're still some 6.8.0 in flight",
+			statefulSets: sset.StatefulSetList{createStatefulSetWithVersion("7.2.0")},
+			client:       k8s.WrapClient(fake.NewFakeClient(createMasterPodsWithVersion("foo", "6.8.0", 5)...)),
 			want:         true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AtLeastOneNodeCompatibleWithZen1(tt.statefulSets); got != tt.want {
+			got, err := AtLeastOneNodeCompatibleWithZen1(tt.statefulSets, tt.client, testES)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("runPredicates error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
 				t.Errorf("AtLeastOneNodeCompatibleWithZen1() = %v, want %v", got, tt.want)
 			}
 		})
