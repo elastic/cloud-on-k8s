@@ -55,3 +55,11 @@ func RemoveStringInSlice(s string, slice []string) []string {
 	}
 	return result
 }
+
+func SliceToMap(slice []string) map[string]struct{} {
+	m := make(map[string]struct{}, len(slice))
+	for _, s := range slice {
+		m[s] = struct{}{}
+	}
+	return m
+}

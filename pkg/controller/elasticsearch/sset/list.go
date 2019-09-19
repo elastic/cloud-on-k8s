@@ -5,6 +5,8 @@
 package sset
 
 import (
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -72,6 +74,20 @@ func (l StatefulSetList) PodNames() []string {
 		names = append(names, PodNames(s)...)
 	}
 	return names
+}
+
+// PVCNames returns the names of PVCs for all pods of the StatefulSetList.
+func (l StatefulSetList) PVCNames() []string {
+	var pvcNames []string
+	for _, s := range l {
+		podNames := PodNames(s)
+		for _, claim := range s.Spec.VolumeClaimTemplates {
+			for _, podName := range podNames {
+				pvcNames = append(pvcNames, fmt.Sprintf("%s-%s", claim.Name, podName))
+			}
+		}
+	}
+	return pvcNames
 }
 
 // GetActualPods returns the list of pods currently existing in the StatefulSetList.
