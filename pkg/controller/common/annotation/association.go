@@ -11,7 +11,7 @@ import (
 
 const (
 	// CurrAssocStatusAnnotation describes the currently observed association status of an object.
-	CurrAssocStatusAnnotation = "commonv1alpha1.k8s.elastic.co/current-status"
+	CurrAssocStatusAnnotation = "association.k8s.elastic.co/current-status"
 	// PrevAssocStatusAnnotation describes the previously observed association status of an object.
 	PrevAssocStatusAnnotation = "association.k8s.elastic.co/previous-status"
 	// AssociationConfAnnotation is the annotation used to define the config for associated Elasticsearch cluster.
