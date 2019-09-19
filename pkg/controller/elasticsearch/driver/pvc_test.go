@@ -129,7 +129,7 @@ func Test_pvcsToRemove(t *testing.T) {
 
 func TestGarbageCollectPVCs(t *testing.T) {
 	// Test_pvcsToRemove covers most of the testing logic,
-	// let's just checked everything is correctly plugged to the k8s api here.
+	// let's just check everything is correctly plugged to the k8s api here.
 	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	existingPVCS := []runtime.Object{
 		buildPVCPtr("claim1-sset1-0"),   // should not be removed

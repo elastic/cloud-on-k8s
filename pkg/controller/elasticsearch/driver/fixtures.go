@@ -110,6 +110,10 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 
 func (u upgradeTestPods) toES(maxUnavailable int) v1alpha1.Elasticsearch {
 	return v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      TestEsName,
+			Namespace: TestEsNamespace,
+		},
 		Spec: v1alpha1.ElasticsearchSpec{
 			UpdateStrategy: v1alpha1.UpdateStrategy{
 				ChangeBudget: &v1alpha1.ChangeBudget{
@@ -140,7 +144,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	statefulSetList := make(sset.StatefulSetList, len(statefulSets))
 	i := 0
 	for statefulSet, replica := range statefulSets {
-		statefulSetList[i] = sset.TestSset{Name: statefulSet, Replicas: replica + 1}.Build()
+		statefulSetList[i] = sset.TestSset{Name: statefulSet, ClusterName: TestEsName, Namespace: TestEsNamespace, Replicas: replica + 1}.Build()
 		i++
 	}
 	return statefulSetList

@@ -138,7 +138,7 @@ func Test_healthyPods(t *testing.T) {
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
 						Name:      "masters",
-						Namespace: "testNS",
+						Namespace: TestEsNamespace,
 						Replicas:  3,
 					}.Build(),
 				},
@@ -155,7 +155,7 @@ func Test_healthyPods(t *testing.T) {
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
 						Name:      "masters",
-						Namespace: "testNS",
+						Namespace: TestEsNamespace,
 						Replicas:  3,
 					}.Build(),
 				},
