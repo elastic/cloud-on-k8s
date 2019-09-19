@@ -144,7 +144,7 @@ You can bring your own certificate to configure TLS to ensure that communication
 
 Create a Kubernetes secret with:
 
-- `ca.crt`: CA certificate (optional if `tls.crt` was issued by a well-known CA)
+- `ca.crt`: CA certificate (optional if `tls.crt` was issued by a well-known CA).
 - `tls.crt`: the certificate.
 - `tls.key`: the private key to the first certificate in the certificate chain.
 
