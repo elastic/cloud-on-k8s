@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,8 +46,10 @@ func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "test-system",
 				Name:      "test-license",
-				// TODO (sabo): is this EnterpriseLicense.Type -> License.Type cast safe?
-				Labels: LabelsForType(LicenseType(l.License.Type)),
+				Labels: map[string]string{
+					common.TypeLabelName: Type,
+					LicenseLabelType:     string(l.License.Type),
+				},
 			},
 			Data: map[string][]byte{
 				FileName: bytes,
