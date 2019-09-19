@@ -35,7 +35,7 @@ ci-internal: ci-build-image
 	@ docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-		-v ${HOME}/.kube:${HOME}/.kube \
+		-v ${HOME}/.kube:/root/.kube \
 		-w $(GO_MOUNT_PATH) \
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)"

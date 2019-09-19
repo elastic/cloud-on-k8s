@@ -107,6 +107,9 @@ function setup_kind_cluster() {
     exit 1
   fi
 
+  # Export k8s config
+  kind get kubeconfig-path --name="${CLUSTER_NAME}"
+
   echo "Kind setup complete"
 }
 
