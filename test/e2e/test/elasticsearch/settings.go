@@ -22,7 +22,7 @@ func MustNumDataNodes(es v1alpha1.Elasticsearch) int {
 
 func isDataNode(node v1alpha1.NodeSpec) bool {
 	if node.Config == nil {
-		return true // if not specified all node type fields are true
+		return v1alpha1.DefaultCfg.Node.Data // if not specified use the default
 	}
 	config, err := common.NewCanonicalConfigFrom(node.Config.Data)
 	if err != nil {
