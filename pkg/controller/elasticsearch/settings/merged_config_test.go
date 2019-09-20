@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,9 +101,13 @@ func TestNewMergedESConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ver, err := version.Parse(tt.version)
 			require.NoError(t, err)
-			cfg, err := NewMergedESConfig("clusterName", *ver, v1alpha1.HTTPConfig{}, v1alpha1.Config{
-				Data: tt.cfgData,
-			})
+			cfg, err := NewMergedESConfig(
+				"clusterName",
+				*ver,
+				v1alpha1.HTTPConfig{},
+				v1alpha1.Config{Data: tt.cfgData},
+				&certificates.CertificateResources{},
+			)
 			require.NoError(t, err)
 			tt.assert(cfg)
 		})

@@ -7,6 +7,7 @@ package driver
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -24,6 +25,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	observedState observer.State,
 	resourcesState reconcile.ResourcesState,
 	keystoreResources *keystore.Resources,
+	certResources *certificates.CertificateResources,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -41,7 +43,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme())
+	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme(), certResources)
 	if err != nil {
 		return results.WithError(err)
 	}

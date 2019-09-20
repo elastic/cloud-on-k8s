@@ -281,7 +281,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 		return commonv1alpha1.AssociationPending, err
 	}
 
-	caSecretName, err := r.reconcileElasticsearchCA(kibana, esRefKey)
+	caSecret, err := r.reconcileElasticsearchCA(kibana, esRefKey)
 	if err != nil {
 		return commonv1alpha1.AssociationPending, err
 	}
@@ -291,7 +291,8 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 	expectedESAssoc := &commonv1alpha1.AssociationConf{
 		AuthSecretName: authSecret.Name,
 		AuthSecretKey:  authSecret.Key,
-		CASecretName:   caSecretName,
+		CACertProvided: caSecret.CACertProvided,
+		CASecretName:   caSecret.Name,
 		URL:            services.ExternalServiceURL(es),
 	}
 
@@ -311,7 +312,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 	return commonv1alpha1.AssociationEstablished, nil
 }
 
-func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, es types.NamespacedName) (string, error) {
+func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, es types.NamespacedName) (association.CASecret, error) {
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
@@ -319,7 +320,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, e
 		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
 		Watcher: kibanaKey,
 	}); err != nil {
-		return "", err
+		return association.CASecret{}, err
 	}
 	// Build the labels applied on the secret
 	labels := kblabel.NewLabels(kibana.Name)

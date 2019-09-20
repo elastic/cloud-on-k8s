@@ -51,6 +51,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 			ObjectMeta: k8s.ToObjectMeta(namespacedSecretName),
 			Data: map[string][]byte{
 				certificates.CertFileName: tls,
+				certificates.CAFileName:   ca,
 			},
 		}
 

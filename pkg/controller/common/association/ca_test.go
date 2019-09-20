@@ -44,7 +44,8 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      certificates.PublicSecretName(esname.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
-			certificates.CertFileName: []byte("fake-ca-cert"),
+			certificates.CertFileName: []byte("fake-cert"),
+			certificates.CAFileName:   []byte("fake-ca-cert"),
 		},
 	}
 	updatedEsCA := corev1.Secret{
@@ -53,7 +54,8 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      certificates.PublicSecretName(esname.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
-			certificates.CertFileName: []byte("updated-fake-ca-cert"),
+			certificates.CertFileName: []byte("updated-fake-cert"),
+			certificates.CAFileName:   []byte("updated-fake-ca-cert"),
 		},
 	}
 	// mock existing ES CA secret for Kibana
@@ -63,7 +65,8 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
 		},
 		Data: map[string][]byte{
-			certificates.CertFileName: []byte("fake-ca-cert"),
+			certificates.CertFileName: []byte("fake-cert"),
+			certificates.CAFileName:   []byte("fake-ca-cert"),
 		},
 	}
 	updatedKibanaEsCA := corev1.Secret{
@@ -72,7 +75,8 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
 		},
 		Data: map[string][]byte{
-			certificates.CertFileName: []byte("updated-fake-ca-cert"),
+			certificates.CertFileName: []byte("updated-fake-cert"),
+			certificates.CAFileName:   []byte("updated-fake-ca-cert"),
 		},
 	}
 	tests := []struct {
@@ -120,7 +124,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want, got.Name)
 
 			if tt.wantCA != nil {
 				var updatedKibanaCA corev1.Secret

@@ -27,6 +27,9 @@ type CertificateResources struct {
 
 	// TransportCA is the CA used for Transport certificates
 	TransportCA *certificates.CA
+
+	// HTTPCACertProvided indicates whether ca.crt key is defined in the certificate secret.
+	HTTPCACertProvided bool
 }
 
 // reconcileGenericResources reconciles the expected generic resources of a cluster.
@@ -118,8 +121,10 @@ func Reconcile(
 		return nil, results.WithError(err)
 	}
 
+	_, httpCACertProvided := httpCertificates.Data[certificates.CAFileName]
 	return &CertificateResources{
 		TrustedHTTPCertificates: trustedHTTPCertificates,
 		TransportCA:             transportCA,
+		HTTPCACertProvided:      httpCACertProvided,
 	}, results
 }

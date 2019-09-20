@@ -33,6 +33,9 @@ func ReconcileHTTPCertsPublicSecret(
 			certificates.CertFileName: httpCertificates.CertPem(),
 		},
 	}
+	if caPem := httpCertificates.CAPem(); caPem != nil {
+		expected.Data[certificates.CAFileName] = caPem
+	}
 
 	reconciled := &corev1.Secret{}
 

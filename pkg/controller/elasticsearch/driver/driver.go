@@ -236,7 +236,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	res = d.reconcileNodeSpecs(esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources)
+	res = d.reconcileNodeSpecs(esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
 	if results.WithResults(res).HasError() {
 		return results
 	}
