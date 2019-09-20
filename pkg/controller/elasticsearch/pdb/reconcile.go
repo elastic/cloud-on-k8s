@@ -65,7 +65,6 @@ func expectedPDB(es v1alpha1.Elasticsearch) *v1beta1.PodDisruptionBudget {
 
 	expected := v1beta1.PodDisruptionBudget{
 		ObjectMeta: template.ObjectMeta,
-		Spec:       template.Spec,
 	}
 
 	// inherit user-provided ObjectMeta, but set our own name & namespace
@@ -74,16 +73,20 @@ func expectedPDB(es v1alpha1.Elasticsearch) *v1beta1.PodDisruptionBudget {
 	// and append our labels
 	expected.Labels = defaults.SetDefaultLabels(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
 
-	// set our defaults
-	if expected.Spec.MaxUnavailable == nil {
-		expected.Spec.MaxUnavailable = &commonv1alpha1.DefaultPodDisruptionBudgetMaxUnavailable
+	if template.Spec.Selector != nil || template.Spec.MaxUnavailable != nil || template.Spec.MinAvailable != nil {
+		// use the user-defined spec
+		expected.Spec = template.Spec
+		return &expected
 	}
-	if expected.Spec.Selector == nil {
-		expected.Spec.Selector = &metav1.LabelSelector{
+
+	// set our default spec
+	expected.Spec = v1beta1.PodDisruptionBudgetSpec{
+		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				label.ClusterNameLabelName: es.Name,
 			},
-		}
+		},
+		MaxUnavailable: &commonv1alpha1.DefaultPodDisruptionBudgetMaxUnavailable,
 	}
 
 	return &expected
