@@ -21,59 +21,58 @@ import (
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster according to the spec.
-//
-// If the spec has disabled the default PDB, it will ensure it does not exist
-func Reconcile(
-	c k8s.Client,
-	scheme *runtime.Scheme,
-	es v1alpha1.Elasticsearch,
-) error {
-	disabled := false
+// If the spec has disabled the default PDB, it will ensure it does not exist.
+func Reconcile(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
+	expected := expectedPDB(es)
+	if expected == nil {
+		return deleteDefaultPDB(c, es)
+	}
 
-	template := es.Spec.PodDisruptionBudget
-	if template != nil {
-		// clone to avoid accidentally overwriting template fields
-		template = template.DeepCopy()
+	var reconciled v1beta1.PodDisruptionBudget
+	return reconciler.ReconcileResource(reconciler.Params{
+		Client:     c,
+		Scheme:     scheme,
+		Owner:      &es,
+		Expected:   expected,
+		Reconciled: &reconciled,
+		NeedsUpdate: func() bool {
+			for k, v := range expected.Labels {
+				if rv, ok := reconciled.Labels[k]; !ok || rv != v {
+					return true
+				}
+			}
+			return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
+		},
+		UpdateReconciled: func() {
+			for k, v := range expected.Labels {
+				reconciled.Labels[k] = v
+			}
+			reconciled.Spec = expected.Spec
+		},
+	})
+}
 
-		emptyTemplate := commonv1alpha1.PodDisruptionBudgetTemplate{}
-		if reflect.DeepEqual(&emptyTemplate, template) {
-			disabled = true
-		}
-	} else {
+// expectedPDB returns a PDB according to the given ES spec.
+// It may return nil if the PDB has been explicitly disabled in the ES spec.
+func expectedPDB(es v1alpha1.Elasticsearch) *v1beta1.PodDisruptionBudget {
+	template := es.Spec.PodDisruptionBudget.DeepCopy()
+	if template.IsDisabled() {
+		return nil
+	}
+	if template == nil {
 		template = &commonv1alpha1.PodDisruptionBudgetTemplate{}
 	}
 
-	var objectMeta metav1.ObjectMeta
-	if template != nil {
-		objectMeta = *template.ObjectMeta.DeepCopy()
-	}
-	objectMeta.Name = name.DefaultPodDisruptionBudget(es.Name)
-	objectMeta.Namespace = es.Namespace
-	objectMeta.Labels = defaults.SetDefaultLabels(objectMeta.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
-
 	expected := v1beta1.PodDisruptionBudget{
-		ObjectMeta: objectMeta,
+		ObjectMeta: template.ObjectMeta,
 		Spec:       template.Spec,
 	}
 
-	if disabled {
-		// delete the default budget if it exists.
-		//
-		// we do this by getting first because that is a local cache read,
-		// versus a Delete call, which would hit the API.
-
-		if err := c.Get(k8s.ExtractNamespacedName(&expected), &expected); err != nil && !errors.IsNotFound(err) {
-			return err
-		} else if errors.IsNotFound(err) {
-			// already deleted, which is fine
-			return nil
-		}
-
-		if err := c.Delete(&expected); err != nil && !errors.IsNotFound(err) {
-			return err
-		}
-		return nil
-	}
+	// inherit user-provided ObjectMeta, but set our own name & namespace
+	expected.Name = name.DefaultPodDisruptionBudget(es.Name)
+	expected.Namespace = es.Namespace
+	// and append our labels
+	expected.Labels = defaults.SetDefaultLabels(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
 
 	// set our defaults
 	if expected.Spec.MaxUnavailable == nil {
@@ -87,27 +86,27 @@ func Reconcile(
 		}
 	}
 
-	var reconciled v1beta1.PodDisruptionBudget
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Scheme:     scheme,
-		Owner:      &es,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			for k, v := range expected.Labels {
-				if rv, ok := reconciled.Labels[k]; !ok || rv != v {
-					return true
-				}
-			}
+	return &expected
+}
 
-			return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
+// deletePDB deletes the default pdb if it exists.
+func deleteDefaultPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) error {
+	// we do this by getting first because that is a local cache read,
+	// versus a Delete call, which would hit the API.
+	pdb := v1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      name.DefaultPodDisruptionBudget(es.Name),
 		},
-		UpdateReconciled: func() {
-			for k, v := range expected.Labels {
-				reconciled.Labels[k] = v
-			}
-			reconciled.Spec = expected.Spec
-		},
-	})
+	}
+	if err := k8sClient.Get(k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !errors.IsNotFound(err) {
+		return err
+	} else if errors.IsNotFound(err) {
+		// already deleted, which is fine
+		return nil
+	}
+	if err := k8sClient.Delete(&pdb); err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
