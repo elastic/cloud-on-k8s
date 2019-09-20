@@ -278,7 +278,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		return commonv1alpha1.AssociationPending, err
 	}
 
-	caSecretName, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
+	caSecret, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
 	if err != nil {
 		return commonv1alpha1.AssociationPending, err // maybe not created yet
 	}
@@ -288,7 +288,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	expectedAssocConf := &commonv1alpha1.AssociationConf{
 		AuthSecretName: authSecretRef.Name,
 		AuthSecretKey:  authSecretRef.Key,
-		CASecretName:   caSecretName,
+		CACertProvided: caSecret.CACertProvided,
+		CASecretName:   caSecret.Name,
 		URL:            services.ExternalServiceURL(es),
 	}
 
@@ -311,7 +312,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	return commonv1alpha1.AssociationEstablished, nil
 }
 
-func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmtype.ApmServer, es types.NamespacedName) (string, error) {
+func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmtype.ApmServer, es types.NamespacedName) (association.CASecret, error) {
 	apmKey := k8s.ExtractNamespacedName(apm)
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
@@ -319,7 +320,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
 		Watcher: apmKey,
 	}); err != nil {
-		return "", err
+		return association.CASecret{}, err
 	}
 	// Build the labels applied on the secret
 	labels := labels.NewLabels(apm.Name)

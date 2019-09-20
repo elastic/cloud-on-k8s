@@ -215,8 +215,9 @@ spec:
 === Custom HTTP certificate
 
 You can provide your own CA and certificates instead of the self-signed certificate to connect to Elasticsearch via HTTPS using a Kubernetes secret.
+The certificate must be stored under `tls.crt` and the private key must be stored under `tls.key`. If your certificate was not issued by a well-known CA, you must include the trust chain under `ca.crt` as well.
 
-You need to reference the name of a secret that contains a TLS private key and a certificate (or a chain), in the `spec.http.tls.certificate` section.
+You need to reference the name of a secret that contains a TLS private key and a certificate (and optionally, a trust chain), in the `spec.http.tls.certificate` section.
 
 [source,yaml]
 ----
@@ -231,8 +232,8 @@ This is an example on how create a Kubernetes TLS secret with a self-signed cert
 
 [source,sh]
 ----
-$ openssl req -x509 -newkey rsa:4096 -keyout tls.key -out tls.crt -days 365 -nodes
-$ kubectl create secret tls my-cert --cert tls.crt --key tls.key
+$ openssl req -x509 -sha256 -nodes -newkey rsa:4096 -days 365 -subj "/CN=quickstart-es-http" -addext "subjectAltName=DNS:quickstart-es-http.default.svc" -keyout tls.key -out tls.crt
+$ kubectl create secret generic my-cert --from-file=ca.crt=tls.crt --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
 ----
 
 [id="{p}-es-secure-settings"]

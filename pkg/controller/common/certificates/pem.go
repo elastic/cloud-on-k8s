@@ -9,6 +9,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 
 	"github.com/pkg/errors"
 )
@@ -60,10 +61,29 @@ func EncodePEMPrivateKey(privateKey rsa.PrivateKey) []byte {
 func ParsePEMPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(pemData)
 	if block == nil {
-		return nil, errors.New("can't decode pem block")
+		return nil, errors.New("failed to parse PEM block containing private key")
 	}
-	if block.Type != "RSA PRIVATE KEY" || len(block.Headers) != 0 {
-		return nil, errors.New("pem block is not an RSA private key")
+
+	switch {
+	case block.Type == "PRIVATE KEY":
+		return parsePKCS8PrivateKey(block.Bytes)
+	case block.Type == "RSA PRIVATE KEY" && len(block.Headers) == 0:
+		return x509.ParsePKCS1PrivateKey(block.Bytes)
+	default:
+		return nil, errors.New("expected PEM block to contain an RSA private key")
 	}
-	return x509.ParsePKCS1PrivateKey(block.Bytes)
+}
+
+func parsePKCS8PrivateKey(block []byte) (*rsa.PrivateKey, error) {
+	key, err := x509.ParsePKCS8PrivateKey(block)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse private key")
+	}
+
+	rsaKey, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("expected an RSA private key but got %t", key)
+	}
+
+	return rsaKey, nil
 }

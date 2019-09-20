@@ -144,12 +144,13 @@ You can bring your own certificate to configure TLS to ensure that communication
 
 Create a Kubernetes secret with:
 
-- `tls.crt`: the certificate (or a chain).
+- `ca.crt`: CA certificate (optional if `tls.crt` was issued by a well-known CA).
+- `tls.crt`: the certificate.
 - `tls.key`: the private key to the first certificate in the certificate chain.
 
 [source,sh]
 ----
-kubectl create secret tls my-cert --cert tls.crt --key tls.key
+kubectl create secret generic my-cert --from-file=ca.crt=tls.crt --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
 ----
 
 Then you just have to reference the secret name in the `http.tls.certificate` section of the resource manifest.

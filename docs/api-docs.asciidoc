@@ -220,6 +220,10 @@ _string_
 _string_
 |
 ---
+| *`caCertProvided`* +
+_bool_
+|
+---
 | *`caSecretName`* +
 _string_
 |
