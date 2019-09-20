@@ -52,6 +52,28 @@ func Reconcile(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) 
 	})
 }
 
+// deleteDefaultPDB deletes the default pdb if it exists.
+func deleteDefaultPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) error {
+	// we do this by getting first because that is a local cache read,
+	// versus a Delete call, which would hit the API.
+	pdb := v1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      name.DefaultPodDisruptionBudget(es.Name),
+		},
+	}
+	if err := k8sClient.Get(k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !errors.IsNotFound(err) {
+		return err
+	} else if errors.IsNotFound(err) {
+		// already deleted, which is fine
+		return nil
+	}
+	if err := k8sClient.Delete(&pdb); err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
+}
+
 // expectedPDB returns a PDB according to the given ES spec.
 // It may return nil if the PDB has been explicitly disabled in the ES spec.
 func expectedPDB(es v1alpha1.Elasticsearch) *v1beta1.PodDisruptionBudget {
@@ -80,36 +102,20 @@ func expectedPDB(es v1alpha1.Elasticsearch) *v1beta1.PodDisruptionBudget {
 	}
 
 	// set our default spec
-	expected.Spec = v1beta1.PodDisruptionBudgetSpec{
-		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				label.ClusterNameLabelName: es.Name,
-			},
-		},
-		MaxUnavailable: &commonv1alpha1.DefaultPodDisruptionBudgetMaxUnavailable,
-	}
+	expected.Spec = buildPDBSpec(es.Name)
 
 	return &expected
 }
 
-// deletePDB deletes the default pdb if it exists.
-func deleteDefaultPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) error {
-	// we do this by getting first because that is a local cache read,
-	// versus a Delete call, which would hit the API.
-	pdb := v1beta1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      name.DefaultPodDisruptionBudget(es.Name),
+func buildPDBSpec(clusterName string) v1beta1.PodDisruptionBudgetSpec {
+	return v1beta1.PodDisruptionBudgetSpec{
+		// match all pods for this cluster
+		Selector: &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				label.ClusterNameLabelName: clusterName,
+			},
 		},
+		// allow only 1 to be disrupted
+		MaxUnavailable: &commonv1alpha1.DefaultPodDisruptionBudgetMaxUnavailable,
 	}
-	if err := k8sClient.Get(k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !errors.IsNotFound(err) {
-		return err
-	} else if errors.IsNotFound(err) {
-		// already deleted, which is fine
-		return nil
-	}
-	if err := k8sClient.Delete(&pdb); err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-	return nil
 }
