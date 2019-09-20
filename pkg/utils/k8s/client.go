@@ -162,7 +162,7 @@ func (s StatusWriter) Update(obj runtime.Object) error {
 	})
 }
 
-// Update wraps a controller-runtime client.Status().Update call with a context.
+// Patch wraps a controller-runtime client.Status().Patch call with a context.
 func (s StatusWriter) Patch(obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return s.w.callWithContext(func(ctx context.Context) error {
 		return s.StatusWriter.Patch(ctx, obj, patch, opts...)
