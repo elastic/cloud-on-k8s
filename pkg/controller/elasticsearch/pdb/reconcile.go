@@ -13,24 +13,30 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster according to the spec.
 // If the spec has disabled the default PDB, it will ensure it does not exist.
-func Reconcile(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
-	expected := expectedPDB(es)
+func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
+	expected, err := expectedPDB(k8sClient, es)
+	if err != nil {
+		return err
+	}
 	if expected == nil {
-		return deleteDefaultPDB(c, es)
+		return deleteDefaultPDB(k8sClient, es)
 	}
 
 	var reconciled v1beta1.PodDisruptionBudget
 	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
+		Client:     k8sClient,
 		Scheme:     scheme,
 		Owner:      &es,
 		Expected:   expected,
@@ -76,10 +82,10 @@ func deleteDefaultPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) error {
 
 // expectedPDB returns a PDB according to the given ES spec.
 // It may return nil if the PDB has been explicitly disabled in the ES spec.
-func expectedPDB(es v1alpha1.Elasticsearch) *v1beta1.PodDisruptionBudget {
+func expectedPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (*v1beta1.PodDisruptionBudget, error) {
 	template := es.Spec.PodDisruptionBudget.DeepCopy()
 	if template.IsDisabled() {
-		return nil
+		return nil, nil
 	}
 	if template == nil {
 		template = &commonv1alpha1.PodDisruptionBudgetTemplate{}
@@ -98,24 +104,41 @@ func expectedPDB(es v1alpha1.Elasticsearch) *v1beta1.PodDisruptionBudget {
 	if template.Spec.Selector != nil || template.Spec.MaxUnavailable != nil || template.Spec.MinAvailable != nil {
 		// use the user-defined spec
 		expected.Spec = template.Spec
-		return &expected
+		return &expected, nil
 	}
 
 	// set our default spec
-	expected.Spec = buildPDBSpec(es.Name)
+	var err error
+	if expected.Spec, err = buildPDBSpec(k8sClient, k8s.ExtractNamespacedName(&es)); err != nil {
+		return nil, err
+	}
 
-	return &expected
+	return &expected, nil
 }
 
-func buildPDBSpec(clusterName string) v1beta1.PodDisruptionBudgetSpec {
+// buildPDBSpec returns a PDBSpec computed from the current StatefulSets so that:
+// - only one pod is authorized to be disrupted
+func buildPDBSpec(k8sClient k8s.Client, es types.NamespacedName) (v1beta1.PodDisruptionBudgetSpec, error) {
+	actualSsets, err := sset.RetrieveActualStatefulSets(k8sClient, es)
+	if err != nil {
+		return v1beta1.PodDisruptionBudgetSpec{}, err
+	}
+	// the theoretical node count may not match pods currently running (ie. we may miss some), that's fine.
+	nodeCount := actualSsets.ExpectedPodCount()
+	// authorize only one pod to be disrupted.
+	minAvailable := nodeCount - 1
+	minAvailableIntStr := intstr.FromInt(int(minAvailable))
+
 	return v1beta1.PodDisruptionBudgetSpec{
 		// match all pods for this cluster
 		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				label.ClusterNameLabelName: clusterName,
+				label.ClusterNameLabelName: es.Name,
 			},
 		},
-		// allow only 1 to be disrupted
-		MaxUnavailable: &commonv1alpha1.DefaultPodDisruptionBudgetMaxUnavailable,
-	}
+		MinAvailable: &minAvailableIntStr,
+		// MaxUnavailable can only be used if the selector matches a builtin controller selector
+		// (eg. Deployments, StatefulSets, etc.). We cannot use it with our own cluster-name selector.
+		MaxUnavailable: nil,
+	}, nil
 }
