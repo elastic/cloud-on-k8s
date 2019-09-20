@@ -7,6 +7,12 @@ package pdb
 import (
 	"reflect"
 
+	"k8s.io/api/policy/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -14,18 +20,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"k8s.io/api/policy/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// Reconcile ensures that a PodDisruptionBudget exists for this cluster according to the spec.
-// If the spec has disabled the default PDB, it will ensure it does not exist.
-func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
+// Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
+// The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
+// If the spec has disabled the default PDB, it will ensure none exist.
+func Reconcile(k8sClient k8s.Client, es v1alpha1.Elasticsearch) error {
 	expected, err := expectedPDB(k8sClient, es)
 	if err != nil {
 		return err
@@ -41,20 +41,22 @@ func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elastic
 		return k8sClient.Create(expected)
 	}
 
-	if !reflect.DeepEqual(expected.Spec, actual.Spec) {
-		// PDB Spec cannot be updated, we'll have to delete then recreate
+	// update if we're missing a label
+	needsLabelUpdate := false
+	for k, v := range expected.Labels {
+		if actualValue, ok := actual.Labels[k]; !ok || actualValue != v {
+			needsLabelUpdate = true
+		}
+	}
+
+	if needsLabelUpdate || !reflect.DeepEqual(expected.Spec, actual.Spec) {
+		// PDB Spec cannot be updated, we'll have to delete then recreate.
+		// Which means there is a time window in between where we don't have a PDB anymore.
+		// TODO: this is not true anymore starting k8s 1.15+ and this PR https://github.com/kubernetes/kubernetes/pull/69867
 		if err := deleteDefaultPDB(k8sClient, es); err != nil {
 			return err
 		}
-		// creation after deletion may fail with a conflict, which is fine since we'll requeue
 		return k8sClient.Create(expected)
-	}
-
-	// update if we're missing a label
-	for k, v := range expected.Labels {
-		if actualValue, ok := actual.Labels[k]; !ok || actualValue != v {
-			return k8sClient.Update(expected)
-		}
 	}
 
 	return nil
@@ -111,25 +113,21 @@ func expectedPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (*v1beta1.PodD
 
 	// set our default spec
 	var err error
-	if expected.Spec, err = buildPDBSpec(k8sClient, k8s.ExtractNamespacedName(&es)); err != nil {
+	if expected.Spec, err = buildPDBSpec(k8sClient, es); err != nil {
 		return nil, err
 	}
 
 	return &expected, nil
 }
 
-// buildPDBSpec returns a PDBSpec computed from the current StatefulSets so that:
-// - only one pod is authorized to be disrupted
-func buildPDBSpec(k8sClient k8s.Client, es types.NamespacedName) (v1beta1.PodDisruptionBudgetSpec, error) {
-	actualSsets, err := sset.RetrieveActualStatefulSets(k8sClient, es)
+// buildPDBSpec returns a PDBSpec computed from the current StatefulSets,
+// considering the cluster health and topology.
+func buildPDBSpec(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (v1beta1.PodDisruptionBudgetSpec, error) {
+	minAvailable, err := computeMinAvailable(k8sClient, es)
 	if err != nil {
 		return v1beta1.PodDisruptionBudgetSpec{}, err
 	}
-	// the theoretical node count may not match pods currently running (ie. we may miss some), that's fine.
-	nodeCount := actualSsets.ExpectedPodCount()
-	// authorize only one pod to be disrupted.
-	minAvailable := nodeCount - 1
-	minAvailableIntStr := intstr.FromInt(int(minAvailable))
+	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
 	return v1beta1.PodDisruptionBudgetSpec{
 		// match all pods for this cluster
@@ -143,4 +141,38 @@ func buildPDBSpec(k8sClient k8s.Client, es types.NamespacedName) (v1beta1.PodDis
 		// (eg. Deployments, StatefulSets, etc.). We cannot use it with our own cluster-name selector.
 		MaxUnavailable: nil,
 	}, nil
+}
+
+// computeMinAvailable calculates the minimum available nodes so the given cluster
+// stays healthy in case of disruption.
+func computeMinAvailable(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (int32, error) {
+	// Get the number of nodes that should currently exist in the cluster.
+	actualSsets, err := sset.RetrieveActualStatefulSets(k8sClient, k8s.ExtractNamespacedName(&es))
+	if err != nil {
+		return 0, err
+	}
+	// The theoretical node count may not match pods currently running (ie. we may miss some),
+	// which is fine since we'd set a higher than expected minAvailable (no disruption allowed).
+	// Replicas may be increased later in the reconciliation, which is almost fine since this will
+	// trigger another PDB reconciliation, but there's still a race condition here where nodeCount
+	// may be smaller than its realtime value.
+	nodeCount := actualSsets.ExpectedPodCount()
+	minAvailable := nodeCount - allowedDisruption(es, actualSsets)
+	return minAvailable, nil
+}
+
+// allowedDisruption returns the number of pods that we allow to be removed while keeping the cluster healthy.
+func allowedDisruption(es v1alpha1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
+	if es.Status.Health != v1alpha1.ElasticsearchGreenHealth {
+		// A non-green cluster may become red if we disrupt one node, don't allow it.
+		// The health information we're using here may be out-of-date, that's best effort.
+		return 0
+	}
+	if actualSsets.ExpectedMasterCount() == 1 {
+		// There's a risk the single master of the cluster gets removed, don't allow it.
+		return 0
+	}
+	// Allow one pod (only) to be disrupted on a healthy cluster.
+	// We could technically allow more, but the cluster health freshness would become a bigger problem.
+	return 1
 }

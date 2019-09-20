@@ -85,6 +85,17 @@ func (l StatefulSetList) ExpectedPodCount() int32 {
 	return count
 }
 
+// ExpectedMasterCount returns the number of master nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedMasterCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		if label.IsMasterNodeSet(s) {
+			count = count + GetReplicas(s)
+		}
+	}
+	return count
+}
+
 // PVCNames returns the names of PVCs for all pods of the StatefulSetList.
 func (l StatefulSetList) PVCNames() []string {
 	var pvcNames []string

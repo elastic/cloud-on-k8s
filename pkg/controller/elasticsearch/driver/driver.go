@@ -170,7 +170,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	}
 
-	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES); err != nil {
+	if err := pdb.Reconcile(d.Client, d.ES); err != nil {
 		return results.WithError(err)
 	}
 
