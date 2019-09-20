@@ -33,7 +33,7 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # find or download controller-gen
-# download controller-gen if necessary
+# note this does not validate the version
 controller-gen:
 ifeq (, $(shell which controller-gen))
 	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
@@ -370,6 +370,7 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
+# TODO consider re-adding check-fmt and check-local-changes
 ci: dep-vendor-only lint generate unit_xml integration_xml e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.

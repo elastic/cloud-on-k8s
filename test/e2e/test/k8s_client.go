@@ -334,7 +334,6 @@ func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOptio
 }
 
 func EventListOptions(namespace, name string) []k8sclient.ListOption {
-
 	ns := k8sclient.InNamespace(namespace)
 	matchFields := k8sclient.MatchingFields(map[string]string{
 		"involvedObject.name":      name,

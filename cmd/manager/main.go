@@ -203,7 +203,11 @@ func execute() {
 	cfg := ctrl.GetConfigOrDie()
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
-	_ = controllerscheme.SetupScheme()
+	err := controllerscheme.SetupScheme()
+	if err != nil {
+		log.Error(err, "Error setting up schemes")
+		os.Exit(1)
+	}
 
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("Setting up manager")

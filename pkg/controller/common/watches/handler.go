@@ -152,7 +152,7 @@ func (d *DynamicEnqueueRequest) InjectScheme(scheme *runtime.Scheme) error {
 
 var _ inject.Scheme = &DynamicEnqueueRequest{}
 
-// InjectMapper  is called by the Controller to provide the rest mapper used by the manager.
+// InjectMapper is called by the Controller to provide the rest mapper used by the manager.
 func (d *DynamicEnqueueRequest) InjectMapper(m meta.RESTMapper) error {
 	d.mapper = m
 	return nil
