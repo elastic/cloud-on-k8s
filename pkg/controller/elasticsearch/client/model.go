@@ -6,7 +6,6 @@ package client
 
 import (
 	"encoding/json"
-	"strconv"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -104,95 +103,33 @@ type ClusterStateNode struct {
 	} `json:"attributes"`
 }
 
-// Shards contains the shards in the Elasticsearch routing table
-// mapped to their shard number.
-type Shards struct {
-	Shards map[string][]Shard `json:"shards"`
-}
+// Shards contains the shards in the Elasticsearch cluster
+type Shards []Shard
 
-// ClusterState partially models Elasticsearch cluster state.
-type ClusterState struct {
-	ClusterName  string                      `json:"cluster_name"`
-	ClusterUUID  string                      `json:"cluster_uuid"`
-	Version      int                         `json:"version"`
-	MasterNode   string                      `json:"master_node"`
-	Nodes        map[string]ClusterStateNode `json:"nodes"`
-	RoutingTable RoutingTable                `json:"routing_table"`
+// Shard partially models Elasticsearch cluster shard.
+type Shard struct {
+	Index  string `json:"index"`
+	Shard  string `json:"shard"`
+	Prirep string `json:"prirep"`
+	State  string `json:"state"`
+	// Node is the node name not the Node id
+	Node string `json:"node"`
 }
 
 type RoutingTable struct {
 	Indices map[string]Shards `json:"indices"`
 }
 
-// IsEmpty returns true if this is an empty struct without data.
-func (cs ClusterState) IsEmpty() bool {
-	return cs.ClusterName == "" &&
-		cs.ClusterUUID == "" &&
-		cs.Version == 0 &&
-		cs.MasterNode == "" &&
-		len(cs.Nodes) == 0 &&
-		len(cs.RoutingTable.Indices) == 0
-}
-
-// GetShards reads all shards from cluster state,
-// similar to what _cat/shards does but it is consistent in
-// its output.
-func (cs ClusterState) GetShards() []Shard {
-	var result []Shard
-	for _, index := range cs.RoutingTable.Indices {
-		for _, shards := range index.Shards {
-			for _, shard := range shards {
-				shard.Node = cs.Nodes[shard.Node].Name
-				result = append(result, shard)
-			}
-		}
-	}
-	return result
-}
-
 // GetShardsByNode returns shards by node.
 // The result is a map with the name of the nodes as keys and the list of shards on the nodes as values.
-func (cs ClusterState) GetShardsByNode() map[string][]Shard {
+func (s Shards) GetShardsByNode() map[string][]Shard {
 	result := make(map[string][]Shard)
-	for _, index := range cs.RoutingTable.Indices {
-		for _, shards := range index.Shards {
-			// for each shard, check if it assigned to a node
-			for _, shard := range shards {
-				if len(shard.Node) == 0 {
-					continue
-				}
-				// shard.Node is the id of the node, get the corresponding node name
-				nodeName := cs.Nodes[shard.Node].Name
-				result[nodeName] = append(result[nodeName], shard)
-			}
+	for _, shard := range s {
+		if len(shard.Node) > 0 {
+			result[shard.Node] = append(result[shard.Node], shard)
 		}
 	}
 	return result
-}
-
-// MasterNodeName is the name of the current master node in the Elasticsearch cluster.
-func (cs ClusterState) MasterNodeName() string {
-	return cs.Nodes[cs.MasterNode].Name
-}
-
-// NodesByNodeName returns the Nodes indexed by their Node.Name instead of their Node ID.
-func (cs ClusterState) NodesByNodeName() map[string]ClusterStateNode {
-	nodesByName := make(map[string]ClusterStateNode, len(cs.Nodes))
-	for _, node := range cs.Nodes {
-		nodesByName[node.Name] = node
-	}
-	return nodesByName
-}
-
-// Shard models a hybrid of _cat/shards shard and routing table shard.
-type Shard struct {
-	Index string `json:"index"`
-	Shard int    `json:"shard"`
-	// Primary is a boolean as in cluster state.
-	Primary bool   `json:"primary"`
-	State   string `json:"state"`
-	// Node is the node name not the Node id
-	Node string `json:"node"`
 }
 
 // IsRelocating is true if the shard is relocating to another node.
@@ -213,7 +150,7 @@ func (s Shard) IsInitializing() bool {
 // Key is a composite key of index name and shard number that identifies all
 // copies of a shard across nodes.
 func (s Shard) Key() string {
-	return stringsutil.Concat(s.Index, "/", strconv.Itoa(s.Shard))
+	return stringsutil.Concat(s.Index, "/", s.Shard)
 }
 
 // AllocationSettings model a subset of the supported attributes for dynamic Elasticsearch cluster settings.

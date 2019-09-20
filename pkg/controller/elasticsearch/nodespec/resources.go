@@ -5,7 +5,6 @@
 package nodespec
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -13,6 +12,8 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -36,7 +37,7 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	return ssetList
 }
 
-func BuildExpectedResources(es v1alpha1.Elasticsearch, keystoreResources *keystore.Resources, scheme *runtime.Scheme) (ResourcesList, error) {
+func BuildExpectedResources(es v1alpha1.Elasticsearch, keystoreResources *keystore.Resources, scheme *runtime.Scheme, certResources *certificates.CertificateResources) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.Nodes))
 
 	ver, err := version.Parse(es.Spec.Version)
@@ -50,7 +51,7 @@ func BuildExpectedResources(es v1alpha1.Elasticsearch, keystoreResources *keysto
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
-		cfg, err := settings.NewMergedESConfig(es.Name, *ver, es.Spec.HTTP, userCfg)
+		cfg, err := settings.NewMergedESConfig(es.Name, *ver, es.Spec.HTTP, userCfg, certResources)
 		if err != nil {
 			return nil, err
 		}

@@ -5,11 +5,10 @@
 package migration
 
 import (
-	"context"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
 func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
@@ -29,7 +28,7 @@ func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
 
 // nodeIsMigratingData is the core of IsMigratingData just with any I/O
 // removed to facilitate testing. See IsMigratingData for a high-level description.
-func nodeIsMigratingData(nodeName string, shards []client.Shard, exclusions map[string]struct{}) bool {
+func nodeIsMigratingData(nodeName string, shards client.Shards, exclusions map[string]struct{}) bool {
 	// all other shards not living on the node that is about to go away mapped to their corresponding shard keys
 	othersByShard := make(map[string][]client.Shard)
 	// all shard copies currently living on the node leaving the cluster
@@ -64,36 +63,24 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard, exclusions map[
 // IsMigratingData looks only at the presence of shards on a given node
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
-func IsMigratingData(state observer.State, podName string, exclusions []string) bool {
-	clusterState := state.ClusterState
-	if clusterState == nil || clusterState.IsEmpty() {
-		return true // we don't know if the request timed out or the cluster has not formed yet
+func IsMigratingData(shardLister esclient.ShardLister, podName string, exclusions []string) (bool, error) {
+	shards, err := shardLister.GetShards()
+	if err != nil {
+		return false, nil
 	}
 	excludedNodes := make(map[string]struct{}, len(exclusions))
 	for _, name := range exclusions {
 		excludedNodes[name] = struct{}{}
 	}
-	return nodeIsMigratingData(podName, clusterState.GetShards(), excludedNodes)
+	return nodeIsMigratingData(podName, shards, excludedNodes), nil
 }
 
-// AllocationSettings captures Elasticsearch API calls around allocation filtering.
-type AllocationSettings interface {
-	ExcludeFromShardAllocation(context context.Context, nodes string) error
-}
-
-// setAllocationExcludes sets allocation filters for the given nodes.
-func setAllocationExcludes(asClient AllocationSettings, leavingNodes []string) error {
+// MigrateData sets allocation filters for the given nodes.
+func MigrateData(allocationSetter esclient.AllocationSetter, leavingNodes []string) error {
 	exclusions := "none_excluded"
 	if len(leavingNodes) > 0 {
 		exclusions = strings.Join(leavingNodes, ",")
 	}
 	// update allocation exclusions
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-	defer cancel()
-	return asClient.ExcludeFromShardAllocation(ctx, exclusions)
-}
-
-// MigrateData sets allocation filters for the given nodes.
-func MigrateData(client AllocationSettings, leavingNodes []string) error {
-	return setAllocationExcludes(client, leavingNodes)
+	return allocationSetter.ExcludeFromShardAllocation(exclusions)
 }

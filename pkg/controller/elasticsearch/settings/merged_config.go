@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	escerts "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
@@ -21,6 +22,7 @@ func NewMergedESConfig(
 	ver version.Version,
 	httpConfig v1alpha1.HTTPConfig,
 	userConfig v1alpha1.Config,
+	certResources *escerts.CertificateResources,
 ) (CanonicalConfig, error) {
 	config, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -28,7 +30,7 @@ func NewMergedESConfig(
 	}
 	err = config.MergeWith(
 		baseConfig(clusterName).CanonicalConfig,
-		xpackConfig(ver, httpConfig).CanonicalConfig,
+		xpackConfig(ver, httpConfig, certResources).CanonicalConfig,
 	)
 	if err != nil {
 		return CanonicalConfig{}, err
@@ -56,7 +58,7 @@ func baseConfig(clusterName string) *CanonicalConfig {
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg v1alpha1.HTTPConfig) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg v1alpha1.HTTPConfig, certResources *escerts.CertificateResources) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -84,6 +86,10 @@ func xpackConfig(ver version.Version, httpCfg v1alpha1.HTTPConfig) *CanonicalCon
 		XPackSecurityTransportSslCertificateAuthorities: []string{
 			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
 		},
+	}
+
+	if certResources.HTTPCACertProvided {
+		cfg[XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
 	}
 
 	// always enable the built-in file internal realm for user auth, ordered as first

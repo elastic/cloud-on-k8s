@@ -7,6 +7,7 @@ package driver
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -24,6 +25,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	observedState observer.State,
 	resourcesState reconcile.ResourcesState,
 	keystoreResources *keystore.Resources,
+	certResources *certificates.CertificateResources,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -41,7 +43,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme())
+	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme(), certResources)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -92,15 +94,15 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// Phase 2: handle sset scale down.
 	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
 	// or because it should be removed entirely.
-	downscaleCtx := downscaleContext{
-		k8sClient:      d.Client,
-		esClient:       esClient,
-		resourcesState: resourcesState,
-		observedState:  observedState,
-		reconcileState: reconcileState,
-		es:             d.ES,
-		expectations:   d.Expectations,
-	}
+	downscaleCtx := newDownscaleContext(
+		d.Client,
+		esClient,
+		resourcesState,
+		observedState,
+		reconcileState,
+		d.Expectations,
+		d.ES,
+	)
 	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
 	results.WithResults(downscaleRes)
 	if downscaleRes.HasError() {

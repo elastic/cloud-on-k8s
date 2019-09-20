@@ -19,8 +19,10 @@ import (
 // propagated from the main driver.
 type downscaleContext struct {
 	// clients
-	k8sClient k8s.Client
-	esClient  esclient.Client
+	k8sClient        k8s.Client
+	esClient         esclient.Client
+	shardLister      esclient.ShardLister
+	allocationSetter esclient.AllocationSetter
 	// driver states
 	resourcesState reconcile.ResourcesState
 	observedState  observer.State
@@ -28,6 +30,29 @@ type downscaleContext struct {
 	expectations   *expectations.Expectations
 	// ES cluster
 	es v1alpha1.Elasticsearch
+}
+
+func newDownscaleContext(
+	k8sClient k8s.Client,
+	esClient esclient.Client,
+	resourcesState reconcile.ResourcesState,
+	observedState observer.State,
+	reconcileState *reconcile.State,
+	expectations *expectations.Expectations,
+	// ES cluster
+	es v1alpha1.Elasticsearch,
+) downscaleContext {
+	return downscaleContext{
+		k8sClient:        k8sClient,
+		esClient:         esClient,
+		shardLister:      esclient.NewShardLister(esClient),
+		allocationSetter: esclient.NewAllocationSetter(esClient),
+		resourcesState:   resourcesState,
+		observedState:    observedState,
+		reconcileState:   reconcileState,
+		es:               es,
+		expectations:     expectations,
+	}
 }
 
 // ssetDownscale helps with the downscale of a single StatefulSet.

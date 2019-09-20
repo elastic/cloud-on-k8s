@@ -8,6 +8,7 @@ import (
 	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -18,6 +19,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+// CASecret is a container to hold information about the Elasticsearch CA secret.
+type CASecret struct {
+	Name           string
+	CACertProvided bool
+}
 
 // ElasticsearchCACertSecretName returns the name of the secret holding the certificate chain used
 // by the associated resource to establish and validate a secured HTTP connection to Elasticsearch.
@@ -34,16 +41,16 @@ func ReconcileCASecret(
 	es types.NamespacedName,
 	labels map[string]string,
 	suffix string,
-) (string, error) {
+) (CASecret, error) {
 	publicESHTTPCertificatesNSN := http.PublicCertsSecretRef(esname.ESNamer, es)
 
 	// retrieve the HTTP certificates from ES namespace
 	var publicESHTTPCertificatesSecret corev1.Secret
 	if err := client.Get(publicESHTTPCertificatesNSN, &publicESHTTPCertificatesSecret); err != nil {
 		if errors.IsNotFound(err) {
-			return "", nil // probably not created yet, we'll be notified to reconcile later
+			return CASecret{}, nil // probably not created yet, we'll be notified to reconcile later
 		}
-		return "", err
+		return CASecret{}, err
 	}
 
 	// Certificate data should be copied over a secret in the associated namespace
@@ -69,8 +76,9 @@ func ReconcileCASecret(
 			reconciledSecret.Data = expectedSecret.Data
 		},
 	}); err != nil {
-		return "", err
+		return CASecret{}, err
 	}
 
-	return expectedSecret.Name, nil
+	_, caCertProvided := expectedSecret.Data[certificates.CAFileName]
+	return CASecret{Name: expectedSecret.Name, CACertProvided: caCertProvided}, nil
 }

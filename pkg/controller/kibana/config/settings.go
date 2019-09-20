@@ -85,9 +85,14 @@ func kibanaTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
 }
 
 func elasticsearchTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
-	esCertsVolumeMountPath := es.CaCertSecretVolume(kb).VolumeMount().MountPath
-	return map[string]interface{}{
-		ElasticsearchSslCertificateAuthorities: path.Join(esCertsVolumeMountPath, certificates.CertFileName),
-		ElasticsearchSslVerificationMode:       "certificate",
+	cfg := map[string]interface{}{
+		ElasticsearchSslVerificationMode: "certificate",
 	}
+
+	if kb.AssociationConf().GetCACertProvided() {
+		esCertsVolumeMountPath := es.CaCertSecretVolume(kb).VolumeMount().MountPath
+		cfg[ElasticsearchSslCertificateAuthorities] = path.Join(esCertsVolumeMountPath, certificates.CAFileName)
+	}
+
+	return cfg
 }

@@ -75,7 +75,7 @@ func clusterNeedsReBootstrap(client k8s.Client, es *v1alpha1.Elasticsearch) (boo
 
 // clusterIsBootstrapped returns true if the cluster has formed and has a UUID.
 func clusterIsBootstrapped(observedState observer.State) bool {
-	return observedState.ClusterState != nil && len(observedState.ClusterState.ClusterUUID) > 0
+	return observedState.ClusterInfo != nil && len(observedState.ClusterInfo.ClusterUUID) > 0
 }
 
 // annotateWithUUID annotates the cluster with its UUID, to mark it as "bootstrapped".
@@ -84,6 +84,6 @@ func annotateWithUUID(cluster *v1alpha1.Elasticsearch, observedState observer.St
 	if cluster.Annotations == nil {
 		cluster.Annotations = make(map[string]string)
 	}
-	cluster.Annotations[ClusterUUIDAnnotationName] = observedState.ClusterState.ClusterUUID
+	cluster.Annotations[ClusterUUIDAnnotationName] = observedState.ClusterInfo.ClusterUUID
 	return c.Update(cluster)
 }
