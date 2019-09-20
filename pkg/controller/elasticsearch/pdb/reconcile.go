@@ -10,13 +10,13 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,28 +34,30 @@ func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elastic
 		return deleteDefaultPDB(k8sClient, es)
 	}
 
-	var reconciled v1beta1.PodDisruptionBudget
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     k8sClient,
-		Scheme:     scheme,
-		Owner:      &es,
-		Expected:   expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			for k, v := range expected.Labels {
-				if rv, ok := reconciled.Labels[k]; !ok || rv != v {
-					return true
-				}
-			}
-			return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
-		},
-		UpdateReconciled: func() {
-			for k, v := range expected.Labels {
-				reconciled.Labels[k] = v
-			}
-			reconciled.Spec = expected.Spec
-		},
-	})
+	// reconcile actual vs. expected
+	var actual v1beta1.PodDisruptionBudget
+	err = k8sClient.Get(k8s.ExtractNamespacedName(expected), &actual)
+	if err != nil && apierrors.IsNotFound(err) {
+		return k8sClient.Create(expected)
+	}
+
+	if !reflect.DeepEqual(expected.Spec, actual.Spec) {
+		// PDB Spec cannot be updated, we'll have to delete then recreate
+		if err := deleteDefaultPDB(k8sClient, es); err != nil {
+			return err
+		}
+		// creation after deletion may fail with a conflict, which is fine since we'll requeue
+		return k8sClient.Create(expected)
+	}
+
+	// update if we're missing a label
+	for k, v := range expected.Labels {
+		if actualValue, ok := actual.Labels[k]; !ok || actualValue != v {
+			return k8sClient.Update(expected)
+		}
+	}
+
+	return nil
 }
 
 // deleteDefaultPDB deletes the default pdb if it exists.
