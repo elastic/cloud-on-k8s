@@ -229,3 +229,32 @@ func TestStatefulSetList_ToUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestStatefulSetList_WithStatefulSet(t *testing.T) {
+	tests := []struct {
+		name        string
+		l           StatefulSetList
+		statefulSet appsv1.StatefulSet
+		want        StatefulSetList
+	}{
+		{
+			name:        "add a new StatefulSet",
+			l:           StatefulSetList{TestSset{Namespace: "ns", Name: "sset1"}.Build()},
+			statefulSet: TestSset{Namespace: "ns", Name: "sset2"}.Build(),
+			want:        StatefulSetList{TestSset{Namespace: "ns", Name: "sset1"}.Build(), TestSset{Namespace: "ns", Name: "sset2"}.Build()},
+		},
+		{
+			name:        "replace an existing StatefulSet",
+			l:           StatefulSetList{TestSset{Namespace: "ns", Name: "sset1", Master: true}.Build()},
+			statefulSet: TestSset{Namespace: "ns", Name: "sset1", Master: false}.Build(),
+			want:        StatefulSetList{TestSset{Namespace: "ns", Name: "sset1", Master: false}.Build()},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.l.WithStatefulSet(tt.statefulSet); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("WithStatefulSet() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

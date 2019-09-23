@@ -147,6 +147,20 @@ func (l StatefulSetList) DeepCopy() StatefulSetList {
 	return result
 }
 
+// WithStatefulSet returns the StatefulSetList updated to contain the given StatefulSet.
+// If one with the same namespace & name already exist, it will be replaced.
+func (l StatefulSetList) WithStatefulSet(statefulSet appsv1.StatefulSet) StatefulSetList {
+	for i := range l {
+		if l[i].Name == statefulSet.Name && l[i].Namespace == statefulSet.Namespace {
+			// replace the existing StatefulSet in the list
+			l[i] = statefulSet
+			return l
+		}
+	}
+	// add a new StatefulSet to the list
+	return append(l, statefulSet)
+}
+
 // ESVersionMatch returns true if the ES version for this StatefulSet matches the given condition.
 func ESVersionMatch(statefulSet appsv1.StatefulSet, condition func(v version.Version) bool) bool {
 	v, err := GetESVersion(statefulSet)

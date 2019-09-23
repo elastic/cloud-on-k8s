@@ -25,8 +25,8 @@ import (
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
 // The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
 // If the spec has disabled the default PDB, it will ensure none exist.
-func Reconcile(k8sClient k8s.Client, es v1alpha1.Elasticsearch) error {
-	expected, err := expectedPDB(k8sClient, es)
+func Reconcile(k8sClient k8s.Client, es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList) error {
+	expected, err := expectedPDB(es, statefulSets)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func deleteDefaultPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) error {
 
 // expectedPDB returns a PDB according to the given ES spec.
 // It may return nil if the PDB has been explicitly disabled in the ES spec.
-func expectedPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (*v1beta1.PodDisruptionBudget, error) {
+func expectedPDB(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1beta1.PodDisruptionBudget, error) {
 	template := es.Spec.PodDisruptionBudget.DeepCopy()
 	if template.IsDisabled() {
 		return nil, nil
@@ -113,7 +113,7 @@ func expectedPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (*v1beta1.PodD
 
 	// set our default spec
 	var err error
-	if expected.Spec, err = buildPDBSpec(k8sClient, es); err != nil {
+	if expected.Spec, err = buildPDBSpec(es, statefulSets); err != nil {
 		return nil, err
 	}
 
@@ -122,11 +122,12 @@ func expectedPDB(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (*v1beta1.PodD
 
 // buildPDBSpec returns a PDBSpec computed from the current StatefulSets,
 // considering the cluster health and topology.
-func buildPDBSpec(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (v1beta1.PodDisruptionBudgetSpec, error) {
-	minAvailable, err := computeMinAvailable(k8sClient, es)
-	if err != nil {
-		return v1beta1.PodDisruptionBudgetSpec{}, err
-	}
+func buildPDBSpec(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList) (v1beta1.PodDisruptionBudgetSpec, error) {
+	// compute MinAvailable based on the maximum number of Pods we're supposed to have
+	nodeCount := statefulSets.ExpectedPodCount()
+	// maybe allow some Pods to be disrupted
+	minAvailable := nodeCount - allowedDisruptions(es, statefulSets)
+
 	minAvailableIntStr := intstr.IntOrString{Type: intstr.Int, IntVal: minAvailable}
 
 	return v1beta1.PodDisruptionBudgetSpec{
@@ -143,26 +144,8 @@ func buildPDBSpec(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (v1beta1.PodD
 	}, nil
 }
 
-// computeMinAvailable calculates the minimum available nodes so the given cluster
-// stays healthy in case of disruption.
-func computeMinAvailable(k8sClient k8s.Client, es v1alpha1.Elasticsearch) (int32, error) {
-	// Get the number of nodes that should currently exist in the cluster.
-	actualSsets, err := sset.RetrieveActualStatefulSets(k8sClient, k8s.ExtractNamespacedName(&es))
-	if err != nil {
-		return 0, err
-	}
-	// The theoretical node count may not match pods currently running (ie. we may miss some),
-	// which is fine since we'd set a higher than expected minAvailable (no disruption allowed).
-	// Replicas may be increased later in the reconciliation, which is almost fine since this will
-	// trigger another PDB reconciliation, but there's still a race condition here where nodeCount
-	// may be smaller than its realtime value.
-	nodeCount := actualSsets.ExpectedPodCount()
-	minAvailable := nodeCount - allowedDisruption(es, actualSsets)
-	return minAvailable, nil
-}
-
-// allowedDisruption returns the number of pods that we allow to be removed while keeping the cluster healthy.
-func allowedDisruption(es v1alpha1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
+// allowedDisruptions returns the number of Pods that we allow to be disrupted while keeping the cluster healthy.
+func allowedDisruptions(es v1alpha1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
 	if es.Status.Health != v1alpha1.ElasticsearchGreenHealth {
 		// A non-green cluster may become red if we disrupt one node, don't allow it.
 		// The health information we're using here may be out-of-date, that's best effort.
