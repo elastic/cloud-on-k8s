@@ -67,6 +67,11 @@ func IsDataNodeSet(statefulSet appsv1.StatefulSet) bool {
 	return NodeTypesDataLabelName.HasValue(true, statefulSet.Spec.Template.Labels)
 }
 
+// IsIngestNodeSet returns true if the given StatefulSet specifies ingest nodes.
+func IsIngestNodeSet(statefulSet appsv1.StatefulSet) bool {
+	return NodeTypesIngestLabelName.HasValue(true, statefulSet.Spec.Template.Labels)
+}
+
 func FilterMasterNodePods(pods []corev1.Pod) []corev1.Pod {
 	masters := []corev1.Pod{}
 	for _, pod := range pods {

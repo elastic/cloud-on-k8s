@@ -325,6 +325,17 @@ func Test_allowedDisruptions(t *testing.T) {
 			},
 			want: 0,
 		},
+		{
+			name: "green health but only 1 ingest node: 0 disruption allowed",
+			args: args{
+				es: v1alpha1.Elasticsearch{Status: v1alpha1.ElasticsearchStatus{Health: v1alpha1.ElasticsearchGreenHealth}},
+				actualSsets: sset.StatefulSetList{
+					sset.TestSset{Replicas: 3, Master: true, Data: true, Ingest: false}.Build(),
+					sset.TestSset{Replicas: 1, Ingest: true, Data: true}.Build(),
+				},
+			},
+			want: 0,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

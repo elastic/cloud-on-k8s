@@ -161,6 +161,10 @@ func allowedDisruptions(es v1alpha1.Elasticsearch, actualSsets sset.StatefulSetL
 		// There's a risk the single data node of the cluster gets removed, don't allow it.
 		return 0
 	}
+	if actualSsets.ExpectedIngestNodesCount() == 1 {
+		// There's a risk the single ingest node of the cluster gets removed, don't allow it.
+		return 0
+	}
 	// Allow one pod (only) to be disrupted on a healthy cluster.
 	// We could technically allow more, but the cluster health freshness would become a bigger problem.
 	return 1
