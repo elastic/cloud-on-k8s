@@ -126,7 +126,7 @@ func expectedPDB(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList, s
 // considering the cluster health and topology.
 func buildPDBSpec(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList) v1beta1.PodDisruptionBudgetSpec {
 	// compute MinAvailable based on the maximum number of Pods we're supposed to have
-	nodeCount := statefulSets.ExpectedPodCount()
+	nodeCount := statefulSets.ExpectedNodeCount()
 	// maybe allow some Pods to be disrupted
 	minAvailable := nodeCount - allowedDisruptions(es, statefulSets)
 

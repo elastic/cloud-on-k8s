@@ -76,8 +76,8 @@ func (l StatefulSetList) PodNames() []string {
 	return names
 }
 
-// ExpectedPodCount returns the sum of replicas of each StatefulSet in the StatefulSetList.
-func (l StatefulSetList) ExpectedPodCount() int32 {
+// ExpectedNodeCount returns the sum of replicas of each StatefulSet in the StatefulSetList.
+func (l StatefulSetList) ExpectedNodeCount() int32 {
 	count := int32(0)
 	for _, s := range l {
 		count += GetReplicas(s)
