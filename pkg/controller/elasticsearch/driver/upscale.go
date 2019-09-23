@@ -59,7 +59,7 @@ func HandleUpscaleAndSpecChanges(
 		if err != nil {
 			return nil, err
 		}
-		// update actual with the reconciled ones for newt steps to work with up-to-date information
+		// update actual with the reconciled ones for next steps to work with up-to-date information
 		actualStatefulSets = actualStatefulSets.WithStatefulSet(reconciled)
 	}
 	return actualStatefulSets, nil
