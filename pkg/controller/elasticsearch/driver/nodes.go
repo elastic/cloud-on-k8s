@@ -57,13 +57,12 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
-		k8sClient:           d.K8sClient(),
-		es:                  d.ES,
-		scheme:              d.Scheme(),
-		observedState:       observedState,
-		esState:             esState,
-		upscaleStateBuilder: &upscaleStateBuilder{},
-		expectations:        d.Expectations,
+		k8sClient:     d.K8sClient(),
+		es:            d.ES,
+		scheme:        d.Scheme(),
+		observedState: observedState,
+		esState:       esState,
+		expectations:  d.Expectations,
 	}
 	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
