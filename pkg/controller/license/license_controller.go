@@ -54,11 +54,11 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
-	return add(mgr, NewReconciler(mgr, p))
+	return add(mgr, newReconciler(mgr, p))
 }
 
-// NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
+// newReconciler returns a new reconcile.Reconciler
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{
 		Client:  c,

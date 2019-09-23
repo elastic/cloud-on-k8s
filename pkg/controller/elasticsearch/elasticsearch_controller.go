@@ -51,7 +51,7 @@ var log = logf.Log.WithName(name)
 // on the Controller and Start it when the Manager is Started.
 // this is also called by cmd/main.go
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := NewReconciler(mgr, params)
+	reconciler := newReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -59,8 +59,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-// NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
+// newReconciler returns a new reconcile.Reconciler
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileElasticsearch{
 		Client:   client,

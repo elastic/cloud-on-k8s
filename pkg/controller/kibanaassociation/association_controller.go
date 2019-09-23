@@ -73,7 +73,7 @@ var (
 // Add creates a new Association Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := NewReconciler(mgr, params)
+	r := newReconciler(mgr, params)
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -81,8 +81,8 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, r)
 }
 
-// NewReconciler returns a new reconcile.Reconciler
-func NewReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAssociation {
+// newReconciler returns a new reconcile.Reconciler
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileAssociation{
 		Client:     client,

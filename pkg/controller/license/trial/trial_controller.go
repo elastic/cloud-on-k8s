@@ -132,7 +132,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 
 }
 
-func NewReconciler(mgr manager.Manager, _ operator.Parameters) *ReconcileTrials {
+func newReconciler(mgr manager.Manager, _ operator.Parameters) *ReconcileTrials {
 	return &ReconcileTrials{
 		Client:   k8s.WrapClient(mgr.GetClient()),
 		scheme:   mgr.GetScheme(),
@@ -186,7 +186,7 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 // Add creates a new Trial Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := NewReconciler(mgr, params)
+	r := newReconciler(mgr, params)
 	return add(mgr, r)
 }
 
