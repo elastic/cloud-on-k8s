@@ -26,10 +26,9 @@ type StatefulSetList []appsv1.StatefulSet
 // RetrieveActualStatefulSets returns the list of existing StatefulSets labeled for the given es cluster.
 func RetrieveActualStatefulSets(c k8s.Client, es types.NamespacedName) (StatefulSetList, error) {
 	var ssets appsv1.StatefulSetList
-	err := c.List(&client.ListOptions{
-		Namespace:     es.Namespace,
-		LabelSelector: label.NewLabelSelectorForElasticsearchClusterName(es.Name),
-	}, &ssets)
+	ns := client.InNamespace(es.Namespace)
+	matchLabels := label.NewLabelSelectorForElasticsearchClusterName(es.Name)
+	err := c.List(&ssets, ns, matchLabels)
 	return StatefulSetList(ssets.Items), err
 }
 

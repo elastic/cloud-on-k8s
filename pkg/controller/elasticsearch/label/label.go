@@ -10,13 +10,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -142,14 +141,14 @@ func NewStatefulSetLabels(es types.NamespacedName, ssetName string) map[string]s
 }
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels
-func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) labels.Selector {
+func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) client.MatchingLabels {
 	return NewLabelSelectorForElasticsearchClusterName(es.Name)
 }
 
 // NewLabelSelectorForElasticsearchClusterName returns a labels.Selector that matches the labels as constructed by
 // NewLabels for the provided cluster name.
-func NewLabelSelectorForElasticsearchClusterName(clusterName string) labels.Selector {
-	return labels.SelectorFromSet(map[string]string{ClusterNameLabelName: clusterName})
+func NewLabelSelectorForElasticsearchClusterName(clusterName string) client.MatchingLabels {
+	return client.MatchingLabels(map[string]string{ClusterNameLabelName: clusterName})
 }
 
 // ClusterFromResourceLabels returns the NamespacedName of the Elasticsearch associated

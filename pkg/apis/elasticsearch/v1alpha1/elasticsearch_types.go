@@ -42,7 +42,7 @@ type ElasticsearchSpec struct {
 	//
 	// The default budget selects all cluster pods and sets maxUnavailable to 1.
 	// To disable it entirely, set to the empty value (`{}` in YAML).
-	// +optional
+	// +kubebuilder:validation:Optional
 	PodDisruptionBudget *commonv1alpha1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
 	// SecureSettings references secrets containing secure settings, to be injected
@@ -80,7 +80,7 @@ type NodeSpec struct {
 	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
 	// This allows specifying custom annotations, labels, environment variables,
 	// volumes, affinity, resources, etc. for the pods created from this NodeSpec.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// VolumeClaimTemplates is a list of claims that pods are allowed to reference.
@@ -89,7 +89,7 @@ type NodeSpec struct {
 	// any volumes in the template, with the same name.
 	// TODO: Define the behavior if a claim already exists with the same name.
 	// TODO: define special behavior based on claim metadata.name. (e.g data / logs volumes)
-	// +optional
+	// +kubebuilder:validation:Optional
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
@@ -214,11 +214,9 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 	return es.Health.Less(prev.Health)
 }
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Elasticsearch is the Schema for the elasticsearches API
-// +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=es
 // +kubebuilder:categories=elastic
@@ -250,7 +248,7 @@ func (e Elasticsearch) Kind() string {
 	return Kind
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // ElasticsearchList contains a list of Elasticsearch clusters
 type ElasticsearchList struct {
@@ -260,7 +258,5 @@ type ElasticsearchList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(
-		&Elasticsearch{}, &ElasticsearchList{},
-	)
+	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
 }

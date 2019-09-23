@@ -26,16 +26,13 @@ var (
 // MarkPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
 func MarkPodsAsUpdated(
 	c k8s.Client,
-	podListOptions client.ListOptions,
+	podListOptions ...client.ListOption,
 ) {
 	// Get all pods
 	var podList corev1.PodList
-	err := c.List(&podListOptions, &podList)
+	err := c.List(&podList, podListOptions...)
 	if err != nil {
-		log.Error(
-			err, "failed to list pods for annotation update",
-			"namespace", podListOptions.Namespace,
-		)
+		log.Error(err, "failed to list pods for annotation update")
 		return
 	}
 	// Update annotation

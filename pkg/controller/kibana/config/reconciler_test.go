@@ -13,9 +13,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,7 +51,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 				}},
 			},
 			assertions: func(secrets corev1.SecretList) error {
-				assert.Equal(t, 1, len(secrets.Items))
+				require.Equal(t, 1, len(secrets.Items))
 				assert.NotNil(t, secrets.Items[0].Data[SettingsFilename])
 				return nil
 			},
@@ -65,13 +65,14 @@ func TestReconcileConfigSecret(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-kb-config",
 							Namespace: "test-ns",
+							Labels:    map[string]string{label.KibanaNameLabelName: defaultKibana.Name},
 						},
 						Data: map[string][]byte{},
 					}},
 			},
 
 			assertions: func(secrets corev1.SecretList) error {
-				assert.Equal(t, 1, len(secrets.Items))
+				require.Equal(t, 1, len(secrets.Items))
 				assert.NotNil(t, secrets.Items[0].Data[SettingsFilename])
 				return nil
 			},
@@ -85,6 +86,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-kb-config",
 							Namespace: "test-ns",
+							Labels:    map[string]string{label.KibanaNameLabelName: defaultKibana.Name},
 						},
 						Data: map[string][]byte{
 							SettingsFilename: []byte("eW8h"),
@@ -93,7 +95,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			},
 
 			assertions: func(secrets corev1.SecretList) error {
-				assert.Equal(t, 1, len(secrets.Items))
+				require.Equal(t, 1, len(secrets.Items))
 				assert.NotNil(t, secrets.Items[0].Data[SettingsFilename])
 				assert.NotEqual(t, "eW8h", secrets.Items[0].Data[SettingsFilename])
 				return nil
@@ -112,10 +114,9 @@ func TestReconcileConfigSecret(t *testing.T) {
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList
-			labelSelector := labels.Set(map[string]string{label.KibanaNameLabelName: defaultKibana.Name}).AsSelector()
-			err = k8sClient.List(&client.ListOptions{LabelSelector: labelSelector}, &secrets)
+			labelSelector := client.MatchingLabels(map[string]string{label.KibanaNameLabelName: tt.args.kb.Name})
+			err = k8sClient.List(&secrets, labelSelector)
 			assert.NoError(t, err)
-
 			err = tt.assertions(secrets)
 			assert.NoError(t, err)
 		})

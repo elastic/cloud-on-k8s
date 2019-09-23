@@ -29,7 +29,7 @@ func TestKillKibanaPod(t *testing.T) {
 		return true
 	}
 	test.RunRecoverableFailureScenario(t,
-		test.KillNodeSteps(test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name), matchFirst),
+		test.KillNodeSteps(matchFirst, test.KibanaPodListOptions(kbBuilder.Kibana.Namespace, kbBuilder.Kibana.Name)...),
 		esBuilder, kbBuilder)
 }
 

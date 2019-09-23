@@ -93,10 +93,8 @@ func UpdateSeedHostsConfigMap(
 			PostUpdate: func() {
 				log.Info("Seed hosts updated", "namespace", es.Namespace, "es_name", es.Name, "hosts", seedHosts)
 				annotation.MarkPodsAsUpdated(c,
-					client.ListOptions{
-						Namespace:     es.Namespace,
-						LabelSelector: label.NewLabelSelectorForElasticsearch(es),
-					})
+					client.InNamespace(es.Namespace),
+					label.NewLabelSelectorForElasticsearch(es))
 			},
 		})
 }

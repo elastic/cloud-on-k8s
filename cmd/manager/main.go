@@ -13,19 +13,32 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/apis"
-	"github.com/elastic/cloud-on-k8s/pkg/controller"
+	// allow gcp authentication
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
+	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
+	licensetrial "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/pkg/webhook"
+
+	// TODO (sabo): re-enable when webhooks are usable
+	// "github.com/elastic/cloud-on-k8s/pkg/webhook"
+
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
@@ -187,15 +200,19 @@ func execute() {
 
 	// Get a config to talk to the apiserver
 	log.Info("Setting up client for manager")
-	cfg, err := config.GetConfig()
+	cfg := ctrl.GetConfigOrDie()
+	// Setup Scheme for all resources
+	log.Info("Setting up scheme")
+	err := controllerscheme.SetupScheme()
 	if err != nil {
-		log.Error(err, "unable to set up client config")
+		log.Error(err, "Error setting up schemes")
 		os.Exit(1)
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("Setting up manager")
-	opts := manager.Options{
+	opts := ctrl.Options{
+		Scheme: clientgoscheme.Scheme,
 		// restrict the operator to watch resources within a single namespace, unless empty
 		Namespace: viper.GetString(NamespaceFlagName),
 	}
@@ -207,22 +224,16 @@ func execute() {
 		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
 	}
 
-	mgr, err := manager.New(cfg, opts)
+	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
-		log.Error(err, "unable to set up overall controller manager")
-		os.Exit(1)
-	}
-
-	// Setup Scheme for all resources
-	log.Info("Setting up scheme")
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "unable add APIs to scheme")
+		log.Error(err, "unable to create controller manager")
 		os.Exit(1)
 	}
 
 	// Verify cert validity options
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(CACertValidityFlag, CACertRotateBeforeFlag)
 	certValidity, certRotateBefore := ValidateCertExpirationFlags(CertValidityFlag, CertRotateBeforeFlag)
+
 	// Setup all Controllers
 	roles := viper.GetStringSlice(operator.RoleFlag)
 	err = operator.ValidateRoles(roles)
@@ -243,9 +254,8 @@ func execute() {
 		log.Error(err, "unable to get operator info")
 		os.Exit(1)
 	}
-
 	log.Info("Setting up controllers", "roles", roles)
-	if err := controller.AddToManager(mgr, roles, operator.Parameters{
+	params := operator.Parameters{
 		Dialer:            dialer,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
@@ -257,16 +267,43 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
-	}); err != nil {
-		log.Error(err, "unable to register controllers to the manager")
+	}
+
+	if err = apmserver.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "ApmServer")
+		os.Exit(1)
+	}
+	if err = elasticsearch.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "Elasticsearch")
+		os.Exit(1)
+	}
+	if err = kibana.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "Kibana")
+		os.Exit(1)
+	}
+	if err = asesassn.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
+		os.Exit(1)
+	}
+	if err = kbassn.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+		os.Exit(1)
+	}
+	if err = license.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "License")
+		os.Exit(1)
+	}
+	if err = licensetrial.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "LicenseTrial")
 		os.Exit(1)
 	}
 
-	log.Info("Setting up webhooks")
-	if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
-		log.Error(err, "unable to register webhooks to the manager")
-		os.Exit(1)
-	}
+	// TODO (sabo): re-enable when webhooks are usable
+	// log.Info("Setting up webhooks")
+	// if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
+	// 	log.Error(err, "unable to register webhooks to the manager")
+	// 	os.Exit(1)
+	// }
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
@@ -278,24 +315,25 @@ func execute() {
 	}
 }
 
-func newWebhookParameters() (*webhook.Parameters, error) {
-	autoInstall := viper.GetBool(AutoInstallWebhooksFlag)
-	ns := viper.GetString(OperatorNamespaceFlag)
-	if ns == "" && autoInstall {
-		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
-	}
-	svcSelector := viper.GetString(WebhookPodsLabelFlag)
-	sec := viper.GetString(WebhookSecretFlag)
-	return &webhook.Parameters{
-		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
-			Namespace:        ns,
-			ManagedNamespace: viper.GetString(NamespaceFlagName),
-			SecretName:       sec,
-			ServiceSelector:  svcSelector,
-		}),
-		AutoInstall: autoInstall,
-	}, nil
-}
+// TODO (sabo): re-enable when webhooks are usable
+// func newWebhookParameters() (*webhook.Parameters, error) {
+// 	autoInstall := viper.GetBool(AutoInstallWebhooksFlag)
+// 	ns := viper.GetString(OperatorNamespaceFlag)
+// 	if ns == "" && autoInstall {
+// 		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
+// 	}
+// 	svcSelector := viper.GetString(WebhookPodsLabelFlag)
+// 	sec := viper.GetString(WebhookSecretFlag)
+// 	return &webhook.Parameters{
+// 		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
+// 			Namespace:        ns,
+// 			ManagedNamespace: viper.GetString(NamespaceFlagName),
+// 			SecretName:       sec,
+// 			ServiceSelector:  svcSelector,
+// 		}),
+// 		AutoInstall: autoInstall,
+// 	}, nil
+// }
 
 func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration) {
 	certValidity := viper.GetDuration(validityFlag)

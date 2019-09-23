@@ -36,10 +36,9 @@ func ReconcileTransportCertificatesSecrets(
 	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	var pods corev1.PodList
-	if err := c.List(&client.ListOptions{
-		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
-		Namespace:     es.Namespace,
-	}, &pods); err != nil {
+	matchLabels := label.NewLabelSelectorForElasticsearch(es)
+	ns := client.InNamespace(es.Namespace)
+	if err := c.List(&pods, matchLabels, ns); err != nil {
 		return reconcile.Result{}, err
 	}
 

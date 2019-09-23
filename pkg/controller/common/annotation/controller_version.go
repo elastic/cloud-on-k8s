@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -59,7 +58,7 @@ func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version stri
 // controller versions 0.9.0+ cannot reconcile resources created with earlier controllers, so this lets our controller skip those resources until they can be manually recreated
 // if an object does not have an annotation, it will determine if it is a new object or if it has been previously reconciled by an older controller version, as this annotation
 // was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so
-func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector labels.Selector, controllerVersion string) (bool, error) {
+func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector map[string]string, controllerVersion string) (bool, error) {
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
 	if err != nil {
@@ -119,8 +118,9 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector labe
 	return false, nil
 }
 
-// checkExistingResources returns a bool indicating if there are existing resources created for a given resource
-func checkExistingResources(client k8s.Client, obj runtime.Object, selector labels.Selector) (bool, error) {
+// checkExistingResources returns a bool indicating if there are existing resources created for a given resource.
+// The labels provided must exactly match.
+func checkExistingResources(client k8s.Client, obj runtime.Object, labels map[string]string) (bool, error) {
 
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
@@ -128,13 +128,11 @@ func checkExistingResources(client k8s.Client, obj runtime.Object, selector labe
 		log.Error(err, "error getting namespace", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 		return false, err
 	}
+	labelSelector := ctrlclient.MatchingLabels(labels)
+	nsSelector := ctrlclient.InNamespace(namespace)
 	// if there's no controller version annotation on the object, then we need to see maybe the object has been reconciled by an older, incompatible controller version
-	opts := ctrlclient.ListOptions{
-		LabelSelector: selector,
-		Namespace:     namespace,
-	}
 	var svcs corev1.ServiceList
-	err = client.List(&opts, &svcs)
+	err = client.List(&svcs, labelSelector, nsSelector)
 	if err != nil {
 		return false, err
 	}
