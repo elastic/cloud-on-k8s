@@ -5,8 +5,6 @@
 package pdb
 
 import (
-	"reflect"
-
 	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,6 +16,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -36,6 +35,9 @@ func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elastic
 		return deleteDefaultPDB(k8sClient, es)
 	}
 
+	// label the PDB with a hash of its content, for comparison purposes
+	expected.Labels = hash.SetTemplateHashLabel(expected.Labels, expected)
+
 	// reconcile actual vs. expected
 	var actual v1beta1.PodDisruptionBudget
 	err = k8sClient.Get(k8s.ExtractNamespacedName(expected), &actual)
@@ -43,15 +45,8 @@ func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elastic
 		return k8sClient.Create(expected)
 	}
 
-	// update if we're missing a label
-	needsLabelUpdate := false
-	for k, v := range expected.Labels {
-		if actualValue, ok := actual.Labels[k]; !ok || actualValue != v {
-			needsLabelUpdate = true
-		}
-	}
-
-	if needsLabelUpdate || !reflect.DeepEqual(expected.Spec, actual.Spec) {
+	if hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(actual.Labels) {
+		// Actual does not match expected, let's update the PDB.
 		// PDB Spec cannot be updated, we'll have to delete then recreate.
 		// Which means there is a time window in between where we don't have a PDB anymore.
 		// TODO: this is not true anymore starting k8s 1.15+ and this PR https://github.com/kubernetes/kubernetes/pull/69867
