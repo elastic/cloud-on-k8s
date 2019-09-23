@@ -1,39 +1,17 @@
 [id="{p}-managing-compute-resources"]
 == Managing compute resources
 
-When a Pod is created it may request CPU and RAM resources. This is the minimum amount required for the Pod to run. It may also specify the maximum resources that the containers are allowed to consume. Both Pod `limits` and `requests` can be set in the specification of any object managed by the operator (Elasticsearch, Kibana or the APM server). For more information on how this is used by Kubernetes, see https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers].
+In order to help the Kubernetes scheduler make better decisions about how to place pods in available nodes and ensure quality of service (QoS), it is recommended to specify the CPU and memory requirements for objects managed by the operator (Elasticsearch, Kibana or APM Server). In Kubernetes parlance, `requests` defines the minimum amount of resources that must be available for a pod to start and `limits` defines the maximum amount of resources that a pod is allowed to consume. For more information about how Kubernetes uses these hints, see: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers].
 
 [float]
 [id="{p}-custom-resources"]
 === Set custom resources
 
-The `resources` can be customized in the `podTemplate` of an object.
+Resource limits can be set in the `podTemplate` of objects managed by the operator.
 
-Here is an example for Elasticsearch:
+For Elasticsearch objects, it is important to consider the heap size when setting resource requirements. An example can be found in the <<{p}-jvm-heap-size>> page.
 
-[source,yaml]
-----
-spec:
-  nodes:
-  - podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          env:
-          - name: ES_JAVA_OPTS
-            value: -Xms2048M -Xmx2048M
-          resources:
-            requests:
-              memory: 2Gi
-              cpu: 1
-            limits:
-              memory: 4Gi
-              cpu: 2
-----
-
-This example also demonstrates how to set the JVM memory options accordingly, by using the `ES_JAVA_OPTS` environment variable.
-
-The same applies for every custom resource type managed by the operator. Use this code to customize resource requests and limits for Kibana:
+For Kibana or APM Server objects, the `podTemplate` can be configured as follows:
 
 [source,yaml]
 ----
@@ -41,7 +19,7 @@ spec:
   podTemplate:
     spec:
       containers:
-      - name: kibana
+      - name: kibana <1>
         resources:
           requests:
             memory: 1Gi
@@ -51,69 +29,11 @@ spec:
             cpu: 2
 ----
 
-Use this code to customize resource requests and limits on the APM server:
-
-[source,yaml]
-----
-spec:
-  podTemplate:
-    spec:
-      containers:
-      - name: apm-server
-        resources:
-          requests:
-            memory: 1Gi
-            cpu: 1
-          limits:
-            memory: 2Gi
-            cpu: 2
-----
+<1> Replace with `kibana` or `apm-server` as appropriate.
 
 [float]
 [id="{p}-default-behavior"]
 === Default behavior
 
-If there's no `resources` set in the specification of an object, then no `requests` or `limits` are applied on the containers, with the notable exception of Elasticsearch.
-For Elasticsearch, if no memory request is set in the `podTemplate` spec, the operator applies a default memory request of 2Gi. This is because Elasticsearch must have a minimum amount of memory to perform correctly.
-
-There can be conflicts if resources are https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/[managed with some LimitRanges at the namespace level] and if a minimum memory constraint is imposed.
-
-For example, you may want to apply a default request of 3Gi and enforce it as a minimum with a constraint:
-
-[source,yaml]
-----
-apiVersion: v1
-kind: LimitRange
-metadata:
-  name: default-mem-per-container
-spec:
-  limits:
-  - min:
-      memory: "3Gi"
-    defaultRequest:
-      memory: "3Gi"
-    type: Container
-----
-
-But if there is no `resources` declared in the specification, then the Pod can't be created and the following event is generated:
-
-...................................
-default     0s          Warning   Unexpected              elasticsearch/elasticsearch-sample                                            Cannot create pod elasticsearch-sample-es-ldbgj48c7r: pods "elasticsearch-sample-es-ldbgj48c7r" is forbidden: minimum memory usage per Container is 3Gi, but request is 2Gi
-...................................
-
-To solve this situation, you can define an empty `limits` section in the specification:
-
-[source,yaml]
-----
-spec:
-  nodes:
-  - podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources:
-            # specify empty limits
-            limits: {}
-----
-
-The default `requests` is not set by the operator and the Pod is created.
+If `resources` is not defined in the specification of an object, then no `requests` or `limits` will be applied to the containers except in the case of Elasticsearch.
+For Elasticsearch, if no memory request is set in the `podTemplate` spec, the operator applies a default memory request as described in the <<{p}-jvm-heap-size>> section. If your Kubernetes cluster is configured to enforce default resource limits using a `LimitRange` object, it could interfere with the operator default and cause object creation to fail. See <<{p}-jvm-heap-size>> for information on how to address this problem.

@@ -64,7 +64,7 @@ For more information on Pod templates, see the Kubernetes documentation:
 [id="{p}-jvm-heap-size"]
 === JVM heap size
 
-By default, the JVM heap used by Elasticsearch has minimum and maximum size set to 1Gi. As the heap size should not exceed 50% of RAM size, ECK requests by default 2Gi of memory for the Elasticsearch Pod. To change the JVM heap size, use the `ES_JAVA_OPTS` environment variable. It is also highly recommended to set the resource requests and limits to adjust the Pod memory to not exceed 50% of the RAM size. Both changes are shown below:
+To change the heap size of Elasticsearch, set the `ES_JAVA_OPTS` environment variable in the `podTemplate`. It is also highly recommended to set the resource `requests` and `limits` at the same time to ensure that the pod gets enough resources allocated within the cluster. The recommendation for heap size is that it should be half the size of RAM allocated to the pod.
 
 [source,yaml]
 ----
@@ -84,7 +84,51 @@ spec:
               memory: 4Gi
 ----
 
-For more information, see the Elasticsearch documentation on link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
+
+If no resource constraints are defined in the object specification, the operator applies a default memory `request` of 2Gi based on the assumption that Elasticsearch heap size is set to the default of 1Gi. If the Kubernetes cluster is configured with https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/[LimitRanges] that enforce a minimum memory constraint, they could interfere with the operator default and cause object creation to fail.
+
+For example, you might have a LimitRange that enforces a default and minimum memory limit on containers as follows:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default-mem-per-container
+spec:
+  limits:
+  - min:
+      memory: "3Gi"
+    defaultRequest:
+      memory: "3Gi"
+    type: Container
+----
+
+With the above restriction in place, if you attempt to create an object without the `resources` declaration, it will fail to start with an error similar to the following:
+
+...................................
+Cannot create pod elasticsearch-sample-es-ldbgj48c7r: pods "elasticsearch-sample-es-ldbgj48c7r" is forbidden: minimum memory usage per Container is 3Gi, but request is 2Gi
+...................................
+
+This error can be avoided by defining an empty `limits` section in the specification to hint to the operator that it should not apply the default limits to the object:
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            # specify empty limits
+            limits: {}
+----
+
+See also:
+- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Elasticsearch documentation on setting the heap size].
+- <<{p}-managing-compute-resources>>
+
 
 [id="{p}-node-configuration"]
 === Node configuration
