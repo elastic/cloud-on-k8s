@@ -57,8 +57,14 @@ func IsMasterNode(pod corev1.Pod) bool {
 	return NodeTypesMasterLabelName.HasValue(true, pod.Labels)
 }
 
+// IsDataNodeSet returns true if the given StatefulSet specifies master nodes.
 func IsMasterNodeSet(statefulSet appsv1.StatefulSet) bool {
 	return NodeTypesMasterLabelName.HasValue(true, statefulSet.Spec.Template.Labels)
+}
+
+// IsDataNodeSet returns true if the given StatefulSet specifies data nodes.
+func IsDataNodeSet(statefulSet appsv1.StatefulSet) bool {
+	return NodeTypesDataLabelName.HasValue(true, statefulSet.Spec.Template.Labels)
 }
 
 func FilterMasterNodePods(pods []corev1.Pod) []corev1.Pod {

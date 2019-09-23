@@ -286,12 +286,31 @@ func Test_allowedDisruptions(t *testing.T) {
 			want: 1,
 		},
 		{
+			name: "green health but single-node cluster: 0 disruption allowed",
+			args: args{
+				es:          v1alpha1.Elasticsearch{Status: v1alpha1.ElasticsearchStatus{Health: v1alpha1.ElasticsearchGreenHealth}},
+				actualSsets: sset.StatefulSetList{sset.TestSset{Replicas: 1, Master: true, Data: true}.Build()},
+			},
+			want: 0,
+		},
+		{
 			name: "green health but only 1 master: 0 disruption allowed",
 			args: args{
 				es: v1alpha1.Elasticsearch{Status: v1alpha1.ElasticsearchStatus{Health: v1alpha1.ElasticsearchGreenHealth}},
 				actualSsets: sset.StatefulSetList{
 					sset.TestSset{Replicas: 1, Master: true, Data: false}.Build(),
 					sset.TestSset{Replicas: 3, Master: false, Data: true}.Build(),
+				},
+			},
+			want: 0,
+		},
+		{
+			name: "green health but only 1 data node: 0 disruption allowed",
+			args: args{
+				es: v1alpha1.Elasticsearch{Status: v1alpha1.ElasticsearchStatus{Health: v1alpha1.ElasticsearchGreenHealth}},
+				actualSsets: sset.StatefulSetList{
+					sset.TestSset{Replicas: 3, Master: true, Data: false}.Build(),
+					sset.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
 				},
 			},
 			want: 0,

@@ -85,11 +85,22 @@ func (l StatefulSetList) ExpectedPodCount() int32 {
 	return count
 }
 
-// ExpectedMasterCount returns the number of master nodes expected from the StatefulSetList.
-func (l StatefulSetList) ExpectedMasterCount() int32 {
+// ExpectedMasterNodesCount returns the number of master nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedMasterNodesCount() int32 {
 	count := int32(0)
 	for _, s := range l {
 		if label.IsMasterNodeSet(s) {
+			count = count + GetReplicas(s)
+		}
+	}
+	return count
+}
+
+// ExpectedDataNodesCount returns the number of data nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedDataNodesCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		if label.IsDataNodeSet(s) {
 			count = count + GetReplicas(s)
 		}
 	}

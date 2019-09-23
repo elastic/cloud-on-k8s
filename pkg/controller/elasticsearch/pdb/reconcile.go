@@ -151,8 +151,12 @@ func allowedDisruptions(es v1alpha1.Elasticsearch, actualSsets sset.StatefulSetL
 		// The health information we're using here may be out-of-date, that's best effort.
 		return 0
 	}
-	if actualSsets.ExpectedMasterCount() == 1 {
+	if actualSsets.ExpectedMasterNodesCount() == 1 {
 		// There's a risk the single master of the cluster gets removed, don't allow it.
+		return 0
+	}
+	if actualSsets.ExpectedDataNodesCount() == 1 {
+		// There's a risk the single data node of the cluster gets removed, don't allow it.
 		return 0
 	}
 	// Allow one pod (only) to be disrupted on a healthy cluster.
