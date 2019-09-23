@@ -269,6 +269,7 @@ EOF`, sc)).Run()
 		return err
 	}
 
+	// Depending on K8s version, a different annotation is needed. To avoid parsing version string, both are set.
 	patch := `'{ "metadata": { "annotations": { "storageclass.kubernetes.io/is-default-class":"false", "storageclass.beta.kubernetes.io/is-default-class":"false"} } }'`
 	cmd := fmt.Sprintf(`kubectl patch storageclass %s -p %s`, defaultName, patch)
 	return NewCommand(cmd).Run()
