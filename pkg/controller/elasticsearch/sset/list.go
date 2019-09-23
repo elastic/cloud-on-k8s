@@ -80,7 +80,7 @@ func (l StatefulSetList) PodNames() []string {
 func (l StatefulSetList) ExpectedPodCount() int32 {
 	count := int32(0)
 	for _, s := range l {
-		count = count + GetReplicas(s)
+		count += GetReplicas(s)
 	}
 	return count
 }
@@ -90,7 +90,7 @@ func (l StatefulSetList) ExpectedMasterNodesCount() int32 {
 	count := int32(0)
 	for _, s := range l {
 		if label.IsMasterNodeSet(s) {
-			count = count + GetReplicas(s)
+			count += GetReplicas(s)
 		}
 	}
 	return count
@@ -101,7 +101,7 @@ func (l StatefulSetList) ExpectedDataNodesCount() int32 {
 	count := int32(0)
 	for _, s := range l {
 		if label.IsDataNodeSet(s) {
-			count = count + GetReplicas(s)
+			count += GetReplicas(s)
 		}
 	}
 	return count

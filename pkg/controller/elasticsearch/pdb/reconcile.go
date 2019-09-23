@@ -114,13 +114,9 @@ func expectedPDB(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList, s
 	if template.Spec.Selector != nil || template.Spec.MaxUnavailable != nil || template.Spec.MinAvailable != nil {
 		// use the user-defined spec
 		expected.Spec = template.Spec
-		return &expected, nil
-	}
-
-	// set our default spec
-	var err error
-	if expected.Spec, err = buildPDBSpec(es, statefulSets); err != nil {
-		return nil, err
+	} else {
+		// set our default spec
+		expected.Spec = buildPDBSpec(es, statefulSets)
 	}
 
 	return &expected, nil
@@ -128,7 +124,7 @@ func expectedPDB(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList, s
 
 // buildPDBSpec returns a PDBSpec computed from the current StatefulSets,
 // considering the cluster health and topology.
-func buildPDBSpec(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList) (v1beta1.PodDisruptionBudgetSpec, error) {
+func buildPDBSpec(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList) v1beta1.PodDisruptionBudgetSpec {
 	// compute MinAvailable based on the maximum number of Pods we're supposed to have
 	nodeCount := statefulSets.ExpectedPodCount()
 	// maybe allow some Pods to be disrupted
@@ -147,7 +143,7 @@ func buildPDBSpec(es v1alpha1.Elasticsearch, statefulSets sset.StatefulSetList) 
 		// MaxUnavailable can only be used if the selector matches a builtin controller selector
 		// (eg. Deployments, StatefulSets, etc.). We cannot use it with our own cluster-name selector.
 		MaxUnavailable: nil,
-	}, nil
+	}
 }
 
 // allowedDisruptions returns the number of Pods that we allow to be disrupted while keeping the cluster healthy.
