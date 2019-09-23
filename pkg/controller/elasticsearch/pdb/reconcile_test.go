@@ -14,7 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
@@ -26,6 +28,7 @@ import (
 )
 
 func TestReconcile(t *testing.T) {
+	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 	defaultPDB := v1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name.DefaultPodDisruptionBudget("cluster"),
@@ -109,7 +112,7 @@ func TestReconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Reconcile(tt.args.k8sClient, tt.args.es, tt.args.statefulSets)
+			err := Reconcile(tt.args.k8sClient, scheme.Scheme, tt.args.es, tt.args.statefulSets)
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: name.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved v1beta1.PodDisruptionBudget
@@ -117,6 +120,8 @@ func TestReconcile(t *testing.T) {
 			if tt.wantPDB == nil {
 				require.True(t, errors.IsNotFound(err))
 			} else {
+				// remove ownerRef that we don't want to compare here (for simplification)
+				retrieved.OwnerReferences = nil
 				require.NoError(t, err)
 				require.Equal(t, tt.wantPDB, &retrieved)
 			}
@@ -129,6 +134,7 @@ func intStrPtr(intStr intstr.IntOrString) *intstr.IntOrString {
 }
 
 func Test_expectedPDB(t *testing.T) {
+	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 	type args struct {
 		es           v1alpha1.Elasticsearch
 		statefulSets sset.StatefulSetList
@@ -226,7 +232,11 @@ func Test_expectedPDB(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := expectedPDB(tt.args.es, tt.args.statefulSets)
+			if tt.want != nil {
+				// we want the owner ref to be set
+				require.NoError(t, controllerutil.SetControllerReference(&tt.args.es, tt.want, scheme.Scheme))
+			}
+			got, err := expectedPDB(tt.args.es, tt.args.statefulSets, scheme.Scheme)
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("expectedPDB() got = %v, want %v", got, tt.want)

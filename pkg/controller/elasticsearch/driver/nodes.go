@@ -70,7 +70,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Update PDB to account for new replicas.
-	if err := pdb.Reconcile(d.Client, d.ES, actualStatefulSets); err != nil {
+	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES, actualStatefulSets); err != nil {
 		return results.WithError(err)
 	}
 
