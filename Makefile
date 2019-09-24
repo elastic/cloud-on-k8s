@@ -106,9 +106,13 @@ generate: controller-gen
 	$(MAKE) --no-print-directory generate-all-in-one
 	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
 	# $(MAKE) --no-print-directory generate-api-docs
+	$(MAKE) --no-print-directory generate-notice-file
 
 generate-api-docs:
 	@hack/api-docs/build.sh
+
+generate-notice-file:
+	@hack/licence-detector/generate-notice.sh
 
 elastic-operator: generate
 	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
