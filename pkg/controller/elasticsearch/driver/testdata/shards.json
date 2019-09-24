@@ -1,10 +1,11 @@
-[{
+[
+  {
   "state": "STARTED",
   "prirep": "r",
   "node": "elasticsearch-sample-es-nodes-0",
   "shard": "0",
   "index": ".security-7"
-},
+  },
   {
     "state": "STARTED",
     "prirep": "p",
