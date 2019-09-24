@@ -7,7 +7,6 @@ import (
 	"io"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -69,16 +68,6 @@ func parseDependencies(data io.Reader, includeIndirect bool) (*Dependencies, err
 			deps.Direct = append(deps.Direct, LicenceInfo{Module: mod})
 		}
 	}
-
-	sort.Slice(deps.Direct, func(i, j int) bool {
-		return deps.Direct[i].Path < deps.Direct[j].Path
-	})
-
-	sort.Slice(deps.Indirect, func(i, j int) bool {
-		return deps.Indirect[i].Path < deps.Indirect[j].Path
-	})
-
-	return deps, nil
 }
 
 func detectLicences(deps *Dependencies) error {
