@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -119,11 +120,13 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 		{
 			name: "sset has its pods",
 			l: StatefulSetList{
-				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
+				TestSset{Name: "sset1", Namespace: "ns", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
 			c: k8s.WrapClient(fake.NewFakeClient(
-				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
-				TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
+				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
+				TestPod{Namespace: "ns", Name: "sset2-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
+				TestPod{Namespace: "ns0", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 			)),
 			want: true,
 		},
@@ -143,7 +146,7 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.l.PodReconciliationDone(tt.c)
 			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

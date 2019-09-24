@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -42,12 +41,11 @@ func PodRevision(pod corev1.Pod) string {
 // The returned pods may not match the expected StatefulSet replicas in a transient situation.
 func GetActualPodsForStatefulSet(c k8s.Client, sset appsv1.StatefulSet) ([]corev1.Pod, error) {
 	var pods corev1.PodList
-	if err := c.List(&client.ListOptions{
-		Namespace: sset.Namespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			label.StatefulSetNameLabelName: sset.Name,
-		}),
-	}, &pods); err != nil {
+	ns := client.InNamespace(sset.Namespace)
+	matchLabels := client.MatchingLabels(map[string]string{
+		label.StatefulSetNameLabelName: sset.Name,
+	})
+	if err := c.List(&pods, matchLabels, ns); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
@@ -56,12 +54,12 @@ func GetActualPodsForStatefulSet(c k8s.Client, sset appsv1.StatefulSet) ([]corev
 // GetActualPodsForCluster return the existing pods associated to this cluster.
 func GetActualPodsForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.Pod, error) {
 	var pods corev1.PodList
-	if err := c.List(&client.ListOptions{
-		Namespace: es.Namespace,
-		LabelSelector: labels.SelectorFromSet(map[string]string{
-			label.ClusterNameLabelName: es.Name,
-		}),
-	}, &pods); err != nil {
+
+	ns := client.InNamespace(es.Namespace)
+	matchLabels := client.MatchingLabels(map[string]string{
+		label.ClusterNameLabelName: es.Name,
+	})
+	if err := c.List(&pods, ns, matchLabels); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil

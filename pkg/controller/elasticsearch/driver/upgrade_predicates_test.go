@@ -45,8 +45,8 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			name: "Risky mutation with 7.x nodes",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masterdata-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
-					newTestPod("other-master-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masterdata-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).inStatefulset("masterdata"),
+					newTestPod("other-master-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).inStatefulset("other-master"),
 				),
 				maxUnavailable: 1,
 				green:          true,

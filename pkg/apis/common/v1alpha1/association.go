@@ -23,6 +23,7 @@ const (
 // An associated object needs some credentials to establish a connection to the Elasticsearch cluster and usually it
 // offers a keystore which in ECK is represented with an underlying Secret.
 // Kibana and the APM server are two examples of associated objects.
+// +kubebuilder:object:generate=false
 type Associated interface {
 	metav1.Object
 	runtime.Object
@@ -31,6 +32,7 @@ type Associated interface {
 }
 
 // Associator describes an object that allows its association to be set.
+// +kubebuilder:object:generate=false
 type Associator interface {
 	metav1.Object
 	runtime.Object

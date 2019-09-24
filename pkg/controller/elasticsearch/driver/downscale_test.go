@@ -27,66 +27,86 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // Sample StatefulSets to use in tests
 var (
-	clusterName             = "cluster"
-	ssetMaster3Replicas     = sset.TestSset{Name: "ssetMaster3Replicas", Version: "7.2.0", Replicas: 3, Master: true, Data: false}.Build()
+	clusterName         = "cluster-name"
+	ssetMaster3Replicas = sset.TestSset{
+		Name:      "ssetMaster3Replicas",
+		Namespace: "ns",
+		Version:   "7.2.0",
+		Replicas:  3,
+		Master:    true,
+		Data:      false,
+	}.Build()
 	podsSsetMaster3Replicas = []corev1.Pod{
 		sset.TestPod{
-			Namespace:   ssetMaster3Replicas.Namespace,
-			Name:        sset.PodName(ssetMaster3Replicas.Name, 0),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Master:      true,
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            sset.PodName(ssetMaster3Replicas.Name, 0),
+			StatefulSetName: ssetMaster3Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Master:          true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetMaster3Replicas.Namespace,
-			Name:        sset.PodName(ssetMaster3Replicas.Name, 1),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Master:      true,
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            sset.PodName(ssetMaster3Replicas.Name, 1),
+			StatefulSetName: ssetMaster3Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Master:          true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetMaster3Replicas.Namespace,
-			Name:        sset.PodName(ssetMaster3Replicas.Name, 2),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Master:      true,
+			Namespace:       ssetMaster3Replicas.Namespace,
+			Name:            sset.PodName(ssetMaster3Replicas.Name, 2),
+			StatefulSetName: ssetMaster3Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Master:          true,
 		}.Build(),
 	}
-	ssetData4Replicas     = sset.TestSset{Name: "ssetData4Replicas", Version: "7.2.0", Replicas: 4, Master: false, Data: true}.Build()
+	ssetData4Replicas = sset.TestSset{
+		Name:      "ssetData4Replicas",
+		Namespace: "ns",
+		Version:   "7.2.0",
+		Replicas:  4,
+		Master:    false,
+		Data:      true,
+	}.Build()
 	podsSsetData4Replicas = []corev1.Pod{
 		sset.TestPod{
-			Namespace:   ssetData4Replicas.Namespace,
-			Name:        sset.PodName(ssetData4Replicas.Name, 0),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Data:        true,
+			Namespace:       ssetData4Replicas.Namespace,
+			Name:            sset.PodName(ssetData4Replicas.Name, 0),
+			StatefulSetName: ssetData4Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Data:            true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetData4Replicas.Namespace,
-			Name:        sset.PodName(ssetData4Replicas.Name, 1),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Data:        true,
+			Namespace:       ssetData4Replicas.Namespace,
+			Name:            sset.PodName(ssetData4Replicas.Name, 1),
+			StatefulSetName: ssetData4Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Data:            true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetData4Replicas.Namespace,
-			Name:        sset.PodName(ssetData4Replicas.Name, 2),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Data:        true,
+			Namespace:       ssetData4Replicas.Namespace,
+			Name:            sset.PodName(ssetData4Replicas.Name, 2),
+			StatefulSetName: ssetData4Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Data:            true,
 		}.Build(),
 		sset.TestPod{
-			Namespace:   ssetData4Replicas.Namespace,
-			Name:        sset.PodName(ssetData4Replicas.Name, 3),
-			ClusterName: clusterName,
-			Version:     "7.2.0",
-			Data:        true,
+			Namespace:       ssetData4Replicas.Namespace,
+			Name:            sset.PodName(ssetData4Replicas.Name, 3),
+			StatefulSetName: ssetData4Replicas.Name,
+			ClusterName:     clusterName,
+			Version:         "7.2.0",
+			Data:            true,
 		}.Build(),
 	}
 	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
@@ -120,6 +140,12 @@ func TestHandleDownscale(t *testing.T) {
 		),
 		allocationSetter: esclient.NewAllocationSetter(esClient),
 		esClient:         esClient,
+		es: v1alpha1.Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      clusterName,
+				Namespace: "ns",
+			},
+		},
 	}
 
 	// request master nodes downscale from 3 to 1 replicas
@@ -159,7 +185,7 @@ func TestHandleDownscale(t *testing.T) {
 
 	// compare what has been updated in the apiserver with what we would expect
 	var actual appsv1.StatefulSetList
-	err := k8sClient.List(&client.ListOptions{}, &actual)
+	err := k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
@@ -176,7 +202,7 @@ func TestHandleDownscale(t *testing.T) {
 	// one less master
 	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, common.Int32(1))
 	expectedAfterDownscale = []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
-	err = k8sClient.List(&client.ListOptions{}, &actual)
+	err = k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 	// simulate master pod deletion
@@ -192,7 +218,7 @@ func TestHandleDownscale(t *testing.T) {
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
-	err = k8sClient.List(&client.ListOptions{}, &actual)
+	err = k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
@@ -207,7 +233,7 @@ func TestHandleDownscale(t *testing.T) {
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
-	err = k8sClient.List(&client.ListOptions{}, &actual)
+	err = k8sClient.List(&actual)
 	require.NoError(t, err)
 	require.Equal(t, expectedAfterDownscale, actual.Items)
 
@@ -581,7 +607,7 @@ func Test_attemptDownscale(t *testing.T) {
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList
-			err = k8sClient.List(&client.ListOptions{}, &ssets)
+			err = k8sClient.List(&ssets)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatefulSets, ssets.Items)
 		})
@@ -621,7 +647,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 
 	// sset resource should be updated
 	var ssets appsv1.StatefulSetList
-	err = k8sClient.List(&client.ListOptions{}, &ssets)
+	err = k8sClient.List(&ssets)
 	require.NoError(t, err)
 	require.Equal(t, []appsv1.StatefulSet{expectedSset1, sset2}, ssets.Items)
 
@@ -633,8 +659,24 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 }
 
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
-	ssetMasters := sset.TestSset{Name: "masters", Version: "7.1.0", Replicas: 3, Master: true, Data: false}.Build()
-	ssetData := sset.TestSset{Name: "datas", Version: "7.1.0", Replicas: 3, Master: false, Data: true}.Build()
+	ssetMasters := sset.TestSset{
+		Name:        "masters",
+		Namespace:   "ns",
+		ClusterName: "es",
+		Version:     "7.1.0",
+		Replicas:    3,
+		Master:      true,
+		Data:        false,
+	}.Build()
+	ssetData := sset.TestSset{
+		Name:        "datas",
+		Namespace:   "ns",
+		ClusterName: "es",
+		Version:     "7.1.0",
+		Replicas:    3,
+		Master:      false,
+		Data:        true,
+	}.Build()
 	tests := []struct {
 		name               string
 		downscale          ssetDownscale
@@ -678,6 +720,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 						label.ClusterNameLabelName:             es.Name,
 						string(label.NodeTypesMasterLabelName): "true",
 						label.VersionLabelName:                 "7.1.0",
+						label.StatefulSetNameLabelName:         ssetMasters.Name,
 					},
 				},
 			}
@@ -688,6 +731,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				esClient:       esClient,
+				es:             es,
 			}
 			// do the downscale
 			err := doDownscale(downscaleCtx, tt.downscale, sset.StatefulSetList{ssetMasters, ssetData})
@@ -784,6 +828,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 				expectations:   expectations.NewExpectations(),
 				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 				esClient:       esClient,
+				es:             es,
 			}
 			// do the downscale
 			err := doDownscale(downscaleCtx, tt.downscale, tt.statefulSets)

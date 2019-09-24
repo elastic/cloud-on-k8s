@@ -22,7 +22,9 @@ const (
 )
 
 type testPod struct {
-	name, version                                            string
+	name                                                     string
+	version                                                  string
+	ssetName                                                 string
 	master, data, healthy, toUpgrade, inCluster, terminating bool
 	uid                                                      types.UID
 }
@@ -34,13 +36,14 @@ func newTestPod(name string) testPod {
 	}
 }
 
-func (t testPod) isMaster(v bool) testPod      { t.master = v; return t }
-func (t testPod) isData(v bool) testPod        { t.data = v; return t }
-func (t testPod) isInCluster(v bool) testPod   { t.inCluster = v; return t }
-func (t testPod) isHealthy(v bool) testPod     { t.healthy = v; return t }
-func (t testPod) needsUpgrade(v bool) testPod  { t.toUpgrade = v; return t }
-func (t testPod) isTerminating(v bool) testPod { t.terminating = v; return t }
-func (t testPod) withVersion(v string) testPod { t.version = v; return t }
+func (t testPod) isMaster(v bool) testPod               { t.master = v; return t }
+func (t testPod) isData(v bool) testPod                 { t.data = v; return t }
+func (t testPod) isInCluster(v bool) testPod            { t.inCluster = v; return t }
+func (t testPod) isHealthy(v bool) testPod              { t.healthy = v; return t }
+func (t testPod) needsUpgrade(v bool) testPod           { t.toUpgrade = v; return t }
+func (t testPod) isTerminating(v bool) testPod          { t.terminating = v; return t }
+func (t testPod) withVersion(v string) testPod          { t.version = v; return t }
+func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t } //nolint:unparam
 
 // filter to simulate a Pod that has been removed while upgrading
 // unfortunately fake client does not support predicate
@@ -102,6 +105,10 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 
 func (u upgradeTestPods) toES(maxUnavailable int) v1alpha1.Elasticsearch {
 	return v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      TestEsName,
+			Namespace: TestEsNamespace,
+		},
 		Spec: v1alpha1.ElasticsearchSpec{
 			UpdateStrategy: v1alpha1.UpdateStrategy{
 				ChangeBudget: &v1alpha1.ChangeBudget{
@@ -132,7 +139,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	statefulSetList := make(sset.StatefulSetList, len(statefulSets))
 	i := 0
 	for statefulSet, replica := range statefulSets {
-		statefulSetList[i] = sset.TestSset{Name: statefulSet, Replicas: replica + 1}.Build()
+		statefulSetList[i] = sset.TestSset{Name: statefulSet, ClusterName: TestEsName, Namespace: TestEsNamespace, Replicas: replica + 1}.Build()
 		i++
 	}
 	return statefulSetList
@@ -233,6 +240,7 @@ func (t testPod) toPod() corev1.Pod {
 	labels[label.ClusterNameLabelName] = TestEsName
 	label.NodeTypesMasterLabelName.Set(t.master, labels)
 	label.NodeTypesDataLabelName.Set(t.data, labels)
+	labels[label.StatefulSetNameLabelName] = t.ssetName
 	pod.Labels = labels
 	if t.healthy {
 		pod.Status = corev1.PodStatus{

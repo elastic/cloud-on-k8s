@@ -7,18 +7,20 @@ package watches
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 type fakeHandler struct {
@@ -150,6 +152,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 
 	d := NewDynamicEnqueueRequest()
 	require.NoError(t, d.InjectScheme(scheme.Scheme))
+	require.NoError(t, d.InjectMapper(getRESTMapper()))
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
 	assertEmptyQueue := func() {
@@ -351,4 +354,98 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	req1 := getReconcileReqFromQueue()
 	req2 := getReconcileReqFromQueue()
 	require.ElementsMatch(t, expected, []types.NamespacedName{req1.NamespacedName, req2.NamespacedName})
+}
+
+func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
+	// Fixtures
+	nsn1 := types.NamespacedName{
+		Namespace: "default",
+		Name:      "watched1",
+	}
+	testObject1 := &corev1.Secret{
+		ObjectMeta: k8s.ToObjectMeta(nsn1),
+	}
+	updated1 := testObject1
+	updated1.Labels = map[string]string{"updated": "1"}
+
+	nsn2 := types.NamespacedName{
+		Namespace: "default",
+		Name:      "watched2",
+	}
+	testObject2 := &corev1.Secret{
+		ObjectMeta: k8s.ToObjectMeta(nsn2),
+	}
+	updated2 := testObject2
+	updated2.Labels = map[string]string{"updated": "2"}
+
+	d := NewDynamicEnqueueRequest()
+	require.NoError(t, d.InjectScheme(scheme.Scheme))
+	require.NoError(t, d.InjectMapper(getRESTMapper()))
+	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+
+	assertEmptyQueue := func() {
+		require.Equal(t, 0, q.Len())
+	}
+	getReconcileReqFromQueue := func() reconcile.Request {
+		item, shutdown := q.Get()
+		defer q.Done(item)
+		require.False(t, shutdown)
+		req, ok := item.(reconcile.Request)
+		require.True(t, ok)
+		return req
+	}
+	assertReconcileReq := func(nsn types.NamespacedName) {
+		require.Equal(t, getReconcileReqFromQueue().NamespacedName, nsn)
+	}
+
+	assertEmptyQueue()
+	// setup an owner watch where owner is testObject1
+	require.NoError(t, d.AddHandler(&OwnerWatch{
+		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
+			OwnerType:    testObject1,
+			IsController: true,
+		},
+	}))
+	// END FIXTURES
+
+	require.NoError(t, controllerutil.SetControllerReference(testObject1, testObject2, scheme.Scheme))
+
+	d.Create(event.CreateEvent{
+		Meta:   testObject1.GetObjectMeta(),
+		Object: testObject1,
+	}, q)
+	d.Create(event.CreateEvent{
+		Meta:   testObject2.GetObjectMeta(),
+		Object: testObject2,
+	}, q)
+
+	// an update on object 2 should enqueue a request for object 1 (the owner)
+	d.Update(event.UpdateEvent{
+		MetaOld:   testObject2.GetObjectMeta(),
+		ObjectOld: testObject2,
+		MetaNew:   updated2.GetObjectMeta(),
+		ObjectNew: updated2,
+	}, q)
+	assertReconcileReq(nsn1)
+}
+
+// getRESTMapper returns a RESTMapper used to inject a mapper into a dynamic queue request
+func getRESTMapper() meta.RESTMapper {
+	resources := []*restmapper.APIGroupResources{
+		{
+			Group: metav1.APIGroup{
+				Versions: []metav1.GroupVersionForDiscovery{
+					{Version: "v1"},
+				},
+				PreferredVersion: metav1.GroupVersionForDiscovery{Version: "v1"},
+			},
+			VersionedResources: map[string][]metav1.APIResource{
+				"v1": {
+					{Name: "secrets", Namespaced: true, Kind: "Secret"},
+				},
+			},
+		},
+	}
+
+	return restmapper.NewDiscoveryRESTMapper(resources)
 }

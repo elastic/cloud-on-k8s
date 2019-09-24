@@ -40,7 +40,7 @@ type KibanaSpec struct {
 	// PodTemplate can be used to propagate configuration to Kibana pods.
 	// This allows specifying custom annotations, labels, environment variables,
 	// affinity, resources, etc. for the pods created from this NodeSpec.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// SecureSettings references secrets containing secure settings, to be injected
@@ -106,7 +106,6 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1alpha1.AssociationConf) {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Kibana is the Schema for the kibanas API
-// +k8s:openapi-gen=true
 // +kubebuilder:categories=elastic
 // +kubebuilder:resource:shortName=kb
 // +kubebuilder:subresource:status
@@ -123,7 +122,7 @@ type Kibana struct {
 	assocConf *commonv1alpha1.AssociationConf
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // KibanaList contains a list of Kibana
 type KibanaList struct {

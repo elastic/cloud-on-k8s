@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -70,7 +69,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 		Client:     client,
 		scheme:     mgr.GetScheme(),
 		watches:    watches.NewDynamicWatches(),
-		recorder:   mgr.GetRecorder(name),
+		recorder:   mgr.GetEventRecorderFor(name),
 		Parameters: params,
 	}
 }
@@ -145,7 +144,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	err := handler.Handle(
 		&apmServer,
 		watchFinalizer(apmName, r.watches),
-		user.UserFinalizer(r.Client, NewUserLabelSelector(apmName), apmServer.Kind()),
+		user.UserFinalizer(r.Client, apmServer.Kind(), NewUserLabelSelector(apmName)),
 	)
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
@@ -215,7 +214,7 @@ func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result 
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) isCompatible(apmServer *apmtype.ApmServer) (bool, error) {
-	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: apmServer.Name}).AsSelector()
+	selector := map[string]string{labels.ApmServerNameLabelName: apmServer.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, apmServer, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, apmServer, events.EventCompatCheckError, "Error during compatibility check: %v", err)
@@ -341,8 +340,9 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 // combinations and deletes them.
 func deleteOrphanedResources(c k8s.Client, apm *apmtype.ApmServer) error {
 	var secrets corev1.SecretList
-	selector := NewResourceSelector(apm.Name)
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+	ns := client.InNamespace(apm.Namespace)
+	matchLabels := client.MatchingLabels(NewResourceLabels(apm.Name))
+	if err := c.List(&secrets, ns, matchLabels); err != nil {
 		return err
 	}
 
