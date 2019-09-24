@@ -30,6 +30,10 @@ func NewFakeShardLister(shards esclient.Shards) esclient.ShardLister {
 	return &fakeShardLister{shards: shards}
 }
 
+func NewFakeShardListerWithError(shards esclient.Shards, err error) esclient.ShardLister {
+	return &fakeShardLister{shards: shards, err: err}
+}
+
 func NewFakeShardFromFile(fileName string) esclient.ShardLister {
 	var cs esclient.Shards
 	sampleClusterState := loadFileBytes(fileName)

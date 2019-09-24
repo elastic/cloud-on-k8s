@@ -5,6 +5,7 @@
 package migration
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -24,6 +25,17 @@ func TestIsMigratingData(t *testing.T) {
 		want    bool
 		wantErr bool
 	}{
+		{
+			name: "Error while getting shards",
+			args: args{
+				podName: "A",
+				shardLister: NewFakeShardListerWithError(
+					[]client.Shard{},
+					fmt.Errorf("error")),
+			},
+			want:    false,
+			wantErr: true,
+		},
 		{
 			name: "Test enough redundancy",
 			args: args{

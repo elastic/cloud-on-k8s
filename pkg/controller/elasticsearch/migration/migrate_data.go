@@ -66,7 +66,7 @@ func nodeIsMigratingData(nodeName string, shards client.Shards, exclusions map[s
 func IsMigratingData(shardLister esclient.ShardLister, podName string, exclusions []string) (bool, error) {
 	shards, err := shardLister.GetShards()
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 	excludedNodes := make(map[string]struct{}, len(exclusions))
 	for _, name := range exclusions {
