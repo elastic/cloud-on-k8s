@@ -5,9 +5,9 @@
 package elasticsearch
 
 import (
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +23,7 @@ func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec
 			SecurityContext: test.DefaultSecurityContext(),
 			Containers: []corev1.Container{
 				{
-					Name:      v1alpha1.ElasticsearchContainerName,
+					Name:      v1beta1.ElasticsearchContainerName,
 					Resources: resources,
 				},
 			},
@@ -70,8 +70,8 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	return b
 }
 
-func (b Builder) Ref() commonv1alpha1.ObjectSelector {
-	return commonv1alpha1.ObjectSelector{
+func (b Builder) Ref() commonv1beta1.ObjectSelector {
+	return commonv1beta1.ObjectSelector{
 		Name:      b.Elasticsearch.Name,
 		Namespace: b.Elasticsearch.Namespace,
 	}
@@ -104,7 +104,7 @@ func (b Builder) WithHTTPLoadBalancer() Builder {
 
 func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	if b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate == nil {
-		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1alpha1.SelfSignedCertificate{}
+		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1beta1.SelfSignedCertificate{}
 	} else {
 		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
 	}
@@ -113,8 +113,8 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 }
 
 func (b Builder) WithHTTPSAN(ip string) Builder {
-	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1alpha1.SelfSignedCertificate{
-		SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{{IP: ip}},
+	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1beta1.SelfSignedCertificate{
+		SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{{IP: ip}},
 	}
 	return b
 }
@@ -130,7 +130,7 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 	return b.WithNodeSpec(estype.NodeSpec{
 		Name:      "master",
 		NodeCount: int32(count),
-		Config: &commonv1alpha1.Config{
+		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
 				estype.NodeData: "false",
 			},
@@ -143,7 +143,7 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 	return b.WithNodeSpec(estype.NodeSpec{
 		Name:      "data",
 		NodeCount: int32(count),
-		Config: &commonv1alpha1.Config{
+		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
 				estype.NodeMaster: "false",
 			},
@@ -156,7 +156,7 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 	return b.WithNodeSpec(estype.NodeSpec{
 		Name:      "masterdata",
 		NodeCount: int32(count),
-		Config: &commonv1alpha1.Config{
+		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -169,9 +169,9 @@ func (b Builder) WithNodeSpec(nodeSpec estype.NodeSpec) Builder {
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
-	refs := make([]commonv1alpha1.SecretSource, 0, len(secretNames))
+	refs := make([]commonv1beta1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
-		refs = append(refs, commonv1alpha1.SecretSource{SecretName: secretNames[i]})
+		refs = append(refs, commonv1beta1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Elasticsearch.Spec.SecureSettings = refs
 	return b

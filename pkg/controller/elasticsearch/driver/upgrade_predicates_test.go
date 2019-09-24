@@ -7,7 +7,7 @@ package driver
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -19,7 +19,7 @@ import (
 func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
-		ES              v1alpha1.Elasticsearch
+		ES              v1beta1.Elasticsearch
 		green           bool
 		mutation        mutation
 		maxUnavailable  int
@@ -137,7 +137,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			esClient:        esClient,
 			esState:         esState,
 			expectations:    expectations.NewExpectations(),
-			reconcileState:  reconcile.NewState(v1alpha1.Elasticsearch{}),
+			reconcileState:  reconcile.NewState(v1beta1.Elasticsearch{}),
 			expectedMasters: tt.fields.upgradeTestPods.toMasters(tt.fields.mutation),
 			actualMasters:   tt.fields.upgradeTestPods.toMasterPods(),
 			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
@@ -163,7 +163,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 func TestUpgradePodsDeletion_Delete(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
-		ES              v1alpha1.Elasticsearch
+		ES              v1beta1.Elasticsearch
 		green           bool
 		maxUnavailable  int
 		podFilter       filter

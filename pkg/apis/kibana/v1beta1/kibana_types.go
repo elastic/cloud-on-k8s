@@ -2,13 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package v1alpha1
+package v1beta1
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 )
 
 const (
@@ -29,13 +29,13 @@ type KibanaSpec struct {
 
 	// ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
 	// If the namespace is not specified, the current resource namespace will be used.
-	ElasticsearchRef commonv1alpha1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+	ElasticsearchRef commonv1beta1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// Config represents Kibana configuration.
-	Config *commonv1alpha1.Config `json:"config,omitempty"`
+	Config *commonv1beta1.Config `json:"config,omitempty"`
 
 	// HTTP contains settings for HTTP.
-	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
+	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
 	// PodTemplate can be used to propagate configuration to Kibana pods.
 	// This allows specifying custom annotations, labels, environment variables,
@@ -50,7 +50,7 @@ type KibanaSpec struct {
 	// You can use the `entries` and `key` fields to consider only a subset of the secret
 	// entries and the `path` field to change the target path of a secret entry key.
 	// The secret must exist in the same namespace as the Kibana resource.
-	SecureSettings []commonv1alpha1.SecretSource `json:"secureSettings,omitempty"`
+	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 // KibanaHealth expresses the status of the Kibana instances.
@@ -65,9 +65,9 @@ const (
 
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
-	commonv1alpha1.ReconcilerStatus
+	commonv1beta1.ReconcilerStatus
 	Health            KibanaHealth                     `json:"health,omitempty"`
-	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
+	AssociationStatus commonv1beta1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -80,11 +80,11 @@ func (k Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
 }
 
-func (k *Kibana) ElasticsearchRef() commonv1alpha1.ObjectSelector {
+func (k *Kibana) ElasticsearchRef() commonv1beta1.ObjectSelector {
 	return k.Spec.ElasticsearchRef
 }
 
-func (k *Kibana) SecureSettings() []commonv1alpha1.SecretSource {
+func (k *Kibana) SecureSettings() []commonv1beta1.SecretSource {
 	return k.Spec.SecureSettings
 }
 
@@ -94,11 +94,11 @@ func (k *Kibana) Kind() string {
 	return Kind
 }
 
-func (k *Kibana) AssociationConf() *commonv1alpha1.AssociationConf {
+func (k *Kibana) AssociationConf() *commonv1beta1.AssociationConf {
 	return k.assocConf
 }
 
-func (k *Kibana) SetAssociationConf(assocConf *commonv1alpha1.AssociationConf) {
+func (k *Kibana) SetAssociationConf(assocConf *commonv1beta1.AssociationConf) {
 	k.assocConf = assocConf
 }
 
@@ -119,7 +119,7 @@ type Kibana struct {
 
 	Spec      KibanaSpec   `json:"spec,omitempty"`
 	Status    KibanaStatus `json:"status,omitempty"`
-	assocConf *commonv1alpha1.AssociationConf
+	assocConf *commonv1beta1.AssociationConf
 }
 
 // +kubebuilder:object:root=true

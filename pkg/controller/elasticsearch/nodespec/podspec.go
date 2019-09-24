@@ -10,7 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -27,8 +27,8 @@ import (
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
-	es v1alpha1.Elasticsearch,
-	nodeSpec v1alpha1.NodeSpec,
+	es v1beta1.Elasticsearch,
+	nodeSpec v1beta1.NodeSpec,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 ) (corev1.PodTemplateSpec, error) {
@@ -38,7 +38,7 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	builder := defaults.NewPodTemplateBuilder(nodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName).
+	builder := defaults.NewPodTemplateBuilder(nodeSpec.PodTemplate, v1beta1.ElasticsearchContainerName).
 		WithDockerImage(es.Spec.Image, stringsutil.Concat(DefaultImageRepository, ":", es.Spec.Version))
 
 	initContainers, err := initcontainer.NewInitContainers(
@@ -77,9 +77,9 @@ func transportCertificatesVolume(esName string) volume.SecretVolume {
 }
 
 func buildLabels(
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	cfg settings.CanonicalConfig,
-	nodeSpec v1alpha1.NodeSpec,
+	nodeSpec v1beta1.NodeSpec,
 	keystoreResources *keystore.Resources,
 ) (map[string]string, error) {
 	// label with a hash of the config to rotate the pod on config changes

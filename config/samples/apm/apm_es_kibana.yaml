@@ -1,6 +1,6 @@
 # This sample sets up a an Elasticsearch cluster along with a Kibana instance
 # and an APM server, configured to be able to communicate with each other
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/v1beta1
 kind: Elasticsearch
 metadata:
   name: es-apm-sample
@@ -10,7 +10,7 @@ spec:
   - name: default
     nodeCount: 3
 ---
-apiVersion: apm.k8s.elastic.co/v1alpha1
+apiVersion: apm.k8s.elastic.co/v1beta1
 kind: ApmServer
 metadata:
   name: apm-apm-sample
@@ -20,7 +20,7 @@ spec:
   elasticsearchRef:
     name: "es-apm-sample"
 ---
-apiVersion: kibana.k8s.elastic.co/v1alpha1
+apiVersion: kibana.k8s.elastic.co/v1beta1
 kind: Kibana
 metadata:
   name: kb-apm-sample

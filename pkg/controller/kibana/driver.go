@@ -8,7 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"

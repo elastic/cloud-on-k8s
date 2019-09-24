@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -27,7 +27,7 @@ import (
 func Test_hasMaster(t *testing.T) {
 	failedValidation := validation.Result{Allowed: false, Reason: masterRequiredMsg}
 	type args struct {
-		esCluster v1alpha1.Elasticsearch
+		esCluster v1beta1.Elasticsearch
 	}
 	tests := []struct {
 		name string
@@ -44,17 +44,17 @@ func Test_hasMaster(t *testing.T) {
 		{
 			name: "topology but no master",
 			args: args{
-				esCluster: v1alpha1.Elasticsearch{
-					Spec: v1alpha1.ElasticsearchSpec{
+				esCluster: v1beta1.Elasticsearch{
+					Spec: v1beta1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []v1alpha1.NodeSpec{
+						Nodes: []v1beta1.NodeSpec{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
-										v1alpha1.NodeMaster: "false",
-										v1alpha1.NodeData:   "false",
-										v1alpha1.NodeIngest: "false",
-										v1alpha1.NodeML:     "false",
+										v1beta1.NodeMaster: "false",
+										v1beta1.NodeData:   "false",
+										v1beta1.NodeIngest: "false",
+										v1beta1.NodeML:     "false",
 									},
 								},
 							},
@@ -67,17 +67,17 @@ func Test_hasMaster(t *testing.T) {
 		{
 			name: "master but zero sized",
 			args: args{
-				esCluster: v1alpha1.Elasticsearch{
-					Spec: v1alpha1.ElasticsearchSpec{
+				esCluster: v1beta1.Elasticsearch{
+					Spec: v1beta1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []v1alpha1.NodeSpec{
+						Nodes: []v1beta1.NodeSpec{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
-										v1alpha1.NodeMaster: "true",
-										v1alpha1.NodeData:   "false",
-										v1alpha1.NodeIngest: "false",
-										v1alpha1.NodeML:     "false",
+										v1beta1.NodeMaster: "true",
+										v1beta1.NodeData:   "false",
+										v1beta1.NodeIngest: "false",
+										v1beta1.NodeML:     "false",
 									},
 								},
 							},
@@ -90,17 +90,17 @@ func Test_hasMaster(t *testing.T) {
 		{
 			name: "has master",
 			args: args{
-				esCluster: v1alpha1.Elasticsearch{
-					Spec: v1alpha1.ElasticsearchSpec{
+				esCluster: v1beta1.Elasticsearch{
+					Spec: v1beta1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []v1alpha1.NodeSpec{
+						Nodes: []v1beta1.NodeSpec{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
-										v1alpha1.NodeMaster: "true",
-										v1alpha1.NodeData:   "false",
-										v1alpha1.NodeIngest: "false",
-										v1alpha1.NodeML:     "false",
+										v1beta1.NodeMaster: "true",
+										v1beta1.NodeData:   "false",
+										v1beta1.NodeIngest: "false",
+										v1beta1.NodeML:     "false",
 									},
 								},
 								NodeCount: 1,
@@ -450,17 +450,17 @@ func Test_pvcModified(t *testing.T) {
 	current := getEsCluster()
 	tests := []struct {
 		name     string
-		current  *v1alpha1.Elasticsearch
-		proposed v1alpha1.Elasticsearch
+		current  *v1beta1.Elasticsearch
+		proposed v1beta1.Elasticsearch
 		want     validation.Result
 	}{
 		{
 			name:    "resize fails",
 			current: current,
-			proposed: v1alpha1.Elasticsearch{
-				Spec: v1alpha1.ElasticsearchSpec{
+			proposed: v1beta1.Elasticsearch{
+				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1alpha1.NodeSpec{
+					Nodes: []v1beta1.NodeSpec{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -487,10 +487,10 @@ func Test_pvcModified(t *testing.T) {
 		{
 			name:    "same size accepted",
 			current: current,
-			proposed: v1alpha1.Elasticsearch{
-				Spec: v1alpha1.ElasticsearchSpec{
+			proposed: v1beta1.Elasticsearch{
+				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1alpha1.NodeSpec{
+					Nodes: []v1beta1.NodeSpec{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -517,10 +517,10 @@ func Test_pvcModified(t *testing.T) {
 		{
 			name:    "additional PVC fails",
 			current: current,
-			proposed: v1alpha1.Elasticsearch{
-				Spec: v1alpha1.ElasticsearchSpec{
+			proposed: v1beta1.Elasticsearch{
+				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1alpha1.NodeSpec{
+					Nodes: []v1beta1.NodeSpec{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -559,10 +559,10 @@ func Test_pvcModified(t *testing.T) {
 		{
 			name:    "name change rejected",
 			current: current,
-			proposed: v1alpha1.Elasticsearch{
-				Spec: v1alpha1.ElasticsearchSpec{
+			proposed: v1beta1.Elasticsearch{
+				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1alpha1.NodeSpec{
+					Nodes: []v1beta1.NodeSpec{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -589,10 +589,10 @@ func Test_pvcModified(t *testing.T) {
 		{
 			name:    "add new node set accepted",
 			current: current,
-			proposed: v1alpha1.Elasticsearch{
-				Spec: v1alpha1.ElasticsearchSpec{
+			proposed: v1beta1.Elasticsearch{
+				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1alpha1.NodeSpec{
+					Nodes: []v1beta1.NodeSpec{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -651,11 +651,11 @@ func Test_pvcModified(t *testing.T) {
 }
 
 // getEsCluster returns a ES cluster test fixture
-func getEsCluster() *v1alpha1.Elasticsearch {
-	return &v1alpha1.Elasticsearch{
-		Spec: v1alpha1.ElasticsearchSpec{
+func getEsCluster() *v1beta1.Elasticsearch {
+	return &v1beta1.Elasticsearch{
+		Spec: v1beta1.ElasticsearchSpec{
 			Version: "7.2.0",
-			Nodes: []v1alpha1.NodeSpec{
+			Nodes: []v1beta1.NodeSpec{
 				{
 					Name: "master",
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

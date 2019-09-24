@@ -8,7 +8,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
@@ -130,7 +130,7 @@ func (h *memoizingGreenHealth) initialize() error {
 	if err != nil {
 		return err
 	}
-	h.greenHealth = health.Status == string(v1alpha1.ElasticsearchGreenHealth)
+	h.greenHealth = health.Status == string(v1beta1.ElasticsearchGreenHealth)
 	return nil
 }
 

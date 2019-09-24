@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 )
@@ -26,13 +26,13 @@ func TestNewPodSpec(t *testing.T) {
 	probe := readinessProbe(true)
 	tests := []struct {
 		name string
-		as   v1alpha1.ApmServer
+		as   v1beta1.ApmServer
 		p    PodSpecParams
 		want corev1.PodTemplateSpec
 	}{
 		{
 			name: "create default pod spec",
-			as: v1alpha1.ApmServer{
+			as: v1beta1.ApmServer{
 				TypeMeta: metav1.TypeMeta{
 					Kind: "ApmServer",
 				},
@@ -63,7 +63,7 @@ func TestNewPodSpec(t *testing.T) {
 					AutomountServiceAccountToken: &varFalse,
 					Containers: []corev1.Container{
 						{
-							Name:  v1alpha1.APMServerContainerName,
+							Name:  v1beta1.APMServerContainerName,
 							Image: imageWithVersion(defaultImageRepositoryAndName, "7.0.1"),
 							Env: []corev1.EnvVar{
 								{

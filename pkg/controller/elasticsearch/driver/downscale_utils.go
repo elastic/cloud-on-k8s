@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -27,7 +27,7 @@ type downscaleContext struct {
 	reconcileState *reconcile.State
 	expectations   *expectations.Expectations
 	// ES cluster
-	es v1alpha1.Elasticsearch
+	es v1beta1.Elasticsearch
 }
 
 // ssetDownscale helps with the downscale of a single StatefulSet.

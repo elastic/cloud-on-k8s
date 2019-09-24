@@ -5,7 +5,7 @@
 package association
 
 import (
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -15,7 +15,7 @@ import (
 // against an Elasticsearch cluster.
 func ElasticsearchAuthSettings(
 	c k8s.Client,
-	associated commonv1alpha1.Associated,
+	associated commonv1beta1.Associated,
 ) (username, password string, err error) {
 	assocConf := associated.AssociationConf()
 	if !assocConf.AuthIsConfigured() {

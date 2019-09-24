@@ -8,7 +8,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -29,7 +29,7 @@ var (
 // This function should not be called unless all the expectations are met.
 func SetupMinimumMasterNodesConfig(
 	c k8s.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	nodeSpecResources nodespec.ResourcesList,
 ) error {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
@@ -84,7 +84,7 @@ func SetupMinimumMasterNodesConfig(
 // It returns true if this should be retried later (re-queued).
 func UpdateMinimumMasterNodes(
 	c k8s.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	esClient client.Client,
 	actualStatefulSets sset.StatefulSetList,
 	reconcileState *reconcile.State,
@@ -130,7 +130,7 @@ func UpdateMinimumMasterNodes(
 // to the given value, if the cluster is using zen1.
 // Should only be called it there are some Zen1 compatible masters
 func UpdateMinimumMasterNodesTo(
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	esClient client.Client,
 	reconcileState *reconcile.State,
 	minimumMasterNodes int,

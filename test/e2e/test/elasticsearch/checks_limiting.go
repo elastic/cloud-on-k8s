@@ -9,7 +9,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -18,12 +18,12 @@ type MasterChangeBudgetCheck struct {
 	Observations []int
 	Errors       []error
 	stopChan     chan struct{}
-	es           v1alpha1.Elasticsearch
+	es           v1beta1.Elasticsearch
 	interval     time.Duration
 	client       k8s.Client
 }
 
-func NewMasterChangeBudgetCheck(es v1alpha1.Elasticsearch, interval time.Duration, client k8s.Client) *MasterChangeBudgetCheck {
+func NewMasterChangeBudgetCheck(es v1beta1.Elasticsearch, interval time.Duration, client k8s.Client) *MasterChangeBudgetCheck {
 	return &MasterChangeBudgetCheck{
 		es:       es,
 		interval: interval,

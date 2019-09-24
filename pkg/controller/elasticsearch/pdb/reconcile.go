@@ -7,8 +7,8 @@ package pdb
 import (
 	"reflect"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -26,7 +26,7 @@ import (
 func Reconcile(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.Elasticsearch,
+	es esv1.Elasticsearch,
 ) error {
 	disabled := false
 
@@ -35,12 +35,12 @@ func Reconcile(
 		// clone to avoid accidentally overwriting template fields
 		template = template.DeepCopy()
 
-		emptyTemplate := commonv1alpha1.PodDisruptionBudgetTemplate{}
+		emptyTemplate := commonv1beta1.PodDisruptionBudgetTemplate{}
 		if reflect.DeepEqual(&emptyTemplate, template) {
 			disabled = true
 		}
 	} else {
-		template = &commonv1alpha1.PodDisruptionBudgetTemplate{}
+		template = &commonv1beta1.PodDisruptionBudgetTemplate{}
 	}
 
 	var objectMeta metav1.ObjectMeta
@@ -77,7 +77,7 @@ func Reconcile(
 
 	// set our defaults
 	if expected.Spec.MaxUnavailable == nil {
-		expected.Spec.MaxUnavailable = &commonv1alpha1.DefaultPodDisruptionBudgetMaxUnavailable
+		expected.Spec.MaxUnavailable = &commonv1beta1.DefaultPodDisruptionBudgetMaxUnavailable
 	}
 	if expected.Spec.Selector == nil {
 		expected.Spec.Selector = &metav1.LabelSelector{

@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -31,7 +31,7 @@ func PodCertFileName(podName string) string {
 // ensureTransportCertificatesSecretContentsForPod ensures that the transport certificates secret has the correct
 // content for a specific pod
 func ensureTransportCertificatesSecretContentsForPod(
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	secret *corev1.Secret,
 	pod corev1.Pod,
 	ca *certificates.CA,
@@ -107,7 +107,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 // - certificate has no SAN extra extension
 // - certificate SAN and IP does not match pod SAN and IP
 func shouldIssueNewCertificate(
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	secret corev1.Secret,
 	pod corev1.Pod,
 	privateKey *rsa.PrivateKey,

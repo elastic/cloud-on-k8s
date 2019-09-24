@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -17,7 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func CheckESKeystoreEntries(k *test.K8sClient, es v1alpha1.Elasticsearch, expectedKeys []string) test.Step {
+func CheckESKeystoreEntries(k *test.K8sClient, es v1beta1.Elasticsearch, expectedKeys []string) test.Step {
 	return test.Step{
 		Name: "Elasticsearch secure settings should eventually be set in all nodes keystore",
 		Test: test.Eventually(func() error {

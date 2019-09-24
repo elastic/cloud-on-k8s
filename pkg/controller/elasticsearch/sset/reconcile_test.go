@@ -17,14 +17,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestReconcileStatefulSet(t *testing.T) {
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
-	es := v1alpha1.Elasticsearch{
+	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
+	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "es",

@@ -5,7 +5,7 @@
 package pod
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
@@ -54,8 +54,8 @@ func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-func NewPodTemplateSpec(kb v1alpha1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
-	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, v1alpha1.KibanaContainerName).
+func NewPodTemplateSpec(kb v1beta1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
+	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, v1beta1.KibanaContainerName).
 		WithLabels(label.NewLabels(kb.Name)).
 		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
@@ -74,5 +74,5 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana, keystore *keystore.Resources) corev1
 
 // GetKibanaContainer returns the Kibana container from the given podSpec.
 func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
-	return pod.ContainerByName(podSpec, v1alpha1.KibanaContainerName)
+	return pod.ContainerByName(podSpec, v1beta1.KibanaContainerName)
 }

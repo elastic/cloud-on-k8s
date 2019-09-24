@@ -2,10 +2,10 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package v1alpha1
+package v1beta1
 
 import (
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,7 +30,7 @@ type ElasticsearchSpec struct {
 	SetVMMaxMapCount *bool `json:"setVmMaxMapCount,omitempty"`
 
 	// HTTP contains settings for HTTP.
-	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
+	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
 	// Nodes represents a list of groups of nodes with the same configuration to be part of the cluster
 	Nodes []NodeSpec `json:"nodes,omitempty"`
@@ -43,7 +43,7 @@ type ElasticsearchSpec struct {
 	// The default budget selects all cluster pods and sets maxUnavailable to 1.
 	// To disable it entirely, set to the empty value (`{}` in YAML).
 	// +kubebuilder:validation:Optional
-	PodDisruptionBudget *commonv1alpha1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
+	PodDisruptionBudget *commonv1beta1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
 	// SecureSettings references secrets containing secure settings, to be injected
 	// into Elasticsearch keystore on each node.
@@ -52,7 +52,7 @@ type ElasticsearchSpec struct {
 	// You can use the `entries` and `key` fields to consider only a subset of the secret
 	// entries and the `path` field to change the target path of a secret entry key.
 	// The secret must exist in the same namespace as the Elasticsearch resource.
-	SecureSettings []commonv1alpha1.SecretSource `json:"secureSettings,omitempty"`
+	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -72,7 +72,7 @@ type NodeSpec struct {
 	Name string `json:"name"`
 
 	// Config represents Elasticsearch configuration.
-	Config *commonv1alpha1.Config `json:"config,omitempty"`
+	Config *commonv1beta1.Config `json:"config,omitempty"`
 
 	// NodeCount defines how many nodes have this topology
 	NodeCount int32 `json:"nodeCount,omitempty"`
@@ -196,7 +196,7 @@ const (
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
-	commonv1alpha1.ReconcilerStatus
+	commonv1beta1.ReconcilerStatus
 	Health          ElasticsearchHealth             `json:"health,omitempty"`
 	Phase           ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
 	ClusterUUID     string                          `json:"clusterUUID,omitempty"`
@@ -238,7 +238,7 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 	return !e.DeletionTimestamp.IsZero()
 }
 
-func (e Elasticsearch) SecureSettings() []commonv1alpha1.SecretSource {
+func (e Elasticsearch) SecureSettings() []commonv1beta1.SecretSource {
 	return e.Spec.SecureSettings
 }
 

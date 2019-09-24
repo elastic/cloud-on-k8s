@@ -2,41 +2,41 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package v1alpha1
+package v1beta1
 
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_RoleDefaults(t *testing.T) {
 	type args struct {
-		c2 v1alpha1.Config
+		c2 v1beta1.Config
 	}
 	tests := []struct {
 		name string
-		c    v1alpha1.Config
+		c    v1beta1.Config
 		args args
 		want bool
 	}{
 		{
 			name: "empty is equal",
-			c:    v1alpha1.Config{},
+			c:    v1beta1.Config{},
 			args: args{},
 			want: true,
 		},
 		{
 			name: "same is equal",
-			c: v1alpha1.Config{
+			c: v1beta1.Config{
 				Data: map[string]interface{}{
 					NodeMaster: true,
 				},
 			},
 			args: args{
-				c2: v1alpha1.Config{
+				c2: v1beta1.Config{
 					Data: map[string]interface{}{
 						NodeMaster: true,
 					},
@@ -46,14 +46,14 @@ func TestConfig_RoleDefaults(t *testing.T) {
 		},
 		{
 			name: "detect differences",
-			c: v1alpha1.Config{
+			c: v1beta1.Config{
 				Data: map[string]interface{}{
 					NodeMaster: false,
 					NodeData:   true,
 				},
 			},
 			args: args{
-				c2: v1alpha1.Config{
+				c2: v1beta1.Config{
 					Data: map[string]interface{}{
 						NodeData: true,
 					},
@@ -75,7 +75,7 @@ func TestConfig_RoleDefaults(t *testing.T) {
 	}
 }
 
-var testFixture = v1alpha1.Config{
+var testFixture = v1beta1.Config{
 	Data: map[string]interface{}{
 		"a": map[string]interface{}{
 			"b": map[string]interface{}{
@@ -89,7 +89,7 @@ var testFixture = v1alpha1.Config{
 	},
 }
 
-var expectedJSONized = v1alpha1.Config{
+var expectedJSONized = v1beta1.Config{
 	Data: map[string]interface{}{
 		"a": map[string]interface{}{
 			"b": map[string]interface{}{
@@ -106,8 +106,8 @@ var expectedJSONized = v1alpha1.Config{
 func TestConfig_DeepCopyInto(t *testing.T) {
 	tests := []struct {
 		name     string
-		in       v1alpha1.Config
-		expected v1alpha1.Config
+		in       v1beta1.Config
+		expected v1beta1.Config
 	}{
 		{
 			name:     "deep copy via JSON roundtrip changes some types",
@@ -117,7 +117,7 @@ func TestConfig_DeepCopyInto(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var out v1alpha1.Config
+			var out v1beta1.Config
 			tt.in.DeepCopyInto(&out)
 			if diff := deep.Equal(out, tt.expected); diff != nil {
 				t.Error(diff)
@@ -129,8 +129,8 @@ func TestConfig_DeepCopyInto(t *testing.T) {
 func TestConfig_DeepCopy(t *testing.T) {
 	tests := []struct {
 		name string
-		in   v1alpha1.Config
-		want v1alpha1.Config
+		in   v1beta1.Config
+		want v1beta1.Config
 	}{
 		{
 			name: "deep copy via JSON roundtrip changes some types",
@@ -150,13 +150,13 @@ func TestConfig_DeepCopy(t *testing.T) {
 func TestConfig_Unpack(t *testing.T) {
 	tests := []struct {
 		name    string
-		args    *v1alpha1.Config
+		args    *v1beta1.Config
 		want    ElasticsearchSettings
 		wantErr bool
 	}{
 		{
 			name: "happy path",
-			args: &v1alpha1.Config{
+			args: &v1beta1.Config{
 				Data: map[string]interface{}{
 					"node": map[string]interface{}{
 						"master": false,

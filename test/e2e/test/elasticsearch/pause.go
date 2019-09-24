@@ -8,17 +8,17 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
-func togglePauseOn(paused bool, es v1alpha1.Elasticsearch, k *test.K8sClient) test.Step {
+func togglePauseOn(paused bool, es v1beta1.Elasticsearch, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: fmt.Sprintf("Should pause reconciliation %v", paused),
 		Test: test.Eventually(func() error {
-			var curr v1alpha1.Elasticsearch
+			var curr v1beta1.Elasticsearch
 			if err := k.Client.Get(k8s.ExtractNamespacedName(&es), &curr); err != nil {
 				return err
 			}
@@ -33,10 +33,10 @@ func togglePauseOn(paused bool, es v1alpha1.Elasticsearch, k *test.K8sClient) te
 	}
 }
 
-func PauseReconciliation(es v1alpha1.Elasticsearch, k *test.K8sClient) test.Step {
+func PauseReconciliation(es v1beta1.Elasticsearch, k *test.K8sClient) test.Step {
 	return togglePauseOn(true, es, k)
 }
 
-func ResumeReconciliation(es v1alpha1.Elasticsearch, k *test.K8sClient) test.Step {
+func ResumeReconciliation(es v1beta1.Elasticsearch, k *test.K8sClient) test.Step {
 	return togglePauseOn(false, es, k)
 }

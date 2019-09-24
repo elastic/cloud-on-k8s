@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -63,7 +63,7 @@ type DefaultDriverParameters struct {
 	OperatorParameters operator.Parameters
 
 	// ES is the Elasticsearch resource to reconcile
-	ES v1alpha1.Elasticsearch
+	ES v1beta1.Elasticsearch
 	// SupportedVersions verifies whether we can support upgrading from the current pods.
 	SupportedVersions esversion.LowestHighestSupportedVersions
 

@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"testing"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -64,7 +64,7 @@ func (c *apmClusterChecks) BuildApmServerClient(apm apmtype.ApmServer, k *test.K
 				}
 
 				// We assume here that the Elasticsearch object has been created before the APM Server.
-				var es v1alpha1.Elasticsearch
+				var es v1beta1.Elasticsearch
 				namespace := apm.Spec.ElasticsearchRef.Namespace
 				if len(namespace) == 0 {
 					namespace = apm.Namespace

@@ -7,8 +7,8 @@ package pdb
 import (
 	"testing"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -22,7 +22,7 @@ import (
 )
 
 func TestReconcile(t *testing.T) {
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 
 	esMeta := metav1.ObjectMeta{
 		Name:      "my-cluster",
@@ -36,7 +36,7 @@ func TestReconcile(t *testing.T) {
 
 	type args struct {
 		c  k8s.Client
-		es v1alpha1.Elasticsearch
+		es v1beta1.Elasticsearch
 	}
 	tests := []struct {
 		name    string
@@ -48,7 +48,7 @@ func TestReconcile(t *testing.T) {
 			name: "default",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient()),
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: esMeta,
 				},
 			},
@@ -71,10 +71,10 @@ func TestReconcile(t *testing.T) {
 			name: "custom pod disruption budget template",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient()),
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: esMeta,
-					Spec: v1alpha1.ElasticsearchSpec{
-						PodDisruptionBudget: &commonv1alpha1.PodDisruptionBudgetTemplate{
+					Spec: v1beta1.ElasticsearchSpec{
+						PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{
 							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{
 									"foo": "bar",
@@ -122,10 +122,10 @@ func TestReconcile(t *testing.T) {
 			name: "pod disruption budget disabled: should not create",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient()),
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: esMeta,
-					Spec: v1alpha1.ElasticsearchSpec{
-						PodDisruptionBudget: &commonv1alpha1.PodDisruptionBudgetTemplate{},
+					Spec: v1beta1.ElasticsearchSpec{
+						PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{},
 					},
 				},
 			},
@@ -139,10 +139,10 @@ func TestReconcile(t *testing.T) {
 						Name: name.DefaultPodDisruptionBudget(esMeta.Name), Namespace: esMeta.Namespace,
 					},
 				})),
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: esMeta,
-					Spec: v1alpha1.ElasticsearchSpec{
-						PodDisruptionBudget: &commonv1alpha1.PodDisruptionBudgetTemplate{},
+					Spec: v1beta1.ElasticsearchSpec{
+						PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{},
 					},
 				},
 			},

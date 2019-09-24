@@ -7,7 +7,7 @@ package annotation
 import (
 	"testing"
 
-	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	kibanav1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
@@ -19,15 +19,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // Test UpdateControllerVersion updates annotation if there is an older version
 func TestAnnotationUpdated(t *testing.T) {
-	kibana := kibanav1alpha1.Kibana{
+	kibana := kibanav1beta1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "kibana",
@@ -46,7 +46,7 @@ func TestAnnotationUpdated(t *testing.T) {
 
 // Test UpdateControllerVersion creates an annotation even if there are no current annotations
 func TestAnnotationCreated(t *testing.T) {
-	kibana := kibanav1alpha1.Kibana{
+	kibana := kibanav1beta1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "kibana",
@@ -58,7 +58,7 @@ func TestAnnotationCreated(t *testing.T) {
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, obj))
 	err := UpdateControllerVersion(client, obj, "newversion")
 	require.NoError(t, err)
-	actualKibana := &kibanav1alpha1.Kibana{}
+	actualKibana := &kibanav1beta1.Kibana{}
 	err = client.Get(types.NamespacedName{
 		Namespace: obj.Namespace,
 		Name:      obj.Name,
@@ -72,7 +72,7 @@ func TestAnnotationCreated(t *testing.T) {
 // a previous operator version, and add an annotation indicating an old controller version
 func TestMissingAnnotationOldVersion(t *testing.T) {
 
-	es := &v1alpha1.Elasticsearch{
+	es := &v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "es",
@@ -101,7 +101,7 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 
 // TestMissingAnnotationNewObject tests that we add an annotation for new objects
 func TestMissingAnnotationNewObject(t *testing.T) {
-	es := &v1alpha1.Elasticsearch{
+	es := &v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "es",
@@ -137,7 +137,7 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 
 //
 func TestSameAnnotation(t *testing.T) {
-	es := &v1alpha1.Elasticsearch{
+	es := &v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "es",
@@ -156,7 +156,7 @@ func TestSameAnnotation(t *testing.T) {
 }
 
 func TestIncompatibleAnnotation(t *testing.T) {
-	es := &v1alpha1.Elasticsearch{
+	es := &v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "es",
@@ -176,7 +176,7 @@ func TestIncompatibleAnnotation(t *testing.T) {
 }
 
 func TestNewerAnnotation(t *testing.T) {
-	es := &v1alpha1.Elasticsearch{
+	es := &v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "es",
@@ -200,11 +200,11 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 	require.NoError(t, err)
 	err = estype.SchemeBuilder.AddToScheme(sc)
 	require.NoError(t, err)
-	err = kibanav1alpha1.SchemeBuilder.AddToScheme(sc)
+	err = kibanav1beta1.SchemeBuilder.AddToScheme(sc)
 	require.NoError(t, err)
 	return sc
 }
 
-func getElasticsearchSelector(es *v1alpha1.Elasticsearch) map[string]string {
+func getElasticsearchSelector(es *v1beta1.Elasticsearch) map[string]string {
 	return map[string]string{label.ClusterNameLabelName: es.Name}
 }

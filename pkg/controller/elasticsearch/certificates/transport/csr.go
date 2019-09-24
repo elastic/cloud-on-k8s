@@ -11,7 +11,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/pkg/errors"
@@ -21,7 +21,7 @@ import (
 // createValidatedCertificateTemplate validates a CSR and creates a certificate template.
 func createValidatedCertificateTemplate(
 	pod corev1.Pod,
-	cluster v1alpha1.Elasticsearch,
+	cluster v1beta1.Elasticsearch,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
 ) (*certificates.ValidatedCertificateTemplate, error) {
@@ -62,7 +62,7 @@ func createValidatedCertificateTemplate(
 }
 
 func buildGeneralNames(
-	cluster v1alpha1.Elasticsearch,
+	cluster v1beta1.Elasticsearch,
 	pod corev1.Pod,
 ) ([]certificates.GeneralName, error) {
 	podIP := net.ParseIP(pod.Status.PodIP)

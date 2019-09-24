@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: apmservers.apm.k8s.elastic.co
+  name: kibanas.kibana.k8s.elastic.co
 spec:
   additionalPrinterColumns:
   - JSONPath: .status.health
@@ -15,18 +15,20 @@ spec:
     name: nodes
     type: integer
   - JSONPath: .spec.version
-    description: APM version
+    description: Kibana version
     name: version
     type: string
   - JSONPath: .metadata.creationTimestamp
     name: age
     type: date
-  group: apm.k8s.elastic.co
+  group: kibana.k8s.elastic.co
   names:
     categories:
     - elastic
-    kind: ApmServer
-    plural: apmservers
+    kind: Kibana
+    plural: kibanas
+    shortNames:
+    - kb
   scope: Namespaced
   subresources:
     status: {}
@@ -48,7 +50,7 @@ spec:
         spec:
           properties:
             config:
-              description: Config represents the APM configuration.
+              description: Config represents Kibana configuration.
               type: object
             elasticsearchRef:
               description: ElasticsearchRef references an Elasticsearch resource in
@@ -119,24 +121,24 @@ spec:
               description: Image represents the docker image that will be used.
               type: string
             nodeCount:
-              description: NodeCount defines how many nodes the Apm Server deployment
+              description: NodeCount defines how many nodes the Kibana deployment
                 must have.
               format: int32
               type: integer
             podTemplate:
-              description: PodTemplate can be used to propagate configuration to APM
-                Server pods. This allows specifying custom annotations, labels, environment
+              description: PodTemplate can be used to propagate configuration to Kibana
+                pods. This allows specifying custom annotations, labels, environment
                 variables, affinity, resources, etc. for the pods created from this
                 NodeSpec.
               type: object
             secureSettings:
               description: SecureSettings references secrets containing secure settings,
-                to be injected into the APM keystore on each node. Each individual
+                to be injected into Kibana keystore on each node. Each individual
                 key/value entry in the referenced secrets is considered as an individual
                 secure setting to be injected. You can use the `entries` and `key`
                 fields to consider only a subset of the secret entries and the `path`
                 field to change the target path of a secret entry key. The secret
-                must exist in the same namespace as the APM resource.
+                must exist in the same namespace as the Kibana resource.
               items:
                 properties:
                   entries:
@@ -168,23 +170,17 @@ spec:
                 type: object
               type: array
             version:
-              description: Version represents the version of the APM Server
+              description: Version represents the version of Kibana
               type: string
           type: object
         status:
           properties:
+            associationStatus:
+              type: string
             health:
               type: string
-            secretTokenSecret:
-              description: SecretTokenSecretName is the name of the Secret that contains
-                the secret token
-              type: string
-            service:
-              description: ExternalService is the name of the service the agents should
-                connect to.
-              type: string
           type: object
-  version: v1alpha1
+  version: v1beta1
 status:
   acceptedNames:
     kind: ""

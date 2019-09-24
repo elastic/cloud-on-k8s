@@ -7,7 +7,7 @@ package settings
 import (
 	"path"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -20,8 +20,8 @@ import (
 func NewMergedESConfig(
 	clusterName string,
 	ver version.Version,
-	httpConfig v1alpha1.HTTPConfig,
-	userConfig v1alpha1.Config,
+	httpConfig v1beta1.HTTPConfig,
+	userConfig v1beta1.Config,
 	certResources *escerts.CertificateResources,
 ) (CanonicalConfig, error) {
 	config, err := common.NewCanonicalConfigFrom(userConfig.Data)
@@ -58,7 +58,7 @@ func baseConfig(clusterName string) *CanonicalConfig {
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg v1alpha1.HTTPConfig, certResources *escerts.CertificateResources) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg v1beta1.HTTPConfig, certResources *escerts.CertificateResources) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings

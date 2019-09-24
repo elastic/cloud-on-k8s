@@ -7,7 +7,7 @@ package pod
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/stretchr/testify/assert"
@@ -46,14 +46,14 @@ func Test_imageWithVersion(t *testing.T) {
 func TestNewPodTemplateSpec(t *testing.T) {
 	tests := []struct {
 		name       string
-		kb         v1alpha1.Kibana
+		kb         v1beta1.Kibana
 		keystore   *keystore.Resources
 		assertions func(pod corev1.PodTemplateSpec)
 	}{
 		{
 			name: "defaults",
-			kb: v1alpha1.Kibana{
-				Spec: v1alpha1.KibanaSpec{
+			kb: v1beta1.Kibana{
+				Spec: v1beta1.KibanaSpec{
 					Version: "7.1.0",
 				},
 			},
@@ -73,8 +73,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with additional volumes and init containers for the Keystore",
-			kb: v1alpha1.Kibana{
-				Spec: v1alpha1.KibanaSpec{
+			kb: v1beta1.Kibana{
+				Spec: v1beta1.KibanaSpec{
 					Version: "7.1.0",
 				},
 			},
@@ -89,7 +89,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with custom image",
-			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
+			kb: v1beta1.Kibana{Spec: v1beta1.KibanaSpec{
 				Image:   "my-custom-image:1.0.0",
 				Version: "7.1.0",
 			}},
@@ -100,7 +100,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided init containers",
-			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
+			kb: v1beta1.Kibana{Spec: v1beta1.KibanaSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						InitContainers: []corev1.Container{
@@ -119,11 +119,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		{
 			name:     "with user-provided labels",
 			keystore: nil,
-			kb: v1alpha1.Kibana{
+			kb: v1beta1.Kibana{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "kibana-name",
 				},
-				Spec: v1alpha1.KibanaSpec{
+				Spec: v1beta1.KibanaSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -144,12 +144,12 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided environment",
-			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
+			kb: v1beta1.Kibana{Spec: v1beta1.KibanaSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Name: v1alpha1.KibanaContainerName,
+								Name: v1beta1.KibanaContainerName,
 								Env: []corev1.EnvVar{
 									{
 										Name:  "user-env",
@@ -167,12 +167,12 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided volumes and volume mounts",
-			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
+			kb: v1beta1.Kibana{Spec: v1beta1.KibanaSpec{
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Name: v1alpha1.KibanaContainerName,
+								Name: v1beta1.KibanaContainerName,
 								VolumeMounts: []corev1.VolumeMount{
 									{
 										Name: "user-volume-mount",
