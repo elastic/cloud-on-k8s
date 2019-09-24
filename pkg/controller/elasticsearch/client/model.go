@@ -125,6 +125,7 @@ type RoutingTable struct {
 func (s Shards) GetShardsByNode() map[string]Shards {
 	result := make(map[string]Shards)
 	for _, shard := range s {
+		// Unassigned shards are ignored
 		if len(shard.NodeName) > 0 {
 			result[shard.NodeName] = append(result[shard.NodeName], shard)
 		}
