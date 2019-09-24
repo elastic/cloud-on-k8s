@@ -123,8 +123,8 @@ type RoutingTable struct {
 
 // GetShardsByNode returns shards by node.
 // The result is a map with the name of the nodes as keys and the list of shards on the nodes as values.
-func (s Shards) GetShardsByNode() map[string][]Shard {
-	result := make(map[string][]Shard)
+func (s Shards) GetShardsByNode() map[string]Shards {
+	result := make(map[string]Shards)
 	for _, shard := range s {
 		if len(shard.Node) > 0 {
 			result[shard.Node] = append(result[shard.Node], shard)
