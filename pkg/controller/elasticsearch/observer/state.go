@@ -26,7 +26,7 @@ type State struct {
 
 // RetrieveState returns the current Elasticsearch cluster state
 func RetrieveState(ctx context.Context, cluster types.NamespacedName, esClient esclient.Client) State {
-	// retrieve both cluster state and health in parallel
+	// retrieve cluster info, health and license in parallel
 	infoChan := make(chan *client.Info)
 	healthChan := make(chan *client.Health)
 	licenseChan := make(chan *client.License)
