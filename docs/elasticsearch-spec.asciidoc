@@ -125,9 +125,9 @@ spec:
             limits: {}
 ----
 
-See also:
-- link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Elasticsearch documentation on setting the heap size].
-- <<{p}-managing-compute-resources>>
+.See also:
+* link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Elasticsearch documentation on setting the heap size]
+* <<{p}-managing-compute-resources>>
 
 
 [id="{p}-node-configuration"]
