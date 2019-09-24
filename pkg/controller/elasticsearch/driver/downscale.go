@@ -35,8 +35,11 @@ func HandleDownscale(
 	downscales := calculateDownscales(expectedStatefulSets, actualStatefulSets)
 	leavingNodes := leavingNodeNames(downscales)
 
-	// migrate data away from nodes that should be removed
-	if err := scheduleDataMigrations(downscaleCtx.allocationSetter, leavingNodes); err != nil {
+	// migrate data away from nodes that should be removed, if leavingNodes is empty, it clears any existing settings
+	if len(leavingNodes) != 0 {
+		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
+	}
+	if err := migration.MigrateData(downscaleCtx.allocationSetter, leavingNodes); err != nil {
 		return results.WithError(err)
 	}
 
@@ -82,15 +85,6 @@ func calculateDownscales(expectedStatefulSets sset.StatefulSetList, actualStatef
 		}
 	}
 	return downscales
-}
-
-// scheduleDataMigrations requests Elasticsearch to migrate data away from leavingNodes.
-// If leavingNodes is empty, it clears any existing settings.
-func scheduleDataMigrations(allocationSetter esclient.AllocationSetter, leavingNodes []string) error {
-	if len(leavingNodes) != 0 {
-		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
-	}
-	return migration.MigrateData(allocationSetter, leavingNodes)
 }
 
 // attemptDownscale attempts to decrement the number of replicas of the given StatefulSet,
