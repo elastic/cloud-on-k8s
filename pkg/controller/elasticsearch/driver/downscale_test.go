@@ -135,7 +135,7 @@ func TestHandleDownscale(t *testing.T) {
 		reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
 		shardLister: migration.NewFakeShardLister(
 			esclient.Shards{
-				{Index: "index-1", Shard: "0", State: esclient.STARTED, Node: "ssetData4Replicas-2"},
+				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 			},
 		),
 		allocationSetter: esclient.NewAllocationSetter(esClient),
@@ -211,7 +211,7 @@ func TestHandleDownscale(t *testing.T) {
 	// once data migration is over the downscale should continue for next data nodes
 	downscaleCtx.shardLister = migration.NewFakeShardLister(
 		esclient.Shards{
-			{Index: "index-1", Shard: "0", State: esclient.STARTED, Node: "ssetData4Replicas-1"},
+			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-1"},
 		},
 	)
 	nodespec.UpdateReplicas(&expectedAfterDownscale[1], common.Int32(2))

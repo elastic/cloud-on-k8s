@@ -36,8 +36,8 @@ func nodeIsMigratingData(nodeName string, shards client.Shards, exclusions map[s
 
 	// divide all shards into the to groups: migration candidate or other shard copy
 	for _, shard := range shards {
-		_, ignore := exclusions[shard.Node]
-		if shard.Node == nodeName {
+		_, ignore := exclusions[shard.NodeName]
+		if shard.NodeName == nodeName {
 			candidates = append(candidates, shard)
 		} else if !ignore {
 			key := shard.Key()

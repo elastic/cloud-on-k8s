@@ -41,9 +41,9 @@ func TestIsMigratingData(t *testing.T) {
 			args: args{
 				podName: "A",
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "A"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "B"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "C"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "B"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
 				}),
 			},
 			want: false,
@@ -53,8 +53,8 @@ func TestIsMigratingData(t *testing.T) {
 			args: args{
 				podName: "A",
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "B"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "C"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "B"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
 				}),
 			},
 			want: false,
@@ -64,9 +64,9 @@ func TestIsMigratingData(t *testing.T) {
 			args: args{
 				podName: "A",
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "A"},
-					{Index: "index-1", Shard: "1", State: client.STARTED, Node: "B"},
-					{Index: "index-1", Shard: "2", State: client.STARTED, Node: "C"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
+					{Index: "index-1", Shard: "1", State: client.STARTED, NodeName: "B"},
+					{Index: "index-1", Shard: "2", State: client.STARTED, NodeName: "C"},
 				}),
 			},
 			want: true,
@@ -76,8 +76,8 @@ func TestIsMigratingData(t *testing.T) {
 			args: args{
 				podName: "A",
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.RELOCATING, Node: "A"},
-					{Index: "index-1", Shard: "0", State: client.INITIALIZING, Node: "B"},
+					{Index: "index-1", Shard: "0", State: client.RELOCATING, NodeName: "A"},
+					{Index: "index-1", Shard: "0", State: client.INITIALIZING, NodeName: "B"},
 				}),
 			},
 			want: true,
@@ -87,8 +87,8 @@ func TestIsMigratingData(t *testing.T) {
 			args: args{
 				podName: "A",
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "A"},
-					{Index: "index-1", Shard: "0", State: client.INITIALIZING, Node: "B"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
+					{Index: "index-1", Shard: "0", State: client.INITIALIZING, NodeName: "B"},
 				}),
 			},
 			want: true,
@@ -99,9 +99,9 @@ func TestIsMigratingData(t *testing.T) {
 				podName:    "A",
 				exclusions: []string{"A", "B"},
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "A"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "B"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "C"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "B"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
 				}),
 			},
 			want: false,
@@ -112,9 +112,9 @@ func TestIsMigratingData(t *testing.T) {
 				podName:    "A",
 				exclusions: []string{"B", "C"},
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "A"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "B"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, Node: "C"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "B"},
+					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
 				}),
 			},
 			want: true,

@@ -110,11 +110,10 @@ type Shards []Shard
 
 // Shard partially models Elasticsearch cluster shard.
 type Shard struct {
-	Index string     `json:"index"`
-	Shard string     `json:"shard"`
-	State ShardState `json:"state"`
-	// Node is the node name not the Node id
-	Node string `json:"node"`
+	Index    string     `json:"index"`
+	Shard    string     `json:"shard"`
+	State    ShardState `json:"state"`
+	NodeName string     `json:"node"`
 }
 
 type RoutingTable struct {
@@ -126,8 +125,8 @@ type RoutingTable struct {
 func (s Shards) GetShardsByNode() map[string]Shards {
 	result := make(map[string]Shards)
 	for _, shard := range s {
-		if len(shard.Node) > 0 {
-			result[shard.Node] = append(result[shard.Node], shard)
+		if len(shard.NodeName) > 0 {
+			result[shard.NodeName] = append(result[shard.NodeName], shard)
 		}
 	}
 	return result
