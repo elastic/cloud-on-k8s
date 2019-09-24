@@ -37,9 +37,9 @@ func TestParseShards(t *testing.T) {
 			name: "Can parse populated routing table",
 			args: fixtures.SampleShards,
 			want: []Shard{
-				{Index: "sample-data-2", Shard: "0", Prirep: "p", State: STARTED, Node: "stack-sample-es-lkrjf7224s"},
-				{Index: "sample-data-2", Shard: "1", Prirep: "r", State: STARTED, Node: "stack-sample-es-4fxm76vnwj"},
-				{Index: "sample-data-2", Shard: "2", Prirep: "p", State: UNASSIGNED, Node: ""},
+				{Index: "sample-data-2", Shard: "0", State: STARTED, Node: "stack-sample-es-lkrjf7224s"},
+				{Index: "sample-data-2", Shard: "1", State: STARTED, Node: "stack-sample-es-4fxm76vnwj"},
+				{Index: "sample-data-2", Shard: "2", State: UNASSIGNED, Node: ""},
 			},
 		},
 		{
@@ -79,8 +79,8 @@ func TestShardsByNode(t *testing.T) {
 			name: "Can parse populated routing table",
 			args: fixtures.SampleShards,
 			want: map[string][]Shard{
-				"stack-sample-es-lkrjf7224s": {{Index: "sample-data-2", Shard: "0", Prirep: "p", State: STARTED, Node: "stack-sample-es-lkrjf7224s"}},
-				"stack-sample-es-4fxm76vnwj": {{Index: "sample-data-2", Shard: "1", Prirep: "r", State: STARTED, Node: "stack-sample-es-4fxm76vnwj"}},
+				"stack-sample-es-lkrjf7224s": {{Index: "sample-data-2", Shard: "0", State: STARTED, Node: "stack-sample-es-lkrjf7224s"}},
+				"stack-sample-es-4fxm76vnwj": {{Index: "sample-data-2", Shard: "1", State: STARTED, Node: "stack-sample-es-4fxm76vnwj"}},
 			},
 		},
 	}

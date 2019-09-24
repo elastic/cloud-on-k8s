@@ -39,12 +39,14 @@ type Health struct {
 	ActiveShardsPercentAsNumber float32 `json:"active_shards_percent_as_number"`
 }
 
+type ShardState string
+
 // These are possible shard states
 const (
-	STARTED      = "STARTED"
-	INITIALIZING = "INITIALIZING"
-	RELOCATING   = "RELOCATING"
-	UNASSIGNED   = "UNASSIGNED"
+	STARTED      ShardState = "STARTED"
+	INITIALIZING ShardState = "INITIALIZING"
+	RELOCATING   ShardState = "RELOCATING"
+	UNASSIGNED   ShardState = "UNASSIGNED"
 )
 
 // Nodes partially models the response from a request to /_nodes
@@ -108,10 +110,9 @@ type Shards []Shard
 
 // Shard partially models Elasticsearch cluster shard.
 type Shard struct {
-	Index  string `json:"index"`
-	Shard  string `json:"shard"`
-	Prirep string `json:"prirep"`
-	State  string `json:"state"`
+	Index string     `json:"index"`
+	Shard string     `json:"shard"`
+	State ShardState `json:"state"`
 	// Node is the node name not the Node id
 	Node string `json:"node"`
 }
