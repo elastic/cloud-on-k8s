@@ -98,15 +98,17 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// when no StatefulSets already exists
 	actualStatefulSets := sset.StatefulSetList{}
-	err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	updatedStatefulSets, err := HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	// StatefulSets should be created with their expected replicas
 	var sset1 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset1"}, &sset1))
 	require.Equal(t, common.Int32(3), sset1.Spec.Replicas)
+	require.Equal(t, updatedStatefulSets[0], sset1)
 	var sset2 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, common.Int32(4), sset2.Spec.Replicas)
+	require.Equal(t, updatedStatefulSets[1], sset2)
 	// headless services should be created for both
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset2")}, &corev1.Service{}))
@@ -117,30 +119,33 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = common.Int32(10)
-	err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
+	require.Equal(t, updatedStatefulSets[1], sset2)
 
 	// apply a spec change
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "b"}
-	err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, "b", sset2.Spec.Template.Labels["a"])
+	require.Equal(t, updatedStatefulSets[1], sset2)
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
 	expectedResources[1].StatefulSet.Spec.Replicas = common.Int32(2)
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "c"}
-	err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
+	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	// spec should be updated
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
+	require.Equal(t, updatedStatefulSets[1], sset2)
 }
 
 func Test_isReplicaIncrease(t *testing.T) {

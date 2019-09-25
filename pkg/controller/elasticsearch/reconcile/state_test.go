@@ -177,7 +177,7 @@ func TestState_Apply(t *testing.T) {
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
 				},
-				Health: "unknown",
+				Health: v1alpha1.ElasticsearchUnknownHealth,
 				Phase:  "",
 			},
 		},
@@ -248,7 +248,7 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 			name:    "health is unknown by default",
 			cluster: v1alpha1.Elasticsearch{},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, "unknown", s.status.Health)
+				assert.EqualValues(t, v1alpha1.ElasticsearchUnknownHealth, s.status.Health)
 			},
 		},
 		{

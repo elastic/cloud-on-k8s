@@ -47,7 +47,7 @@ func (s *State) updateWithPhase(
 	s.status.AvailableNodes = len(AvailableElasticsearchNodes(resourcesState.CurrentPods))
 	s.status.Phase = phase
 
-	s.status.Health = "unknown"
+	s.status.Health = v1alpha1.ElasticsearchUnknownHealth
 	if observedState.ClusterHealth != nil && observedState.ClusterHealth.Status != "" {
 		s.status.Health = v1alpha1.ElasticsearchHealth(observedState.ClusterHealth.Status)
 	}
