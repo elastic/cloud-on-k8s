@@ -1,0 +1,42 @@
+[id="{p}-custom-images"]
+== Creating custom images
+
+It is possible to create your own custom Elasticsearch (or Kibana, etc.) image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to install them via init container each time a pod starts. For example, if you want to create an Elasticsearch 7.3.2 image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you could create a `Dockerfile` containing
+
+----
+FROM docker.elastic.co/elasticsearch/elasticsearch:7.3.2
+RUN bin/elasticsearch-plugin install --batch repository-gcs
+----
+
+Build the image with
+
+----
+docker build --tag elasticsearch-gcs:7.3.2 .
+----
+
+There are various hosting options for your images. If you use Google Kubernetes Engine, it is automatically configured to use the Google Container Registry (see https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#google-kubernetes-engine[here] for more information). To use the image, you could then https://cloud.google.com/container-registry/docs/pushing-and-pulling#pushing_an_image_to_a_registry[push to the registry] with
+
+----
+docker tag elasticsearch-gcs:7.3.2 gcr.io/$PROJECT-ID/elasticsearch-gcs:7.3.2
+docker push gcr.io/$PROJECT-ID/elasticsearch-gcs:7.3.2
+----
+
+
+Configure your Elasticsearch spec to use the newly pushed image, for example:
+
+[source,yaml]
+----
+spec:
+  image: gcr.io/$PROJECT-ID/elasticsearch-gcs:7.3.2
+----
+
+The steps are similar for https://docs.microsoft.com/en-us/azure/aks/tutorial-kubernetes-prepare-acr[Azure Kubernetes Service] and AWS's https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-basics.html#use-ecr[Elastic Container Registry].
+
+[id="{p}-references"]
+=== References
+
+- https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_c_customized_image[Elasticsearch doc on creating custom images]
+- https://cloud.google.com/container-registry/docs/how-to[Google Container Registry docs]
+- https://docs.microsoft.com/en-us/azure/container-registry/[Azure Container Registry docs]
+- https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html[Amazon Elastic Container Registry docs]
+- https://docs.openshift.com/container-platform/4.1/registry/architecture-component-imageregistry.html[OpenShift Container Platform registry docs]
