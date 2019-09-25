@@ -138,7 +138,7 @@ func TestHandleDownscale(t *testing.T) {
 				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 			},
 		),
-		allocationSetter: esclient.NewAllocationSetter(esClient),
+		allocationSetter: esClient,
 		esClient:         esClient,
 		es: v1alpha1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{

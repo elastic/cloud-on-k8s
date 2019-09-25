@@ -137,11 +137,11 @@ func TestClientErrorHandling(t *testing.T) {
 	testClient := NewMockClient(version.MustParse("6.8.0"), errorResponses(codes))
 	requests := []func() (string, error){
 		func() (string, error) {
-			_, err := testClient.GetShards(context.Background())
-			return "GetClusterState", err
+			_, err := testClient.GetClusterInfo(context.Background())
+			return "GetClusterInfo", err
 		},
 		func() (string, error) {
-			return "ExcludeFromShardAllocation", testClient.ExcludeFromShardAllocation(context.Background(), "")
+			return "SetMinimumMasterNodes", testClient.SetMinimumMasterNodes(context.Background(), 0)
 		},
 	}
 
@@ -162,7 +162,7 @@ func TestClientUsesJsonContentType(t *testing.T) {
 	_, err := testClient.GetClusterInfo(context.Background())
 	assert.NoError(t, err)
 
-	assert.NoError(t, testClient.ExcludeFromShardAllocation(context.Background(), ""))
+	assert.NoError(t, testClient.SetMinimumMasterNodes(context.Background(), 0))
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
@@ -207,7 +207,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 
 		_, err := testClient.GetClusterInfo(context.Background())
 		assert.NoError(t, err)
-		assert.NoError(t, testClient.ExcludeFromShardAllocation(context.Background(), ""))
+		assert.NoError(t, testClient.SetMinimumMasterNodes(context.Background(), 0))
 
 	}
 

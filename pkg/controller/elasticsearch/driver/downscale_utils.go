@@ -45,8 +45,8 @@ func newDownscaleContext(
 	return downscaleContext{
 		k8sClient:        k8sClient,
 		esClient:         esClient,
-		shardLister:      esclient.NewShardLister(esClient),
-		allocationSetter: esclient.NewAllocationSetter(esClient),
+		shardLister:      esClient,
+		allocationSetter: esClient,
 		resourcesState:   resourcesState,
 		observedState:    observedState,
 		reconcileState:   reconcileState,

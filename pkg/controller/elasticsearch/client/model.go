@@ -6,6 +6,7 @@ package client
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -131,6 +132,14 @@ func (s Shards) GetShardsByNode() map[string]Shards {
 		}
 	}
 	return result
+}
+
+func (s Shards) fixNodeNames() {
+	for i := range s {
+		if idx := strings.IndexByte(s[i].NodeName, ' '); idx >= 0 {
+			s[i].NodeName = s[i].NodeName[:idx]
+		}
+	}
 }
 
 // IsRelocating is true if the shard is relocating to another node.
