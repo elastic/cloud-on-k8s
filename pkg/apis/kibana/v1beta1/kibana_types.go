@@ -65,9 +65,9 @@ const (
 
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
-	commonv1beta1.ReconcilerStatus
-	Health            KibanaHealth                     `json:"health,omitempty"`
-	AssociationStatus commonv1beta1.AssociationStatus `json:"associationStatus,omitempty"`
+	commonv1beta1.ReconcilerStatus `json:",inline"`
+	Health                         KibanaHealth                    `json:"health,omitempty"`
+	AssociationStatus              commonv1beta1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -117,9 +117,9 @@ type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec      KibanaSpec   `json:"spec,omitempty"`
-	Status    KibanaStatus `json:"status,omitempty"`
-	assocConf *commonv1beta1.AssociationConf
+	Spec      KibanaSpec                     `json:"spec,omitempty"`
+	Status    KibanaStatus                   `json:"status,omitempty"`
+	assocConf *commonv1beta1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true

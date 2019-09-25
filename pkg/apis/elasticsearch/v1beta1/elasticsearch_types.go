@@ -197,13 +197,13 @@ const (
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
-	commonv1beta1.ReconcilerStatus
-	Health          ElasticsearchHealth             `json:"health,omitempty"`
-	Phase           ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
-	ClusterUUID     string                          `json:"clusterUUID,omitempty"`
-	MasterNode      string                          `json:"masterNode,omitempty"`
-	ExternalService string                          `json:"service,omitempty"`
-	ZenDiscovery    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
+	commonv1beta1.ReconcilerStatus `json:",inline"`
+	Health                         ElasticsearchHealth             `json:"health,omitempty"`
+	Phase                          ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	ClusterUUID                    string                          `json:"clusterUUID,omitempty"`
+	MasterNode                     string                          `json:"masterNode,omitempty"`
+	ExternalService                string                          `json:"service,omitempty"`
+	ZenDiscovery                   ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {

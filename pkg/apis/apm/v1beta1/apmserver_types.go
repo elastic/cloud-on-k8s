@@ -64,14 +64,14 @@ const (
 
 // ApmServerStatus defines the observed state of ApmServer
 type ApmServerStatus struct {
-	commonv1beta1.ReconcilerStatus
-	Health ApmServerHealth `json:"health,omitempty"`
+	commonv1beta1.ReconcilerStatus `json:",inline"`
+	Health                         ApmServerHealth `json:"health,omitempty"`
 	// ExternalService is the name of the service the agents should connect to.
 	ExternalService string `json:"service,omitempty"`
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
-	Association commonv1beta1.AssociationStatus
+	Association commonv1beta1.AssociationStatus `json:"-"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -93,9 +93,9 @@ type ApmServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec      ApmServerSpec   `json:"spec,omitempty"`
-	Status    ApmServerStatus `json:"status,omitempty"`
-	assocConf *commonv1beta1.AssociationConf
+	Spec      ApmServerSpec                  `json:"spec,omitempty"`
+	Status    ApmServerStatus                `json:"status,omitempty"`
+	assocConf *commonv1beta1.AssociationConf `json:"-"`
 }
 
 // +kubebuilder:object:root=true
