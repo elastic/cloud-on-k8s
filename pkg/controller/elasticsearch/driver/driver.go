@@ -165,7 +165,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		))
 
 	// always update the elasticsearch state bits
-	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {
+	if observedState.ClusterInfo != nil && observedState.ClusterHealth != nil {
 		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	}
 

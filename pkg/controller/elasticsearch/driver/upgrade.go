@@ -91,6 +91,7 @@ type rollingUpgradeCtx struct {
 	ES              v1alpha1.Elasticsearch
 	statefulSets    sset.StatefulSetList
 	esClient        esclient.Client
+	shardLister     esclient.ShardLister
 	esState         ESState
 	expectations    *expectations.Expectations
 	reconcileState  *reconcile.State
@@ -115,6 +116,7 @@ func newRollingUpgrade(
 		ES:              d.ES,
 		statefulSets:    statefulSets,
 		esClient:        esClient,
+		shardLister:     esclient.NewShardLister(esClient),
 		esState:         esState,
 		expectations:    d.Expectations,
 		reconcileState:  d.ReconcileState,

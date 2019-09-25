@@ -160,7 +160,7 @@ func TestState_Apply(t *testing.T) {
 			},
 		},
 		{
-			name: "no degraded health event when cluster state is unknown",
+			name: "no degraded health event when cluster info is unknown",
 			cluster: v1alpha1.Elasticsearch{
 				Status: v1alpha1.ElasticsearchStatus{
 					Health: v1alpha1.ElasticsearchGreenHealth,
@@ -169,7 +169,7 @@ func TestState_Apply(t *testing.T) {
 			effects: func(s *State) {
 				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
 					ClusterHealth: nil,
-					ClusterState:  nil,
+					ClusterInfo:   nil,
 				})
 			},
 			wantEvents: []events.Event{},

@@ -61,8 +61,8 @@ type Client interface {
 	Equal(other Client) bool
 	// GetClusterInfo get the cluster information at /
 	GetClusterInfo(ctx context.Context) (Info, error)
-	// GetClusterState returns the current cluster state
-	GetClusterState(ctx context.Context) (ClusterState, error)
+	// GetShards returns the current shards
+	GetShards(ctx context.Context) (Shards, error)
 	// GetClusterRoutingAllocation retrieves the cluster routing allocation settings.
 	GetClusterRoutingAllocation(ctx context.Context) (ClusterRoutingAllocation, error)
 	// UpdateSettings updates the settings of a cluster.
