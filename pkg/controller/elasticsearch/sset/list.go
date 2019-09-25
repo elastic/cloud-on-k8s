@@ -170,7 +170,7 @@ func (l StatefulSetList) DeepCopy() StatefulSetList {
 }
 
 // WithStatefulSet returns the StatefulSetList updated to contain the given StatefulSet.
-// If one with the same namespace & name already exist, it will be replaced.
+// If one already exists with the same namespace & name, it will be replaced.
 func (l StatefulSetList) WithStatefulSet(statefulSet appsv1.StatefulSet) StatefulSetList {
 	for i := range l {
 		if l[i].Name == statefulSet.Name && l[i].Namespace == statefulSet.Namespace {
