@@ -30,7 +30,7 @@ Check requirements and steps in this [guide](dev-setup.md).
 
 ### Format your code and manage imports
 
-1. Run your code through [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) (you can use `make fmt` for that) and [go vet](https://golang.org/cmd/vet/) before opening a pull request.
+1. Run `make lint` to make sure there are no lint warnings.
 2. Make sure you only have two groups in your imports:
     - a group for packages from the standard library
     - a group for third parties
