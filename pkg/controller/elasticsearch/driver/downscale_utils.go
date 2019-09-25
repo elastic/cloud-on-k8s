@@ -40,7 +40,7 @@ func newDownscaleContext(
 	reconcileState *reconcile.State,
 	expectations *expectations.Expectations,
 	// ES cluster
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 ) downscaleContext {
 	return downscaleContext{
 		k8sClient:        k8sClient,
