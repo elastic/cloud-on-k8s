@@ -6,8 +6,6 @@ package reconcile
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
@@ -35,7 +33,7 @@ type ResourcesState struct {
 func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*ResourcesState, error) {
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 
-	allPods, err := getPods(c, es, labelSelector, nil)
+	allPods, err := getPods(c, es, labelSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -81,18 +79,12 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*Resourc
 func getPods(
 	c k8s.Client,
 	es v1alpha1.Elasticsearch,
-	labelSelectors labels.Selector,
-	fieldSelectors fields.Selector,
+	labelSelector client.MatchingLabels,
 ) ([]corev1.Pod, error) {
 	var podList corev1.PodList
+	ns := client.InNamespace(es.Namespace)
 
-	listOpts := client.ListOptions{
-		Namespace:     es.Namespace,
-		LabelSelector: labelSelectors,
-		FieldSelector: fieldSelectors,
-	}
-
-	if err := c.List(&listOpts, &podList); err != nil {
+	if err := c.List(&podList, ns, labelSelector); err != nil {
 		return nil, err
 	}
 

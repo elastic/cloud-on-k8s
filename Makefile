@@ -25,12 +25,29 @@ LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
+# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
+ifeq (,$(shell go env GOBIN))
+GOBIN=$(shell go env GOPATH)/bin
+else
+GOBIN=$(shell go env GOBIN)
+endif
+
+# find or download controller-gen
+# note this does not validate the version
+controller-gen:
+ifeq (, $(shell which controller-gen))
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+CONTROLLER_GEN=$(GOBIN)/controller-gen
+else
+CONTROLLER_GEN=$(shell which controller-gen)
+endif
+
 ## -- Docker image
 
 # on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
-	REPOSITORY ?= ${GCLOUD_PROJECT}
+	REPOSITORY ?= $(GCLOUD_PROJECT)
 else
 	# default to local registry
 	REGISTRY ?= localhost:5000
@@ -81,12 +98,14 @@ dep-vendor-only:
 	# don't attempt to upgrade Gopkg.lock
 	dep ensure --vendor-only
 
-# Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
-generate:
+# Generate code
+generate: controller-gen
+	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
-	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	$(MAKE) --no-print-directory generate-all-in-one
-	$(MAKE) --no-print-directory generate-api-docs
+	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
+	# $(MAKE) --no-print-directory generate-api-docs
 
 generate-api-docs:
 	@hack/api-docs/build.sh
@@ -351,7 +370,8 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt lint generate check-local-changes unit_xml integration_xml e2e-compile docker-build
+# TODO consider re-adding check-fmt and check-local-changes
+ci: dep-vendor-only lint generate unit_xml integration_xml e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
 ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e

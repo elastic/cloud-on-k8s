@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -149,17 +148,14 @@ func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 }
 
 func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
-	uid := pod.UID
 	log.Info("Deleting pod for rolling upgrade", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
-	return ctx.client.Delete(pod, func(options *client.DeleteOptions) {
-		if options.Preconditions == nil {
-			options.Preconditions = &metav1.Preconditions{}
-		}
-		// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
-		// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
-		// If not it means that we are running with a stale cache.
-		options.Preconditions.UID = &uid
-	})
+	// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
+	// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
+	// If not it means that we are running with a stale cache.
+	opt := client.Preconditions{
+		UID: &pod.UID,
+	}
+	return ctx.client.Delete(pod, opt)
 }
 
 func runPredicates(

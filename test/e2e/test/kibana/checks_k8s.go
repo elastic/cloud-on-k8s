@@ -54,7 +54,7 @@ func CheckKibanaPodsCount(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana pods count should match the expected one",
 		Test: test.Eventually(func() error {
-			return k.CheckPodCount(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name), int(b.Kibana.Spec.NodeCount))
+			return k.CheckPodCount(int(b.Kibana.Spec.NodeCount), test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
 		}),
 	}
 }
@@ -64,7 +64,7 @@ func CheckKibanaPodsRunning(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana pods should eventually be running",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name))
+			pods, err := k.GetPods(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
 			if err != nil {
 				return err
 			}

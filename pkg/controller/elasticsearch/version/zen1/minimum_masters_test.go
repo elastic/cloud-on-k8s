@@ -102,11 +102,14 @@ func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, count int) err
 }
 
 func TestUpdateMinimumMasterNodes(t *testing.T) {
-	ssetSample := sset.TestSset{Name: "nodes", Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build()
+	esName := "es"
+	ns := "ns"
+	ssetSample := sset.TestSset{Name: "nodes", Namespace: ns, ClusterName: esName, Version: "6.8.0", Replicas: 3, Master: true, Data: true}.Build()
 	// simulate 3/3 pods ready
 	labels := map[string]string{
 		label.StatefulSetNameLabelName: ssetSample.Name,
 		label.VersionLabelName:         "6.8.0",
+		label.ClusterNameLabelName:     esName,
 	}
 	label.NodeTypesMasterLabelName.Set(true, labels)
 	label.NodeTypesDataLabelName.Set(true, labels)
@@ -151,7 +154,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 	}{
 		{
 			name:               "no v6 nodes",
-			actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "nodes", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
+			actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "nodes", Namespace: ns, Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
 			wantCalled:         false,
 			c:                  k8s.WrapClient(fake.NewFakeClient(createMasterPodsWithVersion("nodes", "7.1.0", 3)...)),
 		},
@@ -190,7 +193,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			esClient := &fakeESClient{}
-			requeue, err := UpdateMinimumMasterNodes(tt.c, v1alpha1.Elasticsearch{}, esClient, tt.actualStatefulSets, tt.reconcileState)
+			requeue, err := UpdateMinimumMasterNodes(tt.c, v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: esName, Namespace: ns}}, esClient, tt.actualStatefulSets, tt.reconcileState)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRequeue, requeue)
 			require.Equal(t, tt.wantCalled, esClient.called)

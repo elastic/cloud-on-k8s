@@ -8,6 +8,7 @@ linters:
   enable-all: true
   disable:
     - dupl
+    - funlen
     - gochecknoglobals
     - gochecknoinits
     - interfacer

@@ -53,7 +53,7 @@ func CheckApmServerPodsCount(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer pods count should match the expected one",
 		Test: test.Eventually(func() error {
-			return k.CheckPodCount(test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name), int(b.ApmServer.Spec.NodeCount))
+			return k.CheckPodCount(int(b.ApmServer.Spec.NodeCount), test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name)...)
 		}),
 	}
 }
@@ -63,7 +63,7 @@ func CheckApmServerPodsRunning(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer pods should eventually be running",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name))
+			pods, err := k.GetPods(test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name)...)
 			if err != nil {
 				return err
 			}
