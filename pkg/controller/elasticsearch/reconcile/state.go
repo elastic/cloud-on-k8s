@@ -54,7 +54,7 @@ func (s *State) updateWithPhase(
 	s.status.Phase = phase
 	s.status.ExternalService = resourcesState.ExternalService.Name
 
-	s.status.Health = v1alpha1.ElasticsearchHealth("unknown")
+	s.status.Health = v1alpha1.ElasticsearchUnknownHealth
 	if observedState.ClusterHealth != nil && observedState.ClusterHealth.Status != "" {
 		s.status.Health = v1alpha1.ElasticsearchHealth(observedState.ClusterHealth.Status)
 	}

@@ -41,25 +41,28 @@ func HandleUpscaleAndSpecChanges(
 	ctx upscaleCtx,
 	actualStatefulSets sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
-) error {
+) (sset.StatefulSetList, error) {
 	// adjust expected replicas to control nodes creation and deletion
 	adjusted, err := adjustResources(ctx, actualStatefulSets, expectedResources)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// reconcile all resources
 	for _, res := range adjusted {
 		if err := settings.ReconcileConfig(ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
-			return err
+			return nil, err
 		}
 		if _, err := common.ReconcileService(ctx.k8sClient, ctx.scheme, &res.HeadlessService, &ctx.es); err != nil {
-			return err
+			return nil, err
 		}
-		if err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.scheme, ctx.es, res.StatefulSet); err != nil {
-			return err
+		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.scheme, ctx.es, res.StatefulSet)
+		if err != nil {
+			return nil, err
 		}
+		// update actual with the reconciled ones for next steps to work with up-to-date information
+		actualStatefulSets = actualStatefulSets.WithStatefulSet(reconciled)
 	}
-	return nil
+	return actualStatefulSets, nil
 }
 
 func adjustResources(

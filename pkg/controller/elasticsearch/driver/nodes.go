@@ -11,6 +11,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
@@ -63,7 +64,13 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		esState:             esState,
 		upscaleStateBuilder: &upscaleStateBuilder{},
 	}
-	if err := HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources); err != nil {
+	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// Update PDB to account for new replicas.
+	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES, actualStatefulSets); err != nil {
 		return results.WithError(err)
 	}
 

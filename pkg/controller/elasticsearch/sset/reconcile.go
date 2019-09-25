@@ -14,9 +14,9 @@ import (
 )
 
 // ReconcileStatefulSet creates or updates the expected StatefulSet.
-func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch, expected appsv1.StatefulSet) error {
+func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch, expected appsv1.StatefulSet) (appsv1.StatefulSet, error) {
 	var reconciled appsv1.StatefulSet
-	return reconciler.ReconcileResource(reconciler.Params{
+	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     scheme,
 		Owner:      &es,
@@ -32,6 +32,7 @@ func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elas
 			expected.DeepCopyInto(&reconciled)
 		},
 	})
+	return reconciled, err
 }
 
 // EqualTemplateHashLabels reports whether actual and expected StatefulSets have the same template hash label value.
