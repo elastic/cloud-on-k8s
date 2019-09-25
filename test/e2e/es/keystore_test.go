@@ -20,7 +20,6 @@ func TestUpdateESSecureSettings(t *testing.T) {
 	k := test.NewK8sClientOrFatal()
 
 	// user-provided secure settings secret
-
 	const securePasswordSettingKey = "xpack.notification.email.account.foo.smtp.secure_password"
 	const secureBarUserSettingKey = "xpack.notification.jira.account.bar.secure_user"
 	const secureBazUserSettingKey = "xpack.notification.jira.account.baz.secure_user"
@@ -90,12 +89,15 @@ func TestUpdateESSecureSettings(t *testing.T) {
 					require.NoError(t, err)
 				},
 			},
-
 			// keystore should be updated accordingly
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
 				securePasswordSettingKey,
 				secureBazUserSettingKey,
 			}),
+			// wait for the rolling upgrade to be fully over
+			elasticsearch.CheckESPodsReady(b, k),
+			elasticsearch.CheckClusterHealth(b, k),
+			// remove one secret
 			test.Step{
 				Name: "Remove one of the source secrets",
 				Test: func(t *testing.T) {
@@ -105,7 +107,9 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
 				securePasswordSettingKey,
 			}),
-
+			// wait for the rolling upgrade to be fully over
+			elasticsearch.CheckESPodsReady(b, k),
+			elasticsearch.CheckClusterHealth(b, k),
 			// remove the secure settings reference
 			test.Step{
 				Name: "Remove secure settings from the spec",
@@ -123,6 +127,9 @@ func TestUpdateESSecureSettings(t *testing.T) {
 
 			// keystore should be updated accordingly
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, nil),
+			// wait for the rolling upgrade to be fully over
+			elasticsearch.CheckESPodsReady(b, k),
+			elasticsearch.CheckClusterHealth(b, k),
 
 			// cleanup extra resources
 			test.Step{
