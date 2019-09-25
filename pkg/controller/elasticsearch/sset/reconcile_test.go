@@ -71,7 +71,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ReconcileStatefulSet(tt.c, scheme.Scheme, es, tt.expected)
+			returned, err := ReconcileStatefulSet(tt.c, scheme.Scheme, es, tt.expected)
 			require.NoError(t, err)
 
 			// expect owner ref to be set to the es resource
@@ -80,7 +80,9 @@ func TestReconcileStatefulSet(t *testing.T) {
 			err = controllerutil.SetControllerReference(&es, metaObj, scheme.Scheme)
 			require.NoError(t, err)
 
-			// get back the statefulset
+			// returned sset should match the expected one
+			require.Equal(t, tt.expected, returned)
+			// and be stored in the apiserver
 			var retrieved appsv1.StatefulSet
 			err = tt.c.Get(k8s.ExtractNamespacedName(&tt.expected), &retrieved)
 			require.NoError(t, err)

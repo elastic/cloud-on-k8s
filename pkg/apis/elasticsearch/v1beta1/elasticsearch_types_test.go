@@ -31,9 +31,9 @@ func TestElasticsearchHealth_Less(t *testing.T) {
 		},
 		{
 			inputs: []ElasticsearchHealth{
-				"unknown",
+				ElasticsearchUnknownHealth,
 				ElasticsearchYellowHealth,
-				"unknown",
+				ElasticsearchUnknownHealth,
 			},
 			sorted: true,
 		},

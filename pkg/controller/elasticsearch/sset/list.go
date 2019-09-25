@@ -75,6 +75,48 @@ func (l StatefulSetList) PodNames() []string {
 	return names
 }
 
+// ExpectedNodeCount returns the sum of replicas of each StatefulSet in the StatefulSetList.
+func (l StatefulSetList) ExpectedNodeCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		count += GetReplicas(s)
+	}
+	return count
+}
+
+// ExpectedMasterNodesCount returns the number of master nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedMasterNodesCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		if label.IsMasterNodeSet(s) {
+			count += GetReplicas(s)
+		}
+	}
+	return count
+}
+
+// ExpectedDataNodesCount returns the number of data nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedDataNodesCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		if label.IsDataNodeSet(s) {
+			count += GetReplicas(s)
+		}
+	}
+	return count
+}
+
+// ExpectedIngestNodesCount returns the number of ingest nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedIngestNodesCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		if label.IsIngestNodeSet(s) {
+			count += GetReplicas(s)
+		}
+	}
+	return count
+}
+
 // PVCNames returns the names of PVCs for all pods of the StatefulSetList.
 func (l StatefulSetList) PVCNames() []string {
 	var pvcNames []string
@@ -124,6 +166,20 @@ func (l StatefulSetList) DeepCopy() StatefulSetList {
 		result = append(result, *s.DeepCopy())
 	}
 	return result
+}
+
+// WithStatefulSet returns the StatefulSetList updated to contain the given StatefulSet.
+// If one already exists with the same namespace & name, it will be replaced.
+func (l StatefulSetList) WithStatefulSet(statefulSet appsv1.StatefulSet) StatefulSetList {
+	for i := range l {
+		if l[i].Name == statefulSet.Name && l[i].Namespace == statefulSet.Namespace {
+			// replace the existing StatefulSet in the list
+			l[i] = statefulSet
+			return l
+		}
+	}
+	// add a new StatefulSet to the list
+	return append(l, statefulSet)
 }
 
 // ESVersionMatch returns true if the ES version for this StatefulSet matches the given condition.

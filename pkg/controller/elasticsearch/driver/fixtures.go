@@ -5,12 +5,7 @@
 package driver
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"path/filepath"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -292,20 +287,4 @@ func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-func loadFileBytes(fileName string) []byte {
-	contents, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
-	if err != nil {
-		panic(err)
-	}
-
-	return contents
-}
-
-func (t *testESState) GetClusterState() (*esclient.ClusterState, error) {
-	var cs esclient.ClusterState
-	sampleClusterState := loadFileBytes("cluster_state.json")
-	err := json.Unmarshal(sampleClusterState, &cs)
-	return &cs, err
 }

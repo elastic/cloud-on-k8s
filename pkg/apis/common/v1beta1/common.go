@@ -5,6 +5,8 @@
 package v1beta1
 
 import (
+	"reflect"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,6 +119,11 @@ type PodDisruptionBudgetTemplate struct {
 	// Spec of the desired behavior of the PodDisruptionBudget
 	// +kubebuilder:validation:Optional
 	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
+}
+
+// IsDisabled returns true if the PodDisruptionBudget is explicitly disabled (not nil, but empty).
+func (p *PodDisruptionBudgetTemplate) IsDisabled() bool {
+	return reflect.DeepEqual(p, &PodDisruptionBudgetTemplate{})
 }
 
 type SecretSource struct {

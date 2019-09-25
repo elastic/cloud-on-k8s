@@ -161,9 +161,10 @@ type ElasticsearchHealth string
 
 // Possible traffic light states Elasticsearch health can have.
 const (
-	ElasticsearchRedHealth    ElasticsearchHealth = "red"
-	ElasticsearchYellowHealth ElasticsearchHealth = "yellow"
-	ElasticsearchGreenHealth  ElasticsearchHealth = "green"
+	ElasticsearchRedHealth     ElasticsearchHealth = "red"
+	ElasticsearchYellowHealth  ElasticsearchHealth = "yellow"
+	ElasticsearchGreenHealth   ElasticsearchHealth = "green"
+	ElasticsearchUnknownHealth ElasticsearchHealth = "unknown"
 )
 
 var elasticsearchHealthOrder = map[ElasticsearchHealth]int{

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
@@ -164,9 +165,14 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmtype.ApmServer, k *
 			}
 
 			// Check that the metric has been stored
+			metricIndexPattern := "apm-%s-metric-2017.05.30"
+			if strings.HasPrefix(updatedApmServer.Spec.Version, "6") {
+				// Stacks 6.x and 7.x do not share the same index pattern
+				metricIndexPattern = "apm-%s-2017.05.30"
+			}
 			err := assertCountIndexEqual(
 				c.esClient,
-				fmt.Sprintf("apm-%s-metric-2017.05.30", updatedApmServer.Spec.Version),
+				fmt.Sprintf(metricIndexPattern, updatedApmServer.Spec.Version),
 				1,
 			)
 			if err != nil {
@@ -174,9 +180,14 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmtype.ApmServer, k *
 			}
 
 			// Check that the error has been stored
+			errorIndexPattern := "apm-%s-error-2018.08.09"
+			if strings.HasPrefix(updatedApmServer.Spec.Version, "6") {
+				// Same as above
+				errorIndexPattern = "apm-%s-2018.08.09"
+			}
 			err = assertCountIndexEqual(
 				c.esClient,
-				fmt.Sprintf("apm-%s-error-2018.08.09", updatedApmServer.Spec.Version),
+				fmt.Sprintf(errorIndexPattern, updatedApmServer.Spec.Version),
 				1,
 			)
 			if err != nil {

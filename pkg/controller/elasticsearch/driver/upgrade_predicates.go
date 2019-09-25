@@ -17,6 +17,7 @@ type PredicateContext struct {
 	healthyPods            map[string]corev1.Pod
 	toUpdate               []corev1.Pod
 	esState                ESState
+	shardLister            client.ShardLister
 	masterUpdateInProgress bool
 }
 
@@ -28,6 +29,7 @@ type Predicate struct {
 
 func NewPredicateContext(
 	state ESState,
+	shardLister client.ShardLister,
 	healthyPods map[string]corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	masterNodesNames []string,
@@ -39,6 +41,7 @@ func NewPredicateContext(
 		healthyPods:      healthyPods,
 		toUpdate:         podsToUpgrade,
 		esState:          state,
+		shardLister:      shardLister,
 	}
 }
 
@@ -250,19 +253,20 @@ var predicates = [...]Predicate{
 				// Do not do unnecessary request
 				return true, nil
 			}
-			clusterState, err := context.esState.GetClusterState()
+
+			shards, err := context.shardLister.GetShards()
 			if err != nil {
-				return false, err
+				return true, err
 			}
-			shards := clusterState.GetShardsByNode()
-			shardsOnCandidate, ok := shards[candidate.Name]
+			shardsByNode := shards.GetShardsByNode()
+			shardsOnCandidate, ok := shardsByNode[candidate.Name]
 			if !ok {
 				// No shards on this node
 				return true, nil
 			}
 
 			for _, deletedPod := range deletedPods {
-				shardsOnDeletedPod, ok := shards[deletedPod.Name]
+				shardsOnDeletedPod, ok := shardsByNode[deletedPod.Name]
 				if !ok {
 					// No shards on the deleted pod
 					continue

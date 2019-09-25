@@ -21,6 +21,7 @@ type TestSset struct {
 	Replicas    int32
 	Master      bool
 	Data        bool
+	Ingest      bool
 	Status      appsv1.StatefulSetStatus
 }
 
@@ -34,6 +35,7 @@ func (t TestSset) Pods() []runtime.Object {
 			StatefulSetName: t.Name,
 			Master:          t.Master,
 			Data:            t.Data,
+			Ingest:          t.Ingest,
 			Version:         t.Version,
 			ClusterName:     t.ClusterName,
 		}.BuildPtr()
@@ -48,6 +50,7 @@ func (t TestSset) Build() appsv1.StatefulSet {
 	}
 	label.NodeTypesMasterLabelName.Set(t.Master, labels)
 	label.NodeTypesDataLabelName.Set(t.Data, labels)
+	label.NodeTypesIngestLabelName.Set(t.Ingest, labels)
 	statefulSet := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      t.Name,
@@ -84,6 +87,7 @@ type TestPod struct {
 	Revision        string
 	Master          bool
 	Data            bool
+	Ingest          bool
 	Status          corev1.PodStatus
 }
 
@@ -96,6 +100,7 @@ func (t TestPod) Build() corev1.Pod {
 	}
 	label.NodeTypesMasterLabelName.Set(t.Master, labels)
 	label.NodeTypesDataLabelName.Set(t.Data, labels)
+	label.NodeTypesIngestLabelName.Set(t.Ingest, labels)
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: t.Namespace,

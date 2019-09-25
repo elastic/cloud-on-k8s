@@ -32,6 +32,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 	// Step 2: Apply predicates
 	predicateContext := NewPredicateContext(
 		ctx.esState,
+		ctx.shardLister,
 		ctx.healthyPods,
 		ctx.podsToUpgrade,
 		ctx.expectedMasters,

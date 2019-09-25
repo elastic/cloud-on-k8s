@@ -11,6 +11,7 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
@@ -63,7 +64,13 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		esState:             esState,
 		upscaleStateBuilder: &upscaleStateBuilder{},
 	}
-	if err := HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources); err != nil {
+	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// Update PDB to account for new replicas.
+	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES, actualStatefulSets); err != nil {
 		return results.WithError(err)
 	}
 
@@ -94,15 +101,15 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// Phase 2: handle sset scale down.
 	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
 	// or because it should be removed entirely.
-	downscaleCtx := downscaleContext{
-		k8sClient:      d.Client,
-		esClient:       esClient,
-		resourcesState: resourcesState,
-		observedState:  observedState,
-		reconcileState: reconcileState,
-		es:             d.ES,
-		expectations:   d.Expectations,
-	}
+	downscaleCtx := newDownscaleContext(
+		d.Client,
+		esClient,
+		resourcesState,
+		observedState,
+		reconcileState,
+		d.Expectations,
+		d.ES,
+	)
 	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
 	results.WithResults(downscaleRes)
 	if downscaleRes.HasError() {

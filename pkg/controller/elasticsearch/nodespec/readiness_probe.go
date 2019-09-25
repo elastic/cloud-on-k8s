@@ -29,7 +29,7 @@ func NewReadinessProbe() *corev1.Probe {
 const ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
 const ReadinessProbeScript string = `
 #!/usr/bin/env bash
-# Consider a node to be healthy if it responds to a simple GET on "/"
+# Consider a node to be healthy if it responds to a simple GET on "/_cat/nodes?local"
 CURL_TIMEOUT=3
 
 # setup basic auth if credentials are available
@@ -41,7 +41,8 @@ else
 fi
 
 # request Elasticsearch
-status=$(curl -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -XGET -s -k ${BASIC_AUTH} ${READINESS_PROBE_PROTOCOL:-https}://127.0.0.1:9200)
+ENDPOINT="${READINESS_PROBE_PROTOCOL:-https}://127.0.0.1:9200/_cat/nodes?local"
+status=$(curl -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -XGET -s -k ${BASIC_AUTH} $ENDPOINT)
 
 # ready if status code 200
 if [[ $status == "200" ]]; then
