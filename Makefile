@@ -13,7 +13,6 @@
 export SHELL := /bin/bash
 
 KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
-GKE_CLUSTER_VERSION ?= 1.12
 
 REPOSITORY 	?= eck
 NAME       	?= eck-operator
