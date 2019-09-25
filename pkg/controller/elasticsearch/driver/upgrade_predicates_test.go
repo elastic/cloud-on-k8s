@@ -9,6 +9,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -135,6 +137,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),
 			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 			esClient:        esClient,
+			shardLister:     migration.NewFakeShardLister(client.Shards{}),
 			esState:         esState,
 			expectations:    expectations.NewExpectations(),
 			reconcileState:  reconcile.NewState(v1alpha1.Elasticsearch{}),
@@ -163,6 +166,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 func TestUpgradePodsDeletion_Delete(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
+		shardLister     client.ShardLister
 		ES              v1alpha1.Elasticsearch
 		green           bool
 		maxUnavailable  int
@@ -367,6 +371,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("elasticsearch-sample-es-masters-1").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("elasticsearch-sample-es-masters-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
+				shardLister:    migration.NewFakeShardFromFile("shards.json"),
 				maxUnavailable: 2, // Allow 2 to be upgraded at the same time
 				green:          true,
 				podFilter:      nothing,
@@ -392,6 +397,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),
 			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 			esClient:        esClient,
+			shardLister:     tt.fields.shardLister,
 			esState:         esState,
 			expectations:    expectations.NewExpectations(),
 			expectedMasters: tt.fields.upgradeTestPods.toMasters(noMutation),
