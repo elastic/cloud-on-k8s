@@ -34,8 +34,8 @@ endif
 # find or download controller-gen
 # note this does not validate the version
 controller-gen:
-ifeq (, $(shell which controller-gen))
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+ifeq (, $(shell command -v controller-gen))
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -383,7 +383,7 @@ check-license-header:
 # Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
-		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; git diff HEAD; exit 1 )
+		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
 
 #########################
 # Kind specific targets #
