@@ -79,8 +79,7 @@ func (as ApmServerStatus) IsDegraded(prev ApmServerStatus) bool {
 	return prev.Health == ApmServerGreen && as.Health != ApmServerGreen
 }
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // ApmServer is the Schema for the apmservers API
 // +kubebuilder:categories=elastic

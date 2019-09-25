@@ -102,8 +102,7 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1beta1.AssociationConf) {
 	k.assocConf = assocConf
 }
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Kibana is the Schema for the kibanas API
 // +kubebuilder:categories=elastic
@@ -113,6 +112,7 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1beta1.AssociationConf) {
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Kibana version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:storageversion
 type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
