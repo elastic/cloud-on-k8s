@@ -256,7 +256,7 @@ endif
 DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --config-file=hack/deployer/config/deployer-config.yml
 
 build-deployer:
-	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
+	@ go build -mod=readonly -o ./hack/deployer/deployer ./hack/deployer/main.go
 
 setup-deployer-for-gke-once: require-gcloud-project build-deployer
 ifeq (,$(wildcard hack/deployer/config/deployer-config.yml))
