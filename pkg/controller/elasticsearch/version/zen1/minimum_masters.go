@@ -8,7 +8,6 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -158,7 +157,7 @@ func UpdateMinimumMasterNodesTo(
 	return annotateWithMinimumMasterNodes(c, es, minimumMasterNodes)
 }
 
-func minimumMasterNodesFromAnnotation(es v1alpha1.Elasticsearch) int {
+func minimumMasterNodesFromAnnotation(es v1beta1.Elasticsearch) int {
 	annotationStr, set := es.Annotations[Zen1MiniumMasterNodesAnnotationName]
 	if !set {
 		return 0
@@ -171,7 +170,7 @@ func minimumMasterNodesFromAnnotation(es v1alpha1.Elasticsearch) int {
 	return mmn
 }
 
-func annotateWithMinimumMasterNodes(c k8s.Client, es v1alpha1.Elasticsearch, minimumMasterNodes int) error {
+func annotateWithMinimumMasterNodes(c k8s.Client, es v1beta1.Elasticsearch, minimumMasterNodes int) error {
 	if es.Annotations == nil {
 		es.Annotations = make(map[string]string)
 	}
