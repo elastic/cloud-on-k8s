@@ -1,0 +1,32 @@
+[id="{p}-glossary"]
+== Glossary
+
+This glossary covers Elastic Cloud on Kubernetes. If a term is not in this list, you can also look in the link:https://kubernetes.io/docs/reference/glossary/[Kubernetes glossary].
+
+[[GKE]]GKE::
+  Google Kubernetes Engine (GKE): is a managed, production-ready environment for deploying containerized applications.
+
+[[AKS]]AKS::
+  Azure Kubernetes Service (AKS): using Kubernetes on Microsoft Azure to manage your hosted Kubernetes environment.
+
+[[EKS]]EKS::
+  Elastic Kubernetes Service (Amazon EKS): using Kubernetes on AWS to deploy, manage, and scale containerized applications.
+
+[[ECK]]ECK::
+  Elastic Cloud on Kubernetes (ECK) extends the basic Kubernetes orchestration capabilities to deploy and manage Elasticsearch, Kibana and APM Server.
+  
+[[k8s]]k8s::
+  Abbreviation derived by replacing the 8 letters “ubernete” with “8”.
+
+[[PVC]]PVC::
+  PersistentVolumeClaims. Persistent Volumes (PVs) are resources in the cluster. PVCs are requests for those resources and also act as claim checks to the resource.
+  
+[[CRD]]CRD::
+  Customized Resource Definitions are the public API of ECK. They extend the Kubernetes API with Elasticsearch, Kibana, and APM Server definitions.
+
+[[NodeSet]]NodeSet::
+  TBD
+
+[[Cluster mutation]]Cluster mutation::
+  TBD  
+    
