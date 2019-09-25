@@ -262,5 +262,5 @@ func maybeUpdateZen1ForDownscale(
 		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1
-	return zen1.UpdateMinimumMasterNodesTo(es, esClient, reconcileState, minimumMasterNodes)
+	return zen1.UpdateMinimumMasterNodesTo(es, c, esClient, minimumMasterNodes)
 }

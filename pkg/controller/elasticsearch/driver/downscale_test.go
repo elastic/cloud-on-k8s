@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -810,6 +811,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 }
 
 func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
+	require.NoError(t, commonscheme.SetupScheme())
 	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
 	ssetMasters := sset.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
 	masterPods := []corev1.Pod{
@@ -855,7 +857,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 				targetReplicas:  2,
 			},
 			statefulSets:       sset.StatefulSetList{ssetMasters},
-			apiserverResources: []runtime.Object{&ssetMasters, &masterPods[0], &masterPods[1], &masterPods[2]},
+			apiserverResources: []runtime.Object{&es, &ssetMasters, &masterPods[0], &masterPods[1], &masterPods[2]},
 			wantZen1Called:     false,
 		},
 		{
@@ -866,7 +868,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 				targetReplicas:  2,
 			},
 			statefulSets:       sset.StatefulSetList{ssetMasters, ssetData},
-			apiserverResources: []runtime.Object{&ssetMasters, &ssetData, &masterPods[0], &masterPods[1], &masterPods[2]},
+			apiserverResources: []runtime.Object{&es, &ssetMasters, &ssetData, &masterPods[0], &masterPods[1], &masterPods[2]},
 			wantZen1Called:     false,
 		},
 		{
@@ -878,7 +880,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			},
 			statefulSets: sset.StatefulSetList{ssetMasters},
 			// 2 master nodes in the apiserver
-			apiserverResources: []runtime.Object{&ssetMasters, &masterPods[0], &masterPods[1]},
+			apiserverResources: []runtime.Object{&es, &ssetMasters, &masterPods[0], &masterPods[1]},
 			wantZen1Called:     true,
 			wantZen1CalledWith: 1,
 		},

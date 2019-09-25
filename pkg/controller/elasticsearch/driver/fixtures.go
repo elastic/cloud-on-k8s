@@ -150,7 +150,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	return statefulSetList
 }
 
-func (u upgradeTestPods) toPods(f filter) []runtime.Object {
+func (u upgradeTestPods) toRuntimeObjects(maxUnavailable int, f filter) []runtime.Object {
 	var result []runtime.Object
 	i := 0
 	for _, testPod := range u {
@@ -160,6 +160,8 @@ func (u upgradeTestPods) toPods(f filter) []runtime.Object {
 		}
 		i++
 	}
+	es := u.toES(maxUnavailable)
+	result = append(result, &es)
 	return result
 }
 

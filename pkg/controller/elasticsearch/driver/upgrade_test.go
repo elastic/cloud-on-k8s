@@ -167,7 +167,7 @@ func Test_healthyPods(t *testing.T) {
 			esState := &testESState{
 				inCluster: tt.args.pods.podsInCluster(),
 			}
-			client := k8s.WrapClient(fake.NewFakeClient(tt.args.pods.toPods(nothing)...))
+			client := k8s.WrapClient(fake.NewFakeClient(tt.args.pods.toRuntimeObjects(0, nothing)...))
 			got, err := healthyPods(client, tt.args.statefulSets, esState)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("healthyPods() error = %v, wantErr %v", err, tt.wantErr)
