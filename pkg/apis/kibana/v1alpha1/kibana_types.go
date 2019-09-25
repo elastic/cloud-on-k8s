@@ -112,7 +112,6 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1alpha1.AssociationConf) {
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Kibana version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:storageversion
 type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
