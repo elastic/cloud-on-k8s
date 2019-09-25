@@ -86,16 +86,12 @@ PSP ?= 0
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator check-license-header
+all: dependencies unit integration e2e-compile check-fmt elastic-operator check-license-header
 
 ## -- build
 
-dep:
-	dep ensure -v
-
-dep-vendor-only:
-	# don't attempt to upgrade Gopkg.lock
-	dep ensure --vendor-only
+dependencies:
+	go mod tidy -v && go mod download
 
 # Generate code
 generate: controller-gen
@@ -114,10 +110,7 @@ generate-notice-file:
 	@hack/licence-detector/generate-notice.sh
 
 elastic-operator: generate
-	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
-
-fmt:
-	goimports -w pkg cmd
+	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
 clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go
@@ -140,15 +133,8 @@ integration_xml: clean generate
 	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
 	gotestsum --junitfile integration-tests.xml --raw-command cat integration-tests.json
 
-check-fmt:
-ifneq ($(shell goimports -l pkg cmd),)
-	$(error Invalid go formatting. Please run `make fmt`)
-endif
-	go vet ./pkg/... ./cmd/...
-
 lint:
 	golangci-lint run
-
 
 #############################
 ##  --       Run       --  ##
@@ -237,7 +223,7 @@ show-credentials:
 ##  --    K8s clusters bootstrap    --  ##
 ##########################################
 
-cluster-bootstrap: dep-vendor-only install-crds
+cluster-bootstrap: install-crds
 
 clean-k8s-cluster:
 	kubectl delete --ignore-not-found=true  ValidatingWebhookConfiguration validating-webhook-configuration
@@ -373,16 +359,15 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-# TODO consider re-adding check-fmt and check-local-changes
-ci: dep-vendor-only lint generate unit_xml integration_xml e2e-compile docker-build
+ci: lint generate check-local-changes unit_xml integration_xml e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
-ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e
+ci-e2e: run-deployer install-crds apply-psp e2e
 
-run-deployer: dep-vendor-only build-deployer
+run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-ci-release: clean dep-vendor-only generate build-operator-image
+ci-release: clean generate build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################
@@ -431,7 +416,7 @@ kind-cluster-%: kind-node-variable-check
 ## Same as above but build and deploy the operator image
 kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-with-operator-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
-kind-with-operator-%: kind-node-variable-check dep-vendor-only docker-build
+kind-with-operator-%: kind-node-variable-check docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
@@ -447,7 +432,7 @@ else
 endif
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-e2e: kind-node-variable-check set-kind-e2e-image dep-vendor-only e2e-docker-build
+kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
 		--nodes 3 \
