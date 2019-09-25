@@ -383,7 +383,7 @@ check-license-header:
 # Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
-		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; git diff HEAD; exit 1 )
 
 #########################
 # Kind specific targets #
