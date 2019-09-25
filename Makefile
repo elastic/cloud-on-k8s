@@ -86,7 +86,7 @@ PSP ?= 0
 ##  --       Development       --  ##
 #####################################
 
-all: dependencies unit integration e2e-compile check-fmt elastic-operator check-license-header
+all: dependencies lint check-license-header unit integration e2e-compile elastic-operator 
 
 ## -- build
 
