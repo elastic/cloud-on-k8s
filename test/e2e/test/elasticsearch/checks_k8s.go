@@ -26,7 +26,6 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckPodCertificates(b, k),
 		CheckServicesEndpoints(b, k),
 		CheckClusterHealth(b, k),
-		CheckClusterUUID(b, k),
 		CheckESPassword(b, k),
 		CheckESDataVolumeType(b.Elasticsearch, k),
 	}
@@ -205,24 +204,6 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 				if len(endpoints.Subsets[0].Addresses) != addrCount {
 					return fmt.Errorf("%d addresses found for endpoint %s, expected %d", len(endpoints.Subsets[0].Addresses), endpointName, addrCount)
 				}
-			}
-			return nil
-		}),
-	}
-}
-
-// CheckClusterUUID checks that the cluster ID is eventually set in the ES status
-func CheckClusterUUID(b Builder, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "ES cluster UUID should eventually appear in the ES status",
-		Test: test.Eventually(func() error {
-			var es estype.Elasticsearch
-			err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
-			if err != nil {
-				return err
-			}
-			if es.Status.ClusterUUID == "" {
-				return fmt.Errorf("ClusterUUID not set")
 			}
 			return nil
 		}),
