@@ -20,7 +20,6 @@ func TestUpdateESSecureSettings(t *testing.T) {
 	k := test.NewK8sClientOrFatal()
 
 	// user-provided secure settings secret
-
 	const securePasswordSettingKey = "xpack.notification.email.account.foo.smtp.secure_password"
 	const secureBarUserSettingKey = "xpack.notification.jira.account.bar.secure_user"
 	const secureBazUserSettingKey = "xpack.notification.jira.account.baz.secure_user"
@@ -74,7 +73,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		WithSteps(test.CheckTestSteps(b, k)).
 		WithSteps(test.StepList{
 			// initial secure settings should be there in all nodes keystore
-			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
+			elasticsearch.CheckESKeystoreEntries(k, b, []string{
 				securePasswordSettingKey,
 				secureBarUserSettingKey}),
 
@@ -90,22 +89,22 @@ func TestUpdateESSecureSettings(t *testing.T) {
 					require.NoError(t, err)
 				},
 			},
-
 			// keystore should be updated accordingly
-			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
+			elasticsearch.CheckESKeystoreEntries(k, b, []string{
 				securePasswordSettingKey,
 				secureBazUserSettingKey,
 			}),
+			// remove one secret
 			test.Step{
 				Name: "Remove one of the source secrets",
 				Test: func(t *testing.T) {
 					require.NoError(t, k.Client.Delete(&secureSettings2))
 				},
 			},
-			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
+			// keystore should be updated accordingly
+			elasticsearch.CheckESKeystoreEntries(k, b, []string{
 				securePasswordSettingKey,
 			}),
-
 			// remove the secure settings reference
 			test.Step{
 				Name: "Remove secure settings from the spec",
@@ -122,7 +121,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, nil),
+			elasticsearch.CheckESKeystoreEntries(k, b, nil),
 
 			// cleanup extra resources
 			test.Step{
