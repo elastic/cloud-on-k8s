@@ -16,7 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 // testPemPrivateKey contains a private key intended for testing
@@ -46,7 +47,9 @@ var (
 )
 
 func init() {
-	logf.SetLogger(logf.ZapLogger(false))
+	logf.SetLogger(crzap.New(func(o *crzap.Options) {
+		o.Development = false
+	}))
 	var err error
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {

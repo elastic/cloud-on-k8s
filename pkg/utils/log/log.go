@@ -14,12 +14,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/go-logr/zapr"
-	pflag "github.com/spf13/pflag"
+	"github.com/spf13/pflag"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/klog"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
-	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var (
