@@ -44,6 +44,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
 	var masterChangeBudgetCheck *MasterChangeBudgetCheck
+	var changeBudgetCheck *ChangeBudgetCheck
 
 	return test.StepList{
 		test.Step{
@@ -75,6 +76,13 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				masterChangeBudgetCheck.Start()
 			},
 		},
+		test.Step{
+			Name: "Start tracking pod count",
+			Test: func(t *testing.T) {
+				changeBudgetCheck = NewChangeBudgetCheck(b.Elasticsearch, k.Client)
+				changeBudgetCheck.Start()
+			},
+		},
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
 	}.
 		WithSteps(b.UpgradeTestSteps(k)).
@@ -87,6 +95,15 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				Test: func(t *testing.T) {
 					masterChangeBudgetCheck.Stop()
 					require.NoError(t, masterChangeBudgetCheck.Verify(1)) // fixed budget of 1 master node added/removed at a time
+				},
+			},
+			test.Step{
+				Name: "Pod count must not violate change budget",
+				Test: func(t *testing.T) {
+					changeBudgetCheck.Stop()
+					allowedMin := int(b.Elasticsearch.Spec.NodeCount()) - b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
+					allowedMax := int(b.Elasticsearch.Spec.NodeCount()) + b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget.MaxSurge
+					require.NoError(t, changeBudgetCheck.Verify(allowedMin, allowedMax))
 				},
 			},
 			test.Step{

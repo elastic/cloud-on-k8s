@@ -6,7 +6,6 @@ package driver
 
 import (
 	"math"
-	"sync"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	appsv1 "k8s.io/api/apps/v1"
@@ -19,16 +18,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-type upscaleStateBuilder struct {
-	once         *sync.Once
-	upscaleState *upscaleState
-}
-
 type upscaleState struct {
 	isBootstrapped      bool
 	allowMasterCreation bool
 	accountedNodes      int32
-	nodesToCreate       int32
+	createsAllowed      int32
 }
 
 func newUpscaleState(
@@ -60,18 +54,18 @@ func newUpscaleState(
 
 	// count max replica count allowed by desired state and maxSurge
 	if ctx.es.Spec.UpdateStrategy.ChangeBudget != nil {
-		state.nodesToCreate = int32(ctx.es.Spec.UpdateStrategy.ChangeBudget.MaxSurge)
+		state.createsAllowed = int32(ctx.es.Spec.UpdateStrategy.ChangeBudget.MaxSurge)
 		for _, nodeSpecRes := range expectedResources {
-			state.nodesToCreate += sset.GetReplicas(nodeSpecRes.StatefulSet)
+			state.createsAllowed += sset.GetReplicas(nodeSpecRes.StatefulSet)
 		}
 		for _, nodeSpecRes := range actualStatefulSets {
-			state.nodesToCreate -= sset.GetReplicas(nodeSpecRes)
+			state.createsAllowed -= sset.GetReplicas(nodeSpecRes)
 		}
-		if state.nodesToCreate < 0 {
-			state.nodesToCreate = 0
+		if state.createsAllowed < 0 {
+			state.createsAllowed = 0
 		}
 	} else {
-		state.nodesToCreate = math.MaxInt32
+		state.createsAllowed = math.MaxInt32
 	}
 
 	return state, nil
@@ -126,7 +120,7 @@ func (s *upscaleState) recordNodesCreation(count int32) {
 }
 
 func (s *upscaleState) getMaxNodesToAdd(noMoreThan int32) int32 {
-	left := s.nodesToCreate - s.accountedNodes
+	left := s.createsAllowed - s.accountedNodes
 	if left < noMoreThan {
 		return left
 	}
@@ -144,39 +138,52 @@ func (s *upscaleState) limitNodesCreation(
 		return toApply
 	}
 
-	nodespec.UpdateReplicas(&toApply, common.Int32(actualReplicas))
 	if label.IsMasterNodeSet(toApply) {
-		for rep := actualReplicas + 1; rep <= targetReplicas; rep++ {
-			if !s.canAddMasterNode() {
-				ssetLogger(toApply).Info(
-					"Limiting master nodes creation to one at a time",
-					"target", targetReplicas,
-					"actual", actualReplicas,
-				)
-				break
-			}
-			// allow one more master node to be created
-			nodespec.UpdateReplicas(&toApply, common.Int32(rep))
-			s.recordMasterNodeCreation()
-		}
+		return s.limitMasterNodesCreation(actual, toApply)
+	}
+
+	nodespec.UpdateReplicas(&toApply, common.Int32(actualReplicas))
+	replicasToCreate := targetReplicas - actualReplicas
+	replicasToCreate = s.getMaxNodesToAdd(replicasToCreate)
+	if replicasToCreate > 0 {
+		nodespec.UpdateReplicas(&toApply, common.Int32(actualReplicas+replicasToCreate))
+		s.recordNodesCreation(replicasToCreate)
+		ssetLogger(toApply).Info(
+			"Creating nodes",
+			"actualReplicas", actualReplicas,
+			"replicasToCreate", replicasToCreate,
+		)
 	} else {
-		replicasToCreate := targetReplicas - actualReplicas
-		replicasToCreate = s.getMaxNodesToAdd(replicasToCreate)
-		if replicasToCreate > 0 {
-			nodespec.UpdateReplicas(&toApply, common.Int32(actualReplicas+replicasToCreate))
-			s.recordNodesCreation(replicasToCreate)
+		ssetLogger(toApply).Info(
+			"Limiting nodes creation",
+			"target", targetReplicas,
+			"actual", actualReplicas,
+		)
+	}
+
+	return toApply
+}
+
+func (s *upscaleState) limitMasterNodesCreation(
+	actual appsv1.StatefulSet,
+	toApply appsv1.StatefulSet,
+) appsv1.StatefulSet {
+	actualReplicas := sset.GetReplicas(actual)
+	targetReplicas := sset.GetReplicas(toApply)
+
+	nodespec.UpdateReplicas(&toApply, common.Int32(actualReplicas))
+	for rep := actualReplicas + 1; rep <= targetReplicas; rep++ {
+		if !s.canAddMasterNode() {
 			ssetLogger(toApply).Info(
-				"Creating nodes",
-				"actualReplicas", actualReplicas,
-				"replicasToCreate", replicasToCreate,
-			)
-		} else {
-			ssetLogger(toApply).Info(
-				"Limiting nodes creation",
+				"Limiting master nodes creation to one at a time",
 				"target", targetReplicas,
 				"actual", actualReplicas,
 			)
+			break
 		}
+		// allow one more master node to be created
+		nodespec.UpdateReplicas(&toApply, common.Int32(rep))
+		s.recordMasterNodeCreation()
 	}
 
 	return toApply

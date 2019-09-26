@@ -30,7 +30,7 @@ func Test_newDownscaleState(t *testing.T) {
 		{
 			name:             "no resources in the apiserver",
 			initialResources: nil,
-			want:             &downscaleState{masterRemovalInProgress: false, runningMasters: 0},
+			want:             &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: 1},
 		},
 		{
 			name: "3 masters running in the apiserver, 1 not running",
@@ -118,7 +118,7 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 			},
-			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
+			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 4},
 		},
 	}
 	for _, tt := range tests {
@@ -142,30 +142,44 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 		wantReason       string
 	}{
 		{
-			name:             "should always allow removing data nodes",
-			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true},
+			name:             "should allow removing data node if maxUnavailable allows",
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: 1},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: true,
 		},
 		{
+			name:             "should not allow removing data nodes of maxUnavailable disallows",
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: 0},
+			statefulSet:      ssetData4Replicas,
+			wantCanDownscale: false,
+			wantReason:       RespectMaxUnavailableInvariant,
+		},
+		{
 			name:             "should allow removing one master if there is another one running",
-			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 1},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: true,
 		},
 		{
 			name:             "should not allow removing the last master",
-			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: false},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: 1},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       AtLeastOneRunningMasterInvariant,
 		},
 		{
 			name:             "should not allow removing a master if one is already being removed",
-			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: true},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: true, removalsAllowed: 2},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       OneMasterAtATimeInvariant,
+		},
+		{
+			name:             "should not allow removing a master if maxUnavailable disallows",
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 0},
+			statefulSet:      ssetMaster3Replicas,
+			wantCanDownscale: false,
+			wantReason:       RespectMaxUnavailableInvariant,
 		},
 	}
 	for _, tt := range tests {
@@ -189,16 +203,16 @@ func Test_downscaleState_recordOneRemoval(t *testing.T) {
 		wantState   *downscaleState
 	}{
 		{
-			name:        "removing a data node should be a no-op",
+			name:        "removing a data node should decrease nodes available for removal",
 			statefulSet: ssetData4Replicas,
-			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
-			wantState:   &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
+			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 1},
+			wantState:   &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 0},
 		},
 		{
 			name:        "removing a master node should mutate the budget",
 			statefulSet: ssetMaster3Replicas,
-			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
-			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: true},
+			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 2},
+			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: 1},
 		},
 	}
 	for _, tt := range tests {

@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -34,6 +35,12 @@ import (
 // Sample StatefulSets to use in tests
 var (
 	clusterName         = "cluster-name"
+	readyStatus         = corev1.PodStatus{
+		Conditions: []corev1.PodCondition{
+			{Status: corev1.ConditionTrue, Type: corev1.ContainersReady},
+			{Status: corev1.ConditionTrue, Type: corev1.PodReady},
+		},
+	}
 	ssetMaster3Replicas = sset.TestSset{
 		Name:      "ssetMaster3Replicas",
 		Namespace: "ns",
@@ -50,6 +57,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Master:          true,
+			Status:          readyStatus,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
@@ -58,6 +66,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Master:          true,
+			Status:          readyStatus,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
@@ -66,6 +75,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Master:          true,
+			Status:          readyStatus,
 		}.Build(),
 	}
 	ssetData4Replicas = sset.TestSset{
@@ -84,6 +94,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Data:            true,
+			Status:          readyStatus,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
@@ -92,6 +103,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Data:            true,
+			Status:          readyStatus,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
@@ -100,6 +112,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Data:            true,
+			Status:          readyStatus,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
@@ -108,6 +121,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Data:            true,
+			Status:          readyStatus,
 		}.Build(),
 	}
 	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
@@ -416,7 +430,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					initialReplicas: 3,
 					targetReplicas:  3,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 1},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -434,12 +448,31 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					initialReplicas: 3,
 					targetReplicas:  2,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 1},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
 				targetReplicas:  2,
+			},
+		},
+		{
+			name: "downscale not possible from 3 to 2 (would violate maxUnavailable)",
+			args: args{
+				ctx: downscaleContext{
+					observedState: observer.State{
+					},
+				},
+				downscale: ssetDownscale{
+					initialReplicas: 3,
+					targetReplicas:  2,
+				},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 0},
+				allLeavingNodes: []string{"node-1", "node-2"},
+			},
+			want: ssetDownscale{
+				initialReplicas: 3,
+				targetReplicas:  3,
 			},
 		},
 		{
@@ -454,7 +487,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  2,
 				},
 				// a master node has already been removed
-				state:           &downscaleState{masterRemovalInProgress: true, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: 1},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -475,7 +508,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  1,
 				},
 				// invariants limits us to one master node downscale only
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 1},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -496,13 +529,36 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  0,
 				},
 				// only one master is running
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 1},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: 1},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
 				statefulSet:     ssetMaster3Replicas,
 				initialReplicas: 1,
 				targetReplicas:  1,
+			},
+		},
+		{
+			name: "downscale not possible: data migration not ready",
+			args: args{
+				ctx: downscaleContext{
+					shardLister: migration.NewFakeShardLister(esclient.Shards{}),
+					observedState: observer.State{
+					},
+					reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
+				},
+				downscale: ssetDownscale{
+					statefulSet:     ssetMaster3Replicas,
+					initialReplicas: 3,
+					targetReplicas:  1,
+				},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 1},
+				allLeavingNodes: []string{"node-1", "node-2"},
+			},
+			want: ssetDownscale{
+				statefulSet:     ssetMaster3Replicas,
+				initialReplicas: 3,
+				targetReplicas:  2,
 			},
 		},
 	}
@@ -534,7 +590,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 0,
 				targetReplicas:  0,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 0},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "should-be-removed", Version: "7.1.0", Replicas: 0, Master: true, Data: true}.Build(),
 				sset.TestSset{Name: "should-stay", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
@@ -550,7 +606,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  3,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 1},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -565,7 +621,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  4,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 1},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -580,12 +636,27 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  2,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 1},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 			expectedStatefulSets: []appsv1.StatefulSet{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
+			},
+		},
+		{
+			name: "try perform 3 -> 2 downscale, but stay at 3 due to maxUnavailable",
+			downscale: ssetDownscale{
+				statefulSet:     sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
+				initialReplicas: 3,
+				targetReplicas:  2,
+			},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 0},
+			statefulSets: sset.StatefulSetList{
+				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
+			},
+			expectedStatefulSets: []appsv1.StatefulSet{
+				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
 		},
 	}

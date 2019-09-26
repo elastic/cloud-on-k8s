@@ -152,6 +152,19 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 	})
 }
 
+func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
+	return b.WithNodeSpec(estype.NodeSpec{
+		Name:      name,
+		NodeCount: int32(count),
+		Config: &commonv1alpha1.Config{
+			Data: map[string]interface{}{
+				estype.NodeMaster: "false",
+			},
+		},
+		PodTemplate: ESPodTemplate(resources),
+	})
+}
+
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSpec(estype.NodeSpec{
 		Name:      "masterdata",
@@ -247,6 +260,14 @@ func (b Builder) WithAdditionalConfig(nodeSpecCfg map[string]map[string]interfac
 		}
 	}
 	b.Elasticsearch.Spec.Nodes = newNodes
+	return b
+}
+
+func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int) Builder {
+	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = &estype.ChangeBudget{
+		MaxSurge:       maxSurge,
+		MaxUnavailable: maxUnavailable,
+	}
 	return b
 }
 

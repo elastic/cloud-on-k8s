@@ -22,7 +22,7 @@ const (
 // checkDownscaleInvariants returns true if the given state state allows downscaling the given StatefulSet.
 // If not, it also returns the reason why.
 func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulSet) (bool, string) {
-	if state.toRemove < 1 {
+	if state.removalsAllowed < 1 {
 		return false, RespectMaxUnavailableInvariant
 	}
 
@@ -44,8 +44,8 @@ type downscaleState struct {
 	masterRemovalInProgress bool
 	// runningMasters indicates how many masters are currently running in the cluster.
 	runningMasters int
-	// toRemove indicates how many nodes can be removed to adhere to maxUnavailable setting
-	toRemove int
+	// removalsAllowed indicates how many nodes can be removed to adhere to maxUnavailable setting
+	removalsAllowed int
 }
 
 // newDownscaleState creates a new downscaleState.
@@ -63,16 +63,21 @@ func newDownscaleState(c k8s.Client, es v1beta1.Elasticsearch) (*downscaleState,
 		desiredNodes += int(nodeSpec.NodeCount)
 	}
 
-	minAvailable := desiredNodes - es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
-	toRemove := len(nodesReady) - minAvailable
-	if toRemove < 0 {
-		toRemove = 0
+	maxUnavailable := 1
+	if es.Spec.UpdateStrategy.ChangeBudget != nil {
+		maxUnavailable = es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
+	}
+
+	minAvailable := desiredNodes - maxUnavailable
+	removalsAllowed := len(nodesReady) - minAvailable
+	if removalsAllowed < 0 {
+		removalsAllowed = 0
 	}
 
 	return &downscaleState{
 		masterRemovalInProgress: false,
 		runningMasters:          len(mastersReady),
-		toRemove:                toRemove,
+		removalsAllowed:         removalsAllowed,
 	}, nil
 }
 
@@ -84,5 +89,5 @@ func (s *downscaleState) recordOneRemoval(statefulSet appsv1.StatefulSet) {
 		s.runningMasters--
 	}
 
-	s.toRemove--
+	s.removalsAllowed--
 }

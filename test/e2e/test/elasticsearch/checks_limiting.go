@@ -71,3 +71,55 @@ func (mc *MasterChangeBudgetCheck) Verify(maxRateOfChange int) error {
 	}
 	return nil
 }
+
+type ChangeBudgetCheck struct {
+	Observations []int
+	Errors       []error
+	stopChan     chan struct{}
+	es           v1alpha1.Elasticsearch
+	client       k8s.Client
+}
+
+func NewChangeBudgetCheck(es v1alpha1.Elasticsearch, client k8s.Client) *ChangeBudgetCheck {
+	return &ChangeBudgetCheck{
+		es:       es,
+		client:   client,
+		stopChan: make(chan struct{}),
+	}
+}
+
+func (c *ChangeBudgetCheck) Start() {
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-c.stopChan:
+				return
+			case <-ticker.C:
+				pods, err := sset.GetActualPodsForCluster(c.client, c.es)
+				if err != nil {
+					c.Errors = append(c.Errors, err)
+					continue
+				}
+				c.Observations = append(c.Observations, len(pods))
+				continue
+			}
+		}
+	}()
+}
+
+func (c *ChangeBudgetCheck) Stop() {
+	c.stopChan <- struct{}{}
+}
+
+func (c *ChangeBudgetCheck) Verify(allowedMin, allowedMax int) error {
+	for _, v := range c.Observations {
+		if v < allowedMin {
+			return fmt.Errorf("pod count %d when allowed min was %d", v, allowedMin)
+		}
+		if v > allowedMax {
+			return fmt.Errorf("pod count %d when allowed max was %d", v, allowedMax)
+		}
+	}
+	return nil
+}

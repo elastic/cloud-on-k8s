@@ -30,6 +30,18 @@ func bootstrappedES() *v1beta1.Elasticsearch {
 	}
 }
 
+func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable int) *v1beta1.Elasticsearch {
+	es := bootstrappedES()
+	es.Spec.UpdateStrategy = v1beta1.UpdateStrategy{
+		ChangeBudget: &v1beta1.ChangeBudget{
+			MaxSurge:       maxSurge,
+			MaxUnavailable: maxUnavailable,
+		},
+	}
+
+	return es
+}
+
 func notBootstrappedES() *v1beta1.Elasticsearch {
 	return &v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
