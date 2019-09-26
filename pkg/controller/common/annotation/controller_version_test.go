@@ -90,7 +90,7 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es, svc))
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
+	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
 	assert.False(t, compat)
 
@@ -126,13 +126,13 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 	// client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es, svc))
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
+	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
 	assert.True(t, compat)
 
 	// check version annotation was added
 	require.NotNil(t, es.Annotations)
-	assert.Equal(t, "0.9.0-SNAPSHOT", es.Annotations[ControllerVersionAnnotation])
+	assert.Equal(t, MinCompatibleControllerVersion, es.Annotations[ControllerVersionAnnotation])
 }
 
 //
@@ -142,17 +142,17 @@ func TestSameAnnotation(t *testing.T) {
 			Namespace: "ns",
 			Name:      "es",
 			Annotations: map[string]string{
-				ControllerVersionAnnotation: "0.9.0-SNAPSHOT",
+				ControllerVersionAnnotation: MinCompatibleControllerVersion,
 			},
 		},
 	}
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
+	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
 	assert.True(t, compat)
-	assert.Equal(t, "0.9.0-SNAPSHOT", es.Annotations[ControllerVersionAnnotation])
+	assert.Equal(t, MinCompatibleControllerVersion, es.Annotations[ControllerVersionAnnotation])
 }
 
 func TestIncompatibleAnnotation(t *testing.T) {
@@ -168,7 +168,7 @@ func TestIncompatibleAnnotation(t *testing.T) {
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
+	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
 	assert.False(t, compat)
 	// check we did not update the annotation
@@ -188,7 +188,7 @@ func TestNewerAnnotation(t *testing.T) {
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
 	selector := getElasticsearchSelector(es)
-	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
+	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	assert.NoError(t, err)
 	assert.True(t, compat)
 }
