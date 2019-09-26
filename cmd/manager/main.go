@@ -269,33 +269,37 @@ func execute() {
 		},
 	}
 
-	if err = apmserver.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "ApmServer")
-		os.Exit(1)
+	if operator.HasRole(operator.NamespaceOperator, roles) {
+		if err = apmserver.Add(mgr, params); err != nil {
+			log.Error(err, "unable to create controller", "controller", "ApmServer")
+			os.Exit(1)
+		}
+		if err = elasticsearch.Add(mgr, params); err != nil {
+			log.Error(err, "unable to create controller", "controller", "Elasticsearch")
+			os.Exit(1)
+		}
+		if err = kibana.Add(mgr, params); err != nil {
+			log.Error(err, "unable to create controller", "controller", "Kibana")
+			os.Exit(1)
+		}
+		if err = asesassn.Add(mgr, params); err != nil {
+			log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
+			os.Exit(1)
+		}
+		if err = kbassn.Add(mgr, params); err != nil {
+			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+			os.Exit(1)
+		}
 	}
-	if err = elasticsearch.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "Elasticsearch")
-		os.Exit(1)
-	}
-	if err = kibana.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "Kibana")
-		os.Exit(1)
-	}
-	if err = asesassn.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
-		os.Exit(1)
-	}
-	if err = kbassn.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
-		os.Exit(1)
-	}
-	if err = license.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "License")
-		os.Exit(1)
-	}
-	if err = licensetrial.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "LicenseTrial")
-		os.Exit(1)
+	if operator.HasRole(operator.GlobalOperator, roles) {
+		if err = license.Add(mgr, params); err != nil {
+			log.Error(err, "unable to create controller", "controller", "License")
+			os.Exit(1)
+		}
+		if err = licensetrial.Add(mgr, params); err != nil {
+			log.Error(err, "unable to create controller", "controller", "LicenseTrial")
+			os.Exit(1)
+		}
 	}
 
 	// TODO (sabo): re-enable when webhooks are usable
