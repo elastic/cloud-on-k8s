@@ -7,6 +7,7 @@ package elasticsearch
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
 			Test: func(t *testing.T) {
 				var err error
-				continuousHealthChecks, err = NewContinuousHealthCheck(b.Elasticsearch, k)
+				continuousHealthChecks, err = NewContinuousHealthCheck(b, k)
 				require.NoError(t, err)
 				continuousHealthChecks.Start()
 			},
@@ -97,6 +98,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		})
 }
 
+func IsMutationFromV6Cluster(b Builder) bool {
+	return b.MutatedFrom != nil && strings.HasPrefix(b.MutatedFrom.Elasticsearch.Spec.Version, "6.")
+}
+
 // ContinuousHealthCheckFailure represents an health check failure
 type ContinuousHealthCheckFailure struct {
 	err       error
@@ -106,6 +111,7 @@ type ContinuousHealthCheckFailure struct {
 // ContinuousHealthCheck continuously runs health checks against Elasticsearch
 // during the whole mutation process
 type ContinuousHealthCheck struct {
+	b            Builder
 	SuccessCount int
 	FailureCount int
 	Failures     []ContinuousHealthCheckFailure
@@ -114,12 +120,13 @@ type ContinuousHealthCheck struct {
 }
 
 // NewContinuousHealthCheck sets up a ContinuousHealthCheck struct
-func NewContinuousHealthCheck(es estype.Elasticsearch, k *test.K8sClient) (*ContinuousHealthCheck, error) {
-	esClient, err := NewElasticsearchClient(es, k)
+func NewContinuousHealthCheck(b Builder, k *test.K8sClient) (*ContinuousHealthCheck, error) {
+	esClient, err := NewElasticsearchClient(b.Elasticsearch, k)
 	if err != nil {
 		return nil, err
 	}
 	return &ContinuousHealthCheck{
+		b:        b,
 		stopChan: make(chan struct{}),
 		esClient: esClient,
 	}, nil
@@ -147,8 +154,13 @@ func (hc *ContinuousHealthCheck) Start() {
 				defer cancel()
 				health, err := hc.esClient.GetClusterHealth(ctx)
 				if err != nil {
-					// TODO: Temporarily account only red clusters, see https://github.com/elastic/cloud-on-k8s/issues/614
-					// hc.AppendErr(err)
+					if IsMutationFromV6Cluster(hc.b) {
+						// we expect rolling upgrades of v6.x clusters to loose availability
+						// when the master node gets removed, ignore any error here
+						continue
+					}
+					// could not retrieve cluster health
+					hc.AppendErr(err)
 					continue
 				}
 				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {
