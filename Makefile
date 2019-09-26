@@ -359,7 +359,7 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: lint generate check-local-changes unit_xml integration_xml e2e-compile docker-build
+ci: lint check-license-header generate check-local-changes unit_xml integration_xml e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
 ci-e2e: run-deployer install-crds apply-psp e2e
