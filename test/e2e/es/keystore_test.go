@@ -73,7 +73,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		WithSteps(test.CheckTestSteps(b, k)).
 		WithSteps(test.StepList{
 			// initial secure settings should be there in all nodes keystore
-			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
+			elasticsearch.CheckESKeystoreEntries(k, b, []string{
 				securePasswordSettingKey,
 				secureBarUserSettingKey}),
 
@@ -90,13 +90,10 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				},
 			},
 			// keystore should be updated accordingly
-			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
+			elasticsearch.CheckESKeystoreEntries(k, b, []string{
 				securePasswordSettingKey,
 				secureBazUserSettingKey,
 			}),
-			// wait for the rolling upgrade to be fully over
-			elasticsearch.CheckESPodsReady(b, k),
-			elasticsearch.CheckClusterHealth(b, k),
 			// remove one secret
 			test.Step{
 				Name: "Remove one of the source secrets",
@@ -104,12 +101,10 @@ func TestUpdateESSecureSettings(t *testing.T) {
 					require.NoError(t, k.Client.Delete(&secureSettings2))
 				},
 			},
-			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
+			// keystore should be updated accordingly
+			elasticsearch.CheckESKeystoreEntries(k, b, []string{
 				securePasswordSettingKey,
 			}),
-			// wait for the rolling upgrade to be fully over
-			elasticsearch.CheckESPodsReady(b, k),
-			elasticsearch.CheckClusterHealth(b, k),
 			// remove the secure settings reference
 			test.Step{
 				Name: "Remove secure settings from the spec",
@@ -126,10 +121,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, nil),
-			// wait for the rolling upgrade to be fully over
-			elasticsearch.CheckESPodsReady(b, k),
-			elasticsearch.CheckClusterHealth(b, k),
+			elasticsearch.CheckESKeystoreEntries(k, b, nil),
 
 			// cleanup extra resources
 			test.Step{
