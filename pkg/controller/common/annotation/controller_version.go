@@ -16,8 +16,8 @@ import (
 
 // ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource
 const (
-	ControllerVersionAnnotation = "common.k8s.elastic.co/controller-version"
-	MinCompatibleControllerVersion = "0.10.0-SNAPSHOT"
+	ControllerVersionAnnotation       = "common.k8s.elastic.co/controller-version"
+	MinCompatibleControllerVersion    = "0.10.0-SNAPSHOT"
 	LastIncompatibleControllerVersion = "0.8.0-UNKNOWN"
 )
 
