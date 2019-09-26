@@ -126,7 +126,6 @@ func parsePodAddr(addr string, clientSet *kubernetes.Clientset) (*types.Namespac
 		}
 		// podname.subdomain.ns
 		return &types.NamespacedName{Namespace: parts[2], Name: parts[0]}, nil
-
 	}
 	return nil, fmt.Errorf("unsupported pod address format: %s", host)
 }

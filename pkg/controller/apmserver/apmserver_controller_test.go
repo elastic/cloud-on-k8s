@@ -179,11 +179,9 @@ func expectedDeploymentParams() testParams {
 		},
 		Replicas: 0,
 	}
-
 }
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
-
 	s := scheme.Scheme
 	if err := apmv1alpha1.SchemeBuilder.AddToScheme(s); err != nil {
 		t.Error(err)

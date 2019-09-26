@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -62,7 +62,6 @@ func (p Params) CheckNilValues() error {
 		return errors.New("Expected must not be nil")
 	}
 	return nil
-
 }
 
 // ReconcileResource is a generic reconciliation function for resources that need to

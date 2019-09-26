@@ -182,7 +182,6 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, httpCertsVolume.Volume())
 		kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
 		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, httpCertsVolume.VolumeMount())
-
 	}
 
 	// get config secret to add its content to the config checksum

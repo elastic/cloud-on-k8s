@@ -44,7 +44,6 @@ func fakeEsClient(healthRespErr, infoRespErr, licenseRespErr bool) client.Client
 			if licenseRespErr {
 				statusCode = 500
 			}
-
 		}
 
 		return &http.Response{

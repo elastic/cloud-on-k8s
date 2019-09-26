@@ -66,7 +66,6 @@ func TestNewUserSecrets(t *testing.T) {
 		sort.Strings(keys)
 		assert.EqualValues(t, tt.expectedKeys, keys)
 	}
-
 }
 
 func TestNewElasticUsersSecret(t *testing.T) {

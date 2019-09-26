@@ -12,6 +12,7 @@ linters:
     - funlen
     - gochecknoglobals
     - gochecknoinits
+    - godox
     - interfacer
     - lll
     - scopelint
@@ -23,7 +24,9 @@ issues:
     - linters:
         - golint
       text: 'name .* stutters'
-
+    - linters:
+        - stylecheck
+      text: 'ST1016: methods on the same type should have the same receiver name.*"in".*'
     - path: (^test/.*\.go|.*_test\.go)
       linters:
         - goconst

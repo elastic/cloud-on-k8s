@@ -46,7 +46,6 @@ func TestTelemetry(t *testing.T) {
 	}
 
 	test.Sequence(nil, stepsFn, esBuilder, kbBuilder)
-
 }
 
 // ClusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats

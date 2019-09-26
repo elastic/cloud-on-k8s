@@ -71,7 +71,6 @@ func TestAnnotationCreated(t *testing.T) {
 // TestMissingAnnotationOldVersion tests that we skip reconciling an object missing annotations that has already been reconciled by
 // a previous operator version, and add an annotation indicating an old controller version
 func TestMissingAnnotationOldVersion(t *testing.T) {
-
 	es := &v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",

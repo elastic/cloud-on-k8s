@@ -28,7 +28,6 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
 					require.NoError(t, err)
-
 				}
 			},
 		},
@@ -47,7 +46,6 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 						}
 					}
 					return errors.Wrap(err, "expected 404 not found API error here")
-
 				}
 				return nil
 			}),

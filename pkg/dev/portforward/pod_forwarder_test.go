@@ -12,17 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/stretchr/testify/assert"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 )
-
-func init() {
-	logf.SetLogger(logf.ZapLogger(true))
-}
 
 type capturingDialer struct {
 	addresses []string

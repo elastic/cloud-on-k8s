@@ -121,7 +121,6 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector map[
 // checkExistingResources returns a bool indicating if there are existing resources created for a given resource.
 // The labels provided must exactly match.
 func checkExistingResources(client k8s.Client, obj runtime.Object, labels map[string]string) (bool, error) {
-
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
 	if err != nil {
@@ -138,5 +137,4 @@ func checkExistingResources(client k8s.Client, obj runtime.Object, labels map[st
 	}
 	// if we listed any services successfully, then we know this cluster was reconciled by an old version since any objects reconciled by a 0.9.0+ operator would have a label
 	return len(svcs.Items) != 0, nil
-
 }

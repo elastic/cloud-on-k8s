@@ -142,7 +142,6 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					Namespace: "other-ns",
 					Name:      esUserName,
 				}, &corev1.Secret{}))
-
 			},
 			wantErr: false,
 		},

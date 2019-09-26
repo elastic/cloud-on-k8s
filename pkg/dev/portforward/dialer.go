@@ -62,7 +62,6 @@ type Forwarder interface {
 // initIfRequired initializes the dialer once if required.
 func (d *ForwardingDialer) initIfRequired() {
 	d.initOnce.Do(func() {
-
 		restConfig, err := config.GetConfig()
 		if err != nil {
 			panic(err)

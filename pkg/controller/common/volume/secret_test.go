@@ -12,7 +12,6 @@ import (
 )
 
 func TestSecretVolumeItemProjection(t *testing.T) {
-
 	testVolume := NewSelectiveSecretVolumeWithMountPath("secret", "secrets", "/mnt", []string{"foo"})
 	tests := []struct {
 		volume   SecretVolume

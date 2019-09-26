@@ -270,5 +270,4 @@ func Test_upscaleStateBuilder_InitOnce(t *testing.T) {
 	s, err = b.InitOnce(k8s.WrapClient(fake.NewFakeClient()), *bootstrappedES(), &fakeESState{})
 	require.NoError(t, err)
 	require.Equal(t, &upscaleState{isBootstrapped: true, allowMasterCreation: true}, s)
-
 }

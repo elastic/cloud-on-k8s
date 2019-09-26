@@ -57,7 +57,6 @@ func nodeIsMigratingData(nodeName string, shards client.Shards, exclusions map[s
 		}
 	}
 	return false
-
 }
 
 // IsMigratingData looks only at the presence of shards on a given node

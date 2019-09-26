@@ -19,7 +19,6 @@ import (
 )
 
 func buildVolumes(esName string, nodeSpec v1alpha1.NodeSpec, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
-
 	configVolume := settings.ConfigSecretVolume(name.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(esName), esvolume.ProbeUserVolumeName,

@@ -17,7 +17,6 @@ var AddToManagerFuncs = make(map[string][]func(manager.Manager, operator.Paramet
 func Register(role string, add func(manager.Manager, operator.Parameters) error) {
 	fns := AddToManagerFuncs[role]
 	AddToManagerFuncs[role] = append(fns, add)
-
 }
 
 // AddToManager adds all Controllers to the Manager

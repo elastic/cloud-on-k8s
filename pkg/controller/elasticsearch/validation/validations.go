@@ -50,7 +50,6 @@ func supportedVersion(ctx Context) validation.Result {
 		}
 	}
 	return validation.Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
-
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.

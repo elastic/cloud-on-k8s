@@ -63,7 +63,6 @@ func TestUpdateESSecureSettings(t *testing.T) {
 					// and create a fresh one
 					err := k.Client.Create(&s)
 					require.NoError(t, err)
-
 				}
 			},
 		}).

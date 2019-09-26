@@ -73,5 +73,4 @@ func (r *ReconcileApmServer) ReconcileDeployment(expected appsv1.Deployment, own
 		},
 	})
 	return *reconciled, err
-
 }

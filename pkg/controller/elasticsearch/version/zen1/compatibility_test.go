@@ -55,7 +55,6 @@ func createMasterPodsWithVersion(ssetName, version string, replicas int32) []run
 }
 
 func TestIsCompatibleWithZen1(t *testing.T) {
-
 	tests := []struct {
 		name string
 		sset appsv1.StatefulSet

@@ -159,7 +159,6 @@ echo "Keystore initialization successful."
 				assert.Equal(t, resources.InitContainer.SecurityContext, tt.wantContainers.SecurityContext)
 				assert.Equal(t, resources.Version, tt.wantVersion)
 			}
-
 		})
 	}
 }

@@ -16,8 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
@@ -33,7 +34,7 @@ var Config *rest.Config
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M, crdPath string) {
 	_ = controllerscheme.SetupScheme()
-	logf.SetLogger(logf.ZapLogger(true))
+	logf.SetLogger(crzap.Logger(true))
 	t := &envtest.Environment{
 		CRDDirectoryPaths:        []string{crdPath},
 		ControlPlaneStartTimeout: ControlPlaneStartTimeout,

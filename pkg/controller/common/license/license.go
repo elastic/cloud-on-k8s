@@ -4,7 +4,7 @@
 
 package license
 
-import logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+import logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 var log = logf.Log.WithName("license")
 

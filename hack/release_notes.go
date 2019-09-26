@@ -210,7 +210,6 @@ func extractRelatedIssues(issue *Issue) error {
 			return err
 		}
 		issues[issueNum] = struct{}{}
-
 	}
 	for rel := range issues {
 		issue.RelatedIssues = append(issue.RelatedIssues, rel)
@@ -264,7 +263,6 @@ func main() {
 		Groups:      groupedIssues,
 		GroupOrder:  order,
 	}, os.Stdout)
-
 }
 
 func usage(labels []string) {

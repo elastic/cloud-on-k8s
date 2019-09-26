@@ -16,7 +16,6 @@ import (
 )
 
 func TestElasticsearchHealth_Less(t *testing.T) {
-
 	tests := []struct {
 		inputs []ElasticsearchHealth
 		sorted bool

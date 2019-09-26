@@ -202,7 +202,6 @@ func NewElasticUsersCredentialsAndRoles(
 	users []common.User,
 	roles map[string]client.Role,
 ) (*HashedCredentials, error) {
-
 	// sort to avoid unnecessary diffs and API resource updates
 	sort.SliceStable(users, func(i, j int) bool {
 		return users[i].Id() < users[j].Id()

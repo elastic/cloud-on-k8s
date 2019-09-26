@@ -330,7 +330,6 @@ func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOptio
 		apmlabels.ApmServerNameLabelName: apmName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
-
 }
 
 func EventListOptions(namespace, name string) []k8sclient.ListOption {

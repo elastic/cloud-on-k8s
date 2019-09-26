@@ -76,7 +76,6 @@ func ReconcileUsers(
 	scheme *runtime.Scheme,
 	es v1alpha1.Elasticsearch,
 ) (*InternalUsers, error) {
-
 	nsn := k8s.ExtractNamespacedName(&es)
 	internalSecrets := NewInternalUserCredentials(nsn)
 	if err := ReconcileUserCredentialsSecret(c, scheme, es, internalSecrets); err != nil {

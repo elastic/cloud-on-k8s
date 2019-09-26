@@ -172,7 +172,6 @@ func TestMutationAndReversal(t *testing.T) {
 		})
 	mutation.MutatedFrom = &b
 	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, b})
-
 }
 
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {

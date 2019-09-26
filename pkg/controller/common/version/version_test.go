@@ -158,7 +158,6 @@ func TestVersion_IsSameOrAfter(t *testing.T) {
 }
 
 func TestMin(t *testing.T) {
-
 	tests := []struct {
 		name string
 		args []Version

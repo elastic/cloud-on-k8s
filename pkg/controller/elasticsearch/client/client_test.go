@@ -27,7 +27,6 @@ import (
 )
 
 func TestParseShards(t *testing.T) {
-
 	tests := []struct {
 		name string
 		args string
@@ -63,13 +62,10 @@ func TestParseShards(t *testing.T) {
 		for i := range shards {
 			assert.EqualValues(t, tt.want[i], shards[i])
 		}
-
 	}
-
 }
 
 func TestShardsByNode(t *testing.T) {
-
 	tests := []struct {
 		name string
 		args string
@@ -99,9 +95,7 @@ func TestShardsByNode(t *testing.T) {
 			assert.True(t, ok)
 			assert.EqualValues(t, expected, shards)
 		}
-
 	}
-
 }
 
 func errorResponses(statusCodes []int) RoundTripFunc {
@@ -116,7 +110,6 @@ func errorResponses(statusCodes []int) RoundTripFunc {
 			Request:    req,
 		}
 	}
-
 }
 
 func requestAssertion(test func(req *http.Request)) RoundTripFunc {
@@ -151,7 +144,6 @@ func TestClientErrorHandling(t *testing.T) {
 			assert.Error(t, err, fmt.Sprintf("%s should return an error for anything not 2xx", name))
 		}
 	}
-
 }
 
 func TestClientUsesJsonContentType(t *testing.T) {
@@ -166,7 +158,6 @@ func TestClientUsesJsonContentType(t *testing.T) {
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
-
 	type expected struct {
 		user        UserAuth
 		authPresent bool
@@ -208,9 +199,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 		_, err := testClient.GetClusterInfo(context.Background())
 		assert.NoError(t, err)
 		assert.NoError(t, testClient.ExcludeFromShardAllocation(context.Background(), ""))
-
 	}
-
 }
 
 func TestClient_request(t *testing.T) {
@@ -463,7 +452,6 @@ func TestClient_UpdateLicense(t *testing.T) {
 		assert.Equal(t, true, got.Acknowledged)
 		assert.Equal(t, "valid", got.LicenseStatus)
 	}
-
 }
 
 func TestClient_GetLicense(t *testing.T) {

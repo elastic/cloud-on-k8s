@@ -43,7 +43,6 @@ func (w wrong) DeepCopyObject() runtime.Object {
 var _ runtime.Object = wrong{}
 
 func TestReconcileResource(t *testing.T) {
-
 	type args struct {
 		Expected         runtime.Object
 		Reconciled       runtime.Object
@@ -260,7 +259,6 @@ func TestReconcileResource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			client := k8s.WrapClient(fake.NewFakeClient(tt.initialObjects...))
 			args := tt.args()
 			p := Params{

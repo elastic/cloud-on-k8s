@@ -33,7 +33,6 @@ defaults:
 				// a PVC with that name already exists, skip.
 				continue defaults
 			}
-
 		}
 		if _, isNonPVCVolume := nonPVCvolumes[defaultPVC.Name]; isNonPVCVolume {
 			// the corresponding volume is not a PVC

@@ -93,5 +93,4 @@ func tlsSettings(as *v1alpha1.ApmServer) map[string]interface{} {
 		APMServerSSLCertificate: path.Join(http.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		APMServerSSLKey:         path.Join(http.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
-
 }

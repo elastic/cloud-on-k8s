@@ -210,8 +210,6 @@ func TestValidate(t *testing.T) {
 				}
 				assert.True(t, found, "wanted %v, but not found", errStr)
 			}
-
 		})
-
 	}
 }
