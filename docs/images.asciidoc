@@ -1,20 +1,20 @@
 [id="{p}-custom-images"]
 == Creating custom images
 
-It is possible to create your own custom Elasticsearch (or Kibana, etc.) image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to install them via init container each time a pod starts. For example, if you want to create an Elasticsearch 7.3.2 image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you could create a `Dockerfile` containing
+It is possible to create your own custom Elasticsearch (or Kibana, etc.) image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to link:k8s-init-containers-plugin-downloads.html[install them via init container] each time a pod starts. Note that you must use the official image as the base for it to function properly. For example, if you want to create an Elasticsearch 7.3.2 image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you could create a `Dockerfile` containing:
 
 ----
 FROM docker.elastic.co/elasticsearch/elasticsearch:7.3.2
 RUN bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
-Build the image with
+Build the image with:
 
 ----
 docker build --tag elasticsearch-gcs:7.3.2 .
 ----
 
-There are various hosting options for your images. If you use Google Kubernetes Engine, it is automatically configured to use the Google Container Registry (see https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#google-kubernetes-engine[here] for more information). To use the image, you could then https://cloud.google.com/container-registry/docs/pushing-and-pulling#pushing_an_image_to_a_registry[push to the registry] with
+There are various hosting options for your images. If you use Google Kubernetes Engine, it is automatically configured to use the Google Container Registry (see https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#google-kubernetes-engine[here] for more information). To use the image, you could then https://cloud.google.com/container-registry/docs/pushing-and-pulling#pushing_an_image_to_a_registry[push to the registry] with:
 
 ----
 docker tag elasticsearch-gcs:7.3.2 gcr.io/$PROJECT-ID/elasticsearch-gcs:7.3.2
