@@ -10,9 +10,9 @@ The operator exposes several configuration options. Unless otherwise noted, they
 
 |log-verbosity |int |0 |Verbosity level of logs. -2=Error, -1=Warn, 0=Info, >0=Debug
 |enable-debug-logs |bool |false |Enables debug logs. Equivalent to `log-verbosity=1`
-|metrics-port |int |0 |Port to use for exposing metrics in the Prometheus format. Set 0 to disable
-|operator-roles |[]string |all |Roles this operator should assume. Valid values are namespace, global, webhook or all
-|namespace |string |`""` |Namespace in which this operator should manage resources. Defaults to all namespaces
+|metrics-port |int |8080 |Port to use for exposing metrics in the Prometheus format. Set 0 to disable
+|operator-roles |[]string |all |Roles this operator should assume. Valid values are namespace, global, webhook or all. Accepts multiple comma separated values. See <<{p}-ns-config>> for more information
+|namespace |string |`""` |Namespace in which this operator should manage resources. Defaults to all namespaces. See <<{p}-ns-config>> for more information
 |ca-cert-validity |duration (string) |1y |Duration representing how long before a newly created CA cert expires
 |ca-cert-rotate-before |duration (string) |1d |Duration representing how long before expiration CA certificates should be reissued
 |cert-validity |duration (string) |1y |Duration representing how long before a newly created TLS certificate expires
@@ -47,7 +47,7 @@ and change the following lines from:
       - --enable-debug-logs=false
 ----
 
-to
+to:
 
 [source,yaml]
 ----
@@ -59,3 +59,10 @@ to
       - all
       - --enable-debug-logs=true
 ----
+
+[id="{p}-ns-config"]
+=== Namespace and role configuration
+
+The `operator-roles` and `namespace` flags have some intricacies that are worth discussing. A fully functioning operator will *require* both `global` and `namespace` roles running in the cluster (though potentially in different operator deployments). That is to say, with `--operator-roles=global,namespace` (or `--operator-roles=all`). If you want to limit the operator to a single namespace, you must set the `namespace` flag as well. For example `--operator-roles=global,namespace --namespace=my-namespace`. To have it listen on the entire cluster, you can simply omit the `namespace` flag.
+
+The global role acts across namespaces and is not related to a specific deployment of the Elastic stack. The global operator deployed cluster-wide is responsible for high-level cross-cluster features (currently, enterprise licenses).
