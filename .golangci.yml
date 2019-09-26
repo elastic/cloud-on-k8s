@@ -1,5 +1,6 @@
 run:
   deadline: 300s
+  modules-download-mode: readonly
   skip-dirs:
     - config
     - hack/licence\-detector

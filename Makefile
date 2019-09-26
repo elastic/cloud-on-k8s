@@ -134,7 +134,7 @@ integration_xml: clean generate
 	gotestsum --junitfile integration-tests.xml --raw-command cat integration-tests.json
 
 lint:
-	golangci-lint run
+	golangci-lint run --print-resources-usage --verbose
 
 #############################
 ##  --       Run       --  ##
