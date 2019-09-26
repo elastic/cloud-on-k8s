@@ -94,7 +94,7 @@ type ApmServer struct {
 
 	Spec      ApmServerSpec                   `json:"spec,omitempty"`
 	Status    ApmServerStatus                 `json:"status,omitempty"`
-	assocConf *commonv1alpha1.AssociationConf `json:"-"`
+	assocConf *commonv1alpha1.AssociationConf `json:"-"` //nolint:govet
 }
 
 // +kubebuilder:object:root=true
