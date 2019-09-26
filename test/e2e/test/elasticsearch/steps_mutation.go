@@ -50,9 +50,15 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		},
 		test.Step{
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
+			Skip: func() bool {
+				// Don't monitor cluster health if we're doing a rolling upgrade of a one node cluster.
+				// The cluster will become unavailable at some point, then its health will be red
+				// after the upgrade while shards are initializing.
+				return IsOneNodeRollingUpgrade(b)
+			},
 			Test: func(t *testing.T) {
 				var err error
-				continuousHealthChecks, err = NewContinuousHealthCheck(b.Elasticsearch, k)
+				continuousHealthChecks, err = NewContinuousHealthCheck(b, k)
 				require.NoError(t, err)
 				continuousHealthChecks.Start()
 			},
@@ -80,6 +86,9 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			},
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
+				Skip: func() bool {
+					return IsOneNodeRollingUpgrade(b)
+				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
 					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
@@ -95,6 +104,21 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				}),
 			},
 		})
+}
+
+func IsOneNodeRollingUpgrade(b Builder) bool {
+	if b.MutatedFrom == nil {
+		return false
+	}
+	initial := b.MutatedFrom.Elasticsearch
+	mutated := b.Elasticsearch
+	// consider we're in the 1-node rolling upgrade scenario if we mutate
+	// from one node to one node with the same name
+	if len(initial.Spec.Nodes) == 1 && len(mutated.Spec.Nodes) == 1 &&
+		initial.Spec.Nodes[0].Name == mutated.Spec.Nodes[0].Name {
+		return true
+	}
+	return false
 }
 
 // ContinuousHealthCheckFailure represents an health check failure
@@ -114,8 +138,8 @@ type ContinuousHealthCheck struct {
 }
 
 // NewContinuousHealthCheck sets up a ContinuousHealthCheck struct
-func NewContinuousHealthCheck(es estype.Elasticsearch, k *test.K8sClient) (*ContinuousHealthCheck, error) {
-	esClient, err := NewElasticsearchClient(es, k)
+func NewContinuousHealthCheck(b Builder, k *test.K8sClient) (*ContinuousHealthCheck, error) {
+	esClient, err := NewElasticsearchClient(b.Elasticsearch, k)
 	if err != nil {
 		return nil, err
 	}
