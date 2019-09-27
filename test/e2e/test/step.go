@@ -15,6 +15,7 @@ import (
 type Step struct {
 	Name string
 	Test func(t *testing.T)
+	Skip func() bool // returns true if the test should be skipped
 }
 
 // StepList defines a list of Step
@@ -33,6 +34,10 @@ func (l StepList) WithStep(testStep Step) StepList {
 // RunSequential runs the StepList sequentially, and fails fast on first error.
 func (l StepList) RunSequential(t *testing.T) {
 	for _, ts := range l {
+		if ts.Skip != nil && ts.Skip() {
+			log.Info("Skipping test", "name", ts.Name)
+			continue
+		}
 		if !t.Run(ts.Name, ts.Test) {
 			logf.Log.Error(errors.New("test failure"), "stopping early")
 			t.FailNow()
