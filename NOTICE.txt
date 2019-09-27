@@ -1868,10 +1868,10 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/testify
-Version : v1.3.0
-Time    : 2019-01-03 19:31:39 +0000 UTC
+Version : v1.4.0
+Time    : 2019-07-12 00:01:36 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.4.0/LICENSE:
 
 MIT License
 
