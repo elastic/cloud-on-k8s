@@ -35,6 +35,7 @@ func (l StepList) WithStep(testStep Step) StepList {
 func (l StepList) RunSequential(t *testing.T) {
 	for _, ts := range l {
 		if ts.Skip != nil && ts.Skip() {
+			log.Info("Skipping test", "name", ts.Name)
 			continue
 		}
 		if !t.Run(ts.Name, ts.Test) {
