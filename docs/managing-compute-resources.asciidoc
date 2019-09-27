@@ -4,12 +4,14 @@
 In order to help the Kubernetes scheduler make better decisions about how to place pods in available nodes and ensure quality of service (QoS), it is recommended to specify the CPU and memory requirements for objects managed by the operator (Elasticsearch, Kibana or APM Server). In Kubernetes parlance, `requests` defines the minimum amount of resources that must be available for a pod to start and `limits` defines the maximum amount of resources that a pod is allowed to consume. For more information about how Kubernetes uses these hints, see: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers].
 
 [float]
-[id="{p}-custom-resources"]
-=== Set custom resources
+[id="{p}-compute-resources"]
+=== Set compute resources
 
-Resource limits can be set in the `podTemplate` of objects managed by the operator.
+Compute resource constraints can be set in the `podTemplate` of objects managed by the operator.
 
-==== Elasticsearch
+[float]
+[id="{p}-compute-resources-elasticsearch"]
+==== Set compute resources for Elasticsearch
 
 For Elasticsearch objects, it is important to consider the heap size when setting resource requirements. The recommendation for heap size is that it should be half the size of RAM allocated to the pod. To minimize disruption caused by pod evictions due to resource contention, it is highly recommended to run Elasticsearch pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to appropriate values. It is also worth bearing in mind that Kubernetes throttles containers exceeding the CPU limit defined in the `limits` section. Do not set this value too low or it would affect the performance of Elasticsearch even if you have enough resources available in the Kubernetes cluster.
 
@@ -34,7 +36,10 @@ spec:
               cpu: 2
 ----
 
-==== Kibana and APM Server
+
+[float]
+[id="{p}-compute-resources-kibana-and-apm"]
+==== Set compute resources for Kibana and APM Server
 
 For Kibana or APM Server objects, the `podTemplate` can be configured as follows:
 
@@ -60,7 +65,7 @@ spec:
 [id="{p}-default-behavior"]
 === Default behavior
 
-If `resources` is not defined in the specification of an object, then the operator applies a default memory limit to ensure that pods have enough resources to start correctly. As the operator cannot make assumptions about the available CPU resources in the cluster, no CPU limits will be set -- resulting in the pods having the "Burstable" QoS class. You should consider whether this is acceptable for your use case and follow the instructions in the <<{p}-custom-resources>> section to configure apropriate limits.
+If `resources` is not defined in the specification of an object, then the operator applies a default memory limit to ensure that pods have enough resources to start correctly. As the operator cannot make assumptions about the available CPU resources in the cluster, no CPU limits will be set -- resulting in the pods having the "Burstable" QoS class. You should consider whether this is acceptable for your use case and follow the instructions in the <<{p}-compute-resources>> section to configure appropriate limits.
 
 .Defaults
 [cols="h,m,m", options="header"]
