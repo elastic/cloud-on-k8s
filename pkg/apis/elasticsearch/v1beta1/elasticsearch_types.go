@@ -196,7 +196,6 @@ const (
 )
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
-// ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
 	commonv1beta1.ReconcilerStatus `json:",inline"`
 	Health                         ElasticsearchHealth             `json:"health,omitempty"`
