@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -29,6 +30,15 @@ const (
 	DataVolumePath   = ApmBaseDir + "/data"
 	ConfigVolumePath = ApmBaseDir + "/config"
 )
+
+var DefaultResources = corev1.ResourceRequirements{
+	Requests: map[corev1.ResourceName]resource.Quantity{
+		corev1.ResourceMemory: resource.MustParse("512Mi"),
+	},
+	Limits: map[corev1.ResourceName]resource.Quantity{
+		corev1.ResourceMemory: resource.MustParse("512Mi"),
+	},
+}
 
 func readinessProbe(tls bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
@@ -99,6 +109,7 @@ func newPodSpec(as *v1beta1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 
 	builder := defaults.NewPodTemplateBuilder(
 		p.PodTemplate, v1beta1.APMServerContainerName).
+		WithResources(DefaultResources).
 		WithDockerImage(p.CustomImageName, imageWithVersion(defaultImageRepositoryAndName, p.Version)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).

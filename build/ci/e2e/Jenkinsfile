@@ -21,6 +21,16 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Run Checks') {
+            when {
+                expression {
+                    notOnlyDocs()
+                }
+            }
+            steps {
+                sh 'make -C build/ci TARGET=ci-check ci'
+            }
+        }
         stage("E2E tests") {
             when {
                 expression {

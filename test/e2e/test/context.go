@@ -13,7 +13,7 @@ import (
 
 	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/go-logr/logr"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const defaultElasticStackVersion = "7.2.0"

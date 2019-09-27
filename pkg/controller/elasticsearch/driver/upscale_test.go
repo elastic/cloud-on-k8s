@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -44,6 +45,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 		observedState:       observer.State{},
 		esState:             nil,
 		upscaleStateBuilder: &upscaleStateBuilder{},
+		expectations:        expectations.NewExpectations(),
 	}
 	expectedResources := nodespec.ResourcesList{
 		{
@@ -124,6 +126,8 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
 	require.Equal(t, updatedStatefulSets[1], sset2)
+	// expectations should have been set
+	require.NotEmpty(t, ctx.expectations.GetGenerations())
 
 	// apply a spec change
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}

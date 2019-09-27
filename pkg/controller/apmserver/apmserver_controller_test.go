@@ -173,6 +173,7 @@ func expectedDeploymentParams() testParams {
 							},
 						},
 					},
+					Resources: DefaultResources,
 				}},
 				AutomountServiceAccountToken: &false,
 			},

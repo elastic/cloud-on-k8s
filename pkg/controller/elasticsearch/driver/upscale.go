@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -26,6 +27,7 @@ type upscaleCtx struct {
 	observedState       observer.State
 	esState             ESState
 	upscaleStateBuilder *upscaleStateBuilder
+	expectations        *expectations.Expectations
 }
 
 // HandleUpscaleAndSpecChanges reconciles expected NodeSpec resources.
@@ -55,7 +57,7 @@ func HandleUpscaleAndSpecChanges(
 		if _, err := common.ReconcileService(ctx.k8sClient, ctx.scheme, &res.HeadlessService, &ctx.es); err != nil {
 			return nil, err
 		}
-		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.scheme, ctx.es, res.StatefulSet)
+		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.scheme, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
 			return nil, err
 		}

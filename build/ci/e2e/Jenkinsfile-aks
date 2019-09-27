@@ -20,6 +20,11 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Run Checks') {
+            steps {
+                sh 'make -C build/ci TARGET=ci-check ci'
+            }
+        }
         stage("Run E2E tests") {
             steps {
                 sh """
@@ -41,7 +46,7 @@ EOF
                     make -C build/ci TARGET=ci-e2e ci
                 """
             }
-        }  
+        }
     }
 
     post {

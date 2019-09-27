@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -311,6 +312,7 @@ func expectedDeploymentParams() *DeploymentParams {
 							},
 						},
 					},
+					Resources: pod.DefaultResources,
 				}},
 				AutomountServiceAccountToken: &false,
 			},

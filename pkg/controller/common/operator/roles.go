@@ -4,7 +4,11 @@
 
 package operator
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+)
 
 // Roles that an operator can assume
 const (
@@ -38,4 +42,8 @@ func ValidateRoles(roles []string) error {
 		return fmt.Errorf("invalid roles %v", invalid)
 	}
 	return nil
+}
+
+func HasRole(role string, roles []string) bool {
+	return stringsutil.StringInSlice(All, roles) || stringsutil.StringInSlice(role, roles)
 }
