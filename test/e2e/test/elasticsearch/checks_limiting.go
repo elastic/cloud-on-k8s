@@ -106,7 +106,7 @@ func (c *ChangeBudgetCheck) Start() {
 				podsReady := reconcile.AvailableElasticsearchNodes(pods)
 
 				c.PodCounts = append(c.PodCounts, len(pods))
-				c.ReadyPodCounts = append(c.PodCounts, len(podsReady))
+				c.ReadyPodCounts = append(c.ReadyPodCounts, len(podsReady))
 			}
 		}
 	}()

@@ -180,7 +180,7 @@ func TestMutationWithChangeBudget(t *testing.T) {
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(5, "data1", elasticsearch.DefaultResources)
 
-	// add a second master sset
+	// rename data set from data1 to data2, add change budget
 	mutated := b.WithNoESTopology().
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(5, "data2", elasticsearch.DefaultResources).

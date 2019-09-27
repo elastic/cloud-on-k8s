@@ -79,11 +79,7 @@ func adjustResources(
 ) (nodespec.ResourcesList, error) {
 	adjustedResources := make(nodespec.ResourcesList, 0, len(expectedResources))
 	for _, nodeSpecRes := range expectedResources {
-		adjustedSset, err := adjustStatefulSetReplicas(upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
-		if err != nil {
-			return nil, err
-		}
-		nodeSpecRes.StatefulSet = adjustedSset
+		nodeSpecRes.StatefulSet = adjustStatefulSetReplicas(upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
 		adjustedResources = append(adjustedResources, nodeSpecRes)
 	}
 	// adapt resources configuration to match adjusted replicas
@@ -111,16 +107,16 @@ func adjustStatefulSetReplicas(
 	upscaleState upscaleState,
 	actualStatefulSets sset.StatefulSetList,
 	expected appsv1.StatefulSet,
-) (appsv1.StatefulSet, error) {
+) appsv1.StatefulSet {
 	actual, alreadyExists := actualStatefulSets.GetByName(expected.Name)
 	if alreadyExists && sset.GetReplicas(expected) < sset.GetReplicas(actual) {
 		// This is a downscale.
 		// We still want to update the sset spec to the newest one, but leave scaling down as it's done later.
 		nodespec.UpdateReplicas(&expected, actual.Spec.Replicas)
-		return expected, nil
+		return expected
 	}
 
-	return upscaleState.limitNodesCreation(actual, expected), nil
+	return upscaleState.limitNodesCreation(actual, expected)
 }
 
 // isReplicaIncrease returns true if expected replicas are higher than actual replicas.

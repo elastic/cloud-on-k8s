@@ -142,6 +142,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 			}
 			// match each actual node to an expected node
 			for nodeID, node := range nodes.Nodes {
+				// check if node present is coming from the expected stateful set based on its name
 				found := false
 				for _, spec := range es.Spec.Nodes {
 					if strings.Contains(node.Name, spec.Name) {
