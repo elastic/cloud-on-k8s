@@ -7,7 +7,7 @@ package zen2
 import (
 	"context"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"

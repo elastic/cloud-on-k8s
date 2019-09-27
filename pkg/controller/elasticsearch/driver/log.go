@@ -7,7 +7,7 @@ package driver
 import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var log = logf.Log.WithName("driver")
