@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -49,29 +50,34 @@ func TestReconcileStatefulSet(t *testing.T) {
 	updatedSset.Labels[hash.TemplateHashLabelName] = "updated"
 
 	tests := []struct {
-		name     string
-		c        k8s.Client
-		expected v1.StatefulSet
+		name                    string
+		c                       k8s.Client
+		expected                v1.StatefulSet
+		wantExpectationsUpdated bool
 	}{
 		{
-			name:     "create new sset",
-			c:        k8s.WrapClient(fake.NewFakeClient()),
-			expected: ssetSample,
+			name:                    "create new sset",
+			c:                       k8s.WrapClient(fake.NewFakeClient()),
+			expected:                ssetSample,
+			wantExpectationsUpdated: false,
 		},
 		{
-			name:     "no update on existing sset",
-			c:        k8s.WrapClient(fake.NewFakeClient(&ssetSample)),
-			expected: ssetSample,
+			name:                    "no update on existing sset",
+			c:                       k8s.WrapClient(fake.NewFakeClient(&ssetSample)),
+			expected:                ssetSample,
+			wantExpectationsUpdated: false,
 		},
 		{
-			name:     "update on sset with different template hash",
-			c:        k8s.WrapClient(fake.NewFakeClient(&ssetSample)),
-			expected: updatedSset,
+			name:                    "update on sset with different template hash",
+			c:                       k8s.WrapClient(fake.NewFakeClient(&ssetSample)),
+			expected:                updatedSset,
+			wantExpectationsUpdated: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			returned, err := ReconcileStatefulSet(tt.c, scheme.Scheme, es, tt.expected)
+			exp := expectations.NewExpectations()
+			returned, err := ReconcileStatefulSet(tt.c, scheme.Scheme, es, tt.expected, exp)
 			require.NoError(t, err)
 
 			// expect owner ref to be set to the es resource
@@ -79,6 +85,9 @@ func TestReconcileStatefulSet(t *testing.T) {
 			require.NoError(t, err)
 			err = controllerutil.SetControllerReference(&es, metaObj, scheme.Scheme)
 			require.NoError(t, err)
+
+			// check expectations were updated
+			require.Equal(t, tt.wantExpectationsUpdated, len(exp.GetGenerations()) != 0)
 
 			// returned sset should match the expected one
 			require.Equal(t, tt.expected, returned)

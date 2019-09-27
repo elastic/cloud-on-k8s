@@ -63,6 +63,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		observedState:       observedState,
 		esState:             esState,
 		upscaleStateBuilder: &upscaleStateBuilder{},
+		expectations:        d.Expectations,
 	}
 	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
