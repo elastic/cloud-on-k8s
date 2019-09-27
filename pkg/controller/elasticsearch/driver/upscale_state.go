@@ -53,20 +53,16 @@ func newUpscaleState(
 	}
 
 	// calculate how many replicas can we create according to desired state and maxSurge
+	var createsAllowed int32 = math.MaxInt32
 	if ctx.es.Spec.UpdateStrategy.ChangeBudget != nil {
-		state.createsAllowed = int32(ctx.es.Spec.UpdateStrategy.ChangeBudget.MaxSurge)
-		for _, nodeSpecRes := range expectedResources {
-			state.createsAllowed += sset.GetReplicas(nodeSpecRes.StatefulSet)
+		createsAllowed = int32(ctx.es.Spec.UpdateStrategy.ChangeBudget.MaxSurge)
+		createsAllowed += expectedResources.StatefulSets().ExpectedNodeCount()
+		createsAllowed -= actualStatefulSets.ExpectedNodeCount()
+		if createsAllowed < 0 {
+			createsAllowed = 0
 		}
-		for _, nodeSpecRes := range actualStatefulSets {
-			state.createsAllowed -= sset.GetReplicas(nodeSpecRes)
-		}
-		if state.createsAllowed < 0 {
-			state.createsAllowed = 0
-		}
-	} else {
-		state.createsAllowed = math.MaxInt32
 	}
+	state.createsAllowed = createsAllowed
 
 	return state, nil
 }
@@ -155,7 +151,7 @@ func (s *upscaleState) limitNodesCreation(
 		)
 	} else {
 		ssetLogger(toApply).Info(
-			"Limiting nodes creation",
+			"Limiting nodes creation to respect MaxSurge setting",
 			"target", targetReplicas,
 			"actual", actualReplicas,
 		)

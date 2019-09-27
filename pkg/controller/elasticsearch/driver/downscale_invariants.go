@@ -56,18 +56,14 @@ func newDownscaleState(c k8s.Client, es v1beta1.Elasticsearch) (*downscaleState,
 		return nil, err
 	}
 	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
-
 	nodesReady := reconcile.AvailableElasticsearchNodes(actualPods)
-	desiredNodes := 0
-	for _, nodeSpec := range es.Spec.Nodes {
-		desiredNodes += int(nodeSpec.NodeCount)
-	}
 
 	maxUnavailable := 1
 	if es.Spec.UpdateStrategy.ChangeBudget != nil {
 		maxUnavailable = es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
 	}
 
+	desiredNodes := int(es.Spec.NodeCount())
 	minAvailable := desiredNodes - maxUnavailable
 	removalsAllowed := len(nodesReady) - minAvailable
 	if removalsAllowed < 0 {
