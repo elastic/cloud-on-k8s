@@ -17,15 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
-
-func init() {
-	logf.SetLogger(crzap.New(func(o *crzap.Options) {
-		o.Development = true
-	}))
-}
 
 type capturingDialer struct {
 	addresses []string
