@@ -9,7 +9,32 @@ In order to help the Kubernetes scheduler make better decisions about how to pla
 
 Resource limits can be set in the `podTemplate` of objects managed by the operator.
 
-For Elasticsearch objects, it is important to consider the heap size when setting resource requirements. An example can be found in the <<{p}-jvm-heap-size>> page.
+==== Elasticsearch
+
+For Elasticsearch objects, it is important to consider the heap size when setting resource requirements. The recommendation for heap size is that it should be half the size of RAM allocated to the pod. To minimize disruption caused by pod evictions due to resource contention, it is highly recommended to run Elasticsearch pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to appropriate values. It is also worth bearing in mind that Kubernetes throttles containers exceeding the CPU limit defined in the `limits` section. Do not set this value too low or it would affect the performance of Elasticsearch even if you have enough resources available in the Kubernetes cluster.
+
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: -Xms2g -Xmx2g
+          resources:
+            requests:
+              memory: 4Gi
+              cpu: 0.5
+            limits:
+              memory: 4Gi
+              cpu: 2
+----
+
+==== Kibana and APM Server
 
 For Kibana or APM Server objects, the `podTemplate` can be configured as follows:
 
@@ -23,7 +48,7 @@ spec:
         resources:
           requests:
             memory: 1Gi
-            cpu: 1
+            cpu: 0.5
           limits:
             memory: 2Gi
             cpu: 2
@@ -35,5 +60,53 @@ spec:
 [id="{p}-default-behavior"]
 === Default behavior
 
-If `resources` is not defined in the specification of an object, then no `requests` or `limits` will be applied to the containers except in the case of Elasticsearch.
-For Elasticsearch, if no memory request is set in the `podTemplate` spec, the operator applies a default memory request as described in the <<{p}-jvm-heap-size>> section. If your Kubernetes cluster is configured to enforce default resource limits using a `LimitRange` object, it could interfere with the operator default and cause object creation to fail. See <<{p}-jvm-heap-size>> for information on how to address this problem.
+If `resources` is not defined in the specification of an object, then the operator applies a default memory limit to ensure that pods have enough resources to start correctly. As the operator cannot make assumptions about the available CPU resources in the cluster, no CPU limits will be set -- resulting in the pods having the "Burstable" QoS class. You should consider whether this is acceptable for your use case and follow the instructions in the <<{p}-custom-resources>> section to configure apropriate limits.
+
+.Defaults
+[cols="h,m,m", options="header"]
+|===
+|Type | Requests | Limits
+|APM Server |512Mi |512Mi
+|Elasticsearch |2Gi |2Gi
+|Kibana |1Gi |1Gi
+|===
+
+If the Kubernetes cluster is configured with https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/[LimitRanges] that enforce a minimum memory constraint, they could interfere with the operator defaults and cause object creation to fail.
+
+For example, you might have a LimitRange that enforces a default and minimum memory limit on containers as follows:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default-mem-per-container
+spec:
+  limits:
+  - min:
+      memory: "3Gi"
+    defaultRequest:
+      memory: "3Gi"
+    type: Container
+----
+
+With the above restriction in place, if you attempt to create an Elasticsearch object without defining the `resources` section, it will fail to start with an error similar to the following:
+
+...................................
+Cannot create pod elasticsearch-sample-es-ldbgj48c7r: pods "elasticsearch-sample-es-ldbgj48c7r" is forbidden: minimum memory usage per Container is 3Gi, but request is 2Gi
+...................................
+
+This error can be avoided by defining an empty `limits` section in the specification to hint to the operator that it should not apply the default limits to the object:
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            # specify empty limits
+            limits: {}
+----
