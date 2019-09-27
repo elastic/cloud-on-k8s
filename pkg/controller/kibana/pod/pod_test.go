@@ -101,7 +101,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with default resources",
-			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
+			kb: v1beta1.Kibana{Spec: v1beta1.KibanaSpec{
 				Version: "7.1.0",
 			}},
 			keystore: nil,
@@ -111,13 +111,13 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		},
 		{
 			name: "with user-provided resources",
-			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
+			kb: v1beta1.Kibana{Spec: v1beta1.KibanaSpec{
 				Version: "7.1.0",
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Name: v1alpha1.KibanaContainerName,
+								Name: v1beta1.KibanaContainerName,
 								Resources: corev1.ResourceRequirements{
 									Limits: map[corev1.ResourceName]resource.Quantity{
 										corev1.ResourceMemory: resource.MustParse("3Gi"),
