@@ -39,10 +39,20 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        createConfig()
-                        sh 'make -C build/ci TARGET=ci ci'
-                        junit "unit-tests.xml"
-                        junit "integration-tests.xml"
+                        script {
+                            createConfig()
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
+
+                            createConfig("unit-tests")
+                            sh 'make -C build/ci TARGET=generate-test-xml ci'
+                            junit "unit-tests.xml"
+
+                            createConfig("integration-tests")
+                            sh 'make -C build/ci TARGET=generate-test-xml ci'
+                            junit "integration-tests.xml"
+
+                            sh 'exit $SHELL_EXIT_CODE'
+                        }
                     }
                 }
                 stage("Run smoke E2E tests") {
@@ -51,9 +61,6 @@ pipeline {
                             checkout scm
                             notOnlyDocs()
                         }
-                    }
-                    agent {
-                        label 'linux'
                     }
                     steps {
                         createConfig()
@@ -100,7 +107,7 @@ def notOnlyDocs() {
     ) == 0
 }
 
-void createConfig() {
+void createConfig(def testFileName = null) {
     sh """
         cat >.env <<EOF
 REGISTRY = eu.gcr.io
@@ -110,4 +117,11 @@ SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
 EOF
     """
+    if (testFileName != null) {
+        env.TEST_FILE_NAME = testFileName.toString()
+        sh """
+            echo TEST_OUTPUT_JSON = ${TEST_FILE_NAME}.json >> .env
+            echo TEST_OUTPUT_XML = ${TEST_FILE_NAME}.xml >> .env
+        """
+    }
 }

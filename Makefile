@@ -120,18 +120,19 @@ clean:
 unit: clean
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
-unit_xml: clean
+unit-json: clean
 	go test --json ./pkg/... ./cmd/... -coverprofile cover.out > unit-tests.json
-	gotestsum --junitfile unit-tests.xml --raw-command cat unit-tests.json
 
 integration: GO_TAGS += integration
 integration: clean generate
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
 
-integration_xml: GO_TAGS += integration
-integration_xml: clean generate
+integration-json: GO_TAGS += integration
+integration-json: clean generate
 	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
-	gotestsum --junitfile integration-tests.xml --raw-command cat integration-tests.json
+
+generate-test-xml:
+	gotestsum --junitfile $(TEST_OUTPUT_XML) --raw-command cat $(TEST_OUTPUT_JSON)
 
 lint:
 	golangci-lint run
@@ -359,7 +360,7 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: lint check-license-header generate check-local-changes unit_xml integration_xml e2e-compile docker-build
+ci: lint check-license-header generate check-local-changes unit-json integration-json e2e-compile docker-build
 
 # Run e2e tests in a dedicated cluster.
 ci-e2e: run-deployer install-crds apply-psp e2e
