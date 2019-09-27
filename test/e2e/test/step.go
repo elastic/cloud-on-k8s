@@ -8,7 +8,7 @@ import (
 	"errors"
 	"testing"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Step represents a single test

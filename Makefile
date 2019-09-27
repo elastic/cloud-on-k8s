@@ -86,7 +86,7 @@ PSP ?= 0
 ##  --       Development       --  ##
 #####################################
 
-all: dependencies lint check-license-header unit integration e2e-compile elastic-operator 
+all: dependencies lint check-license-header unit integration e2e-compile elastic-operator
 
 ## -- build
 
@@ -118,17 +118,17 @@ clean:
 ## -- tests
 
 unit: clean
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	go test ./pkg/... ./cmd/... -cover
 
-unit-xml: clean
+unit_xml: clean
 	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/...
 
 integration: GO_TAGS += integration
 integration: clean generate
-	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
+	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover
 
-integration-xml: GO_TAGS += integration
-integration-xml: clean generate
+integration_xml: GO_TAGS += integration
+integration_xml: clean generate
 	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/...
 
 lint:
@@ -356,16 +356,17 @@ e2e-local:
 ##########################################
 ##  --    Continuous integration    --  ##
 ##########################################
+ci-check: check-license-header lint generate check-local-changes
 
-ci: lint check-license-header generate check-local-changes unit-xml integration-xml e2e-compile docker-build
+ci: unit_xml integration_xml docker-build
 
 # Run e2e tests in a dedicated cluster.
-ci-e2e: run-deployer install-crds apply-psp e2e
+ci-e2e: e2e-compile run-deployer install-crds apply-psp e2e
 
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-ci-release: clean generate build-operator-image
+ci-release: clean ci-check build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -96,6 +97,44 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, "my-custom-image:1.0.0", GetKibanaContainer(pod.Spec).Image)
+			},
+		},
+		{
+			name: "with default resources",
+			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
+				Version: "7.1.0",
+			}},
+			keystore: nil,
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Equal(t, DefaultResources, GetKibanaContainer(pod.Spec).Resources)
+			},
+		},
+		{
+			name: "with user-provided resources",
+			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
+				Version: "7.1.0",
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: v1alpha1.KibanaContainerName,
+								Resources: corev1.ResourceRequirements{
+									Limits: map[corev1.ResourceName]resource.Quantity{
+										corev1.ResourceMemory: resource.MustParse("3Gi"),
+									},
+								},
+							},
+						},
+					},
+				},
+			}},
+			keystore: nil,
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Equal(t, corev1.ResourceRequirements{
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("3Gi"),
+					},
+				}, GetKibanaContainer(pod.Spec).Resources)
 			},
 		},
 		{

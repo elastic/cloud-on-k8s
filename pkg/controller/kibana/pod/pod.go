@@ -5,6 +5,8 @@
 package pod
 
 import (
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -26,6 +28,15 @@ const (
 // ports to set in the Kibana container
 var ports = []corev1.ContainerPort{
 	{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
+}
+
+var DefaultResources = corev1.ResourceRequirements{
+	Requests: map[corev1.ResourceName]resource.Quantity{
+		corev1.ResourceMemory: resource.MustParse("1Gi"),
+	},
+	Limits: map[corev1.ResourceName]resource.Quantity{
+		corev1.ResourceMemory: resource.MustParse("1Gi"),
+	},
 }
 
 // readinessProbe is the readiness probe for the Kibana container
@@ -56,6 +67,7 @@ func imageWithVersion(image string, version string) string {
 
 func NewPodTemplateSpec(kb v1alpha1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, v1alpha1.KibanaContainerName).
+		WithResources(DefaultResources).
 		WithLabels(label.NewLabels(kb.Name)).
 		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
