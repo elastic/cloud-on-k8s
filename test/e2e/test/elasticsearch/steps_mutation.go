@@ -101,9 +101,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				Name: "Pod count must not violate change budget",
 				Test: func(t *testing.T) {
 					changeBudgetCheck.Stop()
-					allowedMin := int(b.Elasticsearch.Spec.NodeCount()) - b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
-					allowedMax := int(b.Elasticsearch.Spec.NodeCount()) + b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget.MaxSurge
-					require.NoError(t, changeBudgetCheck.Verify(allowedMin, allowedMax))
+					require.NoError(t, changeBudgetCheck.Verify(b.Elasticsearch.Spec))
 				},
 			},
 			test.Step{

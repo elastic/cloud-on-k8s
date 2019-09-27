@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -73,14 +74,15 @@ func (mc *MasterChangeBudgetCheck) Verify(maxRateOfChange int) error {
 }
 
 type ChangeBudgetCheck struct {
-	Observations []int
-	Errors       []error
-	stopChan     chan struct{}
-	es           v1alpha1.Elasticsearch
-	client       k8s.Client
+	PodCounts      []int
+	ReadyPodCounts []int
+	Errors         []error
+	stopChan       chan struct{}
+	es             v1beta1.Elasticsearch
+	client         k8s.Client
 }
 
-func NewChangeBudgetCheck(es v1alpha1.Elasticsearch, client k8s.Client) *ChangeBudgetCheck {
+func NewChangeBudgetCheck(es v1beta1.Elasticsearch, client k8s.Client) *ChangeBudgetCheck {
 	return &ChangeBudgetCheck{
 		es:       es,
 		client:   client,
@@ -101,8 +103,10 @@ func (c *ChangeBudgetCheck) Start() {
 					c.Errors = append(c.Errors, err)
 					continue
 				}
-				c.Observations = append(c.Observations, len(pods))
-				continue
+				podsReady := reconcile.AvailableElasticsearchNodes(pods)
+
+				c.PodCounts = append(c.PodCounts, len(pods))
+				c.ReadyPodCounts = append(c.PodCounts, len(podsReady))
 			}
 		}
 	}()
@@ -112,13 +116,23 @@ func (c *ChangeBudgetCheck) Stop() {
 	c.stopChan <- struct{}{}
 }
 
-func (c *ChangeBudgetCheck) Verify(allowedMin, allowedMax int) error {
-	for _, v := range c.Observations {
-		if v < allowedMin {
-			return fmt.Errorf("pod count %d when allowed min was %d", v, allowedMin)
-		}
+func (c *ChangeBudgetCheck) Verify(esSpec v1beta1.ElasticsearchSpec) error {
+	desired := int(esSpec.NodeCount())
+	budget := esSpec.UpdateStrategy.ChangeBudget
+	if budget == nil {
+		budget = &v1beta1.ChangeBudget{MaxSurge: math.MaxInt32, MaxUnavailable: 1}
+	}
+	allowedMin := desired - budget.MaxUnavailable
+	allowedMax := desired + budget.MaxSurge
+
+	for _, v := range c.PodCounts {
 		if v > allowedMax {
 			return fmt.Errorf("pod count %d when allowed max was %d", v, allowedMax)
+		}
+	}
+	for _, v := range c.ReadyPodCounts {
+		if v < allowedMin {
+			return fmt.Errorf("ready pod count %d when allowed min was %d", v, allowedMin)
 		}
 	}
 	return nil

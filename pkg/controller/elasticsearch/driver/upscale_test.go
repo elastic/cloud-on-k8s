@@ -39,11 +39,11 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	k8sClient := k8s.WrapClient(fake.NewFakeClient())
 	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	ctx := upscaleCtx{
-		k8sClient:           k8sClient,
-		es:                  es,
-		scheme:              scheme.Scheme,
-		esState:             nil,
-		expectations:        expectations.NewExpectations(),
+		k8sClient:    k8sClient,
+		es:           es,
+		scheme:       scheme.Scheme,
+		esState:      nil,
+		expectations: expectations.NewExpectations(),
 	}
 	expectedResources := nodespec.ResourcesList{
 		{

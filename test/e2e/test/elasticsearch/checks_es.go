@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
@@ -141,9 +142,17 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 			}
 			// match each actual node to an expected node
 			for nodeID, node := range nodes.Nodes {
-				nodeRoles := rolesToConfig(node.Roles)
+				found := false
+				for _, spec := range es.Spec.Nodes {
+					if strings.Contains(node.Name, spec.Name) {
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("none of spec names was found in %s", node.Name)
+				}
 
-				var found bool
+				found = false
 				for k := range nodesStats.Nodes {
 					if k == nodeID {
 						found = true
@@ -153,6 +162,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 					return fmt.Errorf("%s was not in %+v", nodeID, nodesStats.Nodes)
 				}
 
+				nodeRoles := rolesToConfig(node.Roles)
 				nodeStats := nodesStats.Nodes[nodeID]
 				for i, topoElem := range expectedTopology {
 					cfg, err := v1beta1.UnpackConfig(topoElem.Config)
