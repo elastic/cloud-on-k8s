@@ -130,11 +130,12 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			green:     tt.fields.green,
 		}
 		esClient := &fakeESClient{}
+		es := tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable)
 		ctx := rollingUpgradeCtx{
 			client: k8s.WrapClient(
-				fake.NewFakeClient(tt.fields.upgradeTestPods.toPods(nothing)...),
+				fake.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, nothing)...),
 			),
-			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),
+			ES:              es,
 			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 			esClient:        esClient,
 			shardLister:     migration.NewFakeShardLister(client.Shards{}),
@@ -392,7 +393,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		esClient := &fakeESClient{}
 		ctx := rollingUpgradeCtx{
 			client: k8s.WrapClient(
-				fake.NewFakeClient(tt.fields.upgradeTestPods.toPods(tt.fields.podFilter)...),
+				fake.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, tt.fields.podFilter)...),
 			),
 			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),
 			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),

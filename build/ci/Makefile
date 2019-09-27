@@ -19,7 +19,7 @@ VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/githu
 NOT_USED = $(shell test -e ../../deployer-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" ../../deployer-config.yml)
 endif
 
-CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
+CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
 show-image:
 	@ echo $(CI_IMAGE)

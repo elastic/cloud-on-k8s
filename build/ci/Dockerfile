@@ -8,9 +8,6 @@ ENV DOCKER_VERSION=18.03.1-ce
 ENV GOLANGCILINT_VERSION=1.18.0
 ENV GOTESTSUM_VERSION=0.3.5
 
-# Download required golang tools
-RUN go get github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
-
 # Install golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
@@ -59,11 +56,10 @@ RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v$
 
 # Add Go dependencies to Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
-COPY Gopkg.lock .
-COPY Gopkg.toml .
-RUN dep ensure --vendor-only -v && rm -rf vendor/
+COPY ["go.mod", "go.sum", "./"]
+RUN go mod download
 
 # Cleanup
-RUN rm /go/src/github.com/elastic/cloud-on-k8s/Gopkg.lock && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/Gopkg.toml
+RUN rm /go/src/github.com/elastic/cloud-on-k8s/go.mod && \
+    rm /go/src/github.com/elastic/cloud-on-k8s/go.sum
 WORKDIR /

@@ -16,7 +16,7 @@ $ pwd
 
 Run once with your GCLOUD_PROJECT:
 ```
-make dep-vendor-only
+make dependencies
 cd hack/deployer
 go build
 cat > deployer-config.yml << EOF

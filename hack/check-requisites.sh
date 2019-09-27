@@ -23,8 +23,6 @@ function check {
 }
 
 check go
-check goimports
-check dep
 check golangci-lint
 check kubectl
 check kubebuilder
