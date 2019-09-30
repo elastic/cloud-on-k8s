@@ -120,7 +120,7 @@ func (c *ChangeBudgetCheck) Verify(esSpec v1beta1.ElasticsearchSpec) error {
 	desired := int(esSpec.NodeCount())
 	budget := esSpec.UpdateStrategy.ChangeBudget
 	if budget == nil {
-		budget = &v1beta1.ChangeBudget{MaxSurge: math.MaxInt32, MaxUnavailable: 1}
+		budget = &v1beta1.DefaultChangeBudget
 	}
 	allowedMin := desired - budget.MaxUnavailable
 	allowedMax := desired + budget.MaxSurge

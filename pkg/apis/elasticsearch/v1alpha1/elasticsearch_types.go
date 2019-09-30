@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"math"
+
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -109,15 +111,6 @@ type UpdateStrategy struct {
 	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
 }
 
-// ResolveChangeBudget resolves the optional ChangeBudget into the user-provided one or a defaulted one.
-func (s UpdateStrategy) ResolveChangeBudget() ChangeBudget {
-	if s.ChangeBudget != nil {
-		return *s.ChangeBudget
-	}
-
-	return DefaultChangeBudget
-}
-
 // ChangeBudget defines how Pods in a single group should be updated.
 type ChangeBudget struct {
 	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
@@ -152,8 +145,8 @@ type ChangeBudget struct {
 // DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in
 // every case
 var DefaultChangeBudget = ChangeBudget{
-	MaxSurge:       1,
-	MaxUnavailable: 0,
+	MaxSurge:       math.MaxInt32,
+	MaxUnavailable: 1,
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.

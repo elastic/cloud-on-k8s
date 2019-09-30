@@ -7,6 +7,7 @@ package driver
 import (
 	"sort"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -82,7 +83,7 @@ func (ctx *rollingUpgradeCtx) getAllowedDeletions() (int, bool) {
 	// Upscale is done, we should have the required number of Pods
 	expectedPods := ctx.statefulSets.PodNames()
 	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
-	maxUnavailable := 1
+	maxUnavailable := v1alpha1.DefaultChangeBudget.MaxUnavailable
 	if ctx.ES.Spec.UpdateStrategy.ChangeBudget != nil {
 		maxUnavailable = ctx.ES.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
 	}

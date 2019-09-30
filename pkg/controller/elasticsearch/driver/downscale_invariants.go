@@ -58,7 +58,7 @@ func newDownscaleState(c k8s.Client, es v1beta1.Elasticsearch) (*downscaleState,
 	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
 	nodesReady := reconcile.AvailableElasticsearchNodes(actualPods)
 
-	maxUnavailable := 1
+	maxUnavailable := v1alpha1.DefaultChangeBudget.MaxUnavailable
 	if es.Spec.UpdateStrategy.ChangeBudget != nil {
 		maxUnavailable = es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
 	}
@@ -80,7 +80,6 @@ func newDownscaleState(c k8s.Client, es v1beta1.Elasticsearch) (*downscaleState,
 // recordOneRemoval updates the state to consider a 1-replica downscale of the given statefulSet.
 func (s *downscaleState) recordOneRemoval(statefulSet appsv1.StatefulSet) {
 	if label.IsMasterNodeSet(statefulSet) {
-		// only care about master nodes here
 		s.masterRemovalInProgress = true
 		s.runningMasters--
 	}
