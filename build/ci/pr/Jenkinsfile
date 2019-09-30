@@ -53,10 +53,15 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        createConfig()
-                        sh 'make -C build/ci TARGET=ci ci'
-                        junit "unit-tests.xml"
-                        junit "integration-tests.xml"
+                        script {
+                            createConfig()
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
+
+                            junit "unit-tests.xml"
+                            junit "integration-tests.xml"
+
+                            sh 'exit $SHELL_EXIT_CODE'
+                        }
                     }
                 }
                 stage("Run smoke E2E tests") {
@@ -65,9 +70,6 @@ pipeline {
                             checkout scm
                             notOnlyDocs()
                         }
-                    }
-                    agent {
-                        label 'linux'
                     }
                     steps {
                         createConfig()
