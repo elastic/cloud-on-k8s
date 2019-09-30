@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -28,7 +29,9 @@ import (
 
 var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint
 
-type testParams = DeploymentParams
+type testParams struct {
+	deployment.Params
+}
 
 func (tp testParams) withConfigChecksum(checksum string) testParams {
 	tp.PodTemplateSpec.Labels["apm.k8s.elastic.co/config-file-checksum"] = checksum
@@ -78,113 +81,113 @@ func (tp testParams) withInitContainer() testParams {
 
 func expectedDeploymentParams() testParams {
 	false := false
-	return DeploymentParams{
-		Name:      "test-apm-server-apm-server",
-		Namespace: "",
-		Selector:  map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
-		Labels:    map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
-		PodTemplateSpec: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					"common.k8s.elastic.co/type":              "apm-server",
-					"apm.k8s.elastic.co/name":                 "test-apm-server",
-					"apm.k8s.elastic.co/config-file-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
-				},
-			},
-			Spec: corev1.PodSpec{
-				Volumes: []corev1.Volume{
-					{
-						Name: "config",
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-apm-config",
-								Optional:   &false,
-							},
-						},
-					},
-					{
-						Name: "config-volume",
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					},
-					{
-						Name: http.HTTPCertificatesSecretVolumeName,
-						VolumeSource: corev1.VolumeSource{
-							Secret: &corev1.SecretVolumeSource{
-								SecretName: certSecretName,
-								Optional:   &false,
-							},
-						},
+	return testParams{
+		deployment.Params{
+			Name:      "test-apm-server-apm-server",
+			Namespace: "",
+			Selector:  map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
+			Labels:    map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
+			PodTemplateSpec: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"common.k8s.elastic.co/type":              "apm-server",
+						"apm.k8s.elastic.co/name":                 "test-apm-server",
+						"apm.k8s.elastic.co/config-file-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
 					},
 				},
-				Containers: []corev1.Container{{
-					VolumeMounts: []corev1.VolumeMount{
+				Spec: corev1.PodSpec{
+					Volumes: []corev1.Volume{
 						{
-							Name:      "config",
-							ReadOnly:  true,
-							MountPath: "/usr/share/apm-server/config/config-secret",
-						},
-						{
-							Name:      "config-volume",
-							ReadOnly:  false,
-							MountPath: "/usr/share/apm-server/config",
-						},
-						{
-							Name:      "elastic-internal-http-certificates",
-							ReadOnly:  true,
-							MountPath: "/mnt/elastic-internal/http-certs",
-						},
-					},
-					Name:  apmv1alpha1.APMServerContainerName,
-					Image: "docker.elastic.co/apm/apm-server:1.0",
-					Command: []string{
-						"apm-server",
-						"run",
-						"-e",
-						"-c",
-						"config/config-secret/apm-server.yml",
-					},
-					Env: append(defaults.PodDownwardEnvVars, corev1.EnvVar{
-						Name: "SECRET_TOKEN",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "test-apm-server-apm-token",
+							Name: "config",
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: "test-apm-config",
+									Optional:   &false,
 								},
-								Key: "secret-token",
 							},
 						},
-					}),
-					Ports: []corev1.ContainerPort{
-						{Name: "http", ContainerPort: int32(8200), Protocol: corev1.ProtocolTCP},
-					},
-					ReadinessProbe: &corev1.Probe{
-						FailureThreshold:    3,
-						InitialDelaySeconds: 10,
-						PeriodSeconds:       10,
-						SuccessThreshold:    1,
-						TimeoutSeconds:      5,
-						Handler: corev1.Handler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Port:   intstr.FromInt(8200),
-								Path:   "/",
-								Scheme: corev1.URISchemeHTTPS,
+						{
+							Name: "config-volume",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						{
+							Name: http.HTTPCertificatesSecretVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								Secret: &corev1.SecretVolumeSource{
+									SecretName: certSecretName,
+									Optional:   &false,
+								},
 							},
 						},
 					},
-					Resources: DefaultResources,
-				}},
-				AutomountServiceAccountToken: &false,
+					Containers: []corev1.Container{{
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "config",
+								ReadOnly:  true,
+								MountPath: "/usr/share/apm-server/config/config-secret",
+							},
+							{
+								Name:      "config-volume",
+								ReadOnly:  false,
+								MountPath: "/usr/share/apm-server/config",
+							},
+							{
+								Name:      "elastic-internal-http-certificates",
+								ReadOnly:  true,
+								MountPath: "/mnt/elastic-internal/http-certs",
+							},
+						},
+						Name:  apmv1alpha1.APMServerContainerName,
+						Image: "docker.elastic.co/apm/apm-server:1.0",
+						Command: []string{
+							"apm-server",
+							"run",
+							"-e",
+							"-c",
+							"config/config-secret/apm-server.yml",
+						},
+						Env: append(defaults.PodDownwardEnvVars, corev1.EnvVar{
+							Name: "SECRET_TOKEN",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "test-apm-server-apm-token",
+									},
+									Key: "secret-token",
+								},
+							},
+						}),
+						Ports: []corev1.ContainerPort{
+							{Name: "http", ContainerPort: int32(8200), Protocol: corev1.ProtocolTCP},
+						},
+						ReadinessProbe: &corev1.Probe{
+							FailureThreshold:    3,
+							InitialDelaySeconds: 10,
+							PeriodSeconds:       10,
+							SuccessThreshold:    1,
+							TimeoutSeconds:      5,
+							Handler: corev1.Handler{
+								HTTPGet: &corev1.HTTPGetAction{
+									Port:   intstr.FromInt(8200),
+									Path:   "/",
+									Scheme: corev1.URISchemeHTTPS,
+								},
+							},
+						},
+						Resources: DefaultResources,
+					}},
+					AutomountServiceAccountToken: &false,
+				},
 			},
+			Replicas: 0,
 		},
-		Replicas: 0,
 	}
-
 }
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
-
 	s := scheme.Scheme
 	if err := apmv1alpha1.SchemeBuilder.AddToScheme(s); err != nil {
 		t.Error(err)
@@ -345,7 +348,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				return
 			}
 			deep.MaxDepth = 15
-			if diff := deep.Equal(got, tt.want); diff != nil {
+			if diff := deep.Equal(got, tt.want.Params); diff != nil {
 				t.Error(diff)
 			}
 		})
