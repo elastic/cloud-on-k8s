@@ -7,7 +7,6 @@ package elasticsearch
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const continuousHealthCheckTimeout = 25 * time.Second
+const (
+	continuousHealthCheckTimeout = 5 * time.Second
+	// clusterUnavailabilityThreshold is the accepted duration for the cluster to temporarily not respond to requests
+	// (eg. during leader elections in the middle of a rolling upgrade)
+	clusterUnavailabilityThreshold = 60 * time.Second
+)
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
@@ -107,10 +111,6 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		})
 }
 
-func IsMutationFromV6Cluster(b Builder) bool {
-	return b.MutatedFrom != nil && strings.HasPrefix(b.MutatedFrom.Elasticsearch.Spec.Version, "6.")
-}
-
 func IsOneDataNodeRollingUpgrade(b Builder) bool {
 	if b.MutatedFrom == nil {
 		return false
@@ -167,6 +167,7 @@ func (hc *ContinuousHealthCheck) AppendErr(err error) {
 
 // Start runs health checks in a goroutine, until stopped
 func (hc *ContinuousHealthCheck) Start() {
+	clusterUnavailability := clusterUnavailability{threshold: clusterUnavailabilityThreshold}
 	go func() {
 		ticker := time.NewTicker(test.DefaultRetryDelay)
 		for {
@@ -178,15 +179,16 @@ func (hc *ContinuousHealthCheck) Start() {
 				defer cancel()
 				health, err := hc.esClient.GetClusterHealth(ctx)
 				if err != nil {
-					if IsMutationFromV6Cluster(hc.b) {
-						// we expect rolling upgrades of v6.x clusters to loose availability
-						// when the master node gets removed, ignore any error here
-						continue
+					// Could not retrieve cluster health, can happen when the master node is killed
+					// during a rolling upgrade. We allow it, unless it lasts for too long.
+					clusterUnavailability.markUnavailable()
+					if clusterUnavailability.hasExceededThreshold() {
+						// cluster has been unavailable for too long
+						hc.AppendErr(err)
 					}
-					// could not retrieve cluster health
-					hc.AppendErr(err)
 					continue
 				}
+				clusterUnavailability.markAvailable()
 				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
 					continue
@@ -200,4 +202,26 @@ func (hc *ContinuousHealthCheck) Start() {
 // Stop the health checks goroutine
 func (hc *ContinuousHealthCheck) Stop() {
 	hc.stopChan <- struct{}{}
+}
+
+type clusterUnavailability struct {
+	start     time.Time
+	threshold time.Duration
+}
+
+func (cu *clusterUnavailability) markUnavailable() {
+	if cu.start.IsZero() {
+		cu.start = time.Now()
+	}
+}
+
+func (cu *clusterUnavailability) markAvailable() {
+	cu.start = time.Time{}
+}
+
+func (cu *clusterUnavailability) hasExceededThreshold() bool {
+	if cu.start.IsZero() {
+		return false
+	}
+	return time.Now().Sub(cu.start) >= cu.threshold
 }
