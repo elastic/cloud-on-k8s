@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_upscaleState_limitMasterNodesCreation(t *testing.T) {
+func Test_upscaleState_limitNodesCreation(t *testing.T) {
 	tests := []struct {
 		name        string
 		state       *upscaleState
@@ -82,6 +82,14 @@ func Test_upscaleState_limitMasterNodesCreation(t *testing.T) {
 			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: 2, recordedCreates: 2},
 		},
 		{
+			name:        "upscale from 3 to 4, but no creates allowed: should limit to 0",
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: 0},
+			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
+			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: true}.Build(),
+			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
+			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: 0, recordedCreates: 0},
+		},
+		{
 			name:        "new StatefulSet with 5 master nodes, cluster isn't bootstrapped yet: should go through",
 			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: 3},
 			actual:      appsv1.StatefulSet{},
@@ -97,24 +105,15 @@ func Test_upscaleState_limitMasterNodesCreation(t *testing.T) {
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 1, Master: true}.Build(),
 			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: 1, recordedCreates: 1},
 		},
-		{
-			name:  "scale up from 3 to 5, nodespec changed to master: should limit to 4 (one new master)",
-			state: &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: 1},
-			// no master on existing StatefulSet
-			actual: sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
-			// turned into masters on newer StatefulSet
-			ssetToApply: sset.TestSset{Name: "sset", Replicas: 5, Master: true}.Build(),
-			wantSset:    sset.TestSset{Name: "sset", Replicas: 4, Master: true}.Build(),
-			wantState:   &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: 1, recordedCreates: 1},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotSset := tt.state.limitNodesCreation(tt.actual, tt.ssetToApply)
+			gotSset, err := tt.state.limitNodesCreation(tt.actual, tt.ssetToApply)
+			require.NoError(t, err)
 			// StatefulSet should be adapted
-			require.Equal(t, gotSset, tt.wantSset)
+			require.Equal(t, tt.wantSset, gotSset)
 			// upscaleState should be mutated accordingly
-			require.Equal(t, tt.state, tt.wantState)
+			require.Equal(t, tt.wantState, tt.state)
 		})
 	}
 }
@@ -256,8 +255,10 @@ func Test_newUpscaleState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newUpscaleState(tt.args.ctx, tt.args.actual, tt.args.expected)
-			require.NoError(t, err)
+			got := newUpscaleState(tt.args.ctx, tt.args.actual, tt.args.expected)
+			require.NoError(t, got.buildOnce())
+			got.ctx = upscaleCtx{}
+			got.once = nil
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("newUpscaleState() got = %v, want %v", got, tt.want)
 			}
@@ -278,7 +279,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 		name           string
 		actual         []int
 		expected       []int
-		maxSurge       int
+		maxSurge       int32
 		createsAllowed int
 	}
 
@@ -304,21 +305,23 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 			want:     &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: int32(args.createsAllowed)},
 		}
 	}
-	defaultTest := getTest(args{name: "5 nodes present, 5 nodes target, n/a maxSurge - maxint32 creates allowed", actual: []int{3}, expected: []int{3}, maxSurge: 0, createsAllowed: math.MaxInt32})
-	defaultTest.ctx.es.Spec.UpdateStrategy = v1alpha1.UpdateStrategy{}
+	defaultTest := getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: 0, createsAllowed: math.MaxInt32, name: "5 nodes present, 5 nodes target, n/a maxSurge - maxint32 creates allowed"})
+	defaultTest.ctx.es.Spec.UpdateStrategy = v1beta1.UpdateStrategy{}
 
 	tests := []test{
-		getTest(args{name: "3 nodes present, 3 nodes target - no creates allowed", actual: []int{3}, expected: []int{3}, maxSurge: 0, createsAllowed: 0}),
-		getTest(args{name: "2 ssets, 6 nodes present, 6 nodes target - no creates allowed", actual: []int{3, 3}, expected: []int{3, 3}, maxSurge: 0, createsAllowed: 0}),
-		getTest(args{name: "2 nodes present, 3 nodes target - 1 create allowed", actual: []int{2}, expected: []int{3}, maxSurge: 0, createsAllowed: 1}),
-		getTest(args{name: "0 nodes present, 5 nodes target, 3 maxSurge - 8 creates allowed", actual: []int{}, expected: []int{5}, maxSurge: 3, createsAllowed: 8}),
-		getTest(args{name: "5 nodes present, 3 nodes target, 3 maxSurge - 1 create allowed", actual: []int{5}, expected: []int{3}, maxSurge: 3, createsAllowed: 1}),
+		getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: 0, createsAllowed: 0, name: "3 nodes present, 3 nodes target - no creates allowed"}),
+		getTest(args{actual: []int{3, 3}, expected: []int{3, 3}, maxSurge: 0, createsAllowed: 0, name: "2 ssets, 6 nodes present, 6 nodes target - no creates allowed"}),
+		getTest(args{actual: []int{2}, expected: []int{3}, maxSurge: 0, createsAllowed: 1, name: "2 nodes present, 3 nodes target - 1 create allowed"}),
+		getTest(args{actual: []int{}, expected: []int{5}, maxSurge: 3, createsAllowed: 8, name: "0 nodes present, 5 nodes target, 3 maxSurge - 8 creates allowed"}),
+		getTest(args{actual: []int{5}, expected: []int{3}, maxSurge: 3, createsAllowed: 1, name: "5 nodes present, 3 nodes target, 3 maxSurge - 1 create allowed"}),
 		defaultTest,
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newUpscaleState(tt.ctx, tt.actual, tt.expected)
-			require.NoError(t, err)
+			got := newUpscaleState(tt.ctx, tt.actual, tt.expected)
+			require.NoError(t, got.buildOnce())
+			got.ctx = upscaleCtx{}
+			got.once = nil
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("newUpscaleState() got = %v, want %v", got, tt.want)
 			}
@@ -328,25 +331,25 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 
 func Test_calculateCreatesAllowed(t *testing.T) {
 	type args struct {
-		name         string
-		changeBudget *v1alpha1.ChangeBudget
-		actual       int32
-		expected     int32
-		want         int32
+		name     string
+		maxSurge *int32
+		actual   int32
+		expected int32
+		want     int32
 	}
-
 	tests := []args{
-		{name: "nil budget, 5->5, want max", changeBudget: nil, actual: 5, expected: 5, want: math.MaxInt32},
-		{name: "max budget, 1->2, want max", changeBudget: &v1alpha1.ChangeBudget{MaxSurge: math.MaxInt32}, actual: 1, expected: 3, want: math.MaxInt32},
-		{name: "max-1 budget, 1->2, want max", changeBudget: &v1alpha1.ChangeBudget{MaxSurge: math.MaxInt32 - 1}, actual: 1, expected: 3, want: math.MaxInt32},
-		{name: "0 budget, 5->5, want 0", changeBudget: &v1alpha1.ChangeBudget{MaxSurge: 0}, actual: 5, expected: 5, want: 0},
-		{name: "1 budget, 5->5, want 1", changeBudget: &v1alpha1.ChangeBudget{MaxSurge: 1}, actual: 5, expected: 5, want: 1},
-		{name: "2 budget, 5->5, want 2", changeBudget: &v1alpha1.ChangeBudget{MaxSurge: 2}, actual: 5, expected: 5, want: 2},
-		{name: "2 budget, 3->5, want 4", changeBudget: &v1alpha1.ChangeBudget{MaxSurge: 2}, actual: 3, expected: 5, want: 4},
+		{name: "nil budget, 5->5, want max", maxSurge: nil, actual: 5, expected: 5, want: math.MaxInt32},
+		{name: "max budget, 1->2, want max", maxSurge: common.Int32(math.MaxInt32), actual: 1, expected: 3, want: math.MaxInt32},
+		{name: "max-1 budget, 1->2, want max", maxSurge: common.Int32(math.MaxInt32 - 1), actual: 1, expected: 3, want: math.MaxInt32},
+		{name: "0 budget, 5->5, want 0", maxSurge: common.Int32(0), actual: 5, expected: 5, want: 0},
+		{name: "1 budget, 5->5, want 1", maxSurge: common.Int32(1), actual: 5, expected: 5, want: 1},
+		{name: "2 budget, 5->5, want 2", maxSurge: common.Int32(2), actual: 5, expected: 5, want: 2},
+		{name: "2 budget, 3->5, want 4", maxSurge: common.Int32(2), actual: 3, expected: 5, want: 4},
+		{name: "6 budget, 10->5, want 4", maxSurge: common.Int32(6), actual: 10, expected: 5, want: 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := calculateCreatesAllowed(tt.changeBudget, tt.actual, tt.expected)
+			got := calculateCreatesAllowed(tt.maxSurge, tt.actual, tt.expected)
 			if got != tt.want {
 				t.Errorf("calculateCreatesAllowed() got = %d, want %d", got, tt.want)
 			}

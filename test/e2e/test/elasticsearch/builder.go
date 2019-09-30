@@ -6,8 +6,8 @@ package elasticsearch
 
 import (
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
@@ -156,7 +156,7 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 	return b.WithNodeSpec(estype.NodeSpec{
 		Name:      name,
 		NodeCount: int32(count),
-		Config: &commonv1alpha1.Config{
+		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
 				estype.NodeMaster: "false",
 			},
@@ -263,10 +263,10 @@ func (b Builder) WithAdditionalConfig(nodeSpecCfg map[string]map[string]interfac
 	return b
 }
 
-func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int) Builder {
-	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = &estype.ChangeBudget{
-		MaxSurge:       maxSurge,
-		MaxUnavailable: maxUnavailable,
+func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
+	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = estype.ChangeBudget{
+		MaxSurge:       common.Int32(maxSurge),
+		MaxUnavailable: common.Int32(maxUnavailable),
 	}
 	return b
 }

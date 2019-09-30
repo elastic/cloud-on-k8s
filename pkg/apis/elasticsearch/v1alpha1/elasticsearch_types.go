@@ -8,6 +8,7 @@ import (
 	"math"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -108,14 +109,11 @@ func (n NodeSpec) GetESContainerTemplate() *corev1.Container {
 // UpdateStrategy specifies how updates to the cluster should be performed.
 type UpdateStrategy struct {
 	// ChangeBudget is the change budget that should be used when performing mutations to the cluster.
-	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
+	ChangeBudget ChangeBudget `json:"changeBudget,omitempty"`
 }
 
 // ChangeBudget defines how Pods in a single group should be updated.
 type ChangeBudget struct {
-	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
-	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
-
 	// MaxUnavailable is the maximum number of pods that can be unavailable during the update.
 	// Value can be an absolute number (ex: 5) or a percentage of total pods at the start of update (ex: 10%).
 	// Absolute number is calculated from percentage by rounding down.
@@ -126,7 +124,7 @@ type ChangeBudget struct {
 	// can be scaled down further, followed by scaling up the group, ensuring
 	// that at least 70% of the target number of pods are available at all times
 	// during the update.
-	MaxUnavailable int `json:"maxUnavailable"`
+	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
 
 	// MaxSurge is the maximum number of pods that can be scheduled above the original number of
 	// pods.
@@ -139,14 +137,14 @@ type ChangeBudget struct {
 	// immediately when the rolling update starts. Once old pods have been killed,
 	// new group can be scaled up further, ensuring that total number of pods running
 	// at any time during the update is at most 130% of the target number of pods.
-	MaxSurge int `json:"maxSurge"`
+	MaxSurge *int32 `json:"maxSurge,omitempty"`
 }
 
 // DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in
 // every case
 var DefaultChangeBudget = ChangeBudget{
-	MaxSurge:       math.MaxInt32,
-	MaxUnavailable: 1,
+	MaxSurge:       common.Int32(math.MaxInt32),
+	MaxUnavailable: common.Int32(1),
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.

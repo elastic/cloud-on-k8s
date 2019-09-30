@@ -22,7 +22,7 @@ import (
 
 type upscaleCtx struct {
 	k8sClient     k8s.Client
-	es            v1alpha1.Elasticsearch
+	es            v1beta1.Elasticsearch
 	scheme        *runtime.Scheme
 	observedState observer.State
 	esState       ESState
@@ -44,12 +44,7 @@ func HandleUpscaleAndSpecChanges(
 	expectedResources nodespec.ResourcesList,
 ) (sset.StatefulSetList, error) {
 	// adjust expected replicas to control nodes creation and deletion
-	upscaleState, err := newUpscaleState(ctx, actualStatefulSets, expectedResources)
-	if err != nil {
-		return nil, err
-	}
-
-	adjusted, err := adjustResources(ctx, *upscaleState, actualStatefulSets, expectedResources)
+	adjusted, err := adjustResources(ctx, actualStatefulSets, expectedResources)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +68,17 @@ func HandleUpscaleAndSpecChanges(
 
 func adjustResources(
 	ctx upscaleCtx,
-	upscaleState upscaleState,
 	actualStatefulSets sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
 ) (nodespec.ResourcesList, error) {
+	upscaleState := newUpscaleState(ctx, actualStatefulSets, expectedResources)
 	adjustedResources := make(nodespec.ResourcesList, 0, len(expectedResources))
 	for _, nodeSpecRes := range expectedResources {
-		nodeSpecRes.StatefulSet = adjustStatefulSetReplicas(upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
+		adjusted, err := adjustStatefulSetReplicas(*upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
+		if err != nil {
+			return nil, err
+		}
+		nodeSpecRes.StatefulSet = adjusted
 		adjustedResources = append(adjustedResources, nodeSpecRes)
 	}
 	// adapt resources configuration to match adjusted replicas
@@ -107,13 +106,13 @@ func adjustStatefulSetReplicas(
 	upscaleState upscaleState,
 	actualStatefulSets sset.StatefulSetList,
 	expected appsv1.StatefulSet,
-) appsv1.StatefulSet {
+) (appsv1.StatefulSet, error) {
 	actual, alreadyExists := actualStatefulSets.GetByName(expected.Name)
 	if alreadyExists && sset.GetReplicas(expected) < sset.GetReplicas(actual) {
 		// This is a downscale.
 		// We still want to update the sset spec to the newest one, but leave scaling down as it's done later.
 		nodespec.UpdateReplicas(&expected, actual.Spec.Replicas)
-		return expected
+		return expected, nil
 	}
 
 	return upscaleState.limitNodesCreation(actual, expected)

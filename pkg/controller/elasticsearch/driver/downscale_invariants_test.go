@@ -5,9 +5,11 @@
 package driver
 
 import (
+	"math"
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +23,11 @@ import (
 )
 
 func Test_newDownscaleState(t *testing.T) {
-	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "name"}}
+	es := v1beta1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "name"},
+		Spec:       v1beta1.ElasticsearchSpec{Nodes: []v1beta1.NodeSpec{{NodeCount: 4}}},
+	}
+
 	tests := []struct {
 		name             string
 		initialResources []runtime.Object
@@ -30,7 +36,7 @@ func Test_newDownscaleState(t *testing.T) {
 		{
 			name:             "no resources in the apiserver",
 			initialResources: nil,
-			want:             &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: 1},
+			want:             &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: 0},
 		},
 		{
 			name: "3 masters running in the apiserver, 1 not running",
@@ -118,7 +124,7 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 			},
-			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 4},
+			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 0},
 		},
 	}
 	for _, tt := range tests {
@@ -128,6 +134,53 @@ func Test_newDownscaleState(t *testing.T) {
 			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewDownscaleInvariants() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_calculateRemovalsAllowed(t *testing.T) {
+	tests := []struct {
+		name           string
+		nodesReady     int32
+		desiredNodes   int32
+		maxUnavailable *int32
+		want           int32
+	}{
+		{
+			name:           "default should be 1",
+			nodesReady:     5,
+			desiredNodes:   5,
+			maxUnavailable: nil,
+			want:           1,
+		},
+		{
+			name:           "negative should be effectively unbounded",
+			nodesReady:     5,
+			desiredNodes:   5,
+			maxUnavailable: common.Int32(-1),
+			want:           math.MaxInt32,
+		},
+		{
+			name:           "scaling down, at least one node up",
+			nodesReady:     10,
+			desiredNodes:   3,
+			maxUnavailable: common.Int32(2),
+			want:           9,
+		},
+		{
+			name:           "scaling up, can't remove anything",
+			nodesReady:     3,
+			desiredNodes:   5,
+			maxUnavailable: common.Int32(1),
+			want:           0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calculateRemovalsAllowed(tt.nodesReady, tt.desiredNodes, tt.maxUnavailable)
+			if got != tt.want {
+				t.Errorf("calculateRemovalsAllowed() got = %d, want = %d", got, tt.want)
 			}
 		})
 	}

@@ -5,7 +5,10 @@
 package driver
 
 import (
+	"math"
+
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -40,12 +43,12 @@ func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulS
 
 // downscaleState tracks the state of a downscale to be checked against invariants
 type downscaleState struct {
-	// masterRemovalInProgress indicates whether a master node is in the process of being removed already.
-	masterRemovalInProgress bool
 	// runningMasters indicates how many masters are currently running in the cluster.
 	runningMasters int
 	// removalsAllowed indicates how many nodes can be removed to adhere to maxUnavailable setting
-	removalsAllowed int
+	removalsAllowed int32
+	// masterRemovalInProgress indicates whether a master node is in the process of being removed already.
+	masterRemovalInProgress bool
 }
 
 // newDownscaleState creates a new downscaleState.
@@ -58,23 +61,31 @@ func newDownscaleState(c k8s.Client, es v1beta1.Elasticsearch) (*downscaleState,
 	mastersReady := reconcile.AvailableElasticsearchNodes(label.FilterMasterNodePods(actualPods))
 	nodesReady := reconcile.AvailableElasticsearchNodes(actualPods)
 
-	maxUnavailable := v1alpha1.DefaultChangeBudget.MaxUnavailable
-	if es.Spec.UpdateStrategy.ChangeBudget != nil {
-		maxUnavailable = es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
+	return &downscaleState{
+		masterRemovalInProgress: false,
+		runningMasters:          len(mastersReady),
+		removalsAllowed: calculateRemovalsAllowed(
+			int32(len(nodesReady)),
+			es.Spec.NodeCount(),
+			es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable),
+	}, nil
+}
+
+func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *int32) int32 {
+	if maxUnavailable == nil {
+		maxUnavailable = v1beta1.DefaultChangeBudget.MaxUnavailable
+	}
+	if *maxUnavailable < 0 {
+		maxUnavailable = common.Int32(math.MaxInt32)
 	}
 
-	desiredNodes := int(es.Spec.NodeCount())
-	minAvailable := desiredNodes - maxUnavailable
-	removalsAllowed := len(nodesReady) - minAvailable
+	minAvailable := desiredNodes - *maxUnavailable
+	removalsAllowed := nodesReady - minAvailable
 	if removalsAllowed < 0 {
 		removalsAllowed = 0
 	}
 
-	return &downscaleState{
-		masterRemovalInProgress: false,
-		runningMasters:          len(mastersReady),
-		removalsAllowed:         removalsAllowed,
-	}, nil
+	return removalsAllowed
 }
 
 // recordOneRemoval updates the state to consider a 1-replica downscale of the given statefulSet.

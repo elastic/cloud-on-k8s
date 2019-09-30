@@ -6,7 +6,6 @@ package elasticsearch
 
 import (
 	"fmt"
-	"time"
 
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -23,7 +22,6 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckESVersion(b, k),
 		CheckESPodsRunning(b, k),
 		CheckServices(b, k),
-		CheckESReady(b, k),
 		CheckESPodsReady(b, k),
 		CheckPodCertificates(b, k),
 		CheckServicesEndpoints(b, k),
@@ -114,30 +112,6 @@ func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 				if version != b.Elasticsearch.Spec.Version {
 					return fmt.Errorf("version %s does not match expected version %s", version, b.Elasticsearch.Spec.Version)
 				}
-			}
-			return nil
-		}),
-	}
-}
-
-// CheckESReady retrieves ES phase for given ES,
-// and checks if it's in Ready phase twice with 5 seconds between the checks, until success
-func CheckESReady(b Builder, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "ES should eventually be ready",
-		Test: test.Eventually(func() error {
-			// loop helps win the race condition between this check and operator changing the phase
-			for i := 0; i < 2; i++ {
-				var es estype.Elasticsearch
-				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es); err != nil {
-					return err
-				}
-
-				if es.Status.Phase != estype.ElasticsearchReadyPhase {
-					return fmt.Errorf("ES is not in Ready phase yet")
-				}
-
-				time.Sleep(5 * time.Second)
 			}
 			return nil
 		}),

@@ -133,7 +133,7 @@ type ChangeBudget struct {
 	// can be scaled down further, followed by scaling up the group, ensuring
 	// that at least 70% of the target number of pods are available at all times
 	// during the update.
-	MaxUnavailable int `json:"maxUnavailable"`
+	MaxUnavailable *int32 `json:"maxUnavailable"`
 
 	// MaxSurge is the maximum number of pods that can be scheduled above the original number of
 	// pods.
@@ -146,7 +146,7 @@ type ChangeBudget struct {
 	// immediately when the rolling update starts. Once old pods have been killed,
 	// new group can be scaled up further, ensuring that total number of pods running
 	// at any time during the update is at most 130% of the target number of pods.
-	MaxSurge int `json:"maxSurge"`
+	MaxSurge *int32 `json:"maxSurge"`
 }
 
 // DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in

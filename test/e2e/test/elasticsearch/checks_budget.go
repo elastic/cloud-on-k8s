@@ -117,13 +117,24 @@ func (c *ChangeBudgetCheck) Stop() {
 }
 
 func (c *ChangeBudgetCheck) Verify(esSpec v1beta1.ElasticsearchSpec) error {
-	desired := int(esSpec.NodeCount())
+	desired := esSpec.NodeCount()
 	budget := esSpec.UpdateStrategy.ChangeBudget
 	if budget == nil {
 		budget = &v1beta1.DefaultChangeBudget
 	}
-	allowedMin := desired - budget.MaxUnavailable
-	allowedMax := desired + budget.MaxSurge
+
+	maxUnavailable := *v1beta1.DefaultChangeBudget.MaxUnavailable
+	if budget.MaxUnavailable != nil {
+		maxUnavailable = *budget.MaxUnavailable
+	}
+
+	maxSurge := *v1beta1.DefaultChangeBudget.MaxSurge
+	if budget.MaxSurge != nil {
+		maxSurge = *budget.MaxSurge
+	}
+
+	allowedMin := int(desired - maxUnavailable)
+	allowedMax := int(desired + maxSurge)
 
 	for _, v := range c.PodCounts {
 		if v > allowedMax {
