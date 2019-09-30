@@ -89,6 +89,7 @@ type TestPod struct {
 	Data            bool
 	Ingest          bool
 	Status          corev1.PodStatus
+	Ready           bool
 }
 
 func (t TestPod) Build() corev1.Pod {
@@ -101,6 +102,18 @@ func (t TestPod) Build() corev1.Pod {
 	label.NodeTypesMasterLabelName.Set(t.Master, labels)
 	label.NodeTypesDataLabelName.Set(t.Data, labels)
 	label.NodeTypesIngestLabelName.Set(t.Ingest, labels)
+	if t.Ready {
+		t.Status.Conditions = append(t.Status.Conditions,
+			corev1.PodCondition{
+				Status: corev1.ConditionTrue,
+				Type:   corev1.ContainersReady,
+			},
+			corev1.PodCondition{
+				Status: corev1.ConditionTrue,
+				Type:   corev1.PodReady,
+			},
+		)
+	}
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: t.Namespace,

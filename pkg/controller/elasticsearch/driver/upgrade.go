@@ -38,14 +38,23 @@ func (d *defaultDriver) handleRollingUpgrades(
 		return results.WithResult(defaultRequeue)
 	}
 
-	// Get the healthy Pods (from a K8S point of view + in the ES cluster)
-	healthyPods, err := healthyPods(d.Client, statefulSets, esState)
+	// Get the pods to upgrade
+	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+	actualPods, err := statefulSets.GetActualPods(d.Client)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	// Get the pods to upgrade
-	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	// Maybe force upgrade all Pods, bypassing any safety check and ES interaction.
+	if forced, err := d.maybeForceUpgrade(actualPods, podsToUpgrade); err != nil || forced {
+		return results.WithError(err)
+	}
+
+	// Get the healthy Pods (from a K8S point of view + in the ES cluster)
+	healthyPods, err := healthyPods(d.Client, statefulSets, esState)
 	if err != nil {
 		return results.WithError(err)
 	}
