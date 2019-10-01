@@ -440,7 +440,7 @@ kind-e2e-cluster: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 
 kind-e2e-run: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e-run: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
-kind-e2e-run: dep-vendor-only
+kind-e2e-run: dependencies
 	./hack/kind/kind.sh --setup-storage
 ifneq ($(ECK_IMAGE),)
 	$(eval OPERATOR_IMAGE=$(ECK_IMAGE))
