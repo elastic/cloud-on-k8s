@@ -96,7 +96,7 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 
 	// check old version annotation was added
 	require.NotNil(t, es.Annotations)
-	assert.Equal(t, "0.8.0-UNKNOWN", es.Annotations[ControllerVersionAnnotation])
+	assert.Equal(t, UnknownControllerVersion, es.Annotations[ControllerVersionAnnotation])
 }
 
 // TestMissingAnnotationNewObject tests that we add an annotation for new objects
