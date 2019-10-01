@@ -7,6 +7,7 @@ package driver
 import (
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -37,16 +38,34 @@ func (d *defaultDriver) maybeForceUpgrade(actualPods []corev1.Pod, podsToUpgrade
 
 // shouldForceUpgrade returns true if all existing Pods can be safely upgraded,
 // without further safety checks.
-// In practice, we're OK to force-upgrade if all Pods are non-ready.
 // /!\ race condition: since the readiness is based on a cached value, we may allow
 // a forced rolling upgrade to go through based on out-of-date Pod data.
 func shouldForceUpgrade(pods []corev1.Pod) bool {
+	return allPodsPending(pods) || allPodsBootlooping(pods)
+}
+
+func allPodsPending(pods []corev1.Pod) bool {
 	for _, p := range pods {
-		if k8s.IsPodReady(p) {
-			// at least one pod is ready
+		if p.Status.Phase != corev1.PodPending {
 			return false
 		}
 	}
-	// all pods are not ready
+	return true
+}
+
+func allPodsBootlooping(pods []corev1.Pod) bool {
+	for _, p := range pods {
+		if k8s.IsPodReady(p) {
+			// the Pod seems healthy
+			return false
+		}
+		for _, containerStatus := range p.Status.ContainerStatuses {
+			if containerStatus.Name == v1alpha1.ElasticsearchContainerName &&
+				containerStatus.RestartCount == 0 {
+				// the Pod may not be healthy, but it has not restarted (yet)
+				return false
+			}
+		}
+	}
 	return true
 }

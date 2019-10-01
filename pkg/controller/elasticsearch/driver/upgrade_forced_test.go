@@ -41,14 +41,27 @@ func Test_defaultDriver_maybeForceUpgrade(t *testing.T) {
 			},
 		},
 		{
-			name: "no pods ready, upgrade them all",
+			name: "pods bootlooping, upgrade them all",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", Ready: false}.Build(),
-				sset.TestPod{Name: "pod2", Ready: false}.Build(),
+				sset.TestPod{Name: "pod1", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "pod2", Ready: false, RestartCount: 1}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "pod1", Ready: false}.Build(),
-				sset.TestPod{Name: "pod2", Ready: false}.Build(),
+				sset.TestPod{Name: "pod1", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "pod2", Ready: false, RestartCount: 1}.Build(),
+			},
+			wantAttempted:     true,
+			wantRemainingPods: nil,
+		},
+		{
+			name: "pods pending, upgrade them all",
+			actualPods: []corev1.Pod{
+				sset.TestPod{Name: "pod1", Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod2", Phase: corev1.PodPending}.Build(),
+			},
+			podsToUpgrade: []corev1.Pod{
+				sset.TestPod{Name: "pod1", Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod2", Phase: corev1.PodPending}.Build(),
 			},
 			wantAttempted:     true,
 			wantRemainingPods: nil,
@@ -56,34 +69,53 @@ func Test_defaultDriver_maybeForceUpgrade(t *testing.T) {
 		{
 			name: "1/2 pod to upgrade",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", Ready: false}.Build(),
-				sset.TestPod{Name: "pod2", Ready: false}.Build(),
+				sset.TestPod{Name: "pod1", Phase: corev1.PodPending}.Build(),
+				sset.TestPod{Name: "pod2", Phase: corev1.PodPending}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "pod2", Ready: false}.Build(),
+				sset.TestPod{Name: "pod2", Phase: corev1.PodPending}.Build(),
 			},
 			wantAttempted: true,
 			wantRemainingPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", Ready: false}.Build(),
+				sset.TestPod{Name: "pod1", Phase: corev1.PodPending}.Build(),
 			},
 		},
 		{
 			name: "at least one pod ready, don't upgrade any",
 			actualPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", Ready: false}.Build(),
+				sset.TestPod{Name: "pod1", Ready: false, Phase: corev1.PodPending}.Build(),
 				sset.TestPod{Name: "pod2", Ready: true}.Build(),
-				sset.TestPod{Name: "pod3", Ready: false}.Build(),
+				sset.TestPod{Name: "pod3", Ready: false, Phase: corev1.PodPending}.Build(),
 			},
 			podsToUpgrade: []corev1.Pod{
-				sset.TestPod{Name: "pod1", Ready: false}.Build(),
+				sset.TestPod{Name: "pod1", Ready: false, Phase: corev1.PodPending}.Build(),
 				sset.TestPod{Name: "pod2", Ready: true}.Build(),
-				sset.TestPod{Name: "pod3", Ready: false}.Build(),
+				sset.TestPod{Name: "pod3", Ready: false, Phase: corev1.PodPending}.Build(),
 			},
 			wantAttempted: false,
 			wantRemainingPods: []corev1.Pod{
-				sset.TestPod{Name: "pod1", Ready: false}.Build(),
+				sset.TestPod{Name: "pod1", Ready: false, Phase: corev1.PodPending}.Build(),
 				sset.TestPod{Name: "pod2", Ready: true}.Build(),
-				sset.TestPod{Name: "pod3", Ready: false}.Build(),
+				sset.TestPod{Name: "pod3", Ready: false, Phase: corev1.PodPending}.Build(),
+			},
+		},
+		{
+			name: "at least one pod not bootlooping, don't restart any",
+			actualPods: []corev1.Pod{
+				sset.TestPod{Name: "pod1", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "pod2", Ready: false, RestartCount: 0}.Build(),
+				sset.TestPod{Name: "pod3", Ready: false, RestartCount: 1}.Build(),
+			},
+			podsToUpgrade: []corev1.Pod{
+				sset.TestPod{Name: "pod1", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "pod2", Ready: false, RestartCount: 0}.Build(),
+				sset.TestPod{Name: "pod3", Ready: false, RestartCount: 1}.Build(),
+			},
+			wantAttempted: false,
+			wantRemainingPods: []corev1.Pod{
+				sset.TestPod{Name: "pod1", Ready: false, RestartCount: 1}.Build(),
+				sset.TestPod{Name: "pod2", Ready: false, RestartCount: 0}.Build(),
+				sset.TestPod{Name: "pod3", Ready: false, RestartCount: 1}.Build(),
 			},
 		},
 	}
