@@ -1,4 +1,4 @@
-module github.com/elastic/cloud-on-k8s/hack/strip-podTemplate-description
+module github.com/elastic/cloud-on-k8s/hack/patch-crd
 
 go 1.13
 
