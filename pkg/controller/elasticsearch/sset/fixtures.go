@@ -88,8 +88,8 @@ type TestPod struct {
 	Master          bool
 	Data            bool
 	Ingest          bool
-	Status          corev1.PodStatus
 	Ready           bool
+	Status          corev1.PodStatus
 }
 
 func (t TestPod) Build() corev1.Pod {
