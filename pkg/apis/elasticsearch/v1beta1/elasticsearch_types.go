@@ -23,12 +23,6 @@ type ElasticsearchSpec struct {
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
 
-	// SetVMMaxMapCount indicates whether an init container should be used to ensure that the `vm.max_map_count`
-	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
-	// Setting this to true requires the kubelet to allow running privileged containers.
-	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
-	SetVMMaxMapCount *bool `json:"setVmMaxMapCount,omitempty"`
-
 	// HTTP contains settings for HTTP.
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 

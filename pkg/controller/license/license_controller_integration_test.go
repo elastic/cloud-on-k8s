@@ -96,7 +96,6 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: v1beta1.ElasticsearchSpec{
 			Version:          "7.0.0",
-			SetVMMaxMapCount: &varFalse,
 			Nodes: []v1beta1.NodeSpec{
 				{
 					Name:      "all",

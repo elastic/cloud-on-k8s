@@ -23,20 +23,11 @@ const (
 // NewInitContainers creates init containers according to the given parameters
 func NewInitContainers(
 	elasticsearchImage string,
-	setVMMaxMapCount *bool,
 	transportCertificatesVolume volume.SecretVolume,
 	clusterName string,
 	keystoreResources *keystore.Resources,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
-	// create the privileged init container if not explicitly disabled by the user
-	if setVMMaxMapCount == nil || *setVMMaxMapCount {
-		osSettingsContainer, err := NewOSSettingsInitContainer(elasticsearchImage)
-		if err != nil {
-			return nil, err
-		}
-		containers = append(containers, osSettingsContainer)
-	}
 	prepareFsContainer, err := NewPrepareFSInitContainer(elasticsearchImage, transportCertificatesVolume, clusterName)
 	if err != nil {
 		return nil, err

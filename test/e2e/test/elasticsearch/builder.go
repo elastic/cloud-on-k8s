@@ -56,8 +56,7 @@ func newBuilder(name, randSuffix string) Builder {
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
-				SetVMMaxMapCount: test.BoolPtr(false),
-				Version:          test.Ctx().ElasticStackVersion,
+				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
 	}.WithSuffix(randSuffix)
@@ -79,7 +78,6 @@ func (b Builder) Ref() commonv1beta1.ObjectSelector {
 
 // WithRestrictedSecurityContext helps to enforce a restricted security context on the objects.
 func (b Builder) WithRestrictedSecurityContext() Builder {
-	b.Elasticsearch.Spec.SetVMMaxMapCount = test.BoolPtr(false)
 	for idx := range b.Elasticsearch.Spec.Nodes {
 		node := &b.Elasticsearch.Spec.Nodes[idx]
 		node.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
