@@ -89,9 +89,9 @@ type TestPod struct {
 	Master          bool
 	Data            bool
 	Ingest          bool
-	Phase           corev1.PodPhase
 	Ready           bool
 	RestartCount    int32
+	Phase           corev1.PodPhase
 }
 
 func (t TestPod) Build() corev1.Pod {
