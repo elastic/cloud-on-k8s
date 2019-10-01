@@ -3,8 +3,8 @@
 // you may not use this file except in compliance with the Elastic License.
 
 // This script patches the CRDs by removing the `podTemplate` schema which is present since the move to kubebuilder 2.
-// To pass validation, `podTemplate.spec.containers` should always be set to an empty array if it's not used and one
-// another field is defined in `podTemplate.spec`. As it seems very compelling to always have to declare it, we remove it.
+// To pass validation, `podTemplate.spec.containers` should always be set to an empty array if it's not used and another
+// field is defined in `podTemplate.spec`. As it seems very compelling to always have to declare it, we remove it.
 // More in the following issue: https://github.com/elastic/cloud-on-k8s/issues/1822.
 
 package main

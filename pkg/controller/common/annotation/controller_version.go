@@ -16,11 +16,11 @@ import (
 
 const (
 	// ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource
-	ControllerVersionAnnotation       = "common.k8s.elastic.co/controller-version"
+	ControllerVersionAnnotation = "common.k8s.elastic.co/controller-version"
 	// UnknownControllerVersion is the version used when a resource has been created before we started adding the annotation
 	UnknownControllerVersion = "0.0.0-UNKNOWN" // may match resources created with ECK-0.8.0
 	// MinCompatibleControllerVersion is the minimum version that indicates that a resource is compatible with this operator
-	MinCompatibleControllerVersion    = "0.10.0-SNAPSHOT"
+	MinCompatibleControllerVersion = "0.10.0-SNAPSHOT"
 )
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
