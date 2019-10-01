@@ -2,14 +2,14 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package validation
+package v1alpha1
 
 import (
 	"reflect"
 	"testing"
 
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +27,9 @@ func es(v string) *estype.Elasticsearch {
 }
 
 func TestValidation_noDowngrades(t *testing.T) {
-	assert.NoError(t, estype.SchemeBuilder.AddToScheme(scheme.Scheme))
+	// assert.NoError(t, estype.SchemeBuilder.AddToScheme(scheme.Scheme))
+	// todo sabo is this a circular import?
+	require.NoError(controllerscheme.SetupScheme())
 	type args struct {
 		toValidate estype.Elasticsearch
 	}
@@ -35,7 +37,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 		name    string
 		args    args
 		current *estype.Elasticsearch
-		want    validation.Result
+		want    error
 		wantErr bool
 	}{
 		{
@@ -44,7 +46,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 				toValidate: *es("6.8.0"),
 			},
 			current: nil,
-			want:    validation.OK,
+			want:    nil,
 		},
 		{
 			name: "prevent downgrade",
@@ -52,7 +54,8 @@ func TestValidation_noDowngrades(t *testing.T) {
 				toValidate: *es("1.0.0"),
 			},
 			current: es("2.0.0"),
-			want:    validation.Result{Allowed: false, Reason: noDowngradesMsg},
+			// want:    validation.Result{Allowed: false, Reason: noDowngradesMsg},
+			want: errors.New("")
 		},
 		{
 			name: "allow upgrades",
@@ -60,14 +63,14 @@ func TestValidation_noDowngrades(t *testing.T) {
 				toValidate: *es("1.2.0"),
 			},
 			current: es("1.0.0"),
-			want:    validation.OK,
+			want:    nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, err := NewValidationContext(tt.current, tt.args.toValidate)
-			require.NoError(t, err)
-			got := noDowngrades(*ctx)
+			// ctx, err := NewValidationContext(tt.current, tt.args.toValidate)
+			// require.NoError(t, err)
+			got := noDowngrades(tt.current, tt.args.toValidate)
 			if got.Allowed != tt.want.Allowed || got.Reason != tt.want.Reason || got.Error != nil != tt.wantErr {
 				t.Errorf("ValidationHandler.noDowngrades() = %+v, want %+v", got, tt.want)
 			}
@@ -91,7 +94,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  nil,
 				proposed: *es("1.0.0"),
 			},
-			want: validation.OK,
+			want: nil,
 		},
 		{
 			name: "unsupported version FAIL",
@@ -99,7 +102,8 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("1.0.0"),
 				proposed: *es("2.0.0"),
 			},
-			want: validation.Result{Allowed: false, Reason: "unsupported version: 2.0.0"},
+			// want: validation.Result{Allowed: false, Reason: "unsupported version: 2.0.0"},
+			want: errors.New("")
 		},
 		{
 			name: "too old FAIL",
@@ -107,7 +111,8 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("6.5.0"),
 				proposed: *es("7.0.0"),
 			},
-			want: validation.Result{Allowed: false, Reason: "unsupported version upgrade from 6.5.0 to 7.0.0"},
+			// want: validation.Result{Allowed: false, Reason: "unsupported version upgrade from 6.5.0 to 7.0.0"},
+			want: errors.New("")
 		},
 		{
 			name: "too new FAIL",
@@ -115,7 +120,8 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("7.0.0"),
 				proposed: *es("6.5.0"),
 			},
-			want: validation.Result{Allowed: false, Reason: "unsupported version upgrade from 7.0.0 to 6.5.0"},
+			// want: validation.Result{Allowed: false, Reason: "unsupported version upgrade from 7.0.0 to 6.5.0"},
+			want: errors.New("")
 		},
 		{
 			name: "in range validation.OK",
@@ -123,13 +129,14 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("6.8.0"),
 				proposed: *es("7.1.0"),
 			},
-			want: validation.OK,
+			want: nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, err := NewValidationContext(tt.args.current, tt.args.proposed)
-			require.NoError(t, err)
+			// ctx, err := NewValidationContext(tt.args.current, tt.args.proposed)
+			// require.NoError(t, err)
+			got := validUpgradePath(tt.args.current, tt.args.proposed)
 			if got := validUpgradePath(*ctx); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("validUpgradePath() = %v, want %v", got, tt.want)
 			}

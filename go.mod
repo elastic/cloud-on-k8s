@@ -22,6 +22,7 @@ require (
 	github.com/huandu/xstrings v1.2.0 // indirect
 	github.com/imdario/mergo v0.3.6
 	github.com/json-iterator/go v1.1.7 // indirect
+	github.com/karrick/godirwalk v1.11.3 // indirect
 	github.com/magiconair/properties v1.8.1
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/pkg/errors v0.8.1
