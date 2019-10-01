@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
@@ -307,7 +308,7 @@ func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1beta1.ApmServer) 
 func (r *ReconcileApmServer) deploymentParams(
 	as *apmv1beta1.ApmServer,
 	params PodSpecParams,
-) (DeploymentParams, error) {
+) (deployment.Params, error) {
 
 	podSpec := newPodSpec(as, params)
 	podLabels := labels.NewLabels(as.Name)
@@ -337,7 +338,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: as.Namespace, Name: esCASecretName}
 		if err := r.Get(key, &esPublicCASecret); err != nil {
-			return DeploymentParams{}, err
+			return deployment.Params{}, err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			certsChecksum = fmt.Sprintf("%x", sha256.Sum224(certPem))
@@ -365,7 +366,7 @@ func (r *ReconcileApmServer) deploymentParams(
 			Name:      certificates.HTTPCertsInternalSecretName(apmname.APMNamer, as.Name),
 		}, &httpCerts)
 		if err != nil {
-			return DeploymentParams{}, err
+			return deployment.Params{}, err
 		}
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
@@ -379,15 +380,14 @@ func (r *ReconcileApmServer) deploymentParams(
 	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	// TODO: also need to hash secret token?
 
-	deploymentLabels := labels.NewLabels(as.Name)
 	podSpec.Labels = defaults.SetDefaultLabels(podSpec.Labels, podLabels)
 
-	return DeploymentParams{
+	return deployment.Params{
 		Name:            apmname.Deployment(as.Name),
 		Namespace:       as.Namespace,
 		Replicas:        as.Spec.NodeCount,
-		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
+		Selector:        labels.NewLabels(as.Name),
+		Labels:          labels.NewLabels(as.Name),
 		PodTemplateSpec: podSpec,
 	}, nil
 }
@@ -432,8 +432,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
-	deploy := NewDeployment(params)
-	result, err := r.ReconcileDeployment(deploy, as)
+	deploy := deployment.New(params)
+	result, err := deployment.Reconcile(r.K8sClient(), r.Scheme(), deploy, as)
 	if err != nil {
 		return state, err
 	}
