@@ -71,7 +71,7 @@ type ApmServerStatus struct {
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
-	Association commonv1beta1.AssociationStatus `json:"-"`
+	Association commonv1beta1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
