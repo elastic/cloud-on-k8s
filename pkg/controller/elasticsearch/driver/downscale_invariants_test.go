@@ -240,29 +240,39 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 	}
 }
 
-func Test_downscaleState_recordOneRemoval(t *testing.T) {
+func Test_downscaleState_recordRemoval(t *testing.T) {
 	tests := []struct {
 		name        string
 		statefulSet appsv1.StatefulSet
+		removals    int32
 		state       *downscaleState
 		wantState   *downscaleState
 	}{
 		{
 			name:        "removing a data node should decrease nodes available for removal",
 			statefulSet: ssetData4Replicas,
+			removals:    1,
 			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(1)},
 			wantState:   &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(0)},
 		},
 		{
+			name:        "removing many data nodes should decrease nodes available for removal",
+			statefulSet: ssetData4Replicas,
+			removals:    3,
+			state:       &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: common.Int32(3)},
+			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: common.Int32(0)},
+		},
+		{
 			name:        "removing a master node should mutate the budget",
 			statefulSet: ssetMaster3Replicas,
+			removals:    1,
 			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(2)},
 			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: common.Int32(1)},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.state.recordOneRemoval(tt.statefulSet)
+			tt.state.recordRemoval(tt.statefulSet, tt.removals)
 			require.Equal(t, tt.wantState, tt.state)
 		})
 	}

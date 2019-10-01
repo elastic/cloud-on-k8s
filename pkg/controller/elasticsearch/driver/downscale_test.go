@@ -403,7 +403,7 @@ func Test_calculateDownscales(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := calculateDownscales(tt.expectedStatefulSets, tt.actualStatefulSets); !reflect.DeepEqual(got, tt.want) {
+			if got := calculateDownscales(downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("calculateDownscales() = %v, want %v", got, tt.want)
 			}
 		})
@@ -563,7 +563,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := calculatePerformableDownscale(tt.args.ctx, tt.args.state, tt.args.downscale, tt.args.allLeavingNodes)
+			got, err := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale, tt.args.allLeavingNodes)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("calculatePerformableDownscale() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -674,7 +674,7 @@ func Test_attemptDownscale(t *testing.T) {
 				esClient:       &fakeESClient{},
 			}
 			// do the downscale
-			_, err := attemptDownscale(downscaleCtx, tt.downscale, tt.state, nil, tt.statefulSets)
+			_, err := attemptDownscale(downscaleCtx, tt.downscale, nil, tt.statefulSets)
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList

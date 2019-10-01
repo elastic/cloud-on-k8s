@@ -83,14 +83,29 @@ func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *in
 	return &removalsAllowed
 }
 
-// recordOneRemoval updates the state to consider a 1-replica downscale of the given statefulSet.
-func (s *downscaleState) recordOneRemoval(statefulSet appsv1.StatefulSet) {
+func (s *downscaleState) getMaxNodesToRemove(noMoreThan int32) int32 {
+	if s.removalsAllowed == nil {
+		return noMoreThan
+	}
+
+	if noMoreThan > *s.removalsAllowed {
+		return *s.removalsAllowed
+	}
+	return noMoreThan
+}
+
+// recordRemoval updates the state to consider n-replica downscale of the given statefulSet.
+func (s *downscaleState) recordRemoval(statefulSet appsv1.StatefulSet, accountedRemovals int32) {
+	if accountedRemovals == 0 {
+		return
+	}
+
 	if label.IsMasterNodeSet(statefulSet) {
 		s.masterRemovalInProgress = true
 		s.runningMasters--
 	}
 
 	if s.removalsAllowed != nil {
-		*s.removalsAllowed--
+		*s.removalsAllowed -= accountedRemovals
 	}
 }
