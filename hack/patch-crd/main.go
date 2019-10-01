@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package main
 
 import (
@@ -31,7 +35,7 @@ func main() {
 
 // patchCRD removes the element pointed by the `pathToRemove` if this path exists.
 // It converts the YAML in JSON in order to use github.com/Jeffail/gabs which is
-// a pretty convenient library to manipulate an arbitraty JSON.
+// a pretty convenient library to manipulate an arbitrary JSON.
 func patchCRD(filename string) error {
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -52,6 +56,7 @@ func patchCRD(filename string) error {
 	if !jsonObj.ExistsP(pathToRemove) {
 		return nil
 	}
+
 	err = jsonObj.DeleteP(pathToRemove)
 	if err != nil {
 		return err
