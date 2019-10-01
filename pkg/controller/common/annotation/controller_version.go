@@ -14,11 +14,13 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource
 const (
+	// ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource
 	ControllerVersionAnnotation       = "common.k8s.elastic.co/controller-version"
+	// UnknownControllerVersion is the version used when a resource has been created before we started adding the annotation
+	UnknownControllerVersion = "0.8.0-UNKNOWN"
+	// MinCompatibleControllerVersion is the minimum version that indicates that a resource is compatible with this operator
 	MinCompatibleControllerVersion    = "0.10.0-SNAPSHOT"
-	LastIncompatibleControllerVersion = "0.8.0-UNKNOWN"
 )
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
@@ -91,7 +93,7 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector map[
 		}
 		if exist {
 			log.Info("Resource was previously reconciled by incompatible controller version and missing annotation, adding annotation", "controller_version", controllerVersion, "namespace", namespace, "name", name, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-			err = UpdateControllerVersion(client, obj, LastIncompatibleControllerVersion)
+			err = UpdateControllerVersion(client, obj, UnknownControllerVersion)
 			return false, err
 		}
 		// no annotation exists and there are no existing resources, so this has not previously been reconciled
