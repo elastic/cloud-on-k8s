@@ -11,8 +11,10 @@ import (
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +47,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *DeploymentParams
+		want    deployment.Params
 		wantErr bool
 	}{
 		{
@@ -54,7 +56,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				kb:             kibanaFixture,
 				initialObjects: func() []runtime.Object { return nil },
 			},
-			want:    nil,
+			want:    deployment.Params{},
 			wantErr: true,
 		},
 		{
@@ -78,7 +80,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				},
 				initialObjects: defaultInitialObjects,
 			},
-			want: func() *DeploymentParams {
+			want: func() deployment.Params {
 				params := expectedDeploymentParams()
 				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:3]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:3]
@@ -93,7 +95,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				kb:             kibanaFixtureWithPodTemplate,
 				initialObjects: defaultInitialObjects,
 			},
-			want: func() *DeploymentParams {
+			want: func() deployment.Params {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["mylabel"] = "value"
 				for i, c := range p.PodTemplateSpec.Spec.Containers {
@@ -150,7 +152,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 					}
 				},
 			},
-			want: func() *DeploymentParams {
+			want: func() deployment.Params {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels = map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
@@ -171,7 +173,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				},
 				initialObjects: defaultInitialObjects,
 			},
-			want: func() *DeploymentParams {
+			want: func() deployment.Params {
 				p := expectedDeploymentParams()
 				return p
 			}(),
@@ -217,9 +219,9 @@ func TestDriverDeploymentParams(t *testing.T) {
 	}
 }
 
-func expectedDeploymentParams() *DeploymentParams {
+func expectedDeploymentParams() deployment.Params {
 	false := false
-	return &DeploymentParams{
+	return deployment.Params{
 		Name:      "test-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
@@ -311,6 +313,7 @@ func expectedDeploymentParams() *DeploymentParams {
 							},
 						},
 					},
+					Resources: pod.DefaultResources,
 				}},
 				AutomountServiceAccountToken: &false,
 			},

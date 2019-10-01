@@ -39,7 +39,7 @@ func HandleDownscale(
 	if len(leavingNodes) != 0 {
 		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
 	}
-	if err := migration.MigrateData(downscaleCtx.allocationSetter, leavingNodes); err != nil {
+	if err := migration.MigrateData(downscaleCtx.esClient, leavingNodes); err != nil {
 		return results.WithError(err)
 	}
 
@@ -264,5 +264,5 @@ func maybeUpdateZen1ForDownscale(
 		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1
-	return zen1.UpdateMinimumMasterNodesTo(es, esClient, reconcileState, minimumMasterNodes)
+	return zen1.UpdateMinimumMasterNodesTo(es, c, esClient, minimumMasterNodes)
 }

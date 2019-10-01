@@ -18,7 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const continuousHealthCheckTimeout = 25 * time.Second
+const (
+	continuousHealthCheckTimeout = 5 * time.Second
+	// clusterUnavailabilityThreshold is the accepted duration for the cluster to temporarily not respond to requests
+	// (eg. during leader elections in the middle of a rolling upgrade)
+	clusterUnavailabilityThreshold = 60 * time.Second
+)
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
@@ -50,9 +55,15 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		},
 		test.Step{
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
+			Skip: func() bool {
+				// Don't monitor cluster health if we're doing a rolling upgrade of a one data node cluster.
+				// The cluster will become unavailable at some point, then its health will be red
+				// after the upgrade while shards are initializing.
+				return IsOneDataNodeRollingUpgrade(b)
+			},
 			Test: func(t *testing.T) {
 				var err error
-				continuousHealthChecks, err = NewContinuousHealthCheck(b.Elasticsearch, k)
+				continuousHealthChecks, err = NewContinuousHealthCheck(b, k)
 				require.NoError(t, err)
 				continuousHealthChecks.Start()
 			},
@@ -80,6 +91,9 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			},
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
+				Skip: func() bool {
+					return IsOneDataNodeRollingUpgrade(b)
+				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
 					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
@@ -97,6 +111,21 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		})
 }
 
+func IsOneDataNodeRollingUpgrade(b Builder) bool {
+	if b.MutatedFrom == nil {
+		return false
+	}
+	initial := b.MutatedFrom.Elasticsearch
+	mutated := b.Elasticsearch
+	// consider we're in the 1-node rolling upgrade scenario if we mutate
+	// from one data node to one data node with the same name
+	if MustNumDataNodes(initial) == 1 && MustNumDataNodes(mutated) == 1 &&
+		initial.Spec.Nodes[0].Name == mutated.Spec.Nodes[0].Name {
+		return true
+	}
+	return false
+}
+
 // ContinuousHealthCheckFailure represents an health check failure
 type ContinuousHealthCheckFailure struct {
 	err       error
@@ -106,6 +135,7 @@ type ContinuousHealthCheckFailure struct {
 // ContinuousHealthCheck continuously runs health checks against Elasticsearch
 // during the whole mutation process
 type ContinuousHealthCheck struct {
+	b            Builder
 	SuccessCount int
 	FailureCount int
 	Failures     []ContinuousHealthCheckFailure
@@ -114,12 +144,13 @@ type ContinuousHealthCheck struct {
 }
 
 // NewContinuousHealthCheck sets up a ContinuousHealthCheck struct
-func NewContinuousHealthCheck(es estype.Elasticsearch, k *test.K8sClient) (*ContinuousHealthCheck, error) {
-	esClient, err := NewElasticsearchClient(es, k)
+func NewContinuousHealthCheck(b Builder, k *test.K8sClient) (*ContinuousHealthCheck, error) {
+	esClient, err := NewElasticsearchClient(b.Elasticsearch, k)
 	if err != nil {
 		return nil, err
 	}
 	return &ContinuousHealthCheck{
+		b:        b,
 		stopChan: make(chan struct{}),
 		esClient: esClient,
 	}, nil
@@ -136,6 +167,7 @@ func (hc *ContinuousHealthCheck) AppendErr(err error) {
 
 // Start runs health checks in a goroutine, until stopped
 func (hc *ContinuousHealthCheck) Start() {
+	clusterUnavailability := clusterUnavailability{threshold: clusterUnavailabilityThreshold}
 	go func() {
 		ticker := time.NewTicker(test.DefaultRetryDelay)
 		for {
@@ -147,10 +179,16 @@ func (hc *ContinuousHealthCheck) Start() {
 				defer cancel()
 				health, err := hc.esClient.GetClusterHealth(ctx)
 				if err != nil {
-					// TODO: Temporarily account only red clusters, see https://github.com/elastic/cloud-on-k8s/issues/614
-					// hc.AppendErr(err)
+					// Could not retrieve cluster health, can happen when the master node is killed
+					// during a rolling upgrade. We allow it, unless it lasts for too long.
+					clusterUnavailability.markUnavailable()
+					if clusterUnavailability.hasExceededThreshold() {
+						// cluster has been unavailable for too long
+						hc.AppendErr(err)
+					}
 					continue
 				}
+				clusterUnavailability.markAvailable()
 				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
 					continue
@@ -164,4 +202,26 @@ func (hc *ContinuousHealthCheck) Start() {
 // Stop the health checks goroutine
 func (hc *ContinuousHealthCheck) Stop() {
 	hc.stopChan <- struct{}{}
+}
+
+type clusterUnavailability struct {
+	start     time.Time
+	threshold time.Duration
+}
+
+func (cu *clusterUnavailability) markUnavailable() {
+	if cu.start.IsZero() {
+		cu.start = time.Now()
+	}
+}
+
+func (cu *clusterUnavailability) markAvailable() {
+	cu.start = time.Time{}
+}
+
+func (cu *clusterUnavailability) hasExceededThreshold() bool {
+	if cu.start.IsZero() {
+		return false
+	}
+	return time.Since(cu.start) >= cu.threshold
 }

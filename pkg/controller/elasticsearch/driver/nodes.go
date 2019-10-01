@@ -63,6 +63,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		observedState:       observedState,
 		esState:             esState,
 		upscaleStateBuilder: &upscaleStateBuilder{},
+		expectations:        d.Expectations,
 	}
 	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
@@ -82,7 +83,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
-	requeue, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, actualStatefulSets, reconcileState)
+	requeue, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, actualStatefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}

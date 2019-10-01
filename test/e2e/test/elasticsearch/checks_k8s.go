@@ -26,7 +26,6 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckPodCertificates(b, k),
 		CheckServicesEndpoints(b, k),
 		CheckClusterHealth(b, k),
-		CheckClusterUUID(b, k),
 		CheckESPassword(b, k),
 		CheckESDataVolumeType(b.Elasticsearch, k),
 	}
@@ -125,28 +124,32 @@ func CheckESPodsReady(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES pods should eventually be ready",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
-			if err != nil {
-				return err
-			}
-			// check number of pods
-			if len(pods) != int(b.Elasticsearch.Spec.NodeCount()) {
-				return fmt.Errorf("expected %d pods, got %d", b.Elasticsearch.Spec.NodeCount(), len(pods))
-			}
-			// check pod statuses
-		podsLoop:
-			for _, p := range pods {
-				for _, c := range p.Status.Conditions {
-					if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
-						// pod is ready, move on to next pod
-						continue podsLoop
-					}
-				}
-				return fmt.Errorf("pod %s is not ready yet", p.Name)
-			}
-			return nil
+			return allPodsReady(b, k)
 		}),
 	}
+}
+
+func allPodsReady(b Builder, k *test.K8sClient) error {
+	pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
+	if err != nil {
+		return err
+	}
+	// check number of pods
+	if len(pods) != int(b.Elasticsearch.Spec.NodeCount()) {
+		return fmt.Errorf("expected %d pods, got %d", b.Elasticsearch.Spec.NodeCount(), len(pods))
+	}
+	// check pod statuses
+podsLoop:
+	for _, p := range pods {
+		for _, c := range p.Status.Conditions {
+			if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
+				// pod is ready, move on to next pod
+				continue podsLoop
+			}
+		}
+		return fmt.Errorf("pod %s is not ready yet", p.Name)
+	}
+	return nil
 }
 
 // CheckClusterHealth checks that the given ES status reports a green ES health
@@ -154,17 +157,21 @@ func CheckClusterHealth(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES cluster health should eventually be green",
 		Test: test.Eventually(func() error {
-			var es estype.Elasticsearch
-			err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
-			if err != nil {
-				return err
-			}
-			if es.Status.Health != estype.ElasticsearchGreenHealth {
-				return fmt.Errorf("health is %s", es.Status.Health)
-			}
-			return nil
+			return clusterHealthGreen(b, k)
 		}),
 	}
+}
+
+func clusterHealthGreen(b Builder, k *test.K8sClient) error {
+	var es estype.Elasticsearch
+	err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
+	if err != nil {
+		return err
+	}
+	if es.Status.Health != estype.ElasticsearchGreenHealth {
+		return fmt.Errorf("health is %s", es.Status.Health)
+	}
+	return nil
 }
 
 // CheckServices checks that all ES services are created
@@ -205,24 +212,6 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 				if len(endpoints.Subsets[0].Addresses) != addrCount {
 					return fmt.Errorf("%d addresses found for endpoint %s, expected %d", len(endpoints.Subsets[0].Addresses), endpointName, addrCount)
 				}
-			}
-			return nil
-		}),
-	}
-}
-
-// CheckClusterUUID checks that the cluster ID is eventually set in the ES status
-func CheckClusterUUID(b Builder, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "ES cluster UUID should eventually appear in the ES status",
-		Test: test.Eventually(func() error {
-			var es estype.Elasticsearch
-			err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
-			if err != nil {
-				return err
-			}
-			if es.Status.ClusterUUID == "" {
-				return fmt.Errorf("ClusterUUID not set")
 			}
 			return nil
 		}),
