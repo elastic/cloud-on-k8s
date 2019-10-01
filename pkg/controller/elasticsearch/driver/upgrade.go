@@ -21,6 +21,7 @@ import (
 
 func (d *defaultDriver) handleRollingUpgrades(
 	esClient esclient.Client,
+	esReachable bool,
 	esState ESState,
 	statefulSets sset.StatefulSetList,
 	expectedMaster []string,
@@ -51,6 +52,11 @@ func (d *defaultDriver) handleRollingUpgrades(
 	// Maybe force upgrade all Pods, bypassing any safety check and ES interaction.
 	if forced, err := d.maybeForceUpgrade(actualPods, podsToUpgrade); err != nil || forced {
 		return results.WithError(err)
+	}
+
+	if !esReachable {
+		// Cannot move on with rolling upgrades if ES cannot be reached.
+		return results.WithResult(defaultRequeue)
 	}
 
 	// Get the healthy Pods (from a K8S point of view + in the ES cluster)

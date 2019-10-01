@@ -117,7 +117,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Phase 3: handle rolling upgrades.
-	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esState, actualStatefulSets, expectedResources.MasterNodesNames())
+	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esReachable, esState, actualStatefulSets, expectedResources.MasterNodesNames())
 	results.WithResults(rollingUpgradesRes)
 	if rollingUpgradesRes.HasError() {
 		return results
