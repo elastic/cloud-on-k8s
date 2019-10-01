@@ -223,5 +223,5 @@ func (cu *clusterUnavailability) hasExceededThreshold() bool {
 	if cu.start.IsZero() {
 		return false
 	}
-	return time.Now().Sub(cu.start) >= cu.threshold
+	return time.Since(cu.start) >= cu.threshold
 }
