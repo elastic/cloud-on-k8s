@@ -34,7 +34,7 @@ func main() {
 }
 
 // patchCRD removes the element pointed by the `pathToRemove` if this path exists.
-// It converts the YAML in JSON in order to use github.com/Jeffail/gabs which is
+// It converts the YAML to JSON in order to use github.com/Jeffail/gabs which is
 // a pretty convenient library to manipulate an arbitrary JSON.
 func patchCRD(filename string) error {
 	bytes, err := ioutil.ReadFile(filename)
@@ -68,7 +68,7 @@ func patchCRD(filename string) error {
 	}
 
 	// Append the --- yaml separator like the controller-gen
-	// https://github.com/kubernetes-sigs/controller-tools/blob/master/pkg/genall/genall.go#L106
+	// https://github.com/kubernetes-sigs/controller-tools/blob/4752ed2de7d2fc1b6b18398bf26cf2ce6b53cd94/pkg/genall/genall.go#L106
 	err = ioutil.WriteFile(filename, append([]byte("\n---\n"), yamlBytes...), 0644)
 	if err != nil {
 		return err
