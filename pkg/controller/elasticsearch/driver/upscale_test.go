@@ -202,7 +202,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: 3},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
@@ -211,7 +211,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "same StatefulSet already exists",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: 3},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
@@ -220,7 +220,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "downscale case",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: 3},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
@@ -229,7 +229,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: data nodes",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: 3},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
@@ -238,7 +238,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: master nodes - one by one",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: 3},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
@@ -247,7 +247,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: new additional master sset - one by one",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: 3},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},

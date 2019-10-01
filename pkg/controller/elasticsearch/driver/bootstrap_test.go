@@ -31,12 +31,12 @@ func bootstrappedES() *v1beta1.Elasticsearch {
 	}
 }
 
-func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable int32) *v1beta1.Elasticsearch {
+func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable *int32) *v1beta1.Elasticsearch {
 	es := bootstrappedES()
 	es.Spec.UpdateStrategy = v1beta1.UpdateStrategy{
 		ChangeBudget: &v1beta1.ChangeBudget{
-			MaxSurge:       common.Int32(maxSurge),
-			MaxUnavailable: common.Int32(maxUnavailable),
+			MaxSurge:       maxSurge,
+			MaxUnavailable: maxUnavailable,
 		},
 	}
 

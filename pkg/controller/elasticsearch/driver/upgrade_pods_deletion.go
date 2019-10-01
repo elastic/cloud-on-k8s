@@ -5,10 +5,8 @@
 package driver
 
 import (
-	"math"
 	"sort"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -84,14 +82,13 @@ func (ctx *rollingUpgradeCtx) getAllowedDeletions() (int, bool) {
 	// Upscale is done, we should have the required number of Pods
 	expectedPods := ctx.statefulSets.PodNames()
 	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
-	maxUnavailable := *v1alpha1.DefaultChangeBudget.MaxUnavailable
-	if ctx.ES.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable != nil {
-		maxUnavailable = *ctx.ES.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
-		if maxUnavailable < 0 {
-			maxUnavailable = math.MaxInt32
-		}
+
+	maxUnavailable := ctx.ES.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()
+	if maxUnavailable == nil {
+		return len(expectedPods), false
 	}
-	allowedDeletions := int(maxUnavailable) - unhealthyPods
+
+	allowedDeletions := int(*maxUnavailable) - unhealthyPods
 	// If maxUnavailable is reached the deletion driver still allows one unhealthy Pod to be restarted.
 	maxUnavailableReached := allowedDeletions <= 0
 	return allowedDeletions, maxUnavailableReached

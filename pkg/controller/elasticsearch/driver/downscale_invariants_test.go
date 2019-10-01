@@ -5,7 +5,6 @@
 package driver
 
 import (
-	"math"
 	"reflect"
 	"testing"
 
@@ -36,7 +35,7 @@ func Test_newDownscaleState(t *testing.T) {
 		{
 			name:             "no resources in the apiserver",
 			initialResources: nil,
-			want:             &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: 0},
+			want:             &downscaleState{masterRemovalInProgress: false, runningMasters: 0, removalsAllowed: common.Int32(0)},
 		},
 		{
 			name: "3 masters running in the apiserver, 1 not running",
@@ -124,7 +123,7 @@ func Test_newDownscaleState(t *testing.T) {
 					},
 				},
 			},
-			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: 0},
+			want: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(0)},
 		},
 	}
 	for _, tt := range tests {
@@ -145,41 +144,34 @@ func Test_calculateRemovalsAllowed(t *testing.T) {
 		nodesReady     int32
 		desiredNodes   int32
 		maxUnavailable *int32
-		want           int32
+		want           *int32
 	}{
 		{
 			name:           "default should be 1",
 			nodesReady:     5,
 			desiredNodes:   5,
 			maxUnavailable: nil,
-			want:           1,
-		},
-		{
-			name:           "negative should be effectively unbounded",
-			nodesReady:     5,
-			desiredNodes:   5,
-			maxUnavailable: common.Int32(-1),
-			want:           math.MaxInt32,
+			want:           nil,
 		},
 		{
 			name:           "scaling down, at least one node up",
 			nodesReady:     10,
 			desiredNodes:   3,
 			maxUnavailable: common.Int32(2),
-			want:           9,
+			want:           common.Int32(9),
 		},
 		{
 			name:           "scaling up, can't remove anything",
 			nodesReady:     3,
 			desiredNodes:   5,
 			maxUnavailable: common.Int32(1),
-			want:           0,
+			want:           common.Int32(0),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := calculateRemovalsAllowed(tt.nodesReady, tt.desiredNodes, tt.maxUnavailable)
-			if got != tt.want {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("calculateRemovalsAllowed() got = %d, want = %d", got, tt.want)
 			}
 		})
@@ -196,40 +188,40 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 	}{
 		{
 			name:             "should allow removing data node if maxUnavailable allows",
-			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: 1},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: common.Int32(1)},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: true,
 		},
 		{
 			name:             "should not allow removing data nodes of maxUnavailable disallows",
-			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: 0},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: common.Int32(0)},
 			statefulSet:      ssetData4Replicas,
 			wantCanDownscale: false,
 			wantReason:       RespectMaxUnavailableInvariant,
 		},
 		{
 			name:             "should allow removing one master if there is another one running",
-			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 1},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(1)},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: true,
 		},
 		{
 			name:             "should not allow removing the last master",
-			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: 1},
+			state:            &downscaleState{runningMasters: 1, masterRemovalInProgress: false, removalsAllowed: common.Int32(1)},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       AtLeastOneRunningMasterInvariant,
 		},
 		{
 			name:             "should not allow removing a master if one is already being removed",
-			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: true, removalsAllowed: 2},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: true, removalsAllowed: common.Int32(2)},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       OneMasterAtATimeInvariant,
 		},
 		{
 			name:             "should not allow removing a master if maxUnavailable disallows",
-			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 0},
+			state:            &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(0)},
 			statefulSet:      ssetMaster3Replicas,
 			wantCanDownscale: false,
 			wantReason:       RespectMaxUnavailableInvariant,
@@ -258,14 +250,14 @@ func Test_downscaleState_recordOneRemoval(t *testing.T) {
 		{
 			name:        "removing a data node should decrease nodes available for removal",
 			statefulSet: ssetData4Replicas,
-			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 1},
-			wantState:   &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 0},
+			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(1)},
+			wantState:   &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(0)},
 		},
 		{
 			name:        "removing a master node should mutate the budget",
 			statefulSet: ssetMaster3Replicas,
-			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: 2},
-			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: 1},
+			state:       &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(2)},
+			wantState:   &downscaleState{runningMasters: 1, masterRemovalInProgress: true, removalsAllowed: common.Int32(1)},
 		},
 	}
 	for _, tt := range tests {

@@ -5,8 +5,6 @@
 package v1alpha1
 
 import (
-	"math"
-
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
@@ -114,37 +112,54 @@ type UpdateStrategy struct {
 
 // ChangeBudget defines how Pods in a single group should be updated.
 type ChangeBudget struct {
-	// MaxUnavailable is the maximum number of pods that can be unavailable during the update.
-	// Value can be an absolute number (ex: 5) or a percentage of total pods at the start of update (ex: 10%).
-	// Absolute number is calculated from percentage by rounding down.
-	// This can not be 0 if MaxSurge is 0 if you want automatic rolling changes to be applied.
-	// By default, a fixed value of 0 is used.
-	// Example: when this is set to 30%, the group can be scaled down by 30%
-	// immediately when the rolling update starts. Once new pods are ready, the group
-	// can be scaled down further, followed by scaling up the group, ensuring
-	// that at least 70% of the target number of pods are available at all times
-	// during the update.
+	// MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to the
+	// actions controlled by the operator.
+	// By default, a fixed value of 1 is used.
 	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
 
-	// MaxSurge is the maximum number of pods that can be scheduled above the original number of
-	// pods.
-	// By default, a fixed value of 1 is used.
-	// Value can be an absolute number (ex: 5) or a percentage of total pods at
-	// the start of the update (ex: 10%). This can not be 0 if MaxUnavailable is 0 if you want automatic rolling
-	// updates to be applied.
-	// Absolute number is calculated from percentage by rounding up.
-	// Example: when this is set to 30%, the new group can be scaled up by 30%
-	// immediately when the rolling update starts. Once old pods have been killed,
-	// new group can be scaled up further, ensuring that total number of pods running
-	// at any time during the update is at most 130% of the target number of pods.
+	// MaxSurge is the maximum number of pods that can be scheduled above the original number of pods. MaxSurge
+	// is only taken into the account when scaling up.
+	// By default, it's unbounded.
 	MaxSurge *int32 `json:"maxSurge,omitempty"`
 }
 
 // DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in
-// every case
+// most cases.
 var DefaultChangeBudget = ChangeBudget{
-	MaxSurge:       common.Int32(math.MaxInt32),
+	MaxSurge:       nil,
 	MaxUnavailable: common.Int32(1),
+}
+
+func (cb ChangeBudget) GetMaxSurgeOrDefault() *int32 {
+	// use default if not specified
+	maxSurge := DefaultChangeBudget.MaxSurge
+	if cb.MaxSurge != nil {
+		maxSurge = cb.MaxSurge
+	}
+
+	// nil or negative in the spec denotes unlimited surge
+	// in the code unlimited surge is denoted by nil
+	if maxSurge == nil || *maxSurge < 0 {
+		maxSurge = nil
+	}
+
+	return maxSurge
+}
+
+func (cb ChangeBudget) GetMaxUnavailableOrDefault() *int32 {
+	// use default if not specified
+	maxUnavailable := DefaultChangeBudget.MaxUnavailable
+	if cb.MaxUnavailable != nil {
+		maxUnavailable = cb.MaxUnavailable
+	}
+
+	// nil or negative in the spec denotes unlimited unavailability
+	// in the code unlimited unavailability is denoted by nil
+	if maxUnavailable == nil || *maxUnavailable < 0 {
+		maxUnavailable = nil
+	}
+
+	return maxUnavailable
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.

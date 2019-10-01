@@ -74,8 +74,8 @@ func (mc *MasterChangeBudgetCheck) Verify(maxRateOfChange int) error {
 }
 
 type ChangeBudgetCheck struct {
-	PodCounts      []int
-	ReadyPodCounts []int
+	PodCounts      []int32
+	ReadyPodCounts []int32
 	Errors         []error
 	stopChan       chan struct{}
 	es             v1beta1.Elasticsearch
@@ -105,8 +105,8 @@ func (c *ChangeBudgetCheck) Start() {
 				}
 				podsReady := reconcile.AvailableElasticsearchNodes(pods)
 
-				c.PodCounts = append(c.PodCounts, len(pods))
-				c.ReadyPodCounts = append(c.ReadyPodCounts, len(podsReady))
+				c.PodCounts = append(c.PodCounts, int32(len(pods)))
+				c.ReadyPodCounts = append(c.ReadyPodCounts, int32(len(podsReady)))
 			}
 		}
 	}()
@@ -119,31 +119,24 @@ func (c *ChangeBudgetCheck) Stop() {
 func (c *ChangeBudgetCheck) Verify(esSpec v1beta1.ElasticsearchSpec) error {
 	desired := esSpec.NodeCount()
 	budget := esSpec.UpdateStrategy.ChangeBudget
-	if budget == nil {
-		budget = &v1beta1.DefaultChangeBudget
-	}
 
-	maxUnavailable := *v1beta1.DefaultChangeBudget.MaxUnavailable
-	if budget.MaxUnavailable != nil {
-		maxUnavailable = *budget.MaxUnavailable
-	}
-
-	maxSurge := *v1beta1.DefaultChangeBudget.MaxSurge
-	if budget.MaxSurge != nil {
-		maxSurge = *budget.MaxSurge
-	}
-
-	allowedMin := int(desired - maxUnavailable)
-	allowedMax := int(desired + maxSurge)
-
-	for _, v := range c.PodCounts {
-		if v > allowedMax {
-			return fmt.Errorf("pod count %d when allowed max was %d", v, allowedMax)
+	maxSurge := budget.GetMaxSurgeOrDefault()
+	if maxSurge != nil {
+		allowedMax := desired + *maxSurge
+		for _, v := range c.PodCounts {
+			if v > allowedMax {
+				return fmt.Errorf("pod count %d when allowed max was %d", v, allowedMax)
+			}
 		}
 	}
-	for _, v := range c.ReadyPodCounts {
-		if v < allowedMin {
-			return fmt.Errorf("ready pod count %d when allowed min was %d", v, allowedMin)
+
+	maxUnavailable := budget.GetMaxUnavailableOrDefault()
+	if maxUnavailable != nil {
+		allowedMin := desired - *maxUnavailable
+		for _, v := range c.ReadyPodCounts {
+			if v < allowedMin {
+				return fmt.Errorf("ready pod count %d when allowed min was %d", v, allowedMin)
+			}
 		}
 	}
 	return nil

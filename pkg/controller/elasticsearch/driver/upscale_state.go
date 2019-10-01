@@ -5,13 +5,11 @@
 package driver
 
 import (
-	"math"
 	"sync"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
@@ -23,7 +21,7 @@ type upscaleState struct {
 	isBootstrapped      bool
 	allowMasterCreation bool
 	recordedCreates     int32
-	createsAllowed      int32
+	createsAllowed      *int32
 	ctx                 upscaleCtx
 	once                *sync.Once
 }
@@ -37,7 +35,7 @@ func newUpscaleState(
 		once: &sync.Once{},
 		ctx:  ctx,
 		createsAllowed: calculateCreatesAllowed(
-			ctx.es.Spec.UpdateStrategy.ChangeBudget.MaxSurge,
+			ctx.es.Spec.UpdateStrategy.ChangeBudget.GetMaxSurgeOrDefault(),
 			actualStatefulSets.ExpectedNodeCount(),
 			expectedResources.StatefulSets().ExpectedNodeCount()),
 	}
@@ -74,23 +72,17 @@ func (s *upscaleState) buildOnce() (result error) {
 }
 
 // calculateCreatesAllowed calculates how many replicas can we create according to desired state and maxSurge
-func calculateCreatesAllowed(maxSurge *int32, actual, expected int32) int32 {
-	var createsAllowed = *v1beta1.DefaultChangeBudget.MaxSurge
-	if maxSurge != nil {
-		createsAllowed = *maxSurge
-		diff := expected - actual
-		if diff > math.MaxInt32-createsAllowed {
-			// we would overflow, so returning max here
-			return math.MaxInt32
-		}
-
-		createsAllowed += diff
-		if createsAllowed < 0 {
-			createsAllowed = 0
-		}
+func calculateCreatesAllowed(maxSurge *int32, actual, expected int32) *int32 {
+	if maxSurge == nil {
+		return nil
 	}
 
-	return createsAllowed
+	createsAllowed := *maxSurge + expected - actual
+	if createsAllowed < 0 {
+		createsAllowed = 0
+	}
+
+	return &createsAllowed
 }
 
 func isMasterNodeJoining(pod corev1.Pod, esState ESState) (bool, error) {
@@ -142,7 +134,12 @@ func (s *upscaleState) recordNodesCreation(count int32) {
 }
 
 func (s *upscaleState) getMaxNodesToCreate(noMoreThan int32) int32 {
-	left := s.createsAllowed - s.recordedCreates
+	if s.createsAllowed == nil {
+		// unbounded, so allow all that was requested
+		return noMoreThan
+	}
+
+	left := *s.createsAllowed - s.recordedCreates
 	if left < noMoreThan {
 		return left
 	}

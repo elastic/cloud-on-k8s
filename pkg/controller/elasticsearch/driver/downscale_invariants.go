@@ -5,10 +5,7 @@
 package driver
 
 import (
-	"math"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -25,7 +22,8 @@ const (
 // checkDownscaleInvariants returns true if the given state state allows downscaling the given StatefulSet.
 // If not, it also returns the reason why.
 func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulSet) (bool, string) {
-	if state.removalsAllowed < 1 {
+	if state.removalsAllowed != nil && *state.removalsAllowed < 1 {
+		// removalsAllowed is nil then removals shouldn't be bounded here
 		return false, RespectMaxUnavailableInvariant
 	}
 
@@ -46,7 +44,7 @@ type downscaleState struct {
 	// runningMasters indicates how many masters are currently running in the cluster.
 	runningMasters int
 	// removalsAllowed indicates how many nodes can be removed to adhere to maxUnavailable setting
-	removalsAllowed int32
+	removalsAllowed *int32
 	// masterRemovalInProgress indicates whether a master node is in the process of being removed already.
 	masterRemovalInProgress bool
 }
@@ -67,16 +65,13 @@ func newDownscaleState(c k8s.Client, es v1beta1.Elasticsearch) (*downscaleState,
 		removalsAllowed: calculateRemovalsAllowed(
 			int32(len(nodesReady)),
 			es.Spec.NodeCount(),
-			es.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable),
+			es.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()),
 	}, nil
 }
 
-func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *int32) int32 {
+func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *int32) *int32 {
 	if maxUnavailable == nil {
-		maxUnavailable = v1beta1.DefaultChangeBudget.MaxUnavailable
-	}
-	if *maxUnavailable < 0 {
-		maxUnavailable = common.Int32(math.MaxInt32)
+		return nil
 	}
 
 	minAvailable := desiredNodes - *maxUnavailable
@@ -85,7 +80,7 @@ func calculateRemovalsAllowed(nodesReady, desiredNodes int32, maxUnavailable *in
 		removalsAllowed = 0
 	}
 
-	return removalsAllowed
+	return &removalsAllowed
 }
 
 // recordOneRemoval updates the state to consider a 1-replica downscale of the given statefulSet.
@@ -95,5 +90,7 @@ func (s *downscaleState) recordOneRemoval(statefulSet appsv1.StatefulSet) {
 		s.runningMasters--
 	}
 
-	s.removalsAllowed--
+	if s.removalsAllowed != nil {
+		*s.removalsAllowed--
+	}
 }
