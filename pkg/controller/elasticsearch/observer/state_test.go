@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Client {
+func fakeEsClient(healthRespErr, infoRespErr, licenseRespErr bool) client.Client {
 	return client.NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
 		statusCode := 200
 		var respBody io.ReadCloser
@@ -32,9 +32,9 @@ func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Clien
 			}
 		}
 
-		if strings.Contains(req.URL.RequestURI(), "state") {
-			respBody = ioutil.NopCloser(bytes.NewBufferString(fixtures.ClusterStateSample))
-			if stateRespErr {
+		if req.URL.RequestURI() == "/" {
+			respBody = ioutil.NopCloser(bytes.NewBufferString(fixtures.InfoSample))
+			if infoRespErr {
 				statusCode = 500
 			}
 		}
@@ -60,43 +60,43 @@ func TestRetrieveState(t *testing.T) {
 	tests := []struct {
 		name        string
 		wantHealth  bool
-		wantState   bool
+		wantInfo    bool
 		wantLicense bool
 	}{
 		{
-			name:        "state, health, license and keystore ok",
+			name:        "health, license and keystore ok",
 			wantHealth:  true,
-			wantState:   true,
+			wantInfo:    true,
 			wantLicense: true,
 		},
 		{
-			name:        "state error",
+			name:        "info error",
 			wantHealth:  true,
-			wantState:   false,
+			wantInfo:    false,
 			wantLicense: true,
 		},
 		{
 			name:        "health error",
 			wantHealth:  false,
-			wantState:   true,
+			wantInfo:    true,
 			wantLicense: true,
 		},
 		{
 			name:        "license error",
 			wantHealth:  false,
-			wantState:   false,
+			wantInfo:    false,
 			wantLicense: true,
 		},
 		{
-			name:        "health and state error",
+			name:        "info and state error",
 			wantHealth:  false,
-			wantState:   false,
+			wantInfo:    false,
 			wantLicense: true,
 		},
 		{
 			name:        "keystore error",
 			wantHealth:  true,
-			wantState:   true,
+			wantInfo:    true,
 			wantLicense: true,
 		},
 	}
@@ -104,19 +104,19 @@ func TestRetrieveState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cluster := types.NamespacedName{Namespace: "ns1", Name: "es1"}
-			esClient := fakeEsClient(!tt.wantHealth, !tt.wantState, !tt.wantLicense)
+			esClient := fakeEsClient(!tt.wantHealth, !tt.wantInfo, !tt.wantLicense)
 			state := RetrieveState(context.Background(), cluster, esClient)
 			if tt.wantHealth {
 				require.NotNil(t, state.ClusterHealth)
-				require.Equal(t, state.ClusterHealth.NumberOfNodes, 3)
+				require.Equal(t, 3, state.ClusterHealth.NumberOfNodes)
 			}
-			if tt.wantState {
-				require.NotNil(t, state.ClusterState)
-				require.Equal(t, state.ClusterState.ClusterUUID, "LyyITZoWSlO1NYEOQ6qYsA")
+			if tt.wantInfo {
+				require.NotNil(t, state.ClusterInfo)
+				require.Equal(t, "LGA3VblKTNmzP6Q6SWxfkw", state.ClusterInfo.ClusterUUID)
 			}
 			if tt.wantLicense {
 				require.NotNil(t, state.ClusterLicense)
-				require.Equal(t, state.ClusterLicense.UID, "893361dc-9749-4997-93cb-802e3d7fa4xx")
+				require.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", state.ClusterLicense.UID)
 			}
 		})
 	}

@@ -28,16 +28,15 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -70,7 +69,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 		Client:     client,
 		scheme:     mgr.GetScheme(),
 		watches:    watches.NewDynamicWatches(),
-		recorder:   mgr.GetRecorder(name),
+		recorder:   mgr.GetEventRecorderFor(name),
 		Parameters: params,
 	}
 }
@@ -145,7 +144,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	err := handler.Handle(
 		&apmServer,
 		watchFinalizer(apmName, r.watches),
-		user.UserFinalizer(r.Client, NewUserLabelSelector(apmName), apmServer.Kind()),
+		user.UserFinalizer(r.Client, apmServer.Kind(), NewUserLabelSelector(apmName)),
 	)
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
@@ -215,7 +214,7 @@ func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result 
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) isCompatible(apmServer *apmtype.ApmServer) (bool, error) {
-	selector := k8slabels.Set(map[string]string{labels.ApmServerNameLabelName: apmServer.Name}).AsSelector()
+	selector := map[string]string{labels.ApmServerNameLabelName: apmServer.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, apmServer, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, apmServer, events.EventCompatCheckError, "Error during compatibility check: %v", err)
@@ -278,7 +277,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		return commonv1alpha1.AssociationPending, err
 	}
 
-	caSecretName, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
+	caSecret, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
 	if err != nil {
 		return commonv1alpha1.AssociationPending, err // maybe not created yet
 	}
@@ -288,7 +287,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	expectedAssocConf := &commonv1alpha1.AssociationConf{
 		AuthSecretName: authSecretRef.Name,
 		AuthSecretKey:  authSecretRef.Key,
-		CASecretName:   caSecretName,
+		CACertProvided: caSecret.CACertProvided,
+		CASecretName:   caSecret.Name,
 		URL:            services.ExternalServiceURL(es),
 	}
 
@@ -311,7 +311,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	return commonv1alpha1.AssociationEstablished, nil
 }
 
-func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmtype.ApmServer, es types.NamespacedName) (string, error) {
+func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmtype.ApmServer, es types.NamespacedName) (association.CASecret, error) {
 	apmKey := k8s.ExtractNamespacedName(apm)
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
@@ -319,7 +319,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
 		Watcher: apmKey,
 	}); err != nil {
-		return "", err
+		return association.CASecret{}, err
 	}
 	// Build the labels applied on the secret
 	labels := labels.NewLabels(apm.Name)
@@ -340,8 +340,9 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 // combinations and deletes them.
 func deleteOrphanedResources(c k8s.Client, apm *apmtype.ApmServer) error {
 	var secrets corev1.SecretList
-	selector := NewResourceSelector(apm.Name)
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+	ns := client.InNamespace(apm.Namespace)
+	matchLabels := client.MatchingLabels(NewResourceLabels(apm.Name))
+	if err := c.List(&secrets, ns, matchLabels); err != nil {
 		return err
 	}
 

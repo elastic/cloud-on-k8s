@@ -26,6 +26,20 @@ pipeline {
                 sh 'make -C build/ci ci-build-image'
             }
         }
+        stage('Run checks') {
+            when {
+                expression {
+                    checkout scm
+                    notOnlyDocs()
+                }
+            }
+            agent {
+                label 'linux'
+            }
+            steps {
+                sh 'make -C build/ci TARGET=ci-check ci'
+            }
+        }
         stage('Run tests in parallel') {
             parallel {
                 stage("Run unit and integration tests") {
@@ -35,10 +49,15 @@ pipeline {
                         }
                     }
                     steps {
-                        createConfig()
-                        sh 'make -C build/ci TARGET=ci ci'
-                        junit "unit-tests.xml"
-                        junit "integration-tests.xml"
+                        script {
+                            createConfig()
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
+
+                            junit "unit-tests.xml"
+                            junit "integration-tests.xml"
+
+                            sh 'exit $SHELL_EXIT_CODE'
+                        }
                     }
                 }
                 stage("Run smoke E2E tests") {

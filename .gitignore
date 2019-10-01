@@ -41,3 +41,9 @@ hack/deployer/config/deployer-config.yml
 # ignore CI config files
 deployer-config.yml
 .env
+
+# ignore test output
+integration-tests.json
+integration-tests.xml
+unit-tests.json
+unit-tests.xml

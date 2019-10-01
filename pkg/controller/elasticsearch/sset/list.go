@@ -5,12 +5,14 @@
 package sset
 
 import (
+	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -24,10 +26,9 @@ type StatefulSetList []appsv1.StatefulSet
 // RetrieveActualStatefulSets returns the list of existing StatefulSets labeled for the given es cluster.
 func RetrieveActualStatefulSets(c k8s.Client, es types.NamespacedName) (StatefulSetList, error) {
 	var ssets appsv1.StatefulSetList
-	err := c.List(&client.ListOptions{
-		Namespace:     es.Namespace,
-		LabelSelector: label.NewLabelSelectorForElasticsearchClusterName(es.Name),
-	}, &ssets)
+	ns := client.InNamespace(es.Namespace)
+	matchLabels := label.NewLabelSelectorForElasticsearchClusterName(es.Name)
+	err := c.List(&ssets, ns, matchLabels)
 	return StatefulSetList(ssets.Items), err
 }
 
@@ -74,6 +75,62 @@ func (l StatefulSetList) PodNames() []string {
 	return names
 }
 
+// ExpectedNodeCount returns the sum of replicas of each StatefulSet in the StatefulSetList.
+func (l StatefulSetList) ExpectedNodeCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		count += GetReplicas(s)
+	}
+	return count
+}
+
+// ExpectedMasterNodesCount returns the number of master nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedMasterNodesCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		if label.IsMasterNodeSet(s) {
+			count += GetReplicas(s)
+		}
+	}
+	return count
+}
+
+// ExpectedDataNodesCount returns the number of data nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedDataNodesCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		if label.IsDataNodeSet(s) {
+			count += GetReplicas(s)
+		}
+	}
+	return count
+}
+
+// ExpectedIngestNodesCount returns the number of ingest nodes expected from the StatefulSetList.
+func (l StatefulSetList) ExpectedIngestNodesCount() int32 {
+	count := int32(0)
+	for _, s := range l {
+		if label.IsIngestNodeSet(s) {
+			count += GetReplicas(s)
+		}
+	}
+	return count
+}
+
+// PVCNames returns the names of PVCs for all pods of the StatefulSetList.
+func (l StatefulSetList) PVCNames() []string {
+	var pvcNames []string
+	for _, s := range l {
+		podNames := PodNames(s)
+		for _, claim := range s.Spec.VolumeClaimTemplates {
+			for _, podName := range podNames {
+				pvcNames = append(pvcNames, fmt.Sprintf("%s-%s", claim.Name, podName))
+			}
+		}
+	}
+	return pvcNames
+}
+
 // GetActualPods returns the list of pods currently existing in the StatefulSetList.
 func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 	allPods := []corev1.Pod{}
@@ -109,6 +166,20 @@ func (l StatefulSetList) DeepCopy() StatefulSetList {
 		result = append(result, *s.DeepCopy())
 	}
 	return result
+}
+
+// WithStatefulSet returns the StatefulSetList updated to contain the given StatefulSet.
+// If one already exists with the same namespace & name, it will be replaced.
+func (l StatefulSetList) WithStatefulSet(statefulSet appsv1.StatefulSet) StatefulSetList {
+	for i := range l {
+		if l[i].Name == statefulSet.Name && l[i].Namespace == statefulSet.Namespace {
+			// replace the existing StatefulSet in the list
+			l[i] = statefulSet
+			return l
+		}
+	}
+	// add a new StatefulSet to the list
+	return append(l, statefulSet)
 }
 
 // ESVersionMatch returns true if the ES version for this StatefulSet matches the given condition.

@@ -23,14 +23,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -58,7 +57,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 	return &ReconcileKibana{
 		Client:         client,
 		scheme:         mgr.GetScheme(),
-		recorder:       mgr.GetRecorder(name),
+		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
 		params:         params,
@@ -175,7 +174,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 }
 
 func (r *ReconcileKibana) isCompatible(kb *kibanav1alpha1.Kibana) (bool, error) {
-	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kb.Name}).AsSelector()
+	selector := map[string]string{label.KibanaNameLabelName: kb.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)

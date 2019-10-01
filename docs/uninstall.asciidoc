@@ -13,9 +13,9 @@ This deletes all underlying Elasticsearch, Kibana, and APM Server resources (pod
 
 Then, you can uninstall the operator:
 
-[source,shell]
+[source,shell,subs="attributes"]
 ----
-kubectl delete -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
+kubectl delete -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
 
 And remove the webhook configuration:

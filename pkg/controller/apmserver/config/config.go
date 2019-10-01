@@ -51,15 +51,17 @@ func NewConfigFromSpec(c k8s.Client, as *v1alpha1.ApmServer) (*settings.Canonica
 		if err != nil {
 			return nil, err
 		}
-		outputCfg = settings.MustCanonicalConfig(
-			map[string]interface{}{
-				"output.elasticsearch.hosts":                       []string{as.AssociationConf().GetURL()},
-				"output.elasticsearch.username":                    username,
-				"output.elasticsearch.password":                    password,
-				"output.elasticsearch.ssl.certificate_authorities": []string{filepath.Join(CertificatesDir, certificates.CertFileName)},
-			},
-		)
 
+		tmpOutputCfg := map[string]interface{}{
+			"output.elasticsearch.hosts":    []string{as.AssociationConf().GetURL()},
+			"output.elasticsearch.username": username,
+			"output.elasticsearch.password": password,
+		}
+		if as.AssociationConf().GetCACertProvided() {
+			tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(CertificatesDir, certificates.CAFileName)}
+		}
+
+		outputCfg = settings.MustCanonicalConfig(tmpOutputCfg)
 	}
 
 	// Create a base configuration.

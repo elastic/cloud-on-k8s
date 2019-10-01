@@ -16,19 +16,19 @@ For more information on Elasticsearch snapshots, see https://www.elastic.co/guid
 [id="{p}-install-plugin"]
 ==== Install the storage repository plugin
 
-To install the storage repository plugin, you can either use a custom image or add your own init container which
+To install the storage repository plugin, you can either use a link:k8s-images.html[custom image] or link:k8s-init-containers-plugin-downloads.html[add your own init container] which
 installs the plugin when the Pod is created.
 
 To use your own custom image with all necessary plugins pre-installed, use an Elasticsearch resource like the following one:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.3.0
+  version: {version}
   image: your/custom/image:tag
   nodes:
   - nodeCount: 1
@@ -36,14 +36,14 @@ spec:
 
 Alternatively, install the plugin when the Pod is created by using an init container:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - podTemplate:
       spec:

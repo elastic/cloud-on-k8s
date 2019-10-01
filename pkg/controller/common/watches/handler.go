@@ -8,12 +8,13 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var (
@@ -42,6 +43,8 @@ type DynamicEnqueueRequest struct {
 	mutex         sync.RWMutex
 	registrations map[string]HandlerRegistration
 	scheme        *runtime.Scheme
+	// mapper maps GroupVersionKinds to Resources
+	mapper meta.RESTMapper
 }
 
 // AddHandlers adds the new event handlers to this DynamicEnqueueRequest.
@@ -63,6 +66,10 @@ func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
 	defer d.mutex.Unlock()
 	if _, err := inject.SchemeInto(d.scheme, handler); err != nil {
 		log.Error(err, "Failed to add handler to dynamic enqueue request")
+		return err
+	}
+	if _, err := inject.MapperInto(d.mapper, handler); err != nil {
+		log.Error(err, "Failed to add mapper to dynamic enqueue request")
 		return err
 	}
 	_, exists := d.registrations[handler.Key()]
@@ -144,3 +151,11 @@ func (d *DynamicEnqueueRequest) InjectScheme(scheme *runtime.Scheme) error {
 }
 
 var _ inject.Scheme = &DynamicEnqueueRequest{}
+
+// InjectMapper is called by the Controller to provide the rest mapper used by the manager.
+func (d *DynamicEnqueueRequest) InjectMapper(m meta.RESTMapper) error {
+	d.mapper = m
+	return nil
+}
+
+var _ inject.Mapper = &DynamicEnqueueRequest{}

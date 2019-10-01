@@ -5,7 +5,6 @@
 package driver
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -132,12 +131,16 @@ func Test_healthyPods(t *testing.T) {
 			name: "All Pods are healthy",
 			args: args{
 				pods: newUpgradeTestPods(
-					newTestPod("masters-2").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-1").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-0").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				statefulSets: sset.StatefulSetList{
-					sset.TestSset{Name: "masters", Replicas: 3}.Build(),
+					sset.TestSset{
+						Name:      "masters",
+						Namespace: TestEsNamespace,
+						Replicas:  3,
+					}.Build(),
 				},
 			},
 		},
@@ -145,12 +148,16 @@ func Test_healthyPods(t *testing.T) {
 			name: "One Pod is terminating",
 			args: args{
 				pods: newUpgradeTestPods(
-					newTestPod("masters-2").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
-					newTestPod("masters-1").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true),
-					newTestPod("masters-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-2").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("masters-1").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true).isTerminating(true),
+					newTestPod("masters-0").inStatefulset("masters").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				statefulSets: sset.StatefulSetList{
-					sset.TestSset{Name: "masters", Replicas: 3}.Build(),
+					sset.TestSset{
+						Name:      "masters",
+						Namespace: TestEsNamespace,
+						Replicas:  3,
+					}.Build(),
 				},
 			},
 		},
@@ -160,16 +167,15 @@ func Test_healthyPods(t *testing.T) {
 			esState := &testESState{
 				inCluster: tt.args.pods.podsInCluster(),
 			}
-			client := k8s.WrapClient(fake.NewFakeClient(tt.args.pods.toPods(nothing)...))
+			client := k8s.WrapClient(fake.NewFakeClient(tt.args.pods.toRuntimeObjects(0, nothing)...))
 			got, err := healthyPods(client, tt.args.statefulSets, esState)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("healthyPods() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			want := tt.args.pods.toHealthyPods()
-			if !reflect.DeepEqual(got, want) {
-				t.Errorf("healthyPods() = %v, want %v", got, want)
-			}
+			assert.Equal(t, len(want), len(got))
+			assert.Equal(t, want, got)
 		})
 	}
 }

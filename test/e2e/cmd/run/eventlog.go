@@ -19,7 +19,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/pkg/controller/volume/events"
 )
 
 type eventLogEntry struct {
@@ -136,7 +135,11 @@ func (el *eventLogger) runEventProcessor() {
 // isInterestingEvent determines whether an event is worthy of logging.
 func (el *eventLogger) isInterestingEvent(evt *corev1.Event) bool {
 	// special case for event generated when attempting to reuse a deleted PV
-	if evt.Reason == events.VolumeDelete {
+	// This constant is defined in "k8s.io/kubernetes/pkg/controller/volume/events".VolumeDelete
+	// but importing that with go modules is painful, see here:
+	// https://github.com/golang/go/issues/32776#issuecomment-505607726
+	// I did not see this defined anywhere else and nothing else in our code base uses the package, so seemed reasonable to copy/paste
+	if evt.Reason == "VolumeDelete" {
 		return true
 	}
 

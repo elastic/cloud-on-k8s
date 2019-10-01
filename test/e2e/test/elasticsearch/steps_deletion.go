@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -12,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -55,26 +55,26 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Elasticsearch pods should be eventually be removed",
 			Test: test.Eventually(func() error {
-				return k.CheckPodCount(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name), 0)
+				return k.CheckPodCount(0, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			}),
 		},
 		{
-			Name: "Remove leftover PVCs",
-			// TODO: remove when https://github.com/elastic/cloud-on-k8s/issues/1288 is fixed.
-			Test: func(t *testing.T) {
+			Name: "PVCs should eventually be removed",
+			Test: test.Eventually(func() error {
 				var pvcs corev1.PersistentVolumeClaimList
-				err := k.Client.List(&client.ListOptions{
-					Namespace: b.Elasticsearch.Namespace,
-					LabelSelector: labels.SelectorFromSet(map[string]string{
-						label.ClusterNameLabelName: b.Elasticsearch.Name,
-					}),
-				}, &pvcs)
-				require.NoError(t, err)
-				for _, pvc := range pvcs.Items {
-					err := k.Client.Delete(&pvc)
-					require.NoError(t, err)
+				ns := client.InNamespace(b.Elasticsearch.Namespace)
+				matchLabels := client.MatchingLabels(map[string]string{
+					label.ClusterNameLabelName: b.Elasticsearch.Name,
+				})
+				err := k.Client.List(&pvcs, ns, matchLabels)
+				if err != nil {
+					return err
 				}
-			},
+				if len(pvcs.Items) != 0 {
+					return fmt.Errorf("%d pvcs still present", len(pvcs.Items))
+				}
+				return nil
+			}),
 		},
 	}
 }

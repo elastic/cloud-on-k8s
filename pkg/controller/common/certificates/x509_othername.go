@@ -9,7 +9,7 @@ import (
 	"encoding/asn1"
 	"errors"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (

@@ -42,7 +42,7 @@ type ElasticsearchSpec struct {
 	//
 	// The default budget selects all cluster pods and sets maxUnavailable to 1.
 	// To disable it entirely, set to the empty value (`{}` in YAML).
-	// +optional
+	// +kubebuilder:validation:Optional
 	PodDisruptionBudget *commonv1alpha1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
 	// SecureSettings references secrets containing secure settings, to be injected
@@ -80,7 +80,7 @@ type NodeSpec struct {
 	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
 	// This allows specifying custom annotations, labels, environment variables,
 	// volumes, affinity, resources, etc. for the pods created from this NodeSpec.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// VolumeClaimTemplates is a list of claims that pods are allowed to reference.
@@ -89,7 +89,7 @@ type NodeSpec struct {
 	// any volumes in the template, with the same name.
 	// TODO: Define the behavior if a claim already exists with the same name.
 	// TODO: define special behavior based on claim metadata.name. (e.g data / logs volumes)
-	// +optional
+	// +kubebuilder:validation:Optional
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
@@ -105,11 +105,6 @@ func (n NodeSpec) GetESContainerTemplate() *corev1.Container {
 
 // UpdateStrategy specifies how updates to the cluster should be performed.
 type UpdateStrategy struct {
-	// Groups is a list of groups that should have their cluster mutations considered in a fair manner with a strict
-	// change budget (not allowing any surge or unavailability) before the entire cluster is reconciled with the
-	// full change budget.
-	Groups []GroupingDefinition `json:"groups,omitempty"`
-
 	// ChangeBudget is the change budget that should be used when performing mutations to the cluster.
 	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
 }
@@ -121,12 +116,6 @@ func (s UpdateStrategy) ResolveChangeBudget() ChangeBudget {
 	}
 
 	return DefaultChangeBudget
-}
-
-// GroupingDefinition is used to select a group of pods.
-type GroupingDefinition struct {
-	// Selector is the selector used to match pods.
-	Selector metav1.LabelSelector `json:"selector,omitempty"`
 }
 
 // ChangeBudget defines how Pods in a single group should be updated.
@@ -160,13 +149,6 @@ type ChangeBudget struct {
 	MaxSurge int `json:"maxSurge"`
 }
 
-// DefaultFallbackGroupingDefinition is the grouping definition that is used if no user-defined groups are specified or
-// there are pods that are not selected by the user-defined groups.
-var DefaultFallbackGroupingDefinition = GroupingDefinition{
-	// use a selector that matches everything
-	Selector: metav1.LabelSelector{},
-}
-
 // DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in
 // every case
 var DefaultChangeBudget = ChangeBudget{
@@ -179,9 +161,10 @@ type ElasticsearchHealth string
 
 // Possible traffic light states Elasticsearch health can have.
 const (
-	ElasticsearchRedHealth    ElasticsearchHealth = "red"
-	ElasticsearchYellowHealth ElasticsearchHealth = "yellow"
-	ElasticsearchGreenHealth  ElasticsearchHealth = "green"
+	ElasticsearchRedHealth     ElasticsearchHealth = "red"
+	ElasticsearchYellowHealth  ElasticsearchHealth = "yellow"
+	ElasticsearchGreenHealth   ElasticsearchHealth = "green"
+	ElasticsearchUnknownHealth ElasticsearchHealth = "unknown"
 )
 
 var elasticsearchHealthOrder = map[ElasticsearchHealth]int{
@@ -202,10 +185,10 @@ func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
 type ElasticsearchOrchestrationPhase string
 
 const (
-	// ElasticsearchOperationalPhase is operating at the desired spec.
-	ElasticsearchOperationalPhase ElasticsearchOrchestrationPhase = "Operational"
-	// ElasticsearchPendingPhase controller is working towards a desired state, cluster can be unavailable.
-	ElasticsearchPendingPhase ElasticsearchOrchestrationPhase = "Pending"
+	// ElasticsearchReadyPhase is operating at the desired spec.
+	ElasticsearchReadyPhase ElasticsearchOrchestrationPhase = "Ready"
+	// ElasticsearchApplyingChangesPhase controller is working towards a desired state, cluster can be unavailable.
+	ElasticsearchApplyingChangesPhase ElasticsearchOrchestrationPhase = "ApplyingChanges"
 	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
 	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
 	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
@@ -215,12 +198,8 @@ const (
 // ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
 	commonv1alpha1.ReconcilerStatus
-	Health          ElasticsearchHealth             `json:"health,omitempty"`
-	Phase           ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
-	ClusterUUID     string                          `json:"clusterUUID,omitempty"`
-	MasterNode      string                          `json:"masterNode,omitempty"`
-	ExternalService string                          `json:"service,omitempty"`
-	ZenDiscovery    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
+	Health ElasticsearchHealth             `json:"health,omitempty"`
+	Phase  ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {
@@ -232,11 +211,9 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 	return es.Health.Less(prev.Health)
 }
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Elasticsearch is the Schema for the elasticsearches API
-// +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=es
 // +kubebuilder:categories=elastic
@@ -268,7 +245,7 @@ func (e Elasticsearch) Kind() string {
 	return Kind
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // ElasticsearchList contains a list of Elasticsearch clusters
 type ElasticsearchList struct {
@@ -278,7 +255,5 @@ type ElasticsearchList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(
-		&Elasticsearch{}, &ElasticsearchList{},
-	)
+	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
 }

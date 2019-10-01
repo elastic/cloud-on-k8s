@@ -26,9 +26,9 @@ NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is all
 
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
 +
-[source,sh]
+[source,sh,subs="attributes"]
 ----
-kubectl apply -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
 
 . Monitor the operator logs:
@@ -46,15 +46,15 @@ Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specificat
 
 NOTE: The default resource request is 2gb memory and 100m cpu, and your pod will be `Pending` if your cluster does not have enough resources.
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 cat <<EOF | kubectl apply -f -
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 1
     config:
@@ -76,10 +76,10 @@ Get an overview of the current Elasticsearch clusters in the Kubernetes cluster,
 kubectl get elasticsearch
 ----
 
-[source,sh]
+[source,sh,subs="attributes"]
 ----
 NAME          HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         7.3.0     Operational   1m
+quickstart    green     1         {version}     Operational   1m
 ----
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is `Pending`. After a while, the `PHASE` turns into `Operational`, and `HEALTH` becomes `green`.
@@ -173,15 +173,15 @@ To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance
 
 . Specify a Kibana instance and associate it with your Elasticsearch cluster:
 +
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 cat <<EOF | kubectl apply -f -
-apiVersion: kibana.k8s.elastic.co/v1alpha1
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodeCount: 1
   elasticsearchRef:
     name: quickstart
@@ -237,15 +237,15 @@ You can apply any modification to the original cluster specification. The operat
 
 For example, you can grow the cluster to three nodes:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 cat <<EOF | kubectl apply -f -
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 3
     config:
@@ -263,15 +263,15 @@ Now that you have completed the quickstart, you can try out more features like t
 
 You can request a `PersistentVolumeClaim` with a larger size in the Elasticsearch specification or target any `PersistentVolume` class available in your Kubernetes cluster:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 cat <<EOF | kubectl apply -f -
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 3
     config:

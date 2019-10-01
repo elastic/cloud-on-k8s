@@ -1,15 +1,12 @@
 # Docker image aimed to run compilation and tests in CI
-FROM golang:1.11-stretch
+FROM golang:1.13-stretch
 
-ENV KUBEBUILDER_VERSION=1.0.8
+ENV KUBEBUILDER_VERSION=2.0.0
 ENV GCLOUD_VERSION=232.0.0
 ENV KUBECTL_VERSION=1.13.6
 ENV DOCKER_VERSION=18.03.1-ce
-ENV GOLANGCILINT_VERSION=1.17.1
+ENV GOLANGCILINT_VERSION=1.18.0
 ENV GOTESTSUM_VERSION=0.3.5
-
-# Download required golang tools
-RUN go get github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
 
 # Install golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
@@ -59,11 +56,10 @@ RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v$
 
 # Add Go dependencies to Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
-COPY Gopkg.lock .
-COPY Gopkg.toml .
-RUN dep ensure --vendor-only -v && rm -rf vendor/
+COPY ["go.mod", "go.sum", "./"]
+RUN go mod download
 
 # Cleanup
-RUN rm /go/src/github.com/elastic/cloud-on-k8s/Gopkg.lock && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/Gopkg.toml
+RUN rm /go/src/github.com/elastic/cloud-on-k8s/go.mod && \
+    rm /go/src/github.com/elastic/cloud-on-k8s/go.sum
 WORKDIR /

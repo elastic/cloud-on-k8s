@@ -7,7 +7,7 @@ package zen2
 import (
 	"context"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -45,6 +45,7 @@ func canClearVotingConfigExclusions(c k8s.Client, actualStatefulSets sset.Statef
 	// - nodes are expected to be in the cluster (shouldn't be removed anymore)
 	// They cannot be cleared when:
 	// - expected nodes to remove are not removed yet
+	// - expectation like Pod being restarted should be check prior to calling this function
 	// PodReconciliationDone returns false is there are some pods not created yet: we don't really
 	// care about those here, but that's still fine to requeue and retry later for the sake of simplicity.
 	return actualStatefulSets.PodReconciliationDone(c)

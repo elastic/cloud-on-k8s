@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/util/validation"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (

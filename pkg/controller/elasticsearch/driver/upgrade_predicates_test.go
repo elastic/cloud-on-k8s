@@ -9,14 +9,165 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+// These tests are focused on "type changes", i.e. when the type of a nodeSet is changed.
+func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
+	type fields struct {
+		upgradeTestPods upgradeTestPods
+		ES              v1alpha1.Elasticsearch
+		green           bool
+		mutation        mutation
+		maxUnavailable  int
+	}
+	tests := []struct {
+		name                         string
+		fields                       fields
+		deleted                      []string
+		wantErr                      bool
+		wantShardsAllocationDisabled bool
+		/* Zen1 checks */
+		minimumMasterNodesCalled     bool
+		minimumMasterNodesCalledWith int
+		recordedEvents               int
+		/* Zend2 checks */
+		votingExclusionCalledWith []string
+	}{
+		{
+			// This unit test basically simulates the e2e test TestRiskyMasterReconfiguration.
+			// It starts with 2 master+data nodes, the second one is changed to master only.
+			name: "Risky mutation with 7.x nodes",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masterdata-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).inStatefulset("masterdata"),
+					newTestPod("other-master-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).inStatefulset("other-master"),
+				),
+				maxUnavailable: 1,
+				green:          true,
+				mutation:       removeMasterType("other-master"),
+			},
+			deleted:                      []string{"other-master-0"},
+			votingExclusionCalledWith:    []string{"other-master-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
+			name: "Risky mutation with 6.x nodes",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masterdata-0").withVersion("6.8.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("other-master-0").withVersion("6.8.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 1,
+				green:          true,
+				mutation:       removeMasterType("other-master"),
+			},
+			deleted:                      []string{"other-master-0"},
+			minimumMasterNodesCalled:     true,
+			minimumMasterNodesCalledWith: 1,
+			recordedEvents:               1,
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
+			// Same test as above but the remaining master is unhealthy, nothing should be done
+			name: "Risky mutation with an unhealthy master",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masterdata-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(false).needsUpgrade(false).isInCluster(true),
+					newTestPod("other-master-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
+				green:          true,
+				mutation:       removeMasterType("other-master"),
+			},
+			deleted:                      []string{},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: false,
+		},
+		{
+			name: "Two data nodes converted into master+data nodes, step 1: only 1 at a time is allowed",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("data-to-masters-0").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+				),
+				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
+				green:          true,
+				mutation:       addMasterType("data-to-masters"),
+			},
+			deleted:                      []string{"data-to-masters-1"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+		{
+			name: "Two data nodes converted into master+data nodes, step 2: upgrade the remaining one",
+			fields: fields{
+				upgradeTestPods: newUpgradeTestPods(
+					newTestPod("masters-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+					newTestPod("data-to-masters-0").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
+				),
+				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
+				green:          true,
+				mutation:       addMasterType("data-to-masters"),
+			},
+			deleted:                      []string{"data-to-masters-0"},
+			wantErr:                      false,
+			wantShardsAllocationDisabled: true,
+		},
+	}
+	for _, tt := range tests {
+		esState := &testESState{
+			inCluster: tt.fields.upgradeTestPods.podsInCluster(),
+			green:     tt.fields.green,
+		}
+		esClient := &fakeESClient{}
+		es := tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable)
+		ctx := rollingUpgradeCtx{
+			client: k8s.WrapClient(
+				fake.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, nothing)...),
+			),
+			ES:              es,
+			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
+			esClient:        esClient,
+			shardLister:     migration.NewFakeShardLister(client.Shards{}),
+			esState:         esState,
+			expectations:    expectations.NewExpectations(),
+			reconcileState:  reconcile.NewState(v1alpha1.Elasticsearch{}),
+			expectedMasters: tt.fields.upgradeTestPods.toMasters(tt.fields.mutation),
+			actualMasters:   tt.fields.upgradeTestPods.toMasterPods(),
+			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
+			healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),
+		}
+
+		deleted, err := ctx.Delete()
+		if (err != nil) != tt.wantErr {
+			t.Errorf("runPredicates error = %v, wantErr %v", err, tt.wantErr)
+			return
+		}
+		assert.ElementsMatch(t, names(deleted), tt.deleted, tt.name)
+		assert.Equal(t, tt.wantShardsAllocationDisabled, esClient.DisableReplicaShardsAllocationCalled, tt.name)
+		/* Zen2 checks */
+		assert.ElementsMatch(t, tt.votingExclusionCalledWith, esClient.AddVotingConfigExclusionsCalledWith, tt.name)
+		/* Zen1 checks */
+		assert.Equal(t, tt.minimumMasterNodesCalled, esClient.SetMinimumMasterNodesCalled, tt.name)
+		assert.Equal(t, tt.minimumMasterNodesCalledWith, esClient.SetMinimumMasterNodesCalledWith, tt.name)
+		assert.Equal(t, tt.recordedEvents, len(ctx.reconcileState.Events()), tt.name)
+	}
+}
+
 func TestUpgradePodsDeletion_Delete(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
+		shardLister     client.ShardLister
 		ES              v1alpha1.Elasticsearch
 		green           bool
 		maxUnavailable  int
@@ -111,14 +262,16 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			wantShardsAllocationDisabled: true,
 		},
 		{
-			name: "2 healthy masters out of 3, allow the deletion of the unhealthy one",
+			name: "2 healthy masters out of 5, maxUnavailable is 2, allow the deletion of the unhealthy one",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("master-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
 					newTestPod("master-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-3").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
+					newTestPod("master-4").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
-				maxUnavailable: 1,
+				maxUnavailable: 2,
 				green:          true,
 				podFilter:      nothing,
 			},
@@ -219,6 +372,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("elasticsearch-sample-es-masters-1").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("elasticsearch-sample-es-masters-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
+				shardLister:    migration.NewFakeShardFromFile("shards.json"),
 				maxUnavailable: 2, // Allow 2 to be upgraded at the same time
 				green:          true,
 				podFilter:      nothing,
@@ -239,14 +393,15 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		esClient := &fakeESClient{}
 		ctx := rollingUpgradeCtx{
 			client: k8s.WrapClient(
-				fake.NewFakeClient(tt.fields.upgradeTestPods.toPods(tt.fields.podFilter)...),
+				fake.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, tt.fields.podFilter)...),
 			),
 			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),
 			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 			esClient:        esClient,
+			shardLister:     tt.fields.shardLister,
 			esState:         esState,
 			expectations:    expectations.NewExpectations(),
-			expectedMasters: tt.fields.upgradeTestPods.toMasters(),
+			expectedMasters: tt.fields.upgradeTestPods.toMasters(noMutation),
 			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
 			healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),
 		}

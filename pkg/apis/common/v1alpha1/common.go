@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +30,7 @@ type ObjectSelector struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
-// NamespacedName is a convenience method to turn an ObjectSelector into a NamespaceName.
+// NamespacedName is a convenience method to turn an ObjectSelector into a NamespacedName.
 func (s ObjectSelector) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      s.Name,
@@ -96,11 +98,11 @@ type SubjectAlternativeName struct {
 type ServiceTemplate struct {
 	// ObjectMeta is metadata for the service.
 	// The name and namespace provided here is managed by ECK and will be ignored.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec defines the behavior of the service.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Spec v1.ServiceSpec `json:"spec,omitempty"`
 }
 
@@ -111,12 +113,17 @@ var DefaultPodDisruptionBudgetMaxUnavailable = intstr.FromInt(1)
 type PodDisruptionBudgetTemplate struct {
 	// ObjectMeta is metadata for the service.
 	// The name and namespace provided here is managed by ECK and will be ignored.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec of the desired behavior of the PodDisruptionBudget
-	// +optional
+	// +kubebuilder:validation:Optional
 	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
+}
+
+// IsDisabled returns true if the PodDisruptionBudget is explicitly disabled (not nil, but empty).
+func (p *PodDisruptionBudgetTemplate) IsDisabled() bool {
+	return reflect.DeepEqual(p, &PodDisruptionBudgetTemplate{})
 }
 
 type SecretSource struct {
@@ -128,7 +135,7 @@ type SecretSource struct {
 	// key and content is the value. If specified, the listed keys will be
 	// projected into the specified paths, and unlisted keys will not be
 	// present.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Entries []KeyToPath `json:"entries,omitempty"`
 }
 
@@ -141,6 +148,6 @@ type KeyToPath struct {
 	// May not be an absolute path.
 	// May not contain the path element '..'.
 	// May not start with the string '..'.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Path string `json:"path,omitempty"`
 }

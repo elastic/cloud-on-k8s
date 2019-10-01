@@ -8,32 +8,67 @@ import (
 	"context"
 	"strconv"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
 	log = logf.Log.WithName("zen1")
 )
 
+const (
+	Zen1MiniumMasterNodesAnnotationName = "elasticsearch.k8s.elastic.co/minimum-master-nodes"
+)
+
 // SetupMinimumMasterNodesConfig modifies the ES config of the given resources to setup
 // zen1 minimum master nodes.
-func SetupMinimumMasterNodesConfig(nodeSpecResources nodespec.ResourcesList) error {
-	masters := nodeSpecResources.MasterNodesNames()
-	quorum := settings.Quorum(len(masters))
-	for i, res := range nodeSpecResources {
-		if !IsCompatibleWithZen1(res.StatefulSet) {
-			continue
+// This function should not be called unless all the expectations are met.
+func SetupMinimumMasterNodesConfig(
+	c k8s.Client,
+	es v1alpha1.Elasticsearch,
+	nodeSpecResources nodespec.ResourcesList,
+) error {
+	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
+	if zen1compatible, err := AtLeastOneNodeCompatibleWithZen1(
+		nodeSpecResources.StatefulSets(), c, es,
+	); !zen1compatible || err != nil {
+		return err
+	}
+
+	// There are 2 possible situations here:
+	// 1. The StatefulSet contains some masters: use the replicas to set m_m_n in the configuration file.
+	// 2. The StatefulSet does not contain any master but there are some existing Pods: we should NOT rely on the spec
+	//    of the StatefulSet since it might not reflect the situation, the node type "master" might just have been changed
+	//    and a rolling upgrade is maybe in progress.
+	//    In this case some masters are maybe still alive, decreasing m_m_n in the config could lead to a split brain
+	//    situation if the container (not the Pod) restarts.
+	masters := 0
+	for _, resource := range nodeSpecResources {
+		if label.IsMasterNodeSet(resource.StatefulSet) {
+			// First situation: just check for the replicas
+			masters += int(sset.GetReplicas(resource.StatefulSet))
+		} else {
+			// Second situation: not a sset of masters, but we check if there are some of them waiting for a rolling upgrade
+			actualPods, err := sset.GetActualPodsForStatefulSet(c, resource.StatefulSet)
+			if err != nil {
+				return err
+			}
+			actualMasters := len(label.FilterMasterNodePods(actualPods))
+			masters += actualMasters
 		}
+
+	}
+
+	quorum := settings.Quorum(masters)
+
+	for i := range nodeSpecResources {
 		// patch config with the expected minimum master nodes
 		if err := nodeSpecResources[i].Config.MergeWith(
 			common.MustNewSingleValue(
@@ -55,26 +90,23 @@ func UpdateMinimumMasterNodes(
 	es v1alpha1.Elasticsearch,
 	esClient client.Client,
 	actualStatefulSets sset.StatefulSetList,
-	reconcileState *reconcile.State,
 ) (bool, error) {
-	if !AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
-		// nothing to do
-		return false, nil
+	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
+	if zen1compatible, err := AtLeastOneNodeCompatibleWithZen1(actualStatefulSets, c, es); !zen1compatible || err != nil {
+		return false, err
 	}
 
-	pods, err := actualStatefulSets.GetActualPods(c)
+	actualMasters, err := sset.GetActualMastersForCluster(c, es)
 	if err != nil {
 		return false, err
 	}
+
 	// Get current master nodes count
-	currentMasterCount := 0
+	currentMasterCount := len(actualMasters)
 	currentAvailableMasterCount := 0
-	for _, p := range pods {
-		if label.IsMasterNode(p) {
-			currentMasterCount++
-			if k8s.IsPodReady(p) {
-				currentAvailableMasterCount++
-			}
+	for _, p := range actualMasters {
+		if k8s.IsPodReady(p) {
+			currentAvailableMasterCount++
 		}
 	}
 	// Calculate minimum_master_nodes based on that.
@@ -93,25 +125,20 @@ func UpdateMinimumMasterNodes(
 		return true, nil
 	}
 
-	return false, UpdateMinimumMasterNodesTo(es, esClient, actualStatefulSets, reconcileState, minimumMasterNodes)
+	return false, UpdateMinimumMasterNodesTo(es, c, esClient, minimumMasterNodes)
 }
 
 // UpdateMinimumMasterNodesTo calls the ES API to update the value of zen1 minimum_master_nodes
 // to the given value, if the cluster is using zen1.
+// Should only be called it there are some Zen1 compatible masters
 func UpdateMinimumMasterNodesTo(
 	es v1alpha1.Elasticsearch,
+	c k8s.Client,
 	esClient client.Client,
-	actualStatefulSets sset.StatefulSetList,
-	reconcileState *reconcile.State,
 	minimumMasterNodes int,
 ) error {
-	if !AtLeastOneNodeCompatibleWithZen1(actualStatefulSets) {
-		// nothing to do
-		return nil
-	}
-
 	// Check if we really need to update minimum_master_nodes with an API call
-	if minimumMasterNodes == reconcileState.GetZen1MinimumMasterNodes() {
+	if minimumMasterNodes == minimumMasterNodesFromAnnotation(es) {
 		return nil
 	}
 
@@ -126,7 +153,27 @@ func UpdateMinimumMasterNodesTo(
 	if err := esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes); err != nil {
 		return nil
 	}
-	// Save the current value in the status
-	reconcileState.UpdateZen1MinimumMasterNodes(minimumMasterNodes)
-	return nil
+	// Save the current value in an annotation
+	return annotateWithMinimumMasterNodes(c, es, minimumMasterNodes)
+}
+
+func minimumMasterNodesFromAnnotation(es v1alpha1.Elasticsearch) int {
+	annotationStr, set := es.Annotations[Zen1MiniumMasterNodesAnnotationName]
+	if !set {
+		return 0
+	}
+	mmn, err := strconv.Atoi(annotationStr)
+	if err != nil {
+		// this is an optimization only, drop the error
+		return 0
+	}
+	return mmn
+}
+
+func annotateWithMinimumMasterNodes(c k8s.Client, es v1alpha1.Elasticsearch, minimumMasterNodes int) error {
+	if es.Annotations == nil {
+		es.Annotations = make(map[string]string)
+	}
+	es.Annotations[Zen1MiniumMasterNodesAnnotationName] = strconv.Itoa(minimumMasterNodes)
+	return c.Update(&es)
 }

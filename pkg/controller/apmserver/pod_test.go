@@ -94,6 +94,7 @@ func TestNewPodSpec(t *testing.T) {
 							VolumeMounts: []corev1.VolumeMount{
 								configSecretVol.VolumeMount(), configVolume.VolumeMount(),
 							},
+							Resources: DefaultResources,
 						},
 					},
 				},

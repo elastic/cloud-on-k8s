@@ -220,6 +220,10 @@ _string_
 _string_
 |
 ---
+| *`caCertProvided`* +
+_bool_
+|
+---
 | *`caSecretName`* +
 _string_
 |
@@ -915,24 +919,6 @@ _link:#elasticsearch-k8s-elastic-co-v1alpha1-zendiscoverystatus[$$ZenDiscoverySt
 ---
 |===
 
-[id="elasticsearch-k8s-elastic-co-v1alpha1-groupingdefinition"]
-[float]
-==== GroupingDefinition
-(*Appears on:*
-link:#elasticsearch-k8s-elastic-co-v1alpha1-updatestrategy[UpdateStrategy]
-)
-
-GroupingDefinition is used to select a group of pods.
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`selector`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#labelselector-v1-meta[$$Kubernetes meta/v1.LabelSelector$$]_
-|
-Selector is the selector used to match pods.
-|===
-
 [id="elasticsearch-k8s-elastic-co-v1alpha1-node"]
 [float]
 ==== Node
@@ -1018,12 +1004,6 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 |===
 |Field |Description
 
-| *`groups`* +
-_link:#elasticsearch-k8s-elastic-co-v1alpha1-groupingdefinition[$$[]GroupingDefinition$$]_
-|
-Groups is a list of groups that should have their cluster mutations considered in a fair manner with a strict
-change budget (not allowing any surge or unavailability) before the entire cluster is reconciled with the
-full change budget.
 | *`changeBudget`* +
 _link:#elasticsearch-k8s-elastic-co-v1alpha1-changebudget[$$ChangeBudget$$]_
 |

@@ -19,6 +19,11 @@ pipeline {
     }
 
     stages {
+        stage('Run checks') {
+            steps {
+                sh 'make -C build/ci TARGET=ci-check ci'
+            }
+        }
         stage('Run unit and integration tests') {
             steps {
                 sh """

@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -120,8 +120,11 @@ func reconcileHTTPInternalCertificatesSecret(
 			return nil, err
 		}
 		expectedSecretData := make(map[string][]byte)
-		expectedSecretData[certificates.CertFileName] = customCertificates.CertChain()
+		expectedSecretData[certificates.CertFileName] = customCertificates.CertPem()
 		expectedSecretData[certificates.KeyFileName] = customCertificates.KeyPem()
+		if caPem := customCertificates.CAPem(); caPem != nil {
+			expectedSecretData[certificates.CAFileName] = caPem
+		}
 
 		if !reflect.DeepEqual(secret.Data, expectedSecretData) {
 			needsUpdate = true
@@ -228,6 +231,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 		secretWasChanged = true
 		// store certificate and signed certificate in a secret mounted into the pod
+		secret.Data[certificates.CAFileName] = certificates.EncodePEMCert(ca.Cert.Raw)
 		secret.Data[certificates.CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
 	}
 

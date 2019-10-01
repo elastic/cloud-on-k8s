@@ -4,8 +4,9 @@
 :idprefix: k8s-
 :s: k8s
 
-include::{asciidoc-dir}/../../shared/versions/stack/7.x.asciidoc[]
+include::{asciidoc-dir}/../../shared/versions/stack/current.asciidoc[]
 include::{asciidoc-dir}/../../shared/attributes.asciidoc[]
+include::eck-attributes.asciidoc[]
 include::overview.asciidoc[]
 include::k8s-quickstart.asciidoc[]
 include::openshift.asciidoc[]
@@ -13,6 +14,8 @@ include::accessing-services.asciidoc[]
 include::managing-compute-resources.asciidoc[]
 include::elasticsearch-spec.asciidoc[]
 include::apm.asciidoc[]
+include::images.asciidoc[]
+include::operator-config.asciidoc[]
 include::troubleshooting.asciidoc[]
 include::uninstall.asciidoc[]
 include::api-docs.asciidoc[]

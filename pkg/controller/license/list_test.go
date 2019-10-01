@@ -28,7 +28,7 @@ type failingClient struct {
 	Error error
 }
 
-func (f *failingClient) List(opts *client.ListOptions, list runtime.Object) error {
+func (f *failingClient) List(list runtime.Object, opts ...client.ListOption) error {
 	return f.Error
 }
 

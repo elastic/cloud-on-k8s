@@ -20,10 +20,10 @@ const (
 // SetTemplateHashLabel adds a label containing the hash of the given template into the
 // given labels. This label can then be used for template comparisons.
 func SetTemplateHashLabel(labels map[string]string, template interface{}) map[string]string {
-	return SetHashLabel(TemplateHashLabelName, labels, template)
+	return setHashLabel(TemplateHashLabelName, labels, template)
 }
 
-func SetHashLabel(labelName string, labels map[string]string, template interface{}) map[string]string {
+func setHashLabel(labelName string, labels map[string]string, template interface{}) map[string]string {
 	if labels == nil {
 		labels = map[string]string{}
 	}

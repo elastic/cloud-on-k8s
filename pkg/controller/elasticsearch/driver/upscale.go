@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -26,6 +27,7 @@ type upscaleCtx struct {
 	observedState       observer.State
 	esState             ESState
 	upscaleStateBuilder *upscaleStateBuilder
+	expectations        *expectations.Expectations
 }
 
 // HandleUpscaleAndSpecChanges reconciles expected NodeSpec resources.
@@ -41,25 +43,28 @@ func HandleUpscaleAndSpecChanges(
 	ctx upscaleCtx,
 	actualStatefulSets sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
-) error {
+) (sset.StatefulSetList, error) {
 	// adjust expected replicas to control nodes creation and deletion
 	adjusted, err := adjustResources(ctx, actualStatefulSets, expectedResources)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// reconcile all resources
 	for _, res := range adjusted {
 		if err := settings.ReconcileConfig(ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
-			return err
+			return nil, err
 		}
 		if _, err := common.ReconcileService(ctx.k8sClient, ctx.scheme, &res.HeadlessService, &ctx.es); err != nil {
-			return err
+			return nil, err
 		}
-		if err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.scheme, ctx.es, res.StatefulSet); err != nil {
-			return err
+		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.scheme, ctx.es, res.StatefulSet, ctx.expectations)
+		if err != nil {
+			return nil, err
 		}
+		// update actual with the reconciled ones for next steps to work with up-to-date information
+		actualStatefulSets = actualStatefulSets.WithStatefulSet(reconciled)
 	}
-	return nil
+	return actualStatefulSets, nil
 }
 
 func adjustResources(
@@ -77,15 +82,15 @@ func adjustResources(
 		adjustedResources = append(adjustedResources, nodeSpecRes)
 	}
 	// adapt resources configuration to match adjusted replicas
-	if err := adjustZenConfig(ctx.es, adjustedResources); err != nil {
+	if err := adjustZenConfig(ctx.k8sClient, ctx.es, adjustedResources); err != nil {
 		return nil, err
 	}
 	return adjustedResources, nil
 }
 
-func adjustZenConfig(es v1alpha1.Elasticsearch, resources nodespec.ResourcesList) error {
+func adjustZenConfig(k8sClient k8s.Client, es v1alpha1.Elasticsearch, resources nodespec.ResourcesList) error {
 	// patch configs to consider zen1 minimum master nodes
-	if err := zen1.SetupMinimumMasterNodesConfig(resources); err != nil {
+	if err := zen1.SetupMinimumMasterNodesConfig(k8sClient, es, resources); err != nil {
 		return err
 	}
 	// patch configs to consider zen2 initial master nodes if cluster is not bootstrapped yet

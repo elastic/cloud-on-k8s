@@ -28,7 +28,7 @@ func fakeEsClient200(user client.UserAuth) client.Client {
 		func(req *http.Request) *http.Response {
 			return &http.Response{
 				StatusCode: 200,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ClusterStateSample)),
+				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.SampleShards)),
 				Header:     make(http.Header),
 				Request:    req,
 			}

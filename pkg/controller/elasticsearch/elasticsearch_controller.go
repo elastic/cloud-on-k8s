@@ -28,18 +28,18 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -49,6 +49,7 @@ var log = logf.Log.WithName(name)
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
+// this is also called by cmd/main.go
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
@@ -64,7 +65,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	return &ReconcileElasticsearch{
 		Client:   client,
 		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder(name),
+		recorder: mgr.GetEventRecorderFor(name),
 
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
@@ -198,7 +199,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
-	selector := labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
+	selector := map[string]string{label.ClusterNameLabelName: es.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)

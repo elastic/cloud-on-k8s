@@ -19,7 +19,6 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-bundles-plugins>>
 - <<{p}-init-containers-plugin-downloads>>
 - <<{p}-update-strategy>>
-- <<{p}-group-definitions>>
 - <<{p}-pod-disruption-budget>>
 - <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
 - <<{p}-snapshot,Create automated snapshots>>
@@ -65,27 +64,12 @@ For more information on Pod templates, see the Kubernetes documentation:
 [id="{p}-jvm-heap-size"]
 === JVM heap size
 
-By default, the JVM heap used by Elasticsearch has minimum and maximum size set to 1Gi. As the heap size should not exceed 50% of RAM size, ECK requests by default 2Gi of memory for the Elasticsearch Pod. To change the JVM heap size, use the `ES_JAVA_OPTS` environment variable. It is also highly recommended to set the resource requests and limits to adjust the Pod memory to not exceed 50% of the RAM size. Both changes are shown below:
+To change the heap size of Elasticsearch, set the `ES_JAVA_OPTS` environment variable in the `podTemplate`. It is also highly recommended to set the resource `requests` and `limits` at the same time to ensure that the pod gets enough resources allocated within the Kubernetes cluster. See <<{p}-compute-resources-elasticsearch>> for an example and more information.
 
-[source,yaml]
-----
-spec:
-  nodes:
-  - podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          env:
-          - name: ES_JAVA_OPTS
-            value: -Xms2g -Xmx2g
-          resources:
-            requests:
-              memory: 4Gi
-            limits:
-              memory: 4Gi
-----
+If `ES_JAVA_OPTS` is not defined, the Elasticsearch default heap size of 1Gi will be in effect.
 
-For more information, see the Elasticsearch documentation on link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
+See also: link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Elasticsearch documentation on setting the heap size]
+
 
 [id="{p}-node-configuration"]
 === Node configuration
@@ -216,8 +200,9 @@ spec:
 === Custom HTTP certificate
 
 You can provide your own CA and certificates instead of the self-signed certificate to connect to Elasticsearch via HTTPS using a Kubernetes secret.
+The certificate must be stored under `tls.crt` and the private key must be stored under `tls.key`. If your certificate was not issued by a well-known CA, you must include the trust chain under `ca.crt` as well.
 
-You need to reference the name of a secret that contains a TLS private key and a certificate (or a chain), in the `spec.http.tls.certificate` section.
+You need to reference the name of a secret that contains a TLS private key and a certificate (and optionally, a trust chain), in the `spec.http.tls.certificate` section.
 
 [source,yaml]
 ----
@@ -232,8 +217,8 @@ This is an example on how create a Kubernetes TLS secret with a self-signed cert
 
 [source,sh]
 ----
-$ openssl req -x509 -newkey rsa:4096 -keyout tls.key -out tls.crt -days 365 -nodes
-$ kubectl create secret tls my-cert --cert tls.crt --key tls.key
+$ openssl req -x509 -sha256 -nodes -newkey rsa:4096 -days 365 -subj "/CN=quickstart-es-http" -addext "subjectAltName=DNS:quickstart-es-http.default.svc" -keyout tls.key -out tls.crt
+$ kubectl create secret generic my-cert --from-file=ca.crt=tls.crt --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
 ----
 
 [id="{p}-es-secure-settings"]
@@ -342,7 +327,7 @@ You can install custom plugins before the Elasticsearch container starts with an
             bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
-You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:k8s-snapshot.html[snapshots] doc has more information on both these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
+You can also override the Elasticsearch container image to use your own image with the plugins already installed, as described in the link:k8s-images.asciidoc[custom images doc]. The link:k8s-snapshot.html[snapshots] doc has more information on both these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
 
 The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It also inherits the Pod name and IP address environment variables.
 
@@ -408,82 +393,6 @@ So under certain circumstances ECK ignores the change budget. For example, a saf
 
 It is possible to configure the `changeBudget` to optimize the reuse of persistent volumes, instead of migrating data across nodes. This feature is not supported yet, more details to come in the next release.
 
-[id="{p}-group-definitions"]
-=== Group definitions
-
-To optimize upgrades for highly available setups, ECK can take into account arbitrary nodes grouping. It prioritizes recovery of availability zones in catastrophic scenarios.
-
-For example, let's create a zone-aware Elasticsearch cluster. Some nodes are created in `europe-west3-a`, and some others in `europe-west3-b`:
-
-[source,yaml]
-----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
-kind: Elasticsearch
-metadata:
-  name: quickstart
-spec:
-  version: 7.3.0
-  nodes:
-  - nodeCount: 3
-    config:
-      node.attr.zone: europe-west3-a
-      cluster.routing.allocation.awareness.attributes: zone
-    podTemplate:
-      meta:
-        labels:
-          nodesGroup: group-a
-      spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-              - matchExpressions:
-                - key: failure-domain.beta.kubernetes.io/zone
-                  operator: In
-                  values:
-                  - europe-west3-a
-  - nodeCount: 3
-    config:
-      node.attr.zone: europe-west3-b
-      cluster.routing.allocation.awareness.attributes: zone
-    podTemplate:
-      meta:
-        labels:
-          nodesGroup: group-b
-      spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-              - matchExpressions:
-                - key: failure-domain.beta.kubernetes.io/zone
-                  operator: In
-                  values:
-                  - europe-west3-b
-  updateStrategy:
-    changeBudget:
-      maxSurge: 1
-      maxUnavailable: 0
-    groups:
-    - selector:
-        matchLabels:
-          nodesGroup: group-a
-    - selector:
-        matchLabels:
-          nodesGroup: group-b
-----
-
-If a modification is applied to the Elasticsearch configuration of these 6 nodes, ECK slowly upgrades the cluster nodes, taking the provided `changeBudget` into account.
-In this example, it will spawn one node at a time, and migrate data away from one node at a time.
-
-Imagine a catastrophic situation occurs while the mutation is in progress: all nodes in `europe-west3-b` suddenly disappear.
-ECK detects it, and recreates the 3 missing nodes as expected. However, since a cluster upgrade is already in progress, the current `changeBudget` might already be maxed out, preventing new nodes to be created in `europe-west3-b`.
-
-In this situation, it is preferable to first recreate the missing nodes in `europe-west-3b`, then continue the cluster upgrade.
-
-To do so, ECK must know about the logical grouping of nodes. Since this is an arbitrary setting (can represent availability zones, but also nodes roles, hot-warm topologies, etc.), it must be specified in the `updateStrategy.groups` section of the Elasticsearch specification.
-Nodes grouping is expressed through labels on the resources. In the example above, 3 Pods are labeled with `group-a`, and the 3 Pods with `group-b`.
-
 [id="{p}-pod-disruption-budget"]
 === Pod disruption budget
 
@@ -494,14 +403,14 @@ A default PDB of 1 `maxUnavailable` Pod on the entire cluster is enforced by def
 
 This default can be tweaked in the Elasticsearch specification:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 3
   podDisruptionBudget:
@@ -514,14 +423,14 @@ spec:
 
 It can also be explicitly disabled:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.3.0
+  version: {version}
   nodes:
   - nodeCount: 3
   podDisruptionBudget: {}

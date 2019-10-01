@@ -2,12 +2,14 @@ run:
   deadline: 300s
   skip-dirs:
     - config
+    - hack/licence\-detector
   skip-files:
     - utils/chrono/millis\.test\.go
 linters:
   enable-all: true
   disable:
     - dupl
+    - funlen
     - gochecknoglobals
     - gochecknoinits
     - interfacer

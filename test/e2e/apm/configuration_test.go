@@ -83,7 +83,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				},
 			},
 			// Keystore should be empty
-			test.CheckKeystoreEntries(k, apmPodListOpts, APMKeystoreCmd, nil),
+			test.CheckKeystoreEntries(k, APMKeystoreCmd, nil, apmPodListOpts...),
 		}
 	}
 
@@ -105,7 +105,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				Name: "Add a Keystore to the APM server",
 				Test: func(t *testing.T) {
 					// get current pod id
-					pods, err := k.GetPods(apmPodListOpts)
+					pods, err := k.GetPods(apmPodListOpts...)
 					require.NoError(t, err)
 					require.True(t, len(pods) == 1)
 					previousPodUID = &pods[0].UID
@@ -122,7 +122,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				Name: "APM Pod should be recreated",
 				Test: test.Eventually(func() error {
 					// get current pod id
-					pods, err := k.GetPods(apmPodListOpts)
+					pods, err := k.GetPods(apmPodListOpts...)
 					if err != nil {
 						return err
 					}
@@ -136,13 +136,13 @@ func TestUpdateConfiguration(t *testing.T) {
 				}),
 			},
 
-			test.CheckKeystoreEntries(k, apmPodListOpts, APMKeystoreCmd, []string{"logging.verbose"}),
+			test.CheckKeystoreEntries(k, APMKeystoreCmd, []string{"logging.verbose"}, apmPodListOpts...),
 
 			test.Step{
 				Name: "Customize configuration of the APM server",
 				Test: func(t *testing.T) {
 					// get current pod id
-					pods, err := k.GetPods(apmPodListOpts)
+					pods, err := k.GetPods(apmPodListOpts...)
 					require.NoError(t, err)
 					require.True(t, len(pods) == 1)
 					previousPodUID = &pods[0].UID
@@ -160,7 +160,7 @@ func TestUpdateConfiguration(t *testing.T) {
 				Name: "APM Pod should be recreated",
 				Test: test.Eventually(func() error {
 					// get current pod id
-					pods, err := k.GetPods(apmPodListOpts)
+					pods, err := k.GetPods(apmPodListOpts...)
 					if err != nil {
 						return err
 					}
@@ -201,7 +201,7 @@ func TestUpdateConfiguration(t *testing.T) {
 func partialAPMConfiguration(k *test.K8sClient, namespace, name string) (PartialApmConfiguration, error) {
 	var config PartialApmConfiguration
 	// get current pods
-	pods, err := k.GetPods(test.ApmServerPodListOptions(namespace, name))
+	pods, err := k.GetPods(test.ApmServerPodListOptions(namespace, name)...)
 	if err != nil {
 		return config, err
 	}

@@ -30,15 +30,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 // Kibana association controller
@@ -89,7 +88,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAs
 		Client:     client,
 		scheme:     mgr.GetScheme(),
 		watches:    watches.NewDynamicWatches(),
-		recorder:   mgr.GetRecorder(name),
+		recorder:   mgr.GetEventRecorderFor(name),
 		Parameters: params,
 	}
 }
@@ -133,7 +132,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	err := h.Handle(
 		&kibana,
 		watchFinalizer(kbName, r.watches),
-		user.UserFinalizer(r.Client, NewUserLabelSelector(kbName), kibana.Kind()),
+		user.UserFinalizer(r.Client, kibana.Kind(), NewUserLabelSelector(kbName)),
 	)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -197,7 +196,7 @@ func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result 
 }
 
 func (r *ReconcileAssociation) isCompatible(kibana *kbtype.Kibana) (bool, error) {
-	selector := labels.Set(map[string]string{label.KibanaNameLabelName: kibana.Name}).AsSelector()
+	selector := map[string]string{label.KibanaNameLabelName: kibana.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, kibana, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kibana, events.EventCompatCheckError, "Error during compatibility check: %v", err)
@@ -282,7 +281,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 		return commonv1alpha1.AssociationPending, err
 	}
 
-	caSecretName, err := r.reconcileElasticsearchCA(kibana, esRefKey)
+	caSecret, err := r.reconcileElasticsearchCA(kibana, esRefKey)
 	if err != nil {
 		return commonv1alpha1.AssociationPending, err
 	}
@@ -292,7 +291,8 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 	expectedESAssoc := &commonv1alpha1.AssociationConf{
 		AuthSecretName: authSecret.Name,
 		AuthSecretKey:  authSecret.Key,
-		CASecretName:   caSecretName,
+		CACertProvided: caSecret.CACertProvided,
+		CASecretName:   caSecret.Name,
 		URL:            services.ExternalServiceURL(es),
 	}
 
@@ -312,7 +312,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbtype.Kibana) (commonv
 	return commonv1alpha1.AssociationEstablished, nil
 }
 
-func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, es types.NamespacedName) (string, error) {
+func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, es types.NamespacedName) (association.CASecret, error) {
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
@@ -320,7 +320,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, e
 		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
 		Watcher: kibanaKey,
 	}); err != nil {
-		return "", err
+		return association.CASecret{}, err
 	}
 	// Build the labels applied on the secret
 	labels := kblabel.NewLabels(kibana.Name)
@@ -339,8 +339,9 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, e
 // attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
 func deleteOrphanedResources(c k8s.Client, kibana *kbtype.Kibana) error {
 	var secrets corev1.SecretList
-	selector := NewResourceSelector(kibana.Name)
-	if err := c.List(&client.ListOptions{LabelSelector: selector, Namespace: kibana.Namespace}, &secrets); err != nil {
+	ns := client.InNamespace(kibana.Namespace)
+	matchLabels := NewResourceSelector(kibana.Name)
+	if err := c.List(&secrets, ns, matchLabels); err != nil {
 		return err
 	}
 

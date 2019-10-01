@@ -20,8 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var log = logf.Log.WithName("transport")
@@ -36,10 +36,9 @@ func ReconcileTransportCertificatesSecrets(
 	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	var pods corev1.PodList
-	if err := c.List(&client.ListOptions{
-		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
-		Namespace:     es.Namespace,
-	}, &pods); err != nil {
+	matchLabels := label.NewLabelSelectorForElasticsearch(es)
+	ns := client.InNamespace(es.Namespace)
+	if err := c.List(&pods, matchLabels, ns); err != nil {
 		return reconcile.Result{}, err
 	}
 

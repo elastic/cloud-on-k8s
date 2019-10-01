@@ -7,14 +7,18 @@ package driver
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 )
 
 type PredicateContext struct {
-	masterNodesNames []string
-	healthyPods      map[string]corev1.Pod
-	toUpdate         []corev1.Pod
-	esState          ESState
+	masterNodesNames       []string
+	actualMasters          []corev1.Pod
+	healthyPods            map[string]corev1.Pod
+	toUpdate               []corev1.Pod
+	esState                ESState
+	shardLister            client.ShardLister
+	masterUpdateInProgress bool
 }
 
 // Predicate is a function that indicates if a Pod can be deleted (or not).
@@ -25,15 +29,19 @@ type Predicate struct {
 
 func NewPredicateContext(
 	state ESState,
+	shardLister client.ShardLister,
 	healthyPods map[string]corev1.Pod,
 	podsToUpgrade []corev1.Pod,
 	masterNodesNames []string,
+	actualMasters []corev1.Pod,
 ) PredicateContext {
 	return PredicateContext{
 		masterNodesNames: masterNodesNames,
+		actualMasters:    actualMasters,
 		healthyPods:      healthyPods,
 		toUpdate:         podsToUpgrade,
 		esState:          state,
+		shardLister:      shardLister,
 	}
 }
 
@@ -43,6 +51,10 @@ func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailab
 			return deletedPods, err
 		} else if ok {
 			candidate := candidate
+			if label.IsMasterNode(candidate) || willBecomeMasterNode(candidate.Name, ctx.masterNodesNames) {
+				// It is a mutation on an already existing or future master.
+				ctx.masterUpdateInProgress = true
+			}
 			// Remove from healthy nodes if it was there
 			delete(ctx.healthyPods, candidate.Name)
 			// Append to the deletedPods list
@@ -126,21 +138,50 @@ var predicates = [...]Predicate{
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
-			// If candidate is not a master then we don't care
+
+			// If candidate is not a master then we just check if it will become a master
+			// In this case we account for a master creation as we want to avoid creating more
+			// than one master at a time.
 			if !label.IsMasterNode(candidate) {
+				if willBecomeMasterNode(candidate.Name, context.masterNodesNames) {
+					return !context.masterUpdateInProgress, nil
+				}
+				// It is just a data node and it will not become a master: we don't care
 				return true, nil
 			}
-			// If candidate is not healthy we want to give it a chance to restart
+
+			// There is a current master scheduled for deletion
+			if context.masterUpdateInProgress {
+				return false, nil
+			}
+
+			// If candidate is already a master and is not healthy we want to give it a chance to restart anyway
+			// even if it is leaving the control plane.
 			_, healthy := context.healthyPods[candidate.Name]
 			if !healthy {
 				return true, nil
 			}
 
-			for _, pod := range deletedPods {
-				if label.IsMasterNode(pod) {
-					return false, nil
+			// If Pod is not an expected master it means that we are downscaling the masters
+			// by changing the type of the node.
+			// In this case we still check that other masters are healthy to avoid degrading the situation.
+			if !willBecomeMasterNode(candidate.Name, context.masterNodesNames) {
+				// We still need to ensure that others masters are healthy
+				for _, actualMaster := range context.actualMasters {
+					_, healthyMaster := context.healthyPods[actualMaster.Name]
+					if !healthyMaster {
+						log.V(1).Info(
+							"Can't permanently remove a master in a rolling upgrade if there is an other unhealthy master",
+							"namespace", candidate.Namespace,
+							"candidate", candidate.Name,
+							"unhealthy", actualMaster.Name,
+						)
+						return false, nil
+					}
 				}
+				return true, nil
 			}
+
 			// Get the expected masters
 			expectedMasters := len(context.masterNodesNames)
 			// Get the healthy masters
@@ -150,9 +191,18 @@ var predicates = [...]Predicate{
 					healthyMasters++
 				}
 			}
-			// We are relying here on the expectations that give us the guarantee
-			// that there is no upscale or downscale in progress.
-			return healthyMasters == expectedMasters, nil
+			// We are relying here on the expectations and on the checks above that give us
+			// the guarantee that there is no upscale or downscale in progress.
+			// The condition to update an existing master is to have all the masters in a healthy state.
+			if healthyMasters == expectedMasters {
+				return true, nil
+			}
+			log.V(1).Info(
+				"Cannot delete master for rolling upgrade",
+				"expected_healthy_masters", expectedMasters,
+				"actually_healthy_masters", healthyMasters,
+			)
+			return false, nil
 		},
 	},
 	{
@@ -203,19 +253,20 @@ var predicates = [...]Predicate{
 				// Do not do unnecessary request
 				return true, nil
 			}
-			clusterState, err := context.esState.GetClusterState()
+
+			shards, err := context.shardLister.GetShards()
 			if err != nil {
-				return false, err
+				return true, err
 			}
-			shards := clusterState.GetShardsByNode()
-			shardsOnCandidate, ok := shards[candidate.Name]
+			shardsByNode := shards.GetShardsByNode()
+			shardsOnCandidate, ok := shardsByNode[candidate.Name]
 			if !ok {
 				// No shards on this node
 				return true, nil
 			}
 
 			for _, deletedPod := range deletedPods {
-				shardsOnDeletedPod, ok := shards[deletedPod.Name]
+				shardsOnDeletedPod, ok := shardsByNode[deletedPod.Name]
 				if !ok {
 					// No shards on the deleted pod
 					continue
@@ -227,6 +278,10 @@ var predicates = [...]Predicate{
 			return true, nil
 		},
 	},
+}
+
+func willBecomeMasterNode(name string, masters []string) bool {
+	return stringsutil.StringInSlice(name, masters)
 }
 
 func conflictingShards(shards1, shards2 []client.Shard) bool {

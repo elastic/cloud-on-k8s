@@ -25,9 +25,9 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -54,16 +54,16 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
-	return add(mgr, newReconciler(mgr, p.OperatorNamespace))
+	return add(mgr, newReconciler(mgr, p))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, ns string) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{
 		Client:  c,
 		scheme:  mgr.GetScheme(),
-		checker: license.NewLicenseChecker(c, ns),
+		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
 }
 

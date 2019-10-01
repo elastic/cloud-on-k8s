@@ -65,7 +65,7 @@ func TestAPMAssociationWithNonExistentES(t *testing.T) {
 	steps = steps.WithStep(test.Step{
 		Name: "Non existent backend should generate event",
 		Test: test.Eventually(func() error {
-			eventList, err := k.GetEvents(test.EventListOptions(apmBuilder.ApmServer.Namespace, apmBuilder.ApmServer.Name))
+			eventList, err := k.GetEvents(test.EventListOptions(apmBuilder.ApmServer.Namespace, apmBuilder.ApmServer.Name)...)
 			if err != nil {
 				return err
 			}
@@ -106,7 +106,7 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 			test.Step{
 				Name: "Lost Elasticsearch association should generate events",
 				Test: test.Eventually(func() error {
-					eventList, err := k.GetEvents(test.EventListOptions(apmBuilder.ApmServer.Namespace, apmBuilder.ApmServer.Name))
+					eventList, err := k.GetEvents(test.EventListOptions(apmBuilder.ApmServer.Namespace, apmBuilder.ApmServer.Name)...)
 					if err != nil {
 						return err
 					}

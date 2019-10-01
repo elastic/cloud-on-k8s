@@ -56,7 +56,7 @@ func Test_annotateWithUUID(t *testing.T) {
 	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 
 	cluster := notBootstrappedES()
-	observedState := observer.State{ClusterState: &client.ClusterState{ClusterUUID: "cluster-uuid"}}
+	observedState := observer.State{ClusterInfo: &client.Info{ClusterUUID: "cluster-uuid"}}
 	k8sClient := k8s.WrapClient(fake.NewFakeClient(cluster))
 
 	err := annotateWithUUID(cluster, observedState, k8sClient)
@@ -88,21 +88,21 @@ func TestReconcileClusterUUID(t *testing.T) {
 			name:          "not annotated, but not bootstrapped yet (cluster state empty)",
 			cluster:       notBootstrappedES(),
 			c:             k8s.WrapClient(fake.NewFakeClient()),
-			observedState: observer.State{ClusterState: nil},
+			observedState: observer.State{ClusterInfo: nil},
 			wantCluster:   notBootstrappedES(),
 		},
 		{
 			name:          "not annotated, but not bootstrapped yet (cluster UUID empty)",
 			cluster:       notBootstrappedES(),
 			c:             k8s.WrapClient(fake.NewFakeClient()),
-			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: ""}},
+			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: ""}},
 			wantCluster:   notBootstrappedES(),
 		},
 		{
 			name:          "not annotated, but bootstrapped",
 			c:             k8s.WrapClient(fake.NewFakeClient(notBootstrappedES())),
 			cluster:       notBootstrappedES(),
-			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: "uuid"}},
+			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
 			wantCluster:   bootstrappedES(),
 		},
 		{
@@ -115,7 +115,7 @@ func TestReconcileClusterUUID(t *testing.T) {
 					Master:      true,
 				}.BuildPtr())),
 			cluster:       bootstrappedES(),
-			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: "uuid"}},
+			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
 			wantCluster:   reBootstrappingES(),
 		},
 		{
@@ -129,7 +129,7 @@ func TestReconcileClusterUUID(t *testing.T) {
 				}.BuildPtr(),
 			)),
 			cluster:       reBootstrappingES(),
-			observedState: observer.State{ClusterState: &client.ClusterState{ClusterUUID: "uuid"}},
+			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
 			wantCluster:   reBootstrappingES(),
 		},
 	}

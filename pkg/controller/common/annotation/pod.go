@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -26,16 +26,13 @@ var (
 // MarkPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
 func MarkPodsAsUpdated(
 	c k8s.Client,
-	podListOptions client.ListOptions,
+	podListOptions ...client.ListOption,
 ) {
 	// Get all pods
 	var podList corev1.PodList
-	err := c.List(&podListOptions, &podList)
+	err := c.List(&podList, podListOptions...)
 	if err != nil {
-		log.Error(
-			err, "failed to list pods for annotation update",
-			"namespace", podListOptions.Namespace,
-		)
+		log.Error(err, "failed to list pods for annotation update")
 		return
 	}
 	// Update annotation
