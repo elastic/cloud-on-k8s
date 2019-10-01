@@ -14,8 +14,14 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource
-const ControllerVersionAnnotation = "common.k8s.elastic.co/controller-version"
+const (
+	// ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource
+	ControllerVersionAnnotation = "common.k8s.elastic.co/controller-version"
+	// UnknownControllerVersion is the version used when a resource has been created before we started adding the annotation
+	UnknownControllerVersion = "0.0.0-UNKNOWN" // may match resources created with ECK-0.8.0
+	// MinCompatibleControllerVersion is the minimum version that indicates that a resource is compatible with this operator
+	MinCompatibleControllerVersion = "0.10.0-SNAPSHOT"
+)
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
 func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version string) error {
@@ -87,7 +93,7 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector map[
 		}
 		if exist {
 			log.Info("Resource was previously reconciled by incompatible controller version and missing annotation, adding annotation", "controller_version", controllerVersion, "namespace", namespace, "name", name, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-			err = UpdateControllerVersion(client, obj, "0.8.0-UNKNOWN")
+			err = UpdateControllerVersion(client, obj, UnknownControllerVersion)
 			return false, err
 		}
 		// no annotation exists and there are no existing resources, so this has not previously been reconciled
@@ -99,7 +105,7 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector map[
 	if err != nil {
 		return false, errors.Wrap(err, "Error parsing current version on resource")
 	}
-	minVersion, err := version.Parse("0.9.0-ALPHA")
+	minVersion, err := version.Parse(MinCompatibleControllerVersion)
 	if err != nil {
 		return false, errors.Wrap(err, "Error parsing minimum compatible version")
 	}

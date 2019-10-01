@@ -197,9 +197,13 @@ const (
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
-	commonv1alpha1.ReconcilerStatus
-	Health ElasticsearchHealth             `json:"health,omitempty"`
-	Phase  ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	commonv1alpha1.ReconcilerStatus `json:",inline"`
+	Health                          ElasticsearchHealth             `json:"health,omitempty"`
+	Phase                           ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	ClusterUUID                     string                          `json:"clusterUUID,omitempty"`
+	MasterNode                      string                          `json:"masterNode,omitempty"`
+	ExternalService                 string                          `json:"service,omitempty"`
+	ZenDiscovery                    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {
@@ -214,9 +218,8 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 // +kubebuilder:object:root=true
 
 // Elasticsearch is the Schema for the elasticsearches API
+// +kubebuilder:resource:categories=elastic,shortName=es
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=es
-// +kubebuilder:categories=elastic
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Elasticsearch version"

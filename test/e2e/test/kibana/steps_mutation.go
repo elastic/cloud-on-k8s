@@ -7,7 +7,7 @@ package kibana
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Applying the Kibana mutation should succeed",
 			Test: func(t *testing.T) {
-				var kb v1alpha1.Kibana
+				var kb v1beta1.Kibana
 				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Kibana), &kb))
 				kb.Spec = b.Kibana.Spec
 				require.NoError(t, k.Client.Update(&kb))

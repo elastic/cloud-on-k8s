@@ -8,7 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
@@ -22,7 +22,7 @@ import (
 
 type upscaleCtx struct {
 	k8sClient           k8s.Client
-	es                  v1alpha1.Elasticsearch
+	es                  v1beta1.Elasticsearch
 	scheme              *runtime.Scheme
 	observedState       observer.State
 	esState             ESState
@@ -88,7 +88,7 @@ func adjustResources(
 	return adjustedResources, nil
 }
 
-func adjustZenConfig(k8sClient k8s.Client, es v1alpha1.Elasticsearch, resources nodespec.ResourcesList) error {
+func adjustZenConfig(k8sClient k8s.Client, es v1beta1.Elasticsearch, resources nodespec.ResourcesList) error {
 	// patch configs to consider zen1 minimum master nodes
 	if err := zen1.SetupMinimumMasterNodesConfig(k8sClient, es, resources); err != nil {
 		return err

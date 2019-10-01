@@ -1,5 +1,5 @@
 # This sample sets up a single Kibana instance pointing to a remote Elasticsearch cluster
-apiVersion: kibana.k8s.elastic.co/v1alpha1
+apiVersion: kibana.k8s.elastic.co/v1beta1
 kind: Kibana
 metadata:
   name: kibana-sample

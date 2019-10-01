@@ -5,7 +5,7 @@
 package config
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 )
 
@@ -16,7 +16,7 @@ const (
 )
 
 // SecretVolume returns a SecretVolume to hold the Kibana config of the given Kibana resource.
-func SecretVolume(kb v1alpha1.Kibana) volume.SecretVolume {
+func SecretVolume(kb v1beta1.Kibana) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
 		SecretName(kb),
 		VolumeName,
@@ -25,6 +25,6 @@ func SecretVolume(kb v1alpha1.Kibana) volume.SecretVolume {
 }
 
 // SecretName is the name of the secret that holds the Kibana config for the given Kibana resource.
-func SecretName(kb v1alpha1.Kibana) string {
+func SecretName(kb v1beta1.Kibana) string {
 	return kb.Name + "-kb-" + VolumeName
 }

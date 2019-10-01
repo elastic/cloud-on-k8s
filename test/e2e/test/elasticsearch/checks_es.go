@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -155,7 +155,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 
 				nodeStats := nodesStats.Nodes[nodeID]
 				for i, topoElem := range expectedTopology {
-					cfg, err := v1alpha1.UnpackConfig(topoElem.Config)
+					cfg, err := v1beta1.UnpackConfig(topoElem.Config)
 					if err != nil {
 						return err
 					}
@@ -205,7 +205,7 @@ func rolesToConfig(roles []string) estype.Node {
 func compareMemoryLimit(topologyElement estype.NodeSpec, cgroupMemoryLimitsInBytes int64) bool {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
-		if c.Name == v1alpha1.ElasticsearchContainerName {
+		if c.Name == v1beta1.ElasticsearchContainerName {
 			memoryLimit = c.Resources.Limits.Memory()
 		}
 	}

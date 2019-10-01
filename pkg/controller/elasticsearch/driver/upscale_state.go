@@ -10,7 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
@@ -23,7 +23,7 @@ type upscaleStateBuilder struct {
 	upscaleState *upscaleState
 }
 
-func (o *upscaleStateBuilder) InitOnce(c k8s.Client, es v1alpha1.Elasticsearch, esState ESState) (*upscaleState, error) {
+func (o *upscaleStateBuilder) InitOnce(c k8s.Client, es v1beta1.Elasticsearch, esState ESState) (*upscaleState, error) {
 	if o.once == nil {
 		o.once = &sync.Once{}
 	}
@@ -39,7 +39,7 @@ type upscaleState struct {
 	allowMasterCreation bool
 }
 
-func newUpscaleState(c k8s.Client, es v1alpha1.Elasticsearch, esState ESState) (*upscaleState, error) {
+func newUpscaleState(c k8s.Client, es v1beta1.Elasticsearch, esState ESState) (*upscaleState, error) {
 	state := &upscaleState{
 		isBootstrapped:      AnnotatedForBootstrap(es),
 		allowMasterCreation: true,

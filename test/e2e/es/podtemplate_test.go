@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -50,7 +50,7 @@ func TestCustomConfiguration(t *testing.T) {
 				},
 				Containers: []corev1.Container{
 					{
-						Name:      v1alpha1.ElasticsearchContainerName,
+						Name:      v1beta1.ElasticsearchContainerName,
 						Resources: elasticsearch.DefaultResources,
 						VolumeMounts: []corev1.VolumeMount{
 							{
