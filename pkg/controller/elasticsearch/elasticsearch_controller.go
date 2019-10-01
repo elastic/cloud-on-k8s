@@ -300,7 +300,7 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
-		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind()),
-		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind(), es.Name, esname.ESNamer),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind),
+		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, esname.ESNamer),
 	}
 }

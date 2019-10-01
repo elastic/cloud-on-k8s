@@ -10,10 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	ElasticsearchContainerName = "elasticsearch"
-	Kind                       = "Elasticsearch"
-)
+const ElasticsearchContainerName = "elasticsearch"
 
 // ElasticsearchSpec defines the desired state of Elasticsearch
 type ElasticsearchSpec struct {
@@ -240,12 +237,6 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 
 func (e Elasticsearch) SecureSettings() []commonv1alpha1.SecretSource {
 	return e.Spec.SecureSettings
-}
-
-// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
-// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
-func (e Elasticsearch) Kind() string {
-	return Kind
 }
 
 // +kubebuilder:object:root=true

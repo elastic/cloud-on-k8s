@@ -226,6 +226,6 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 func (r *ReconcileKibana) finalizersFor(kb *kibanav1beta1.Kibana) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
 		secretWatchFinalizer(*kb, r.dynamicWatches),
-		keystore.Finalizer(k8s.ExtractNamespacedName(kb), r.dynamicWatches, kb.Kind()),
+		keystore.Finalizer(k8s.ExtractNamespacedName(kb), r.dynamicWatches, kb.Kind),
 	}
 }
