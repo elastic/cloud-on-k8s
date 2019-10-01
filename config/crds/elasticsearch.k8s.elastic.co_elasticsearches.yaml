@@ -26,6 +26,8 @@ spec:
     type: date
   group: elasticsearch.k8s.elastic.co
   names:
+    categories:
+    - elastic
     kind: Elasticsearch
     listKind: ElasticsearchList
     plural: elasticsearches

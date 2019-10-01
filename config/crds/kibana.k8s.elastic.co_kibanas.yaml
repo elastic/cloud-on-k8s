@@ -23,6 +23,8 @@ spec:
     type: date
   group: kibana.k8s.elastic.co
   names:
+    categories:
+    - elastic
     kind: Kibana
     listKind: KibanaList
     plural: kibanas

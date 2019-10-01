@@ -218,9 +218,8 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 // +kubebuilder:object:root=true
 
 // Elasticsearch is the Schema for the elasticsearches API
+// +kubebuilder:resource:categories=elastic,shortName=es
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=es
-// +kubebuilder:categories=elastic
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Elasticsearch version"

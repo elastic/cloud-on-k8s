@@ -23,11 +23,15 @@ spec:
     type: date
   group: apm.k8s.elastic.co
   names:
+    categories:
+    - elastic
     kind: ApmServer
     listKind: ApmServerList
     plural: apmservers
+    shortNames:
+    - apm
     singular: apmserver
-  scope: ""
+  scope: Namespaced
   subresources:
     status: {}
   validation:

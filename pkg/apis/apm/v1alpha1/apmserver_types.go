@@ -82,7 +82,7 @@ func (as ApmServerStatus) IsDegraded(prev ApmServerStatus) bool {
 // +kubebuilder:object:root=true
 
 // ApmServer is the Schema for the apmservers API
-// +kubebuilder:categories=elastic
+// +kubebuilder:resource:categories=elastic,shortName=apm
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"

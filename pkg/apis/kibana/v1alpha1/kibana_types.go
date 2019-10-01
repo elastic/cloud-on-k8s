@@ -105,8 +105,7 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1alpha1.AssociationConf) {
 // +kubebuilder:object:root=true
 
 // Kibana is the Schema for the kibanas API
-// +kubebuilder:categories=elastic
-// +kubebuilder:resource:shortName=kb
+// +kubebuilder:resource:categories=elastic,shortName=kb
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
