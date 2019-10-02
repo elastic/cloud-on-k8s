@@ -81,12 +81,13 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 func (ctx *rollingUpgradeCtx) getAllowedDeletions() (int, bool) {
 	// Check if we are not over disruption budget
 	// Upscale is done, we should have the required number of Pods
-	expectedPods := ctx.statefulSets.PodNames()
-	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
+	actualPods := ctx.statefulSets.PodNames()
+	unhealthyPods := len(actualPods) - len(ctx.healthyPods)
 
 	maxUnavailable := ctx.ES.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()
 	if maxUnavailable == nil {
-		return len(expectedPods), false
+		// maxUnavailable is unbounded, we allow removing all pods
+		return len(actualPods), false
 	}
 
 	allowedDeletions := int(*maxUnavailable) - unhealthyPods

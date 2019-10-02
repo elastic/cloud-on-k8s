@@ -263,7 +263,7 @@ func Test_newUpscaleState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newUpscaleState(tt.args.ctx, tt.args.actual, tt.args.expected)
-			require.NoError(t, got.buildOnce())
+			require.NoError(t, buildOnce(got))
 			got.ctx = upscaleCtx{}
 			got.once = nil
 			if !reflect.DeepEqual(got, tt.want) {
@@ -326,7 +326,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newUpscaleState(tt.ctx, tt.actual, tt.expected)
-			require.NoError(t, got.buildOnce())
+			require.NoError(t, buildOnce(got))
 			got.ctx = upscaleCtx{}
 			got.once = nil
 			if !reflect.DeepEqual(got, tt.want) {

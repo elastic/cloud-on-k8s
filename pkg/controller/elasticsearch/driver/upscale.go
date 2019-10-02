@@ -108,14 +108,20 @@ func adjustStatefulSetReplicas(
 	expected appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
 	actual, alreadyExists := actualStatefulSets.GetByName(expected.Name)
-	if alreadyExists && sset.GetReplicas(expected) < sset.GetReplicas(actual) {
-		// This is a downscale.
-		// We still want to update the sset spec to the newest one, but leave scaling down as it's done later.
-		nodespec.UpdateReplicas(&expected, actual.Spec.Replicas)
-		return expected, nil
+	expectedReplicas := sset.GetReplicas(expected)
+	actualReplicas := sset.GetReplicas(actual)
+
+	if actualReplicas < expectedReplicas {
+		return upscaleState.limitNodesCreation(actual, expected)
 	}
 
-	return upscaleState.limitNodesCreation(actual, expected)
+	if alreadyExists && expectedReplicas < actualReplicas {
+		// this is a downscale.
+		// We still want to update the sset spec to the newest one, but leave scaling down as it's done later.
+		nodespec.UpdateReplicas(&expected, actual.Spec.Replicas)
+	}
+
+	return expected, nil
 }
 
 // isReplicaIncrease returns true if expected replicas are higher than actual replicas.

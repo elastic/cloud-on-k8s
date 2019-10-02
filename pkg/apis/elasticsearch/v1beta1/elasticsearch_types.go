@@ -113,13 +113,13 @@ type UpdateStrategy struct {
 // ChangeBudget defines how Pods in a single group should be updated.
 type ChangeBudget struct {
 	// MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to the
-	// actions controlled by the operator.
-	// By default, a fixed value of 1 is used.
+	// actions controlled by the operator. Setting negative value will result in no restrictions on number of unavailable
+	// pods. By default, a fixed value of 1 is used.
 	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
 
 	// MaxSurge is the maximum number of pods that can be scheduled above the original number of pods. MaxSurge
-	// is only taken into the account when scaling up.
-	// By default, it's unbounded.
+	// is only taken into the account when scaling up. Setting negative value will result in no restrictions on number
+	// of pods scheduled. By default, it's unbounded.
 	MaxSurge *int32 `json:"maxSurge,omitempty"`
 }
 

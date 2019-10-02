@@ -22,8 +22,8 @@ const (
 // checkDownscaleInvariants returns true if the given state state allows downscaling the given StatefulSet.
 // If not, it also returns the reason why.
 func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulSet) (bool, string) {
+	// if removalsAllowed is nil then removals shouldn't be bounded here
 	if state.removalsAllowed != nil && *state.removalsAllowed < 1 {
-		// removalsAllowed is nil then removals shouldn't be bounded here
 		return false, RespectMaxUnavailableInvariant
 	}
 
@@ -43,7 +43,8 @@ func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulS
 type downscaleState struct {
 	// runningMasters indicates how many masters are currently running in the cluster.
 	runningMasters int
-	// removalsAllowed indicates how many nodes can be removed to adhere to maxUnavailable setting
+	// removalsAllowed indicates how many nodes can be removed to adhere to maxUnavailable setting,
+	// nil indicates that any number of removals is allowed. Negative value is not expected.
 	removalsAllowed *int32
 	// masterRemovalInProgress indicates whether a master node is in the process of being removed already.
 	masterRemovalInProgress bool
