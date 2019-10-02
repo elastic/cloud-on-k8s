@@ -19,10 +19,9 @@ import (
 // propagated from the main driver.
 type downscaleContext struct {
 	// clients
-	k8sClient        k8s.Client
-	esClient         esclient.Client
-	shardLister      esclient.ShardLister
-	allocationSetter esclient.AllocationSetter
+	k8sClient   k8s.Client
+	esClient    esclient.Client
+	shardLister esclient.ShardLister
 	// driver states
 	resourcesState reconcile.ResourcesState
 	observedState  observer.State
@@ -43,15 +42,14 @@ func newDownscaleContext(
 	es v1beta1.Elasticsearch,
 ) downscaleContext {
 	return downscaleContext{
-		k8sClient:        k8sClient,
-		esClient:         esClient,
-		shardLister:      esclient.NewShardLister(esClient),
-		allocationSetter: esclient.NewAllocationSetter(esClient),
-		resourcesState:   resourcesState,
-		observedState:    observedState,
-		reconcileState:   reconcileState,
-		es:               es,
-		expectations:     expectations,
+		k8sClient:      k8sClient,
+		esClient:       esClient,
+		shardLister:    esClient,
+		resourcesState: resourcesState,
+		observedState:  observedState,
+		reconcileState: reconcileState,
+		es:             es,
+		expectations:   expectations,
 	}
 }
 
