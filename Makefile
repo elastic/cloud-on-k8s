@@ -328,7 +328,7 @@ e2e-run:
 		--test-regex=$(TESTS_MATCH) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
-		--skip-cleanup=false
+		--skip-cleanup=true
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
