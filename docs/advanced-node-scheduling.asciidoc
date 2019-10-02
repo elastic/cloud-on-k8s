@@ -25,16 +25,18 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
+  nodeSets:
   # 3 dedicated master nodes
-  - nodeCount: 3
+  - name: master
+    count: 3
     config:
       node.master: true
       node.data: false
       node.ingest: false
       cluster.remote.connect: false
   # 3 ingest-data nodes
-  - nodeCount: 3
+  - name: ingest-data
+    count: 3
     config:
       node.master: false
       node.data: true
@@ -60,8 +62,8 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodesSets:
+  - count: 3
     podTemplate:
       spec:
         affinity:
@@ -87,8 +89,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         affinity: {}
@@ -104,8 +107,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         affinity:
@@ -149,8 +153,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         nodeSelector:
@@ -168,8 +173,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         affinity:
@@ -208,8 +214,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 1
+  nodeSets:
+  - name: group-a
+    count: 1
     config:
       node.attr.zone: europe-west3-a
       cluster.routing.allocation.awareness.attributes: zone
@@ -227,7 +234,8 @@ spec:
                   operator: In
                   values:
                   - europe-west3-a
-  - nodeCount: 1
+  - name: group-b
+    count: 1
     config:
       node.attr.zone: europe-west3-b
       cluster.routing.allocation.awareness.attributes: zone
@@ -276,9 +284,10 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
+  nodeSets:
   # hot nodes, with high CPU and fast IO
-  - nodeCount: 3
+  - name: hot
+    count: 3
     config:
       node.attr.data: hot
     podTemplate:
@@ -309,7 +318,8 @@ spec:
             storage: 1Ti
         storageClassName: local-storage
   # warm nodes, with high storage
-  - nodeCount: 3
+  - name: warm
+    count: 3
     config:
       node.attr.data: warm
     podTemplate:

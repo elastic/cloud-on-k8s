@@ -33,7 +33,7 @@ metadata:
   namespace: default
 spec:
   version: {version}
-  nodeCount: 1
+  count: 1
   elasticsearchRef:
     name: quickstart
 EOF
@@ -87,7 +87,7 @@ metadata:
   namespace: default
 spec:
   version: {version}
-  nodeCount: 1
+  count: 1
   config:
     output:
       elasticsearch:
@@ -122,7 +122,7 @@ metadata:
   namespace: default
 spec:
   version: {version}
-  nodeCount: 1
+  count: 1
   secureSettings:
   - secretName: apm-secret-settings
   config:
@@ -161,7 +161,7 @@ metadata:
   namespace: default
 spec:
   version: {version}
-  nodeCount: 1
+  count: 1
   secureSettings:
   - secretName: apm-secret-settings
   config:

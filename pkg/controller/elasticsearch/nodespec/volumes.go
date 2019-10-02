@@ -18,7 +18,7 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
-func buildVolumes(esName string, nodeSpec v1beta1.NodeSpec, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
+func buildVolumes(esName string, nodeSpec v1beta1.NodeSet, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
 
 	configVolume := settings.ConfigSecretVolume(name.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(

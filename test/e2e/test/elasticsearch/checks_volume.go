@@ -15,7 +15,7 @@ import (
 
 func usesEmptyDir(es estype.Elasticsearch) bool {
 	var emptyDirUsed bool
-	for _, n := range es.Spec.Nodes {
+	for _, n := range es.Spec.NodeSets {
 		for _, v := range n.PodTemplate.Spec.Volumes {
 			if v.EmptyDir != nil && v.Name == volume.ElasticsearchDataVolumeName {
 				emptyDirUsed = true

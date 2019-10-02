@@ -58,18 +58,18 @@ func Validate(es v1beta1.Elasticsearch) error {
 	}
 
 	// validate ssets
-	for _, nodeSpec := range es.Spec.Nodes {
-		if errs := apimachineryvalidation.NameIsDNSSubdomain(nodeSpec.Name, false); len(errs) > 0 {
-			return fmt.Errorf("invalid nodeSpec name '%s': [%s]", nodeSpec.Name, strings.Join(errs, ","))
+	for _, nodeSet := range es.Spec.NodeSets {
+		if errs := apimachineryvalidation.NameIsDNSSubdomain(nodeSet.Name, false); len(errs) > 0 {
+			return fmt.Errorf("invalid nodeSet name '%s': [%s]", nodeSet.Name, strings.Join(errs, ","))
 		}
 
-		ssetName, err := ESNamer.SafeSuffix(esName, nodeSpec.Name)
+		ssetName, err := ESNamer.SafeSuffix(esName, nodeSet.Name)
 		if err != nil {
-			return errors.Wrapf(err, "error generating StatefulSet name for nodeSpec: '%s'", nodeSpec.Name)
+			return errors.Wrapf(err, "error generating StatefulSet name for nodeSet: '%s'", nodeSet.Name)
 		}
 
 		// length of the ordinal suffix that will be added to the pods of this sset (dash + ordinal)
-		podOrdinalSuffixLen := len(strconv.FormatInt(int64(nodeSpec.NodeCount), 10)) + 1
+		podOrdinalSuffixLen := len(strconv.FormatInt(int64(nodeSet.Count), 10)) + 1
 		// there should be enough space for the ordinal suffix
 		if validation.DNS1123SubdomainMaxLength-len(ssetName) < podOrdinalSuffixLen {
 			return fmt.Errorf("generated StatefulSet name '%s' exceeds allowed length of %d",
@@ -88,7 +88,7 @@ func Validate(es v1beta1.Elasticsearch) error {
 	return nil
 }
 
-// StatefulSet returns the name of the StatefulSet corresponding to the given NodeSpec.
+// StatefulSet returns the name of the StatefulSet corresponding to the given NodeSet.
 func StatefulSet(esName string, nodeSpecName string) string {
 	return ESNamer.Suffix(esName, nodeSpecName)
 }

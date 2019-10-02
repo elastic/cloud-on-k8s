@@ -32,8 +32,8 @@ type ElasticsearchSpec struct {
 	// HTTP contains settings for HTTP.
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
-	// Nodes represents a list of groups of nodes with the same configuration to be part of the cluster
-	Nodes []NodeSpec `json:"nodes,omitempty"`
+	// NodeSets represents a list of groups of nodes with the same configuration to be part of the cluster
+	NodeSets []NodeSet `json:"nodeSets,omitempty"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
@@ -58,14 +58,14 @@ type ElasticsearchSpec struct {
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
 func (es ElasticsearchSpec) NodeCount() int32 {
 	count := int32(0)
-	for _, topoElem := range es.Nodes {
-		count += topoElem.NodeCount
+	for _, topoElem := range es.NodeSets {
+		count += topoElem.Count
 	}
 	return count
 }
 
-// NodeSpec defines a common topology for a set of Elasticsearch nodes
-type NodeSpec struct {
+// NodeSet defines a common topology for a set of Elasticsearch nodes
+type NodeSet struct {
 	// Name is a logical name for this set of nodes. Used as a part of the managed Elasticsearch node.name setting.
 	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+
 	// +kubebuilder:validation:MaxLength=23
@@ -74,12 +74,12 @@ type NodeSpec struct {
 	// Config represents Elasticsearch configuration.
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
-	// NodeCount defines how many nodes have this topology
-	NodeCount int32 `json:"nodeCount,omitempty"`
+	// Count defines how many nodes this topology should have.
+	Count int32 `json:"count,omitempty"`
 
 	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
 	// This allows specifying custom annotations, labels, environment variables,
-	// volumes, affinity, resources, etc. for the pods created from this NodeSpec.
+	// volumes, affinity, resources, etc. for the pods created from this NodeSet.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
@@ -93,8 +93,8 @@ type NodeSpec struct {
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
-// GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSpec's PodTemplate
-func (n NodeSpec) GetESContainerTemplate() *corev1.Container {
+// GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSet's PodTemplate
+func (n NodeSet) GetESContainerTemplate() *corev1.Container {
 	for _, c := range n.PodTemplate.Spec.Containers {
 		if c.Name == ElasticsearchContainerName {
 			return &c

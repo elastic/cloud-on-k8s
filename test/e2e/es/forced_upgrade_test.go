@@ -18,13 +18,13 @@ func TestForceUpgradePendingPods(t *testing.T) {
 	// create a cluster whose Pods will stay Pending forever
 	initial := elasticsearch.NewBuilder("force-upgrade-pending").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
-	initial.Elasticsearch.Spec.Nodes[0].PodTemplate.Spec.NodeSelector = map[string]string{
+	initial.Elasticsearch.Spec.NodeSets[0].PodTemplate.Spec.NodeSelector = map[string]string{
 		"cannot": "be-scheduled",
 	}
 	// fix that cluster to remove the wrong NodeSelector
 	fixed := elasticsearch.Builder{}
 	fixed.Elasticsearch = *initial.Elasticsearch.DeepCopy()
-	fixed.Elasticsearch.Spec.Nodes[0].PodTemplate.Spec.NodeSelector = nil
+	fixed.Elasticsearch.Spec.NodeSets[0].PodTemplate.Spec.NodeSelector = nil
 
 	k := test.NewK8sClientOrFatal()
 	elasticsearch.ForcedUpgradeTestSteps(
@@ -49,7 +49,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 	// fix that cluster to remove the wrong configuration
 	fixed := elasticsearch.Builder{}
 	fixed.Elasticsearch = *initial.Elasticsearch.DeepCopy()
-	fixed.Elasticsearch.Spec.Nodes[0].Config = nil
+	fixed.Elasticsearch.Spec.NodeSets[0].Config = nil
 
 	k := test.NewK8sClientOrFatal()
 	elasticsearch.ForcedUpgradeTestSteps(
