@@ -25,7 +25,7 @@ type KibanaSpec struct {
 	Image string `json:"image,omitempty"`
 
 	// Count defines how many nodes the Kibana deployment must have.
-	Count int32 `json:"nodeCount,omitempty"`
+	Count int32 `json:"count,omitempty"`
 
 	// ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
 	// If the namespace is not specified, the current resource namespace will be used.

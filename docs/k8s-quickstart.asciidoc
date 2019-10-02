@@ -247,7 +247,7 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
+  nodeSets:
   - name: default
     count: 3
     config:
