@@ -20,7 +20,7 @@ const (
 	// UnknownControllerVersion is the version used when a resource has been created before we started adding the annotation
 	UnknownControllerVersion = "0.0.0-UNKNOWN" // may match resources created with ECK-0.8.0
 	// MinCompatibleControllerVersion is the minimum version that indicates that a resource is compatible with this operator
-	MinCompatibleControllerVersion = "0.10.0-SNAPSHOT"
+	MinCompatibleControllerVersion = "1.0.0-beta1"
 )
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
