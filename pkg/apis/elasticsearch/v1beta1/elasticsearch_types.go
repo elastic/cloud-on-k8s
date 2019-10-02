@@ -55,7 +55,7 @@ type ElasticsearchSpec struct {
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 
-// Count returns the total number of nodes of the Elasticsearch cluster
+// NodeCount returns the total number of nodes of the Elasticsearch cluster
 func (es ElasticsearchSpec) NodeCount() int32 {
 	count := int32(0)
 	for _, topoElem := range es.NodeSets {
@@ -74,7 +74,7 @@ type NodeSet struct {
 	// Config represents Elasticsearch configuration.
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
-	// Count defines how many nodes have this topology
+	// Count defines how many nodes this topology has
 	Count int32 `json:"count,omitempty"`
 
 	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
