@@ -8,7 +8,7 @@ Before you start, install the following tools and packages:
 
 * [go](https://golang.org/dl/) (>= 1.11)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.11)
+* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
 * [docker](https://docs.docker.com/)
