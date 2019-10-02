@@ -42,7 +42,7 @@ func testLongestPossibleName(t *testing.T) {
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext().
-		WithNodeSpec(estype.NodeSpec{
+		WithNodeSpec(estype.NodeSet{
 			Name: nodeSpecName,
 		})
 
@@ -78,7 +78,7 @@ func testRejectionOfLongName(t *testing.T) {
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext().
-		WithNodeSpec(estype.NodeSpec{
+		WithNodeSpec(estype.NodeSet{
 			Name: "default",
 		})
 

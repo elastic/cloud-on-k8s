@@ -114,7 +114,7 @@ func TestValidate(t *testing.T) {
 					},
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
 								Name: "default",
 								Config: &common.Config{
@@ -125,7 +125,7 @@ func TestValidate(t *testing.T) {
 										estype.NodeML:     "false",
 									},
 								},
-								NodeCount: 1,
+								Count: 1,
 							}},
 					},
 				},
@@ -169,9 +169,9 @@ func TestValidate(t *testing.T) {
 								},
 							},
 						},
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
-								NodeCount: 1,
+								Count: 1,
 								Config: &common.Config{
 									Data: map[string]interface{}{
 										estype.NodeMaster: false,

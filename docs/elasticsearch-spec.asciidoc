@@ -292,7 +292,7 @@ But you can use the same approach for any kind of file you want to mount into th
 [source,yaml]
 ----
 spec:
-  nodes:
+  nodeSets:
   - podTemplate:
       spec:
         containers:
@@ -411,8 +411,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
   podDisruptionBudget:
     spec:
       maxUnavailable: 2
@@ -431,8 +432,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
   podDisruptionBudget: {}
 ----
 

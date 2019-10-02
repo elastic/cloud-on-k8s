@@ -56,12 +56,12 @@ func supportedVersion(ctx Context) validation.Result {
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
 func hasMaster(ctx Context) validation.Result {
 	var hasMaster bool
-	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+	for _, t := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
 		cfg, err := v1beta1.UnpackConfig(t.Config)
 		if err != nil {
 			return validation.Result{Reason: cfgInvalidMsg}
 		}
-		hasMaster = hasMaster || (cfg.Node.Master && t.NodeCount > 0)
+		hasMaster = hasMaster || (cfg.Node.Master && t.Count > 0)
 	}
 	if hasMaster {
 		return validation.OK
@@ -71,7 +71,7 @@ func hasMaster(ctx Context) validation.Result {
 
 func noBlacklistedSettings(ctx Context) validation.Result {
 	violations := make(map[int]set.StringSet)
-	for i, n := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+	for i, n := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
 		if n.Config == nil {
 			continue
 		}
@@ -95,7 +95,7 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 	var sb strings.Builder
 	var sep string
 	// iterate again to build validation message in node order
-	for i := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+	for i := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
 		vs := violations[i]
 		if vs == nil {
 			continue
@@ -146,7 +146,7 @@ func pvcModification(ctx Context) validation.Result {
 	if ctx.Current == nil {
 		return validation.OK
 	}
-	for _, node := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+	for _, node := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
 		currNode := getNode(node.Name, ctx.Current.Elasticsearch)
 		if currNode == nil {
 			// this is a new sset, so there is nothing to check
@@ -165,10 +165,10 @@ func pvcModification(ctx Context) validation.Result {
 	return validation.OK
 }
 
-func getNode(name string, es v1beta1.Elasticsearch) *v1beta1.NodeSpec {
-	for i := range es.Spec.Nodes {
-		if es.Spec.Nodes[i].Name == name {
-			return &es.Spec.Nodes[i]
+func getNode(name string, es v1beta1.Elasticsearch) *v1beta1.NodeSet {
+	for i := range es.Spec.NodeSets {
+		if es.Spec.NodeSets[i].Name == name {
+			return &es.Spec.NodeSets[i]
 		}
 	}
 	return nil

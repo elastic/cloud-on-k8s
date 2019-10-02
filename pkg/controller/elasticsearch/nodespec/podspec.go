@@ -28,7 +28,7 @@ import (
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
 	es v1beta1.Elasticsearch,
-	nodeSpec v1beta1.NodeSpec,
+	nodeSpec v1beta1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 ) (corev1.PodTemplateSpec, error) {
@@ -79,7 +79,7 @@ func transportCertificatesVolume(esName string) volume.SecretVolume {
 func buildLabels(
 	es v1beta1.Elasticsearch,
 	cfg settings.CanonicalConfig,
-	nodeSpec v1beta1.NodeSpec,
+	nodeSpec v1beta1.NodeSet,
 	keystoreResources *keystore.Resources,
 ) (map[string]string, error) {
 	// label with a hash of the config to rotate the pod on config changes

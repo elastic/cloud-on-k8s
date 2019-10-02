@@ -60,7 +60,7 @@ func TestValidate(t *testing.T) {
 			}
 
 			for _, nodeSpecName := range tc.nodeSpecNames {
-				es.Spec.Nodes = append(es.Spec.Nodes, v1beta1.NodeSpec{Name: nodeSpecName, NodeCount: 10})
+				es.Spec.NodeSets = append(es.Spec.NodeSets, v1beta1.NodeSet{Name: nodeSpecName, Count: 10})
 			}
 
 			err := Validate(es)

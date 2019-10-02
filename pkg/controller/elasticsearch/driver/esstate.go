@@ -51,7 +51,7 @@ func initOnce(once *sync.Once, f func() error) error {
 	return err
 }
 
-// -- Nodes
+// -- NodeSets
 
 // memoizingNodes provides nodes information.
 type memoizingNodes struct {

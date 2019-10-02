@@ -48,7 +48,7 @@ func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
 
 func BuildStatefulSet(
 	es v1beta1.Elasticsearch,
-	nodeSpec v1beta1.NodeSpec,
+	nodeSpec v1beta1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	scheme *runtime.Scheme,
@@ -106,7 +106,7 @@ func BuildStatefulSet(
 				MatchLabels: ssetSelector,
 			},
 
-			Replicas:             &nodeSpec.NodeCount,
+			Replicas:             &nodeSpec.Count,
 			VolumeClaimTemplates: claims,
 			Template:             podTemplate,
 		},

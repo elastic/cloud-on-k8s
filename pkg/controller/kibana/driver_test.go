@@ -328,9 +328,9 @@ func kibanaFixture() *kbtype.Kibana {
 			Namespace: "default",
 		},
 		Spec: kbtype.KibanaSpec{
-			Version:   "7.0.0",
-			Image:     "my-image",
-			NodeCount: 1,
+			Version: "7.0.0",
+			Image:   "my-image",
+			Count:   1,
 		},
 	}
 

@@ -23,8 +23,8 @@ type ApmServerSpec struct {
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
 
-	// NodeCount defines how many nodes the Apm Server deployment must have.
-	NodeCount int32 `json:"nodeCount,omitempty"`
+	// Count defines how many nodes the Apm Server deployment must have.
+	Count int32 `json:"count,omitempty"`
 
 	// Config represents the APM configuration.
 	Config *commonv1beta1.Config `json:"config,omitempty"`
@@ -38,7 +38,7 @@ type ApmServerSpec struct {
 
 	// PodTemplate can be used to propagate configuration to APM Server pods.
 	// This allows specifying custom annotations, labels, environment variables,
-	// affinity, resources, etc. for the pods created from this NodeSpec.
+	// affinity, resources, etc. for the pods created from this spec.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 

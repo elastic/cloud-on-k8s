@@ -24,8 +24,8 @@ type KibanaSpec struct {
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
 
-	// NodeCount defines how many nodes the Kibana deployment must have.
-	NodeCount int32 `json:"nodeCount,omitempty"`
+	// Count defines how many nodes the Kibana deployment must have.
+	Count int32 `json:"nodeCount,omitempty"`
 
 	// ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
 	// If the namespace is not specified, the current resource namespace will be used.
@@ -39,7 +39,7 @@ type KibanaSpec struct {
 
 	// PodTemplate can be used to propagate configuration to Kibana pods.
 	// This allows specifying custom annotations, labels, environment variables,
-	// affinity, resources, etc. for the pods created from this NodeSpec.
+	// affinity, resources, etc. for the pods created from this NodeSet.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 

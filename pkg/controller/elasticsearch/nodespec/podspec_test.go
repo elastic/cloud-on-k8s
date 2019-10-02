@@ -35,10 +35,10 @@ var sampleES = v1beta1.Elasticsearch{
 	},
 	Spec: v1beta1.ElasticsearchSpec{
 		Version: "7.2.0",
-		Nodes: []v1beta1.NodeSpec{
+		NodeSets: []v1beta1.NodeSet{
 			{
-				Name:      "nodespec-1",
-				NodeCount: 2,
+				Name:  "nodespec-1",
+				Count: 2,
 				Config: &commonv1beta1.Config{
 					Data: map[string]interface{}{
 						"node.attr.foo": "bar",
@@ -80,8 +80,8 @@ var sampleES = v1beta1.Elasticsearch{
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			{
-				Name:      "nodespec-1",
-				NodeCount: 2,
+				Name:  "nodespec-1",
+				Count: 2,
 			},
 		},
 	},
@@ -89,13 +89,13 @@ var sampleES = v1beta1.Elasticsearch{
 
 func TestBuildPodTemplateSpec(t *testing.T) {
 	certResources := certificates.CertificateResources{HTTPCACertProvided: true}
-	nodeSpec := sampleES.Spec.Nodes[0]
+	nodeSpec := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
 	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSpec.Config, &certResources)
 	require.NoError(t, err)
 
-	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.Nodes[0], cfg, nil)
+	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil)
 	require.NoError(t, err)
 
 	// build expected PodTemplateSpec

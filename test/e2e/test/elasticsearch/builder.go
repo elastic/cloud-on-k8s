@@ -80,8 +80,8 @@ func (b Builder) Ref() commonv1beta1.ObjectSelector {
 // WithRestrictedSecurityContext helps to enforce a restricted security context on the objects.
 func (b Builder) WithRestrictedSecurityContext() Builder {
 	b.Elasticsearch.Spec.SetVMMaxMapCount = test.BoolPtr(false)
-	for idx := range b.Elasticsearch.Spec.Nodes {
-		node := &b.Elasticsearch.Spec.Nodes[idx]
+	for idx := range b.Elasticsearch.Spec.NodeSets {
+		node := &b.Elasticsearch.Spec.NodeSets[idx]
 		node.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
 	}
 	return b
@@ -122,14 +122,14 @@ func (b Builder) WithHTTPSAN(ip string) Builder {
 // -- ES Nodes
 
 func (b Builder) WithNoESTopology() Builder {
-	b.Elasticsearch.Spec.Nodes = []estype.NodeSpec{}
+	b.Elasticsearch.Spec.NodeSets = []estype.NodeSet{}
 	return b
 }
 
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSpec{
-		Name:      "master",
-		NodeCount: int32(count),
+	return b.WithNodeSpec(estype.NodeSet{
+		Name:  "master",
+		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
 				estype.NodeData: "false",
@@ -140,9 +140,9 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 }
 
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSpec{
-		Name:      "data",
-		NodeCount: int32(count),
+	return b.WithNodeSpec(estype.NodeSet{
+		Name:  "data",
+		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
 				estype.NodeMaster: "false",
@@ -153,9 +153,9 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 }
 
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSpec{
-		Name:      "masterdata",
-		NodeCount: int32(count),
+	return b.WithNodeSpec(estype.NodeSet{
+		Name:  "masterdata",
+		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{},
 		},
@@ -163,8 +163,8 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 	})
 }
 
-func (b Builder) WithNodeSpec(nodeSpec estype.NodeSpec) Builder {
-	b.Elasticsearch.Spec.Nodes = append(b.Elasticsearch.Spec.Nodes, nodeSpec)
+func (b Builder) WithNodeSpec(nodeSpec estype.NodeSet) Builder {
+	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSpec)
 	return b
 }
 
@@ -178,8 +178,8 @@ func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 }
 
 func (b Builder) WithEmptyDirVolumes() Builder {
-	for i := range b.Elasticsearch.Spec.Nodes {
-		b.Elasticsearch.Spec.Nodes[i].PodTemplate.Spec.Volumes = []corev1.Volume{
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
 			{
 				Name: volume.ElasticsearchDataVolumeName,
 				VolumeSource: corev1.VolumeSource{
@@ -192,9 +192,9 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 }
 
 func (b Builder) WithPersistentVolumes(volumeName string) Builder {
-	for i := range b.Elasticsearch.Spec.Nodes {
+	for i := range b.Elasticsearch.Spec.NodeSets {
 		name := volumeName
-		b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates,
+		b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates,
 			corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: name,
@@ -210,7 +210,7 @@ func (b Builder) WithPersistentVolumes(volumeName string) Builder {
 					},
 				},
 			})
-		b.Elasticsearch.Spec.Nodes[i].PodTemplate.Spec.Volumes = []corev1.Volume{
+		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
 			{
 				Name: name,
 				VolumeSource: corev1.VolumeSource{
@@ -226,16 +226,16 @@ func (b Builder) WithPersistentVolumes(volumeName string) Builder {
 }
 
 func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
-	for i := range b.Elasticsearch.Spec.Nodes {
-		b.Elasticsearch.Spec.Nodes[i].PodTemplate = pt
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		b.Elasticsearch.Spec.NodeSets[i].PodTemplate = pt
 	}
 	return b
 }
 
 func (b Builder) WithAdditionalConfig(nodeSpecCfg map[string]map[string]interface{}) Builder {
-	var newNodes []estype.NodeSpec
+	var newNodes []estype.NodeSet
 	for node, cfg := range nodeSpecCfg {
-		for _, n := range b.Elasticsearch.Spec.Nodes {
+		for _, n := range b.Elasticsearch.Spec.NodeSets {
 			if n.Name == node {
 				newCfg := n.Config.DeepCopy()
 				for k, v := range cfg {
@@ -246,7 +246,7 @@ func (b Builder) WithAdditionalConfig(nodeSpecCfg map[string]map[string]interfac
 			newNodes = append(newNodes, n)
 		}
 	}
-	b.Elasticsearch.Spec.Nodes = newNodes
+	b.Elasticsearch.Spec.NodeSets = newNodes
 	return b
 }
 
