@@ -134,14 +134,19 @@ func (s Shards) GetShardsByNode() map[string]Shards {
 	return result
 }
 
-// fixNodeNames extracts the name of the node from the output of the /_cat/shards API call
 // see https://github.com/elastic/cloud-on-k8s/issues/1796
-func (s Shards) fixNodeNames() {
-	for i := range s {
-		if idx := strings.IndexByte(s[i].NodeName, ' '); idx >= 0 {
-			s[i].NodeName = s[i].NodeName[:idx]
+func (s *Shards) UnmarshalJSON(data []byte) error {
+	type Alias Shards
+	aux := (*Alias)(s)
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	for i, shard := range *aux {
+		if idx := strings.IndexByte(shard.NodeName, ' '); idx >= 0 {
+			(*s)[i].NodeName = (*s)[i].NodeName[:idx]
 		}
 	}
+	return nil
 }
 
 // IsRelocating is true if the shard is relocating to another node.

@@ -46,7 +46,5 @@ func (c *clientV6) GetShards() (Shards, error) {
 	if err := c.get(ctx, "/_cat/shards?format=json", &shards); err != nil {
 		return shards, err
 	}
-	// Fix the name of the node
-	shards.fixNodeNames()
 	return shards, nil
 }
