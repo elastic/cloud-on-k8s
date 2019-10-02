@@ -7,7 +7,7 @@ package settings
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
@@ -41,8 +41,8 @@ func newPodWithIP(name, ip string, master bool) corev1.Pod {
 }
 
 func TestUpdateSeedHostsConfigMap(t *testing.T) {
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
-	es := v1alpha1.Elasticsearch{
+	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
+	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es1",
 			Namespace: "ns1",
@@ -51,7 +51,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 	type args struct {
 		c      k8s.Client
 		scheme *runtime.Scheme
-		es     v1alpha1.Elasticsearch
+		es     v1beta1.Elasticsearch
 		pods   []corev1.Pod
 	}
 	tests := []struct {

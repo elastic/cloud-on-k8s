@@ -10,7 +10,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
@@ -204,7 +204,7 @@ func Test_isMasterNodeJoining(t *testing.T) {
 func Test_newUpscaleState(t *testing.T) {
 	type args struct {
 		c       k8s.Client
-		es      v1alpha1.Elasticsearch
+		es      v1beta1.Elasticsearch
 		esState ESState
 	}
 	tests := []struct {

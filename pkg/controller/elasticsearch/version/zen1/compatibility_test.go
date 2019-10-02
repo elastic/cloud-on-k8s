@@ -7,7 +7,7 @@ package zen1
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -28,7 +28,7 @@ func createStatefulSetWithVersion(version string) appsv1.StatefulSet {
 	}}}
 }
 
-var testES = v1alpha1.Elasticsearch{
+var testES = v1beta1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "es1",
 		Namespace: "default",

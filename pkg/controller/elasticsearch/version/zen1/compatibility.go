@@ -5,7 +5,7 @@
 package zen1
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -30,7 +30,7 @@ func IsCompatibleWithZen1(statefulSet appsv1.StatefulSet) bool {
 func AtLeastOneNodeCompatibleWithZen1(
 	statefulSets sset.StatefulSetList,
 	c k8s.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 ) (bool, error) {
 	actualMasters, err := sset.GetActualMastersForCluster(c, es)
 	if err != nil {

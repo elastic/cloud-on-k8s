@@ -7,7 +7,7 @@ package http
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
@@ -71,7 +71,7 @@ func (s CertificatesSecret) Validate() error {
 func GetCustomCertificates(
 	c k8s.Client,
 	owner types.NamespacedName,
-	tls v1alpha1.TLSOptions,
+	tls v1beta1.TLSOptions,
 ) (*CertificatesSecret, error) {
 	secretName := tls.Certificate.SecretName
 	if secretName == "" {

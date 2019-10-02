@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -35,9 +35,9 @@ func init() {
 }
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 	k8sClient := k8s.WrapClient(fake.NewFakeClient())
-	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	ctx := upscaleCtx{
 		k8sClient:           k8sClient,
 		es:                  es,
@@ -293,18 +293,18 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 }
 
 func Test_adjustZenConfig(t *testing.T) {
-	bootstrappedES := v1alpha1.Elasticsearch{
+	bootstrappedES := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        TestEsName,
 			Namespace:   TestEsNamespace,
 			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
 		},
 	}
-	notBootstrappedES := v1alpha1.Elasticsearch{}
+	notBootstrappedES := v1beta1.Elasticsearch{}
 
 	tests := []struct {
 		name                      string
-		es                        v1alpha1.Elasticsearch
+		es                        v1beta1.Elasticsearch
 		statefulSet               sset.TestSset
 		pods                      []runtime.Object
 		wantMinimumMasterNodesSet bool

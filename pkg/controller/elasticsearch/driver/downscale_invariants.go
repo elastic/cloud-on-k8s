@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -43,7 +43,7 @@ type downscaleState struct {
 }
 
 // newDownscaleState creates a new downscaleState.
-func newDownscaleState(c k8s.Client, es v1alpha1.Elasticsearch) (*downscaleState, error) {
+func newDownscaleState(c k8s.Client, es v1beta1.Elasticsearch) (*downscaleState, error) {
 	// retrieve the number of masters running ready
 	actualPods, err := sset.GetActualPodsForCluster(c, es)
 	if err != nil {

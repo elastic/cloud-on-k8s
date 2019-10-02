@@ -7,7 +7,7 @@ package services
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -16,7 +16,7 @@ import (
 
 func TestExternalServiceURL(t *testing.T) {
 	type args struct {
-		es v1alpha1.Elasticsearch
+		es v1beta1.Elasticsearch
 	}
 	tests := []struct {
 		name string
@@ -25,7 +25,7 @@ func TestExternalServiceURL(t *testing.T) {
 	}{
 		{
 			name: "A service URL",
-			args: args{es: v1alpha1.Elasticsearch{
+			args: args{es: v1beta1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "an-es-name",
 					Namespace: "default",
@@ -35,7 +35,7 @@ func TestExternalServiceURL(t *testing.T) {
 		},
 		{
 			name: "Another Service URL",
-			args: args{es: v1alpha1.Elasticsearch{
+			args: args{es: v1beta1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "another-es-name",
 					Namespace: "default",
@@ -54,7 +54,7 @@ func TestExternalServiceURL(t *testing.T) {
 
 func TestElasticsearchURL(t *testing.T) {
 	type args struct {
-		es   v1alpha1.Elasticsearch
+		es   v1beta1.Elasticsearch
 		pods []corev1.Pod
 	}
 	tests := []struct {
@@ -65,7 +65,7 @@ func TestElasticsearchURL(t *testing.T) {
 		{
 			name: "default: external service url",
 			args: args{
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "my-cluster",
 						Namespace: "my-ns",
@@ -86,7 +86,7 @@ func TestElasticsearchURL(t *testing.T) {
 		{
 			name: "scheme change in progress: random pod address",
 			args: args{
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "my-cluster",
 						Namespace: "my-ns",
@@ -110,7 +110,7 @@ func TestElasticsearchURL(t *testing.T) {
 		{
 			name: "unexpected: missing pod labels: fallback to service",
 			args: args{
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "my-cluster",
 						Namespace: "my-ns",
@@ -125,7 +125,7 @@ func TestElasticsearchURL(t *testing.T) {
 		{
 			name: "unexpected: partially missing pod labels: fallback to service",
 			args: args{
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "my-cluster",
 						Namespace: "my-ns",

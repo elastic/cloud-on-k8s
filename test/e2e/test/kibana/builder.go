@@ -5,8 +5,8 @@
 package kibana
 
 import (
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,7 +56,7 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	return b
 }
 
-func (b Builder) WithElasticsearchRef(ref commonv1alpha1.ObjectSelector) Builder {
+func (b Builder) WithElasticsearchRef(ref commonv1beta1.ObjectSelector) Builder {
 	b.Kibana.Spec.ElasticsearchRef = ref
 	return b
 }
@@ -83,9 +83,9 @@ func (b Builder) WithNodeCount(count int) Builder {
 }
 
 func (b Builder) WithKibanaSecureSettings(secretNames ...string) Builder {
-	refs := make([]commonv1alpha1.SecretSource, 0, len(secretNames))
+	refs := make([]commonv1beta1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
-		refs = append(refs, commonv1alpha1.SecretSource{SecretName: secretNames[i]})
+		refs = append(refs, commonv1beta1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Kibana.Spec.SecureSettings = refs
 	return b

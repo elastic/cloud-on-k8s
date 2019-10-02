@@ -7,8 +7,8 @@ package kibana
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
@@ -73,7 +73,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			args: args{
 				kb: func() *kbtype.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.HTTP.TLS.SelfSignedCertificate = &v1alpha1.SelfSignedCertificate{
+					kb.Spec.HTTP.TLS.SelfSignedCertificate = &v1beta1.SelfSignedCertificate{
 						Disabled: true,
 					}
 					return kb
@@ -334,7 +334,7 @@ func kibanaFixture() *kbtype.Kibana {
 		},
 	}
 
-	kbFixture.SetAssociationConf(&v1alpha1.AssociationConf{
+	kbFixture.SetAssociationConf(&v1beta1.AssociationConf{
 		AuthSecretName: "test-auth",
 		AuthSecretKey:  "kibana-user",
 		CASecretName:   "es-ca-secret",

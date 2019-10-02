@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -112,7 +112,7 @@ func TestUpdateConfiguration(t *testing.T) {
 
 					var apm apmtype.ApmServer
 					require.NoError(t, k.Client.Get(apmNamespacedName, &apm))
-					apm.Spec.SecureSettings = []commonv1alpha1.SecretSource{
+					apm.Spec.SecureSettings = []commonv1beta1.SecretSource{
 						{SecretName: secureSettingsSecretName},
 					}
 					require.NoError(t, k.Client.Update(&apm))
@@ -149,7 +149,7 @@ func TestUpdateConfiguration(t *testing.T) {
 
 					var apm apmtype.ApmServer
 					require.NoError(t, k.Client.Get(apmNamespacedName, &apm))
-					customConfig := commonv1alpha1.Config{
+					customConfig := commonv1beta1.Config{
 						Data: map[string]interface{}{"output.elasticsearch.compression_level": 1},
 					}
 					apm.Spec.Config = &customConfig

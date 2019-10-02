@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -89,15 +89,15 @@ func TestReconcile(t *testing.T) {
 	})
 
 	varFalse := false
-	cluster := &v1alpha1.Elasticsearch{
+	cluster := &v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: v1alpha1.ElasticsearchSpec{
+		Spec: v1beta1.ElasticsearchSpec{
 			Version:          "7.0.0",
 			SetVMMaxMapCount: &varFalse,
-			Nodes: []v1alpha1.NodeSpec{
+			Nodes: []v1beta1.NodeSpec{
 				{
 					Name:      "all",
 					NodeCount: 3,

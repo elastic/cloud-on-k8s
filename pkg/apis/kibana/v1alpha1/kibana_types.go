@@ -65,9 +65,9 @@ const (
 
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
-	commonv1alpha1.ReconcilerStatus
-	Health            KibanaHealth                     `json:"health,omitempty"`
-	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
+	commonv1alpha1.ReconcilerStatus `json:",inline"`
+	Health                          KibanaHealth                     `json:"health,omitempty"`
+	AssociationStatus               commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -102,12 +102,10 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1alpha1.AssociationConf) {
 	k.assocConf = assocConf
 }
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Kibana is the Schema for the kibanas API
-// +kubebuilder:categories=elastic
-// +kubebuilder:resource:shortName=kb
+// +kubebuilder:resource:categories=elastic,shortName=kb
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
@@ -117,9 +115,9 @@ type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec      KibanaSpec   `json:"spec,omitempty"`
-	Status    KibanaStatus `json:"status,omitempty"`
-	assocConf *commonv1alpha1.AssociationConf
+	Spec      KibanaSpec                      `json:"spec,omitempty"`
+	Status    KibanaStatus                    `json:"status,omitempty"`
+	assocConf *commonv1alpha1.AssociationConf `json:"-"` //nolint:govet
 }
 
 // +kubebuilder:object:root=true

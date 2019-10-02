@@ -7,7 +7,7 @@ package name
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -51,16 +51,16 @@ func TestValidate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			es := v1alpha1.Elasticsearch{
+			es := v1beta1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      tc.esName,
 					Namespace: "test",
 				},
-				Spec: v1alpha1.ElasticsearchSpec{},
+				Spec: v1beta1.ElasticsearchSpec{},
 			}
 
 			for _, nodeSpecName := range tc.nodeSpecNames {
-				es.Spec.Nodes = append(es.Spec.Nodes, v1alpha1.NodeSpec{Name: nodeSpecName, NodeCount: 10})
+				es.Spec.Nodes = append(es.Spec.Nodes, v1beta1.NodeSpec{Name: nodeSpecName, NodeCount: 10})
 			}
 
 			err := Validate(es)

@@ -7,8 +7,8 @@ package keystore
 import (
 	"testing"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	watches2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
@@ -40,35 +40,35 @@ var (
 			"key1": []byte("value1"),
 		},
 	}
-	testSecureSettingsSecretRef = commonv1alpha1.SecretSource{
+	testSecureSettingsSecretRef = commonv1beta1.SecretSource{
 		SecretName: testSecureSettingsSecretName,
 	}
-	testKibana = v1alpha1.Kibana{
+	testKibana = v1beta1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "namespace",
 			Name:      "kibana",
 		},
 	}
-	testKibanaWithSecureSettings = v1alpha1.Kibana{
+	testKibanaWithSecureSettings = v1beta1.Kibana{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "kibana",
 		},
 		ObjectMeta: testKibana.ObjectMeta,
-		Spec: v1alpha1.KibanaSpec{
-			SecureSettings: []commonv1alpha1.SecretSource{testSecureSettingsSecretRef},
+		Spec: v1beta1.KibanaSpec{
+			SecureSettings: []commonv1beta1.SecretSource{testSecureSettingsSecretRef},
 		},
 	}
 )
 
 func TestResources(t *testing.T) {
 	sc := scheme.Scheme
-	require.NoError(t, v1alpha1.SchemeBuilder.AddToScheme(sc))
+	require.NoError(t, v1beta1.SchemeBuilder.AddToScheme(sc))
 
 	varFalse := false
 	tests := []struct {
 		name           string
 		client         k8s.Client
-		kb             v1alpha1.Kibana
+		kb             v1beta1.Kibana
 		wantNil        bool
 		wantContainers *corev1.Container
 		wantVersion    string

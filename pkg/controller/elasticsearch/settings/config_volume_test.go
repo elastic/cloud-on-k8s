@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -93,9 +93,9 @@ func TestGetESConfigContent(t *testing.T) {
 }
 
 func TestReconcileConfig(t *testing.T) {
-	err := v1alpha1.AddToScheme(scheme.Scheme)
+	err := v1beta1.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
-	es := v1alpha1.Elasticsearch{
+	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "cluster",
@@ -121,7 +121,7 @@ func TestReconcileConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		client   k8s.Client
-		es       v1alpha1.Elasticsearch
+		es       v1beta1.Elasticsearch
 		ssetName string
 		config   CanonicalConfig
 		wantErr  bool

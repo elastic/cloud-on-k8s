@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
@@ -61,7 +61,7 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 			{
 				Name: "Add load balancer IP to the SAN",
 				Test: func(t *testing.T) {
-					var currentEs v1alpha1.Elasticsearch
+					var currentEs v1beta1.Elasticsearch
 					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
 					require.NoError(t, err)
 

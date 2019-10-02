@@ -7,7 +7,7 @@ package apmserver
 import (
 	"testing"
 
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -140,7 +140,7 @@ func expectedDeploymentParams() testParams {
 								MountPath: "/mnt/elastic-internal/http-certs",
 							},
 						},
-						Name:  apmv1alpha1.APMServerContainerName,
+						Name:  apmv1beta1.APMServerContainerName,
 						Image: "docker.elastic.co/apm/apm-server:1.0",
 						Command: []string{
 							"apm-server",
@@ -189,11 +189,11 @@ func expectedDeploymentParams() testParams {
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	s := scheme.Scheme
-	if err := apmv1alpha1.SchemeBuilder.AddToScheme(s); err != nil {
+	if err := apmv1beta1.SchemeBuilder.AddToScheme(s); err != nil {
 		t.Error(err)
 	}
 
-	apmFixture := &apmv1alpha1.ApmServer{
+	apmFixture := &apmv1beta1.ApmServer{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "test-apm-server",
 		},
@@ -217,7 +217,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	}
 
 	type args struct {
-		as             *apmv1alpha1.ApmServer
+		as             *apmv1beta1.ApmServer
 		podSpecParams  PodSpecParams
 		initialObjects []runtime.Object
 	}
