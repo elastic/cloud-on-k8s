@@ -130,7 +130,8 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				estype.NodeData: "false",
+				estype.NodeData:         "false",
+				"node.store.allow_mmap": false,
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -143,7 +144,8 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				estype.NodeMaster: "false",
+				estype.NodeMaster:       "false",
+				"node.store.allow_mmap": false,
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -168,7 +170,9 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 		Name:  "masterdata",
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
-			Data: map[string]interface{}{},
+			Data: map[string]interface{}{
+				"node.store.allow_mmap": false,
+			},
 		},
 		PodTemplate: ESPodTemplate(resources),
 	})
