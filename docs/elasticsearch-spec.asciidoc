@@ -21,6 +21,7 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-update-strategy>>
 - <<{p}-pod-disruption-budget>>
 - <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
+- <<{p}-orchestration>>
 - <<{p}-snapshot,Create automated snapshots>>
 
 [id="{p}-pod-template"]
@@ -112,7 +113,9 @@ You can customize the volume claim templates used by Elasticsearch to adjust the
 ----
 spec:
   nodeSets:
-  - volumeClaimTemplates:
+  - name: default
+    count: 3
+    volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
       spec:
@@ -123,6 +126,10 @@ spec:
             storage: 5Gi
         storageClassName: standard
 ----
+
+Note that it is currently <<{p}-orchestration-limitations,not possible to resize existing volumes of a NodeSet>>.
+
+ECK automatically deletes VolumeClaimTemplates resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
 
 If you want to use an `emptyDir` volume, specify the `elasticsearch-data` volume in the `podTemplate`:
 
@@ -440,5 +447,6 @@ spec:
   podDisruptionBudget: {}
 ----
 
+include::orchestration.asciidoc[]
 include::advanced-node-scheduling.asciidoc[]
 include::snapshots.asciidoc[]
