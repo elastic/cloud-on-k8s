@@ -5,6 +5,7 @@
 package driver
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
@@ -21,13 +21,12 @@ import (
 )
 
 type upscaleCtx struct {
-	k8sClient           k8s.Client
-	es                  v1beta1.Elasticsearch
-	scheme              *runtime.Scheme
-	observedState       observer.State
-	esState             ESState
-	upscaleStateBuilder *upscaleStateBuilder
-	expectations        *expectations.Expectations
+	k8sClient     k8s.Client
+	es            v1beta1.Elasticsearch
+	scheme        *runtime.Scheme
+	observedState observer.State
+	esState       ESState
+	expectations  *expectations.Expectations
 }
 
 // HandleUpscaleAndSpecChanges reconciles expected NodeSet resources.
@@ -72,13 +71,14 @@ func adjustResources(
 	actualStatefulSets sset.StatefulSetList,
 	expectedResources nodespec.ResourcesList,
 ) (nodespec.ResourcesList, error) {
+	upscaleState := newUpscaleState(ctx, actualStatefulSets, expectedResources)
 	adjustedResources := make(nodespec.ResourcesList, 0, len(expectedResources))
 	for _, nodeSpecRes := range expectedResources {
-		adjustedSset, err := adjustStatefulSetReplicas(ctx, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
+		adjusted, err := adjustStatefulSetReplicas(*upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
 		if err != nil {
 			return nil, err
 		}
-		nodeSpecRes.StatefulSet = adjustedSset
+		nodeSpecRes.StatefulSet = adjusted
 		adjustedResources = append(adjustedResources, nodeSpecRes)
 	}
 	// adapt resources configuration to match adjusted replicas
@@ -103,34 +103,28 @@ func adjustZenConfig(k8sClient k8s.Client, es v1beta1.Elasticsearch, resources n
 }
 
 func adjustStatefulSetReplicas(
-	ctx upscaleCtx,
+	upscaleState upscaleState,
 	actualStatefulSets sset.StatefulSetList,
 	expected appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
 	actual, alreadyExists := actualStatefulSets.GetByName(expected.Name)
-	if alreadyExists {
-		expected = adaptForExistingStatefulSet(actual, expected)
+	expectedReplicas := sset.GetReplicas(expected)
+	actualReplicas := sset.GetReplicas(actual)
+
+	if actualReplicas < expectedReplicas {
+		return upscaleState.limitNodesCreation(actual, expected)
 	}
-	upscaleState, err := ctx.upscaleStateBuilder.InitOnce(ctx.k8sClient, ctx.es, ctx.esState)
-	if err != nil {
-		return appsv1.StatefulSet{}, err
+
+	if alreadyExists && expectedReplicas < actualReplicas {
+		// this is a downscale.
+		// We still want to update the sset spec to the newest one, but leave scaling down as it's done later.
+		nodespec.UpdateReplicas(&expected, actual.Spec.Replicas)
 	}
-	expected = upscaleState.limitMasterNodesCreation(actualStatefulSets, expected)
+
 	return expected, nil
 }
 
 // isReplicaIncrease returns true if expected replicas are higher than actual replicas.
 func isReplicaIncrease(actual appsv1.StatefulSet, expected appsv1.StatefulSet) bool {
 	return sset.GetReplicas(expected) > sset.GetReplicas(actual)
-}
-
-// adaptForExistingStatefulSet modifies ssetToApply to account for the existing StatefulSet.
-// It avoids triggering downscales (done later), and makes sure new pods are created with the newest revision.
-func adaptForExistingStatefulSet(actualSset appsv1.StatefulSet, ssetToApply appsv1.StatefulSet) appsv1.StatefulSet {
-	if sset.GetReplicas(ssetToApply) < sset.GetReplicas(actualSset) {
-		// This is a downscale.
-		// We still want to update the sset spec to the newest one, but don't scale replicas down for now.
-		nodespec.UpdateReplicas(&ssetToApply, actualSset.Spec.Replicas)
-	}
-	return ssetToApply
 }

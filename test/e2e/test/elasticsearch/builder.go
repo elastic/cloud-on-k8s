@@ -6,8 +6,8 @@ package elasticsearch
 
 import (
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
@@ -23,7 +23,7 @@ func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec
 			SecurityContext: test.DefaultSecurityContext(),
 			Containers: []corev1.Container{
 				{
-					Name:      v1beta1.ElasticsearchContainerName,
+					Name:      estype.ElasticsearchContainerName,
 					Resources: resources,
 				},
 			},
@@ -152,6 +152,19 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 	})
 }
 
+func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
+	return b.WithNodeSpec(estype.NodeSet{
+		Name:  name,
+		Count: int32(count),
+		Config: &commonv1beta1.Config{
+			Data: map[string]interface{}{
+				estype.NodeMaster: "false",
+			},
+		},
+		PodTemplate: ESPodTemplate(resources),
+	})
+}
+
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.WithNodeSpec(estype.NodeSet{
 		Name:  "masterdata",
@@ -247,6 +260,14 @@ func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface
 		}
 	}
 	b.Elasticsearch.Spec.NodeSets = newNodeSets
+	return b
+}
+
+func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
+	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = estype.ChangeBudget{
+		MaxSurge:       common.Int32(maxSurge),
+		MaxUnavailable: common.Int32(maxUnavailable),
+	}
 	return b
 }
 

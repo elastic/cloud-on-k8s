@@ -175,6 +175,20 @@ func TestMutationAndReversal(t *testing.T) {
 
 }
 
+func TestMutationWithChangeBudget(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-change-budget").
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(5, "data1", elasticsearch.DefaultResources)
+
+	// rename data set from data1 to data2, add change budget
+	mutated := b.WithNoESTopology().
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(5, "data2", elasticsearch.DefaultResources).
+		WithChangeBudget(1, 1)
+
+	RunESMutation(t, b, mutated)
+}
+
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
 	mutateTo.MutatedFrom = &toCreate
 	test.RunMutation(t, toCreate, mutateTo)

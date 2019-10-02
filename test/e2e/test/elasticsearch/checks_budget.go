@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -67,6 +68,75 @@ func (mc *MasterChangeBudgetCheck) Verify(maxRateOfChange int) error {
 			// assumption being that the observation interval is always shorter than the time an Elasticsearch
 			// node needs to boot.
 			return fmt.Errorf("%d master changes in one observation, expected max %d", abs, maxRateOfChange)
+		}
+	}
+	return nil
+}
+
+type ChangeBudgetCheck struct {
+	PodCounts      []int32
+	ReadyPodCounts []int32
+	Errors         []error
+	stopChan       chan struct{}
+	es             v1beta1.Elasticsearch
+	client         k8s.Client
+}
+
+func NewChangeBudgetCheck(es v1beta1.Elasticsearch, client k8s.Client) *ChangeBudgetCheck {
+	return &ChangeBudgetCheck{
+		es:       es,
+		client:   client,
+		stopChan: make(chan struct{}),
+	}
+}
+
+func (c *ChangeBudgetCheck) Start() {
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-c.stopChan:
+				return
+			case <-ticker.C:
+				pods, err := sset.GetActualPodsForCluster(c.client, c.es)
+				if err != nil {
+					c.Errors = append(c.Errors, err)
+					continue
+				}
+				podsReady := reconcile.AvailableElasticsearchNodes(pods)
+
+				c.PodCounts = append(c.PodCounts, int32(len(pods)))
+				c.ReadyPodCounts = append(c.ReadyPodCounts, int32(len(podsReady)))
+			}
+		}
+	}()
+}
+
+func (c *ChangeBudgetCheck) Stop() {
+	c.stopChan <- struct{}{}
+}
+
+func (c *ChangeBudgetCheck) Verify(esSpec v1beta1.ElasticsearchSpec) error {
+	desired := esSpec.NodeCount()
+	budget := esSpec.UpdateStrategy.ChangeBudget
+
+	maxSurge := budget.GetMaxSurgeOrDefault()
+	if maxSurge != nil {
+		allowedMax := desired + *maxSurge
+		for _, v := range c.PodCounts {
+			if v > allowedMax {
+				return fmt.Errorf("pod count %d when allowed max was %d", v, allowedMax)
+			}
+		}
+	}
+
+	maxUnavailable := budget.GetMaxUnavailableOrDefault()
+	if maxUnavailable != nil {
+		allowedMin := desired - *maxUnavailable
+		for _, v := range c.ReadyPodCounts {
+			if v < allowedMin {
+				return fmt.Errorf("ready pod count %d when allowed min was %d", v, allowedMin)
+			}
 		}
 	}
 	return nil
