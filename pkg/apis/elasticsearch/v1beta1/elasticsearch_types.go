@@ -74,7 +74,7 @@ type NodeSet struct {
 	// Config represents Elasticsearch configuration.
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
-	// Count defines how many nodes this topology has
+	// Count defines how many nodes this topology should have.
 	Count int32 `json:"count,omitempty"`
 
 	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
