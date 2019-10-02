@@ -230,7 +230,7 @@ func Test_newUpscaleState(t *testing.T) {
 		{
 			name: "bootstrapped, a master node is pending",
 			args: args{
-				c:  k8s.WrapClient(fake.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: true, Status: corev1.PodStatus{Phase: corev1.PodPending}}.BuildPtr())),
+				c:  k8s.WrapClient(fake.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: true, Phase: corev1.PodPending}.BuildPtr())),
 				es: *bootstrappedES(),
 			},
 			want: &upscaleState{allowMasterCreation: false, isBootstrapped: true},
@@ -238,7 +238,7 @@ func Test_newUpscaleState(t *testing.T) {
 		{
 			name: "bootstrapped, a data node is pending",
 			args: args{
-				c:  k8s.WrapClient(fake.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: false, Data: true, Status: corev1.PodStatus{Phase: corev1.PodPending}}.BuildPtr())),
+				c:  k8s.WrapClient(fake.NewFakeClient(sset.TestPod{ClusterName: "cluster", Master: false, Data: true, Phase: corev1.PodPending}.BuildPtr())),
 				es: *bootstrappedES(),
 			},
 			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true},
