@@ -7,7 +7,7 @@ package driver
 import (
 	"sort"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -149,7 +149,7 @@ func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	return nil
 }
 
-func deletePod(k8sClient k8s.Client, es v1alpha1.Elasticsearch, pod corev1.Pod, expectations *expectations.Expectations) error {
+func deletePod(k8sClient k8s.Client, es v1beta1.Elasticsearch, pod corev1.Pod, expectations *expectations.Expectations) error {
 	log.Info("Deleting pod for rolling upgrade", "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
 	// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
