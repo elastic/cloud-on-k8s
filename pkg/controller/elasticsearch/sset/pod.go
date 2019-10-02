@@ -67,11 +67,17 @@ func GetActualPodsForCluster(c k8s.Client, es v1beta1.Elasticsearch) ([]corev1.P
 
 // GetActualMastersForCluster returns the list of existing master-eligible pods for the cluster.
 func GetActualMastersForCluster(c k8s.Client, es v1beta1.Elasticsearch) ([]corev1.Pod, error) {
-	pods, err := GetActualPodsForCluster(c, es)
-	if err != nil {
+	var pods corev1.PodList
+
+	ns := client.InNamespace(es.Namespace)
+	matchLabels := client.MatchingLabels(map[string]string{
+		label.ClusterNameLabelName:             es.Name,
+		string(label.NodeTypesMasterLabelName): "true",
+	})
+	if err := c.List(&pods, ns, matchLabels); err != nil {
 		return nil, err
 	}
-	return label.FilterMasterNodePods(pods), nil
+	return pods.Items, nil
 }
 
 func PodReconciliationDoneForSset(c k8s.Client, statefulSet appsv1.StatefulSet) (bool, error) {
