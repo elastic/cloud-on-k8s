@@ -232,21 +232,21 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 	return b
 }
 
-func (b Builder) WithAdditionalConfig(nodeSpecCfg map[string]map[string]interface{}) Builder {
-	var newNodes []estype.NodeSet
-	for node, cfg := range nodeSpecCfg {
+func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface{}) Builder {
+	var newNodeSets []estype.NodeSet
+	for nodeSetName, cfg := range nodeSetCfg {
 		for _, n := range b.Elasticsearch.Spec.NodeSets {
-			if n.Name == node {
+			if n.Name == nodeSetName {
 				newCfg := n.Config.DeepCopy()
 				for k, v := range cfg {
 					newCfg.Data[k] = v
 				}
 				n.Config = newCfg
 			}
-			newNodes = append(newNodes, n)
+			newNodeSets = append(newNodeSets, n)
 		}
 	}
-	b.Elasticsearch.Spec.NodeSets = newNodes
+	b.Elasticsearch.Spec.NodeSets = newNodeSets
 	return b
 }
 

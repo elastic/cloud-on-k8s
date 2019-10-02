@@ -147,15 +147,15 @@ func pvcModification(ctx Context) validation.Result {
 		return validation.OK
 	}
 	for _, node := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
-		currNode := getNode(node.Name, ctx.Current.Elasticsearch)
-		if currNode == nil {
+		currNodeSet := getNodeSet(node.Name, ctx.Current.Elasticsearch)
+		if currNodeSet == nil {
 			// this is a new sset, so there is nothing to check
 			continue
 		}
 
 		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
 		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
-		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
+		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNodeSet.VolumeClaimTemplates) {
 			return validation.Result{
 				Allowed: false,
 				Reason:  pvcImmutableMsg,
@@ -165,7 +165,7 @@ func pvcModification(ctx Context) validation.Result {
 	return validation.OK
 }
 
-func getNode(name string, es v1beta1.Elasticsearch) *v1beta1.NodeSet {
+func getNodeSet(name string, es v1beta1.Elasticsearch) *v1beta1.NodeSet {
 	for i := range es.Spec.NodeSets {
 		if es.Spec.NodeSets[i].Name == name {
 			return &es.Spec.NodeSets[i]
