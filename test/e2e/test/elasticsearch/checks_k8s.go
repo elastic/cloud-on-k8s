@@ -167,7 +167,7 @@ podsLoop:
 				continue podsLoop
 			}
 		}
-		return fmt.Errorf("pod %s is not ready yet", p.Name)
+		return fmt.Errorf("pod %s is not ready yet. Phase: %s. Reason: %s", p.Name, p.Status.Phase, p.Status.Reason)
 	}
 	return nil
 }
