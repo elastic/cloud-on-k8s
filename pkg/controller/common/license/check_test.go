@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -19,7 +19,7 @@ import (
 )
 
 func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 
 	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
 	require.NoError(t, err)

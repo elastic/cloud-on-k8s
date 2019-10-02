@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -133,14 +133,14 @@ func TestHandleDownscale(t *testing.T) {
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
 		expectations:   expectations.NewExpectations(),
-		reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
+		reconcileState: reconcile.NewState(v1beta1.Elasticsearch{}),
 		shardLister: migration.NewFakeShardLister(
 			esclient.Shards{
 				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 			},
 		),
 		esClient: esClient,
-		es: v1alpha1.Elasticsearch{
+		es: v1beta1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterName,
 				Namespace: "ns",
@@ -598,7 +598,7 @@ func Test_attemptDownscale(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(),
-				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
+				reconcileState: reconcile.NewState(v1beta1.Elasticsearch{}),
 				shardLister:    migration.NewFakeShardLister(esclient.Shards{}),
 				esClient:       &fakeESClient{},
 			}
@@ -706,7 +706,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			es := v1alpha1.Elasticsearch{
+			es := v1beta1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ssetMasters.Namespace,
 					Name:      "es",
@@ -729,7 +729,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(),
-				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
+				reconcileState: reconcile.NewState(v1beta1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,
 			}
@@ -747,7 +747,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 
 func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 	require.NoError(t, commonscheme.SetupScheme())
-	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
+	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
 	ssetMasters := sset.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
 	masterPods := []corev1.Pod{
 		sset.TestPod{
@@ -827,7 +827,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(),
-				reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
+				reconcileState: reconcile.NewState(v1beta1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,
 			}
@@ -844,12 +844,12 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 }
 
 func Test_removeStatefulSetResources(t *testing.T) {
-	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
+	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
 	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
 	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
 	svc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), sset.Name)
 
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 	tests := []struct {
 		name      string
 		resources []runtime.Object

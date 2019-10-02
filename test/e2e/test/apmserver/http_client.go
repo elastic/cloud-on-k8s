@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"

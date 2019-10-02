@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -57,7 +57,7 @@ func supportedVersion(ctx Context) validation.Result {
 func hasMaster(ctx Context) validation.Result {
 	var hasMaster bool
 	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		cfg, err := v1alpha1.UnpackConfig(t.Config)
+		cfg, err := v1beta1.UnpackConfig(t.Config)
 		if err != nil {
 			return validation.Result{Reason: cfgInvalidMsg}
 		}
@@ -165,7 +165,7 @@ func pvcModification(ctx Context) validation.Result {
 	return validation.OK
 }
 
-func getNode(name string, es v1alpha1.Elasticsearch) *v1alpha1.NodeSpec {
+func getNode(name string, es v1beta1.Elasticsearch) *v1beta1.NodeSpec {
 	for i := range es.Spec.Nodes {
 		if es.Spec.Nodes[i].Name == name {
 			return &es.Spec.Nodes[i]

@@ -7,7 +7,7 @@ package nodespec
 import (
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -18,7 +18,7 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
-func buildVolumes(esName string, nodeSpec v1alpha1.NodeSpec, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
+func buildVolumes(esName string, nodeSpec v1beta1.NodeSpec, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
 
 	configVolume := settings.ConfigSecretVolume(name.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(

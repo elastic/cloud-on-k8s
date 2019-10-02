@@ -7,7 +7,7 @@ package transport
 import (
 	"reflect"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -24,7 +24,7 @@ import (
 func ReconcileTransportCertsPublicSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	ca *certificates.CA,
 ) error {
 	esNSN := k8s.ExtractNamespacedName(&es)

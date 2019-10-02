@@ -13,14 +13,14 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
 )
 
-func NewKibanaClient(kb v1alpha1.Kibana, k *test.K8sClient) (*http.Client, error) {
+func NewKibanaClient(kb v1beta1.Kibana, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
 	if kb.Spec.HTTP.TLS.Enabled() {
 		crts, err := k.GetHTTPCerts(name.KBNamer, kb.Namespace, kb.Name)

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var defaultKibana = v1alpha1.Kibana{
+var defaultKibana = v1beta1.Kibana{
 	ObjectMeta: metav1.ObjectMeta{
 		Namespace: "test-ns",
 		Name:      "test",
@@ -32,7 +32,7 @@ var defaultKibana = v1alpha1.Kibana{
 func TestReconcileConfigSecret(t *testing.T) {
 	type args struct {
 		initialObjects []runtime.Object
-		kb             v1alpha1.Kibana
+		kb             v1beta1.Kibana
 	}
 	tests := []struct {
 		name       string
@@ -43,7 +43,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			name: "config secret should be created",
 			args: args{
 				kb: defaultKibana,
-				initialObjects: []runtime.Object{&v1alpha1.Kibana{
+				initialObjects: []runtime.Object{&v1beta1.Kibana{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-ns",
@@ -105,7 +105,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sc := scheme.Scheme
-			if err := v1alpha1.SchemeBuilder.AddToScheme(sc); err != nil {
+			if err := v1beta1.SchemeBuilder.AddToScheme(sc); err != nil {
 				assert.Fail(t, "failed to build custom scheme")
 			}
 			k8sClient := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, tt.args.initialObjects...))

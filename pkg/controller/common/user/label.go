@@ -5,7 +5,7 @@
 package user
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -22,7 +22,7 @@ const (
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by
 // NewLabels for the provided cluster name and of for a resource of type "user"
-func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) client.MatchingLabels {
+func NewLabelSelectorForElasticsearch(es v1beta1.Elasticsearch) client.MatchingLabels {
 	return client.MatchingLabels(NewLabels(k8s.ExtractNamespacedName(&es)))
 }
 

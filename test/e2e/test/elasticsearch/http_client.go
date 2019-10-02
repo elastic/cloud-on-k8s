@@ -5,7 +5,7 @@
 package elasticsearch
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -18,7 +18,7 @@ import (
 )
 
 // NewElasticsearchClient returns an ES client for the given ES cluster
-func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *test.K8sClient) (client.Client, error) {
+func NewElasticsearchClient(es v1beta1.Elasticsearch, k *test.K8sClient) (client.Client, error) {
 	password, err := k.GetElasticPassword(es.Namespace, es.Name)
 	if err != nil {
 		return nil, err

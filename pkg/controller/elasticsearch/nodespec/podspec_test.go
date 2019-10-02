@@ -8,8 +8,8 @@ import (
 	"sort"
 	"testing"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var sampleES = v1alpha1.Elasticsearch{
+var sampleES = v1beta1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Namespace: "namespace",
 		Name:      "name",
@@ -33,13 +33,13 @@ var sampleES = v1alpha1.Elasticsearch{
 			"cluster-annotation-name": "cluster-annotation-value",
 		},
 	},
-	Spec: v1alpha1.ElasticsearchSpec{
+	Spec: v1beta1.ElasticsearchSpec{
 		Version: "7.2.0",
-		Nodes: []v1alpha1.NodeSpec{
+		Nodes: []v1beta1.NodeSpec{
 			{
 				Name:      "nodespec-1",
 				NodeCount: 2,
-				Config: &commonv1alpha1.Config{
+				Config: &commonv1beta1.Config{
 					Data: map[string]interface{}{
 						"node.attr.foo": "bar",
 						"node.master":   "true",

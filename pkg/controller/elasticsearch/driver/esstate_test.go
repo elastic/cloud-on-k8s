@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
@@ -153,7 +153,7 @@ func Test_memoizingShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T)
 }
 
 func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
-	esClient := &fakeESClient{health: esclient.Health{Status: string(v1alpha1.ElasticsearchGreenHealth)}}
+	esClient := &fakeESClient{health: esclient.Health{Status: string(v1beta1.ElasticsearchGreenHealth)}}
 	h := &memoizingGreenHealth{esClient: esClient}
 
 	green, err := h.GreenHealth()
@@ -168,7 +168,7 @@ func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 	require.True(t, green)
 
 	// simulate yellow health
-	esClient = &fakeESClient{health: esclient.Health{Status: string(v1alpha1.ElasticsearchYellowHealth)}}
+	esClient = &fakeESClient{health: esclient.Health{Status: string(v1beta1.ElasticsearchYellowHealth)}}
 	h = &memoizingGreenHealth{esClient: esClient}
 	green, err = h.GreenHealth()
 	require.NoError(t, err)

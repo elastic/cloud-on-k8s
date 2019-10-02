@@ -7,7 +7,7 @@ package kibana
 import (
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"

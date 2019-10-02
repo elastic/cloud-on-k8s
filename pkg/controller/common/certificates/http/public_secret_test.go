@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -26,7 +26,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
 
-	owner := &v1alpha1.Elasticsearch{
+	owner := &v1beta1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 	}
 

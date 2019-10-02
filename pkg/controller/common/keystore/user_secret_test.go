@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -32,7 +32,7 @@ func Test_secureSettingsWatchName(t *testing.T) {
 
 func Test_secureSettingsVolume(t *testing.T) {
 	s := scheme.Scheme
-	require.NoError(t, v1alpha1.AddToScheme(s))
+	require.NoError(t, v1beta1.AddToScheme(s))
 
 	expectedSecretVolume := volume.NewSecretVolumeWithMountPath(
 		"kibana-kb-secure-settings",
@@ -53,7 +53,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 		name        string
 		c           k8s.Client
 		w           watches.DynamicWatches
-		kb          v1alpha1.Kibana
+		kb          v1beta1.Kibana
 		wantVolume  *volume.SecretVolume
 		wantVersion string
 		wantWatches []string
@@ -135,7 +135,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 func Test_reconcileSecureSettings(t *testing.T) {
 	true := true
 	s := scheme.Scheme
-	require.NoError(t, v1alpha1.AddToScheme(s))
+	require.NoError(t, v1beta1.AddToScheme(s))
 
 	type args struct {
 		c           k8s.Client
@@ -143,7 +143,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		userSecrets []corev1.Secret
 		namer       name.Namer
 	}
-	kibanaFixture := &v1alpha1.Kibana{
+	kibanaFixture := &v1beta1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "kb",
 			Namespace: "ns",
@@ -154,7 +154,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 		Namespace: "ns",
 		OwnerReferences: []metav1.OwnerReference{
 			{
-				APIVersion:         "kibana.k8s.elastic.co/v1alpha1",
+				APIVersion:         "kibana.k8s.elastic.co/v1beta1",
 				Kind:               "Kibana",
 				Name:               "kb",
 				UID:                "",
@@ -336,25 +336,25 @@ func Test_retrieveUserSecrets(t *testing.T) {
 			"key3": []byte("value3"),
 		},
 	}
-	testKibana := &v1alpha1.Kibana{
+	testKibana := &v1beta1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "kb",
 			Namespace: "ns",
 		},
-		Spec: v1alpha1.KibanaSpec{
-			SecureSettings: []commonv1alpha1.SecretSource{},
+		Spec: v1beta1.KibanaSpec{
+			SecureSettings: []commonv1beta1.SecretSource{},
 		},
 	}
 
 	tests := []struct {
 		name    string
-		args    []commonv1alpha1.SecretSource
+		args    []commonv1beta1.SecretSource
 		want    []corev1.Secret
 		wantErr bool
 	}{
 		{
 			name: "secure settings secret with only secret name should be retrieved",
-			args: []commonv1alpha1.SecretSource{
+			args: []commonv1beta1.SecretSource{
 				{
 					SecretName: testSecretName,
 				},
@@ -364,10 +364,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 		{
 			name: "secure settings secret with empty items should fail",
-			args: []commonv1alpha1.SecretSource{
+			args: []commonv1beta1.SecretSource{
 				{
 					SecretName: testSecretName,
-					Entries:    []commonv1alpha1.KeyToPath{},
+					Entries:    []commonv1beta1.KeyToPath{},
 				},
 			},
 			want:    nil,
@@ -375,10 +375,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 		{
 			name: "secure settings secret with invalid key should fail",
-			args: []commonv1alpha1.SecretSource{
+			args: []commonv1beta1.SecretSource{
 				{
 					SecretName: testSecretName,
-					Entries: []commonv1alpha1.KeyToPath{
+					Entries: []commonv1beta1.KeyToPath{
 						{Key: "unknown"},
 					},
 				},
@@ -388,10 +388,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 		{
 			name: "secure settings secret with valid key should be retrieved",
-			args: []commonv1alpha1.SecretSource{
+			args: []commonv1beta1.SecretSource{
 				{
 					SecretName: testSecretName,
-					Entries: []commonv1alpha1.KeyToPath{
+					Entries: []commonv1beta1.KeyToPath{
 						{Key: "key2"},
 					},
 				},
@@ -409,10 +409,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 		},
 		{
 			name: "secure settings secret with valid key and path should be retrieved",
-			args: []commonv1alpha1.SecretSource{
+			args: []commonv1beta1.SecretSource{
 				{
 					SecretName: testSecretName,
-					Entries: []commonv1alpha1.KeyToPath{
+					Entries: []commonv1beta1.KeyToPath{
 						{Key: "key1"},
 						{Key: "key3", Path: "newKey"},
 					},

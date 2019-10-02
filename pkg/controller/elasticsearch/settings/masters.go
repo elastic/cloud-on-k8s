@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -36,7 +36,7 @@ func Quorum(nMasters int) int {
 func UpdateSeedHostsConfigMap(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	pods []corev1.Pod,
 ) error {
 	// Get the masters from the pods

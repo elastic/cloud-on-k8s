@@ -1,20 +1,20 @@
 # This sample sets up an Elasticsearch cluster and a Kibana instance preconfigured for that cluster
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/v1beta1
 kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.3.0
+  version: 7.4.0
   nodes:
   - name: default
     nodeCount: 1
 ---
-apiVersion: kibana.k8s.elastic.co/v1alpha1
+apiVersion: kibana.k8s.elastic.co/v1beta1
 kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: 7.3.0
+  version: 7.4.0
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"

@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 )
 
-func clusterUUID(es v1alpha1.Elasticsearch, k *test.K8sClient) (string, error) {
+func clusterUUID(es v1beta1.Elasticsearch, k *test.K8sClient) (string, error) {
 	client, err := NewElasticsearchClient(es, k)
 	if err != nil {
 		return "", err
@@ -30,7 +30,7 @@ func clusterUUID(es v1alpha1.Elasticsearch, k *test.K8sClient) (string, error) {
 }
 
 // RetrieveClusterUUIDStep stores the current clusterUUID into the given futureClusterUUID
-func RetrieveClusterUUIDStep(es v1alpha1.Elasticsearch, k *test.K8sClient, futureClusterUUID *string) test.Step {
+func RetrieveClusterUUIDStep(es v1beta1.Elasticsearch, k *test.K8sClient, futureClusterUUID *string) test.Step {
 	return test.Step{
 		Name: "Retrieve Elasticsearch cluster UUID for comparison purpose",
 		Test: test.Eventually(func() error {
@@ -50,7 +50,7 @@ func RetrieveClusterUUIDStep(es v1alpha1.Elasticsearch, k *test.K8sClient, futur
 
 // CompareClusterUUIDStep compares the current clusterUUID with previousClusterUUID,
 // and fails if they don't match
-func CompareClusterUUIDStep(es v1alpha1.Elasticsearch, k *test.K8sClient, previousClusterUUID *string) test.Step {
+func CompareClusterUUIDStep(es v1beta1.Elasticsearch, k *test.K8sClient, previousClusterUUID *string) test.Step {
 	return test.Step{
 		Name: "Cluster UUID should have been preserved",
 		Test: func(t *testing.T) {
