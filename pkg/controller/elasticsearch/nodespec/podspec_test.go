@@ -37,7 +37,7 @@ var sampleES = v1beta1.Elasticsearch{
 		Version: "7.2.0",
 		NodeSets: []v1beta1.NodeSet{
 			{
-				Name:  "nodespec-1",
+				Name:  "nodeset-1",
 				Count: 2,
 				Config: &commonv1beta1.Config{
 					Data: map[string]interface{}{
@@ -80,7 +80,7 @@ var sampleES = v1beta1.Elasticsearch{
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			{
-				Name:  "nodespec-1",
+				Name:  "nodeset-1",
 				Count: 2,
 			},
 		},
@@ -89,10 +89,10 @@ var sampleES = v1beta1.Elasticsearch{
 
 func TestBuildPodTemplateSpec(t *testing.T) {
 	certResources := certificates.CertificateResources{HTTPCACertProvided: true}
-	nodeSpec := sampleES.Spec.NodeSets[0]
+	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
-	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSpec.Config, &certResources)
+	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSet.Config, &certResources)
 	require.NoError(t, err)
 
 	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil)
@@ -103,7 +103,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	terminationGracePeriodSeconds := DefaultTerminationGracePeriodSeconds
 	varFalse := false
 
-	volumes, volumeMounts := buildVolumes(sampleES.Name, nodeSpec, nil)
+	volumes, volumeMounts := buildVolumes(sampleES.Name, nodeSet, nil)
 	// should be sorted
 	sort.Slice(volumes, func(i, j int) bool { return volumes[i].Name < volumes[j].Name })
 	sort.Slice(volumeMounts, func(i, j int) bool { return volumeMounts[i].Name < volumeMounts[j].Name })
@@ -146,7 +146,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				"elasticsearch.k8s.elastic.co/node-ingest":          "true",
 				"elasticsearch.k8s.elastic.co/node-master":          "true",
 				"elasticsearch.k8s.elastic.co/node-ml":              "true",
-				"elasticsearch.k8s.elastic.co/statefulset":          "name-es-nodespec-1",
+				"elasticsearch.k8s.elastic.co/statefulset":          "name-es-nodeset-1",
 				"elasticsearch.k8s.elastic.co/version":              "7.2.0",
 				"pod-template-label-name":                           "pod-template-label-value",
 			},

@@ -45,7 +45,7 @@ func TestValidate(t *testing.T) {
 			esName:        "test-es",
 			nodeSpecNames: []string{"default", "my_ha_set"},
 			wantErr:       true,
-			wantErrMsg:    "invalid nodeSpec name",
+			wantErrMsg:    "invalid nodeSet name",
 		},
 	}
 
