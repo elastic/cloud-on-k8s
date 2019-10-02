@@ -5,7 +5,7 @@
 package sset
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	appsv1 "k8s.io/api/apps/v1"
@@ -127,7 +127,7 @@ func (t TestPod) Build() corev1.Pod {
 	}
 	status.ContainerStatuses = []corev1.ContainerStatus{
 		{
-			Name:         v1alpha1.ElasticsearchContainerName,
+			Name:         v1beta1.ElasticsearchContainerName,
 			RestartCount: t.RestartCount,
 			Ready:        t.Ready,
 		},
