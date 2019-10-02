@@ -6,7 +6,7 @@
 
 Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch and Kibana on Kubernetes based on the operator pattern.
 
-This is an alpha version.
+This is a beta version.
 
 Current features:
 
