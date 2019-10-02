@@ -5,7 +5,7 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: 7.4.0
-  nodes:
+  nodeSets:
   - name: default
     config:
       # most Elasticsearch configuration parameters are possible to set, e.g:
@@ -30,7 +30,7 @@ spec:
           env:
           - name: ES_JAVA_OPTS
             value: "-Xms2g -Xmx2g"
-    nodeCount: 3
+    count: 3
   #   # request 2Gi of persistent data storage for pods in this topology element
   #   volumeClaimTemplates:
   #   - metadata:

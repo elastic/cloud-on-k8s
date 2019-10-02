@@ -78,7 +78,7 @@ func (b Builder) WithVersion(version string) Builder {
 }
 
 func (b Builder) WithNodeCount(count int) Builder {
-	b.Kibana.Spec.NodeCount = int32(count)
+	b.Kibana.Spec.Count = int32(count)
 	return b
 }
 

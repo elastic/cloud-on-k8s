@@ -47,7 +47,7 @@ func Test_hasMaster(t *testing.T) {
 				esCluster: v1beta1.Elasticsearch{
 					Spec: v1beta1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []v1beta1.NodeSpec{
+						NodeSets: []v1beta1.NodeSet{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
@@ -70,7 +70,7 @@ func Test_hasMaster(t *testing.T) {
 				esCluster: v1beta1.Elasticsearch{
 					Spec: v1beta1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []v1beta1.NodeSpec{
+						NodeSets: []v1beta1.NodeSet{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
@@ -93,7 +93,7 @@ func Test_hasMaster(t *testing.T) {
 				esCluster: v1beta1.Elasticsearch{
 					Spec: v1beta1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []v1beta1.NodeSpec{
+						NodeSets: []v1beta1.NodeSet{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
@@ -103,7 +103,7 @@ func Test_hasMaster(t *testing.T) {
 										v1beta1.NodeML:     "false",
 									},
 								},
-								NodeCount: 1,
+								Count: 1,
 							},
 						},
 					},
@@ -197,14 +197,14 @@ func Test_noBlacklistedSettings(t *testing.T) {
 				es: estype.Elasticsearch{
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
 										settings.ClusterInitialMasterNodes: "foo",
 									},
 								},
-								NodeCount: 1,
+								Count: 1,
 							},
 						},
 					},
@@ -218,7 +218,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 				es: estype.Elasticsearch{
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
@@ -248,7 +248,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 				es: estype.Elasticsearch{
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
@@ -268,7 +268,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 				es: estype.Elasticsearch{
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
@@ -288,7 +288,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 				es: estype.Elasticsearch{
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
@@ -460,7 +460,7 @@ func Test_pvcModified(t *testing.T) {
 			proposed: v1beta1.Elasticsearch{
 				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1beta1.NodeSpec{
+					NodeSets: []v1beta1.NodeSet{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -490,7 +490,7 @@ func Test_pvcModified(t *testing.T) {
 			proposed: v1beta1.Elasticsearch{
 				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1beta1.NodeSpec{
+					NodeSets: []v1beta1.NodeSet{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -520,7 +520,7 @@ func Test_pvcModified(t *testing.T) {
 			proposed: v1beta1.Elasticsearch{
 				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1beta1.NodeSpec{
+					NodeSets: []v1beta1.NodeSet{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -562,7 +562,7 @@ func Test_pvcModified(t *testing.T) {
 			proposed: v1beta1.Elasticsearch{
 				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1beta1.NodeSpec{
+					NodeSets: []v1beta1.NodeSet{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -592,7 +592,7 @@ func Test_pvcModified(t *testing.T) {
 			proposed: v1beta1.Elasticsearch{
 				Spec: v1beta1.ElasticsearchSpec{
 					Version: "7.2.0",
-					Nodes: []v1beta1.NodeSpec{
+					NodeSets: []v1beta1.NodeSet{
 						{
 							Name: "master",
 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -655,7 +655,7 @@ func getEsCluster() *v1beta1.Elasticsearch {
 	return &v1beta1.Elasticsearch{
 		Spec: v1beta1.ElasticsearchSpec{
 			Version: "7.2.0",
-			Nodes: []v1beta1.NodeSpec{
+			NodeSets: []v1beta1.NodeSet{
 				{
 					Name: "master",
 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{

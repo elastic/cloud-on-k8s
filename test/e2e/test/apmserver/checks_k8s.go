@@ -34,14 +34,14 @@ func CheckApmServerDeployment(b Builder, k *test.K8sClient) test.Step {
 				Namespace: b.ApmServer.Namespace,
 				Name:      b.ApmServer.Name + "-apm-server",
 			}, &dep)
-			if b.ApmServer.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {
+			if b.ApmServer.Spec.Count == 0 && apierrors.IsNotFound(err) {
 				return nil
 			}
 			if err != nil {
 				return err
 			}
-			if *dep.Spec.Replicas != b.ApmServer.Spec.NodeCount {
-				return fmt.Errorf("invalid ApmServer replicas count: expected %d, got %d", b.ApmServer.Spec.NodeCount, *dep.Spec.Replicas)
+			if *dep.Spec.Replicas != b.ApmServer.Spec.Count {
+				return fmt.Errorf("invalid ApmServer replicas count: expected %d, got %d", b.ApmServer.Spec.Count, *dep.Spec.Replicas)
 			}
 			return nil
 		}),
@@ -53,7 +53,7 @@ func CheckApmServerPodsCount(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ApmServer pods count should match the expected one",
 		Test: test.Eventually(func() error {
-			return k.CheckPodCount(int(b.ApmServer.Spec.NodeCount), test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name)...)
+			return k.CheckPodCount(int(b.ApmServer.Spec.Count), test.ApmServerPodListOptions(b.ApmServer.Namespace, b.ApmServer.Name)...)
 		}),
 	}
 }
@@ -100,7 +100,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 		Name: "ApmServer services should have endpoints",
 		Test: test.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				b.ApmServer.Name + "-apm-http": int(b.ApmServer.Spec.NodeCount),
+				b.ApmServer.Name + "-apm-http": int(b.ApmServer.Spec.Count),
 			} {
 				endpoints, err := k.GetEndpoints(b.ApmServer.Namespace, endpointName)
 				if err != nil {

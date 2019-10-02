@@ -75,19 +75,39 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 
 // CheckESPodsRunning checks that all ES pods for the given ES are running
 func CheckESPodsRunning(b Builder, k *test.K8sClient) test.Step {
+	return checkESPodsPhase(b, k, corev1.PodRunning)
+}
+
+// CheckESPodsRunning checks that all ES pods for the given ES are running
+func CheckESPodsPending(b Builder, k *test.K8sClient) test.Step {
+	return checkESPodsPhase(b, k, corev1.PodPending)
+}
+
+func checkESPodsPhase(b Builder, k *test.K8sClient, phase corev1.PodPhase) test.Step {
+	return CheckPodsCondition(b,
+		k,
+		fmt.Sprintf("Pods should eventually be %s", phase),
+		func(p corev1.Pod) error {
+			if p.Status.Phase != phase {
+				return fmt.Errorf("pod not %s", phase)
+			}
+			return nil
+		},
+	)
+}
+
+func CheckPodsCondition(b Builder, k *test.K8sClient, name string, condition func(p corev1.Pod) error) test.Step {
 	return test.Step{
-		Name: "ES pods should eventually be running",
+		Name: name,
 		Test: test.Eventually(func() error {
 			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			if err != nil {
 				return err
 			}
-			for _, p := range pods {
-				if p.Status.Phase != corev1.PodRunning {
-					return fmt.Errorf("pod not running yet")
-				}
+			if int32(len(pods)) != b.Elasticsearch.Spec.NodeCount() {
+				return fmt.Errorf("expected %d pods, got %d", len(pods), b.Elasticsearch.Spec.NodeCount())
 			}
-			return nil
+			return test.OnAllPods(pods, condition)
 		}),
 	}
 }
@@ -147,7 +167,7 @@ podsLoop:
 				continue podsLoop
 			}
 		}
-		return fmt.Errorf("pod %s is not ready yet", p.Name)
+		return fmt.Errorf("pod %s is not ready yet. Phase: %s. Reason: %s", p.Name, p.Status.Phase, p.Status.Reason)
 	}
 	return nil
 }

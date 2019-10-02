@@ -38,8 +38,8 @@ func newBuilder(name, randSuffix string) Builder {
 		ApmServer: apmtype.ApmServer{
 			ObjectMeta: meta,
 			Spec: apmtype.ApmServerSpec{
-				NodeCount: 1,
-				Version:   test.Ctx().ElasticStackVersion,
+				Count:   1,
+				Version: test.Ctx().ElasticStackVersion,
 				Config: &commonv1beta1.Config{
 					Data: map[string]interface{}{
 						"apm-server.ilm.enabled": false,
@@ -78,7 +78,7 @@ func (b Builder) WithVersion(version string) Builder {
 }
 
 func (b Builder) WithNodeCount(count int) Builder {
-	b.ApmServer.Spec.NodeCount = int32(count)
+	b.ApmServer.Spec.Count = int32(count)
 	return b
 }
 

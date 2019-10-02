@@ -79,7 +79,7 @@ func testFetchAPMServer(t *testing.T) {
 				require.Equal(t, "apm-server-test", got.Name)
 				require.Equal(t, "apm-ns", got.Namespace)
 				require.Equal(t, "test-image", got.Spec.Image)
-				require.EqualValues(t, 1, got.Spec.NodeCount)
+				require.EqualValues(t, 1, got.Spec.Count)
 				require.Equal(t, tc.wantAssocConf, got.AssociationConf())
 			}
 		})
@@ -93,8 +93,8 @@ func mkAPMServer(withAnnotations bool) *apmv1beta1.ApmServer {
 			Namespace: "apm-ns",
 		},
 		Spec: apmv1beta1.ApmServerSpec{
-			Image:     "test-image",
-			NodeCount: 1,
+			Image: "test-image",
+			Count: 1,
 		},
 	}
 
@@ -161,7 +161,7 @@ func testFetchKibana(t *testing.T) {
 				require.Equal(t, "kb-test", got.Name)
 				require.Equal(t, "kb-ns", got.Namespace)
 				require.Equal(t, "test-image", got.Spec.Image)
-				require.EqualValues(t, 1, got.Spec.NodeCount)
+				require.EqualValues(t, 1, got.Spec.Count)
 				require.Equal(t, tc.wantAssocConf, got.AssociationConf())
 			}
 		})
@@ -175,8 +175,8 @@ func mkKibana(withAnnotations bool) *kbv1beta1.Kibana {
 			Namespace: "kb-ns",
 		},
 		Spec: kbv1beta1.KibanaSpec{
-			Image:     "test-image",
-			NodeCount: 1,
+			Image: "test-image",
+			Count: 1,
 		},
 	}
 
@@ -209,7 +209,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
-	require.EqualValues(t, 1, got.Spec.NodeCount)
+	require.EqualValues(t, 1, got.Spec.Count)
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// update and check the new values
@@ -228,7 +228,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
-	require.EqualValues(t, 1, got.Spec.NodeCount)
+	require.EqualValues(t, 1, got.Spec.Count)
 	require.Equal(t, newAssocConf, got.AssociationConf())
 }
 
@@ -252,7 +252,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
-	require.EqualValues(t, 1, got.Spec.NodeCount)
+	require.EqualValues(t, 1, got.Spec.Count)
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// remove and check the new values
@@ -264,6 +264,6 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
-	require.EqualValues(t, 1, got.Spec.NodeCount)
+	require.EqualValues(t, 1, got.Spec.Count)
 	require.Nil(t, got.AssociationConf())
 }

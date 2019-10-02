@@ -48,22 +48,22 @@ func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
 
 func BuildStatefulSet(
 	es v1beta1.Elasticsearch,
-	nodeSpec v1beta1.NodeSpec,
+	nodeSet v1beta1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	scheme *runtime.Scheme,
 ) (appsv1.StatefulSet, error) {
-	statefulSetName := name.StatefulSet(es.Name, nodeSpec.Name)
+	statefulSetName := name.StatefulSet(es.Name, nodeSet.Name)
 
 	// ssetSelector is used to match the sset pods
 	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)
 
 	// add default PVCs to the node spec
-	nodeSpec.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-		nodeSpec.VolumeClaimTemplates, nodeSpec.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
+	nodeSet.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+		nodeSet.VolumeClaimTemplates, nodeSet.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
 	)
 	// build pod template
-	podTemplate, err := BuildPodTemplateSpec(es, nodeSpec, cfg, keystoreResources)
+	podTemplate, err := BuildPodTemplateSpec(es, nodeSet, cfg, keystoreResources)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}
@@ -77,8 +77,8 @@ func BuildStatefulSet(
 
 	// set the owner reference of all volume claims to the ES resource,
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
-	claims := make([]corev1.PersistentVolumeClaim, 0, len(nodeSpec.VolumeClaimTemplates))
-	for _, claim := range nodeSpec.VolumeClaimTemplates {
+	claims := make([]corev1.PersistentVolumeClaim, 0, len(nodeSet.VolumeClaimTemplates))
+	for _, claim := range nodeSet.VolumeClaimTemplates {
 		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
 			return appsv1.StatefulSet{}, err
 		}
@@ -106,7 +106,7 @@ func BuildStatefulSet(
 				MatchLabels: ssetSelector,
 			},
 
-			Replicas:             &nodeSpec.NodeCount,
+			Replicas:             &nodeSet.Count,
 			VolumeClaimTemplates: claims,
 			Template:             podTemplate,
 		},

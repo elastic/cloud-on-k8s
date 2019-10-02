@@ -20,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// Resources contain per-NodeSpec resources to be created.
+// Resources contain per-NodeSet resources to be created.
 type Resources struct {
 	StatefulSet     appsv1.StatefulSet
 	HeadlessService corev1.Service
@@ -38,14 +38,14 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 }
 
 func BuildExpectedResources(es v1beta1.Elasticsearch, keystoreResources *keystore.Resources, scheme *runtime.Scheme, certResources *certificates.CertificateResources) (ResourcesList, error) {
-	nodesResources := make(ResourcesList, 0, len(es.Spec.Nodes))
+	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, nodeSpec := range es.Spec.Nodes {
+	for _, nodeSpec := range es.Spec.NodeSets {
 		// build es config
 		userCfg := commonv1beta1.Config{}
 		if nodeSpec.Config != nil {

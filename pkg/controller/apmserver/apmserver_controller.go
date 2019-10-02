@@ -385,7 +385,7 @@ func (r *ReconcileApmServer) deploymentParams(
 	return deployment.Params{
 		Name:            apmname.Deployment(as.Name),
 		Namespace:       as.Namespace,
-		Replicas:        as.Spec.NodeCount,
+		Replicas:        as.Spec.Count,
 		Selector:        labels.NewLabels(as.Name),
 		Labels:          labels.NewLabels(as.Name),
 		PodTemplateSpec: podSpec,

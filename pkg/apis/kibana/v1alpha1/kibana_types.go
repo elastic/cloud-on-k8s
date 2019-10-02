@@ -39,7 +39,7 @@ type KibanaSpec struct {
 
 	// PodTemplate can be used to propagate configuration to Kibana pods.
 	// This allows specifying custom annotations, labels, environment variables,
-	// affinity, resources, etc. for the pods created from this NodeSpec.
+	// affinity, resources, etc. for the pods created from this spec.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
