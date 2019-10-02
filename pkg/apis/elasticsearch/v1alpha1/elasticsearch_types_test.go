@@ -6,12 +6,10 @@ package v1alpha1
 
 import (
 	"fmt"
-	"reflect"
 	"sort"
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,92 +121,6 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 				},
 			}
 			require.Equal(t, tt.want, e.IsMarkedForDeletion())
-		})
-	}
-}
-
-func Test_GetMaxSurgeOrDefault(t *testing.T) {
-	tests := []struct {
-		name     string
-		fromSpec *int32
-		want     *int32
-	}{
-		{
-			name:     "negative in spec results in unbounded",
-			fromSpec: common.Int32(-1),
-			want:     nil,
-		},
-		{
-			name:     "nil in spec results in default, generic",
-			fromSpec: nil,
-			want:     DefaultChangeBudget.MaxSurge,
-		},
-		{
-			name:     "nil in spec results in default, currently nil",
-			fromSpec: nil,
-			want:     nil,
-		},
-		{
-			name:     "0 in spec results in 0",
-			fromSpec: common.Int32(0),
-			want:     common.Int32(0),
-		},
-		{
-			name:     "1 in spec results in 1",
-			fromSpec: common.Int32(1),
-			want:     common.Int32(1),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ChangeBudget{MaxSurge: tt.fromSpec}.GetMaxSurgeOrDefault()
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetMaxSurgeOrDefault() want = %v, got = %v", tt.want, got)
-			}
-		})
-	}
-}
-
-func Test_GetMaxUnavailableOrDefault(t *testing.T) {
-	tests := []struct {
-		name     string
-		fromSpec *int32
-		want     *int32
-	}{
-		{
-			name:     "negative in spec results in unbounded",
-			fromSpec: common.Int32(-1),
-			want:     nil,
-		},
-		{
-			name:     "nil in spec results in default, generic",
-			fromSpec: nil,
-			want:     DefaultChangeBudget.MaxUnavailable,
-		},
-		{
-			name:     "nil in spec results in default, currently 1",
-			fromSpec: nil,
-			want:     common.Int32(1),
-		},
-		{
-			name:     "0 in spec results in 0",
-			fromSpec: common.Int32(0),
-			want:     common.Int32(0),
-		},
-		{
-			name:     "1 in spec results in 1",
-			fromSpec: common.Int32(1),
-			want:     common.Int32(1),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ChangeBudget{MaxUnavailable: tt.fromSpec}.GetMaxUnavailableOrDefault()
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetMaxUnavailableOrDefault() want = %v, got = %v", tt.want, got)
-			}
 		})
 	}
 }

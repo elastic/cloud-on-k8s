@@ -61,6 +61,7 @@ type ssetDownscale struct {
 	statefulSet     appsv1.StatefulSet
 	initialReplicas int32
 	targetReplicas  int32
+	finalReplicas   int32
 }
 
 // leavingNodeNames returns names of the nodes that are supposed to leave the Elasticsearch cluster

@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -176,9 +175,9 @@ func TestHandleDownscale(t *testing.T) {
 	results := HandleDownscale(downscaleCtx, requestedStatefulSets, actualStatefulSets)
 	require.False(t, results.HasError())
 
-	// data migration should have been requested for all nodes leaving the cluster
+	// data migration should have been requested for all nodes, but last master, leaving the cluster
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
-	require.Equal(t, "ssetMaster3Replicas-2,ssetMaster3Replicas-1,ssetData4Replicas-3,ssetData4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
+	require.Equal(t, "ssetMaster3Replicas-2,ssetData4Replicas-3,ssetData4Replicas-2", esClient.ExcludeFromShardAllocationCalledWith)
 
 	// only part of the expected replicas of ssetMaster3Replicas should be updated,
 	// since we remove only one master at a time
@@ -360,11 +359,13 @@ func Test_calculateDownscales(t *testing.T) {
 					statefulSet:     ssets[1],
 					initialReplicas: *ssets[1].Spec.Replicas,
 					targetReplicas:  2,
+					finalReplicas:   2,
 				},
 				{
 					statefulSet:     ssets[2],
 					initialReplicas: *ssets[2].Spec.Replicas,
 					targetReplicas:  1,
+					finalReplicas:   1,
 				},
 			},
 		},
@@ -430,6 +431,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				downscale: ssetDownscale{
 					initialReplicas: 3,
 					targetReplicas:  3,
+					finalReplicas:   3,
 				},
 				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(1)},
 				allLeavingNodes: []string{"node-1", "node-2"},
@@ -437,6 +439,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			want: ssetDownscale{
 				initialReplicas: 3,
 				targetReplicas:  3,
+				finalReplicas:   3,
 			},
 		},
 		{
@@ -448,6 +451,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				downscale: ssetDownscale{
 					initialReplicas: 3,
 					targetReplicas:  2,
+					finalReplicas:   2,
 				},
 				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(1)},
 				allLeavingNodes: []string{"node-1", "node-2"},
@@ -455,6 +459,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			want: ssetDownscale{
 				initialReplicas: 3,
 				targetReplicas:  2,
+				finalReplicas:   2,
 			},
 		},
 		{
@@ -462,10 +467,12 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			args: args{
 				ctx: downscaleContext{
 					observedState: observer.State{},
+					shardLister:   migration.NewFakeShardLister(esclient.Shards{}),
 				},
 				downscale: ssetDownscale{
 					initialReplicas: 3,
-					targetReplicas:  2,
+					targetReplicas:  3,
+					finalReplicas:   2,
 				},
 				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(0)},
 				allLeavingNodes: []string{"node-1", "node-2"},
@@ -473,6 +480,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			want: ssetDownscale{
 				initialReplicas: 3,
 				targetReplicas:  3,
+				finalReplicas:   2,
 			},
 		},
 		{
@@ -484,7 +492,8 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				downscale: ssetDownscale{
 					statefulSet:     ssetMaster3Replicas,
 					initialReplicas: 3,
-					targetReplicas:  2,
+					targetReplicas:  3,
+					finalReplicas:   2,
 				},
 				// a master node has already been removed
 				state:           &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: common.Int32(1)},
@@ -494,6 +503,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				statefulSet:     ssetMaster3Replicas,
 				initialReplicas: 3,
 				targetReplicas:  3,
+				finalReplicas:   2,
 			},
 		},
 		{
@@ -505,7 +515,8 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				downscale: ssetDownscale{
 					statefulSet:     ssetMaster3Replicas,
 					initialReplicas: 3,
-					targetReplicas:  1,
+					targetReplicas:  2,
+					finalReplicas:   1,
 				},
 				// invariants limits us to one master node downscale only
 				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(1)},
@@ -515,6 +526,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				statefulSet:     ssetMaster3Replicas,
 				initialReplicas: 3,
 				targetReplicas:  2,
+				finalReplicas:   1,
 			},
 		},
 		{
@@ -526,7 +538,8 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				downscale: ssetDownscale{
 					statefulSet:     ssetMaster3Replicas,
 					initialReplicas: 1,
-					targetReplicas:  0,
+					targetReplicas:  1,
+					finalReplicas:   0,
 				},
 				// only one master is running
 				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: common.Int32(1)},
@@ -536,28 +549,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 				statefulSet:     ssetMaster3Replicas,
 				initialReplicas: 1,
 				targetReplicas:  1,
-			},
-		},
-		{
-			name: "downscale not possible: data migration not ready",
-			args: args{
-				ctx: downscaleContext{
-					shardLister:    migration.NewFakeShardLister(esclient.Shards{}),
-					observedState:  observer.State{},
-					reconcileState: reconcile.NewState(v1alpha1.Elasticsearch{}),
-				},
-				downscale: ssetDownscale{
-					statefulSet:     ssetMaster3Replicas,
-					initialReplicas: 3,
-					targetReplicas:  1,
-				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
-			},
-			want: ssetDownscale{
-				statefulSet:     ssetMaster3Replicas,
-				initialReplicas: 3,
-				targetReplicas:  2,
+				finalReplicas:   0,
 			},
 		},
 	}
@@ -648,7 +640,8 @@ func Test_attemptDownscale(t *testing.T) {
 			downscale: ssetDownscale{
 				statefulSet:     sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 				initialReplicas: 3,
-				targetReplicas:  2,
+				targetReplicas:  3,
+				finalReplicas:   2,
 			},
 			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(0)},
 			statefulSets: sset.StatefulSetList{

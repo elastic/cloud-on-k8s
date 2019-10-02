@@ -7,7 +7,6 @@ package driver
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
@@ -34,7 +33,7 @@ func bootstrappedES() *v1beta1.Elasticsearch {
 func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable *int32) *v1beta1.Elasticsearch {
 	es := bootstrappedES()
 	es.Spec.UpdateStrategy = v1beta1.UpdateStrategy{
-		ChangeBudget: &v1beta1.ChangeBudget{
+		ChangeBudget: v1beta1.ChangeBudget{
 			MaxSurge:       maxSurge,
 			MaxUnavailable: maxUnavailable,
 		},

@@ -23,7 +23,7 @@ func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec
 			SecurityContext: test.DefaultSecurityContext(),
 			Containers: []corev1.Container{
 				{
-					Name:      v1beta1.ElasticsearchContainerName,
+					Name:      estype.ElasticsearchContainerName,
 					Resources: resources,
 				},
 			},

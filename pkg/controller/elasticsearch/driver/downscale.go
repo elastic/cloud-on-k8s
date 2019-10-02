@@ -91,6 +91,7 @@ func calculateDownscales(state downscaleState, expectedStatefulSets sset.Statefu
 				statefulSet:     actualSset,
 				initialReplicas: actualReplicas,
 				targetReplicas:  actualReplicas - toDelete,
+				finalReplicas:   expectedReplicas,
 			})
 
 			state.recordRemoval(actualSset, toDelete)
@@ -124,7 +125,7 @@ func attemptDownscale(
 			return true, nil
 		}
 		// do performable downscale, and requeue if needed
-		shouldRequeue := performable.targetReplicas != downscale.targetReplicas
+		shouldRequeue := performable.targetReplicas != downscale.finalReplicas
 		return shouldRequeue, doDownscale(ctx, performable, statefulSets)
 
 	default:
@@ -164,10 +165,10 @@ func calculatePerformableDownscale(
 		statefulSet:     downscale.statefulSet,
 		initialReplicas: downscale.initialReplicas,
 		targetReplicas:  downscale.initialReplicas, // target set to initial
+		finalReplicas:   downscale.finalReplicas,
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-
 		migrating, err := migration.IsMigratingData(ctx.shardLister, node, allLeavingNodes)
 		if err != nil {
 			return performableDownscale, err
