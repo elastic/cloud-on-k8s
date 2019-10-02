@@ -134,6 +134,8 @@ func (s Shards) GetShardsByNode() map[string]Shards {
 	return result
 }
 
+// fixNodeNames extracts the name of the node from the output of the /_cat/shards API call
+// see https://github.com/elastic/cloud-on-k8s/issues/1796
 func (s Shards) fixNodeNames() {
 	for i := range s {
 		if idx := strings.IndexByte(s[i].NodeName, ' '); idx >= 0 {

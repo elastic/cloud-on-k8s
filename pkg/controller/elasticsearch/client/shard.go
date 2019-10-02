@@ -11,7 +11,7 @@ import (
 // AllocationSetter captures Elasticsearch API calls around allocation filtering.
 type AllocationSetter interface {
 	// ExcludeFromShardAllocation takes a comma-separated string of node names and
-	// configures transient allocation excludes for the given nodes.
+	// configures transient allocation exclusions for the given nodes.
 	ExcludeFromShardAllocation(nodes string) error
 }
 
