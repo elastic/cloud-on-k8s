@@ -83,8 +83,8 @@ func calculateDownscales(state downscaleState, expectedStatefulSets sset.Statefu
 			}
 
 			toDelete := actualReplicas - expectedReplicas
-			if label.IsMasterNodeSet(actualSset) {
-				toDelete = 1 // Only one removal allowed for masters
+			if label.IsMasterNodeSet(actualSset) && toDelete > 0 {
+				toDelete = 1 // Only one removal allowed for masters and if it's not already at 0
 			}
 			toDelete = state.getMaxNodesToRemove(toDelete)
 			downscales = append(downscales, ssetDownscale{

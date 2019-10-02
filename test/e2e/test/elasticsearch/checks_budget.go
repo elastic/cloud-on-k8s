@@ -116,27 +116,39 @@ func (c *ChangeBudgetCheck) Stop() {
 	c.stopChan <- struct{}{}
 }
 
-func (c *ChangeBudgetCheck) Verify(esSpec v1beta1.ElasticsearchSpec) error {
-	desired := esSpec.NodeCount()
-	budget := esSpec.UpdateStrategy.ChangeBudget
+func (c *ChangeBudgetCheck) Verify(from v1beta1.ElasticsearchSpec, to v1beta1.ElasticsearchSpec) error {
+	desired := to.NodeCount()
+	budget := to.UpdateStrategy.ChangeBudget
 
+	// allowedMin, allowedMax bound observed values between the ones we expect to see given desired count and change budget.
+	// seenMin, seenMax allow for ramping up/down nodes when moving from spec outside of <allowedMin, allowedMax> node count.
+	// It's done by tracking lowest/highest values seen outside of bounds. This permits the values to only move monotonically
+	// until they are inside <allowedMin, allowedMax>.
 	maxSurge := budget.GetMaxSurgeOrDefault()
 	if maxSurge != nil {
 		allowedMax := desired + *maxSurge
+		seenMin := from.NodeCount()
 		for _, v := range c.PodCounts {
-			if v > allowedMax {
-				return fmt.Errorf("pod count %d when allowed max was %d", v, allowedMax)
+			if v <= allowedMax || v <= seenMin {
+				seenMin = v
+				continue
 			}
+
+			return fmt.Errorf("pod count %d when allowed max was %d", v, allowedMax)
 		}
 	}
 
 	maxUnavailable := budget.GetMaxUnavailableOrDefault()
 	if maxUnavailable != nil {
 		allowedMin := desired - *maxUnavailable
+		seenMax := from.NodeCount()
 		for _, v := range c.ReadyPodCounts {
-			if v < allowedMin {
-				return fmt.Errorf("ready pod count %d when allowed min was %d", v, allowedMin)
+			if v >= allowedMin || v >= seenMax {
+				seenMax = v
+				continue
 			}
+
+			return fmt.Errorf("ready pod count %d when allowed min was %d", v, allowedMin)
 		}
 	}
 	return nil
