@@ -172,19 +172,7 @@ func (h *helper) createE2ENamespaceAndRoleBindings() error {
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	crds, err := filepath.Glob("config/crds/*.yaml")
-	if err != nil {
-		return errors.Wrap(err, "failed to list CRDs")
-	}
-
-	for _, crd := range crds {
-		log.V(1).Info("Installing CRD", "crd", crd)
-		if _, err := h.kubectlApplyTemplate(crd, h.testContext); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return h.kubectl("apply", "-k", "config/crds-flavor-"+h.crdFlavor)
 }
 
 func (h *helper) createOperatorNamespaces() error {
