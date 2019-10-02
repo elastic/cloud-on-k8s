@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -134,7 +134,7 @@ func Test_pvcsToRemove(t *testing.T) {
 func TestGarbageCollectPVCs(t *testing.T) {
 	// Test_pvcsToRemove covers most of the testing logic,
 	// let's just check everything is correctly plugged to the k8s api here.
-	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	existingPVCS := []runtime.Object{
 		buildPVCPtr("claim1-sset1-0"),   // should not be removed
 		buildPVCPtr("claim1-oldsset-0"), // should be removed

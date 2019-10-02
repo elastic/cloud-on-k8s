@@ -5,10 +5,10 @@
 package scheme
 
 import (
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	esv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	kbv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -19,18 +19,18 @@ func SetupScheme() error {
 	if err != nil {
 		return err
 	}
-	err = apmv1alpha1.AddToScheme(clientgoscheme.Scheme)
+	err = apmv1beta1.AddToScheme(clientgoscheme.Scheme)
 	if err != nil {
 		return err
 	}
-	err = commonv1alpha1.AddToScheme(clientgoscheme.Scheme)
+	err = commonv1beta1.AddToScheme(clientgoscheme.Scheme)
 	if err != nil {
 		return err
 	}
-	err = esv1alpha1.AddToScheme(clientgoscheme.Scheme)
+	err = esv1beta1.AddToScheme(clientgoscheme.Scheme)
 	if err != nil {
 		return err
 	}
-	err = kbv1alpha1.AddToScheme(clientgoscheme.Scheme)
+	err = kbv1beta1.AddToScheme(clientgoscheme.Scheme)
 	return err
 }

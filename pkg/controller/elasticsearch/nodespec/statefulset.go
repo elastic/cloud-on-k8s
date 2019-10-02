@@ -7,7 +7,7 @@ package nodespec
 import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -47,8 +47,8 @@ func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
 }
 
 func BuildStatefulSet(
-	es v1alpha1.Elasticsearch,
-	nodeSpec v1alpha1.NodeSpec,
+	es v1beta1.Elasticsearch,
+	nodeSpec v1beta1.NodeSpec,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	scheme *runtime.Scheme,

@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"time"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -204,9 +204,9 @@ func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) fin
 	}
 }
 
-func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
+func resultFromStatus(status commonv1beta1.AssociationStatus) reconcile.Result {
 	switch status {
-	case commonv1alpha1.AssociationPending:
+	case commonv1beta1.AssociationPending:
 		return defaultRequeue // retry
 	default:
 		return reconcile.Result{} // we are done or there is not much we can do
@@ -222,11 +222,11 @@ func (r *ReconcileApmServerElasticsearchAssociation) isCompatible(apmServer *apm
 	return compat, err
 }
 
-func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer *apmtype.ApmServer) (commonv1alpha1.AssociationStatus, error) {
+func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer *apmtype.ApmServer) (commonv1beta1.AssociationStatus, error) {
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.ElasticsearchRef
 	if !elasticsearchRef.IsDefined() {
-		return commonv1alpha1.AssociationUnknown, nil
+		return commonv1beta1.AssociationUnknown, nil
 	}
 	if elasticsearchRef.Namespace == "" {
 		// no namespace provided: default to the APM server namespace
@@ -242,7 +242,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		Watcher: assocKey,
 	})
 	if err != nil {
-		return commonv1alpha1.AssociationFailed, err
+		return commonv1beta1.AssociationFailed, err
 	}
 
 	var es estype.Elasticsearch
@@ -254,12 +254,12 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 			// ES is not found, remove any existing backend configuration and retry in a bit.
 			if err := association.RemoveAssociationConf(r.Client, apmServer); err != nil && !errors.IsConflict(err) {
 				log.Error(err, "Failed to remove Elasticsearch output from APMServer object", "namespace", apmServer.Namespace, "name", apmServer.Name)
-				return commonv1alpha1.AssociationPending, err
+				return commonv1beta1.AssociationPending, err
 			}
 
-			return commonv1alpha1.AssociationPending, nil
+			return commonv1beta1.AssociationPending, nil
 		}
-		return commonv1alpha1.AssociationFailed, err
+		return commonv1beta1.AssociationFailed, err
 	}
 
 	if err := association.ReconcileEsUser(
@@ -274,17 +274,17 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		apmUserSuffix,
 		es,
 	); err != nil { // TODO distinguish conflicts and non-recoverable errors here
-		return commonv1alpha1.AssociationPending, err
+		return commonv1beta1.AssociationPending, err
 	}
 
 	caSecret, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
 	if err != nil {
-		return commonv1alpha1.AssociationPending, err // maybe not created yet
+		return commonv1beta1.AssociationPending, err // maybe not created yet
 	}
 
 	// construct the expected ES output configuration
 	authSecretRef := association.ClearTextSecretKeySelector(apmServer, apmUserSuffix)
-	expectedAssocConf := &commonv1alpha1.AssociationConf{
+	expectedAssocConf := &commonv1beta1.AssociationConf{
 		AuthSecretName: authSecretRef.Name,
 		AuthSecretKey:  authSecretRef.Key,
 		CACertProvided: caSecret.CACertProvided,
@@ -296,10 +296,10 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		log.Info("Updating APMServer spec with Elasticsearch association configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
 		if err := association.UpdateAssociationConf(r.Client, apmServer, expectedAssocConf); err != nil {
 			if errors.IsConflict(err) {
-				return commonv1alpha1.AssociationPending, nil
+				return commonv1beta1.AssociationPending, nil
 			}
 			log.Error(err, "Failed to update APMServer association configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
-			return commonv1alpha1.AssociationPending, err
+			return commonv1beta1.AssociationPending, err
 		}
 		apmServer.SetAssociationConf(expectedAssocConf)
 	}
@@ -308,7 +308,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		log.Error(err, "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
 	}
 
-	return commonv1alpha1.AssociationEstablished, nil
+	return commonv1beta1.AssociationEstablished, nil
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmtype.ApmServer, es types.NamespacedName) (association.CASecret, error) {

@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	kibanav1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -72,14 +72,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch for changes to Kibana
-	if err := c.Watch(&source.Kind{Type: &kibanav1alpha1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &kibanav1beta1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch deployments
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1alpha1.Kibana{},
+		OwnerType:    &kibanav1beta1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1alpha1.Kibana{},
+		OwnerType:    &kibanav1beta1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1alpha1.Kibana{},
+		OwnerType:    &kibanav1beta1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// retrieve the kibana object
-	var kb kibanav1alpha1.Kibana
+	var kb kibanav1beta1.Kibana
 	if ok, err := association.FetchWithAssociation(r.Client, request, &kb); !ok {
 		return reconcile.Result{}, err
 	}
@@ -173,7 +173,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	return r.doReconcile(request, &kb)
 }
 
-func (r *ReconcileKibana) isCompatible(kb *kibanav1alpha1.Kibana) (bool, error) {
+func (r *ReconcileKibana) isCompatible(kb *kibanav1beta1.Kibana) (bool, error) {
 	selector := map[string]string{label.KibanaNameLabelName: kb.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
@@ -183,7 +183,7 @@ func (r *ReconcileKibana) isCompatible(kb *kibanav1alpha1.Kibana) (bool, error) 
 	return compat, err
 }
 
-func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kibanav1alpha1.Kibana) (reconcile.Result, error) {
+func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kibanav1beta1.Kibana) (reconcile.Result, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
@@ -223,7 +223,7 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 }
 
 // finalizersFor returns the list of finalizers applying to a given Kibana deployment
-func (r *ReconcileKibana) finalizersFor(kb *kibanav1alpha1.Kibana) []finalizer.Finalizer {
+func (r *ReconcileKibana) finalizersFor(kb *kibanav1beta1.Kibana) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
 		secretWatchFinalizer(*kb, r.dynamicWatches),
 		keystore.Finalizer(k8s.ExtractNamespacedName(kb), r.dynamicWatches, kb.Kind()),

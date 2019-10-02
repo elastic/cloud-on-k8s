@@ -5,7 +5,7 @@
 package configmap
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -31,7 +31,7 @@ func NewConfigMapWithData(es types.NamespacedName, data map[string]string) corev
 
 // ReconcileScriptsConfigMap reconciles a configmap containing scripts used by
 // init containers and readiness probe.
-func ReconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
+func ReconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1beta1.Elasticsearch) error {
 	fsScript, err := initcontainer.RenderPrepareFsScript()
 	if err != nil {
 		return err

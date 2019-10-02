@@ -9,8 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -37,7 +37,7 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	return ssetList
 }
 
-func BuildExpectedResources(es v1alpha1.Elasticsearch, keystoreResources *keystore.Resources, scheme *runtime.Scheme, certResources *certificates.CertificateResources) (ResourcesList, error) {
+func BuildExpectedResources(es v1beta1.Elasticsearch, keystoreResources *keystore.Resources, scheme *runtime.Scheme, certResources *certificates.CertificateResources) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.Nodes))
 
 	ver, err := version.Parse(es.Spec.Version)
@@ -47,7 +47,7 @@ func BuildExpectedResources(es v1alpha1.Elasticsearch, keystoreResources *keysto
 
 	for _, nodeSpec := range es.Spec.Nodes {
 		// build es config
-		userCfg := commonv1alpha1.Config{}
+		userCfg := commonv1beta1.Config{}
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}

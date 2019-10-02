@@ -222,6 +222,9 @@ func execute() {
 	if metricsPort != 0 {
 		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
 		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
+	} else {
+		// disable metrics
+		opts.MetricsBindAddress = "0"
 	}
 
 	mgr, err := ctrl.NewManager(cfg, opts)

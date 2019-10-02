@@ -7,7 +7,7 @@ package certificates
 import (
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -20,7 +20,7 @@ import (
 
 func Reconcile(
 	d driver.Interface,
-	kb v1alpha1.Kibana,
+	kb v1beta1.Kibana,
 	services []coverv1.Service,
 	rotation certificates.RotationParams,
 ) *reconciler.Results {

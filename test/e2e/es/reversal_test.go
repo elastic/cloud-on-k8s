@@ -7,8 +7,8 @@ package es
 import (
 	"testing"
 
-	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
@@ -57,13 +57,13 @@ func TestReversalStatefulSetRename(t *testing.T) {
 func TestRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithNodeSpec(v1alpha1.NodeSpec{
+		WithNodeSpec(v1beta1.NodeSpec{
 			Name:      "other-master",
 			NodeCount: 1,
 			Config: &common.Config{
 				Data: map[string]interface{}{
-					v1alpha1.NodeMaster: true,
-					v1alpha1.NodeData:   true,
+					v1beta1.NodeMaster: true,
+					v1beta1.NodeData:   true,
 				},
 			},
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
@@ -71,13 +71,13 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 
 	// this currently breaks the cluster (something we might fix in the future at which point this just tests a temp downscale)
 	noMasterMaster := b.WithNoESTopology().WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithNodeSpec(v1alpha1.NodeSpec{
+		WithNodeSpec(v1beta1.NodeSpec{
 			Name:      "other-master",
 			NodeCount: 1,
 			Config: &common.Config{
 				Data: map[string]interface{}{
-					v1alpha1.NodeMaster: false,
-					v1alpha1.NodeData:   true,
+					v1beta1.NodeMaster: false,
+					v1beta1.NodeData:   true,
 				},
 			},
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),

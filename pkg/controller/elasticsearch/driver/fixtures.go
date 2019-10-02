@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -103,15 +103,15 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 	return result
 }
 
-func (u upgradeTestPods) toES(maxUnavailable int) v1alpha1.Elasticsearch {
-	return v1alpha1.Elasticsearch{
+func (u upgradeTestPods) toES(maxUnavailable int) v1beta1.Elasticsearch {
+	return v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      TestEsName,
 			Namespace: TestEsNamespace,
 		},
-		Spec: v1alpha1.ElasticsearchSpec{
-			UpdateStrategy: v1alpha1.UpdateStrategy{
-				ChangeBudget: &v1alpha1.ChangeBudget{
+		Spec: v1beta1.ElasticsearchSpec{
+			UpdateStrategy: v1beta1.UpdateStrategy{
+				ChangeBudget: &v1beta1.ChangeBudget{
 					MaxUnavailable: maxUnavailable,
 				},
 			},

@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -39,7 +39,7 @@ func HandleDownscale(
 	if len(leavingNodes) != 0 {
 		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
 	}
-	if err := migration.MigrateData(downscaleCtx.allocationSetter, leavingNodes); err != nil {
+	if err := migration.MigrateData(downscaleCtx.esClient, leavingNodes); err != nil {
 		return results.WithError(err)
 	}
 
@@ -124,7 +124,7 @@ func attemptDownscale(
 
 // removeStatefulSetResources deletes the given StatefulSet along with the corresponding
 // headless service and configuration secret.
-func removeStatefulSetResources(k8sClient k8s.Client, es v1alpha1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+func removeStatefulSetResources(k8sClient k8s.Client, es v1beta1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	headlessSvc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
 	err := k8sClient.Delete(&headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -216,7 +216,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 func updateZenSettingsForDownscale(
 	c k8s.Client,
 	esClient esclient.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	reconcileState *reconcile.State,
 	actualStatefulSets sset.StatefulSetList,
 	excludeNodes ...string,
@@ -237,7 +237,7 @@ func updateZenSettingsForDownscale(
 func maybeUpdateZen1ForDownscale(
 	c k8s.Client,
 	esClient esclient.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	reconcileState *reconcile.State,
 	actualStatefulSets sset.StatefulSetList) error {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
