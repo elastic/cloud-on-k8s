@@ -327,7 +327,8 @@ e2e-run:
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
 		--elastic-stack-version=$(STACK_VERSION) \
-		--log-verbosity=$(LOG_VERBOSITY)
+		--log-verbosity=$(LOG_VERBOSITY) \
+		--skip-cleanup=false
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
