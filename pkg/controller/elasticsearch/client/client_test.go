@@ -31,15 +31,36 @@ func TestParseShards(t *testing.T) {
 	tests := []struct {
 		name string
 		args string
-		want []Shard
+		want Shards
 	}{
 		{
-			name: "Can parse populated routing table",
-			args: fixtures.SampleShards,
-			want: []Shard{
-				{Index: "sample-data-2", Shard: "0", State: STARTED, NodeName: "stack-sample-es-lkrjf7224s"},
-				{Index: "sample-data-2", Shard: "1", State: STARTED, NodeName: "stack-sample-es-4fxm76vnwj"},
-				{Index: "sample-data-2", Shard: "2", State: UNASSIGNED, NodeName: ""},
+			name: "Can parse populated routing table with some relocating shards",
+			args: fixtures.RelocatingShards,
+			want: Shards{
+				Shard{
+					Index:    "data-integrity-check",
+					Shard:    "0",
+					State:    "STARTED",
+					NodeName: "test-mutation-less-nodes-sqn9-es-masterdata-0",
+				},
+				Shard{
+					Index:    "data-integrity-check",
+					Shard:    "1",
+					State:    "RELOCATING",
+					NodeName: "test-mutation-less-nodes-sqn9-es-masterdata-1",
+				},
+				Shard{
+					Index:    "data-integrity-check",
+					Shard:    "2",
+					State:    "RELOCATING",
+					NodeName: "test-mutation-less-nodes-sqn9-es-masterdata-2",
+				},
+				Shard{
+					Index:    "data-integrity-check",
+					Shard:    "3",
+					State:    "UNASSIGNED",
+					NodeName: "",
+				},
 			},
 		},
 		{

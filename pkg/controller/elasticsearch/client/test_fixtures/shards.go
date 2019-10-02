@@ -29,6 +29,27 @@ const (
 	}
 ]
 `
+	RelocatingShards = `[{
+"index": "data-integrity-check",
+"shard": "1",
+"state": "RELOCATING",
+"node": "test-mutation-less-nodes-sqn9-es-masterdata-1 -> 10.56.2.33 8DqGuLtrSNyMfE2EfKNDgg test-mutation-less-nodes-sqn9-es-masterdata-0"
+}, {
+"index": "data-integrity-check",
+"shard": "2",
+"state": "RELOCATING",
+"node": "test-mutation-less-nodes-sqn9-es-masterdata-2 -> 10.56.2.33 8DqGuLtrSNyMfE2EfKNDgg test-mutation-less-nodes-sqn9-es-masterdata-0"
+}, {
+"index": "data-integrity-check",
+"shard": "0",
+"state": "STARTED",
+"node": "test-mutation-less-nodes-sqn9-es-masterdata-0"
+}, {
+"index": "data-integrity-check",
+"shard": "3",
+"state": "UNASSIGNED",
+"node": ""
+}]`
 	NoShards = `
 []
 `
