@@ -10,15 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// defaultInitContainerRunAsUser is the user id the init container should run as
-const defaultInitContainerRunAsUser int64 = 0
-
-const (
-	// osSettingsContainerName is the name of the container that tweaks os-level settings
-	osSettingsContainerName = "elastic-internal-init-os-settings"
-	// prepareFilesystemContainerName is the name of the container that prepares the filesystem
-	PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
-)
+// PrepareFilesystemContainerName is the name of the container that prepares the filesystem
+const PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
 
 // NewInitContainers creates init containers according to the given parameters
 func NewInitContainers(
