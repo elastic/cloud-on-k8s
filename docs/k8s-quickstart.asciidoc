@@ -55,8 +55,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 1
+  nodeSets:
+  - name: default
+    count: 1
     config:
       node.master: true
       node.data: true
@@ -182,7 +183,7 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodeCount: 1
+  count: 1
   elasticsearchRef:
     name: quickstart
 EOF
@@ -246,8 +247,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     config:
       node.master: true
       node.data: true
@@ -272,8 +274,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     config:
       node.master: true
       node.data: true

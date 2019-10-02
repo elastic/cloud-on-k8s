@@ -30,8 +30,9 @@ metadata:
 spec:
   version: {version}
   image: your/custom/image:tag
-  nodes:
-  - nodeCount: 1
+  nodeSets:
+  - name: default
+    count: 1
 ----
 
 Alternatively, install the plugin when the Pod is created by using an init container:
@@ -44,8 +45,9 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: {version}
-  nodes:
-  - podTemplate:
+  nodeSets:
+  - name: default
+    podTemplate:
       spec:
         initContainers:
         - name: install-plugins
@@ -54,7 +56,7 @@ spec:
           - -c
           - |
             bin/elasticsearch-plugin install --batch repository-gcs
-    nodeCount: 1
+    count: 1
 ----
 
 Assuming you stored this in a file called `elasticsearch.yaml` you can in both cases create the Elasticsearch cluster with:

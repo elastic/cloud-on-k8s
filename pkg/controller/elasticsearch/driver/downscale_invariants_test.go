@@ -24,7 +24,7 @@ import (
 func Test_newDownscaleState(t *testing.T) {
 	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "name"},
-		Spec:       v1beta1.ElasticsearchSpec{Nodes: []v1beta1.NodeSpec{{NodeCount: 4}}},
+		Spec:       v1beta1.ElasticsearchSpec{NodeSets: []v1beta1.NodeSet{{Count: 4}}},
 	}
 
 	tests := []struct {

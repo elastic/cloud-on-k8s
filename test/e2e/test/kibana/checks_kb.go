@@ -23,7 +23,7 @@ type kbChecks struct {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
-	if b.Kibana.Spec.NodeCount == 0 {
+	if b.Kibana.Spec.Count == 0 {
 		return test.StepList{}
 	}
 

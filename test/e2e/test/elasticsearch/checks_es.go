@@ -134,9 +134,9 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 			}
 
 			// flatten the topology
-			var expectedTopology []estype.NodeSpec
-			for _, node := range es.Spec.Nodes {
-				for i := 0; i < int(node.NodeCount); i++ {
+			var expectedTopology []estype.NodeSet
+			for _, node := range es.Spec.NodeSets {
+				for i := 0; i < int(node.Count); i++ {
 					expectedTopology = append(expectedTopology, node)
 				}
 			}
@@ -145,7 +145,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 				// check if node is coming from the expected stateful set based on its name,
 				// ignore nodes coming from StatefulSets in the process of being downscaled
 				found := false
-				for _, spec := range es.Spec.Nodes {
+				for _, spec := range es.Spec.NodeSets {
 					if strings.Contains(node.Name, spec.Name) {
 						found = true
 					}
@@ -214,7 +214,7 @@ func rolesToConfig(roles []string) estype.Node {
 	return node
 }
 
-func compareMemoryLimit(topologyElement estype.NodeSpec, cgroupMemoryLimitsInBytes int64) bool {
+func compareMemoryLimit(topologyElement estype.NodeSet, cgroupMemoryLimitsInBytes int64) bool {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
 		if c.Name == v1beta1.ElasticsearchContainerName {

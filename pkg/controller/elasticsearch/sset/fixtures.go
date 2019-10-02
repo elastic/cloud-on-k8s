@@ -5,6 +5,7 @@
 package sset
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	appsv1 "k8s.io/api/apps/v1"
@@ -88,7 +89,9 @@ type TestPod struct {
 	Master          bool
 	Data            bool
 	Ingest          bool
-	Status          corev1.PodStatus
+	Ready           bool
+	RestartCount    int32
+	Phase           corev1.PodPhase
 }
 
 func (t TestPod) Build() corev1.Pod {
@@ -101,13 +104,41 @@ func (t TestPod) Build() corev1.Pod {
 	label.NodeTypesMasterLabelName.Set(t.Master, labels)
 	label.NodeTypesDataLabelName.Set(t.Data, labels)
 	label.NodeTypesIngestLabelName.Set(t.Ingest, labels)
+
+	status := corev1.PodStatus{
+		// assume Running by default
+		Phase: corev1.PodRunning,
+	}
+	// unless specified otherwise
+	if t.Phase != "" {
+		status.Phase = t.Phase
+	}
+	if t.Ready {
+		status.Conditions = []corev1.PodCondition{
+			{
+				Status: corev1.ConditionTrue,
+				Type:   corev1.ContainersReady,
+			},
+			{
+				Status: corev1.ConditionTrue,
+				Type:   corev1.PodReady,
+			},
+		}
+	}
+	status.ContainerStatuses = []corev1.ContainerStatus{
+		{
+			Name:         v1beta1.ElasticsearchContainerName,
+			RestartCount: t.RestartCount,
+			Ready:        t.Ready,
+		},
+	}
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: t.Namespace,
 			Name:      t.Name,
 			Labels:    labels,
 		},
-		Status: t.Status,
+		Status: status,
 	}
 }
 

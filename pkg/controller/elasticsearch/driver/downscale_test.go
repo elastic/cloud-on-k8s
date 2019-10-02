@@ -34,13 +34,7 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	clusterName = "cluster-name"
-	readyStatus = corev1.PodStatus{
-		Conditions: []corev1.PodCondition{
-			{Status: corev1.ConditionTrue, Type: corev1.ContainersReady},
-			{Status: corev1.ConditionTrue, Type: corev1.PodReady},
-		},
-	}
+	clusterName         = "cluster-name"
 	ssetMaster3Replicas = sset.TestSset{
 		Name:      "ssetMaster3Replicas",
 		Namespace: "ns",
@@ -57,7 +51,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Master:          true,
-			Status:          readyStatus,
+			Ready:           true,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
@@ -66,7 +60,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Master:          true,
-			Status:          readyStatus,
+			Ready:           true,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetMaster3Replicas.Namespace,
@@ -75,7 +69,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Master:          true,
-			Status:          readyStatus,
+			Ready:           true,
 		}.Build(),
 	}
 	ssetData4Replicas = sset.TestSset{
@@ -94,7 +88,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Data:            true,
-			Status:          readyStatus,
+			Ready:           true,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
@@ -103,7 +97,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Data:            true,
-			Status:          readyStatus,
+			Ready:           true,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
@@ -112,7 +106,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Data:            true,
-			Status:          readyStatus,
+			Ready:           true,
 		}.Build(),
 		sset.TestPod{
 			Namespace:       ssetData4Replicas.Namespace,
@@ -121,7 +115,7 @@ var (
 			ClusterName:     clusterName,
 			Version:         "7.2.0",
 			Data:            true,
-			Status:          readyStatus,
+			Ready:           true,
 		}.Build(),
 	}
 	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
@@ -153,8 +147,7 @@ func TestHandleDownscale(t *testing.T) {
 				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 			},
 		),
-		allocationSetter: esclient.NewAllocationSetter(esClient),
-		esClient:         esClient,
+		esClient: esClient,
 		es: v1beta1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterName,

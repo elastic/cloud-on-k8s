@@ -135,7 +135,7 @@ func IsOneDataNodeRollingUpgrade(b Builder) bool {
 	// consider we're in the 1-node rolling upgrade scenario if we mutate
 	// from one data node to one data node with the same name
 	if MustNumDataNodes(initial) == 1 && MustNumDataNodes(mutated) == 1 &&
-		initial.Spec.Nodes[0].Name == mutated.Spec.Nodes[0].Name {
+		initial.Spec.NodeSets[0].Name == mutated.Spec.NodeSets[0].Name {
 		return true
 	}
 	return false

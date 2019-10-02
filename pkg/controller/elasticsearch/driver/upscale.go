@@ -29,7 +29,7 @@ type upscaleCtx struct {
 	expectations  *expectations.Expectations
 }
 
-// HandleUpscaleAndSpecChanges reconciles expected NodeSpec resources.
+// HandleUpscaleAndSpecChanges reconciles expected NodeSet resources.
 // It does:
 // - create any new StatefulSets
 // - update existing StatefulSets specification, to be used for future pods rotation

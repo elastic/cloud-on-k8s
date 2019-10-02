@@ -201,7 +201,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 	return deployment.Params{
 		Name:            kbname.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
-		Replicas:        kb.Spec.NodeCount,
+		Replicas:        kb.Spec.Count,
 		Selector:        label.NewLabels(kb.Name),
 		Labels:          label.NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,

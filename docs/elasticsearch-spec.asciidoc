@@ -74,13 +74,14 @@ See also: link:https://www.elastic.co/guide/en/elasticsearch/reference/current/h
 [id="{p}-node-configuration"]
 === Node configuration
 
-Any setting defined in the `elasticsearch.yml` configuration file can also be defined for each topology of nodes in the `spec.nodes[?].config` section.
+Any setting defined in the `elasticsearch.yml` configuration file can also be defined for each topology of nodes in the `spec.nodeSets[?].config` section.
 
 [source,yaml]
 ----
 spec:
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: masters
+    count: 3
     config:
       node.master: true
       node.data: false
@@ -88,7 +89,8 @@ spec:
       node.ml: false
       xpack.ml.enabled: true
       cluster.remote.connect: false
-  - nodeCount: 10
+  - name: data
+    count: 10
     config:
       node.master: false
       node.data: true
@@ -109,7 +111,7 @@ You can customize the volume claim templates used by Elasticsearch to adjust the
 [source,yaml]
 ----
 spec:
-  nodes:
+  nodeSets:
   - volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
@@ -127,7 +129,7 @@ If you want to use an `emptyDir` volume, specify the `elasticsearch-data` volume
 [source,yaml]
 ----
 spec:
-  nodes:
+  nodeSets:
   - config:
     podTemplate:
       spec:
@@ -190,8 +192,8 @@ link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modul
 [source,yaml]
 ----
 spec:
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - count: 3
     config:
       index.store.type: niofs
 ----
@@ -271,7 +273,7 @@ nodes start, use an init container to run the link:https://www.elastic.co/guide/
 [source,yaml]
 ----
 spec:
-  nodes:
+  nodeSets:
   - podTemplate:
       spec:
         initContainers:
@@ -292,7 +294,7 @@ But you can use the same approach for any kind of file you want to mount into th
 [source,yaml]
 ----
 spec:
-  nodes:
+  nodeSets:
   - podTemplate:
       spec:
         containers:
@@ -411,8 +413,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
   podDisruptionBudget:
     spec:
       maxUnavailable: 2
@@ -431,8 +434,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
   podDisruptionBudget: {}
 ----
 
