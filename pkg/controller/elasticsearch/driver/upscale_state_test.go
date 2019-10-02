@@ -81,11 +81,19 @@ func Test_upscaleState_limitNodesCreation(t *testing.T) {
 			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: common.Int32(2), recordedCreates: 2},
 		},
 		{
-			name:        "upscale from 3 to 4, but no creates allowed: should limit to 0",
+			name:        "upscale masters from 3 to 4, but no creates allowed: should limit to 0",
 			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: common.Int32(0)},
 			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
 			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: true}.Build(),
 			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: true}.Build(),
+			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: common.Int32(0), recordedCreates: 0},
+		},
+		{
+			name:        "upscale data nodes from 3 to 4, but no creates allowed: should limit to 0",
+			state:       &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: common.Int32(0)},
+			actual:      sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
+			ssetToApply: sset.TestSset{Name: "sset", Replicas: 4, Master: false}.Build(),
+			wantSset:    sset.TestSset{Name: "sset", Replicas: 3, Master: false}.Build(),
 			wantState:   &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: common.Int32(0), recordedCreates: 0},
 		},
 		{
