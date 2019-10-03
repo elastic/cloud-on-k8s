@@ -48,7 +48,7 @@ EOF
                 }
                 stage('Upload yaml to S3') {
                     steps {
-                        sh 'make -C build/ci TARGET=yaml-upload ci'
+                        sh 'make -C build/ci yaml-upload'
                     }
                 }
                 stage('Send message to Slack') {
