@@ -43,7 +43,6 @@ func BuildPodTemplateSpec(
 
 	initContainers, err := initcontainer.NewInitContainers(
 		builder.Container.Image,
-		es.Spec.SetVMMaxMapCount,
 		transportCertificatesVolume(es.Name),
 		es.Name,
 		keystoreResources,

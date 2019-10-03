@@ -14,12 +14,22 @@ spec:
       node.data: true
       node.ingest: true
       node.ml: true
+      # this allows ES to run on nodes even if their vm.max_map_count has not been increased, at a performance cost
+      node.store.allow_mmap: false
     podTemplate:
       metadata:
         labels:
           # additional labels for pods
           foo: bar
       spec:
+        # this changes the kernel setting on the node to allow ES to use mmap
+        # if you uncomment this init container you will likely also want to remove the
+        # "node.store.allow_mmap: false" setting above
+        # initContainers:
+        # - name: sysctl
+        #   securityContext:
+        #     privileged: true
+        #   command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
         containers:
         - name: elasticsearch
           # specify resource limits and requests

@@ -88,15 +88,13 @@ func TestReconcile(t *testing.T) {
 		return nil
 	})
 
-	varFalse := false
 	cluster := &v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
 		Spec: v1beta1.ElasticsearchSpec{
-			Version:          "7.0.0",
-			SetVMMaxMapCount: &varFalse,
+			Version: "7.0.0",
 			NodeSets: []v1beta1.NodeSet{
 				{
 					Name:  "all",

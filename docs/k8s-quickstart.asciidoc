@@ -62,10 +62,13 @@ spec:
       node.master: true
       node.data: true
       node.ingest: true
+      node.store.allow_mmap: false
 EOF
 ----
 
 The operator automatically manages Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
+
+Note that `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described link:k8s-elasticsearch-spec.html#virtual-memory[here].
 
 [float]
 ==== Monitor cluster health and creation progress

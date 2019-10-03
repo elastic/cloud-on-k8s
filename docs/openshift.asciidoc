@@ -82,13 +82,14 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: {version}
-  setVmMaxMapCount: false
   nodeSets:
   - name: default
+    count: 1
     config:
       node.master: true
       node.data: true
-    count: 1
+      node.ingest: true
+      node.store.allow_mmap: false
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
