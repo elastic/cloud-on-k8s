@@ -39,6 +39,8 @@ type Builder struct {
 
 var _ test.Builder = Builder{}
 
+const nodeStoreAllowMMap = "node.store.allow_mmap"
+
 func NewBuilder(name string) Builder {
 	return newBuilder(name, rand.String(4))
 }
@@ -130,8 +132,8 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				estype.NodeData:         "false",
-				"node.store.allow_mmap": false,
+				estype.NodeData:    "false",
+				nodeStoreAllowMMap: false,
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -144,8 +146,8 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				estype.NodeMaster:       "false",
-				"node.store.allow_mmap": false,
+				estype.NodeMaster:  "false",
+				nodeStoreAllowMMap: false,
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -158,7 +160,8 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				estype.NodeMaster: "false",
+				estype.NodeMaster:  "false",
+				nodeStoreAllowMMap: false,
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -171,7 +174,7 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				"node.store.allow_mmap": false,
+				nodeStoreAllowMMap: false,
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),

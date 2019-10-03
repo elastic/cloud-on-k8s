@@ -9,6 +9,8 @@ spec:
   nodeSets:
   - name: default
     count: 3
+    config:
+      node.store.allow_mmap: false
 ---
 apiVersion: apm.k8s.elastic.co/v1beta1
 kind: ApmServer

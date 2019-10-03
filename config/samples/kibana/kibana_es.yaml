@@ -8,6 +8,8 @@ spec:
   nodeSets:
   - name: default
     count: 1
+    config:
+      node.store.allow_mmap: false
 ---
 apiVersion: kibana.k8s.elastic.co/v1beta1
 kind: Kibana
