@@ -12,6 +12,9 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
+        REPOSITORY = "eck"
+        IMG_NAME = "eck-operator"
+        LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
     }
 
     stages {
@@ -26,12 +29,12 @@ pipeline {
                     steps {
                         sh """
                             cat >.env <<EOF
-OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
-LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
 VERSION = "${TAG_NAME}"
 REGISTRY = push.docker.elastic.co
-REPOSITORY = eck
-IMG_NAME = eck-operator
+REPOSITORY = "${REPOSITORY}"
+IMG_NAME = "${IMG_NAME}"
+OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
+LATEST_RELEASED_IMG = "${LATEST_RELEASED_IMG}"
 SNAPSHOT = false
 GO_TAGS = release
 LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
