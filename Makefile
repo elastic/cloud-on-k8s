@@ -41,8 +41,7 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-# Produce CRDs that work back to Kubernetes <1.13 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd"
 
 ## -- Docker image
 
