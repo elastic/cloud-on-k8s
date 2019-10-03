@@ -265,46 +265,8 @@ EOF
 [id="{p}-persistent-storage"]
 === Use persistent storage
 
-The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for any serious workloads.
+The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for any serious work. Refer to <<{p}-volume-claim-templates>> for more information.
 
-You can request a `PersistentVolumeClaim` with a larger size in the Elasticsearch specification and target any `StorageClass` available in your Kubernetes cluster:
-
-[source,yaml,subs="attributes"]
-----
-cat <<EOF | kubectl apply -f -
-apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
-kind: Elasticsearch
-metadata:
-  name: quickstart
-spec:
-  version: {version}
-  nodeSets:
-  - name: default
-    count: 3
-    config:
-      node.master: true
-      node.data: true
-      node.ingest: true
-      node.store.allow_mmap: false
-    volumeClaimTemplates:
-    - metadata:
-        name: elasticsearch-data # note: elasticsearch-data must be the name of the Elasticsearch volume
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 10Gi
-        #storageClassName: standard # can be any available storage class
-EOF
-----
-
-NOTE: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes cannot be resized after they are created. You should consider future storage requirements when defining volume claims to ensure that you have plenty of space available to sustain the expected growth.
-
-To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
-
- * link:https://kubernetes.io/docs/concepts/storage/storage-classes[persistent volumes storage classes]
- * link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[kubernetes-sigs local volume static provisioner] to setup static local volumes.
 
 [float]
 [id="{p}-check-samples"]
