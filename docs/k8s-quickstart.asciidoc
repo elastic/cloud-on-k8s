@@ -263,13 +263,11 @@ EOF
 
 [float]
 [id="{p}-persistent-storage"]
-=== Update persistent storage
+=== Use persistent storage
 
-Now that you have completed the quickstart, you can try out more features like tweaking persistent storage. The cluster that you deployed in this quickstart uses a default persistent volume claim of 1GiB without a storage class set. This means that the default storage class defined in the Kubernetes cluster is the one that will be provisioned.
+The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for any serious workloads.
 
-You can request a `PersistentVolumeClaim` with a larger size in the Elasticsearch specification or target any `PersistentVolume` class available in your Kubernetes cluster:
-
-NOTE: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes cannot be resized after they are created. You should consider future storage requirements when defining volume claims to ensure that you have plenty of space available to sustain the projected growth.
+You can request a `PersistentVolumeClaim` with a larger size in the Elasticsearch specification and target any `StorageClass` available in your Kubernetes cluster:
 
 [source,yaml,subs="attributes"]
 ----
@@ -300,6 +298,8 @@ spec:
         #storageClassName: standard # can be any available storage class
 EOF
 ----
+
+NOTE: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes cannot be resized after they are created. You should consider future storage requirements when defining volume claims to ensure that you have plenty of space available to sustain the expected growth.
 
 To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
 
