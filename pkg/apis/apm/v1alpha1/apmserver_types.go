@@ -10,10 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	APMServerContainerName = "apm-server"
-	Kind                   = "ApmServer"
-)
+const APMServerContainerName = "apm-server"
 
 // ApmServerSpec defines the desired state of ApmServer
 type ApmServerSpec struct {
@@ -121,12 +118,6 @@ func (as *ApmServer) ElasticsearchRef() commonv1alpha1.ObjectSelector {
 
 func (as *ApmServer) SecureSettings() []commonv1alpha1.SecretSource {
 	return as.Spec.SecureSettings
-}
-
-// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
-// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
-func (as *ApmServer) Kind() string {
-	return Kind
 }
 
 func (as *ApmServer) AssociationConf() *commonv1alpha1.AssociationConf {

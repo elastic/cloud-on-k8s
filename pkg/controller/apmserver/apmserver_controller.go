@@ -462,6 +462,6 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 // finalizersFor returns the list of finalizers applying to a given APM deployment
 func (r *ReconcileApmServer) finalizersFor(as apmv1beta1.ApmServer) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
-		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, as.Kind()),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, as.Kind),
 	}
 }
