@@ -40,7 +40,7 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 [float]
 [id="{p}-deploy-elasticsearch"]
-=== Deploy the Elasticsearch cluster
+=== Deploy an Elasticsearch cluster
 
 Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
 
@@ -66,9 +66,9 @@ spec:
 EOF
 ----
 
-The operator automatically manages Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
+The operator automatically creates and manages Kubernetes resources to achieve the desired state of the Elasticsearch cluster. It may take up to a few minutes until all the resources are created and the cluster is ready for use.
 
-NOTE: Setting `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
+CAUTION: Setting `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
 
 [float]
 ==== Monitor cluster health and creation progress
@@ -171,7 +171,7 @@ NOTE: Disabling certificate verification using the `-k` flag is not recommended 
 
 [float]
 [id="{p}-deploy-kibana"]
-=== Deploy the Kibana instance
+=== Deploy a Kibana instance
 
 To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance go through the following steps.
 
