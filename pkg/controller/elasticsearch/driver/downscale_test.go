@@ -278,7 +278,26 @@ func Test_calculateDownscales(t *testing.T) {
 				Replicas: common.Int32(3)},
 		},
 	}
-	tests := []struct {
+
+	masterSset := sset.StatefulSetList{
+		sset.TestSset{
+			Name:      "masters",
+			Namespace: "ns",
+			Replicas:  0,
+			Master:    true,
+		}.Build(),
+	}
+
+	dataSset := sset.StatefulSetList{
+		sset.TestSset{
+			Name:      "masters",
+			Namespace: "ns",
+			Replicas:  0,
+			Master:    false,
+		}.Build(),
+	}
+
+	var tests = []struct {
 		name                 string
 		expectedStatefulSets sset.StatefulSetList
 		actualStatefulSets   sset.StatefulSetList
@@ -393,6 +412,30 @@ func Test_calculateDownscales(t *testing.T) {
 			},
 			actualStatefulSets: ssets,
 			want:               []ssetDownscale{},
+		},
+		{
+			name:               "master statefulset removal",
+			actualStatefulSets: masterSset,
+			want: []ssetDownscale{
+				{
+					statefulSet:     masterSset[0],
+					initialReplicas: 0,
+					targetReplicas:  0,
+					finalReplicas:   0,
+				},
+			},
+		},
+		{
+			name:               "data statefulset removal",
+			actualStatefulSets: dataSset,
+			want: []ssetDownscale{
+				{
+					statefulSet:     dataSset[0],
+					initialReplicas: 0,
+					targetReplicas:  0,
+					finalReplicas:   0,
+				},
+			},
 		},
 	}
 	for _, tt := range tests {

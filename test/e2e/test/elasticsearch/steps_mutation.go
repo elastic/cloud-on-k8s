@@ -101,7 +101,9 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				Name: "Pod count must not violate change budget",
 				Test: func(t *testing.T) {
 					changeBudgetCheck.Stop()
-					require.NoError(t, changeBudgetCheck.Verify(b.Elasticsearch.Spec))
+					if b.MutatedFrom != nil {
+						require.NoError(t, changeBudgetCheck.Verify(b.MutatedFrom.Elasticsearch.Spec, b.Elasticsearch.Spec))
+					}
 				},
 			},
 			test.Step{
