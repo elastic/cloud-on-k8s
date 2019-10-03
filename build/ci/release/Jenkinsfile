@@ -38,7 +38,7 @@ OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
 LATEST_RELEASED_IMG = "${LATEST_RELEASED_IMG}"
 SNAPSHOT = false
 GO_TAGS = release
-LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
 USE_ELASTIC_DOCKER_REGISTRY = true
 ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
