@@ -12,6 +12,7 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
+        LATEST_RELEASED_IMG = "docker.elastic.co/eck/eck-operator:${TAG_NAME}"
     }
 
     stages {
@@ -27,7 +28,7 @@ pipeline {
                         sh """
                             cat >.env <<EOF
 OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
-LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
+LATEST_RELEASED_IMG = "${LATEST_RELEASED_IMG}"
 VERSION = "${TAG_NAME}"
 REGISTRY = push.docker.elastic.co
 REPOSITORY = eck
