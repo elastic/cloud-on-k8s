@@ -5,7 +5,7 @@
     project-type: multibranch
     prune-dead-branches: true
     script-path: 'build/ci/release/Jenkinsfile'
-    scm:
+    pipeline-scm:
       - github:
           repo: 'cloud-on-k8s'
           repo-owner: 'elastic'
