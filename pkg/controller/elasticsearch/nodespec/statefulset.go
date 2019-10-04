@@ -5,8 +5,6 @@
 package nodespec
 
 import (
-	"fmt"
-
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
@@ -18,12 +16,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+)
+
+var (
+	f = false
 )
 
 // HeadlessServiceName returns the name of the headless service for the given StatefulSet.
@@ -77,21 +78,10 @@ func BuildStatefulSet(
 		ssetLabels[k] = v
 	}
 
-	// set the owner reference of all volume claims to the ES resource,
-	// so PVC get deleted automatically upon Elasticsearch resource deletion
-	f := false
-	claims := make([]corev1.PersistentVolumeClaim, 0, len(nodeSet.VolumeClaimTemplates))
-	for _, claim := range nodeSet.VolumeClaimTemplates {
-		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
-			return appsv1.StatefulSet{}, err
-		}
-		for _, ref := range claim.OwnerReferences {
-			ref.BlockOwnerDeletion = &f
-		}
-		claims = append(claims, claim)
+	claims, err := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, es, scheme)
+	if err != nil {
+		return appsv1.StatefulSet{}, err
 	}
-
-	fmt.Printf("%v", claims)
 
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -124,6 +114,29 @@ func BuildStatefulSet(
 	sset.Labels = hash.SetTemplateHashLabel(sset.Labels, sset.Spec)
 
 	return sset, nil
+}
+
+func setVolumeClaimsControllerReference(
+	persistentVolumeClaims []corev1.PersistentVolumeClaim,
+	es v1beta1.Elasticsearch,
+	scheme *runtime.Scheme,
+) ([]corev1.PersistentVolumeClaim, error) {
+	// set the owner reference of all volume claims to the ES resource,
+	// so PVC get deleted automatically upon Elasticsearch resource deletion
+	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
+	for _, claim := range persistentVolumeClaims {
+		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
+			return nil, err
+		}
+		// Set block owner deletion to false as the statefulset controller might not be able to do that
+		// See https://github.com/elastic/cloud-on-k8s/issues/1884
+		refs := claim.OwnerReferences
+		for i := range refs {
+			refs[i].BlockOwnerDeletion = &f
+		}
+		claims = append(claims, claim)
+	}
+	return claims, nil
 }
 
 // UpdateReplicas updates the given StatefulSet with the given replicas,
