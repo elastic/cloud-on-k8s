@@ -5,6 +5,9 @@
 package driver
 
 import (
+	"fmt"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -17,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func (d *defaultDriver) reconcileNodeSpecs(
@@ -66,6 +70,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReconciliationError, fmt.Sprintf("Failed to apply spec change: %v", err))
 		return results.WithError(err)
 	}
 
