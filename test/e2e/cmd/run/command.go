@@ -35,6 +35,7 @@ type runFlags struct {
 	skipCleanup         bool
 	local               bool
 	logVerbosity        int
+	crdFlavor           string
 }
 
 var log logr.Logger
@@ -74,6 +75,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.scratchDirRoot, "scratch-dir", "/tmp/eck-e2e", "Path under which temporary files should be created")
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
+	cmd.Flags().StringVar(&flags.crdFlavor, "crd-flavor", "default", "CRD flavor to install")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables

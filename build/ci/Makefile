@@ -55,7 +55,7 @@ AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$
 yaml-upload:
 	@ $(MAKE) \
 		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
-		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one.yaml \
+		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one-flavor-trivial-versions.yaml \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml" ci-internal
 
 # reads Elastic public key from Vault into license.key
