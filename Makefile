@@ -164,6 +164,20 @@ go-run:
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false
 
+go-debug:
+	@(cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
+		--build-flags="-ldflags '$(GO_LDFLAGS)'" \
+		-- \
+		manager \
+		--development \
+		--operator-roles=global,namespace \
+		--log-verbosity=$(LOG_VERBOSITY) \
+		--ca-cert-validity=10h \
+		--ca-cert-rotate-before=1h \
+		--operator-namespace=default \
+		--namespace= \
+		--auto-install-webhooks=false)
+
 build-operator-image:
 ifeq ($(SKIP_DOCKER_COMMAND), false)
 	$(MAKE) docker-build docker-push
