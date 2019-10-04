@@ -64,3 +64,7 @@ get-elastic-public-key:
 
 get-docker-creds:
 	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ../../.env
+
+# This target validates Jenkins pipelines to prevent broken CI jobs
+validate-jenkins-pipelines:
+	@ $(MAKE) DOCKER_CMD="go build -o ./hack/pipeline-validator/validator ./hack/pipeline-validator/main.go && ./hack/pipeline-validator/validator" ci-internal

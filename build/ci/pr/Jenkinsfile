@@ -33,7 +33,11 @@ pipeline {
                 }
             }
             steps {
+                echo "Running check for Go sources..."
                 sh 'make -C build/ci TARGET=ci-check ci'
+
+                echo "Validating Jenkins pipelines..."
+                sh 'make -C build/ci validate-jenkins-pipelines'
             }
         }
         stage('Run tests in parallel') {
