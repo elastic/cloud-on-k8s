@@ -237,7 +237,7 @@ kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | ba
 [id="{p}-upgrade-deployment"]
 === Upgrade your deployment
 
-You can apply any modifications to the original cluster specification. The operator ensures that your changes are applied to the existing cluster with no disruption.
+You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (e.g., existing volume claims cannot be resized). The operator will attempt to apply your changes with minimal disruption to the existing cluster but it might not be possible to apply some changes gracefully. For complex topology changes, you should break your changes down to smaller incremental steps that the operatator can apply safely. You should also ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods etc.).
 
 For example, you can grow the cluster to three nodes:
 
