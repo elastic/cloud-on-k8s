@@ -6,6 +6,7 @@ package driver
 
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -111,8 +112,8 @@ func (u upgradeTestPods) toES(maxUnavailable int) v1beta1.Elasticsearch {
 		},
 		Spec: v1beta1.ElasticsearchSpec{
 			UpdateStrategy: v1beta1.UpdateStrategy{
-				ChangeBudget: &v1beta1.ChangeBudget{
-					MaxUnavailable: maxUnavailable,
+				ChangeBudget: v1beta1.ChangeBudget{
+					MaxUnavailable: common.Int32(int32(maxUnavailable)),
 				},
 			},
 		},

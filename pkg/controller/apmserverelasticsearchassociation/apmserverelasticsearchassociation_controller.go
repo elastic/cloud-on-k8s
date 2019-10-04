@@ -144,7 +144,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	err := handler.Handle(
 		&apmServer,
 		watchFinalizer(apmName, r.watches),
-		user.UserFinalizer(r.Client, apmServer.Kind(), NewUserLabelSelector(apmName)),
+		user.UserFinalizer(r.Client, apmServer.Kind, NewUserLabelSelector(apmName)),
 	)
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry

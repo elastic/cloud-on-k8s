@@ -105,9 +105,7 @@ For more information on Elasticsearch settings, see https://www.elastic.co/guide
 [id="{p}-volume-claim-templates"]
 === Volume claim templates
 
-By default the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
-
-You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs. The name in the template must be `elasticsearch-data`:
+By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each pod in an Elasticsearch cluster to prevent data loss in case of accidental pod deletion. For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. The name of the volume claim must always be `elasticsearch-data`.
 
 [source,yaml]
 ----
@@ -127,11 +125,11 @@ spec:
         storageClassName: standard
 ----
 
-Note that it is currently <<{p}-orchestration-limitations,not possible to resize existing volumes of a NodeSet>>.
-
 ECK automatically deletes VolumeClaimTemplates resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
 
-If you want to use an `emptyDir` volume, specify the `elasticsearch-data` volume in the `podTemplate`:
+IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes <<{p}-orchestration-limitations,cannot be resized after they are created>>. You should consider future storage requirements when defining volume claims to ensure that you have plenty of space available to sustain the expected growth.
+
+If you are not concerned about data loss, you can use an `emptyDir` volume for Elasticsearch data as well:
 
 [source,yaml]
 ----
@@ -145,7 +143,8 @@ spec:
           emptyDir: {}
 ----
 
-IMPORTANT: Using `emptyDir` might result in data loss and is not recommended.
+CAUTION: Using `emptyDir` is not recommended due to the high likelihood of permanent data loss.
+
 
 [id="{p}-http-settings-tls-sans"]
 === HTTP settings & TLS SANs
@@ -180,15 +179,36 @@ spec:
 === Virtual memory
 
 By default, Elasticsearch uses memory mapping (`mmap`) to efficiently access indices.
-Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions.
-To increase virtual memory, ECK sets the recommended value by default.
+Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions. This is why link:k8s-quickstart.html[the quickstart example] disables `mmap` via the `node.store.allow_mmap: false` setting. For production workloads, it is strongly recommended to increase the kernel setting `vm.max_map_count` to `2621441` and leave `node.store.allow_mmap` unset.
 
-The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which needs to be privileged. If the kernel setting is set directly, you might disable the init container in the Elasticsearch specification:
+The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which must be privileged. To add an init container that changes the host kernel setting before your Elasticsearch pod starts, you can use the following example Elasticsearch spec:
 [source,yaml]
 ----
+cat <<EOF | kubectl apply -f -
+apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+kind: Elasticsearch
+metadata:
+  name: quickstart
 spec:
-  setVmMaxMapCount: false
+  version: 7.4.0
+  nodes:
+  - name: default
+    nodeCount: 1
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+    podTemplate:
+      spec:
+        initContainers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+EOF
 ----
+
+Note that this requires the ability to run privileged containers, which is likely not the case on many secure clusters.
 
 For more information, see the Elasticsearch documentation on
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
@@ -200,7 +220,8 @@ link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modul
 ----
 spec:
   nodeSets:
-  - count: 3
+  - name: default
+    count: 3
     config:
       index.store.type: niofs
 ----

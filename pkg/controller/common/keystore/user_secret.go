@@ -227,8 +227,6 @@ func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []com
 }
 
 // Finalizer removes any dynamic watches on external user created secret.
-// TODO: Kind of an object can be retrieved programmatically with object.GetObjectKind(), unfortunately it does not seem
-//  to be reliable with controller-runtime < v0.2.0-beta.4
 func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches, kind string) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: "finalizer." + strings.ToLower(kind) + ".k8s.elastic.co/secure-settings-secret",

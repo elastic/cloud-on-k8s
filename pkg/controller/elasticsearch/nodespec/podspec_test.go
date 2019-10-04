@@ -110,7 +110,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 	initContainers, err := initcontainer.NewInitContainers(
 		"docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
-		nil,
 		transportCertificatesVolume(sampleES.Name),
 		sampleES.Name,
 		nil,

@@ -6,14 +6,12 @@ package v1beta1
 
 import (
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	ElasticsearchContainerName = "elasticsearch"
-	Kind                       = "Elasticsearch"
-)
+const ElasticsearchContainerName = "elasticsearch"
 
 // ElasticsearchSpec defines the desired state of Elasticsearch
 type ElasticsearchSpec struct {
@@ -22,12 +20,6 @@ type ElasticsearchSpec struct {
 
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
-
-	// SetVMMaxMapCount indicates whether an init container should be used to ensure that the `vm.max_map_count`
-	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
-	// Setting this to true requires the kubelet to allow running privileged containers.
-	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
-	SetVMMaxMapCount *bool `json:"setVmMaxMapCount,omitempty"`
 
 	// HTTP contains settings for HTTP.
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
@@ -106,54 +98,59 @@ func (n NodeSet) GetESContainerTemplate() *corev1.Container {
 // UpdateStrategy specifies how updates to the cluster should be performed.
 type UpdateStrategy struct {
 	// ChangeBudget is the change budget that should be used when performing mutations to the cluster.
-	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
-}
-
-// ResolveChangeBudget resolves the optional ChangeBudget into the user-provided one or a defaulted one.
-func (s UpdateStrategy) ResolveChangeBudget() ChangeBudget {
-	if s.ChangeBudget != nil {
-		return *s.ChangeBudget
-	}
-
-	return DefaultChangeBudget
+	ChangeBudget ChangeBudget `json:"changeBudget,omitempty"`
 }
 
 // ChangeBudget defines how Pods in a single group should be updated.
 type ChangeBudget struct {
-	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
-	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
+	// MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to the
+	// actions controlled by the operator. Setting negative value will result in no restrictions on number of unavailable
+	// pods. By default, a fixed value of 1 is used.
+	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
 
-	// MaxUnavailable is the maximum number of pods that can be unavailable during the update.
-	// Value can be an absolute number (ex: 5) or a percentage of total pods at the start of update (ex: 10%).
-	// Absolute number is calculated from percentage by rounding down.
-	// This can not be 0 if MaxSurge is 0 if you want automatic rolling changes to be applied.
-	// By default, a fixed value of 0 is used.
-	// Example: when this is set to 30%, the group can be scaled down by 30%
-	// immediately when the rolling update starts. Once new pods are ready, the group
-	// can be scaled down further, followed by scaling up the group, ensuring
-	// that at least 70% of the target number of pods are available at all times
-	// during the update.
-	MaxUnavailable int `json:"maxUnavailable"`
-
-	// MaxSurge is the maximum number of pods that can be scheduled above the original number of
-	// pods.
-	// By default, a fixed value of 1 is used.
-	// Value can be an absolute number (ex: 5) or a percentage of total pods at
-	// the start of the update (ex: 10%). This can not be 0 if MaxUnavailable is 0 if you want automatic rolling
-	// updates to be applied.
-	// Absolute number is calculated from percentage by rounding up.
-	// Example: when this is set to 30%, the new group can be scaled up by 30%
-	// immediately when the rolling update starts. Once old pods have been killed,
-	// new group can be scaled up further, ensuring that total number of pods running
-	// at any time during the update is at most 130% of the target number of pods.
-	MaxSurge int `json:"maxSurge"`
+	// MaxSurge is the maximum number of pods that can be scheduled above the original number of pods. MaxSurge
+	// is only taken into the account when scaling up. Setting negative value will result in no restrictions on number
+	// of pods scheduled. By default, it's unbounded.
+	MaxSurge *int32 `json:"maxSurge,omitempty"`
 }
 
 // DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in
-// every case
+// most cases.
 var DefaultChangeBudget = ChangeBudget{
-	MaxSurge:       1,
-	MaxUnavailable: 0,
+	MaxSurge:       nil,
+	MaxUnavailable: common.Int32(1),
+}
+
+func (cb ChangeBudget) GetMaxSurgeOrDefault() *int32 {
+	// use default if not specified
+	maxSurge := DefaultChangeBudget.MaxSurge
+	if cb.MaxSurge != nil {
+		maxSurge = cb.MaxSurge
+	}
+
+	// nil or negative in the spec denotes unlimited surge
+	// in the code unlimited surge is denoted by nil
+	if maxSurge == nil || *maxSurge < 0 {
+		maxSurge = nil
+	}
+
+	return maxSurge
+}
+
+func (cb ChangeBudget) GetMaxUnavailableOrDefault() *int32 {
+	// use default if not specified
+	maxUnavailable := DefaultChangeBudget.MaxUnavailable
+	if cb.MaxUnavailable != nil {
+		maxUnavailable = cb.MaxUnavailable
+	}
+
+	// nil or negative in the spec denotes unlimited unavailability
+	// in the code unlimited unavailability is denoted by nil
+	if maxUnavailable == nil || *maxUnavailable < 0 {
+		maxUnavailable = nil
+	}
+
+	return maxUnavailable
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.
@@ -237,12 +234,6 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 
 func (e Elasticsearch) SecureSettings() []commonv1beta1.SecretSource {
 	return e.Spec.SecureSettings
-}
-
-// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
-// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
-func (e Elasticsearch) Kind() string {
-	return Kind
 }
 
 // +kubebuilder:object:root=true
