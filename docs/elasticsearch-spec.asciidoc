@@ -104,9 +104,7 @@ For more information on Elasticsearch settings, see https://www.elastic.co/guide
 [id="{p}-volume-claim-templates"]
 === Volume claim templates
 
-By default the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
-
-You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs. The name in the template must be `elasticsearch-data`:
+By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each pod in an Elasticsearch cluster to prevent data loss in case of accidental pod deletion. For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. The name of the volume claim must always be `elasticsearch-data`.
 
 [source,yaml]
 ----
@@ -124,7 +122,9 @@ spec:
         storageClassName: standard
 ----
 
-If you want to use an `emptyDir` volume, specify the `elasticsearch-data` volume in the `podTemplate`:
+IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes cannot be resized after they are created. You should consider future storage requirements when defining volume claims to ensure that you have plenty of space available to sustain the expected growth.
+
+If you are not concerned about data loss, you can use an `emptyDir` volume for Elasticsearch data as well:
 
 [source,yaml]
 ----
@@ -138,7 +138,8 @@ spec:
           emptyDir: {}
 ----
 
-IMPORTANT: Using `emptyDir` might result in data loss and is not recommended.
+CAUTION: Using `emptyDir` is not recommended due to the high likelihood of permanent data loss.
+
 
 [id="{p}-http-settings-tls-sans"]
 === HTTP settings & TLS SANs
