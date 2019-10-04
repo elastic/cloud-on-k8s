@@ -33,10 +33,10 @@ spec:
   count: 1
   elasticsearchRef:
     name: quickstart
-    namespace: default <1>
+    namespace: default
 ----
 
-<1> `namespace` is an optional parameter that you can use to connect to an Elasticsearch in an other namespace.
+NOTE: `namespace` is an optional parameter that you can use to connect to an Elasticsearch in an other namespace.
 
 The Kibana configuration file is automatically setup by ECK to establish a secured connection to Elasticsearch.
 
@@ -77,7 +77,7 @@ spec:
   podTemplate:
     spec:
       containers:
-      - name: kibana <1>
+      - name: kibana
         resources:
           requests:
             memory: 1Gi
@@ -89,7 +89,7 @@ spec:
         type: frontend
 ----
 
-<1> Note that the name of the Kibana container in the Pod created by ECK is `kibana`.
+NOTE: The name of the Kibana container in the Pod created by ECK is `kibana`.
 
 For more information about the resources and the default settings please refer to
 link:k8s-managing-compute-resources.html#k8s-compute-resources-kibana-and-apm[Set compute resources for Kibana and the APM Server].
