@@ -5,6 +5,8 @@
 package nodespec
 
 import (
+	"fmt"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
@@ -77,13 +79,19 @@ func BuildStatefulSet(
 
 	// set the owner reference of all volume claims to the ES resource,
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
+	f := false
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(nodeSet.VolumeClaimTemplates))
 	for _, claim := range nodeSet.VolumeClaimTemplates {
 		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
 			return appsv1.StatefulSet{}, err
 		}
+		for _, ref := range claim.OwnerReferences {
+			ref.BlockOwnerDeletion = &f
+		}
 		claims = append(claims, claim)
 	}
+
+	fmt.Printf("%v", claims)
 
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
