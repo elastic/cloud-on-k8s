@@ -13,6 +13,7 @@ import (
 
 const (
 	cfgInvalidMsg            = "configuration invalid"
+	validationFailedMsg      = "Spec validation failed"
 	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"

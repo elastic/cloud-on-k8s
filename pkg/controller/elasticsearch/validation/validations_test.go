@@ -123,6 +123,69 @@ func Test_hasMaster(t *testing.T) {
 	}
 }
 
+func Test_validateSpec(t *testing.T) {
+	type args struct {
+		name string
+		es   v1beta1.Elasticsearch
+		want validation.Result
+	}
+	tests := []args{
+		{
+			name: "good spec",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{Count: 1}},
+				},
+			},
+			want: validation.OK,
+		},
+		{
+			name: "nodes instead of nodeSets",
+			es: v1beta1.Elasticsearch{
+				Spec: estype.ElasticsearchSpec{
+					Version: "7.4.0",
+				},
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+			},
+			want: validation.Result{Reason: validationFailedMsg},
+		},
+		{
+			name: "nodeCount instead of count",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{}},
+				},
+			},
+			want: validation.Result{Reason: validationFailedMsg},
+		},
+		{
+			name: "alpha instead of beta version",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1alpha1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{Count: 1}},
+				},
+			},
+			want: validation.Result{Reason: validationFailedMsg},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, err := NewValidationContext(nil, tt.es)
+			require.NoError(t, err)
+			if got := specUpdatedToBeta(*ctx); got != tt.want {
+				t.Errorf("specUpdatedToBeta() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_supportedVersion(t *testing.T) {
 	type args struct {
 		esCluster estype.Elasticsearch
