@@ -4,16 +4,16 @@
 The link:k8s-quickstart.html#k8s-deploy-kibana[quickstart] is a good starting point to quickly setup a Kibana instance with ECK.
 This section goes into more details about how to configure Kibana with ECK.
 
-* <<{p}-eck-managed-es,Use an Elasticsearch cluster managed by ECK>>
-* <<{p}-advanced-configuration,Advanced configuration>>
-** <<{p}-pod-configuration,Pod Configuration>>
+* <<{p}-kibana-eck-managed-es,Use an Elasticsearch cluster managed by ECK>>
+* <<{p}-kibana-advanced-configuration,Advanced configuration>>
+** <<{p}-kibana-pod-configuration,Pod Configuration>>
 ** <<{p}-kibana-configuration,Kibana Configuration>>
 ** <<{p}-kibana-scaling,Scaling out a Kibana deployment>>
-* <<{p}-ssecure-settings,Secure settings>>
-* <<{p}-http-configuration,HTTP Configuration>>
-** <<{p}-http-publish,Load balancer settings and TLS SANs>>
-** <<{p}-http-custom-tls,Provide your own certificate>>
-** <<{p}-http-disable-tls,Disable TLS>>
+* <<{p}-kibana-secure-settings,Secure settings>>
+* <<{p}-kibana-http-configuration,HTTP Configuration>>
+** <<{p}-kibana-http-publish,Load balancer settings and TLS SANs>>
+** <<{p}-kibana-http-custom-tls,Provide your own certificate>>
+** <<{p}-kibana-http-disable-tls,Disable TLS>>
 
 [float]
 [id="{p}-kibana-eck-managed-es"]
@@ -41,7 +41,7 @@ spec:
 The Kibana configuration file is automatically setup by ECK to establish a secured connection to Elasticsearch.
 
 [float]
-[id="{p}-advanced-configuration"]
+[id="{p}-kibana-advanced-configuration"]
 === Advanced configuration
 
 If you already have read the documentation about how to run Elasticsearch on ECK then most of the concepts and the ideas
@@ -54,7 +54,7 @@ This is because the resource definitions in ECK share the same philosophy when i
 * Use some secure settings
 
 [float]
-[id="{p}-pod-configuration"]
+[id="{p}-kibana-pod-configuration"]
 ==== Pod Configuration
 The Kibana resource definition lets you define your own Pod template, add your own settings and merge them
 with our defaults.
@@ -138,7 +138,7 @@ spec:
 Or by using a secure setting (recommended) as described in the next section.
 
 [float]
-[id="{p}-secure-settings"]
+[id="{p}-kibana-secure-settings"]
 === Secure Settings
 
 You can use Kubernetes secrets to hold your secure settings in the link:k8s-es-secure-settings.html[same way it is done with Elasticsearch].
@@ -172,11 +172,11 @@ spec:
 ----
 
 [float]
-[id="{p}-http-configuration"]
+[id="{p}-kibana-http-configuration"]
 === HTTP Configuration
 
 [float]
-[id="{p}-http-publish"]
+[id="{p}-kibana-http-publish"]
 ==== Load balancer settings and TLS SANs
 
 By default a `ClusterIP` link:https://kubernetes.io/docs/concepts/services-networking/service/[service] is created and associated to the Kibana deployment.
@@ -209,14 +209,14 @@ You can also use these two features separately, either expose the service or add
 self-signed certificate.
 
 [float]
-[id="{p}-http-custom-tls"]
+[id="{p}-kibana-http-custom-tls"]
 ==== Provide your own certificate
 
 If you want to use your own certificate the relevant configuration is identical to what is done for Elasticsearch.
 See link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[Setting up your own certificate] for more information on how to use your own certificate to configure the TLS endpoint of Kibana.
 
 [float]
-[id="{p}-http-disable-tls"]
+[id="{p}-kibana-http-disable-tls"]
 ==== Disable TLS
 
 You can disable the generation of the self-signed certificate and hence disable TLS.
