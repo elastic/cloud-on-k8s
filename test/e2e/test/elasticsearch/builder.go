@@ -39,6 +39,8 @@ type Builder struct {
 
 var _ test.Builder = Builder{}
 
+// nodeStoreAllowMMap is the configuration key to disable mmap.
+// We disable mmap to avoid having to set the vm.max_map_count sysctl on test nodes.
 const nodeStoreAllowMMap = "node.store.allow_mmap"
 
 func NewBuilder(name string) Builder {
