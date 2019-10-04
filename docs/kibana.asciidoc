@@ -11,7 +11,7 @@ This section goes into more details about how to configure Kibana with ECK.
 ** <<{p}-kibana-scaling,Scaling out a Kibana deployment>>
 * <<{p}-ssecure-settings,Secure settings>>
 * <<{p}-http-configuration,HTTP Configuration>>
-** <<{p}-http-publish,HTTP settings and TLS SANs>>
+** <<{p}-http-publish,Load balancer settings and TLS SANs>>
 ** <<{p}-http-custom-tls,Provide your own certificate>>
 ** <<{p}-http-disable-tls,Disable TLS>>
 
@@ -177,9 +177,10 @@ spec:
 
 [float]
 [id="{p}-http-publish"]
-==== Publish the service and customize the self signed certificate
+==== Load balancer settings and TLS SANs
 
-You may want to expose Kibana onto an external IP address. In this case you may also want to include a custom
+By default a `ClusterIP` link:https://kubernetes.io/docs/concepts/services-networking/service/[service] is created and associated to the Kibana deployment.
+You may want to expose Kibana onto an external IP address with a link:https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer[LoadBalancer]. In this case you may also want to include a custom
 DNS name or IP in the self-generated certificate.
 +
 [source,yaml,subs="attributes"]
@@ -211,7 +212,7 @@ self-signed certificate.
 [id="{p}-http-custom-tls"]
 ==== Provide your own certificate
 
-In order to use your own certificate the behavior and the relevant configuration is identical to what is done for Elasticsearch.
+If you want to use your own certificate the relevant configuration is identical to what is done for Elasticsearch.
 See link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[Setting up your own certificate] for more information on how to use your own certificate to configure the TLS endpoint of Kibana.
 
 [float]
