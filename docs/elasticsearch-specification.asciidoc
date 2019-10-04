@@ -383,7 +383,7 @@ spec:
 `maxUnavailable` refers to the number of pods that can be unavailable out of the total number of pods in current spec. Unavailable is defined as pod being not ready from Kubernetes perspective.
 
 Note that these constraints are enforced immediately after spec is applied, which often means that the actual state of the cluster is in violation of these constraints. This is expected and operator won't stop from moving the cluster towards respecting them.
-For example, if a new spec defines a larger cluster with no unavailable pods permitted, operator will keep on creating missing pods according to the best practices (link). Similarly, if a new spec defines smaller cluster with no pods above the spec permitted, the operator will keep on safely removing unneeded pods.
+For example, if a new spec defines a larger cluster with no unavailable pods permitted, operator will keep on creating missing pods according to the best practices. Similarly, if a new spec defines smaller cluster with no pods above the spec permitted, the operator will keep on safely removing unneeded pods.
 
 ==== Specifying changeBudget
 For both `maxSurge` and `maxUnavailable` you can specify the following values:
@@ -409,7 +409,7 @@ spec:
 
 ==== Caveats
 * Setting both `maxSurge` and `maxUnavailable` to `0` will prevent the operator from performing any update that needs to bring down or create a new pod.
-* Due to the safety measures employed by the operator, a particular changeBudget might be insufficient to perform the requested update. For example, removing last data node from one nodeSet and adding data node to a different nodeSet is not possible with `maxSurge` set to 0. In this case operator can't remove the node (because it can't be migrated since no other data nodes are available) and can't add the node (because `maxSurge` is set to 0).
+* Due to the safety measures employed by the operator, a particular changeBudget might be insufficient to perform the requested update. For example, removing last data node from one nodeSet and adding data node to a different nodeSet is not possible with `maxSurge` set to 0. In this case operator can't remove the old node (because it can't be migrated since no other data nodes are available) and can't add the new node (because `maxSurge` is set to 0).
 * Currently, the operator has limited understanding of the cluster topology and, during update, might not pick the optimal order of pod additions and removals. This may lead to update being stuck and require specifying higher `maxSurge` than theoretically needed.
 
 In presence of any of the above, operator will emit logs similar to the following:
