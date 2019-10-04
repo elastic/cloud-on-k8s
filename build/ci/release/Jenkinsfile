@@ -30,7 +30,7 @@ pipeline {
                     steps {
                         sh """
                             cat >.env <<EOF
-VERSION = "${TAG_NAME}"
+VERSION = ${TAG_NAME}
 REGISTRY = "${REGISTRY}"
 REPOSITORY = "${REPOSITORY}"
 IMG_NAME = "${IMG_NAME}"
