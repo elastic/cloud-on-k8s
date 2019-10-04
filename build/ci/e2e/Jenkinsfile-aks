@@ -32,6 +32,7 @@ pipeline {
 REGISTRY = cloudonk8s.azurecr.io
 REPOSITORY = operators
 IMG_SUFFIX = -ci
+CRD_FLAVOR = trivial-versions
 EOF
                     cat >deployer-config.yml <<EOF
 id: aks-ci

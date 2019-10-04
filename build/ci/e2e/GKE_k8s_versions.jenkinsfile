@@ -86,6 +86,10 @@ REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 SKIP_DOCKER_COMMAND = true
 EOF
+        if [[ "${clusterVersion}" < "1.14" ]]; then
+            echo "Setting CRD_FLAVOR to trivial-versions to support K8s < 1.14"
+            echo "CRD_FLAVOR = trivial-versions" >> .env
+        fi
         cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:

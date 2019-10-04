@@ -82,6 +82,8 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
+                            echo "Setting CRD_FLAVOR to trivial-versions to support K8s < 1.14"
+                            echo "CRD_FLAVOR = trivial-versions" >> .env
                             make -C build/ci TARGET=ci-e2e ci
                         """
                     }
