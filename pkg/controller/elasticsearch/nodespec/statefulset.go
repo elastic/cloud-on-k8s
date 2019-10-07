@@ -128,7 +128,8 @@ func setVolumeClaimsControllerReference(
 		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
 			return nil, err
 		}
-		// Set block owner deletion to false as the statefulset controller might not be able to do that
+		// Set block owner deletion to false as the statefulset controller might not be able to do that if it cannot
+		// set finalizers on the resource.
 		// See https://github.com/elastic/cloud-on-k8s/issues/1884
 		refs := claim.OwnerReferences
 		for i := range refs {
