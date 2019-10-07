@@ -1,7 +1,7 @@
 ifdef::env-github[]
-:eck_version: 1.0.0-beta1
-:eck_crd_version: v1beta1
-:version: 7.4.0
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-quickstart.html[View this document online]
+****
 endif::[]
 [id="{p}-quickstart"]
 == Quickstart
