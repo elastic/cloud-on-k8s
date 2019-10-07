@@ -368,7 +368,7 @@ The init container inherits the image of the main container image if one is not 
 [id="{p}-update-strategy"]
 === Update strategy
 
-Users can choose to constrain the operator on the resources it can use when updating using `updateStrategy' like below.
+Sometimes the operator must take a Pod down, for example, to restart a node and apply a new configuration value. Other times the operator must spin up pods above what is currently in the spec, say to migrate to a new node set. You can limit the number of these simultaneous changes  using an `updateStrategy` as follows:
 
 [source,yaml]
 ----
@@ -379,8 +379,14 @@ spec:
       maxUnavailable: 1
 ----
 
+<<<<<<< HEAD
 `maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in the currently applied spec.
 `maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in the currently applied spec. Unavailable is defined as Pod being not ready from Kubernetes perspective.
+=======
+`maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in currently applied spec. This setting might be useful when new spec has similar number of Pods, but different node sets (for example, when migrating Pods to a new node set). It will prevent the operator from creating all new Pods before removing the old ones thus preventing having (temporarily) as many as two times more pods than the spec defines.
+
+`maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in currently applied spec. Unavailable is defined as Pod being not ready from Kubernetes perspective.
+>>>>>>> Reword the intro, provide use case for maxSurge
 
 Note that these constraints are enforced immediately after the spec is applied, which might mean that the actual state of the cluster is in violation of these constraints. This is expected and the operator won't stop from moving the cluster towards respecting them.
 For example, if a new spec defines a larger cluster with no unavailable Pods permitted (`maxUnavailable: 0`), the operator will continue creating missing Pods according to the best practices. Similarly, if a new spec defines a smaller cluster with no Pods above the spec permitted (`maxSurge: 0`), the operator will continue safely removing unnecessary Pods.
