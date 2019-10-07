@@ -19,7 +19,7 @@ NAME       	?= eck-operator
 VERSION    	?= $(shell cat VERSION)
 SNAPSHOT   	?= true
 
-LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
+LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.9.0"
 
 # Default to debug logging
 LOG_VERBOSITY ?= 1
@@ -216,6 +216,7 @@ apply-operators:
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
 
+# ensure you set LATEST_RELEASED_IMAGE to the version you want to generate
 generate-all-in-one:
 	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
 	    ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-flavor-$$crd_flavor.yaml; \
