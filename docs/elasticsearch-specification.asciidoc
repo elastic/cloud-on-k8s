@@ -382,7 +382,7 @@ spec:
 `maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in currently applied spec.
 `maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in currently applied spec. Unavailable is defined as Pod being not ready from Kubernetes perspective.
 
-Note that these constraints are enforced immediately after spec is applied, which often means that the actual state of the cluster is in violation of these constraints. This is expected and the operator won't stop from moving the cluster towards respecting them.
+Note that these constraints are enforced immediately after spec is applied, which might mean that the actual state of the cluster is in violation of these constraints. This is expected and the operator won't stop from moving the cluster towards respecting them.
 For example, if a new spec defines a larger cluster with no unavailable Pods permitted (`maxUnavailable: 0`), the operator will continue creating missing Pods according to the best practices. Similarly, if a new spec defines a smaller cluster with no Pods above the spec permitted (`maxSurge: 0`), the operator will continue safely removing unnecessary Pods.
 
 ==== Specifying changeBudget
