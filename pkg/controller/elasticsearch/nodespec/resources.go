@@ -37,7 +37,12 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	return ssetList
 }
 
-func BuildExpectedResources(es v1beta1.Elasticsearch, keystoreResources *keystore.Resources, scheme *runtime.Scheme, certResources *certificates.CertificateResources) (ResourcesList, error) {
+func BuildExpectedResources(
+	es v1beta1.Elasticsearch,
+	keystoreResources *keystore.Resources,
+	scheme *runtime.Scheme,
+	certResources *certificates.CertificateResources,
+) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
 	ver, err := version.Parse(es.Spec.Version)
