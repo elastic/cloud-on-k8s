@@ -49,15 +49,27 @@ kibana-sample-kb-http          ClusterIP   10.19.246.116   <none>        5601/TC
 [id="{p}-describe-failing-resources"]
 === Describe failing resources
 
-If an Elasticsearch node does not come up, it's probably because Kubernetes cannot schedule the associated Pod. Check the Pod status: if it's not `Running` after a few seconds, something is wrong:
+If an Elasticsearch node does not come up, it is probably because Kubernetes cannot schedule the associated Pod.
+
+Start by looking at the StatefulSets to check that the current number of replicas match the desired number of replicas.
 
 [source,sh]
 ----
-kubectl get pods
+kubectl get statefulset
+
+NAME                              DESIRED   CURRENT   AGE
+elasticsearch-sample-es-default   1         1         4s
+----
+
+Next, check the Pod status. If a pod fails to reach the `Running` status after a few seconds, something could be preventing it from being scheduled or starting up:
+
+[source,sh]
+----
+kubectl get pods -l elasticsearch.k8s.elastic.co/statefulset=elasticsearch-sample-es-default
 
 NAME                                 READY     STATUS    RESTARTS   AGE
 elasticsearch-sample-es-66sv6dvt7g   0/1       Pending   0          3s
-elasticsearch-sample-es-9xzzhmgd4h   1/1       Running   0          27m
+elasticsearch-sample-es-9xzzhmgd4h   1/1       Running   0          42s
 elasticsearch-sample-es-lgphkv9p67   0/1       Pending   0          3s
 kibana-sample-kb-5468b8685d-c7mdp    0/1       Running   0          4s
 ----
