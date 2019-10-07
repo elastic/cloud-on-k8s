@@ -1,0 +1,11 @@
+description: Official Elastic helm chart for Elastic Cloud on Kubernetes
+home: https://github.com/elastic/helm-charts
+maintainers:
+- email: helm-charts@elastic.co
+  name: Elastic
+name: elastic-cloud
+version: 0.9.0
+appVersion: 0.9.0
+sources:
+  - https://github.com/elastic/cloud-on-k8s
+icon: https://helm.elastic.co/icons/elasticsearch.png

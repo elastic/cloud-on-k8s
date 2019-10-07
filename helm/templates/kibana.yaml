@@ -1,0 +1,17 @@
+{{- if .Values.kibana.enabled -}}
+apiVersion: kibana.k8s.elastic.co/v1alpha1
+kind: Kibana
+metadata:
+  name: {{ template "fullname" . }}
+spec:
+  version: {{ .Values.kibana.version }}
+  nodeCount: {{ .Values.kibana.nodeCount }}
+  podTemplate:
+    metadata:
+      annotations:
+{{ toYaml .Values.kibana.podAnnotations | indent 8 }}
+    tolerations:
+{{ toYaml .Values.kibana.tolerations | indent 6 }}
+  elasticsearchRef:
+    name: {{ template "fullname" . }}
+{{- end}}

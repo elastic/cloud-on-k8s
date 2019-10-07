@@ -1,0 +1,38 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: {{ template "fullname" . }}
+  labels:
+    app: {{ .Chart.Name }}
+    release: {{ .Release.Name | quote }}
+spec:
+  version: {{ .Values.elastic.version }}
+  nodes:
+  - nodeCount: {{ .Values.elastic.nodeCount }}
+    config:
+      {{- range $key, $val := .Values.elastic.config  }}
+        {{ $key }}: {{ $val | quote }}
+      {{- end}}
+    podTemplate:
+      metadata:
+        annotations:
+{{ toYaml .Values.elastic.podAnnotations | indent 10 }}
+      spec:
+        toleration:
+{{ toYaml .Values.elastic.tolerations | indent 10 }}
+        containers:
+        - name: elasticsearch
+          {{- if or $.Values.elastic.env }}
+          env:
+          {{- range $key, $value := $.Values.elastic.env }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{- end }}
+          {{- end}}
+          resources:
+{{ toYaml .Values.elastic.resources | indent 12 }}
+    volumeClaimTemplates:
+      - metadata:
+          name: {{ template "uname" . }}
+        spec:
+{{ toYaml .Values.elastic.volumeClaimTemplate | indent 10 }}

@@ -1,0 +1,28 @@
+Get the Elastic URL by running these commands:
+{{- if .Values.elastic.ingress.enabled }}
+{{- range $host := .Values.elastic.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.elastic.ingress.tls }}s{{ end }}://{{ $host.host }}{{ . }}
+  {{- end }}
+{{- end }}
+{{- else }}
+  export ES_POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "elasticsearch.k8s.elastic.co/cluster-name={{ include "name" . }}" -o jsonpath="{.items[0].metadata.name}")
+  echo "Visit https://127.0.0.1:9200 to use your application"
+  kubectl port-forward $ES_POD_NAME 9200:9200
+{{- end }}
+
+{{- if .Values.kibana.enabled }}
+
+Get the Kibana URL by running these commands:
+  {{- if .Values.kibana.ingress.enabled }}
+  {{- range $host := .Values.kibana.ingress.hosts }}
+    {{- range .paths }}
+  http{{ if $.Values.kibana.ingress.tls }}s{{ end }}://{{ $host.host }}{{ . }}
+    {{- end }}
+  {{- end }}
+  {{- else }}
+  export KB_POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "kibana.k8s.elastic.co/name={{ include "name" . }}" -o jsonpath="{.items[0].metadata.name}")
+  echo "Visit http://127.0.0.1:5601 to use your application"
+  kubectl port-forward $KB_POD_NAME 5601:5601
+  {{- end }}
+{{- end }}

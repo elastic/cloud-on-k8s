@@ -1,0 +1,62 @@
+# Default values for elastic-cloud.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+elastic:
+  version: 7.1.0
+  nodeCount: 1
+  config:
+    node.master: true
+    node.data: true
+    node.ingest: true
+  # env:
+  #   ES_JAVA_OPTS: "-Xms2g -Xmx4g"
+  podAnnotations: {}
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "2Gi"
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+  volumeClaimTemplate:
+    accessModes: [ "ReadWriteOnce" ]
+    resources:
+      requests:
+        storage: 30Gi
+  tolerations: []
+  ingress:
+    enabled: false
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: es.local
+        paths:
+          - /
+    tls:
+      - hosts:
+        - es.local
+
+kibana:
+  enabled: true
+  version: 7.1.0
+  nodeCount: 1
+  podAnnotations: {}
+  tolerations: []
+  ingress:
+    enabled: false
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: kibana.local
+        paths:
+          - /
+    tls:
+      - hosts:
+        - kibana.local
+
+nameOverride: ""
+fullnameOverride: ""
