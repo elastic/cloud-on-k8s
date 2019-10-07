@@ -51,7 +51,7 @@ func main() {
 		_, err := validate(token, v)
 		fmt.Println("Validating", v)
 		if err != nil {
-			log.Println("Error during validation of:", v)
+			log.Println("Fail to validate", v)
 			log.Fatalln(err)
 		}
 	}
