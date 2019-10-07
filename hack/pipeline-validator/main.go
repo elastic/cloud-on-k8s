@@ -16,7 +16,9 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -48,10 +50,10 @@ func main() {
 	}
 
 	for _, p := range pipelines {
-		_, err := validate(token, v)
-		fmt.Println("Validating", v)
+		_, err := validate(token, p)
+		fmt.Println("Validating", p)
 		if err != nil {
-			log.Println("Fail to validate", v)
+			log.Println("Fail to validate", p)
 			log.Fatalln(err)
 		}
 	}
@@ -73,7 +75,13 @@ func listPipelines() ([]string, error) {
 }
 
 func getToken() (*CSRFToken, error) {
-	req, err := http.NewRequest("GET", JenkinsURL+"/crumbIssuer/api/json", http.NoBody)
+	u, err := url.Parse(JenkinsURL)
+	if err != nil {
+		return nil, err
+	}
+	u.Path = path.Join(u.Path, "crumbIssuer/api/json")
+
+	req, err := http.NewRequest("GET", u.String(), http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +124,13 @@ func validate(token *CSRFToken, pipeline string) (string, error) {
 	}
 	w.Close()
 
-	req, err := http.NewRequest("POST", JenkinsURL+"/pipeline-model-converter/validate", &b)
+	u, err := url.Parse(JenkinsURL)
+	if err != nil {
+		return "", err
+	}
+	u.Path = path.Join(u.Path, "pipeline-model-converter/validate")
+
+	req, err := http.NewRequest("POST", u.String(), &b)
 	if err != nil {
 		return "", err
 	}
