@@ -8,39 +8,48 @@ Default values for settings are kept in config/plans.yml file. More settings and
 
 ## Typical usage
 
-While in:
-```
-$ pwd
-/go/src/github.com/elastic/cloud-on-k8s
-```
-
-Run once with your GCLOUD_PROJECT:
+While in repo root, run once:
 ```
 make dependencies
 cd hack/deployer
 go build
-cat > deployer-config.yml << EOF
-id: gke-ci
+```
+
+Then, depending on the provider, run the following:
+
+For GKE, with your GCLOUD_PROJECT:
+```
+cat > config/deployer-config.yml << EOF
+id: gke-dev
 overrides:
   clusterName: dkowalski-dev-cluster
-  serviceAccount: false
   gke:
     gCloudProject: GCLOUD_PROJECT
 EOF
 ```
 
+For AKS, with your ACR_NAME and RESOURCE_GROUP:
+```
+cat > config/deployer-config.yml << EOF
+id: aks-dev
+overrides:
+  clusterName: dkowalski-dev-cluster
+  aks:
+    resourceGroup: RESOURCE_GROUP
+    acrName: ACR_NAME
+EOF
+``` 
+
+
 Then, to create, run:
 ```
-./deployer
+./deployer execute
 ```
 
-Then, to delete, add 
+Then, to delete, run: 
 ```
-overrides:
-  operation: delete
-...
+./deployer execute --operation delete
 ``` 
-to your deployer-config.yml and run `./deployer` again.
 
 
 ## CI usage
@@ -51,11 +60,12 @@ CI will populate deployer-config with vault login information and deployer will 
 
 To facilitate testing locally, developers can run "as CI". While the credentials and vault login method are different it does allow fetching the same credentials and logging in as the same service account as CI would. This aims to shorten the dev cycle for CI related work and debugging.
 
-To achieve the above, add the following to your deployer-config.yml, where TOKEN is your GitHub personal access token.
+To achieve the above, add the following to your deployer-config.yml, where TOKEN is your GitHub personal access token and VAULT_ADDRESS is the address of your Vault instance.
 
 ```
 overrides:
   vaultInfo:
     token: TOKEN
+    address: VAULT_ADDRESS
   ...
 ```

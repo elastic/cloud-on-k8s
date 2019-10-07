@@ -40,3 +40,14 @@ plans:
   vmMapMax: false
   aks:
     nodeCount: 3
+- id: aks-dev
+  operation: create
+  clusterName: dev
+  provider: aks
+  kubernetesVersion: 1.12.8
+  machineType: Standard_D8s_v3
+  serviceAccount: false
+  psp: false
+  vmMapMax: false
+  aks:
+    nodeCount: 3
