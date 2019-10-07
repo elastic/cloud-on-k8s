@@ -73,6 +73,15 @@ func TestSetVolumeClaimsControllerReference(t *testing.T) {
 			args: args{
 				volumeClaims: []corev1.PersistentVolumeClaim{
 					{ObjectMeta: v1.ObjectMeta{Name: "elasticsearch-data"}},
+				},
+			},
+			want: []string{"elasticsearch-data"},
+		},
+		{
+			name: "With a user volume",
+			args: args{
+				volumeClaims: []corev1.PersistentVolumeClaim{
+					{ObjectMeta: v1.ObjectMeta{Name: "elasticsearch-data"}},
 					{ObjectMeta: v1.ObjectMeta{Name: "user-volume"}},
 				},
 			},
