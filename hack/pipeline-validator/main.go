@@ -47,7 +47,7 @@ func main() {
 		log.Fatalln("Can't get CSRF token!", err)
 	}
 
-	for _, v := range pipelines {
+	for _, p := range pipelines {
 		_, err := validate(token, v)
 		fmt.Println("Validating", v)
 		if err != nil {
