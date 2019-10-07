@@ -5,9 +5,12 @@
 package driver
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -15,25 +18,53 @@ import (
 // in order to unlock situations where the reconciliation may otherwise be stuck
 // (eg. no cluster formed, all nodes have a bad spec).
 func (d *defaultDriver) maybeForceUpgrade(actualPods []corev1.Pod, podsToUpgrade []corev1.Pod) (attempted bool, err error) {
+	actualBySset := podsByStatefulSetName(actualPods)
+	toUpgradeBySset := podsByStatefulSetName(podsToUpgrade)
+
 	attempted = false
-	if len(podsToUpgrade) == 0 {
-		return attempted, nil
-	}
-	if !shouldForceUpgrade(actualPods) {
-		return attempted, nil
+
+	for ssetName, actual := range actualBySset {
+		toUpgrade, exists := toUpgradeBySset[ssetName]
+		if !exists || len(toUpgrade) == 0 {
+			continue
+		}
+		if !shouldForceUpgrade(actual) {
+			continue
+		}
+		attempted = true
+		log.Info("Performing a forced rolling upgrade",
+			"namespace", d.ES.Namespace, "es_name", d.ES.Name,
+			"statefulset_name", ssetName,
+			"pod_count", len(podsToUpgrade),
+		)
+		for _, pod := range toUpgrade {
+			if err := deletePod(d.Client, d.ES, pod, d.Expectations); err != nil {
+				return attempted, err
+			}
+		}
+
 	}
 
-	attempted = true
-	log.Info("Performing a forced rolling upgrade since no Pod is ready",
-		"namespace", d.ES.Namespace, "es_name", d.ES.Name,
-		"pod_count", len(podsToUpgrade),
-	)
-	for _, pod := range podsToUpgrade {
-		if err := deletePod(d.Client, d.ES, pod, d.Expectations); err != nil {
-			return attempted, err
-		}
-	}
 	return attempted, nil
+}
+
+func podsByStatefulSetName(pods []corev1.Pod) map[string][]corev1.Pod {
+	byStatefulSet := map[string][]corev1.Pod{}
+	for _, p := range pods {
+		ssetName, exists := p.Labels[label.StatefulSetNameLabelName]
+		if !exists {
+			log.Error(
+				fmt.Errorf("expected label %s not set", label.StatefulSetNameLabelName),
+				"skipping forced upgrade",
+				"namespace", p.Namespace, "pod_name", p.Name)
+			continue
+		}
+		if _, exists := byStatefulSet[ssetName]; !exists {
+			byStatefulSet[ssetName] = []corev1.Pod{}
+		}
+		byStatefulSet[ssetName] = append(byStatefulSet[ssetName], p)
+	}
+	return byStatefulSet
 }
 
 // shouldForceUpgrade returns true if all existing Pods can be safely upgraded,
