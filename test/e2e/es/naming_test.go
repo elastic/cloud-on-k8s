@@ -6,6 +6,8 @@ package es
 
 import (
 	"fmt"
+	"hash/fnv"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -31,11 +33,19 @@ func TestNameValidation(t *testing.T) {
 
 func testLongestPossibleName(t *testing.T) {
 	maxESNameLen := name.MaxResourceNameLength
-	maxNodeSpecNameLen := validation.LabelValueMaxLength - maxESNameLen - 4
 	randSuffix := rand.String(4)
 
 	esNamePrefix := strings.Join([]string{"es-naming", randSuffix}, "-")
 	esName := strings.Join([]string{esNamePrefix, strings.Repeat("x", maxESNameLen-len(esNamePrefix)-1)}, "-")
+
+	// StatefulSet name would look like <esName>-es-<nodeSpecName>
+	// Pods created by the StatefulSet will have the ordinal appended to the name and a controller revision hash
+	// label created by appending a revision hash to the pod name.
+	revisionHash := fnv.New32()
+	_, _ = revisionHash.Write([]byte("some random data"))
+	fullRevisionHash := rand.SafeEncodeString(strconv.FormatInt(int64(revisionHash.Sum32()), 10))
+
+	maxNodeSpecNameLen := validation.LabelValueMaxLength - len(esName) - len("-es-") - len("-0") - len(fmt.Sprintf("-%s", fullRevisionHash))
 	nodeSpecName := strings.Repeat("y", maxNodeSpecNameLen)
 	esBuilder := elasticsearch.NewBuilderWithoutSuffix(esName).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
@@ -43,7 +53,8 @@ func testLongestPossibleName(t *testing.T) {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext().
 		WithNodeSpec(estype.NodeSet{
-			Name: nodeSpecName,
+			Name:  nodeSpecName,
+			Count: 1,
 		})
 
 	kbNamePrefix := strings.Join([]string{esNamePrefix, "kb"}, "-")
@@ -79,7 +90,8 @@ func testRejectionOfLongName(t *testing.T) {
 		WithVersion(test.Ctx().ElasticStackVersion).
 		WithRestrictedSecurityContext().
 		WithNodeSpec(estype.NodeSet{
-			Name: "default",
+			Name:  "default",
+			Count: 1,
 		})
 
 	objectCreated := false
