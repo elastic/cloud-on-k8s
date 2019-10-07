@@ -46,9 +46,9 @@ Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specificat
 
 NOTE: If your Kubernetes cluster does not have any nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
 
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
@@ -177,9 +177,9 @@ To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance
 
 . Specify a Kibana instance and associate it with your Elasticsearch cluster:
 +
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
 metadata:
@@ -241,9 +241,9 @@ You can add and modify most elements of the original cluster specification provi
 
 For example, you can grow the cluster to three nodes:
 
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
