@@ -18,7 +18,7 @@ plans:
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.12
+  kubernetesVersion: 1.13
   machineType: n1-standard-8
   serviceAccount: false
   psp: false
@@ -33,7 +33,7 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.12.8
+  kubernetesVersion: 1.13.10
   machineType: Standard_D8s_v3
   serviceAccount: true
   psp: false
