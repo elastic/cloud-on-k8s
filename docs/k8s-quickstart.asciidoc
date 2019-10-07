@@ -1,3 +1,6 @@
+ifdef::env-github[]
+include::eck-attributes.asciidoc[]
+endif::[]
 [id="{p}-quickstart"]
 == Quickstart
 

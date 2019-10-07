@@ -1,2 +1,6 @@
 :eck_version: 1.0.0-beta1
 :eck_crd_version: v1beta1
+
+ifdef::env-github[]
+:version: 7.4.0
+endif::[]
