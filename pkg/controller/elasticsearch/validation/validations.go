@@ -47,12 +47,18 @@ func specUpdatedToBeta(ctx Context) validation.Result {
 	oldAPIVersion := "elasticsearch.k8s.elastic.co/v1alpha1"
 
 	es := ctx.Proposed.Elasticsearch
-	if es.APIVersion == oldAPIVersion || es.Spec.NodeSets == nil {
-		return validation.Result{Reason: validationFailedMsg}
+	if es.APIVersion == oldAPIVersion {
+		return validation.Result{Reason: fmt.Sprintf("%s: APIVersion is unexpected", validationFailedMsg)}
 	}
+
+	if len(es.Spec.NodeSets) == 0 {
+		return validation.Result{Reason: fmt.Sprintf("%s: spec.nodeSets is invalid", validationFailedMsg)}
+	}
+
 	for _, set := range es.Spec.NodeSets {
 		if set.Count == 0 {
-			return validation.Result{Reason: validationFailedMsg}
+			msg := fmt.Sprintf("node count of node set '%s' should not be zero", set.Name)
+			return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
 		}
 	}
 
