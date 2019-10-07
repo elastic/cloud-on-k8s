@@ -48,11 +48,11 @@ func specUpdatedToBeta(ctx Context) validation.Result {
 
 	es := ctx.Proposed.Elasticsearch
 	if es.APIVersion == oldAPIVersion {
-		return validation.Result{Reason: fmt.Sprintf("%s: APIVersion is unexpected", validationFailedMsg)}
+		return validation.Result{Reason: fmt.Sprintf("%s: outdated APIVersion", validationFailedMsg)}
 	}
 
 	if len(es.Spec.NodeSets) == 0 {
-		return validation.Result{Reason: fmt.Sprintf("%s: spec.nodeSets is invalid", validationFailedMsg)}
+		return validation.Result{Reason: fmt.Sprintf("%s: at least one nodeSet must be defined", validationFailedMsg)}
 	}
 
 	for _, set := range es.Spec.NodeSets {
