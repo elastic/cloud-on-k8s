@@ -159,7 +159,7 @@ The https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Sn
 
 ==== Periodic snapshots with a CronJob
 
-If you are running older versions of Elasticsearch, that don't have Snapshot Lifecycle Management,  you can still set up a simple CronJob to take a snapshot every day.
+If you are running older versions of Elasticsearch, that don't have Snapshot Lifecycle Management, you can still set up a simple CronJob to take a snapshot every day.
 
 . Make an HTTP request against the appropriate endpoint, using a daily snapshot naming format. Elasticsearch credentials are mounted as a volume into the job's Pod:
 +
