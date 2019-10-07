@@ -38,7 +38,7 @@ ifndef MANAGED_NAMESPACE
 	$(error MANAGED_NAMESPACE not set)
 endif
 	@ for yaml in $$(LC_COLLATE=C ls namespace/*yaml); do \
-		echo "\n---\n" && cat $$yaml ; \
+		printf "\n---\n" && cat $$yaml ; \
 	done | \
 	sed \
 		-e "/# /d" \
