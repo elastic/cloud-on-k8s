@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// This tool is using to validate Jenkins pipelines.
+// This tool is used to validate Jenkins pipelines.
 // Based on https://jenkins.io/doc/book/pipeline/development/#linter
 
 package main
