@@ -44,7 +44,7 @@ func main() {
 	fmt.Println("Getting Jenkins CSRF token...")
 	token, err := getToken()
 	if err != nil {
-		log.Fatalln("Can't get CSRF token!", err)
+		log.Fatalln("Fail to retrieve Jenkins CSRF token, err:", err)
 	}
 
 	for _, p := range pipelines {
