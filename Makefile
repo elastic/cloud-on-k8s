@@ -390,6 +390,11 @@ check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
 
+# Runs small Go tool to validate syntax correctness of Jenkins pipelines
+validate-jenkins-pipelines:
+	@ go build -o ./hack/pipeline-validator/validator ./hack/pipeline-validator/main.go
+	@ ./hack/pipeline-validator/validator
+
 #########################
 # Kind specific targets #
 #########################
