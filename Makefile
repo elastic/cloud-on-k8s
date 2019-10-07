@@ -216,7 +216,7 @@ apply-operators:
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
 
-# ensure you set LATEST_RELEASED_IMAGE to the version you want to generate
+# ensure you set LATEST_RELEASED_IMG to the version you want to generate
 generate-all-in-one:
 	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
 	    ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-flavor-$$crd_flavor.yaml; \
