@@ -392,8 +392,7 @@ check-local-changes:
 
 # Runs small Go tool to validate syntax correctness of Jenkins pipelines
 validate-jenkins-pipelines:
-	@ go build -o ./hack/pipeline-validator/validator ./hack/pipeline-validator/main.go
-	@ ./hack/pipeline-validator/validator
+	@ go run ./hack/pipeline-validator/main.go
 
 #########################
 # Kind specific targets #
