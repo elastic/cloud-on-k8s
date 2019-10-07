@@ -38,7 +38,7 @@ func main() {
 
 	pipelines, err := listPipelines()
 	if err != nil {
-		log.Fatalln("Can't find pipelines!", err)
+		log.Fatalln("Fail to list pipelines, err:", err)
 	}
 
 	fmt.Println("Getting Jenkins CSRF token...")
