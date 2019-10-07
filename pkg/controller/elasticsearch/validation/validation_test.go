@@ -140,7 +140,20 @@ func TestValidate(t *testing.T) {
 						Namespace: "ns",
 						Name:      "test-es",
 					},
-					Spec: estype.ElasticsearchSpec{Version: "7.0.0"},
+					Spec: estype.ElasticsearchSpec{
+						Version: "7.0.0",
+						NodeSets: []estype.NodeSet{
+							{
+								Name:  "name",
+								Count: 1,
+								Config: &common.Config{
+									Data: map[string]interface{}{
+										estype.NodeMaster: "false",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			wantErr: false,

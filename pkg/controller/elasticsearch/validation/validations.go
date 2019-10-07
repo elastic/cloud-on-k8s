@@ -25,6 +25,7 @@ import (
 // Validations are all registered Elasticsearch validations.
 var Validations = []Validation{
 	validName,
+	specUpdatedToBeta,
 	hasMaster,
 	supportedVersion,
 	noDowngrades,
@@ -39,6 +40,28 @@ func validName(ctx Context) validation.Result {
 	if err := name.Validate(ctx.Proposed.Elasticsearch); err != nil {
 		return validation.Result{Allowed: false, Reason: invalidName(err)}
 	}
+	return validation.OK
+}
+
+func specUpdatedToBeta(ctx Context) validation.Result {
+	oldAPIVersion := "elasticsearch.k8s.elastic.co/v1alpha1"
+
+	es := ctx.Proposed.Elasticsearch
+	if es.APIVersion == oldAPIVersion {
+		return validation.Result{Reason: fmt.Sprintf("%s: outdated APIVersion", validationFailedMsg)}
+	}
+
+	if len(es.Spec.NodeSets) == 0 {
+		return validation.Result{Reason: fmt.Sprintf("%s: at least one nodeSet must be defined", validationFailedMsg)}
+	}
+
+	for _, set := range es.Spec.NodeSets {
+		if set.Count == 0 {
+			msg := fmt.Sprintf("node count of node set '%s' should not be zero", set.Name)
+			return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
+		}
+	}
+
 	return validation.OK
 }
 
