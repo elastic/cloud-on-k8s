@@ -1,8 +1,9 @@
-= Elastic Cloud on Kubernetes
 ifdef::env-github[]
+****
 link:https://www.elastic.co/guide/en/cloud-on-k8s/master/index.html[ECK Documentation]
+****
 endif::[]
-ifndef::env-github[]
+= Elastic Cloud on Kubernetes
 :n: Elastic Cloud on Kubernetes
 :p: k8s
 :idprefix: k8s-
@@ -22,4 +23,3 @@ include::images.asciidoc[]
 include::operator-config.asciidoc[]
 include::troubleshooting.asciidoc[]
 include::uninstall.asciidoc[]
-endif::[]
