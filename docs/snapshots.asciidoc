@@ -110,7 +110,7 @@ spec:
     secureSettings:
     - secretName: gcs-credentials
 ----
-If you did not follow the instructions above and named your GCS credentials file differently, you can still map it to the expected name now. See link:k8s-es-secure-settings.html[Secure Settings] for details.
+If you did not follow the instructions above and named your GCS credentials file differently, you can still map it to the expected name now. See <<{p}-es-secure-settings,Secure Settings>> for details.
 . Apply the modifications:
 +
 [source,bash]
