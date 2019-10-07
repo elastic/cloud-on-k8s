@@ -77,7 +77,8 @@ pipeline {
 }
 
 void runWith(clusterVersion, clusterName) {
-    sh """
+    sh """#!/bin/bash
+
         cat >.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 LATEST_RELEASED_IMG = "$IMAGE"
