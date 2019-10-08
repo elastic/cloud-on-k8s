@@ -9,7 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +42,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	type args struct {
 		c      k8s.Client
 		scheme *runtime.Scheme
-		owner  v1alpha1.Elasticsearch
+		owner  v1beta1.Elasticsearch
 	}
 	tests := []struct {
 		name    string

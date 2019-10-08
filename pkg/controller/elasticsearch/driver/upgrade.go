@@ -7,7 +7,7 @@ package driver
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -21,6 +21,7 @@ import (
 
 func (d *defaultDriver) handleRollingUpgrades(
 	esClient esclient.Client,
+	esReachable bool,
 	esState ESState,
 	statefulSets sset.StatefulSetList,
 	expectedMaster []string,
@@ -38,14 +39,28 @@ func (d *defaultDriver) handleRollingUpgrades(
 		return results.WithResult(defaultRequeue)
 	}
 
-	// Get the healthy Pods (from a K8S point of view + in the ES cluster)
-	healthyPods, err := healthyPods(d.Client, statefulSets, esState)
+	// Get the pods to upgrade
+	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+	actualPods, err := statefulSets.GetActualPods(d.Client)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	// Get the pods to upgrade
-	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	// Maybe force upgrade all Pods, bypassing any safety check and ES interaction.
+	if forced, err := d.maybeForceUpgrade(actualPods, podsToUpgrade); err != nil || forced {
+		return results.WithError(err)
+	}
+
+	if !esReachable {
+		// Cannot move on with rolling upgrades if ES cannot be reached.
+		return results.WithResult(defaultRequeue)
+	}
+
+	// Get the healthy Pods (from a K8S point of view + in the ES cluster)
+	healthyPods, err := healthyPods(d.Client, statefulSets, esState)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -88,9 +103,10 @@ func (d *defaultDriver) handleRollingUpgrades(
 
 type rollingUpgradeCtx struct {
 	client          k8s.Client
-	ES              v1alpha1.Elasticsearch
+	ES              v1beta1.Elasticsearch
 	statefulSets    sset.StatefulSetList
 	esClient        esclient.Client
+	shardLister     esclient.ShardLister
 	esState         ESState
 	expectations    *expectations.Expectations
 	reconcileState  *reconcile.State
@@ -215,7 +231,7 @@ func disableShardsAllocation(esClient esclient.Client) error {
 	return esClient.DisableReplicaShardsAllocation(ctx)
 }
 
-func doSyncFlush(es v1alpha1.Elasticsearch, esClient esclient.Client) error {
+func doSyncFlush(es v1beta1.Elasticsearch, esClient esclient.Client) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
 	err := esClient.SyncedFlush(ctx)

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -90,7 +90,7 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 			test.Step{
 				Name: "Updating to invalid Elasticsearch reference should succeed",
 				Test: func(t *testing.T) {
-					var kb v1alpha1.Kibana
+					var kb v1beta1.Kibana
 					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&kbBuilder.Kibana), &kb))
 					kb.Spec.ElasticsearchRef.Namespace = "xxxx"
 					require.NoError(t, k.Client.Update(&kb))
@@ -112,11 +112,11 @@ func TestKibanaAssociationWhenReferencedESDisappears(t *testing.T) {
 						switch {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
 							prevStatus, currStatus := annotation.ExtractAssociationStatus(evt.ObjectMeta)
-							if prevStatus == commonv1alpha1.AssociationEstablished && currStatus != prevStatus {
+							if prevStatus == commonv1beta1.AssociationEstablished && currStatus != prevStatus {
 								assocLostEventSeen = true
 							}
 
-							if currStatus == commonv1alpha1.AssociationEstablished {
+							if currStatus == commonv1beta1.AssociationEstablished {
 								assocEstablishedEventSeen = true
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:

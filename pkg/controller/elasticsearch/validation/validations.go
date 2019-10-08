@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -25,6 +25,7 @@ import (
 // Validations are all registered Elasticsearch validations.
 var Validations = []Validation{
 	validName,
+	specUpdatedToBeta,
 	hasMaster,
 	supportedVersion,
 	noDowngrades,
@@ -42,6 +43,28 @@ func validName(ctx Context) validation.Result {
 	return validation.OK
 }
 
+func specUpdatedToBeta(ctx Context) validation.Result {
+	oldAPIVersion := "elasticsearch.k8s.elastic.co/v1alpha1"
+
+	es := ctx.Proposed.Elasticsearch
+	if es.APIVersion == oldAPIVersion {
+		return validation.Result{Reason: fmt.Sprintf("%s: outdated APIVersion", validationFailedMsg)}
+	}
+
+	if len(es.Spec.NodeSets) == 0 {
+		return validation.Result{Reason: fmt.Sprintf("%s: at least one nodeSet must be defined", validationFailedMsg)}
+	}
+
+	for _, set := range es.Spec.NodeSets {
+		if set.Count == 0 {
+			msg := fmt.Sprintf("node count of node set '%s' should not be zero", set.Name)
+			return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
+		}
+	}
+
+	return validation.OK
+}
+
 // supportedVersion checks if the version is supported.
 func supportedVersion(ctx Context) validation.Result {
 	if v := esversion.SupportedVersions(ctx.Proposed.Version); v != nil {
@@ -56,12 +79,12 @@ func supportedVersion(ctx Context) validation.Result {
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
 func hasMaster(ctx Context) validation.Result {
 	var hasMaster bool
-	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		cfg, err := v1alpha1.UnpackConfig(t.Config)
+	for _, t := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
+		cfg, err := v1beta1.UnpackConfig(t.Config)
 		if err != nil {
 			return validation.Result{Reason: cfgInvalidMsg}
 		}
-		hasMaster = hasMaster || (cfg.Node.Master && t.NodeCount > 0)
+		hasMaster = hasMaster || (cfg.Node.Master && t.Count > 0)
 	}
 	if hasMaster {
 		return validation.OK
@@ -71,7 +94,7 @@ func hasMaster(ctx Context) validation.Result {
 
 func noBlacklistedSettings(ctx Context) validation.Result {
 	violations := make(map[int]set.StringSet)
-	for i, n := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+	for i, n := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
 		if n.Config == nil {
 			continue
 		}
@@ -95,7 +118,7 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 	var sb strings.Builder
 	var sep string
 	// iterate again to build validation message in node order
-	for i := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+	for i := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
 		vs := violations[i]
 		if vs == nil {
 			continue
@@ -146,16 +169,16 @@ func pvcModification(ctx Context) validation.Result {
 	if ctx.Current == nil {
 		return validation.OK
 	}
-	for _, node := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		currNode := getNode(node.Name, ctx.Current.Elasticsearch)
-		if currNode == nil {
+	for _, node := range ctx.Proposed.Elasticsearch.Spec.NodeSets {
+		currNodeSet := getNodeSet(node.Name, ctx.Current.Elasticsearch)
+		if currNodeSet == nil {
 			// this is a new sset, so there is nothing to check
 			continue
 		}
 
 		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
 		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
-		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
+		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNodeSet.VolumeClaimTemplates) {
 			return validation.Result{
 				Allowed: false,
 				Reason:  pvcImmutableMsg,
@@ -165,10 +188,10 @@ func pvcModification(ctx Context) validation.Result {
 	return validation.OK
 }
 
-func getNode(name string, es v1alpha1.Elasticsearch) *v1alpha1.NodeSpec {
-	for i := range es.Spec.Nodes {
-		if es.Spec.Nodes[i].Name == name {
-			return &es.Spec.Nodes[i]
+func getNodeSet(name string, es v1beta1.Elasticsearch) *v1beta1.NodeSet {
+	for i := range es.Spec.NodeSets {
+		if es.Spec.NodeSets[i].Name == name {
+			return &es.Spec.NodeSets[i]
 		}
 	}
 	return nil

@@ -82,12 +82,14 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: {version}
-  setVmMaxMapCount: false
-  nodes:
-  - config:
+  nodeSets:
+  - name: default
+    count: 1
+    config:
       node.master: true
       node.data: true
-    nodeCount: 1
+      node.ingest: true
+      node.store.allow_mmap: false
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
@@ -119,7 +121,7 @@ metadata:
   name: kibana-sample
 spec:
   version: {version}
-  nodeCount: 1
+  count: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
   podTemplate:
@@ -187,7 +189,7 @@ metadata:
   name: apm-server-sample
 spec:
   version: {version}
-  nodeCount: 1
+  count: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
   podTemplate:

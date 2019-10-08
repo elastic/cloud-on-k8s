@@ -16,7 +16,7 @@ For more information on Elasticsearch snapshots, see https://www.elastic.co/guid
 [id="{p}-install-plugin"]
 ==== Install the storage repository plugin
 
-To install the storage repository plugin, you can either use a custom image or add your own init container which
+To install the storage repository plugin, you can either use a link:k8s-images.html[custom image] or link:k8s-init-containers-plugin-downloads.html[add your own init container] which
 installs the plugin when the Pod is created.
 
 To use your own custom image with all necessary plugins pre-installed, use an Elasticsearch resource like the following one:
@@ -30,8 +30,9 @@ metadata:
 spec:
   version: {version}
   image: your/custom/image:tag
-  nodes:
-  - nodeCount: 1
+  nodeSets:
+  - name: default
+    count: 1
 ----
 
 Alternatively, install the plugin when the Pod is created by using an init container:
@@ -44,8 +45,9 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: {version}
-  nodes:
-  - podTemplate:
+  nodeSets:
+  - name: default
+    podTemplate:
       spec:
         initContainers:
         - name: install-plugins
@@ -54,7 +56,7 @@ spec:
           - -c
           - |
             bin/elasticsearch-plugin install --batch repository-gcs
-    nodeCount: 1
+    count: 1
 ----
 
 Assuming you stored this in a file called `elasticsearch.yaml` you can in both cases create the Elasticsearch cluster with:
@@ -108,7 +110,7 @@ spec:
     secureSettings:
     - secretName: gcs-credentials
 ----
-
+If you did not follow the instructions above and named your GCS credentials file differently, you can still map it to the expected name now. See <<{p}-es-secure-settings,Secure Settings>> for details.
 . Apply the modifications:
 +
 [source,bash]
@@ -122,7 +124,8 @@ GCS credentials are automatically propagated into each node's keystore. It can t
 [id="{p}-create-repository"]
 ==== Register the repository in Elasticsearch
 
-. Create the GCS snapshot repository in Elasticsearch following the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
+. Create the GCS snapshot repository in Elasticsearch. You can either use the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] in Kibana added[7.4.0] or follow the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
+
 +
 [source,sh]
 ----
@@ -145,9 +148,18 @@ PUT /_snapshot/my_gcs_repository/test-snapshot
 
 [float]
 [id="{p}-setup-cronjob"]
+==== Periodic snapshots with Snapshot Lifecycle Management
+
+added[7.4.0]
+
+You can use the https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[snapshot lifecycle management APIs] to manage policies for the time and frequency of automatic snapshots.
+
+The https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] allows you to manage these policies directly in Kibana as well.
+
+
 ==== Periodic snapshots with a CronJob
 
-You can set up a simple CronJob to take a snapshot every day.
+If you are running older versions of Elasticsearch without the snapshot lifecycle management feature, you can still set up a simple CronJob to take a snapshot every day.
 
 . Make an HTTP request against the appropriate endpoint, using a daily snapshot naming format. Elasticsearch credentials are mounted as a volume into the job's Pod:
 +

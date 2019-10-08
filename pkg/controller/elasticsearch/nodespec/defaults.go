@@ -7,7 +7,7 @@ package nodespec
 import (
 	"path"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,15 +38,20 @@ var (
 	// DefaultResources for the Elasticsearch container. The JVM default heap size is 1Gi, so we
 	// request at least 2Gi for the container to make sure ES can work properly.
 	// Not applying this minimum default would make ES randomly crash (OOM) on small machines.
+	// Similarly, we apply a default memory limit of 2Gi, to ensure the Pod isn't the first one to get evicted.
+	// No CPU requirement is set by default.
 	DefaultResources = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: resource.MustParse("2Gi"),
 		},
 	}
 )
 
 // DefaultEnvVars are environment variables injected into Elasticsearch pods.
-func DefaultEnvVars(httpCfg v1alpha1.HTTPConfig) []corev1.EnvVar {
+func DefaultEnvVars(httpCfg v1beta1.HTTPConfig) []corev1.EnvVar {
 	return append(
 		defaults.PodDownwardEnvVars,
 		[]corev1.EnvVar{

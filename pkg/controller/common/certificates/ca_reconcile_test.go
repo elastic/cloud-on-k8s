@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +34,7 @@ var testNamer = name.Namer{
 var (
 	testNamespace = "test-namespace"
 	testName      = "test-name"
-	testCluster   = v1alpha1.Elasticsearch{
+	testCluster   = v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
 			Name:      testName,
@@ -145,7 +145,7 @@ func Test_canReuseCA(t *testing.T) {
 func checkCASecrets(
 	t *testing.T,
 	client k8s.Client,
-	cluster v1alpha1.Elasticsearch,
+	cluster v1beta1.Elasticsearch,
 	caType CAType,
 	ca *CA,
 	expectedCa *CA,
@@ -195,7 +195,7 @@ func Test_renewCA(t *testing.T) {
 	require.NoError(t, err)
 	internalCASecret := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
 
-	err = v1alpha1.AddToScheme(scheme.Scheme)
+	err = v1beta1.AddToScheme(scheme.Scheme)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -228,7 +228,7 @@ func Test_renewCA(t *testing.T) {
 }
 
 func TestReconcileCAForCluster(t *testing.T) {
-	err := v1alpha1.AddToScheme(scheme.Scheme)
+	err := v1beta1.AddToScheme(scheme.Scheme)
 	require.NoError(t, err)
 
 	validCa, err := NewSelfSignedCA(CABuilderOptions{})

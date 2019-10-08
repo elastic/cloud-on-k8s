@@ -5,12 +5,8 @@
 package driver
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"path/filepath"
-
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -108,16 +104,16 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 	return result
 }
 
-func (u upgradeTestPods) toES(maxUnavailable int) v1alpha1.Elasticsearch {
-	return v1alpha1.Elasticsearch{
+func (u upgradeTestPods) toES(maxUnavailable int) v1beta1.Elasticsearch {
+	return v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      TestEsName,
 			Namespace: TestEsNamespace,
 		},
-		Spec: v1alpha1.ElasticsearchSpec{
-			UpdateStrategy: v1alpha1.UpdateStrategy{
-				ChangeBudget: &v1alpha1.ChangeBudget{
-					MaxUnavailable: maxUnavailable,
+		Spec: v1beta1.ElasticsearchSpec{
+			UpdateStrategy: v1beta1.UpdateStrategy{
+				ChangeBudget: v1beta1.ChangeBudget{
+					MaxUnavailable: common.Int32(int32(maxUnavailable)),
 				},
 			},
 		},
@@ -150,7 +146,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	return statefulSetList
 }
 
-func (u upgradeTestPods) toPods(f filter) []runtime.Object {
+func (u upgradeTestPods) toRuntimeObjects(maxUnavailable int, f filter) []runtime.Object {
 	var result []runtime.Object
 	i := 0
 	for _, testPod := range u {
@@ -160,6 +156,8 @@ func (u upgradeTestPods) toPods(f filter) []runtime.Object {
 		}
 		i++
 	}
+	es := u.toES(maxUnavailable)
+	result = append(result, &es)
 	return result
 }
 
@@ -292,20 +290,4 @@ func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-func loadFileBytes(fileName string) []byte {
-	contents, err := ioutil.ReadFile(filepath.Join("testdata", fileName))
-	if err != nil {
-		panic(err)
-	}
-
-	return contents
-}
-
-func (t *testESState) GetClusterState() (*esclient.ClusterState, error) {
-	var cs esclient.ClusterState
-	sampleClusterState := loadFileBytes("cluster_state.json")
-	err := json.Unmarshal(sampleClusterState, &cs)
-	return &cs, err
 }

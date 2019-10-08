@@ -10,7 +10,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/spf13/cobra"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func main() {

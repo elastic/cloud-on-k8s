@@ -13,7 +13,6 @@
 export SHELL := /bin/bash
 
 KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
-GKE_CLUSTER_VERSION ?= 1.12
 
 REPOSITORY 	?= eck
 NAME       	?= eck-operator
@@ -35,11 +34,21 @@ endif
 # find or download controller-gen
 # note this does not validate the version
 controller-gen:
-ifeq (, $(shell which controller-gen))
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.0
+ifeq (, $(shell command -v controller-gen))
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
+endif
+
+CRD_OPTIONS ?= "crd"
+
+# CRD_FLAVOR can be used to select specific flavors of CRDs
+CRD_FLAVOR ?= default
+CRD_AVAILABLE_FLAVORS := default trivial-versions
+# verify that the CRD_FLAVOR is valid:
+ifeq ($(filter $(CRD_FLAVOR),$(CRD_AVAILABLE_FLAVORS)),)
+$(error $(CRD_FLAVOR) is not a valid CRD_FLAVOR. Possible values are: $(CRD_AVAILABLE_FLAVORS));
 endif
 
 ## -- Docker image
@@ -47,7 +56,6 @@ endif
 # on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
-	REPOSITORY ?= $(GCLOUD_PROJECT)
 else
 	# default to local registry
 	REGISTRY ?= localhost:5000
@@ -87,34 +95,37 @@ PSP ?= 0
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator check-license-header
+all: dependencies lint check-license-header unit integration e2e-compile elastic-operator
 
 ## -- build
 
-dep:
-	dep ensure -v
-
-dep-vendor-only:
-	# don't attempt to upgrade Gopkg.lock
-	dep ensure --vendor-only
+dependencies:
+	go mod tidy -v && go mod download
 
 # Generate code
 generate: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
+	# Generate manifests e.g. CRD, RBAC etc.
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/..." output:crd:artifacts:config=config/crds
+	# verify that the available crd flavors still can generate cleanly
+	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
+		kubectl kustomize config/crds-flavor-$$crd_flavor > /dev/null; \
+	done
 	$(MAKE) --no-print-directory generate-all-in-one
 	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
 	# $(MAKE) --no-print-directory generate-api-docs
+	$(MAKE) --no-print-directory generate-notice-file
 
 generate-api-docs:
 	@hack/api-docs/build.sh
 
-elastic-operator: generate
-	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
+generate-notice-file:
+	@hack/licence-detector/generate-notice.sh
 
-fmt:
-	goimports -w pkg cmd
+elastic-operator: generate
+	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
 clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go
@@ -122,44 +133,35 @@ clean:
 ## -- tests
 
 unit: clean
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	go test ./pkg/... ./cmd/... -cover
 
 unit_xml: clean
-	go test --json ./pkg/... ./cmd/... -coverprofile cover.out > unit-tests.json
-	gotestsum --junitfile unit-tests.xml --raw-command cat unit-tests.json
+	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/...
 
 integration: GO_TAGS += integration
 integration: clean generate
-	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
+	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover
 
 integration_xml: GO_TAGS += integration
 integration_xml: clean generate
-	go test -tags='$(GO_TAGS)' --json ./pkg/... ./cmd/... -coverprofile cover.out > integration-tests.json
-	gotestsum --junitfile integration-tests.xml --raw-command cat integration-tests.json
-
-check-fmt:
-ifneq ($(shell goimports -l pkg cmd),)
-	$(error Invalid go formatting. Please run `make fmt`)
-endif
-	go vet ./pkg/... ./cmd/...
+	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/...
 
 lint:
 	golangci-lint run
-
 
 #############################
 ##  --       Run       --  ##
 #############################
 
 install-crds: generate
-	kubectl apply -f config/crds
+	kubectl apply -k config/crds-flavor-$(CRD_FLAVOR)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
 run: install-crds go-run
 
 go-run:
-    # Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
+	# Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
 	AUTO_PORT_FORWARD=true \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
@@ -170,6 +172,20 @@ go-run:
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false
+
+go-debug:
+	@(cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
+		--build-flags="-ldflags '$(GO_LDFLAGS)'" \
+		-- \
+		manager \
+		--development \
+		--operator-roles=global,namespace \
+		--log-verbosity=$(LOG_VERBOSITY) \
+		--ca-cert-validity=10h \
+		--ca-cert-rotate-before=1h \
+		--operator-namespace=default \
+		--namespace= \
+		--auto-install-webhooks=false)
 
 build-operator-image:
 ifeq ($(SKIP_DOCKER_COMMAND), false)
@@ -199,21 +215,19 @@ apply-operators:
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
 
-generate-crds:
-	for yaml in $$(ls config/crds/*); do \
-		cat $$yaml && echo -e "\n---\n" ; \
-	done
-
 generate-all-in-one:
-	$(MAKE) --no-print-directory -s generate-crds > config/all-in-one.yaml
-	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
-	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> config/all-in-one.yaml
+	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
+	    ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-flavor-$$crd_flavor.yaml; \
+        kubectl kustomize config/crds-flavor-$$crd_flavor > $${ALL_IN_ONE_OUTPUT_FILE}; \
+        OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
+            NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+            $(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $${ALL_IN_ONE_OUTPUT_FILE}; \
+	done
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: docker-build docker-push
-	kubectl apply -f config/all-in-one.yaml
+	kubectl apply -f config/all-in-one-flavor-$(CRD_FLAVOR).yaml
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
@@ -234,7 +248,7 @@ show-credentials:
 ##  --    K8s clusters bootstrap    --  ##
 ##########################################
 
-cluster-bootstrap: dep-vendor-only install-crds
+cluster-bootstrap: install-crds
 
 clean-k8s-cluster:
 	kubectl delete --ignore-not-found=true  ValidatingWebhookConfiguration validating-webhook-configuration
@@ -267,7 +281,7 @@ endif
 DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --config-file=hack/deployer/config/deployer-config.yml
 
 build-deployer:
-	@ go build -o ./hack/deployer/deployer ./hack/deployer/main.go
+	@ go build -mod=readonly -o ./hack/deployer/deployer ./hack/deployer/main.go
 
 setup-deployer-for-gke-once: require-gcloud-project build-deployer
 ifeq (,$(wildcard hack/deployer/config/deployer-config.yml))
@@ -329,7 +343,7 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-STACK_VERSION ?= 7.3.0
+STACK_VERSION ?= 7.4.0
 
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
@@ -346,7 +360,8 @@ e2e-run:
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
 		--elastic-stack-version=$(STACK_VERSION) \
-		--log-verbosity=$(LOG_VERBOSITY)
+		--log-verbosity=$(LOG_VERBOSITY) \
+		--crd-flavor=$(CRD_FLAVOR)
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
@@ -363,23 +378,24 @@ e2e-local:
 		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
 		--local \
-		--log-verbosity=$(LOG_VERBOSITY)
+		--log-verbosity=$(LOG_VERBOSITY) \
+		--crd-flavor=$(CRD_FLAVOR)
 	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##
 ##########################################
+ci-check: check-license-header lint generate check-local-changes
 
-# TODO consider re-adding check-fmt and check-local-changes
-ci: dep-vendor-only lint generate unit_xml integration_xml e2e-compile docker-build
+ci: unit_xml integration_xml docker-build
 
 # Run e2e tests in a dedicated cluster.
-ci-e2e: dep-vendor-only run-deployer install-crds apply-psp e2e
+ci-e2e: e2e-compile run-deployer install-crds apply-psp e2e
 
-run-deployer: dep-vendor-only build-deployer
+run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-ci-release: clean dep-vendor-only generate build-operator-image
+ci-release: clean ci-check build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################
@@ -396,6 +412,10 @@ check-license-header:
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+
+# Runs small Go tool to validate syntax correctness of Jenkins pipelines
+validate-jenkins-pipelines:
+	@ go run ./hack/pipeline-validator/main.go
 
 #########################
 # Kind specific targets #
@@ -428,7 +448,7 @@ kind-cluster-%: kind-node-variable-check
 ## Same as above but build and deploy the operator image
 kind-with-operator-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-with-operator-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
-kind-with-operator-%: kind-node-variable-check dep-vendor-only docker-build
+kind-with-operator-%: kind-node-variable-check docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
@@ -444,7 +464,7 @@ else
 endif
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
-kind-e2e: kind-node-variable-check set-kind-e2e-image dep-vendor-only e2e-docker-build
+kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
 		--nodes 3 \

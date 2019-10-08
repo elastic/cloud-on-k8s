@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -20,8 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var log = logf.Log.WithName("transport")
@@ -32,7 +32,7 @@ func ReconcileTransportCertificatesSecrets(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	ca *certificates.CA,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	var pods corev1.PodList
@@ -111,7 +111,7 @@ func ReconcileTransportCertificatesSecrets(
 func ensureTransportCertificatesSecretExists(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 ) (*corev1.Secret, error) {
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

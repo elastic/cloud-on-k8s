@@ -11,7 +11,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +28,7 @@ var (
 	certData                     []byte
 	pemCert                      []byte
 	testIP                       = "1.2.3.4"
-	testES                       = v1alpha1.Elasticsearch{
+	testES                       = v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 	}
 	testPod = corev1.Pod{
@@ -62,7 +62,7 @@ wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 )
 
 func init() {
-	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+	if err := v1beta1.AddToScheme(scheme.Scheme); err != nil {
 		panic(err)
 	}
 

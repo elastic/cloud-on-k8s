@@ -1,11 +1,11 @@
 # This sample sets up an Elasticsearch cluster with 3 nodes.
-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+apiVersion: elasticsearch.k8s.elastic.co/v1beta1
 kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.3.0
-  nodes:
+  version: 7.4.0
+  nodeSets:
   - name: default
     config:
       # most Elasticsearch configuration parameters are possible to set, e.g:
@@ -14,12 +14,22 @@ spec:
       node.data: true
       node.ingest: true
       node.ml: true
+      # this allows ES to run on nodes even if their vm.max_map_count has not been increased, at a performance cost
+      node.store.allow_mmap: false
     podTemplate:
       metadata:
         labels:
           # additional labels for pods
           foo: bar
       spec:
+        # this changes the kernel setting on the node to allow ES to use mmap
+        # if you uncomment this init container you will likely also want to remove the
+        # "node.store.allow_mmap: false" setting above
+        # initContainers:
+        # - name: sysctl
+        #   securityContext:
+        #     privileged: true
+        #   command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
         containers:
         - name: elasticsearch
           # specify resource limits and requests
@@ -30,7 +40,7 @@ spec:
           env:
           - name: ES_JAVA_OPTS
             value: "-Xms2g -Xmx2g"
-    nodeCount: 3
+    count: 3
   #   # request 2Gi of persistent data storage for pods in this topology element
   #   volumeClaimTemplates:
   #   - metadata:

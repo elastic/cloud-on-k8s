@@ -7,7 +7,7 @@ package cleanup
 import (
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var log = logf.Log.WithName("cleanup")
@@ -35,7 +35,7 @@ func IsTooYoungForGC(object metav1.Object) bool {
 }
 
 // DeleteOrphanedSecrets cleans up secrets that are not needed anymore for the given es cluster.
-func DeleteOrphanedSecrets(c k8s.Client, es v1alpha1.Elasticsearch) error {
+func DeleteOrphanedSecrets(c k8s.Client, es v1beta1.Elasticsearch) error {
 	var secrets corev1.SecretList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)

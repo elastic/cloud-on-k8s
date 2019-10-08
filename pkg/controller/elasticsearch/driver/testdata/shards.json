@@ -1,0 +1,38 @@
+[
+  {
+  "state": "STARTED",
+  "prirep": "r",
+  "node": "elasticsearch-sample-es-nodes-0",
+  "shard": "0",
+  "index": ".security-7"
+  },
+  {
+    "state": "STARTED",
+    "prirep": "p",
+    "node": "elasticsearch-sample-es-nodes-1",
+    "shard": "0",
+    "index": ".security-7"
+
+  },
+  {
+    "state": "STARTED",
+    "prirep": "p",
+    "node": "elasticsearch-sample-es-nodes-2",
+    "shard": "0",
+    "index": "twitter"
+  },
+  {
+    "state": "STARTED",
+    "prirep": "p",
+    "node": "elasticsearch-sample-es-nodes-3",
+    "shard": "0",
+    "index": ".kibana_1"
+  },
+  {
+    "state": "STARTED",
+    "prirep": "r",
+    "node": "elasticsearch-sample-es-nodes-4",
+    "shard": "0",
+    "index": ".kibana_1"
+  }
+]

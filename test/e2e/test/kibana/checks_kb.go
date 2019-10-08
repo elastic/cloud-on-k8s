@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
@@ -23,7 +23,7 @@ type kbChecks struct {
 }
 
 func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
-	if b.Kibana.Spec.NodeCount == 0 {
+	if b.Kibana.Spec.Count == 0 {
 		return test.StepList{}
 	}
 

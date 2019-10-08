@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -54,7 +54,7 @@ var (
 	testCA            *certificates.CA
 	testRSAPrivateKey *rsa.PrivateKey
 	pemCert           []byte
-	testES            = v1alpha1.Elasticsearch{ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
+	testES            = v1beta1.Elasticsearch{ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
 	testSvc           = corev1.Service{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "test-service",
@@ -67,7 +67,7 @@ var (
 )
 
 func init() {
-	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+	if err := v1beta1.AddToScheme(scheme.Scheme); err != nil {
 		panic(err)
 	}
 
@@ -108,7 +108,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 
 	type args struct {
 		c        k8s.Client
-		es       v1alpha1.Elasticsearch
+		es       v1beta1.Elasticsearch
 		ca       *certificates.CA
 		services []corev1.Service
 	}
@@ -140,12 +140,12 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 						certificates.KeyFileName:  key,
 					},
 				})),
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
-					Spec: v1alpha1.ElasticsearchSpec{
-						HTTP: commonv1alpha1.HTTPConfig{
-							TLS: commonv1alpha1.TLSOptions{
-								Certificate: commonv1alpha1.SecretRef{
+					Spec: v1beta1.ElasticsearchSpec{
+						HTTP: commonv1beta1.HTTPConfig{
+							TLS: commonv1beta1.TLSOptions{
+								Certificate: commonv1beta1.SecretRef{
 									SecretName: "my-cert",
 								},
 							},
@@ -193,7 +193,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	sanIPv6 := "2001:db8:0:85a3:0:0:ac1f:8001"
 
 	type args struct {
-		es           v1alpha1.Elasticsearch
+		es           v1beta1.Elasticsearch
 		svcs         []corev1.Service
 		certValidity time.Duration
 	}
@@ -205,13 +205,13 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 		{
 			name: "with svcs and user-provided SANs",
 			args: args{
-				es: v1alpha1.Elasticsearch{
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: v1.ObjectMeta{Namespace: "test", Name: "test"},
-					Spec: v1alpha1.ElasticsearchSpec{
-						HTTP: commonv1alpha1.HTTPConfig{
-							TLS: commonv1alpha1.TLSOptions{
-								SelfSignedCertificate: &commonv1alpha1.SelfSignedCertificate{
-									SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{
+					Spec: v1beta1.ElasticsearchSpec{
+						HTTP: commonv1beta1.HTTPConfig{
+							TLS: commonv1beta1.TLSOptions{
+								SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
+									SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{
 										{
 											DNS: sanDNS1,
 										},
@@ -273,10 +273,10 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 
 func Test_shouldIssueNewCertificate(t *testing.T) {
 	esWithSAN := testES.DeepCopy()
-	esWithSAN.Spec.HTTP = commonv1alpha1.HTTPConfig{
-		TLS: commonv1alpha1.TLSOptions{
-			SelfSignedCertificate: &commonv1alpha1.SelfSignedCertificate{
-				SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{
+	esWithSAN.Spec.HTTP = commonv1beta1.HTTPConfig{
+		TLS: commonv1beta1.TLSOptions{
+			SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
+				SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{
 					{
 						DNS: "search.example.com",
 					},
@@ -285,7 +285,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 		},
 	}
 	type args struct {
-		es           v1alpha1.Elasticsearch
+		es           v1beta1.Elasticsearch
 		secret       corev1.Secret
 		rotateBefore time.Duration
 	}

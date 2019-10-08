@@ -10,7 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -27,23 +27,22 @@ import (
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
-	es v1alpha1.Elasticsearch,
-	nodeSpec v1alpha1.NodeSpec,
+	es v1beta1.Elasticsearch,
+	nodeSet v1beta1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 ) (corev1.PodTemplateSpec, error) {
-	volumes, volumeMounts := buildVolumes(es.Name, nodeSpec, keystoreResources)
-	labels, err := buildLabels(es, cfg, nodeSpec, keystoreResources)
+	volumes, volumeMounts := buildVolumes(es.Name, nodeSet, keystoreResources)
+	labels, err := buildLabels(es, cfg, nodeSet, keystoreResources)
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	builder := defaults.NewPodTemplateBuilder(nodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName).
+	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, v1beta1.ElasticsearchContainerName).
 		WithDockerImage(es.Spec.Image, stringsutil.Concat(DefaultImageRepository, ":", es.Spec.Version))
 
 	initContainers, err := initcontainer.NewInitContainers(
 		builder.Container.Image,
-		es.Spec.SetVMMaxMapCount,
 		transportCertificatesVolume(es.Name),
 		es.Name,
 		keystoreResources,
@@ -77,9 +76,9 @@ func transportCertificatesVolume(esName string) volume.SecretVolume {
 }
 
 func buildLabels(
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	cfg settings.CanonicalConfig,
-	nodeSpec v1alpha1.NodeSpec,
+	nodeSet v1beta1.NodeSet,
 	keystoreResources *keystore.Resources,
 ) (map[string]string, error) {
 	// label with a hash of the config to rotate the pod on config changes
@@ -98,7 +97,7 @@ func buildLabels(
 
 	podLabels, err := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
-		name.StatefulSet(es.Name, nodeSpec.Name),
+		name.StatefulSet(es.Name, nodeSet.Name),
 		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Scheme(),
 	)
 	if err != nil {
@@ -110,7 +109,7 @@ func buildLabels(
 		// TODO: use hash.HashObject instead && fix the config checksum label name?
 		configChecksum := sha256.New224()
 		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
-		podLabels[label.ConfigChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+		podLabels[label.SecureSettingsHashLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	}
 
 	return podLabels, nil

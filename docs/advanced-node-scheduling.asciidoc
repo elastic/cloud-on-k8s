@@ -25,16 +25,18 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
+  nodeSets:
   # 3 dedicated master nodes
-  - nodeCount: 3
+  - name: master
+    count: 3
     config:
       node.master: true
       node.data: false
       node.ingest: false
       cluster.remote.connect: false
   # 3 ingest-data nodes
-  - nodeCount: 3
+  - name: ingest-data
+    count: 3
     config:
       node.master: false
       node.data: true
@@ -60,8 +62,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodesSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         affinity:
@@ -87,8 +90,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         affinity: {}
@@ -104,8 +108,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         affinity:
@@ -149,8 +154,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         nodeSelector:
@@ -168,8 +174,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     podTemplate:
       spec:
         affinity:
@@ -208,15 +215,13 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 1
+  nodeSets:
+  - name: zone-a
+    count: 1
     config:
       node.attr.zone: europe-west3-a
       cluster.routing.allocation.awareness.attributes: zone
     podTemplate:
-      meta:
-        labels:
-          nodesGroup: group-a
       spec:
         affinity:
           nodeAffinity:
@@ -227,14 +232,12 @@ spec:
                   operator: In
                   values:
                   - europe-west3-a
-  - nodeCount: 1
+  - name: zone-b
+    count: 1
     config:
       node.attr.zone: europe-west3-b
       cluster.routing.allocation.awareness.attributes: zone
     podTemplate:
-      meta:
-        labels:
-          nodesGroup: group-b
       spec:
         affinity:
           nodeAffinity:
@@ -245,14 +248,6 @@ spec:
                   operator: In
                   values:
                   - europe-west3-b
-  updateStrategy:
-    groups:
-    - selector:
-        matchLabels:
-          nodesGroup: group-a
-    - selector:
-        matchLabels:
-          nodesGroup: group-b
 ----
 
 This example relies on:
@@ -260,7 +255,6 @@ This example relies on:
 - nodes from each zone being labeled accordingly. `failure-domain.beta.kubernetes.io/zone` link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels[is standard], but any label can be used.
 - node affinity for each group of nodes set to match the Kubernetes nodes zone.
 - Elasticsearch configured to link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[allocate shards based on node attributes]. Here we specified `node.attr.zone`, but any attribute name can be used. `node.attr.rack_id` is another common example.
-- groups highlighted in the `updateStrategy`, allowing ECK to logically group pods together when performing topology changes. Depending on `updateStrategy.changeBudget`, ECK makes sure all logical groups have the requested number of nodes running before attempting any other topology change.
 
 [float]
 [id="{p}-hot-warm-topologies"]
@@ -276,9 +270,10 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
+  nodeSets:
   # hot nodes, with high CPU and fast IO
-  - nodeCount: 3
+  - name: hot
+    count: 3
     config:
       node.attr.data: hot
     podTemplate:
@@ -309,7 +304,8 @@ spec:
             storage: 1Ti
         storageClassName: local-storage
   # warm nodes, with high storage
-  - nodeCount: 3
+  - name: warm
+    count: 3
     config:
       node.attr.data: warm
     podTemplate:

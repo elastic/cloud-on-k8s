@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	v1alpha12 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	v1beta12 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -133,215 +133,71 @@ func TestNodesAvailable(t *testing.T) {
 func TestState_Apply(t *testing.T) {
 	tests := []struct {
 		name       string
-		cluster    v1alpha1.Elasticsearch
+		cluster    v1beta1.Elasticsearch
 		effects    func(s *State)
 		wantEvents []events.Event
-		wantStatus *v1alpha1.ElasticsearchStatus
+		wantStatus *v1beta1.ElasticsearchStatus
 	}{
 		{
 			name:       "defaults",
-			cluster:    v1alpha1.Elasticsearch{},
+			cluster:    v1beta1.Elasticsearch{},
 			wantEvents: []events.Event{},
 			wantStatus: nil,
 		},
 		{
 			name:    "no degraded health event on cluster formation",
-			cluster: v1alpha1.Elasticsearch{},
+			cluster: v1beta1.Elasticsearch{},
 			effects: func(s *State) {
 				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
 			},
 			wantEvents: []events.Event{},
-			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+			wantStatus: &v1beta1.ElasticsearchStatus{
+				ReconcilerStatus: v1beta12.ReconcilerStatus{
 					AvailableNodes: 0,
 				},
-				Health: v1alpha1.ElasticsearchRedHealth,
-				Phase:  v1alpha1.ElasticsearchApplyingChangesPhase,
+				Health: v1beta1.ElasticsearchRedHealth,
+				Phase:  v1beta1.ElasticsearchApplyingChangesPhase,
 			},
 		},
 		{
-			name: "no degraded health event when cluster state is unknown",
-			cluster: v1alpha1.Elasticsearch{
-				Status: v1alpha1.ElasticsearchStatus{
-					Health: v1alpha1.ElasticsearchGreenHealth,
+			name: "no degraded health event when cluster info is unknown",
+			cluster: v1beta1.Elasticsearch{
+				Status: v1beta1.ElasticsearchStatus{
+					Health: v1beta1.ElasticsearchGreenHealth,
 				},
 			},
 			effects: func(s *State) {
 				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
 					ClusterHealth: nil,
-					ClusterState:  nil,
+					ClusterInfo:   nil,
 				})
 			},
 			wantEvents: []events.Event{},
-			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+			wantStatus: &v1beta1.ElasticsearchStatus{
+				ReconcilerStatus: v1beta12.ReconcilerStatus{
 					AvailableNodes: 0,
 				},
-				Health: "unknown",
+				Health: v1beta1.ElasticsearchUnknownHealth,
 				Phase:  "",
 			},
 		},
 		{
 			name: "health degraded",
-			cluster: v1alpha1.Elasticsearch{
-				Status: v1alpha1.ElasticsearchStatus{
-					Health: v1alpha1.ElasticsearchGreenHealth,
+			cluster: v1beta1.Elasticsearch{
+				Status: v1beta1.ElasticsearchStatus{
+					Health: v1beta1.ElasticsearchGreenHealth,
 				},
 			},
 			effects: func(s *State) {
 				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
 			},
 			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnhealthy, Message: "Elasticsearch cluster health degraded"}},
-			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+			wantStatus: &v1beta1.ElasticsearchStatus{
+				ReconcilerStatus: v1beta12.ReconcilerStatus{
 					AvailableNodes: 0,
 				},
-				Health: v1alpha1.ElasticsearchRedHealth,
-				Phase:  v1alpha1.ElasticsearchApplyingChangesPhase,
-			},
-		},
-		{
-			name: "cluster state lost",
-			cluster: v1alpha1.Elasticsearch{
-				Status: v1alpha1.ElasticsearchStatus{
-					Health:      v1alpha1.ElasticsearchRedHealth,
-					ClusterUUID: "old",
-				},
-			},
-			effects: func(s *State) {
-				s.UpdateElasticsearchReady(ResourcesState{}, observer.State{
-					ClusterHealth: &client.Health{
-						Status: "red",
-					},
-					ClusterState: &client.ClusterState{
-						ClusterUUID: "new",
-					},
-				})
-			},
-			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnexpected, Message: "Cluster UUID changed (was: old, is: new)"}},
-			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{
-					AvailableNodes: 0,
-				},
-				Health:      v1alpha1.ElasticsearchRedHealth,
-				Phase:       v1alpha1.ElasticsearchReadyPhase,
-				ClusterUUID: "new",
-			},
-		},
-		{
-			name: "no UUID change event on cluster formation",
-			cluster: v1alpha1.Elasticsearch{
-				Status: v1alpha1.ElasticsearchStatus{
-					ClusterUUID: "",
-				},
-			},
-			effects: func(s *State) {
-				s.UpdateElasticsearchReady(ResourcesState{}, observer.State{
-					ClusterHealth: &client.Health{
-						Status: "red",
-					},
-					ClusterState: &client.ClusterState{
-						ClusterUUID: "new",
-					},
-				})
-			},
-			wantEvents: []events.Event{},
-			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{
-					AvailableNodes: 0,
-				},
-				Health:      v1alpha1.ElasticsearchRedHealth,
-				Phase:       v1alpha1.ElasticsearchReadyPhase,
-				ClusterUUID: "new",
-			},
-		},
-		{
-			name: "Ignore temporary cluster downtime",
-			cluster: v1alpha1.Elasticsearch{
-				Status: v1alpha1.ElasticsearchStatus{
-					Health:      v1alpha1.ElasticsearchRedHealth,
-					ClusterUUID: "old",
-				},
-			},
-			effects: func(s *State) {
-				s.UpdateElasticsearchReady(ResourcesState{}, observer.State{
-					ClusterHealth: &client.Health{
-						Status: "red",
-					},
-					ClusterState: &client.ClusterState{
-						ClusterUUID: "",
-					},
-				})
-			},
-			wantEvents: []events.Event{},
-			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{
-					AvailableNodes: 0,
-				},
-				Health:      v1alpha1.ElasticsearchRedHealth,
-				Phase:       v1alpha1.ElasticsearchReadyPhase,
-				ClusterUUID: "old",
-			},
-		},
-		{
-			name: "master node changed",
-			cluster: v1alpha1.Elasticsearch{
-				Status: v1alpha1.ElasticsearchStatus{
-					Health:     v1alpha1.ElasticsearchRedHealth,
-					MasterNode: "old",
-					Phase:      v1alpha1.ElasticsearchReadyPhase,
-				},
-			},
-			effects: func(s *State) {
-				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
-					ClusterHealth: &client.Health{
-						Status: "red",
-					},
-					ClusterState: &client.ClusterState{
-						MasterNode: "new",
-						Nodes: map[string]client.ClusterStateNode{
-							"new": {Name: "new"},
-						},
-					},
-				})
-			},
-			wantEvents: []events.Event{{EventType: corev1.EventTypeNormal, Reason: events.EventReasonStateChange, Message: "Master node is now new"}},
-			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{
-					AvailableNodes: 0,
-				},
-				Health:     v1alpha1.ElasticsearchRedHealth,
-				Phase:      v1alpha1.ElasticsearchReadyPhase,
-				MasterNode: "new",
-			},
-		},
-		{
-			name: "ignore temporary master loss for status",
-			cluster: v1alpha1.Elasticsearch{
-				Status: v1alpha1.ElasticsearchStatus{
-					Health:     v1alpha1.ElasticsearchRedHealth,
-					MasterNode: "old",
-					Phase:      v1alpha1.ElasticsearchReadyPhase,
-				},
-			},
-			effects: func(s *State) {
-				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
-					ClusterHealth: &client.Health{
-						Status: "red",
-					},
-					ClusterState: &client.ClusterState{
-						MasterNode: "",
-					},
-				})
-			},
-			wantEvents: []events.Event{},
-			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{
-					AvailableNodes: 0,
-				},
-				Health:     v1alpha1.ElasticsearchRedHealth,
-				Phase:      v1alpha1.ElasticsearchReadyPhase,
-				MasterNode: "",
+				Health: v1beta1.ElasticsearchRedHealth,
+				Phase:  v1beta1.ElasticsearchApplyingChangesPhase,
 			},
 		},
 	}
@@ -355,7 +211,7 @@ func TestState_Apply(t *testing.T) {
 			if !reflect.DeepEqual(events, tt.wantEvents) {
 				t.Errorf("State.Apply() events = %v, wantEvents %v", events, tt.wantEvents)
 			}
-			var actual *v1alpha1.ElasticsearchStatus
+			var actual *v1beta1.ElasticsearchStatus
 			if cluster != nil {
 				actual = &cluster.Status
 			}
@@ -373,31 +229,31 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		cluster         v1alpha1.Elasticsearch
+		cluster         v1beta1.Elasticsearch
 		args            args
 		stateAssertions func(s *State)
 	}{
 		{
 			name: "phase is not changed by default",
-			cluster: v1alpha1.Elasticsearch{
-				Status: v1alpha1.ElasticsearchStatus{
-					Phase: v1alpha1.ElasticsearchApplyingChangesPhase,
+			cluster: v1beta1.Elasticsearch{
+				Status: v1beta1.ElasticsearchStatus{
+					Phase: v1beta1.ElasticsearchApplyingChangesPhase,
 				},
 			},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, v1alpha1.ElasticsearchApplyingChangesPhase, s.status.Phase)
+				assert.EqualValues(t, v1beta1.ElasticsearchApplyingChangesPhase, s.status.Phase)
 			},
 		},
 		{
 			name:    "health is unknown by default",
-			cluster: v1alpha1.Elasticsearch{},
+			cluster: v1beta1.Elasticsearch{},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, "unknown", s.status.Health)
+				assert.EqualValues(t, v1beta1.ElasticsearchUnknownHealth, s.status.Health)
 			},
 		},
 		{
 			name:    "health is set if returned by Elasticsearch",
-			cluster: v1alpha1.Elasticsearch{},
+			cluster: v1beta1.Elasticsearch{},
 			args: args{
 				observedState: observer.State{
 					ClusterHealth: &client.Health{Status: "green"},
@@ -428,18 +284,18 @@ func TestState_UpdateElasticsearchMigrating(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		cluster         v1alpha1.Elasticsearch
+		cluster         v1beta1.Elasticsearch
 		args            args
 		stateAssertions func(s *State)
 	}{
 		{
 			name:    "base case",
-			cluster: v1alpha1.Elasticsearch{},
+			cluster: v1beta1.Elasticsearch{},
 			args: args{
 				result: reconcile.Result{RequeueAfter: 10 * time.Minute},
 			},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, v1alpha1.ElasticsearchMigratingDataPhase, s.status.Phase)
+				assert.EqualValues(t, v1beta1.ElasticsearchMigratingDataPhase, s.status.Phase)
 				assert.Equal(t, []events.Event{{EventType: corev1.EventTypeNormal, Reason: events.EventReasonDelayed, Message: "Requested topology change delayed by data migration"}}, s.Recorder.Events())
 			},
 		},

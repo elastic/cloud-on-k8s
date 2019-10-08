@@ -17,7 +17,7 @@ endif
 
 generate-all-in-one:
 	@ for yaml in $$(LC_COLLATE=C ls all-in-one/*yaml); do \
-		cat $$yaml && echo -e "\n---\n"; \
+		printf "\n---\n" && cat $$yaml ; \
 	done | \
 	sed \
 		-e "/# /d" \
@@ -26,7 +26,7 @@ generate-all-in-one:
 
 generate-global:
 	@ for yaml in $$(LC_COLLATE=C ls global/*yaml); do \
-		cat $$yaml && echo -e "\n---\n"; \
+		printf "\n---\n" && cat $$yaml ; \
 	done | \
 	sed \
 		-e "/# /d" \
@@ -38,7 +38,7 @@ ifndef MANAGED_NAMESPACE
 	$(error MANAGED_NAMESPACE not set)
 endif
 	@ for yaml in $$(LC_COLLATE=C ls namespace/*yaml); do \
-		cat $$yaml && echo -e "\n---\n"; \
+		printf "\n---\n" && cat $$yaml ; \
 	done | \
 	sed \
 		-e "/# /d" \

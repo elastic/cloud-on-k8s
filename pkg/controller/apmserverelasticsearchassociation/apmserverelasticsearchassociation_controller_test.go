@@ -7,9 +7,9 @@ package apmserverelasticsearchassociation
 import (
 	"testing"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ const (
 
 var t = true
 var ownerRefFixture = metav1.OwnerReference{
-	APIVersion:         "apmserver.k8s.elastic.co/v1alpha1",
+	APIVersion:         "apmserver.k8s.elastic.co/v1beta1",
 	Kind:               "ApmServer",
 	Name:               "as",
 	UID:                "",
@@ -43,7 +43,7 @@ var apmFixture = apmtype.ApmServer{
 		Namespace: "default",
 	},
 	Spec: apmtype.ApmServerSpec{
-		ElasticsearchRef: commonv1alpha1.ObjectSelector{
+		ElasticsearchRef: commonv1beta1.ObjectSelector{
 			Name:      "es",
 			Namespace: "default",
 		},

@@ -6,22 +6,20 @@ This page explains you how to set up your development environment.
 
 Before you start, install the following tools and packages:
 
-* [go](https://golang.org/dl/)
-* [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
-* [dep](https://github.com/golang/dep)
+* [go](https://golang.org/dl/) (>= 1.11)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.11)
+* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
 * [docker](https://docs.docker.com/)
 * [gcloud](https://cloud.google.com/sdk/gcloud/) (Install `beta` components)
 * sha1sum (for Mac `brew install md5sha1sum`)
 
-### Get sources using go get
+### Get sources 
 
 ```bash
-go get -u github.com/elastic/cloud-on-k8s
-cd ${GOPATH:-$HOME/go}/src/github.com/elastic/cloud-on-k8s
+git clone https://github.com/elastic/cloud-on-k8s.git
+cd cloud-on-k8s
 ```
 
 ### Check prerequisites
@@ -30,7 +28,7 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 ## Development
 
-1. Run `make dep-vendor-only` to download extra Go libraries needed to compile the project and store them in the vendor directory.
+1. Run `make dependencies` to download the Go libraries needed to compile the project.
 
 2. Get a working development Kubernetes cluster. You can either use:
 
@@ -58,8 +56,8 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 ### Running E2E tests
 
-E2E tests will run in the `e2e` namespace. An operator must run and manage resources in the `e2e` namespace.
-To do that, run `MANAGED_NAMESPACE=e2e make run`. Then you can run E2E tests in a separate shell `make e2e-local`.
+E2E tests will run in the `e2e-mercury` and `e2e-venus` namespaces.
+Run `make run` to start the operator and then run `make e2e-local` in a separate shell to run the tests.
 
 ## Recommended reading
 

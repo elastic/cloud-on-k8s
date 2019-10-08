@@ -30,25 +30,29 @@ type AksDriver struct {
 }
 
 func (gdf *AksDriverFactory) Create(plan Plan) (Driver, error) {
-	vaultClient, err := NewClient(*plan.VaultInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	if plan.Aks.ResourceGroup == "" {
-		resourceGroup, err := vaultClient.Get(AksVaultPath, AksResourceGroupVaultFieldName)
+	var vaultClient *VaultClient
+	if plan.VaultInfo != nil {
+		var err error
+		vaultClient, err = NewClient(*plan.VaultInfo)
 		if err != nil {
 			return nil, err
 		}
-		plan.Aks.ResourceGroup = resourceGroup
-	}
 
-	if plan.Aks.AcrName == "" {
-		acrName, err := vaultClient.Get(AksVaultPath, AksAcrNameVaultFieldName)
-		if err != nil {
-			return nil, err
+		if plan.Aks.ResourceGroup == "" {
+			resourceGroup, err := vaultClient.Get(AksVaultPath, AksResourceGroupVaultFieldName)
+			if err != nil {
+				return nil, err
+			}
+			plan.Aks.ResourceGroup = resourceGroup
 		}
-		plan.Aks.AcrName = acrName
+
+		if plan.Aks.AcrName == "" {
+			acrName, err := vaultClient.Get(AksVaultPath, AksAcrNameVaultFieldName)
+			if err != nil {
+				return nil, err
+			}
+			plan.Aks.AcrName = acrName
+		}
 	}
 
 	return &AksDriver{

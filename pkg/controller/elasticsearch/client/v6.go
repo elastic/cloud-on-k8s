@@ -27,32 +27,6 @@ func (c *clientV6) GetClusterRoutingAllocation(ctx context.Context) (ClusterRout
 	return settings, c.get(ctx, "/_cluster/settings", &settings)
 }
 
-func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
-	var clusterState ClusterState
-	return clusterState, c.get(ctx, "/_cluster/state/dispatcher,master_node,nodes,routing_table", &clusterState)
-}
-
-func (c *clientV6) UpdateSettings(ctx context.Context, settings Settings) error {
-	return c.put(ctx, "/_cluster/settings", &settings, nil)
-}
-
-func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
-	allocationSettings := ClusterRoutingAllocation{
-		Transient: AllocationSettings{
-			Cluster: ClusterRoutingSettings{
-				Routing: RoutingSettings{
-					Allocation: RoutingAllocationSettings{
-						Exclude: AllocationExclude{
-							Name: nodes,
-						},
-					},
-				},
-			},
-		},
-	}
-	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
-}
-
 func (c *clientV6) updateAllocationEnable(ctx context.Context, value string) error {
 	allocationSettings := ClusterRoutingAllocation{
 		Transient: AllocationSettings{

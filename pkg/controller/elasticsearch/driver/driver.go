@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -28,7 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -63,7 +62,7 @@ type DefaultDriverParameters struct {
 	OperatorParameters operator.Parameters
 
 	// ES is the Elasticsearch resource to reconcile
-	ES v1alpha1.Elasticsearch
+	ES v1beta1.Elasticsearch
 	// SupportedVersions verifies whether we can support upgrading from the current pods.
 	SupportedVersions esversion.LowestHighestSupportedVersions
 
@@ -166,12 +165,8 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		))
 
 	// always update the elasticsearch state bits
-	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {
+	if observedState.ClusterInfo != nil && observedState.ClusterHealth != nil {
 		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
-	}
-
-	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES); err != nil {
-		return results.WithError(err)
 	}
 
 	if err := d.SupportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {

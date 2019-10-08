@@ -3,11 +3,11 @@
 
 With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your Elasticsearch cluster, and much more.
 
-Eager to get started? This fast guide shows you how to:
+Eager to get started? This quick guide shows you how to:
 
 * <<{p}-deploy-eck,Deploy ECK in your Kubernetes cluster>>
-* <<{p}-deploy-elasticsearch,Deploy the Elasticsearch cluster>>
-* <<{p}-deploy-kibana,Deploy the Kibana instance>>
+* <<{p}-deploy-elasticsearch,Deploy an Elasticsearch cluster>>
+* <<{p}-deploy-kibana,Deploy a Kibana instance>>
 * <<{p}-upgrade-deployment,Upgrade your deployment>>
 * <<{p}-persistent-storage,Use persistent storage>>
 * <<{p}-check-samples,Check out the samples>>
@@ -40,11 +40,11 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 [float]
 [id="{p}-deploy-elasticsearch"]
-=== Deploy the Elasticsearch cluster
+=== Deploy an Elasticsearch cluster
 
 Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
 
-NOTE: The default resource request is 2gb memory and 100m cpu, and your pod will be `Pending` if your cluster does not have enough resources.
+NOTE: If your Kubernetes cluster does not have any nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
 
 [source,yaml,subs="attributes"]
 ----
@@ -55,16 +55,20 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 1
+  nodeSets:
+  - name: default
+    count: 1
     config:
       node.master: true
       node.data: true
       node.ingest: true
+      node.store.allow_mmap: false
 EOF
 ----
 
-The operator automatically manages Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
+The operator automatically creates and manages Kubernetes resources to achieve the desired state of the Elasticsearch cluster. It may take up to a few minutes until all the resources are created and the cluster is ready for use.
+
+CAUTION: Setting `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
 
 [float]
 ==== Monitor cluster health and creation progress
@@ -93,15 +97,15 @@ kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=quickstar
 
 [source,sh]
 ----
-NAME                       READY     STATUS    RESTARTS   AGE
-quickstart-es-5zctxpn8nd   1/1       Running   0          1m
+NAME                      READY   STATUS    RESTARTS   AGE
+quickstart-es-default-0   1/1     Running   0          79s
 ----
 
 Access the logs for that Pod:
 
 [source,sh]
 ----
-kubectl logs -f quickstart-es-5zctxpn8nd
+kubectl logs -f quickstart-es-default-0
 ----
 
 [float]
@@ -122,7 +126,7 @@ quickstart-es-http   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 
 . Get the credentials.
 +
-A default user named `elastic` is automatically created. Its password is stored as a Kubernetes secret:
+A default user named `elastic` is automatically created with the password stored in a Kubernetes secret:
 +
 [source,sh]
 ----
@@ -152,12 +156,12 @@ Then request `localhost`:
 curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 ----
 
-NOTE: For testing purposes only, you can specify the `-k` option to turn off certificate verification.
+NOTE: Disabling certificate verification using the `-k` flag is not recommended and should be used for testing purposes only. See: <<{p}-setting-up-your-own-certificate>>
 
 [source,json]
 ----
 {
-  "name" : "quickstart-es-r56c9dzzcr",
+  "name" : "quickstart-es-default-0",
   "cluster_name" : "quickstart",
   "cluster_uuid" : "XqWg0xIiRmmEBg4NMhnYPg",
   "version" : {...},
@@ -167,7 +171,7 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
 
 [float]
 [id="{p}-deploy-kibana"]
-=== Deploy the Kibana instance
+=== Deploy a Kibana instance
 
 To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance go through the following steps.
 
@@ -182,7 +186,7 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodeCount: 1
+  count: 1
   elasticsearchRef:
     name: quickstart
 EOF
@@ -190,7 +194,7 @@ EOF
 
 . Monitor Kibana health and creation progress.
 +
-Similarly to Elasticsearch, you can retrieve details about Kibana instances:
+Similar to Elasticsearch, you can retrieve details about Kibana instances:
 +
 [source,sh]
 ----
@@ -220,20 +224,20 @@ Use `kubectl port-forward` to access Kibana from your local workstation:
 kubectl port-forward service/quickstart-kb-http 5601
 ----
 +
-Open `https://localhost:5601` in your browser. Your browser will show a warning because the self-signed certificate configured by default is not verified by a third party certificate authority and not trusted by your browser. You can either configure a link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[valid certificate] or acknowledge the warning for the purposes of this quick start.
+Open `https://localhost:5601` in your browser. Your browser will show a warning because the self-signed certificate configured by default is not verified by a third party certificate authority and not trusted by your browser. You can temporarily acknowledge the warning for the purposes of this quick start but it is highly recommended that you <<{p}-setting-up-your-own-certificate,configure valid certificates>> for any production deployments.
 +
-Login with the `elastic` user. Retrieve its password with:
+Login as the `elastic` user. The password can be obtained with the following command:
 +
 [source,sh]
 ----
-echo $(kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
 ----
 
 [float]
 [id="{p}-upgrade-deployment"]
 === Upgrade your deployment
 
-You can apply any modification to the original cluster specification. The operator makes sure that your changes are applied to the existing cluster, while avoiding downtime.
+You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (e.g., existing volume claims cannot be resized). The operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods etc.).
 
 For example, you can grow the cluster to three nodes:
 
@@ -246,55 +250,23 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
-  - nodeCount: 3
+  nodeSets:
+  - name: default
+    count: 3
     config:
       node.master: true
       node.data: true
       node.ingest: true
+      node.store.allow_mmap: false
 EOF
 ----
 
 [float]
 [id="{p}-persistent-storage"]
-=== Update persistent storage
+=== Use persistent storage
 
-Now that you have completed the quickstart, you can try out more features like tweaking persistent storage. The cluster that you deployed in this quickstart uses a default persistent volume claim of 1GiB, without a storage class set. This means that the default storage class defined in the Kubernetes cluster is the one that will be provisioned.
+The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for production workloads. Refer to <<{p}-volume-claim-templates>> for more information.
 
-You can request a `PersistentVolumeClaim` with a larger size in the Elasticsearch specification or target any `PersistentVolume` class available in your Kubernetes cluster:
-
-[source,yaml,subs="attributes"]
-----
-cat <<EOF | kubectl apply -f -
-apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
-kind: Elasticsearch
-metadata:
-  name: quickstart
-spec:
-  version: {version}
-  nodes:
-  - nodeCount: 3
-    config:
-      node.master: true
-      node.data: true
-      node.ingest: true
-    volumeClaimTemplates:
-    - metadata:
-        name: elasticsearch-data # note: elasticsearch-data must be the name of the Elasticsearch volume
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 10Gi
-        #storageClassName: standard # can be any available storage class
-EOF
-----
-
-To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
-
- * link:https://kubernetes.io/docs/concepts/storage/storage-classes[persistent volumes storage classes]
- * link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[kubernetes-sigs local volume static provisioner] to setup static local volumes.
 
 [float]
 [id="{p}-check-samples"]

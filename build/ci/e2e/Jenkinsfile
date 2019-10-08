@@ -21,6 +21,16 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Run Checks') {
+            when {
+                expression {
+                    notOnlyDocs()
+                }
+            }
+            steps {
+                sh 'make -C build/ci TARGET=ci-check ci'
+            }
+        }
         stage("E2E tests") {
             when {
                 expression {
@@ -39,7 +49,6 @@ EOF
                     cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
-  kubernetesVersion: "1.12"
   clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR

@@ -9,17 +9,15 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
-	"github.com/go-logr/zapr"
-	pflag "github.com/spf13/pflag"
+	"github.com/spf13/pflag"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/klog"
+	crlog "sigs.k8s.io/controller-runtime/pkg/log"
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
-	crlog "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var (
@@ -63,35 +61,28 @@ func setLogger(v *int, debug *bool) {
 	}
 
 	var encoder zapcore.Encoder
-	var opts []zap.Option
 	if dev.Enabled {
 		encoderConf := zap.NewDevelopmentEncoderConfig()
 		encoderConf.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		encoder = zapcore.NewConsoleEncoder(encoderConf)
-
-		opts = append(opts, zap.Development(), zap.AddStacktrace(zap.ErrorLevel))
 	} else {
 		encoderConf := zap.NewProductionEncoderConfig()
 		encoderConf.MessageKey = "message"
 		encoderConf.TimeKey = "@timestamp"
 		encoderConf.EncodeTime = zapcore.ISO8601TimeEncoder
 		encoder = zapcore.NewJSONEncoder(encoderConf)
-
-		opts = append(opts, zap.AddStacktrace(zap.ErrorLevel))
-		if zapLevel.Level() > zap.DebugLevel {
-			opts = append(opts, zap.WrapCore(func(core zapcore.Core) zapcore.Core {
-				return zapcore.NewSampler(core, time.Second, 100, 100)
-			}))
-		}
 	}
 
-	sink := zapcore.AddSync(os.Stderr)
-	opts = append(opts, zap.AddCallerSkip(1), zap.ErrorOutput(sink))
-	log := zap.New(zapcore.NewCore(&crzap.KubeAwareEncoder{Encoder: encoder, Verbose: dev.Enabled}, sink, zapLevel))
-	log = log.WithOptions(opts...)
-	log = log.With(zap.String("ver", getVersionString()))
-
-	crlog.SetLogger(zapr.NewLogger(log))
+	opts := []zap.Option{zap.Fields(zap.String("ver", getVersionString()))}
+	stackTraceLevel := zap.NewAtomicLevelAt(zapcore.ErrorLevel)
+	crlog.SetLogger(crzap.New(func(o *crzap.Options) {
+		o.DestWritter = os.Stderr
+		o.Development = dev.Enabled
+		o.Level = &zapLevel
+		o.StacktraceLevel = &stackTraceLevel
+		o.Encoder = encoder
+		o.ZapOpts = opts
+	}))
 }
 
 func determineLogLevel(v *int, debug *bool) zap.AtomicLevel {

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -209,7 +209,7 @@ var _ k8s.Client = &fakeClient{}
 
 func registerScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
-	if err := v1alpha1.SchemeBuilder.AddToScheme(sc); err != nil {
+	if err := v1beta1.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to build custom scheme")
 	}
 	return sc

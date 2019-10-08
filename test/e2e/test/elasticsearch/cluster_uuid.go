@@ -5,28 +5,42 @@
 package elasticsearch
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 )
 
+func clusterUUID(es v1beta1.Elasticsearch, k *test.K8sClient) (string, error) {
+	client, err := NewElasticsearchClient(es, k)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	defer cancel()
+	info, err := client.GetClusterInfo(ctx)
+	if err != nil {
+		return "", err
+	}
+	return info.ClusterUUID, nil
+}
+
 // RetrieveClusterUUIDStep stores the current clusterUUID into the given futureClusterUUID
-func RetrieveClusterUUIDStep(es v1alpha1.Elasticsearch, k *test.K8sClient, futureClusterUUID *string) test.Step {
+func RetrieveClusterUUIDStep(es v1beta1.Elasticsearch, k *test.K8sClient, futureClusterUUID *string) test.Step {
 	return test.Step{
 		Name: "Retrieve Elasticsearch cluster UUID for comparison purpose",
 		Test: test.Eventually(func() error {
-			var e v1alpha1.Elasticsearch
-			err := k.Client.Get(k8s.ExtractNamespacedName(&es), &e)
+			uuid, err := clusterUUID(es, k)
 			if err != nil {
 				return err
 			}
-			clusterUUID := e.Status.ClusterUUID
-			if clusterUUID == "" {
-				return fmt.Errorf("empty ClusterUUID")
+			clusterUUID := uuid
+			if clusterUUID == "_na_" {
+				return fmt.Errorf("cluster still forming")
 			}
 			*futureClusterUUID = clusterUUID
 			return nil
@@ -36,14 +50,12 @@ func RetrieveClusterUUIDStep(es v1alpha1.Elasticsearch, k *test.K8sClient, futur
 
 // CompareClusterUUIDStep compares the current clusterUUID with previousClusterUUID,
 // and fails if they don't match
-func CompareClusterUUIDStep(es v1alpha1.Elasticsearch, k *test.K8sClient, previousClusterUUID *string) test.Step {
+func CompareClusterUUIDStep(es v1beta1.Elasticsearch, k *test.K8sClient, previousClusterUUID *string) test.Step {
 	return test.Step{
 		Name: "Cluster UUID should have been preserved",
 		Test: func(t *testing.T) {
-			var e v1alpha1.Elasticsearch
-			err := k.Client.Get(k8s.ExtractNamespacedName(&es), &e)
+			newClusterUUID, err := clusterUUID(es, k)
 			require.NoError(t, err)
-			newClusterUUID := e.Status.ClusterUUID
 			require.NotEmpty(t, *previousClusterUUID)
 			require.Equal(t, *previousClusterUUID, newClusterUUID)
 		},

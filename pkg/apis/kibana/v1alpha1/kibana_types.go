@@ -11,10 +11,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
 )
 
-const (
-	KibanaContainerName = "kibana"
-	Kind                = "Kibana"
-)
+const KibanaContainerName = "kibana"
 
 // KibanaSpec defines the desired state of Kibana
 type KibanaSpec struct {
@@ -39,7 +36,7 @@ type KibanaSpec struct {
 
 	// PodTemplate can be used to propagate configuration to Kibana pods.
 	// This allows specifying custom annotations, labels, environment variables,
-	// affinity, resources, etc. for the pods created from this NodeSpec.
+	// affinity, resources, etc. for the pods created from this spec.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
@@ -65,9 +62,9 @@ const (
 
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
-	commonv1alpha1.ReconcilerStatus
-	Health            KibanaHealth                     `json:"health,omitempty"`
-	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
+	commonv1alpha1.ReconcilerStatus `json:",inline"`
+	Health                          KibanaHealth                     `json:"health,omitempty"`
+	AssociationStatus               commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -88,12 +85,6 @@ func (k *Kibana) SecureSettings() []commonv1alpha1.SecretSource {
 	return k.Spec.SecureSettings
 }
 
-// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
-// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
-func (k *Kibana) Kind() string {
-	return Kind
-}
-
 func (k *Kibana) AssociationConf() *commonv1alpha1.AssociationConf {
 	return k.assocConf
 }
@@ -102,12 +93,10 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1alpha1.AssociationConf) {
 	k.assocConf = assocConf
 }
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // Kibana is the Schema for the kibanas API
-// +kubebuilder:categories=elastic
-// +kubebuilder:resource:shortName=kb
+// +kubebuilder:resource:categories=elastic,shortName=kb
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
@@ -117,9 +106,9 @@ type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec      KibanaSpec   `json:"spec,omitempty"`
-	Status    KibanaStatus `json:"status,omitempty"`
-	assocConf *commonv1alpha1.AssociationConf
+	Spec      KibanaSpec                      `json:"spec,omitempty"`
+	Status    KibanaStatus                    `json:"status,omitempty"`
+	assocConf *commonv1alpha1.AssociationConf `json:"-"` //nolint:govet
 }
 
 // +kubebuilder:object:root=true

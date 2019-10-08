@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -19,15 +19,38 @@ import (
 // propagated from the main driver.
 type downscaleContext struct {
 	// clients
-	k8sClient k8s.Client
-	esClient  esclient.Client
+	k8sClient   k8s.Client
+	esClient    esclient.Client
+	shardLister esclient.ShardLister
 	// driver states
 	resourcesState reconcile.ResourcesState
 	observedState  observer.State
 	reconcileState *reconcile.State
 	expectations   *expectations.Expectations
 	// ES cluster
-	es v1alpha1.Elasticsearch
+	es v1beta1.Elasticsearch
+}
+
+func newDownscaleContext(
+	k8sClient k8s.Client,
+	esClient esclient.Client,
+	resourcesState reconcile.ResourcesState,
+	observedState observer.State,
+	reconcileState *reconcile.State,
+	expectations *expectations.Expectations,
+	// ES cluster
+	es v1beta1.Elasticsearch,
+) downscaleContext {
+	return downscaleContext{
+		k8sClient:      k8sClient,
+		esClient:       esClient,
+		shardLister:    esClient,
+		resourcesState: resourcesState,
+		observedState:  observedState,
+		reconcileState: reconcileState,
+		es:             es,
+		expectations:   expectations,
+	}
 }
 
 // ssetDownscale helps with the downscale of a single StatefulSet.
@@ -36,6 +59,7 @@ type ssetDownscale struct {
 	statefulSet     appsv1.StatefulSet
 	initialReplicas int32
 	targetReplicas  int32
+	finalReplicas   int32
 }
 
 // leavingNodeNames returns names of the nodes that are supposed to leave the Elasticsearch cluster

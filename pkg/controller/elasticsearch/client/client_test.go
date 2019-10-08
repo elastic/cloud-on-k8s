@@ -26,37 +26,57 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseRoutingTable(t *testing.T) {
+func TestParseShards(t *testing.T) {
 
 	tests := []struct {
 		name string
 		args string
-		want []Shard
+		want Shards
 	}{
 		{
-			name: "Can parse populated routing table",
-			args: fixtures.ClusterStateSample,
-			want: []Shard{
-				{Index: "sample-data-2", Shard: 0, Primary: true, State: STARTED, Node: "stack-sample-es-lkrjf7224s"},
-				{Index: "sample-data-2", Shard: 1, Primary: false, State: STARTED, Node: "stack-sample-es-4fxm76vnwj"},
-				{Index: "sample-data-2", Shard: 2, Primary: true, State: UNASSIGNED, Node: ""},
+			name: "Can parse populated routing table with some relocating shards",
+			args: fixtures.RelocatingShards,
+			want: Shards{
+				Shard{
+					Index:    "data-integrity-check",
+					Shard:    "0",
+					State:    "STARTED",
+					NodeName: "test-mutation-less-nodes-sqn9-es-masterdata-0",
+				},
+				Shard{
+					Index:    "data-integrity-check",
+					Shard:    "1",
+					State:    "RELOCATING",
+					NodeName: "test-mutation-less-nodes-sqn9-es-masterdata-1",
+				},
+				Shard{
+					Index:    "data-integrity-check",
+					Shard:    "2",
+					State:    "RELOCATING",
+					NodeName: "test-mutation-less-nodes-sqn9-es-masterdata-2",
+				},
+				Shard{
+					Index:    "data-integrity-check",
+					Shard:    "3",
+					State:    "UNASSIGNED",
+					NodeName: "",
+				},
 			},
 		},
 		{
 			name: "Can parse an empty routing table",
-			args: fixtures.EmptyClusterStateSample,
+			args: fixtures.NoShards,
 			want: []Shard{},
 		},
 	}
 
 	for _, tt := range tests {
-		var clusterState ClusterState
+		var shards Shards
 		b := []byte(tt.args)
-		err := json.Unmarshal(b, &clusterState)
+		err := json.Unmarshal(b, &shards)
 		if err != nil {
 			t.Error(err)
 		}
-		shards := clusterState.GetShards()
 		assert.True(t, len(shards) == len(tt.want))
 		sort.SliceStable(shards, func(i, j int) bool {
 			return shards[i].Shard < shards[j].Shard
@@ -78,22 +98,22 @@ func TestShardsByNode(t *testing.T) {
 	}{
 		{
 			name: "Can parse populated routing table",
-			args: fixtures.ClusterStateSample,
+			args: fixtures.SampleShards,
 			want: map[string][]Shard{
-				"stack-sample-es-lkrjf7224s": {{Index: "sample-data-2", Shard: 0, Primary: true, State: STARTED, Node: "4cHWfQAwQQKTvKV1vrtbDQ"}},
-				"stack-sample-es-4fxm76vnwj": {{Index: "sample-data-2", Shard: 1, Primary: false, State: STARTED, Node: "SaGT6YMJQyS409ZhonOLhQ"}},
+				"stack-sample-es-lkrjf7224s": {{Index: "sample-data-2", Shard: "0", State: STARTED, NodeName: "stack-sample-es-lkrjf7224s"}},
+				"stack-sample-es-4fxm76vnwj": {{Index: "sample-data-2", Shard: "1", State: STARTED, NodeName: "stack-sample-es-4fxm76vnwj"}},
 			},
 		},
 	}
 
 	for _, tt := range tests {
-		var clusterState ClusterState
+		var shards Shards
 		b := []byte(tt.args)
-		err := json.Unmarshal(b, &clusterState)
+		err := json.Unmarshal(b, &shards)
 		if err != nil {
 			t.Error(err)
 		}
-		shardsByNode := clusterState.GetShardsByNode()
+		shardsByNode := shards.GetShardsByNode()
 		assert.True(t, len(shardsByNode) == len(tt.want))
 		for node, shards := range shardsByNode {
 			expected, ok := tt.want[node]
@@ -138,11 +158,11 @@ func TestClientErrorHandling(t *testing.T) {
 	testClient := NewMockClient(version.MustParse("6.8.0"), errorResponses(codes))
 	requests := []func() (string, error){
 		func() (string, error) {
-			_, err := testClient.GetClusterState(context.Background())
-			return "GetClusterState", err
+			_, err := testClient.GetClusterInfo(context.Background())
+			return "GetClusterInfo", err
 		},
 		func() (string, error) {
-			return "ExcludeFromShardAllocation", testClient.ExcludeFromShardAllocation(context.Background(), "")
+			return "SetMinimumMasterNodes", testClient.SetMinimumMasterNodes(context.Background(), 0)
 		},
 	}
 
@@ -160,10 +180,10 @@ func TestClientUsesJsonContentType(t *testing.T) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
 
-	_, err := testClient.GetClusterState(context.Background())
+	_, err := testClient.GetClusterInfo(context.Background())
 	assert.NoError(t, err)
 
-	assert.NoError(t, testClient.ExcludeFromShardAllocation(context.Background(), ""))
+	assert.NoError(t, testClient.SetMinimumMasterNodes(context.Background(), 0))
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
@@ -206,9 +226,9 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 				assert.Equal(t, tt.want.user.Password, password)
 			}))
 
-		_, err := testClient.GetClusterState(context.Background())
+		_, err := testClient.GetClusterInfo(context.Background())
 		assert.NoError(t, err)
-		assert.NoError(t, testClient.ExcludeFromShardAllocation(context.Background(), ""))
+		assert.NoError(t, testClient.SetMinimumMasterNodes(context.Background(), 0))
 
 	}
 

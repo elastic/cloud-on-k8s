@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -31,24 +31,27 @@ func HandleDownscale(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	// compute the list of StatefulSet downscales to perform
-	downscales := calculateDownscales(expectedStatefulSets, actualStatefulSets)
-	leavingNodes := leavingNodeNames(downscales)
-
-	// migrate data away from nodes that should be removed
-	if err := scheduleDataMigrations(downscaleCtx.esClient, leavingNodes); err != nil {
-		return results.WithError(err)
-	}
-
 	// make sure we only downscale nodes we're allowed to
 	downscaleState, err := newDownscaleState(downscaleCtx.k8sClient, downscaleCtx.es)
 	if err != nil {
 		return results.WithError(err)
 	}
 
+	// compute the list of StatefulSet downscales to perform
+	downscales := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets)
+	leavingNodes := leavingNodeNames(downscales)
+
+	// migrate data away from nodes that should be removed, if leavingNodes is empty, it clears any existing settings
+	if len(leavingNodes) != 0 {
+		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
+	}
+	if err := migration.MigrateData(downscaleCtx.esClient, leavingNodes); err != nil {
+		return results.WithError(err)
+	}
+
 	for _, downscale := range downscales {
 		// attempt the StatefulSet downscale (may or may not remove nodes)
-		requeue, err := attemptDownscale(downscaleCtx, downscale, downscaleState, leavingNodes, actualStatefulSets)
+		requeue, err := attemptDownscale(downscaleCtx, downscale, leavingNodes, actualStatefulSets)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -63,7 +66,7 @@ func HandleDownscale(
 
 // calculateDownscales compares expected and actual StatefulSets to return a list of ssetDownscale.
 // We also include StatefulSets removal (0 replicas) in those downscales.
-func calculateDownscales(expectedStatefulSets sset.StatefulSetList, actualStatefulSets sset.StatefulSetList) []ssetDownscale {
+func calculateDownscales(state downscaleState, expectedStatefulSets sset.StatefulSetList, actualStatefulSets sset.StatefulSetList) []ssetDownscale {
 	downscales := []ssetDownscale{}
 	for _, actualSset := range actualStatefulSets {
 		actualReplicas := sset.GetReplicas(actualSset)
@@ -74,23 +77,27 @@ func calculateDownscales(expectedStatefulSets sset.StatefulSetList, actualStatef
 		}
 		if expectedReplicas == 0 || // removal
 			expectedReplicas < actualReplicas { // downscale
+			if canDownscale, reason := checkDownscaleInvariants(state, actualSset); !canDownscale {
+				ssetLogger(actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
+				continue
+			}
+
+			toDelete := actualReplicas - expectedReplicas
+			if label.IsMasterNodeSet(actualSset) && toDelete > 0 {
+				toDelete = 1 // Only one removal allowed for masters and if it's not already at 0
+			}
+			toDelete = state.getMaxNodesToRemove(toDelete)
 			downscales = append(downscales, ssetDownscale{
 				statefulSet:     actualSset,
 				initialReplicas: actualReplicas,
-				targetReplicas:  expectedReplicas,
+				targetReplicas:  actualReplicas - toDelete,
+				finalReplicas:   expectedReplicas,
 			})
+
+			state.recordRemoval(actualSset, toDelete)
 		}
 	}
 	return downscales
-}
-
-// scheduleDataMigrations requests Elasticsearch to migrate data away from leavingNodes.
-// If leavingNodes is empty, it clears any existing settings.
-func scheduleDataMigrations(esClient esclient.Client, leavingNodes []string) error {
-	if len(leavingNodes) != 0 {
-		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
-	}
-	return migration.MigrateData(esClient, leavingNodes)
 }
 
 // attemptDownscale attempts to decrement the number of replicas of the given StatefulSet,
@@ -100,7 +107,6 @@ func scheduleDataMigrations(esClient esclient.Client, leavingNodes []string) err
 func attemptDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
-	state *downscaleState,
 	allLeavingNodes []string,
 	statefulSets sset.StatefulSetList,
 ) (bool, error) {
@@ -110,13 +116,16 @@ func attemptDownscale(
 
 	case downscale.isReplicaDecrease():
 		// adjust the theoretical downscale to one we can safely perform
-		performable := calculatePerformableDownscale(ctx, state, downscale, allLeavingNodes)
+		performable, err := calculatePerformableDownscale(ctx, downscale, allLeavingNodes)
+		if err != nil {
+			return true, err
+		}
 		if !performable.isReplicaDecrease() {
 			// no downscale can be performed for now, let's requeue
 			return true, nil
 		}
 		// do performable downscale, and requeue if needed
-		shouldRequeue := performable.targetReplicas != downscale.targetReplicas
+		shouldRequeue := performable.targetReplicas != downscale.finalReplicas
 		return shouldRequeue, doDownscale(ctx, performable, statefulSets)
 
 	default:
@@ -127,7 +136,7 @@ func attemptDownscale(
 
 // removeStatefulSetResources deletes the given StatefulSet along with the corresponding
 // headless service and configuration secret.
-func removeStatefulSetResources(k8sClient k8s.Client, es v1alpha1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+func removeStatefulSetResources(k8sClient k8s.Client, es v1beta1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	headlessSvc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
 	err := k8sClient.Delete(&headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -148,33 +157,33 @@ func removeStatefulSetResources(k8sClient k8s.Client, es v1alpha1.Elasticsearch,
 // It returns the updated downscale and a boolean indicating whether a requeue should be done.
 func calculatePerformableDownscale(
 	ctx downscaleContext,
-	state *downscaleState,
 	downscale ssetDownscale,
 	allLeavingNodes []string,
-) ssetDownscale {
+) (ssetDownscale, error) {
 	// create another downscale based on the provided one, for which we'll slowly decrease target replicas
 	performableDownscale := ssetDownscale{
 		statefulSet:     downscale.statefulSet,
 		initialReplicas: downscale.initialReplicas,
 		targetReplicas:  downscale.initialReplicas, // target set to initial
+		finalReplicas:   downscale.finalReplicas,
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		if canDownscale, reason := checkDownscaleInvariants(*state, downscale.statefulSet); !canDownscale {
-			ssetLogger(downscale.statefulSet).V(1).Info("Cannot downscale StatefulSet", "node", node, "reason", reason)
-			return performableDownscale
+		migrating, err := migration.IsMigratingData(ctx.shardLister, node, allLeavingNodes)
+		if err != nil {
+			return performableDownscale, err
 		}
-		if migration.IsMigratingData(ctx.observedState, node, allLeavingNodes) {
+		if migrating {
 			ssetLogger(downscale.statefulSet).V(1).Info("Data migration not over yet, skipping node deletion", "node", node)
 			ctx.reconcileState.UpdateElasticsearchMigrating(ctx.resourcesState, ctx.observedState)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway
-			return performableDownscale
+			return performableDownscale, nil
 		}
+		ssetLogger(downscale.statefulSet).Info("Data migration completed successfully, starting node deletion", "node", node)
 		// data migration over: allow pod to be removed
 		performableDownscale.targetReplicas--
-		state.recordOneRemoval(downscale.statefulSet)
 	}
-	return performableDownscale
+	return performableDownscale, nil
 }
 
 // doDownscale schedules nodes removal for the given downscale, and updates zen settings accordingly.
@@ -214,7 +223,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 func updateZenSettingsForDownscale(
 	c k8s.Client,
 	esClient esclient.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	reconcileState *reconcile.State,
 	actualStatefulSets sset.StatefulSetList,
 	excludeNodes ...string,
@@ -235,7 +244,7 @@ func updateZenSettingsForDownscale(
 func maybeUpdateZen1ForDownscale(
 	c k8s.Client,
 	esClient esclient.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	reconcileState *reconcile.State,
 	actualStatefulSets sset.StatefulSetList) error {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
@@ -262,5 +271,5 @@ func maybeUpdateZen1ForDownscale(
 		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1
-	return zen1.UpdateMinimumMasterNodesTo(es, esClient, reconcileState, minimumMasterNodes)
+	return zen1.UpdateMinimumMasterNodesTo(es, c, esClient, minimumMasterNodes)
 }

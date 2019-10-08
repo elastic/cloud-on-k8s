@@ -17,7 +17,6 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
@@ -33,7 +32,6 @@ var Config *rest.Config
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M, crdPath string) {
 	_ = controllerscheme.SetupScheme()
-	logf.SetLogger(logf.ZapLogger(true))
 	t := &envtest.Environment{
 		CRDDirectoryPaths:        []string{crdPath},
 		ControlPlaneStartTimeout: ControlPlaneStartTimeout,
@@ -67,7 +65,9 @@ func RunWithK8s(m *testing.M, crdPath string) {
 // StartManager sets up a manager and controller to perform reconciliations in background.
 // It must be stopped by calling the returned function.
 func StartManager(t *testing.T, addToMgrFunc func(manager.Manager, operator.Parameters) error, parameters operator.Parameters) (k8s.Client, func()) {
-	mgr, err := manager.New(Config, manager.Options{})
+	mgr, err := manager.New(Config, manager.Options{
+		MetricsBindAddress: "0", // disable
+	})
 	require.NoError(t, err)
 
 	err = addToMgrFunc(mgr, parameters)

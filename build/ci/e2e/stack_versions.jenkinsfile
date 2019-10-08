@@ -51,6 +51,15 @@ pipeline {
                         runWith("${BUILD_TAG}-731", "7.3.1")
                     }
                 }
+                stage("7.4.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+                        runWith("${BUILD_TAG}-740", "7.4.0")
+                    }
+                }
             }
         }
     }
@@ -70,7 +79,7 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["${BUILD_TAG}-682", "${BUILD_TAG}-711", "${BUILD_TAG}-721", "${BUILD_TAG}-731"]
+                clusters = ["${BUILD_TAG}-682", "${BUILD_TAG}-711", "${BUILD_TAG}-721", "${BUILD_TAG}-731", "${BUILD_TAG}-740"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],

@@ -7,8 +7,8 @@ package config
 import (
 	"testing"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ucfg "github.com/elastic/go-ucfg"
@@ -44,7 +44,7 @@ xpack:
 func TestNewConfigSettings(t *testing.T) {
 	type args struct {
 		client k8s.Client
-		kb     func() v1alpha1.Kibana
+		kb     func() v1beta1.Kibana
 	}
 	tests := []struct {
 		name    string
@@ -62,12 +62,12 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "without TLS",
 			args: args{
-				kb: func() v1alpha1.Kibana {
+				kb: func() v1beta1.Kibana {
 					kb := mkKibana()
-					kb.Spec = v1alpha1.KibanaSpec{
-						HTTP: commonv1alpha1.HTTPConfig{
-							TLS: commonv1alpha1.TLSOptions{
-								SelfSignedCertificate: &commonv1alpha1.SelfSignedCertificate{
+					kb.Spec = v1beta1.KibanaSpec{
+						HTTP: commonv1beta1.HTTPConfig{
+							TLS: commonv1beta1.TLSOptions{
+								SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
 									Disabled: true,
 								},
 							},
@@ -91,9 +91,9 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "without Elasticsearch CA",
 			args: args{
-				kb: func() v1alpha1.Kibana {
+				kb: func() v1beta1.Kibana {
 					kb := mkKibana()
-					kb.SetAssociationConf(&commonv1alpha1.AssociationConf{CACertProvided: false})
+					kb.SetAssociationConf(&commonv1beta1.AssociationConf{CACertProvided: false})
 					return kb
 				},
 			},
@@ -112,10 +112,10 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "with user config",
 			args: args{
-				kb: func() v1alpha1.Kibana {
+				kb: func() v1beta1.Kibana {
 					kb := mkKibana()
-					kb.Spec = v1alpha1.KibanaSpec{
-						Config: &commonv1alpha1.Config{
+					kb.Spec = v1beta1.KibanaSpec{
+						Config: &commonv1beta1.Config{
 							Data: map[string]interface{}{
 								"foo": "bar",
 							},
@@ -140,7 +140,7 @@ func TestNewConfigSettings(t *testing.T) {
 			require.NoError(t, got.Unpack(&gotCfg))
 
 			// convert "want" into something comparable
-			cfg, err := uyaml.NewConfig(tt.want, commonv1alpha1.CfgOptions...)
+			cfg, err := uyaml.NewConfig(tt.want, commonv1beta1.CfgOptions...)
 			require.NoError(t, err)
 			var wantCfg map[string]interface{}
 			require.NoError(t, cfg.Unpack(&wantCfg))
@@ -151,8 +151,8 @@ func TestNewConfigSettings(t *testing.T) {
 	}
 }
 
-func mkKibana() v1alpha1.Kibana {
-	kb := v1alpha1.Kibana{}
-	kb.SetAssociationConf(&commonv1alpha1.AssociationConf{CACertProvided: true})
+func mkKibana() v1beta1.Kibana {
+	kb := v1beta1.Kibana{}
+	kb.SetAssociationConf(&commonv1beta1.AssociationConf{CACertProvided: true})
 	return kb
 }

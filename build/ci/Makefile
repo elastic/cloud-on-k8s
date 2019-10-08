@@ -19,7 +19,7 @@ VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/githu
 NOT_USED = $(shell test -e ../../deployer-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" ../../deployer-config.yml)
 endif
 
-CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/Gopkg.lock $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
+CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
 show-image:
 	@ echo $(CI_IMAGE)
@@ -55,7 +55,11 @@ AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$
 yaml-upload:
 	@ $(MAKE) \
 		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
-		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one.yaml \
+		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one-flavor-trivial-versions.yaml \
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one-no-validation.yaml" ci-internal
+	@ $(MAKE) \
+		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
+		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one-flavor-default.yaml \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml" ci-internal
 
 # reads Elastic public key from Vault into license.key

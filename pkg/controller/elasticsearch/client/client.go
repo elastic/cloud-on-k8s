@@ -55,21 +55,16 @@ type Role struct {
 
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client interface {
+	AllocationSetter
+	ShardLister
 	// Close idle connections in the underlying http client.
 	Close()
 	// Equal returns true if other can be considered as the same client.
 	Equal(other Client) bool
 	// GetClusterInfo get the cluster information at /
 	GetClusterInfo(ctx context.Context) (Info, error)
-	// GetClusterState returns the current cluster state
-	GetClusterState(ctx context.Context) (ClusterState, error)
 	// GetClusterRoutingAllocation retrieves the cluster routing allocation settings.
 	GetClusterRoutingAllocation(ctx context.Context) (ClusterRoutingAllocation, error)
-	// UpdateSettings updates the settings of a cluster.
-	UpdateSettings(ctx context.Context, settings Settings) error
-	// ExcludeFromShardAllocation takes a comma-separated string of node names and
-	// configures transient allocation excludes for the given nodes.
-	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
 	// DisableReplicaShardsAllocation disables shards allocation on the cluster (only primaries are allocated).
 	DisableReplicaShardsAllocation(ctx context.Context) error
 	// EnableShardAllocation enables shards allocation on the cluster.

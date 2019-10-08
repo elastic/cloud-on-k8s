@@ -7,6 +7,7 @@ package sset
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -87,6 +89,36 @@ func TestGetActualPodsForStatefulSet(t *testing.T) {
 	require.NoError(t, err)
 	// only one pod is in the same stateful set and namespace
 	assert.Equal(t, 1, len(pods))
+}
+
+func TestGetActualMastersForCluster(t *testing.T) {
+	masterPod := TestPod{
+		Namespace:       "ns0",
+		Name:            "pod0",
+		ClusterName:     "clus0",
+		StatefulSetName: "sset0",
+		Master:          true,
+	}.BuildPtr()
+
+	objs := []runtime.Object{
+		masterPod,
+		getPodSample("pod1", "ns0", "sset0", "clus0", "0"),
+		getPodSample("pod2", "ns1", "sset0", "clus0", "0"),
+		getPodSample("pod3", "ns0", "sset1", "clus1", "0"),
+		getPodSample("pod4", "ns0", "sset1", "clus0", "0"),
+	}
+	c := k8s.WrapClient(fake.NewFakeClient(objs...))
+
+	es := v1beta1.Elasticsearch{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "clus0",
+		},
+	}
+
+	masters, err := GetActualMastersForCluster(c, es)
+	require.NoError(t, err)
+	require.Len(t, masters, 1)
+	require.Equal(t, "pod0", masters[0].GetName())
 }
 
 func getSsetSample(name, namespace, clusterName string) appsv1.StatefulSet {

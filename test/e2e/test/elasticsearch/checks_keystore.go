@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -17,15 +16,23 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func CheckESKeystoreEntries(k *test.K8sClient, es v1alpha1.Elasticsearch, expectedKeys []string) test.Step {
+func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string) test.Step {
 	return test.Step{
 		Name: "Elasticsearch secure settings should eventually be set in all nodes keystore",
 		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.ESPodListOptions(es.Namespace, es.Name)...)
+			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			if err != nil {
 				return err
 			}
-			return test.OnAllPods(pods, func(p corev1.Pod) error {
+			// wait for any ongoing rolling-upgrade to be over
+			if err := allPodsReady(b, k); err != nil {
+				return err
+			}
+			if err := clusterHealthGreen(b, k); err != nil {
+				return err
+			}
+			// check keystore entries on all Pods
+			if err := test.OnAllPods(pods, func(p corev1.Pod) error {
 				// exec into the pod to list keystore entries
 				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), []string{initcontainer.KeystoreBinPath, "list"})
 				if err != nil {
@@ -47,7 +54,11 @@ func CheckESKeystoreEntries(k *test.K8sClient, es v1alpha1.Elasticsearch, expect
 					return fmt.Errorf("invalid keystore entries. Expected: %s. Actual: %s", expectedKeys, entries)
 				}
 				return nil
-			})
+			}); err != nil {
+				return err
+			}
+
+			return nil
 		}),
 	}
 }

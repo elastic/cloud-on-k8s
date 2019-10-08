@@ -8,7 +8,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
@@ -21,8 +21,6 @@ type ESState interface {
 	ShardAllocationsEnabled() (bool, error)
 	// GreenHealth returns true if the cluster health is currently green.
 	GreenHealth() (bool, error)
-	// GetClusterState returns the current cluster state
-	GetClusterState() (*esclient.ClusterState, error)
 }
 
 // MemoizingESState requests Elasticsearch for the requested information only once, at first call.
@@ -32,7 +30,6 @@ type MemoizingESState struct {
 	*memoizingNodes
 	*memoizingShardsAllocationEnabled
 	*memoizingGreenHealth
-	*memoizingClusterState
 }
 
 // NewMemoizingESState returns an initialized MemoizingESState.
@@ -42,7 +39,6 @@ func NewMemoizingESState(esClient esclient.Client) ESState {
 		memoizingNodes:                   &memoizingNodes{esClient: esClient},
 		memoizingShardsAllocationEnabled: &memoizingShardsAllocationEnabled{esClient: esClient},
 		memoizingGreenHealth:             &memoizingGreenHealth{esClient: esClient},
-		memoizingClusterState:            &memoizingClusterState{esClient: esClient},
 	}
 }
 
@@ -130,7 +126,7 @@ func (h *memoizingGreenHealth) initialize() error {
 	if err != nil {
 		return err
 	}
-	h.greenHealth = health.Status == string(v1alpha1.ElasticsearchGreenHealth)
+	h.greenHealth = health.Status == string(v1beta1.ElasticsearchGreenHealth)
 	return nil
 }
 
@@ -140,33 +136,4 @@ func (h *memoizingGreenHealth) GreenHealth() (bool, error) {
 		return false, err
 	}
 	return h.greenHealth, nil
-}
-
-// memoizingClusterState provides shards allocation information.
-type memoizingClusterState struct {
-	clusterState *esclient.ClusterState
-	once         sync.Once
-	esClient     esclient.Client
-}
-
-// -- Cluster state
-
-// initialize requests Elasticsearch for shards allocation information, only once.
-func (s *memoizingClusterState) initialize() error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
-	defer cancel()
-	clusterState, err := s.esClient.GetClusterState(ctx)
-	if err != nil {
-		return err
-	}
-	s.clusterState = &clusterState
-	return nil
-}
-
-// GetClusterState returns the cluster state, including shards information.
-func (s *memoizingClusterState) GetClusterState() (*esclient.ClusterState, error) {
-	if err := initOnce(&s.once, s.initialize); err != nil {
-		return nil, err
-	}
-	return s.clusterState, nil
 }
