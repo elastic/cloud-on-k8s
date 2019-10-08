@@ -74,7 +74,7 @@ pipeline {
 id: gke-ci
 overrides:
   kubernetesVersion: "1.12"
-  clusterName: $BUILD_TAG
+  clusterName: eck-pr-$BUILD_NUMBER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID

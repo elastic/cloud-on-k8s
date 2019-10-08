@@ -21,7 +21,7 @@ pipeline {
                 stage("6.8.2") {
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-682", "6.8.2")
+                        runWith("eck-682-${BUILD_NUMBER}-e2e", "6.8.2")
                     }
                 }
                 stage("7.1.1") {
@@ -30,7 +30,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-711", "7.1.1")
+                        runWith("eck-711-${BUILD_NUMBER}-e2e", "7.1.1")
                     }
                 }
                 stage("7.2.1") {
@@ -39,7 +39,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-721", "7.2.1")
+                        runWith("eck-721-${BUILD_NUMBER}-e2e", "7.2.1")
                     }
                 }
                 stage("7.3.1") {
@@ -48,7 +48,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-731", "7.3.1")
+                        runWith("eck-731-${BUILD_NUMBER}-e2e", "7.3.1")
                     }
                 }
                 stage("7.4.0") {
@@ -57,7 +57,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-740", "7.4.0")
+                        runWith("eck-740-${BUILD_NUMBER}-e2e", "7.4.0")
                     }
                 }
             }
