@@ -1,0 +1,52 @@
+# This sample sets up an Elasticsearch cluster and a Kibana instance preconfigured for that cluster
+apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+kind: Elasticsearch
+metadata:
+  name: monitor
+  namespace: beats
+spec:
+  version: 7.4.0
+  secureSettings:
+  - secretName: gcs-creds
+    entries:
+    - key: service-account.json
+      path: gcs.client.default.credentials_file
+  nodeSets:
+  - name: mdi
+    count: 3
+    podTemplate:
+      metadata:
+        annotations:
+           "co.elastic.logs/module": elasticsearch
+      spec:
+        initContainers:
+        - name: install-gcs
+          command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin install --batch repository-gcs
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: kibana.k8s.elastic.co/v1beta1
+kind: Kibana
+metadata:
+  name: monitor
+  namespace: beats
+spec:
+  version: 7.4.0
+  count: 1
+  elasticsearchRef:
+    name: "monitor"
+  http:
+    service:
+      spec:
+        type: LoadBalancer

@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: metricbeat-daemonset-config
+  namespace: beats
   labels:
     k8s-app: metricbeat
 data:
@@ -21,7 +22,7 @@ data:
           hints.enabled: true
 
     setup.dashboards.enabled: true
-    setup.kibana.host: https://kibana-sample-kb-http:5601
+    setup.kibana.host: https://monitor-kb-http:5601
     setup.kibana.ssl.enabled: true
     setup.kibana.ssl.certificate_authorities:
     - /mnt/kibana/ca.crt
@@ -40,6 +41,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: metricbeat-daemonset-modules
+  namespace: beats
   labels:
     k8s-app: metricbeat
 data:
@@ -98,6 +100,7 @@ apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
   name: metricbeat
+  namespace: beats
   labels:
     k8s-app: metricbeat
 spec:
@@ -122,7 +125,7 @@ spec:
         ]
         env:
         - name: ELASTICSEARCH_HOST
-          value: elasticsearch-monitor-es-http
+          value: monitor-es-http
         - name: ELASTICSEARCH_PORT
           value: "9200"
         - name: ELASTICSEARCH_USERNAME
@@ -131,7 +134,7 @@ spec:
           valueFrom:
             secretKeyRef:
               key: elastic
-              name: elasticsearch-monitor-es-elastic-user
+              name: monitor-es-elastic-user
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -192,15 +195,16 @@ spec:
           type: DirectoryOrCreate
       - name: es-certs
         secret:
-          secretName: elasticsearch-monitor-es-http-certs-public
+          secretName: monitor-es-http-certs-public
       - name: kb-certs
         secret:
-          secretName: kibana-sample-kb-http-certs-public
+          secretName: monitor-kb-http-certs-public
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: metricbeat-deployment-config
+  namespace: beats
   labels:
     k8s-app: metricbeat
 data:
@@ -226,6 +230,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: metricbeat-deployment-modules
+  namespace: beats
   labels:
     k8s-app: metricbeat
 data:
@@ -249,6 +254,7 @@ apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: metricbeat
+  namespace: beats
   labels:
     k8s-app: metricbeat
 spec:
@@ -270,7 +276,7 @@ spec:
         ]
         env:
         - name: ELASTICSEARCH_HOST
-          value: elasticsearch-monitor-es-http
+          value: monitor-es-http
         - name: ELASTICSEARCH_PORT
           value: "9200"
         - name: ELASTICSEARCH_USERNAME
@@ -279,7 +285,7 @@ spec:
           valueFrom:
             secretKeyRef:
               key: elastic
-              name: elasticsearch-monitor-es-elastic-user
+              name: monitor-es-elastic-user
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -315,7 +321,7 @@ spec:
           name: metricbeat-deployment-modules
       - name: es-certs
         secret:
-          secretName: elasticsearch-monitor-es-http-certs-public
+          secretName: monitor-es-http-certs-public
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
@@ -324,7 +330,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: metricbeat
-  namespace: default
+  namespace: beats
 roleRef:
   kind: ClusterRole
   name: metricbeat
@@ -352,6 +358,7 @@ rules:
   resources:
   - statefulsets
   - deployments
+  - replicasets
   verbs: ["get", "list", "watch"]
 - apiGroups:
   - ""
@@ -364,6 +371,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: metricbeat
+  namespace: beats
   labels:
     k8s-app: metricbeat
 ---
