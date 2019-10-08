@@ -30,7 +30,6 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		e.CheckESNodesTopology(b.Elasticsearch),
 		e.CheckESVersion(b.Elasticsearch),
-		e.CheckESReachable(),
 		e.CheckESHealthGreen(),
 	}
 }
@@ -38,24 +37,6 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 func (e *esClusterChecks) newESClient() (client.Client, error) {
 	// recreate ES client for tests that switch between TlS/no TLS
 	return NewElasticsearchClient(e.es, e.k)
-}
-
-func (e *esClusterChecks) CheckESReachable() test.Step {
-	return test.Step{
-		Name: "ES cluster health endpoint should eventually be reachable",
-		Test: test.Eventually(func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-			defer cancel()
-			esClient, err := e.newESClient()
-			if err != nil {
-				return err
-			}
-			if _, err := esClient.GetClusterHealth(ctx); err != nil {
-				return err
-			}
-			return nil
-		}),
-	}
 }
 
 func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) test.Step {
