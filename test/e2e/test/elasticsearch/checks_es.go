@@ -28,10 +28,10 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		k:  k,
 	}
 	return test.StepList{
-		e.CheckESReachable(),
-		e.CheckESVersion(b.Elasticsearch),
-		e.CheckESHealthGreen(),
 		e.CheckESNodesTopology(b.Elasticsearch),
+		e.CheckESVersion(b.Elasticsearch),
+		e.CheckESReachable(),
+		e.CheckESHealthGreen(),
 	}
 }
 
