@@ -64,7 +64,7 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["${BUILD_TAG}-12", "${BUILD_TAG}-13", "${BUILD_TAG}-14"]
+                clusters = ["eck-gke12-${BUILD_NUMBER}-e2e", "eck-gke13-${BUILD_NUMBER}-e2e", "eck-gke14-${BUILD_NUMBER}-e2e"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
