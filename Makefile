@@ -349,6 +349,8 @@ STACK_VERSION ?= 7.4.0
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
 
+e2e-local-run: build-operator-image e2e-docker-build e2e-docker-push e2e-local
+
 e2e-docker-build:
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
 

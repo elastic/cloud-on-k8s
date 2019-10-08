@@ -5,6 +5,7 @@
 package run
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -340,8 +341,28 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 	defer stream.Close()
 
+	vars := os.Environ()
+	for _, v := range vars {
+		fmt.Println(v)
+	}
+
+	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+	//if h.logToFile
+	f, err := os.Create("/Users/artemnikitin/go/src/github.com/artemnikitin/cloud-on-k8s/test_output.txt")
+	if err != nil {
+		return
+	}
+	//defer f.Close()
+
 	var buffer [logBufferSize]byte
-	if _, err := io.CopyBuffer(os.Stdout, stream, buffer[:]); err != nil {
+	if _, err := io.CopyBuffer(io.MultiWriter(os.Stdout, bufio.NewWriter(f)), stream, buffer[:]); err != nil {
 		if err == io.EOF {
 			log.Info("Log stream ended")
 			return

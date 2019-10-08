@@ -27,6 +27,7 @@ var (
 
 func init() {
 	logutil.InitLogger()
+	logutil.ChangeVerbosity(1)
 	log = logf.Log.WithName("e2e")
 }
 
