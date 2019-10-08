@@ -37,7 +37,7 @@ EOF
                     cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
-  clusterName: $BUILD_TAG
+  clusterName: eck-e2e-$BUILD_NUMBER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
@@ -66,7 +66,7 @@ EOF
         }
         cleanup {
             build job: 'cloud-on-k8s-e2e-cleanup',
-                parameters: [string(name: 'GKE_CLUSTER', value: "${BUILD_TAG}")],
+                parameters: [string(name: 'GKE_CLUSTER', value: "eck-e2e-${BUILD_NUMBER}")],
                 wait: false
             cleanWs()
         }
