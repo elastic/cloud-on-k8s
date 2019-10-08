@@ -17,6 +17,11 @@ const (
 	GkeServiceAccountVaultFieldName = "service-account"
 )
 
+var (
+	// GKE uses 18 chars to prefix the pvc created by a cluster
+	PvcPrefixMaxLength = 18
+)
+
 func init() {
 	drivers[GkeDriverID] = &GkeDriverFactory{}
 }
@@ -30,12 +35,16 @@ type GkeDriver struct {
 }
 
 func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
+	pvcPrefix := plan.ClusterName
+	if len(pvcPrefix) > PvcPrefixMaxLength {
+		pvcPrefix = pvcPrefix[0:PvcPrefixMaxLength]
+	}
 	return &GkeDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
 			"GCloudProject":     plan.Gke.GCloudProject,
 			"ClusterName":       plan.ClusterName,
-			"PVCPrefix":         plan.ClusterName[0:18], // GKE uses 18 chars to prefix the pvc created by a cluster
+			"PVCPrefix":         pvcPrefix,
 			"Region":            plan.Gke.Region,
 			"AdminUsername":     plan.Gke.AdminUsername,
 			"KubernetesVersion": plan.KubernetesVersion,
