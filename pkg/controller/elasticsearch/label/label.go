@@ -29,8 +29,7 @@ const (
 	PodNameLabelName = "elasticsearch.k8s.elastic.co/pod-name"
 	// StatefulSetNameLabelName used to store the name of the statefulset
 	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset"
-	// VolumeNameLabelName is the name of the volume e.g. elasticsearch-data a PVC was used for.
-	VolumeNameLabelName = "elasticsearch.k8s.elastic.co/volume-name"
+
 	// ConfigHashLabelName is a label used to store a hash of the Elasticsearch configuration.
 	ConfigHashLabelName = "elasticsearch.k8s.elastic.co/config-hash"
 	// SecureSettingsHashLabelName is a label used to store a hash of the Elasticsearch secure settings secret.
