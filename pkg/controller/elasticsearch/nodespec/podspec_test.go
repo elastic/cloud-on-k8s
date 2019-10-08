@@ -145,7 +145,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 				"elasticsearch.k8s.elastic.co/node-ingest":          "true",
 				"elasticsearch.k8s.elastic.co/node-master":          "true",
 				"elasticsearch.k8s.elastic.co/node-ml":              "true",
-				"elasticsearch.k8s.elastic.co/statefulset":          "name-es-nodeset-1",
+				"elasticsearch.k8s.elastic.co/statefulset-name":     "name-es-nodeset-1",
 				"elasticsearch.k8s.elastic.co/version":              "7.2.0",
 				"pod-template-label-name":                           "pod-template-label-value",
 			},
