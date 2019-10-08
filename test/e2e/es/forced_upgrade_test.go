@@ -8,7 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -110,7 +111,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 			"Pods should have restarted at least once due to wrong ES config",
 			func(p corev1.Pod) error {
 				for _, containerStatus := range p.Status.ContainerStatuses {
-					if containerStatus.Name != v1alpha1.ElasticsearchContainerName {
+					if containerStatus.Name != v1beta1.ElasticsearchContainerName {
 						continue
 					}
 					if containerStatus.RestartCount < 1 {
@@ -118,7 +119,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 					}
 					return nil
 				}
-				return fmt.Errorf("container %s not found in pod %s", v1alpha1.ElasticsearchContainerName, p.Name)
+				return fmt.Errorf("container %s not found in pod %s", v1beta1.ElasticsearchContainerName, p.Name)
 			},
 		),
 		fixed,
