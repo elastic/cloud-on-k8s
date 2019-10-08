@@ -379,14 +379,13 @@ spec:
       maxUnavailable: 1
 ----
 
-<<<<<<< HEAD
-`maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in the currently applied spec.
-`maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in the currently applied spec. Unavailable is defined as Pod being not ready from Kubernetes perspective.
-=======
 `maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in currently applied spec. This setting might be useful when new spec has similar number of Pods, but different node sets (for example, when migrating Pods to a new node set). It will prevent the operator from creating all new Pods before removing the old ones thus preventing having (temporarily) as many as two times more pods than the spec defines.
 
 `maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in currently applied spec. Unavailable is defined as Pod being not ready from Kubernetes perspective.
->>>>>>> Reword the intro, provide use case for maxSurge
+
+As these constraints are enforced immediately after the specification is applied, it is possible the actual state of the cluster might violate these constraints. As long as it remains within the predefined constraints defined by `maxSurge` and `maxUnavailable`, the operator allows the cluster to scale up or down.
+For example, if a new specification defines a larger cluster with `maxUnavailable: 0`, the operator creates the missing Pods according to the best practices. Similarly, if a new specification defines a smaller cluster with `maxSurge: 0`, the operator safely removes the unnecessary Pods.
+
 
 Note that these constraints are enforced immediately after the spec is applied, which might mean that the actual state of the cluster is in violation of these constraints. This is expected and the operator won't stop from moving the cluster towards respecting them.
 For example, if a new spec defines a larger cluster with no unavailable Pods permitted (`maxUnavailable: 0`), the operator will continue creating missing Pods according to the best practices. Similarly, if a new spec defines a smaller cluster with no Pods above the spec permitted (`maxSurge: 0`), the operator will continue safely removing unnecessary Pods.
@@ -394,12 +393,12 @@ For example, if a new spec defines a larger cluster with no unavailable Pods per
 ==== Specifying changeBudget
 For both `maxSurge` and `maxUnavailable` you can specify the following values:
 
-* `null` - the default value will be used,
-* non-negative - the value will be used as is,
-* negative - the value will be unbounded.
+* `null` - the default value is used
+* non-negative - the value is used as is
+* negative - the value is unbounded
 
 ==== Default behavior
-When `updateStrategy` is not present in the spec, it defaults to the following:
+When `updateStrategy` is not present in the specification, it defaults to the following:
 
 [source,yaml]
 ----
@@ -409,16 +408,16 @@ spec:
       maxSurge: -1
       maxUnavailable: 1
 ----
-`maxSurge` is unbounded. This results in immediate creation of all missing Pods that best practices allow for at the given time.
-`maxUnavailable` defaults to `1`. This assures that cluster will have at most one unavailable Pod at any given time.
 
+`maxSurge` is unbounded: this means that all the missing Pods are immediately created according to the best practices at any given time.
+`maxUnavailable` defaults to `1`: this assures that clusters have at most one unavailable Pod at any given time.
 
 ==== Caveats
-* Setting both `maxSurge` and `maxUnavailable` to `0` will prevent the operator from performing any update that needs to bring down or create a new Pod.
-* Due to the safety measures employed by the operator, a particular changeBudget might be insufficient to perform the requested update. For example, removing last data node from one nodeSet and adding data node to a different nodeSet is not possible with `maxSurge` set to 0. In this case operator can't remove the old node (because it can't be migrated since no other data nodes are available) and can't add the new node (because `maxSurge` is set to 0).
-* Currently, the operator has limited understanding of the cluster topology and, during update, might not pick the optimal order of Pod additions and removals. This may lead to update being stuck and require specifying higher `maxSurge` than theoretically needed.
+* With both `maxSurge` and `maxUnavailable` set to `0`, the operator cannot bring down an existing Pod nor create a new Pod.
+* Due to the safety measures employed by the operator, a particular changeBudget might be insufficient to perform the requested update. For example, with `maxSurge` set to 0 you cannot remove the last data node from one nodeSet and add a data node to a different nodeSet. In this case the operator cannot remove the old node and migrate data as other nodes are not available, and can't add the new node because `maxSurge` is set to 0.
+* Currently, the operator has a limited understanding of the cluster topology and during the update might not pick the optimal order of Pods being added or removed. This can block the update process and you might need to specify a higher `maxSurge` than theoretically needed.
 
-In presence of any of the above, operator will emit logs indicating that upscaling or downscaling is limited to respect `maxSurge` or `maxUnavailable` setting.
+If any of the above occurs, the operator generates logs to indicate that upscaling or downscaling are limited by `maxSurge` or `maxUnavailable` settings.
 
 [id="{p}-pod-disruption-budget"]
 === Pod disruption budget
