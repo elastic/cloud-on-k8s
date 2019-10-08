@@ -19,7 +19,7 @@ const (
 
 var (
 	// GKE uses 18 chars to prefix the pvc created by a cluster
-	PvcPrefixMaxLength = 18
+	pvcPrefixMaxLength = 18
 )
 
 func init() {
@@ -36,8 +36,8 @@ type GkeDriver struct {
 
 func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 	pvcPrefix := plan.ClusterName
-	if len(pvcPrefix) > PvcPrefixMaxLength {
-		pvcPrefix = pvcPrefix[0:PvcPrefixMaxLength]
+	if len(pvcPrefix) > pvcPrefixMaxLength {
+		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
 	}
 	return &GkeDriver{
 		plan: plan,
