@@ -35,6 +35,7 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 		ctx: map[string]interface{}{
 			"GCloudProject":     plan.Gke.GCloudProject,
 			"ClusterName":       plan.ClusterName,
+			"PVCPrefix":         plan.ClusterName[0:18], // GKE uses 18 chars to prefix the pvc created by a cluster
 			"Region":            plan.Gke.Region,
 			"AdminUsername":     plan.Gke.AdminUsername,
 			"KubernetesVersion": plan.KubernetesVersion,
@@ -283,7 +284,7 @@ func (d *GkeDriver) delete() error {
 	}
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
-	cmd = `gcloud compute disks list --filter="-users:*" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
 	disks, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
