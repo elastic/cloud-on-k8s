@@ -425,7 +425,6 @@ Even if a `changeBudget` is specified, ECK makes sure that some invariants are m
 
 So under certain circumstances ECK ignores the change budget. For example, a safe migration from a 1-node cluster to another 1-node cluster can only be done by temporarily setting up a 2-node cluster.
 
-// TODO(sabo): update this
 It is possible to configure the `changeBudget` to optimize the reuse of persistent volumes, instead of migrating data across nodes. This feature is not supported yet, more details to come in the next release.
 
 [id="{p}-pod-disruption-budget"]
