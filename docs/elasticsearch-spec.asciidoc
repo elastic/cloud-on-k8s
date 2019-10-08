@@ -127,7 +127,7 @@ spec:
 
 ECK automatically deletes VolumeClaimTemplates resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
 
-IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes <<{p}-orchestration-limitations,cannot be resized after they are created>>. You should consider future storage requirements when defining volume claims to ensure that you have plenty of space available to sustain the expected growth.
+IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes <<{p}-orchestration-limitations,cannot be resized after they are created>>. When you define volume claims, consider future storage requirements and make sure you have enough space to support the expected growth.
 
 If you are not concerned about data loss, you can use an `emptyDir` volume for Elasticsearch data as well:
 
