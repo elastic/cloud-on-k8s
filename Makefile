@@ -56,9 +56,6 @@ endif
 # on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
-	ifeq ($(REGISTRY),eu.gcr.io)
-	REPOSITORY = $(GCLOUD_PROJECT)
-	endif
 else
 	# default to local registry
 	REGISTRY ?= localhost:5000
