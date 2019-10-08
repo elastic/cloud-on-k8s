@@ -17,6 +17,11 @@ const (
 	GkeServiceAccountVaultFieldName = "service-account"
 )
 
+var (
+	// GKE uses 18 chars to prefix the pvc created by a cluster
+	pvcPrefixMaxLength = 18
+)
+
 func init() {
 	drivers[GkeDriverID] = &GkeDriverFactory{}
 }
@@ -30,11 +35,16 @@ type GkeDriver struct {
 }
 
 func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
+	pvcPrefix := plan.ClusterName
+	if len(pvcPrefix) > pvcPrefixMaxLength {
+		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
+	}
 	return &GkeDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
 			"GCloudProject":     plan.Gke.GCloudProject,
 			"ClusterName":       plan.ClusterName,
+			"PVCPrefix":         pvcPrefix,
 			"Region":            plan.Gke.Region,
 			"AdminUsername":     plan.Gke.AdminUsername,
 			"KubernetesVersion": plan.KubernetesVersion,
@@ -283,7 +293,7 @@ func (d *GkeDriver) delete() error {
 	}
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
-	cmd = `gcloud compute disks list --filter="-users:*" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
 	disks, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
