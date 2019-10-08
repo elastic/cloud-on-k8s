@@ -65,7 +65,7 @@ Next, check the Pod status. If a pod fails to reach the `Running` status after a
 
 [source,sh]
 ----
-kubectl get pods -l elasticsearch.k8s.elastic.co/statefulset=elasticsearch-sample-es-default
+kubectl get pods -l elasticsearch.k8s.elastic.co/statefulset-name=elasticsearch-sample-es-default
 
 NAME                                 READY     STATUS    RESTARTS   AGE
 elasticsearch-sample-es-66sv6dvt7g   0/1       Pending   0          3s
