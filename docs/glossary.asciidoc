@@ -24,14 +24,14 @@ This glossary supplements the link:https://kubernetes.io/docs/reference/glossary
 [[GKE]]GKE::
   Google Kubernetes Engine. Managed Kubernetes service provided by Google Cloud Platform (GCP).
 
-[[k8s]]k8s::
+[[k8s]]K8s::
   Shortened form (numeronym) of "Kubernetes" derived from replacing "ubernete" with "8".
 
 [[Node]]Node::
-  Can refer to either an link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[Elasticsearch node] or a link:https://kubernetes.io/docs/concepts/architecture/nodes/[Kubernetes node] depending on the context. ECK maps an Elasticsearch node to a Kubernetes pod which can get scheduled onto any available Kubernetes node that can satisfy the <<{p}-managing-compute-resources,resource requirements>> and link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/[node constraints] defined in the <<{p}-pod-template,pod template>>.
+  Can refer to either an link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[Elasticsearch Node] or a link:https://kubernetes.io/docs/concepts/architecture/nodes/[Kubernetes Node] depending on the context. ECK maps an Elasticsearch node to a Kubernetes Pod which can get scheduled onto any available Kubernetes node that can satisfy the <<{p}-managing-compute-resources,resource requirements>> and link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/[node constraints] defined in the <<{p}-pod-template,pod template>>.
 
 [[NodeSet]]NodeSet::
-  A set of Elasticsearch nodes that share the same Elasticsearch configuration and a Kubernetes pod template. Multiple NodeSets can be defined in the Elasticsearch CRD to achieve a cluster topology consisting of groups of Elasticsearch nodes with different node roles, resource requirements and hardware configurations (Kubernetes node constraints).
+  A set of Elasticsearch nodes that share the same Elasticsearch configuration and a Kubernetes Pod template. Multiple NodeSets can be defined in the Elasticsearch CRD to achieve a cluster topology consisting of groups of Elasticsearch nodes with different node roles, resource requirements and hardware configurations (Kubernetes node constraints).
 
 [[OpenShift]]OpenShift::
   A Kubernetes platform by RedHat.
