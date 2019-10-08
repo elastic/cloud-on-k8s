@@ -191,6 +191,7 @@ func (hc *ContinuousHealthCheck) Start() {
 				return
 			case <-ticker.C:
 				ctx, cancel := context.WithTimeout(context.Background(), continuousHealthCheckTimeout)
+				// recreate the Elasticsearch client at each iteration, since we may have switched protocol from http to https during the mutation
 				client, err := hc.esClientFactory()
 				if err != nil {
 					// treat client creation failure same as unavailable cluster
