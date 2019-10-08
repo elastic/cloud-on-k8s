@@ -16,13 +16,13 @@ This glossary supplements the link:https://kubernetes.io/docs/reference/glossary
   Elastic Cloud on Kubernetes. Kubernetes operator to orchestrate Elasticsearch, Kibana and APM Server deployments on Kubernetes.
 
 [[EKS]]EKS::
-  Elastic Kubernetes Service. Managed Kubernetes service provided by Amazon Web Services (AWS).
+  link:https://aws.amazon.com/eks/[Elastic Kubernetes Service]. Managed Kubernetes service provided by Amazon Web Services (AWS).
 
 [[GCS]]GCS::
   Google Cloud Storage. Block storage service provided by Google Cloud Platform (GCP).
 
 [[GKE]]GKE::
-  Google Kubernetes Engine. Managed Kubernetes service provided by Google Cloud Platform (GCP).
+  link:https://cloud.google.com/kubernetes-engine/[Google Kubernetes Engine]. Managed Kubernetes service provided by Google Cloud Platform (GCP).
 
 [[k8s]]K8s::
   Shortened form (numeronym) of "Kubernetes" derived from replacing "ubernete" with "8".
@@ -34,7 +34,7 @@ This glossary supplements the link:https://kubernetes.io/docs/reference/glossary
   A set of Elasticsearch nodes that share the same Elasticsearch configuration and a Kubernetes Pod template. Multiple NodeSets can be defined in the Elasticsearch CRD to achieve a cluster topology consisting of groups of Elasticsearch nodes with different node roles, resource requirements and hardware configurations (Kubernetes node constraints).
 
 [[OpenShift]]OpenShift::
-  A Kubernetes platform by RedHat.
+  A Kubernetes link:https://www.openshift.com/[platform] by RedHat.
 
 [[Operator]]Operator::
   A design pattern in Kubernetes for link:https://kubernetes.io/docs/concepts/extend-kubernetes/operator/[managing custom resources]. ECK implements the operator pattern to manage Elasticsearch, Kibana and APM Server resources on Kubernetes.
