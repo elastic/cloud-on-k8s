@@ -27,8 +27,8 @@ const (
 	VersionLabelName = "elasticsearch.k8s.elastic.co/version"
 	// PodNameLabelName used to store the name of the pod on other objects
 	PodNameLabelName = "elasticsearch.k8s.elastic.co/pod-name"
-	// StatefulSetNameLabelName used to store the name of the statefulset
-	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset"
+	// StatefulSetNameLabelName used to store the name of the statefulset.
+	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset-name"
 
 	// ConfigHashLabelName is a label used to store a hash of the Elasticsearch configuration.
 	ConfigHashLabelName = "elasticsearch.k8s.elastic.co/config-hash"
