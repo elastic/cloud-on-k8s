@@ -53,3 +53,6 @@ eck_image.txt
 
 # ignore generated public key file
 pkg/controller/common/license/zz_generated.pubkey.go
+
+# ignores validator for Jenkins pipelines
+hack/pipeline-validator/validator
