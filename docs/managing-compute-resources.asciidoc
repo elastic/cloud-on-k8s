@@ -1,6 +1,6 @@
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-managing-compute-resources.html[View this document online]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-managing-compute-resources.html[View this document on the Elastic website]
 ****
 endif::[]
 [id="{p}-managing-compute-resources"]
