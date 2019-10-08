@@ -31,7 +31,7 @@ func TestMutationHTTPToHTTPS(t *testing.T) {
 // then mutates it to a 3 node cluster running without TLS on the HTTP layer.
 func TestMutationHTTPSToHTTP(t *testing.T) {
 	// create a 3 md node cluster
-	b := elasticsearch.NewBuilder("test-mutation-http-to-https").
+	b := elasticsearch.NewBuilder("test-mutation-https-to-http").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	// mutate to http
