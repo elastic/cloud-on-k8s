@@ -51,11 +51,11 @@ func testLongestPossibleName(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithRestrictedSecurityContext().
 		WithNodeSpec(estype.NodeSet{
 			Name:  nodeSpecName,
 			Count: 1,
-		})
+		}).
+		WithRestrictedSecurityContext()
 
 	kbNamePrefix := strings.Join([]string{esNamePrefix, "kb"}, "-")
 	kbName := strings.Join([]string{kbNamePrefix, strings.Repeat("x", name.MaxResourceNameLength-len(kbNamePrefix)-1)}, "-")
@@ -88,11 +88,11 @@ func testRejectionOfLongName(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithRestrictedSecurityContext().
 		WithNodeSpec(estype.NodeSet{
 			Name:  "default",
 			Count: 1,
-		})
+		}).
+		WithRestrictedSecurityContext()
 
 	objectCreated := false
 
