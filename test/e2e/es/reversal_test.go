@@ -49,7 +49,7 @@ func TestReversalStatefulSetRename(t *testing.T) {
 
 	copy := b.Elasticsearch.Spec.NodeSets[0]
 	copy.Name = "other"
-	renamed := b.WithNoESTopology().WithNodeSpec(copy)
+	renamed := b.WithNoESTopology().WithNodeSet(copy)
 
 	RunESMutationReversal(t, b, renamed)
 }
@@ -57,7 +57,7 @@ func TestReversalStatefulSetRename(t *testing.T) {
 func TestRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithNodeSpec(v1beta1.NodeSet{
+		WithNodeSet(v1beta1.NodeSet{
 			Name:  "other-master",
 			Count: 1,
 			Config: &common.Config{
@@ -71,7 +71,7 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 
 	// this currently breaks the cluster (something we might fix in the future at which point this just tests a temp downscale)
 	noMasterMaster := b.WithNoESTopology().WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithNodeSpec(v1beta1.NodeSet{
+		WithNodeSet(v1beta1.NodeSet{
 			Name:  "other-master",
 			Count: 1,
 			Config: &common.Config{
