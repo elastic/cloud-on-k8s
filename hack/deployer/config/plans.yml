@@ -7,7 +7,6 @@ plans:
   machineType: n1-standard-8
   serviceAccount: true
   psp: true
-  vmMapMax: true
   gke:
     region: europe-west1
     adminUsername: admin
@@ -22,7 +21,6 @@ plans:
   machineType: n1-standard-8
   serviceAccount: false
   psp: false
-  vmMapMax: true
   gke:
     region: europe-west1
     adminUsername: admin
@@ -37,7 +35,6 @@ plans:
   machineType: Standard_D8s_v3
   serviceAccount: true
   psp: false
-  vmMapMax: false
   aks:
     nodeCount: 3
 - id: aks-dev
@@ -48,6 +45,5 @@ plans:
   machineType: Standard_D8s_v3
   serviceAccount: false
   psp: false
-  vmMapMax: false
   aks:
     nodeCount: 3

@@ -77,10 +77,6 @@ func (d *GkeDriver) Execute() error {
 		if exists {
 			log.Printf("not creating as cluster exists")
 		} else {
-			if err := d.configSSH(); err != nil {
-				return err
-			}
-
 			if err := d.create(); err != nil {
 				return err
 			}
@@ -92,12 +88,6 @@ func (d *GkeDriver) Execute() error {
 
 		if err := d.GetCredentials(); err != nil {
 			return err
-		}
-
-		if d.plan.VmMapMax {
-			if err := d.setMaxMapCount(); err != nil {
-				return err
-			}
 		}
 
 		if err := d.configureDocker(); err != nil {
@@ -157,11 +147,6 @@ func (d *GkeDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-func (d *GkeDriver) configSSH() error {
-	log.Println("Configuring ssh...")
-	return NewCommand("gcloud --quiet --project {{.GCloudProject}} compute config-ssh").AsTemplate(d.ctx).Run()
-}
-
 func (d *GkeDriver) create() error {
 	log.Println("Creating cluster...")
 	pspOption := ""
@@ -188,39 +173,6 @@ func (d *GkeDriver) bindRoles() error {
 	}
 	cmd := "kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=" + user
 	return NewCommand(cmd).Run()
-}
-
-func (d *GkeDriver) setMaxMapCount() error {
-	log.Println("Setting max map count...")
-	instances, err := NewCommand(`gcloud compute instances list --project={{.GCloudProject}} ` +
-		`--filter="metadata.items.key['cluster-name']['value']='{{.ClusterName}}' AND metadata.items.key['cluster-name']['value']!='' " ` +
-		`--format="value[separator=','](name,zone)"`).
-		AsTemplate(d.ctx).
-		StdoutOnly().
-		OutputList()
-	if err != nil {
-		return err
-	}
-
-	for _, instance := range instances {
-		nameZone := strings.Split(instance, ",")
-		if len(nameZone) != 2 {
-			return fmt.Errorf("instance %s could not be parsed", instance)
-		}
-
-		name, zone := nameZone[0], nameZone[1]
-		if err := NewCommand(`gcloud -q compute ssh jenkins@{{.Name}} --project={{.GCloudProject}} --zone={{.Zone}} --command="sudo sysctl -w vm.max_map_count=262144"`).
-			AsTemplate(map[string]interface{}{
-				"GCloudProject": d.plan.Gke.GCloudProject,
-				"Name":          name,
-				"Zone":          zone,
-			}).
-			Run(); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (d *GkeDriver) configureDocker() error {
