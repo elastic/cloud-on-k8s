@@ -80,7 +80,7 @@ See also: link:https://www.elastic.co/guide/en/elasticsearch/reference/current/h
 [id="{p}-node-configuration"]
 === Node configuration
 
-Any setting defined in the `elasticsearch.yml` configuration file can also be defined for each topology of nodes in the `spec.nodeSets[?].config` section.
+Any setting defined in the `elasticsearch.yml` configuration file can also be defined for set of Elasticsearch nodes in the `spec.nodeSets[?].config` section.
 
 [source,yaml]
 ----
@@ -260,8 +260,7 @@ $ kubectl create secret generic my-cert --from-file=ca.crt=tls.crt --from-file=t
 === Secure settings
 
 You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with Kubernetes secrets.
-The secrets should contain a key-value pair for each secure setting you want to add. Reference that secrets in the Elasticsearch
-resource specification for ECK to automatically inject those settings into the keystore on each node before it starts Elasticsearch.
+The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch.
 
 [source,yaml]
 ----
@@ -381,17 +380,17 @@ On any change, ECK reconciles Kubernetes resources towards the desired cluster d
 [id="{p}-change-budget"]
 ==== Change budget
 
-No downtime should be expected when the cluster topology changes. Shards on deprecated nodes are migrated away so the node can be safely removed.
+No downtime should be expected when the cluster topology changes. Shards on deprecated Elasticsearch nodes are migrated away so that the node can be safely removed.
 
-For example, to mutate a 3-nodes cluster with 16GB memory limit on each node to a 3-nodes cluster with 32GB memory limit on each node, ECK will:
+For example, to mutate a 3-node cluster with 16GB memory limit on each node to a 3-node cluster with 32GB memory limit on each node, ECK will:
 
-1. Add a new 32GB node: the cluster temporarily has 4 nodes
+1. Add a new 32GB Elasticsearch node: the cluster temporarily has 4 nodes
 2. Migrate data away from the first 16GB node
 3. Once data is migrated, remove the first 16GB node
 4. Follow the same steps for the 2 other 16GB nodes
 
 The cluster health stays green during the entire process.
-By default, only one extra node can be added on top of the expected ones. In the example above, a 3-nodes cluster may temporarily be composed of 4 nodes while data migration is in progress.
+By default, only one extra node can be added on top of the expected ones. In the example above, a 3-node cluster may temporarily be composed of 4 nodes while data migration is in progress.
 
 This behaviour can be controlled through the `changeBudget` section of the cluster specification `updateStrategy`. If not specified, it defaults to the following:
 
@@ -424,14 +423,14 @@ Even if a `changeBudget` is specified, ECK makes sure that some invariants are m
 * One master node alive
 * One data node alive
 
-So under certain circumstances ECK ignores the change budget. For example, a safe migration from a 1-node cluster to another 1-node cluster can only be done by temporarily setting up a 2-nodes cluster.
+So under certain circumstances ECK ignores the change budget. For example, a safe migration from a 1-node cluster to another 1-node cluster can only be done by temporarily setting up a 2-node cluster.
 
 It is possible to configure the `changeBudget` to optimize the reuse of persistent volumes, instead of migrating data across nodes. This feature is not supported yet, more details to come in the next release.
 
 [id="{p}-pod-disruption-budget"]
 === Pod disruption budget
 
-A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of Pods while the Kubernetes cluster administrator manages cluster nodes.
+A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of Pods while the Kubernetes cluster administrator manages Kubernetes nodes.
 Elasticsearch makes sure some indices don't become unavailable.
 
 A default PDB of 1 `maxUnavailable` Pod on the entire cluster is enforced by default.

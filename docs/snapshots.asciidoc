@@ -123,13 +123,13 @@ If you did not follow the instructions above and named your GCS credentials file
 kubectl apply -f elasticsearch.yml
 ----
 
-GCS credentials are automatically propagated into each node's keystore. It can take up to a few minutes, depending on the number of secrets in the keystore. You don't have to restart the nodes.
+GCS credentials are automatically propagated into each Elasticsearch node's keystore. It can take up to a few minutes, depending on the number of secrets in the keystore. You don't have to restart the nodes.
 
 [float]
 [id="{p}-create-repository"]
 ==== Register the repository in Elasticsearch
 
-. Create the GCS snapshot repository in Elasticsearch. You can either use the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] in Kibana added[7.4.0] or follow the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
+. Create the GCS snapshot repository in Elasticsearch. You can either use the https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] in Kibana (in version >= 7.4.0) or follow the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
 
 +
 [source,sh]
@@ -155,9 +155,7 @@ PUT /_snapshot/my_gcs_repository/test-snapshot
 [id="{p}-setup-cronjob"]
 ==== Periodic snapshots with Snapshot Lifecycle Management
 
-added[7.4.0]
-
-You can use the https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[snapshot lifecycle management APIs] to manage policies for the time and frequency of automatic snapshots.
+You can use the https://www.elastic.co/guide/en/elasticsearch/reference/current/snapshot-lifecycle-management-api.html[snapshot lifecycle management APIs] to manage policies for the time and frequency of automatic snapshots (in versions >= 7.4.0).
 
 The https://www.elastic.co/guide/en/kibana/current/snapshot-repositories.html[Snapshot and Restore UI] allows you to manage these policies directly in Kibana as well.
 

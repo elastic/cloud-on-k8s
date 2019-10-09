@@ -6,7 +6,7 @@ endif::[]
 [id="{p}-managing-compute-resources"]
 == Managing compute resources
 
-In order to help the Kubernetes scheduler make better decisions about how to place pods in available nodes and ensure quality of service (QoS), it is recommended to specify the CPU and memory requirements for objects managed by the operator (Elasticsearch, Kibana or APM Server). In Kubernetes parlance, `requests` defines the minimum amount of resources that must be available for a pod to start and `limits` defines the maximum amount of resources that a pod is allowed to consume. For more information about how Kubernetes uses these hints, see: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers].
+In order to help the Kubernetes scheduler make better decisions about how to place pods in available Kubernetes nodes and ensure quality of service (QoS), it is recommended to specify the CPU and memory requirements for objects managed by the operator (Elasticsearch, Kibana or APM Server). In Kubernetes parlance, `requests` defines the minimum amount of resources that must be available for a pod to be scheduled and `limits` defines the maximum amount of resources that a pod is allowed to consume. For more information about how Kubernetes uses these hints, see: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers].
 
 [float]
 [id="{p}-compute-resources"]

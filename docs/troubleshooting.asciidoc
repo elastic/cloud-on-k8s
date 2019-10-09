@@ -102,7 +102,7 @@ If you see an error with unbound persistent volume claims (PVCs), it means there
 === Get Elasticsearch logs
 
 Each Elasticsearch node name is mapped to the corresponding Pod name.
-To get the logs of a particular node, just fetch the Pod logs:
+To get the logs of a particular Elasticsearch node, just fetch the Pod logs:
 
 [source,sh]
 ----
