@@ -96,9 +96,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 		})
 
 	// fix that cluster to remove the wrong configuration
-	fixed := elasticsearch.Builder{}
-	fixed.Elasticsearch = *initial.Elasticsearch.DeepCopy()
-	fixed.Elasticsearch.Spec.NodeSets[0].Config = nil
+	fixed := initial.WithNoESTopology().WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	k := test.NewK8sClientOrFatal()
 	elasticsearch.ForcedUpgradeTestSteps(
