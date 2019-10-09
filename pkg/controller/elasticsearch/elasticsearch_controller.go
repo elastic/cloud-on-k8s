@@ -249,6 +249,10 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 	if len(violations) > 0 {
+		log.Error(
+			fmt.Errorf("manifest validation failed"), "Elasticsearch manifest validation failed",
+			"violations", violations,
+		)
 		reconcileState.UpdateElasticsearchInvalid(violations)
 		return results
 	}
