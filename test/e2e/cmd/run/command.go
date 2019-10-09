@@ -77,7 +77,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
 	cmd.Flags().StringVar(&flags.crdFlavor, "crd-flavor", "default", "CRD flavor to install")
-	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if shoudl log test output to file. Disabled by default.")
+	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if should log test output to file. Disabled by default.")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables
