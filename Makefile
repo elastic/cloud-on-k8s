@@ -366,6 +366,9 @@ e2e-run:
 		--crd-flavor=$(CRD_FLAVOR) \
 		--log-to-file=$(E2E_JSON)
 
+e2e-generate-xml:
+	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
+
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
 	go test ./test/e2e/... -run=dryrun > /dev/null
