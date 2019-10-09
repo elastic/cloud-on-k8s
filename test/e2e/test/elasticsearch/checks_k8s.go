@@ -283,7 +283,7 @@ func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
 				if err != nil {
 					return err
 				}
-				return fmt.Errorf("pod %s is not Ready.\nStatus:%s\n", p.Name, statusJSON)
+				return fmt.Errorf("pod %s is not Ready.\nStatus:%s", p.Name, statusJSON)
 			}
 			// Pod should either:
 			// - be annotated with the hash of the current ES spec from previous E2E steps
