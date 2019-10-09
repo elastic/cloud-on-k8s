@@ -258,7 +258,7 @@ spec:
 This example relies on:
 
 - Kubernetes nodes in each zone being labeled accordingly. `failure-domain.beta.kubernetes.io/zone` link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels[is standard], but any label can be used.
-- node affinity for each group of nodes set to match the Kubernetes node's zone.
+- node affinity for each group of nodes set to match the Kubernetes nodes' zone.
 - Elasticsearch configured to link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[allocate shards based on node attributes]. Here we specified `node.attr.zone`, but any attribute name can be used. `node.attr.rack_id` is another common example.
 
 [float]
