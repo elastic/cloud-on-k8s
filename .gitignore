@@ -47,6 +47,8 @@ integration-tests.json
 integration-tests.xml
 unit-tests.json
 unit-tests.xml
+e2e-tests.json
+e2e-tests.xml
 
 # ignore files fo release job
 eck_image.txt

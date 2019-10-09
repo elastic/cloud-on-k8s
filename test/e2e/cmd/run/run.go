@@ -5,7 +5,6 @@
 package run
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -35,6 +34,7 @@ const (
 	kubePollInterval = 10 * time.Second  // Kube API polling interval
 	logBufferSize    = 1024              // Size of the log buffer (1KiB)
 	testRunLabel     = "test-run"        // name of the label applied to resources
+	testsLogFile     = "e2e-tests.json"  // name of file to keep all test logs in JSON format
 )
 
 type stepFunc func() error
@@ -341,28 +341,16 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 	defer stream.Close()
 
-	vars := os.Environ()
-	for _, v := range vars {
-		fmt.Println(v)
-	}
-
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
 	//if h.logToFile
-	f, err := os.Create("/Users/artemnikitin/go/src/github.com/artemnikitin/cloud-on-k8s/test_output.txt")
+	f, err := os.Create(testsLogFile)
 	if err != nil {
 		return
 	}
-	//defer f.Close()
+	defer f.Close()
 
 	var buffer [logBufferSize]byte
-	if _, err := io.CopyBuffer(io.MultiWriter(os.Stdout, bufio.NewWriter(f)), stream, buffer[:]); err != nil {
+	if _, err := io.CopyBuffer(io.MultiWriter(os.Stdout, f), stream, buffer[:]); err != nil {
+		//if _, err := io.CopyBuffer(os.Stdout, stream, buffer[:]); err != nil {
 		if err == io.EOF {
 			log.Info("Log stream ended")
 			return
