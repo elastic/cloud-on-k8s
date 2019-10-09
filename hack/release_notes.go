@@ -41,7 +41,12 @@ const (
 )
 
 var (
-	order = []string{
+	// To use authenticated requests against the Github API set the following environment variables:
+	// GH_USER is a Github user name
+	githubUser  = os.Getenv("GH_USER")
+	// GH_TOKEN is a personal access token see https://github.com/settings/tokens
+	githubToken = os.Getenv("GH_TOKEN")
+	order       = []string{
 		">breaking",
 		">deprecation",
 		">feature",
@@ -95,7 +100,14 @@ type TemplateParams struct {
 }
 
 func fetch(url string, out interface{}) (string, error) {
-	resp, err := http.Get(url) //#nosec
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	if githubUser != "" && githubToken != "" {
+		request.SetBasicAuth(githubUser, githubToken)
+	}
+	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return "", err
 	}
