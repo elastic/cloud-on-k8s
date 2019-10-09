@@ -29,7 +29,7 @@ If some downtime is acceptable, upgrading in place can be performed as follows:
 
 CAUTION: These instructions are general guidelines only. You should have a thoroughly tested upgrade plan for your environment before attempting to modify any production deployments.
 
-. <<{p}-convert-manifests,Convert existing manifests to the new format>>
+. <<{p}-convert-manifests,Convert existing manifests to the new format>>.
 . link:https://www.elastic.co/guide/en/cloud-on-k8s/0.9/k8s-snapshot.html[Create snapshots of your existing Elasticsearch clusters].
 . link:https://www.elastic.co/guide/en/cloud-on-k8s/0.9/k8s-uninstall.html[Uninstall ECK].
 . link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html[Install new version of ECK].
@@ -41,7 +41,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 ==== Convert Manifests
 
 .Elasticsearch
-* Replace `v1alpha` in the `apiVersion` field with `v1beta1`
+* Replace `v1alpha1` in the `apiVersion` field with `v1beta1`
 * Rename `nodes` to `nodeSets`
 * Ensure that every `nodeSets` entry has a `name` and rename `nodeCount` to `count`
 * Remove `setVmMaxMapCount`. See: <<{p}-virtual-memory>>.
