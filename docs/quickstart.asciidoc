@@ -47,7 +47,7 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 [id="{p}-deploy-elasticsearch"]
 === Deploy an Elasticsearch cluster
 
-Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one Elasticsearchnode:
+Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one Elasticsearch node:
 
 NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
 
