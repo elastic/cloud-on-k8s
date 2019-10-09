@@ -1,10 +1,10 @@
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-uninstall.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-uninstalling-eck.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-uninstall"]
-== Uninstall ECK
+[id="{p}-uninstalling-eck"]
+== Uninstalling ECK
 
 Before uninstalling the operator, remove all Elastic resources in all namespaces:
 
