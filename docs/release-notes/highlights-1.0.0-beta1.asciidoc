@@ -1,0 +1,26 @@
+[[release-highlights-1.0.0-beta1]]
+== 1.0.0-beta1 Release Highlights
+
+[float]
+=== TODO
+
+TODO
+
+[float]
+=== TODO
+
+TODO
+
+[float]
+=== Breaking Changes
+
+TODO
+
+Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. To unblock the deletion, remove any registered finalizer from the resource:
+
+[source,sh]
+----
+kubectl patch elasticsearch quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch kibana quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch apmserver quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+----
