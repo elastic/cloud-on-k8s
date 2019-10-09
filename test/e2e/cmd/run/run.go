@@ -341,16 +341,18 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 	defer stream.Close()
 
-	//if h.logToFile
-	f, err := os.Create(testsLogFile)
-	if err != nil {
-		return
+	writer := io.MultiWriter(os.Stdout)
+	if h.logToFile {
+		f, err := os.Create(testsLogFile)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+		writer = io.MultiWriter(writer, f)
 	}
-	defer f.Close()
 
 	var buffer [logBufferSize]byte
-	if _, err := io.CopyBuffer(io.MultiWriter(os.Stdout, f), stream, buffer[:]); err != nil {
-		//if _, err := io.CopyBuffer(os.Stdout, stream, buffer[:]); err != nil {
+	if _, err := io.CopyBuffer(writer, stream, buffer[:]); err != nil {
 		if err == io.EOF {
 			log.Info("Log stream ended")
 			return
