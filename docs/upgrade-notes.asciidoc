@@ -1,0 +1,111 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-upgrade-notes.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-upgrade-notes"]
+== Upgrade notes
+
+[float]
+[id="{p}-upgrade-to-v1beta1"]
+=== Upgrading to ECK 1.0.0-beta1 from previous versions
+
+ECK 1.0.0-beta1 includes changes that are incompatible with previous versions of the operator. Notable changes include:
+
+- Custom resource version has changed from `v1alpha1` to `v1beta1`.
+- Some CRD fields have been removed and some others have been renamed to clarify their purpose.
+- Elasticsearch cluster orchestration is now managed through link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/[StatefulSet] resources.
+
+NOTE: See the link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-release-notes.html[release notes] for more information about all the features included in this release.
+
+It is recommended to install ECK 1.0.0-beta1 in a fresh Kubernetes cluster and migrate data over from existing clusters if possible. If you wish to install ECK into an existing Kubernetes cluster that has a previous version of the operator installed, it is important to consider the following:
+
+- The old operator will be replaced by the new operator during the installation process.
+- Existing Elasticsearch, Kibana and APM Server resources created by an old version of the operator will continue to work but they will not be managed by the new operator. This means that the orchestration benefits provided by the operator such as rolling upgrades will no longer be available to those resources.
+- If the old operator is replaced without removing old resources first, you will have to manually disable finalizers to delete them later.
+- Existing Kubernetes manifests should be converted to the new format in order to work with the new operator.
+
+If some downtime is acceptable, upgrading in place can be performed as follows:
+
+CAUTION: These instructions are general guidelines only. You should have a thoroughly tested upgrade plan for your environment before attempting to modify any production deployments.
+
+. <<{p}-convert-manifests,Convert existing manifests to the new format>>
+. link:https://www.elastic.co/guide/en/cloud-on-k8s/0.9/k8s-snapshot.html[Create snapshots of your existing Elasticsearch clusters].
+. link:https://www.elastic.co/guide/en/cloud-on-k8s/0.9/k8s-uninstall.html[Uninstall ECK].
+. link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html[Install new version of ECK].
+. Re-create the resources by applying the manifests converted in the first step.
+. Restore data from the snapshots.
+
+[float]
+[id="{p}-convert-manifests"]
+==== Convert Manifests
+
+.Elasticsearch
+* Replace `v1alpha` in the `apiVersion` field with `v1beta1`
+* Rename `nodes` to `nodeSets`
+* Ensure that every `nodeSets` entry has a `name` and rename `nodeCount` to `count`
+* Remove `setVmMaxMapCount`. See: <<{p}-virtual-memory>>.
+* Remove `groups` from `updateStrategy`. See: <<{p}-change-budget>>.
+* Remove `featureFlags`
+
+[source,patch,subs="attributes"]
+----
+-apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
++apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+ kind: Elasticsearch
+ metadata:
+   name: elasticsearch-sample
+ spec:
+   version: {version}
+-  setVmMaxMapCount: true
+-  featureFlags: {}
+   updateStrategy:
+     changeBudget:
+       maxUnavailable: 1
+-    groups: []
+-  nodes:
+-  - nodeCount: 3
++  nodeSets:
++  - count: 3
++    name: master-nodes
+----
+
+
+.Kibana
+* Replace `v1alpha` in the `apiVersion` field with `v1beta1`
+* Rename `nodeCount` to `count`
+
+[source,patch,subs="attributes"]
+----
+-apiVersion: kibana.k8s.elastic.co/v1alpha1
++apiVersion: kibana.k8s.elastic.co/v1beta1
+ kind: Kibana
+ metadata:
+   name: kibana-sample
+ spec:
+   version: {version}
+-  nodeCount: 1
++  count: 1
+   elasticsearchRef:
+     name: "elasticsearch-sample"
+----
+
+
+.APM Server
+* Replace `v1alpha` in the `apiVersion` field with `v1beta1`
+* Rename `nodeCount` to `count`
+
+[source,patch,subs="attributes"]
+----
+-apiVersion: apm.k8s.elastic.co/v1alpha1
++apiVersion: apm.k8s.elastic.co/v1beta1
+ kind: ApmServer
+ metadata:
+   name: apm-server-sample
+ spec:
+   version: {version}
+-  nodeCount: 1
++  count: 1
+   elasticsearchRef:
+     name: "elasticsearch-sample"
+----
