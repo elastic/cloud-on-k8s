@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-overview.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-overview"]
 == Overview
 
@@ -21,5 +26,3 @@ Learn more about ECK:
 
 - link:https://www.elastic.co/elasticsearch-kubernetes[Orchestrate Elasticsearch on Kubernetes]
 - link:https://www.elastic.co/blog/introducing-elastic-cloud-on-kubernetes-the-elasticsearch-operator-and-beyond?elektra=products&storm=sub1[ECK's Blog]
-
-

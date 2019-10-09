@@ -249,6 +249,13 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 	if len(violations) > 0 {
+		log.Error(
+			fmt.Errorf("manifest validation failed"),
+			"Elasticsearch manifest validation failed",
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+			"violations", violations,
+		)
 		reconcileState.UpdateElasticsearchInvalid(violations)
 		return results
 	}
@@ -300,7 +307,7 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
-		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind()),
-		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind(), es.Name, esname.ESNamer),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind),
+		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, esname.ESNamer),
 	}
 }

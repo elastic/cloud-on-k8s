@@ -29,7 +29,7 @@ vendor/
 license.key
 
 # generated from merging multiple files in the Makefile
-config/all-in-one.yaml
+config/all-in-one-flavor-*.yaml
 
 # ignore all generated docs HTML
 docs/html/*
@@ -50,3 +50,9 @@ unit-tests.xml
 
 # ignore files fo release job
 eck_image.txt
+
+# ignore generated public key file
+pkg/controller/common/license/zz_generated.pubkey.go
+
+# ignores validator for Jenkins pipelines
+hack/pipeline-validator/validator

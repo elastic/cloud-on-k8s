@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +39,52 @@ func TestForceUpgradePendingPods(t *testing.T) {
 	).RunSequential(t)
 }
 
+func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
+	// create a cluster in which one StatefulSet is OK,
+	// and the second one will have Pods that stay Pending forever
+	initial := elasticsearch.NewBuilder("force-upgrade-pending-sset").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithESDataNodes(2, elasticsearch.DefaultResources)
+
+	initial.Elasticsearch.Spec.NodeSets[1].PodTemplate.Spec.NodeSelector = map[string]string{
+		"cannot": "be-scheduled",
+	}
+	// fix that cluster to remove the wrong NodeSelector
+	fixed := elasticsearch.Builder{}
+	fixed.Elasticsearch = *initial.Elasticsearch.DeepCopy()
+	fixed.Elasticsearch.Spec.NodeSets[1].PodTemplate.Spec.NodeSelector = nil
+
+	k := test.NewK8sClientOrFatal()
+	elasticsearch.ForcedUpgradeTestSteps(
+		k,
+		initial,
+		test.Step{
+			Name: "Wait for Pods of the first StatefulSet to be running, and second StatefulSet to be Pending",
+			Test: test.Eventually(func() error {
+				pendingSset := name.StatefulSet(initial.Elasticsearch.Name, initial.Elasticsearch.Spec.NodeSets[1].Name)
+				pods, err := k.GetPods(test.ESPodListOptions(initial.Elasticsearch.Namespace, initial.Elasticsearch.Name)...)
+				if err != nil {
+					return err
+				}
+				if int32(len(pods)) != initial.Elasticsearch.Spec.NodeCount() {
+					return fmt.Errorf("expected %d pods, got %d", len(pods), initial.Elasticsearch.Spec.NodeCount())
+				}
+				for _, p := range pods {
+					expectedPhase := corev1.PodRunning
+					if p.Labels[label.StatefulSetNameLabelName] == pendingSset {
+						expectedPhase = corev1.PodPending
+					}
+					if p.Status.Phase != expectedPhase {
+						return fmt.Errorf("pod %s not %s", p.Name, expectedPhase)
+					}
+				}
+				return nil
+			}),
+		},
+		fixed,
+	).RunSequential(t)
+}
+
 func TestForceUpgradeBootloopingPods(t *testing.T) {
 	// create a cluster with a bad ES configuration that leads to Pods bootlooping
 	initial := elasticsearch.NewBuilder("force-upgrade-bootloop").
@@ -47,9 +96,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 		})
 
 	// fix that cluster to remove the wrong configuration
-	fixed := elasticsearch.Builder{}
-	fixed.Elasticsearch = *initial.Elasticsearch.DeepCopy()
-	fixed.Elasticsearch.Spec.NodeSets[0].Config = nil
+	fixed := initial.WithNoESTopology().WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	k := test.NewK8sClientOrFatal()
 	elasticsearch.ForcedUpgradeTestSteps(
@@ -62,7 +109,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 			"Pods should have restarted at least once due to wrong ES config",
 			func(p corev1.Pod) error {
 				for _, containerStatus := range p.Status.ContainerStatuses {
-					if containerStatus.Name != v1alpha1.ElasticsearchContainerName {
+					if containerStatus.Name != v1beta1.ElasticsearchContainerName {
 						continue
 					}
 					if containerStatus.RestartCount < 1 {
@@ -70,7 +117,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 					}
 					return nil
 				}
-				return fmt.Errorf("container %s not found in pod %s", v1alpha1.ElasticsearchContainerName, p.Name)
+				return fmt.Errorf("container %s not found in pod %s", v1beta1.ElasticsearchContainerName, p.Name)
 			},
 		),
 		fixed,

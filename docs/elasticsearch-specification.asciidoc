@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-elasticsearch-specification.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-elasticsearch-specification"]
 == Running Elasticsearch on ECK
 
@@ -21,7 +26,8 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-update-strategy>>
 - <<{p}-pod-disruption-budget>>
 - <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
-- <<{p}-snapshot,Create automated snapshots>>
+- <<{p}-orchestration>>
+- <<{p}-snapshots,Create automated snapshots>>
 
 [id="{p}-pod-template"]
 === Pod Template
@@ -104,15 +110,15 @@ For more information on Elasticsearch settings, see https://www.elastic.co/guide
 [id="{p}-volume-claim-templates"]
 === Volume claim templates
 
-By default the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
-
-You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs. The name in the template must be `elasticsearch-data`:
+By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each pod in an Elasticsearch cluster to prevent data loss in case of accidental pod deletion. For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. The name of the volume claim must always be `elasticsearch-data`.
 
 [source,yaml]
 ----
 spec:
   nodeSets:
-  - volumeClaimTemplates:
+  - name: default
+    count: 3
+    volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
       spec:
@@ -124,7 +130,11 @@ spec:
         storageClassName: standard
 ----
 
-If you want to use an `emptyDir` volume, specify the `elasticsearch-data` volume in the `podTemplate`:
+ECK automatically deletes VolumeClaimTemplates resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
+
+IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes <<{p}-orchestration-limitations,cannot be resized after they are created>>. When you define volume claims, consider future storage requirements and make sure you have enough space to support the expected growth.
+
+If you are not concerned about data loss, you can use an `emptyDir` volume for Elasticsearch data as well:
 
 [source,yaml]
 ----
@@ -138,7 +148,8 @@ spec:
           emptyDir: {}
 ----
 
-IMPORTANT: Using `emptyDir` might result in data loss and is not recommended.
+CAUTION: Using `emptyDir` is not recommended due to the high likelihood of permanent data loss.
+
 
 [id="{p}-http-settings-tls-sans"]
 === HTTP settings & TLS SANs
@@ -176,15 +187,15 @@ By default, Elasticsearch uses memory mapping (`mmap`) to efficiently access ind
 Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions. This is why link:k8s-quickstart.html[the quickstart example] disables `mmap` via the `node.store.allow_mmap: false` setting. For production workloads, it is strongly recommended to increase the kernel setting `vm.max_map_count` to `2621441` and leave `node.store.allow_mmap` unset.
 
 The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which must be privileged. To add an init container that changes the host kernel setting before your Elasticsearch pod starts, you can use the following example Elasticsearch spec:
-[source,yaml]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
-apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.4.0
+  version: {version}
   nodes:
   - name: default
     nodeCount: 1
@@ -273,7 +284,7 @@ spec:
       path: newkey2
 ----
 
-See link:k8s-snapshot.html[How to create automated snapshots] for an example use case.
+See <<{p}-snapshots,How to create automated snapshots>> for an example use case.
 
 [id="{p}-bundles-plugins"]
 === Custom configuration files and plugins
@@ -351,7 +362,7 @@ You can install custom plugins before the Elasticsearch container starts with an
             bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
-You can also override the Elasticsearch container image to use your own image with the plugins already installed, as described in the link:k8s-images.asciidoc[custom images doc]. The link:k8s-snapshot.html[snapshots] doc has more information on both these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
+You can also override the Elasticsearch container image to use your own image with the plugins already installed, as described in the link:k8s-images.asciidoc[custom images doc]. The <<{p}-snapshots,snapshots>> document has more information on both these options. The Kubernetes document on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
 
 The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It also inherits the Pod name and IP address environment variables.
 
@@ -462,5 +473,6 @@ spec:
   podDisruptionBudget: {}
 ----
 
+include::orchestration.asciidoc[]
 include::advanced-node-scheduling.asciidoc[]
 include::snapshots.asciidoc[]

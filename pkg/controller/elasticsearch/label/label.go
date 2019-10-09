@@ -27,12 +27,13 @@ const (
 	VersionLabelName = "elasticsearch.k8s.elastic.co/version"
 	// PodNameLabelName used to store the name of the pod on other objects
 	PodNameLabelName = "elasticsearch.k8s.elastic.co/pod-name"
-	// StatefulSetNameLabelName used to store the name of the statefulset
-	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset"
-	// VolumeNameLabelName is the name of the volume e.g. elasticsearch-data a PVC was used for.
-	VolumeNameLabelName = "elasticsearch.k8s.elastic.co/volume-name"
-	// ConfigChecksumLabelName used to store the checksum of the Elasticsearch configuration
-	ConfigChecksumLabelName = "elasticsearch.k8s.elastic.co/config-checksum"
+	// StatefulSetNameLabelName used to store the name of the statefulset.
+	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset-name"
+
+	// ConfigHashLabelName is a label used to store a hash of the Elasticsearch configuration.
+	ConfigHashLabelName = "elasticsearch.k8s.elastic.co/config-hash"
+	// SecureSettingsHashLabelName is a label used to store a hash of the Elasticsearch secure settings secret.
+	SecureSettingsHashLabelName = "elasticsearch.k8s.elastic.co/secure-settings-hash"
 
 	// NodeTypesMasterLabelName is a label set to true on nodes with the master role
 	NodeTypesMasterLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"
@@ -42,8 +43,6 @@ const (
 	NodeTypesIngestLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ingest"
 	// NodeTypesMLLabelName is a label set to true on nodes with the ml role
 	NodeTypesMLLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
-
-	ConfigTemplateHashLabelName = "elasticsearch.k8s.elastic.co/config-template-hash"
 
 	HTTPSchemeLabelName = "elasticsearch.k8s.elastic.co/http-scheme"
 
@@ -128,7 +127,7 @@ func NewPodLabels(
 	NodeTypesMLLabelName.Set(nodeRoles.ML, labels)
 
 	// config hash label, to rotate pods on config changes
-	labels[ConfigTemplateHashLabelName] = configHash
+	labels[ConfigHashLabelName] = configHash
 
 	labels[HTTPSchemeLabelName] = scheme
 

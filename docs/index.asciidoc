@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/index.html[ECK Documentation]
+****
+endif::[]
 = Elastic Cloud on Kubernetes
 :n: Elastic Cloud on Kubernetes
 :p: k8s
@@ -8,14 +13,16 @@ include::{asciidoc-dir}/../../shared/versions/stack/current.asciidoc[]
 include::{asciidoc-dir}/../../shared/attributes.asciidoc[]
 include::eck-attributes.asciidoc[]
 include::overview.asciidoc[]
-include::k8s-quickstart.asciidoc[]
+include::quickstart.asciidoc[]
 include::openshift.asciidoc[]
-include::accessing-services.asciidoc[]
+include::accessing-elastic-services.asciidoc[]
 include::managing-compute-resources.asciidoc[]
-include::elasticsearch-spec.asciidoc[]
+include::elasticsearch-specification.asciidoc[]
 include::kibana.asciidoc[]
-include::apm.asciidoc[]
-include::images.asciidoc[]
+include::apm-server.asciidoc[]
+include::custom-images.asciidoc[]
 include::operator-config.asciidoc[]
 include::troubleshooting.asciidoc[]
-include::uninstall.asciidoc[]
+include::upgrading-eck.asciidoc[]
+include::uninstalling-eck.asciidoc[]
+include::glossary.asciidoc[]

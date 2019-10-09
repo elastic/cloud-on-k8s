@@ -29,6 +29,8 @@ const (
 	defaultPodDisruptionBudget        = "default"
 	scriptsConfigMapSuffix            = "scripts"
 	transportCertificatesSecretSuffix = "transport-certificates"
+
+	controllerRevisionHashLen = 10
 )
 
 var (
@@ -70,11 +72,11 @@ func Validate(es v1beta1.Elasticsearch) error {
 
 		// length of the ordinal suffix that will be added to the pods of this sset (dash + ordinal)
 		podOrdinalSuffixLen := len(strconv.FormatInt(int64(nodeSet.Count), 10)) + 1
-		// there should be enough space for the ordinal suffix
-		if validation.DNS1123SubdomainMaxLength-len(ssetName) < podOrdinalSuffixLen {
+		// there should be enough space for the ordinal suffix and the controller revision hash
+		if validation.LabelValueMaxLength-len(ssetName) < podOrdinalSuffixLen+controllerRevisionHashLen {
 			return fmt.Errorf("generated StatefulSet name '%s' exceeds allowed length of %d",
 				ssetName,
-				validation.DNS1123SubdomainMaxLength-podOrdinalSuffixLen)
+				validation.LabelValueMaxLength-podOrdinalSuffixLen-controllerRevisionHashLen)
 		}
 	}
 

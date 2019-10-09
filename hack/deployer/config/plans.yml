@@ -7,7 +7,6 @@ plans:
   machineType: n1-standard-8
   serviceAccount: true
   psp: true
-  vmMapMax: true
   gke:
     region: europe-west1
     adminUsername: admin
@@ -18,11 +17,10 @@ plans:
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.12
+  kubernetesVersion: 1.13
   machineType: n1-standard-8
   serviceAccount: false
   psp: false
-  vmMapMax: true
   gke:
     region: europe-west1
     adminUsername: admin
@@ -33,10 +31,19 @@ plans:
   operation: create
   clusterName: ci
   provider: aks
-  kubernetesVersion: 1.12.8
+  kubernetesVersion: 1.13.10
   machineType: Standard_D8s_v3
   serviceAccount: true
   psp: false
-  vmMapMax: false
+  aks:
+    nodeCount: 3
+- id: aks-dev
+  operation: create
+  clusterName: dev
+  provider: aks
+  kubernetesVersion: 1.13.10
+  machineType: Standard_D8s_v3
+  serviceAccount: false
+  psp: false
   aks:
     nodeCount: 3

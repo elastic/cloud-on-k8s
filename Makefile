@@ -41,15 +41,21 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-# Produce CRDs that work back to Kubernetes <1.13 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
+CRD_OPTIONS ?= "crd"
+
+# CRD_FLAVOR can be used to select specific flavors of CRDs
+CRD_FLAVOR ?= default
+CRD_AVAILABLE_FLAVORS := default trivial-versions
+# verify that the CRD_FLAVOR is valid:
+ifeq ($(filter $(CRD_FLAVOR),$(CRD_AVAILABLE_FLAVORS)),)
+$(error $(CRD_FLAVOR) is not a valid CRD_FLAVOR. Possible values are: $(CRD_AVAILABLE_FLAVORS));
+endif
 
 ## -- Docker image
 
 # on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
-	REPOSITORY ?= $(GCLOUD_PROJECT)
 else
 	# default to local registry
 	REGISTRY ?= localhost:5000
@@ -103,7 +109,10 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/..." output:crd:artifacts:config=config/crds
-	cd hack/patch-crd && go run main.go
+	# verify that the available crd flavors still can generate cleanly
+	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
+		kubectl kustomize config/crds-flavor-$$crd_flavor > /dev/null; \
+	done
 	$(MAKE) --no-print-directory generate-all-in-one
 	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
 	# $(MAKE) --no-print-directory generate-api-docs
@@ -145,14 +154,14 @@ lint:
 #############################
 
 install-crds: generate
-	kubectl apply -f config/crds
+	kubectl apply -k config/crds-flavor-$(CRD_FLAVOR)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
 run: install-crds go-run
 
 go-run:
-    # Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
+	# Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
 	AUTO_PORT_FORWARD=true \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
@@ -163,6 +172,20 @@ go-run:
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false
+
+go-debug:
+	@(cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
+		--build-flags="-ldflags '$(GO_LDFLAGS)'" \
+		-- \
+		manager \
+		--development \
+		--operator-roles=global,namespace \
+		--log-verbosity=$(LOG_VERBOSITY) \
+		--ca-cert-validity=10h \
+		--ca-cert-rotate-before=1h \
+		--operator-namespace=default \
+		--namespace= \
+		--auto-install-webhooks=false)
 
 build-operator-image:
 ifeq ($(SKIP_DOCKER_COMMAND), false)
@@ -192,21 +215,19 @@ apply-operators:
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
 
-generate-crds:
-	for yaml in $$(ls config/crds/*); do \
-		cat $$yaml && echo -e "\n---\n" ; \
-	done
-
 generate-all-in-one:
-	$(MAKE) --no-print-directory -s generate-crds > config/all-in-one.yaml
-	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
-	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> config/all-in-one.yaml
+	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
+	    ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-flavor-$$crd_flavor.yaml; \
+        kubectl kustomize config/crds-flavor-$$crd_flavor > $${ALL_IN_ONE_OUTPUT_FILE}; \
+        OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
+            NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+            $(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $${ALL_IN_ONE_OUTPUT_FILE}; \
+	done
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: docker-build docker-push
-	kubectl apply -f config/all-in-one.yaml
+	kubectl apply -f config/all-in-one-flavor-$(CRD_FLAVOR).yaml
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
@@ -339,7 +360,8 @@ e2e-run:
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
 		--elastic-stack-version=$(STACK_VERSION) \
-		--log-verbosity=$(LOG_VERBOSITY)
+		--log-verbosity=$(LOG_VERBOSITY) \
+		--crd-flavor=$(CRD_FLAVOR)
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
@@ -356,7 +378,8 @@ e2e-local:
 		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
 		--local \
-		--log-verbosity=$(LOG_VERBOSITY)
+		--log-verbosity=$(LOG_VERBOSITY) \
+		--crd-flavor=$(CRD_FLAVOR)
 	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
@@ -389,6 +412,10 @@ check-license-header:
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
+
+# Runs small Go tool to validate syntax correctness of Jenkins pipelines
+validate-jenkins-pipelines:
+	@ go run ./hack/pipeline-validator/main.go
 
 #########################
 # Kind specific targets #

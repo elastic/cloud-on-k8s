@@ -109,7 +109,7 @@ func buildLabels(
 		// TODO: use hash.HashObject instead && fix the config checksum label name?
 		configChecksum := sha256.New224()
 		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
-		podLabels[label.ConfigChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+		podLabels[label.SecureSettingsHashLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	}
 
 	return podLabels, nil

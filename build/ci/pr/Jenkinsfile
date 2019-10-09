@@ -33,7 +33,11 @@ pipeline {
                 }
             }
             steps {
+                echo "Running checks for Go sources..."
                 sh 'make -C build/ci TARGET=ci-check ci'
+
+                echo "Validating Jenkins pipelines..."
+                sh 'make -C build/ci TARGET=validate-jenkins-pipelines ci'
             }
         }
         stage('Run tests in parallel') {
@@ -74,7 +78,7 @@ pipeline {
 id: gke-ci
 overrides:
   kubernetesVersion: "1.12"
-  clusterName: $BUILD_TAG
+  clusterName: eck-pr-$BUILD_NUMBER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
@@ -82,6 +86,8 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
+                            echo "Setting CRD_FLAVOR to trivial-versions to support K8s < 1.14"
+                            echo "CRD_FLAVOR = trivial-versions" >> .env
                             make -C build/ci TARGET=ci-e2e ci
                         """
                     }
@@ -95,7 +101,7 @@ EOF
             script {
                 if (notOnlyDocs()) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'GKE_CLUSTER', value: "${BUILD_TAG}")],
+                        parameters: [string(name: 'GKE_CLUSTER', value: "eck-pr-${BUILD_NUMBER}")],
                         wait: false
                 }
             }

@@ -9,6 +9,10 @@ spec:
   nodeSets:
   - name: default
     count: 3
+    config:
+      # This setting could have performance implications for production clusters.
+      # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+      node.store.allow_mmap: false
 ---
 apiVersion: apm.k8s.elastic.co/v1beta1
 kind: ApmServer

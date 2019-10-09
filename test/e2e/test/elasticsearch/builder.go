@@ -125,7 +125,7 @@ func (b Builder) WithNoESTopology() Builder {
 }
 
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSet{
+	return b.WithNodeSet(estype.NodeSet{
 		Name:  "master",
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
@@ -138,7 +138,7 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 }
 
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSet{
+	return b.WithNodeSet(estype.NodeSet{
 		Name:  "data",
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
@@ -151,7 +151,7 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 }
 
 func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSet{
+	return b.WithNodeSet(estype.NodeSet{
 		Name:  name,
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
@@ -164,18 +164,21 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 }
 
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSet{
-		Name:  "masterdata",
-		Count: int32(count),
-		Config: &commonv1beta1.Config{
-			Data: map[string]interface{}{},
-		},
+	return b.WithNodeSet(estype.NodeSet{
+		Name:        "masterdata",
+		Count:       int32(count),
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
-func (b Builder) WithNodeSpec(nodeSpec estype.NodeSet) Builder {
-	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSpec)
+func (b Builder) WithNodeSet(nodeSet estype.NodeSet) Builder {
+	// Make sure the config specifies "node.store.allow_mmap: false".
+	// We disable mmap to avoid having to set the vm.max_map_count sysctl on test k8s nodes.
+	if nodeSet.Config == nil {
+		nodeSet.Config = &commonv1beta1.Config{Data: map[string]interface{}{}}
+	}
+	nodeSet.Config.Data["node.store.allow_mmap"] = false
+	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSet)
 	return b
 }
 

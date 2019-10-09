@@ -34,9 +34,6 @@ type HasKeystore interface {
 	metav1.Object
 	runtime.Object
 	SecureSettings() []commonv1beta1.SecretSource
-	// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
-	// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
-	Kind() string
 }
 
 // NewResources optionally returns a volume and init container to include in pods,
@@ -62,7 +59,7 @@ func NewResources(
 	// build an init container to create the keystore from the secure settings volume
 	initContainer, err := initContainer(
 		*secretVolume,
-		strings.ToLower(hasKeystore.Kind()),
+		strings.ToLower(hasKeystore.GetObjectKind().GroupVersionKind().Kind),
 		initContainerParams,
 	)
 	if err != nil {

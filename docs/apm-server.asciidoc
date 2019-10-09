@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-apm-server.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-apm-server"]
 == Running APM Server on ECK
 
@@ -23,9 +28,9 @@ Managing both APM Server and Elasticsearch by ECK allows a smooth and secured in
 
 . To deploy an APM Server and connect it to the cluster `quickstart` created in the link:k8s-quickstart.html[quickstart], apply the following specification:
 +
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: apm.k8s.elastic.co/{eck_crd_version}
 kind: ApmServer
 metadata:

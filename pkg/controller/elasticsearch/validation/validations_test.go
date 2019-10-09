@@ -7,6 +7,7 @@ package validation
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -118,6 +119,76 @@ func Test_hasMaster(t *testing.T) {
 			require.NoError(t, err)
 			if got := hasMaster(*ctx); got != tt.want {
 				t.Errorf("hasMaster() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_specUpdatedToBeta(t *testing.T) {
+	type args struct {
+		name        string
+		es          v1beta1.Elasticsearch
+		wantReason  string
+		wantAllowed bool
+	}
+	tests := []args{
+		{
+			name: "good spec",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{Count: 1}},
+				},
+			},
+			wantAllowed: true,
+		},
+		{
+			name: "nodes instead of nodeSets",
+			es: v1beta1.Elasticsearch{
+				Spec: estype.ElasticsearchSpec{
+					Version: "7.4.0",
+				},
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+			},
+			wantReason: validationFailedMsg,
+		},
+		{
+			name: "nodeCount instead of count",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{}},
+				},
+			},
+			wantReason:  validationFailedMsg,
+			wantAllowed: false,
+		},
+		{
+			name: "alpha instead of beta version",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1alpha1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{Count: 1}},
+				},
+			},
+			wantReason:  validationFailedMsg,
+			wantAllowed: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, err := NewValidationContext(nil, tt.es)
+			require.NoError(t, err)
+			got := specUpdatedToBeta(*ctx)
+			if got.Allowed != tt.wantAllowed {
+				t.Errorf("specUpdatedToBeta() = %v, want %v", got.Allowed, tt.wantAllowed)
+			}
+			if !strings.Contains(got.Reason, tt.wantReason) {
+				t.Errorf("specUpdatedToBeta() = %v, want %v", got.Reason, tt.wantReason)
 			}
 		})
 	}
