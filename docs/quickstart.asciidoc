@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-quickstart.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-quickstart"]
 == Quickstart
 
@@ -19,6 +24,8 @@ Make sure that you have link:https://kubernetes.io/docs/tasks/tools/install-kube
 [float]
 [id="{p}-deploy-eck"]
 === Deploy ECK in your Kubernetes cluster
+
+IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempting to upgrade an existing ECK deployment.
 
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
@@ -46,9 +53,9 @@ Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specificat
 
 NOTE: If your Kubernetes cluster does not have any nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
 
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
@@ -83,10 +90,10 @@ kubectl get elasticsearch
 [source,sh,subs="attributes"]
 ----
 NAME          HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         {version}     Operational   1m
+quickstart    green     1         {version}     Ready   1m
 ----
 
-When you create the cluster, there is no `HEALTH` status and the `PHASE` is `Pending`. After a while, the `PHASE` turns into `Operational`, and `HEALTH` becomes `green`.
+When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.
 
 You can see that one Pod is in the process of being started:
 
@@ -177,9 +184,9 @@ To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance
 
 . Specify a Kibana instance and associate it with your Elasticsearch cluster:
 +
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
 metadata:
@@ -241,9 +248,9 @@ You can add and modify most elements of the original cluster specification provi
 
 For example, you can grow the cluster to three nodes:
 
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:

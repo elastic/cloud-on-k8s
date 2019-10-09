@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-troubleshooting.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-troubleshooting"]
 == Troubleshooting
 
@@ -49,9 +54,9 @@ kibana-sample-kb-http          ClusterIP   10.19.246.116   <none>        5601/TC
 [id="{p}-describe-failing-resources"]
 === Describe failing resources
 
-If an Elasticsearch node does not come up, it is probably because Kubernetes cannot schedule the associated Pod.
+If an Elasticsearch node does not start up, it is probably because Kubernetes cannot schedule the associated Pod.
 
-Start by looking at the StatefulSets to check that the current number of replicas match the desired number of replicas.
+First, check the StatefulSets to see if the current number of replicas match the desired number of replicas.
 
 [source,sh]
 ----
@@ -61,7 +66,7 @@ NAME                              DESIRED   CURRENT   AGE
 elasticsearch-sample-es-default   1         1         4s
 ----
 
-Next, check the Pod status. If a pod fails to reach the `Running` status after a few seconds, something could be preventing it from being scheduled or starting up:
+Then, check the Pod status. If a Pod fails to reach the `Running` status after a few seconds, something is preventing it from being scheduled or starting up:
 
 [source,sh]
 ----
