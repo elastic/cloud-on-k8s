@@ -2,16 +2,19 @@
 == 1.0.0-beta1 Release Highlights
 
 [float]
+[id="{p}-release-ssets"]
 === StatefulSets
 
 ECK now uses StatefulSets under the hood to create Elasticsearch Pods. Prior to 1.0.0-beta1, upgrading a cluster with terabytes of data could take hours or even days because data was replicated to new Elasticsearch nodes. Now, with StatefulSets, you can upgrade Elasticsearch and reuse the same persistent volumes, rather than replicating the data to new nodes. Reusing persistent volumes lets you cut the upgrade time down to minutes for terabytes of data. See <<{p}-orchestration>> for more detail.
 
 [float]
+[id="{p}-release-v1beta1"]
 === v1beta1 version
 
 ECK 1.0.0-beta1 introduces `v1beta1`, a new API version of the various custom resources. The new custom resources are not compatible with previous ECK alpha releases. Existing users must migrate to v1beta1 to use the new ECK features. ECK 1.0.0-beta1 can be installed on top of the current ECK alpha versions. The new version of ECK will leave older resources in place, but will not modify them. To receive all of the benefits of ECK 1.0.0-beta1, we recommend deleting and recreating existing Elasticsearch clusters and other resources. See <<{p}-upgrading-eck>> for more detail.
 
 [float]
+[id="{p}-release-validation"]
 === Validation changes
 
 In Kubernetes versions <= 1.13, OpenAPI validation of resources on admission is no longer enforced. This is due to a limitation in Custom Resource Definitions, where older versions did not support validation for different versions. We now publish manifests for current versions of Kubernetes, and another for compatibility with older Kubernetes versions.
@@ -19,5 +22,7 @@ In Kubernetes versions <= 1.13, OpenAPI validation of resources on admission is 
 Webhook validation has also temporarily been removed from this release. It is currently being reworked.
 
 [float]
+[id="{p}-release-tls"]
 === Disabling TLS
+
 It is now possible to disable TLS within Elasticsearch, which can be useful if TLS is handled at a different layer (for instance, Istio deployments). See <<{p}-disable-tls>> for more information
