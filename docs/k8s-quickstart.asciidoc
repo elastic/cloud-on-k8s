@@ -14,7 +14,7 @@ Eager to get started? This quick guide shows you how to:
 
 **Supported versions**
 
-* link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] version 1.11+
+* link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] 1.11+
 * Kubernetes: 1.11+
 * Elasticsearch: 6.8+, 7.1+
 
