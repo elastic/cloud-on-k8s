@@ -46,6 +46,12 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var masterChangeBudgetCheck *MasterChangeBudgetCheck
 	var changeBudgetCheck *ChangeBudgetCheck
 
+	mutatedFrom := b.MutatedFrom
+	if mutatedFrom == nil {
+		// cluster mutates to itself (same spec)
+		mutatedFrom = &b
+	}
+
 	return test.StepList{
 		test.Step{
 			Name: "Add some data to the cluster before starting the mutation",
@@ -85,6 +91,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		},
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
 	}.
+		WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
@@ -101,9 +108,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				Name: "Pod count must not violate change budget",
 				Test: func(t *testing.T) {
 					changeBudgetCheck.Stop()
-					if b.MutatedFrom != nil {
-						require.NoError(t, changeBudgetCheck.Verify(b.MutatedFrom.Elasticsearch.Spec, b.Elasticsearch.Spec))
-					}
+					require.NoError(t, changeBudgetCheck.Verify(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch.Spec))
 				},
 			},
 			test.Step{

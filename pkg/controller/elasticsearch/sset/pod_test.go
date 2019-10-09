@@ -85,7 +85,7 @@ func TestGetActualPodsForStatefulSet(t *testing.T) {
 	}
 	c := k8s.WrapClient(fake.NewFakeClient(objs...))
 	sset0 := getSsetSample("sset0", "ns0", "clus0")
-	pods, err := GetActualPodsForStatefulSet(c, sset0)
+	pods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&sset0))
 	require.NoError(t, err)
 	// only one pod is in the same stateful set and namespace
 	assert.Equal(t, 1, len(pods))
