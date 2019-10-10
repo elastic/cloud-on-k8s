@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-openshift.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-openshift"]
 == Deploying ECK on OpenShift
 
@@ -17,7 +22,7 @@ NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https:/
 
 . To run the instructions on this page, you must be a `system:admin` user or a user with the privileges to create Projects, CRDs, and RBAC resources at the cluster level.
 
-. Set virtual memory settings on the nodes.
+. Set virtual memory settings on the Kubernetes nodes.
 +
 Before deploying an Elasticsearch cluster with ECK, make sure you correctly applied the `vm.max_map_count` setting on all the nodes of your cluster. Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC): they run with a limited set of privileges and cannot change this setting on the nodes that host them. For more details, see the Elasticsearch documentation on https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[Virtual memory].
 
@@ -72,9 +77,9 @@ In the example above the user `developer` is allowed to manage Elastic resources
 
 Use the following code to create an Elasticsearch cluster `elasticsearch-sample` and a "passthrough" route to access it:
 
-[source,shell,subs="attributes"]
+[source,shell,subs="attributes,+macros"]
 ----
-cat <<EOF | oc apply -n elastic -f -
+cat $$<<$$EOF | oc apply -n elastic -f -
 # This sample sets up an Elasticsearch cluster with an OpenShift route
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
@@ -112,9 +117,9 @@ EOF
 
 Use the following code to create a Kibana instance and a "passthrough" route to access it:
 
-[source,shell,subs="attributes"]
+[source,shell,subs="attributes,+macros"]
 ----
-cat <<EOF | oc apply -n elastic -f -
+cat $$<<$$EOF | oc apply -n elastic -f -
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
 metadata:
@@ -180,9 +185,9 @@ scc "anyuid" added to: ["system:serviceaccount:elastic:apm-server"]
 ----
 . Deploy an APM Server and a route with the following manifest
 +
-[source,shell,subs="attributes"]
+[source,shell,subs="attributes,+macros"]
 ----
-cat <<EOF | oc apply -n elastic -f -
+cat $$<<$$EOF | oc apply -n elastic -f -
 apiVersion: apm.k8s.elastic.co/{eck_crd_version}
 kind: ApmServer
 metadata:

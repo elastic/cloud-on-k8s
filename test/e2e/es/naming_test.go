@@ -51,7 +51,7 @@ func testLongestPossibleName(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithNodeSpec(estype.NodeSet{
+		WithNodeSet(estype.NodeSet{
 			Name:  nodeSpecName,
 			Count: 1,
 		}).
@@ -88,7 +88,7 @@ func testRejectionOfLongName(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithNodeSpec(estype.NodeSet{
+		WithNodeSet(estype.NodeSet{
 			Name:  "default",
 			Count: 1,
 		}).

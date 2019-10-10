@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-elasticsearch-specification.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-elasticsearch-specification"]
 == Running Elasticsearch on ECK
 
@@ -21,7 +26,8 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-update-strategy>>
 - <<{p}-pod-disruption-budget>>
 - <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
-- <<{p}-snapshot,Create automated snapshots>>
+- <<{p}-orchestration>>
+- <<{p}-snapshots,Create automated snapshots>>
 
 [id="{p}-pod-template"]
 === Pod Template
@@ -74,7 +80,7 @@ See also: link:https://www.elastic.co/guide/en/elasticsearch/reference/current/h
 [id="{p}-node-configuration"]
 === Node configuration
 
-Any setting defined in the `elasticsearch.yml` configuration file can also be defined for each topology of nodes in the `spec.nodeSets[?].config` section.
+Any setting defined in the `elasticsearch.yml` configuration file can also be defined for set of Elasticsearch nodes in the `spec.nodeSets[?].config` section.
 
 [source,yaml]
 ----
@@ -110,7 +116,9 @@ By default, the operator creates a https://kubernetes.io/docs/concepts/storage/p
 ----
 spec:
   nodeSets:
-  - volumeClaimTemplates:
+  - name: default
+    count: 3
+    volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
       spec:
@@ -122,7 +130,9 @@ spec:
         storageClassName: standard
 ----
 
-IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes cannot be resized after they are created. You should consider future storage requirements when defining volume claims to ensure that you have plenty of space available to sustain the expected growth.
+ECK automatically deletes VolumeClaimTemplates resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
+
+IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes <<{p}-orchestration-limitations,cannot be resized after they are created>>. When you define volume claims, consider future storage requirements and make sure you have enough space to support the expected growth.
 
 If you are not concerned about data loss, you can use an `emptyDir` volume for Elasticsearch data as well:
 
@@ -177,15 +187,15 @@ By default, Elasticsearch uses memory mapping (`mmap`) to efficiently access ind
 Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions. This is why link:k8s-quickstart.html[the quickstart example] disables `mmap` via the `node.store.allow_mmap: false` setting. For production workloads, it is strongly recommended to increase the kernel setting `vm.max_map_count` to `2621441` and leave `node.store.allow_mmap` unset.
 
 The kernel setting `vm.max_map_count=2621441` can be set on the host either directly or by a dedicated init container, which must be privileged. To add an init container that changes the host kernel setting before your Elasticsearch pod starts, you can use the following example Elasticsearch spec:
-[source,yaml]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
-apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.4.0
+  version: {version}
   nodes:
   - name: default
     nodeCount: 1
@@ -250,8 +260,7 @@ $ kubectl create secret generic my-cert --from-file=ca.crt=tls.crt --from-file=t
 === Secure settings
 
 You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with Kubernetes secrets.
-The secrets should contain a key-value pair for each secure setting you want to add. Reference that secrets in the Elasticsearch
-resource specification for ECK to automatically inject those settings into the keystore on each node before it starts Elasticsearch.
+The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch.
 
 [source,yaml]
 ----
@@ -274,7 +283,7 @@ spec:
       path: newkey2
 ----
 
-See link:k8s-snapshot.html[How to create automated snapshots] for an example use case.
+See <<{p}-snapshots,How to create automated snapshots>> for an example use case.
 
 [id="{p}-bundles-plugins"]
 === Custom configuration files and plugins
@@ -352,7 +361,7 @@ You can install custom plugins before the Elasticsearch container starts with an
             bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
-You can also override the Elasticsearch container image to use your own image with the plugins already installed, as described in the link:k8s-images.asciidoc[custom images doc]. The link:k8s-snapshot.html[snapshots] doc has more information on both these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
+You can also override the Elasticsearch container image to use your own image with the plugins already installed, as described in the link:k8s-images.asciidoc[custom images doc]. The <<{p}-snapshots,snapshots>> document has more information on both these options. The Kubernetes document on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
 
 The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It also inherits the Pod name and IP address environment variables.
 
@@ -371,17 +380,17 @@ On any change, ECK reconciles Kubernetes resources towards the desired cluster d
 [id="{p}-change-budget"]
 ==== Change budget
 
-No downtime should be expected when the cluster topology changes. Shards on deprecated nodes are migrated away so the node can be safely removed.
+No downtime should be expected when the cluster topology changes. Shards on deprecated Elasticsearch nodes are migrated away so that the node can be safely removed.
 
-For example, to mutate a 3-nodes cluster with 16GB memory limit on each node to a 3-nodes cluster with 32GB memory limit on each node, ECK will:
+For example, to mutate a 3-node cluster with 16GB memory limit on each node to a 3-node cluster with 32GB memory limit on each node, ECK will:
 
-1. Add a new 32GB node: the cluster temporarily has 4 nodes
+1. Add a new 32GB Elasticsearch node: the cluster temporarily has 4 nodes
 2. Migrate data away from the first 16GB node
 3. Once data is migrated, remove the first 16GB node
 4. Follow the same steps for the 2 other 16GB nodes
 
 The cluster health stays green during the entire process.
-By default, only one extra node can be added on top of the expected ones. In the example above, a 3-nodes cluster may temporarily be composed of 4 nodes while data migration is in progress.
+By default, only one extra node can be added on top of the expected ones. In the example above, a 3-node cluster may temporarily be composed of 4 nodes while data migration is in progress.
 
 This behaviour can be controlled through the `changeBudget` section of the cluster specification `updateStrategy`. If not specified, it defaults to the following:
 
@@ -414,14 +423,14 @@ Even if a `changeBudget` is specified, ECK makes sure that some invariants are m
 * One master node alive
 * One data node alive
 
-So under certain circumstances ECK ignores the change budget. For example, a safe migration from a 1-node cluster to another 1-node cluster can only be done by temporarily setting up a 2-nodes cluster.
+So under certain circumstances ECK ignores the change budget. For example, a safe migration from a 1-node cluster to another 1-node cluster can only be done by temporarily setting up a 2-node cluster.
 
 It is possible to configure the `changeBudget` to optimize the reuse of persistent volumes, instead of migrating data across nodes. This feature is not supported yet, more details to come in the next release.
 
 [id="{p}-pod-disruption-budget"]
 === Pod disruption budget
 
-A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of Pods while the Kubernetes cluster administrator manages cluster nodes.
+A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of Pods while the Kubernetes cluster administrator manages Kubernetes nodes.
 Elasticsearch makes sure some indices don't become unavailable.
 
 A default PDB of 1 `maxUnavailable` Pod on the entire cluster is enforced by default.
@@ -463,5 +472,6 @@ spec:
   podDisruptionBudget: {}
 ----
 
+include::orchestration.asciidoc[]
 include::advanced-node-scheduling.asciidoc[]
 include::snapshots.asciidoc[]

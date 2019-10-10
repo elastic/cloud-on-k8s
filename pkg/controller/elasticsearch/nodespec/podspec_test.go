@@ -137,17 +137,17 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	expected := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                        "elasticsearch",
-				"elasticsearch.k8s.elastic.co/cluster-name":         "name",
-				"elasticsearch.k8s.elastic.co/config-template-hash": "593041036",
-				"elasticsearch.k8s.elastic.co/http-scheme":          "https",
-				"elasticsearch.k8s.elastic.co/node-data":            "false",
-				"elasticsearch.k8s.elastic.co/node-ingest":          "true",
-				"elasticsearch.k8s.elastic.co/node-master":          "true",
-				"elasticsearch.k8s.elastic.co/node-ml":              "true",
-				"elasticsearch.k8s.elastic.co/statefulset-name":     "name-es-nodeset-1",
-				"elasticsearch.k8s.elastic.co/version":              "7.2.0",
-				"pod-template-label-name":                           "pod-template-label-value",
+				"common.k8s.elastic.co/type":                    "elasticsearch",
+				"elasticsearch.k8s.elastic.co/cluster-name":     "name",
+				"elasticsearch.k8s.elastic.co/config-hash":      "593041036",
+				"elasticsearch.k8s.elastic.co/http-scheme":      "https",
+				"elasticsearch.k8s.elastic.co/node-data":        "false",
+				"elasticsearch.k8s.elastic.co/node-ingest":      "true",
+				"elasticsearch.k8s.elastic.co/node-master":      "true",
+				"elasticsearch.k8s.elastic.co/node-ml":          "true",
+				"elasticsearch.k8s.elastic.co/statefulset-name": "name-es-nodeset-1",
+				"elasticsearch.k8s.elastic.co/version":          "7.2.0",
+				"pod-template-label-name":                       "pod-template-label-value",
 			},
 			Annotations: map[string]string{
 				"pod-template-annotation-name": "pod-template-annotation-value",

@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-quickstart.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-quickstart"]
 == Quickstart
 
@@ -22,9 +27,11 @@ Eager to get started? This quick guide shows you how to:
 [id="{p}-deploy-eck"]
 === Deploy ECK in your Kubernetes cluster
 
+IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempting to upgrade an existing ECK deployment.
+
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
-NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is allowed to communicate with nodes port 443. This is required for communication with the Validating Webhook. For more information, see link:https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html[Recommended inbound traffic].
+NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is allowed to communicate with the Kubernetes nodes on port 443. This is required for communication with the Validating Webhook. For more information, see link:https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html[Recommended inbound traffic].
 
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
 +
@@ -44,13 +51,13 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 [id="{p}-deploy-elasticsearch"]
 === Deploy an Elasticsearch cluster
 
-Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
+Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one Elasticsearch node:
 
-NOTE: If your Kubernetes cluster does not have any nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
+NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
 
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
@@ -85,10 +92,10 @@ kubectl get elasticsearch
 [source,sh,subs="attributes"]
 ----
 NAME          HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         {version}     Operational   1m
+quickstart    green     1         {version}     Ready   1m
 ----
 
-When you create the cluster, there is no `HEALTH` status and the `PHASE` is `Pending`. After a while, the `PHASE` turns into `Operational`, and `HEALTH` becomes `green`.
+When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.
 
 You can see that one Pod is in the process of being started:
 
@@ -179,9 +186,9 @@ To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance
 
 . Specify a Kibana instance and associate it with your Elasticsearch cluster:
 +
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
 metadata:
@@ -241,11 +248,11 @@ kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | ba
 
 You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (e.g., existing volume claims cannot be resized). The operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods etc.).
 
-For example, you can grow the cluster to three nodes:
+For example, you can grow the cluster to three Elasticsearch nodes:
 
-[source,yaml,subs="attributes"]
+[source,yaml,subs="attributes,+macros"]
 ----
-cat <<EOF | kubectl apply -f -
+cat $$<<$$EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
