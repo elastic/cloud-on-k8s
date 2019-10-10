@@ -344,12 +344,13 @@ purge-gcr-images:
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 STACK_VERSION ?= 7.4.0
+E2E_JSON ?= false
 
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
 
 e2e-docker-build:
-	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
+	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
 	docker push $(E2E_IMG)
@@ -361,7 +362,11 @@ e2e-run:
 		--test-regex=$(TESTS_MATCH) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
-		--crd-flavor=$(CRD_FLAVOR)
+		--crd-flavor=$(CRD_FLAVOR) \
+		--log-to-file=$(E2E_JSON)
+
+e2e-generate-xml:
+	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
