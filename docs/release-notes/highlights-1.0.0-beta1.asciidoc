@@ -1,28 +1,41 @@
-[id="{p}-release-highlights-1.0.0-beta1"]
+[[release-highlights-1.0.0-beta1]]
 == 1.0.0-beta1 Release Highlights
 
 [float]
 [id="{p}-release-ssets"]
 === StatefulSets
 
-ECK now uses StatefulSets under the hood to create Elasticsearch Pods. Prior to 1.0.0-beta1, upgrading a cluster with terabytes of data could take hours or even days because data was replicated to new Elasticsearch nodes. Now, with StatefulSets, you can upgrade Elasticsearch and reuse the same persistent volumes, rather than replicating the data to new nodes. Reusing persistent volumes lets you cut the upgrade time down to minutes for terabytes of data. See <<{p}-orchestration>> for more detail.
+ECK now uses StatefulSets under the hood to orchestrate Elasticsearch clusters. Prior to 1.0.0-beta1, upgrading a cluster storing large volumes of data could take hours or even days because data had to be replicated to newly created Elasticsearch nodes. With StatefulSets, you can simply reuse persistent volumes and significantly reduce the time and resources used to upgrade an Elasticsearch cluster. See <<{p}-orchestration>> for more detail.
 
 [float]
 [id="{p}-release-v1beta1"]
-=== v1beta1 version
+=== Resource version promotion
 
-ECK 1.0.0-beta1 introduces `v1beta1`, a new API version of the various custom resources. The new custom resources are not compatible with previous ECK alpha releases. Existing users must migrate to v1beta1 to use the new ECK features. ECK 1.0.0-beta1 can be installed on top of the current ECK alpha versions. The new version of ECK will leave older resources in place, but will not modify them. To receive all of the benefits of ECK 1.0.0-beta1, we recommend deleting and recreating existing Elasticsearch clusters and other resources. See <<{p}-upgrading-eck>> for more detail.
+Custom resources have graduated to version `v1beta1`.  Old resources must be migrated to the new version to work with ECK 1.0.0-beta1. Resources created using an older version will continue to run but the operator will not manage them. To receive all the benefits of ECK 1.0.0-beta1, we recommend deleting old custom resources and recreating them. See <<{p}-upgrading-eck>> for more information.
 
 [float]
 [id="{p}-release-validation"]
 === Validation changes
 
-In Kubernetes versions <= 1.13, OpenAPI validation of resources on admission is no longer enforced. This is due to a limitation in Custom Resource Definitions, where older versions did not support validation for different versions. We now publish manifests for current versions of Kubernetes, and another for compatibility with older Kubernetes versions.
+OpenAPI validation of resources on admission is no longer enforced on Kubernetes versions 1.13 or lower. This is due to a limitation in older versions of Kubernetes where multiple versions for CRDs are not supported.
 
 Webhook validation has also temporarily been removed from this release. It is currently being reworked.
 
 [float]
 [id="{p}-release-tls"]
-=== Disabling TLS
+=== More control over TLS settings
 
-It is now possible to disable TLS within Elasticsearch, which can be useful if TLS is handled at a different layer (for instance, Istio deployments). See <<{p}-disable-tls>> for more information
+Users have more control over TLS settings of the Elasticsearch HTTP layer, Kibana, and APM Server in this release. It is now possible to use external certificates from well-known CAs, utilities like cert-manager, or even completely disable automatic provisioning of TLS certificates. The latter can be useful when TLS is handled at a different layer, for instance, with Istio deployments. See: <<{p}-setting-up-your-own-certificate>> and <<{p}-disable-tls>>. 
+
+[float]
+[id="{p}-breaking-changes-1.0.0-beta1"]
+=== Breaking Changes
+
+Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. To unblock the deletion, remove any registered finalizer from the resource:
+
+[source,sh]
+----
+kubectl patch elasticsearch quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch kibana quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch apmserver quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+----
