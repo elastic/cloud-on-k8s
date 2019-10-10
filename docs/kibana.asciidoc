@@ -43,8 +43,7 @@ The Kibana configuration file is automatically setup by ECK to establish a secur
 [id="{p}-kibana-advanced-configuration"]
 === Advanced configuration
 
-If you already have read the documentation about how to run Elasticsearch on ECK then most of the concepts and the ideas
-described here will sound familiar to you.
+If you already looked at the Elasticsearch on ECK documentation, then concepts and ideas described here might sound familiar to you.
 This is because the resource definitions in ECK share the same philosophy when it comes to:
 
 * Customizing the Pod configuration
