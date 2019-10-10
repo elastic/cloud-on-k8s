@@ -10,6 +10,10 @@
 set -euo pipefail
 
 for PKG in $(go list github.com/elastic/cloud-on-k8s/test/e2e/...); do
-    echo ">>> Running tests in package $PKG"
-    go test -v -failfast -timeout=2h -tags=e2e -p=1 $PKG $@
+    if [ "$E2E_JSON" == "true" ]
+    then
+        go test -v -failfast -timeout=2h -tags=e2e -p=1 --json $PKG $@
+    else
+        go test -v -failfast -timeout=2h -tags=e2e -p=1 $PKG $@
+    fi
 done
