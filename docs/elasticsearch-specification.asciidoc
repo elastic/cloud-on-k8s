@@ -36,6 +36,10 @@ Pod templates are the same you know and love from stateful sets and deployments.
 
 [source,yaml]
 ----
+spec:
+  nodeSets:
+  - name: default
+    count: 1
     podTemplate:
       metadata:
         labels:
@@ -52,13 +56,16 @@ You might want to set environment variables to configure Elasticsearch. For exam
 [source,yaml]
 ----
 spec:
-  podTemplate:
-    spec:
-      containers:
-      - name: elasticsearch
-        env:
-        - name: ES_JAVA_OPTS
-          value: "-Xms2g -Xmx4g"
+  nodeSets:
+  - name: default
+    count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms2g -Xmx4g"
 ----
 
 For more information on Pod templates, see the Kubernetes documentation:
@@ -140,7 +147,8 @@ If you are not concerned about data loss, you can use an `emptyDir` volume for E
 ----
 spec:
   nodeSets:
-  - config:
+  - name: data
+    count: 10
     podTemplate:
       spec:
         volumes:
@@ -196,9 +204,9 @@ metadata:
   name: quickstart
 spec:
   version: {version}
-  nodes:
+  nodeSets:
   - name: default
-    nodeCount: 1
+    count: 3
     config:
       node.master: true
       node.data: true
@@ -306,7 +314,9 @@ nodes start, use an init container to run the link:https://www.elastic.co/guide/
 ----
 spec:
   nodeSets:
-  - podTemplate:
+  - name: default
+    count: 3
+    podTemplate:
       spec:
         initContainers:
         - name: install-plugins
@@ -327,7 +337,9 @@ But you can use the same approach for any kind of file you want to mount into th
 ----
 spec:
   nodeSets:
-  - podTemplate:
+  - name: default
+    count: 3
+    podTemplate:
       spec:
         containers:
         - name: elasticsearch <1>
@@ -350,7 +362,11 @@ You can install custom plugins before the Elasticsearch container starts with an
 
 [source,yaml]
 ----
-  - podTemplate:
+spec:
+  nodeSets:
+  - name: default
+    count: 3
+    podTemplate:
       spec:
         initContainers:
         - name: install-plugins
