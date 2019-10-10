@@ -101,7 +101,7 @@ kubectl get elasticsearch
 [source,sh,subs="attributes"]
 ----
 NAME          HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         {version}     Ready   1m
+quickstart    green     1         {version}     Ready         1m
 ----
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.
