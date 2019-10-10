@@ -34,6 +34,12 @@ Users have more control over TLS settings of the Elasticsearch HTTP layer, Kiban
 Secure settings have received multiple ergonomics improvements. It is now possible to specify secure settings from multiple secrets. It is also possible to specify specific items in a Kubernetes secret to be used as a secure setting, rather than having to use all items in a secret.
 
 [float]
+[id="{p}-release-default-limits"]
+=== Default limits
+
+Default limits are now set for the various resource types if none are explicitly specified. Previously, if left at the default, Pods would consume unbounded amounts of memory, which could lead them to be OOM killed. This allows for a better experience in demo scenarios. We recommend in production that both requests and limits be set appropriately. See <<{p}-managing-compute-resources>> for more information.
+
+[float]
 [id="{p}-breaking-changes-1.0.0-beta1"]
 === Breaking Changes
 
