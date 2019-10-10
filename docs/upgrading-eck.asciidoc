@@ -45,7 +45,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 * Rename `nodes` to `nodeSets`
 * Ensure that every `nodeSets` entry has a `name` and rename `nodeCount` to `count`
 * Remove `setVmMaxMapCount`. See: <<{p}-virtual-memory>>.
-* Remove `groups` from `updateStrategy`. See: <<{p}-change-budget>>.
+* Remove `groups` from `updateStrategy`. See: <<{p}-update-strategy>>.
 * Remove `featureFlags`
 
 [source,patch,subs="attributes"]

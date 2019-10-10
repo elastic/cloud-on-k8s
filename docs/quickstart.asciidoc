@@ -17,9 +17,11 @@ Eager to get started? This quick guide shows you how to:
 * <<{p}-persistent-storage,Use persistent storage>>
 * <<{p}-check-samples,Check out the samples>>
 
-**Requirements**
+**Supported versions**
 
-Make sure that you have link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] version 1.11+ installed.
+* link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] 1.11+
+* Kubernetes: 1.11+
+* Elasticsearch: 6.8+, 7.1+
 
 [float]
 [id="{p}-deploy-eck"]
@@ -33,9 +35,18 @@ NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is all
 
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
 +
+For Kubernetes clusters running version 1.13 or higher:
++
 [source,sh,subs="attributes"]
 ----
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
+----
++
+For Kubernetes clusters running version 1.12 or lower:
++
+[source,sh,subs="attributes"]
+----
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one-no-validation.yaml
 ----
 
 . Monitor the operator logs:

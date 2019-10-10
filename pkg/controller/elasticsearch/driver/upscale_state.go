@@ -185,7 +185,7 @@ func (s *upscaleState) limitNodesCreation(
 		)
 	} else {
 		ssetLogger(toApply).Info(
-			"Limiting nodes creation to respect MaxSurge setting",
+			"Limiting nodes creation to respect maxSurge setting",
 			"target", targetReplicas,
 			"actual", actualReplicas,
 		)

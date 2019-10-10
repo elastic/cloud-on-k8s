@@ -52,6 +52,7 @@ spec:
   version: {version}
   nodeSets:
   - name: default
+    count: 1
     podTemplate:
       spec:
         initContainers:
@@ -61,7 +62,6 @@ spec:
           - -c
           - |
             bin/elasticsearch-plugin install --batch repository-gcs
-    count: 1
 ----
 
 Assuming you stored this in a file called `elasticsearch.yaml` you can in both cases create the Elasticsearch cluster with:
@@ -108,12 +108,15 @@ kubectl create secret generic gcs-credentials --from-file=gcs.client.default.cre
 +
 [source,yaml]
 ----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
 spec:
-    # ...
-    # Inject secure settings into Elasticsearch nodes from a k8s secret reference
-    secureSettings:
-    - secretName: gcs-credentials
+  version: {version}
+  # Inject secure settings into Elasticsearch nodes from a k8s secret reference
+  secureSettings:
+  - secretName: gcs-credentials
 ----
 If you did not follow the instructions above and named your GCS credentials file differently, you can still map it to the expected name now. See <<{p}-es-secure-settings,Secure Settings>> for details.
 . Apply the modifications:
