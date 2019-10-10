@@ -119,16 +119,7 @@ spec:
 You may want to deploy more than one instance of Kibana.
 In this case all the instances must share the same encryption key.
 
-This can be done either directly in the `spec.config` section:
-
-[source,yaml]
-----
-spec:
-  config:
-     xpack.security.encryptionKey: my-secret-key
-----
-
-Or by using a secure setting (recommended) as described in the next section.
+This can be done by setting the `xpack.security.encryptionKey` property using a secure setting as described in the next section.
 
 [float]
 [id="{p}-kibana-secure-settings"]
