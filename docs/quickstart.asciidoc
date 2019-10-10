@@ -40,6 +40,8 @@ NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is all
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
 
+NOTE: If you are using a Kubernetes cluster prior to version 1.13, you have to use https://download.elastic.co/downloads/eck/{eck_version}/all-in-one-no-validation.yaml.
+
 . Monitor the operator logs:
 +
 [source,sh]
