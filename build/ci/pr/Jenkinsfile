@@ -75,10 +75,6 @@ pipeline {
                         script {
                             createConfig()
                             createDeployerConfig()
-                            sh """
-                                echo "Setting CRD_FLAVOR to trivial-versions to support K8s < 1.14"
-                                echo "CRD_FLAVOR = trivial-versions" >> .env
-                            """
 
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
 
@@ -133,7 +129,6 @@ def createDeployerConfig() {
         cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
-  kubernetesVersion: "1.12"
   clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR
