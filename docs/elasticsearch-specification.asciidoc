@@ -248,7 +248,7 @@ spec:
         secretName: my-cert
 ----
 
-This is an example on how create a Kubernetes TLS secret with a self-signed certificate:
+This is an example on how to create a Kubernetes TLS secret with a self-signed certificate:
 
 [source,sh]
 ----
