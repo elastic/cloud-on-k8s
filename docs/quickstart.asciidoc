@@ -17,9 +17,11 @@ Eager to get started? This quick guide shows you how to:
 * <<{p}-persistent-storage,Use persistent storage>>
 * <<{p}-check-samples,Check out the samples>>
 
-**Requirements**
+**Supported versions**
 
-Make sure that you have link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] version 1.11+ installed.
+* link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] 1.11+
+* Kubernetes: 1.11+
+* Elasticsearch: 6.8+, 7.1+
 
 [float]
 [id="{p}-deploy-eck"]
