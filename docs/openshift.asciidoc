@@ -29,19 +29,9 @@ Before deploying an Elasticsearch cluster with ECK, make sure you correctly appl
 [float]
 [id="{p}-openshift-deploy-the-operator"]
 === Deploy the operator
-
 . Apply the all-in-one template, as described in the link:k8s-quickstart.html[quickstart].
 +
-If you are using a Kubernetes cluster in version 1.12 or below, use:
-+
-[source,sh,subs="attributes"]
-----
-oc apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one-no-validation.yaml
-----
-+
-If you are using a Kubernetes cluster from version 1.13, use:
-+
-[source,sh,subs="attributes"]
+[source,shell,subs="attributes"]
 ----
 oc apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
