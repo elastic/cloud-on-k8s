@@ -368,7 +368,7 @@ The init container inherits the image of the main container image if one is not 
 [id="{p}-update-strategy"]
 === Update strategy
 
-Sometimes the operator must take a Pod down, for example, to restart a node and apply a new configuration value. Other times the operator must spin up pods above what is currently in the spec, say to migrate to a new node set. You can limit the number of these simultaneous changes  using an `updateStrategy` as follows:
+Sometimes the operator must take a Pod down, for example, to restart a node and apply a new configuration value. Other times the operator must spin up pods above what is currently in the specification, say to migrate to a new node set. You can limit the number of these simultaneous changes  using an `updateStrategy` as follows:
 
 [source,yaml]
 ----
@@ -378,17 +378,13 @@ spec:
       maxSurge: 3
       maxUnavailable: 1
 ----
+`maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in the currently applied specification. This setting might be useful when new specification has similar number of Pods, but different node sets (for example, when migrating Pods to a new node set). It will prevent the operator from creating all new Pods before removing the old ones thus preventing having (temporarily) as many as two times more pods than the specification defines.
 
-`maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in currently applied spec. This setting might be useful when new spec has similar number of Pods, but different node sets (for example, when migrating Pods to a new node set). It will prevent the operator from creating all new Pods before removing the old ones thus preventing having (temporarily) as many as two times more pods than the spec defines.
+`maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in the currently applied specification. Unavailable is defined as Pod being not ready from Kubernetes perspective.
 
-`maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in currently applied spec. Unavailable is defined as Pod being not ready from Kubernetes perspective.
+As these constraints are enforced immediately after the specification is applied, it is possible the the actual state of the cluster might violate these constraints. When the cluster is outside these constraints, the operator can add or remove nodes only with the purpose of getting closer to these constraints. When the cluster is within these constraints, the operator can either add or remove nodes, as long as the cluster remains within the predefined constraints.
 
-As these constraints are enforced immediately after the specification is applied, it is possible the actual state of the cluster might violate these constraints. As long as it remains within the predefined constraints defined by `maxSurge` and `maxUnavailable`, the operator allows the cluster to scale up or down.
 For example, if a new specification defines a larger cluster with `maxUnavailable: 0`, the operator creates the missing Pods according to the best practices. Similarly, if a new specification defines a smaller cluster with `maxSurge: 0`, the operator safely removes the unnecessary Pods.
-
-
-Note that these constraints are enforced immediately after the spec is applied, which might mean that the actual state of the cluster is in violation of these constraints. This is expected and the operator won't stop from moving the cluster towards respecting them.
-For example, if a new spec defines a larger cluster with no unavailable Pods permitted (`maxUnavailable: 0`), the operator will continue creating missing Pods according to the best practices. Similarly, if a new spec defines a smaller cluster with no Pods above the spec permitted (`maxSurge: 0`), the operator will continue safely removing unnecessary Pods.
 
 ==== Specifying changeBudget
 For both `maxSurge` and `maxUnavailable` you can specify the following values:
