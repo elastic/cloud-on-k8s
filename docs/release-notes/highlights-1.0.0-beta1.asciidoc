@@ -28,6 +28,12 @@ Webhook validation has also temporarily been removed from this release. It is cu
 Users have more control over TLS settings of the Elasticsearch HTTP layer, Kibana, and APM Server in this release. It is now possible to use external certificates from well-known CAs, utilities like cert-manager, or even completely disable automatic provisioning of TLS certificates. The latter can be useful when TLS is handled at a different layer, for instance, with Istio deployments. See: <<{p}-setting-up-your-own-certificate>> and <<{p}-disable-tls>>. 
 
 [float]
+[id="{p}-release-secure-settings"]
+=== Secure settings enhancements
+
+Secure settings have received multiple ergonomics improvements. It is now possible to specify secure settings from multiple secrets. It is also possible to specify specific items in a Kubernetes secret to be used as a secure setting, rather than having to use all items in a secret.
+
+[float]
 [id="{p}-breaking-changes-1.0.0-beta1"]
 === Breaking Changes
 
