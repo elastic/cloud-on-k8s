@@ -47,10 +47,10 @@ If you already have read the documentation about how to run Elasticsearch on ECK
 described here will sound familiar to you.
 This is because the resource definitions in ECK share the same philosophy when it comes to:
 
-* Customize the Pod configuration
-* Customize the product configuration
-* Manage HTTP settings
-* Use secure settings
+* Customizing the Pod configuration
+* Customizing the product configuration
+* Managing HTTP settings
+* Using secure settings
 
 [float]
 [id="{p}-kibana-pod-configuration"]
@@ -118,8 +118,8 @@ NOTE: The configuration items you provide always take precedence over the ones t
 [id="{p}-kibana-scaling"]
 === Scale out a Kibana deployment
 
-You may want to deploy more than one instance of Kibana. In this case all the instances have to share
-the same encryption key.
+You may want to deploy more than one instance of Kibana.
+In this case all the instances must share the same encryption key.
 
 This can be done either directly in the `spec.config` section:
 
