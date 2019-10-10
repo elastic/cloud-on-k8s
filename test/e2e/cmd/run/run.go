@@ -345,6 +345,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	if h.logToFile {
 		f, err := os.Create(testsLogFile)
 		if err != nil {
+			log.Error(err, "Can't create file for test output")
 			return
 		}
 		defer f.Close()

@@ -101,7 +101,6 @@ type Context struct {
 	TestRun             string              `json:"test_run"`
 	AutoPortForwarding  bool                `json:"auto_port_forwarding"`
 	Local               bool                `json:"local"`
-	LogToFile           bool                `json:"log_to_file"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
