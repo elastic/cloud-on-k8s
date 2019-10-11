@@ -46,7 +46,7 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 				},
 			},
 			wantAllowed: false,
-			wantReason:  "duplicate node set(s) foo, bar",
+			wantReason:  validationFailedMsg,
 		},
 		{
 			name: "good spec with 1 nodeSet",
