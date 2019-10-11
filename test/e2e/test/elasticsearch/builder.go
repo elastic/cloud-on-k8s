@@ -17,6 +17,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
+const (
+	defaultStorageClass = "e2e-default"
+	defaultVolumeName   = "e2e-default-volume"
+)
+
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
@@ -179,7 +184,7 @@ func (b Builder) WithNodeSet(nodeSet estype.NodeSet) Builder {
 	}
 	nodeSet.Config.Data["node.store.allow_mmap"] = false
 	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSet)
-	return b
+	return b.WithDefaultPersistentVolumes()
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
@@ -205,13 +210,19 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 	return b
 }
 
-func (b Builder) WithPersistentVolumes(volumeName string) Builder {
+func (b Builder) WithDefaultPersistentVolumes() Builder {
+	storageClass := defaultStorageClass
 	for i := range b.Elasticsearch.Spec.NodeSets {
-		name := volumeName
+		for _, existing := range b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates {
+			if existing.Name == defaultVolumeName {
+				goto next
+			}
+		}
+
 		b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates,
 			corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: name,
+					Name: defaultVolumeName,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -222,19 +233,22 @@ func (b Builder) WithPersistentVolumes(volumeName string) Builder {
 							corev1.ResourceStorage: resource.MustParse("1Gi"),
 						},
 					},
+					StorageClassName: &storageClass,
 				},
 			})
 		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
 			{
-				Name: name,
+				Name: defaultVolumeName,
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: name,
+						ClaimName: defaultVolumeName,
 						ReadOnly:  false,
 					},
 				},
 			},
 		}
+
+	next:
 	}
 	return b
 }
