@@ -59,8 +59,9 @@ func checkNodeSetNameUniqueness(ctx Context) validation.Result {
 		names[nodeSet.Name] = struct{}{}
 	}
 	if len(duplicates) > 0 {
-		msg := fmt.Sprintf("duplicate node set(s) %s", duplicates)
-		return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
+		return validation.Result{
+			Reason: fmt.Sprintf("%s: duplicate node set(s) %s", validationFailedMsg, duplicates),
+		}
 	}
 	return validation.OK
 }
