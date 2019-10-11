@@ -4,9 +4,9 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-operator-config.htm
 ****
 endif::[]
 [id="{p}-operator-config"]
-== Configuring the operator
+== Configuring ECK
 
-You can use several options to configure the operator. Unless otherwise noted, these options can be set as environment variables or command line flags.
+You can use several options to configure ECK. Unless otherwise noted, these options can be set as environment variables or command line flags.
 
 
 [width="70%",valign="middle",halign="center",options="header"]
