@@ -19,7 +19,7 @@ Eager to get started? This quick guide shows you how to:
 
 **Supported versions**
 --
-include::supported_versions.asciidoc[]
+include::supported-versions.asciidoc[]
 --
 
 [float]
