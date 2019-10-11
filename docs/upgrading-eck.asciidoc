@@ -109,3 +109,16 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
    elasticsearchRef:
      name: "elasticsearch-sample"
 ----
+
+[float]
+[id="{p}-1.0.0-beta1-backwards-compatibility"]
+==== Backwards compatibility
+
+The 1.0.0-beta version of the operator does not delete resources created by older versions of the operator, but it also does not manage them. Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. To unblock the deletion, remove any registered finalizer from the resource (substituting the correct name for `quickstart`):
+
+[source,sh]
+----
+kubectl patch elasticsearch quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch kibana quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch apmserver quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+----
