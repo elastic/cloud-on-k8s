@@ -1,5 +1,5 @@
 [[release-highlights-1.0.0-beta1]]
-== 1.0.0-beta1 Release Highlights
+== 1.0.0-beta1 release highlights
 
 [float]
 [id="{p}-release-ssets"]
