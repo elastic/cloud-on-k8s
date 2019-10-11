@@ -47,6 +47,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 * Remove `setVmMaxMapCount`. See: <<{p}-virtual-memory>>.
 * Remove `groups` from `updateStrategy`. See: <<{p}-update-strategy>>.
 * Remove `featureFlags`
+* If you specify a `secureSettings`, convert the `secretName` to an array item
 
 [source,patch,subs="attributes"]
 ----
@@ -63,6 +64,9 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
      changeBudget:
        maxUnavailable: 1
 -    groups: []
+   secureSettings:
+-    secretName: "gcs-credentials"
++  - secretName: "gcs-credentials"
 -  nodes:
 -  - nodeCount: 3
 +  nodeSets:
@@ -74,6 +78,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 .Kibana
 * Replace `v1alpha` in the `apiVersion` field with `v1beta1`
 * Rename `nodeCount` to `count`
+* If you specify a `secureSettings`, convert the `secretName` to an array item
 
 [source,patch,subs="attributes"]
 ----
@@ -88,12 +93,16 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 +  count: 1
    elasticsearchRef:
      name: "elasticsearch-sample"
+   secureSettings:
+-    secretName: "gcs-credentials"
++  - secretName: "gcs-credentials"
 ----
 
 
 .APM Server
 * Replace `v1alpha` in the `apiVersion` field with `v1beta1`
 * Rename `nodeCount` to `count`
+* If you specify a `secureSettings`, convert the `secretName` to an array item
 
 [source,patch,subs="attributes"]
 ----
@@ -108,4 +117,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 +  count: 1
    elasticsearchRef:
      name: "elasticsearch-sample"
+   secureSettings:
+-    secretName: "gcs-credentials"
++  - secretName: "gcs-credentials"
 ----
