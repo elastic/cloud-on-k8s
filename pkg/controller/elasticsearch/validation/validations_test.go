@@ -25,6 +25,80 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+func Test_checkNodeSetNameUniqueness(t *testing.T) {
+	type args struct {
+		name        string
+		es          v1beta1.Elasticsearch
+		wantReason  string
+		wantAllowed bool
+	}
+	tests := []args{
+		{
+			name: "several duplicate nodeSets",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version: "7.4.0",
+					NodeSets: []estype.NodeSet{
+						{Name: "foo", Count: 1}, {Name: "foo", Count: 1},
+						{Name: "bar", Count: 1}, {Name: "bar", Count: 1},
+					},
+				},
+			},
+			wantAllowed: false,
+			wantReason:  validationFailedMsg,
+		},
+		{
+			name: "good spec with 1 nodeSet",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{Name: "foo", Count: 1}},
+				},
+			},
+			wantAllowed: true,
+		},
+		{
+			name: "good spec with 2 nodeSets",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{Name: "foo", Count: 1}, {Name: "bar", Count: 1}},
+				},
+			},
+			wantAllowed: true,
+		},
+		{
+			name: "duplicate nodeSet",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []estype.NodeSet{{Name: "foo", Count: 1}, {Name: "foo", Count: 1}},
+				},
+			},
+			wantAllowed: false,
+			wantReason:  validationFailedMsg,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, err := NewValidationContext(nil, tt.es)
+			require.NoError(t, err)
+			got := checkNodeSetNameUniqueness(*ctx)
+			if got.Allowed != tt.wantAllowed {
+				t.Errorf("checkNodeSetNameUniqueness() = %v, want %v", got.Allowed, tt.wantAllowed)
+			}
+			if !strings.Contains(got.Reason, tt.wantReason) {
+				t.Errorf("checkNodeSetNameUniqueness() = %v, want %v", got.Reason, tt.wantReason)
+			}
+		})
+	}
+}
+
 func Test_hasMaster(t *testing.T) {
 	failedValidation := validation.Result{Allowed: false, Reason: masterRequiredMsg}
 	type args struct {
