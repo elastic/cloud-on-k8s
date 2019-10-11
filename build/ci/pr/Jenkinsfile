@@ -129,7 +129,7 @@ def createDeployerConfig() {
         cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
-  clusterName: $BUILD_TAG
+  clusterName: eck-pr-$BUILD_NUMBER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
