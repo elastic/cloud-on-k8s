@@ -4,31 +4,31 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-operator-config.htm
 ****
 endif::[]
 [id="{p}-operator-config"]
-== Operator configuration
+== Configuring the operator
 
-The operator exposes several configuration options. Unless otherwise noted, they can be set as environment variables or command line flags.
+You can use several options to configure the operator. Unless otherwise noted, these options can be set as environment variables or command line flags.
 
 
 [width="70%",valign="middle",halign="center",options="header"]
 |==========================
 |Flag |Type|Default|Description
 
-|log-verbosity |int |0 |Verbosity level of logs. -2=Error, -1=Warn, 0=Info, >0=Debug
-|enable-debug-logs |bool |false |Enables debug logs. Equivalent to `log-verbosity=1`
-|metrics-port |int |0 |Port to use for exposing metrics in the Prometheus format. Set 0 to disable
-|operator-roles |[]string |all |Roles this operator should assume. Valid values are namespace, global, webhook or all. Accepts multiple comma separated values. See <<{p}-ns-config>> for more information
-|namespace |string |`""` |Namespace in which this operator should manage resources. Defaults to all namespaces. See <<{p}-ns-config>> for more information
-|ca-cert-validity |duration (string) |1y |Duration representing how long before a newly created CA cert expires
-|ca-cert-rotate-before |duration (string) |1d |Duration representing how long before expiration CA certificates should be reissued
-|cert-validity |duration (string) |1y |Duration representing how long before a newly created TLS certificate expires
-|cert-rotate-before |duration (string) |1d |Duration representing how long before expiration TLS certificates should be reissued
-|auto-install-webhooks |bool |true |Enables automatic webhook installation
-|operator-namespace |string |`""` |K8s namespace the operator runs in
-|webhook-secret |string |`""` |K8s secret name mounted into /tmp/cert to be used for webhook certificates
-|webhook-pods-label |string |`""` |K8s label to select pods running the operator
-|development |bool |false |Enable developmenet mode. Only available as a CLI flag, not an environment variable
-|debug-http-listen |string |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode
-|auto-port-forward |bool |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost
+|`log-verbosity` |int |0 |Verbosity level of logs. -2=Error, -1=Warn, 0=Info, >0=Debug
+|`enable-debug-logs` |bool |false |Enables debug logs. Equivalent to `log-verbosity=1`
+|`metrics-port` |int |0 |Port to use for exposing metrics in the Prometheus format. Set 0 to disable
+|`operator-roles` |[]string |all |Roles this operator should assume. Valid values are namespace, global, webhook or all. Accepts multiple comma separated values. See <<{p}-ns-config>> for more information
+|`namespace` |string |`""` |Namespace in which this operator should manage resources. Defaults to all namespaces. See <<{p}-ns-config>> for more information
+|`ca-cert-validity` |duration (string) |1y |Duration representing how long before a newly created CA cert expires
+|`ca-cert-rotate-before` |duration (string) |1d |Duration representing how long before expiration CA certificates should be reissued
+|`cert-validity` |duration (string) |1y |Duration representing how long before a newly created TLS certificate expires
+|`cert-rotate-before` |duration (string) |1d |Duration representing how long before expiration TLS certificates should be reissued
+|`auto-install-webhooks` |bool |true |Enables automatic webhook installation
+|`operator-namespace` |string |`""` |K8s namespace the operator runs in
+|`webhook-secret` |string |`""` |K8s secret name mounted into /tmp/cert to be used for webhook certificates
+|`webhook-pods-label` |string |`""` |K8s label to select pods running the operator
+|`development` |bool |false |Enable developmenet mode. Only available as a CLI flag, not an environment variable
+|`debug-http-listen` |string |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode
+|`auto-port-forward` |bool |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost
 |==========================
 
 
