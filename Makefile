@@ -366,6 +366,7 @@ e2e-run:
 		--log-to-file=$(E2E_JSON)
 
 e2e-generate-xml:
+	@ ./hack/clean_e2e_xml.sh
 	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
 
 # Verify e2e tests compile with no errors, don't run them
