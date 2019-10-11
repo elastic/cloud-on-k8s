@@ -17,6 +17,11 @@ With Elastic Cloud on Kubernetes you can streamline all those critical operation
 . Securing clusters with TLS certificates
 . Setting up hot-warm-cold architectures with availability zone awareness
 
+Supported versions:
+--
+include::supported-versions.asciidoc[]
+--
+
 Learn more about ECK:
 
 - link:https://www.elastic.co/elasticsearch-kubernetes[Orchestrate Elasticsearch on Kubernetes]
