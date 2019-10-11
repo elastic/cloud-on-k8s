@@ -34,6 +34,21 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 	}
 	tests := []args{
 		{
+			name: "several duplicate nodeSets",
+			es: v1beta1.Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: estype.ElasticsearchSpec{
+					Version: "7.4.0",
+					NodeSets: []estype.NodeSet{
+						{Name: "foo", Count: 1}, {Name: "foo", Count: 1},
+						{Name: "bar", Count: 1}, {Name: "bar", Count: 1},
+					},
+				},
+			},
+			wantAllowed: false,
+			wantReason:  "duplicate node set(s) foo, bar",
+		},
+		{
 			name: "good spec with 1 nodeSet",
 			es: v1beta1.Elasticsearch{
 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},

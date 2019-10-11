@@ -36,15 +36,31 @@ var Validations = []Validation{
 	checkNodeSetNameUniqueness,
 }
 
+type duplicates map[string]struct{}
+
+func (d duplicates) String() string {
+	keys := make([]string, len(d))
+	i := 0
+	for key := range d {
+		keys[i] = key
+		i++
+	}
+	return strings.Join(keys, ", ")
+}
+
 func checkNodeSetNameUniqueness(ctx Context) validation.Result {
 	nodeSets := ctx.Proposed.Elasticsearch.Spec.NodeSets
-	names := make(map[string]interface{})
+	names := make(map[string]struct{})
+	duplicates := make(duplicates)
 	for _, nodeSet := range nodeSets {
 		if _, found := names[nodeSet.Name]; found {
-			msg := fmt.Sprintf("duplicate node set '%s'", nodeSet.Name)
-			return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
+			duplicates[nodeSet.Name] = struct{}{}
 		}
-		names[nodeSet.Name] = nil
+		names[nodeSet.Name] = struct{}{}
+	}
+	if len(duplicates) > 0 {
+		msg := fmt.Sprintf("duplicate node set(s) %s", duplicates)
+		return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
 	}
 	return validation.OK
 }
