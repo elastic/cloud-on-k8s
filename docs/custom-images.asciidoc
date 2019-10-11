@@ -40,6 +40,9 @@ spec:
 The steps are similar for https://docs.microsoft.com/en-us/azure/aks/tutorial-kubernetes-prepare-acr[Azure Kubernetes Service] and https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-basics.html#use-ecr[AWS Elastic Container Registry].
 
 For more information, you can check the following references:
+[float]
+[id="{p}-references"]
+=== References
 
 - https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_c_customized_image[Elasticsearch doc on creating custom images]
 - https://cloud.google.com/container-registry/docs/how-to[Google Container Registry docs]
