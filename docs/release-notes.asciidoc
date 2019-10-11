@@ -1,5 +1,5 @@
-[id="{p}-release-notes"]
-= Release Notes
+[[eck-release-notes]]
+= Release notes
 
 [partintro]
 --
