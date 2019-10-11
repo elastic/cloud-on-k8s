@@ -7,14 +7,11 @@ package driver
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -164,7 +161,7 @@ func Test_defaultDriver_maybeForceUpgrade(t *testing.T) {
 			for i := range tt.actualPods {
 				runtimeObjs = append(runtimeObjs, &tt.actualPods[i])
 			}
-			k8sClient := k8s.WrapClient(fake.NewFakeClient(runtimeObjs...))
+			k8sClient := k8s.WrappedFakeClient(runtimeObjs...)
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
 					Client:       k8sClient,

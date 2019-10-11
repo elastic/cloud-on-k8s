@@ -16,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestGenerationsExpectations(t *testing.T) {
@@ -107,7 +106,7 @@ func TestExpectations_ExpectDeletion(t *testing.T) {
 
 	// Create a fake client with new UID for the last remaining Pod in cluster1
 	cluster1Pod3 = newPod(testCluster1, "cluster1Pod3")
-	client := k8s.WrapClient(fake.NewFakeClient(&cluster1Pod3, &cluster2Pod1))
+	client := k8s.WrappedFakeClient(&cluster1Pod3, &cluster2Pod1)
 
 	// UID has changed for the last Pod of cluster1, expectation must be satisfied
 	satisfied, err := e.SatisfiedDeletions(client, testCluster1)

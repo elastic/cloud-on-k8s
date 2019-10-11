@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestMarkPodAsUpdated(t *testing.T) {
@@ -36,7 +35,7 @@ func TestMarkPodAsUpdated(t *testing.T) {
 	}{
 		{
 			args: args{
-				c:   k8s.WrapClient(fake.NewFakeClient(pod.DeepCopy())),
+				c:   k8s.WrappedFakeClient(pod.DeepCopy()),
 				pod: pod,
 			},
 		},

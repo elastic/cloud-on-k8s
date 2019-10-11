@@ -7,18 +7,17 @@ package driver
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_defaultDriver_expectationsMet(t *testing.T) {
 	d := &defaultDriver{DefaultDriverParameters{
 		Expectations: expectations.NewExpectations(),
-		Client:       k8s.WrapClient(fake.NewFakeClient()),
+		Client:       k8s.WrappedFakeClient(),
 	}}
 
 	// no expectations set
@@ -43,7 +42,7 @@ func Test_defaultDriver_expectationsMet(t *testing.T) {
 
 	// we expect some sset replicas to exist
 	// but corresponding pod does not exist
-	statefulSet.Spec.Replicas = common.Int32(1)
+	statefulSet.Spec.Replicas = pointer.Int32(1)
 	// expectations should not be met: we miss a pod
 	met, err = d.expectationsMet(sset.StatefulSetList{statefulSet})
 	require.NoError(t, err)
@@ -51,7 +50,7 @@ func Test_defaultDriver_expectationsMet(t *testing.T) {
 
 	// add the missing pod
 	pod := sset.TestPod{Name: "sset-0", StatefulSetName: statefulSet.Name}.Build()
-	d.Client = k8s.WrapClient(fake.NewFakeClient(&pod))
+	d.Client = k8s.WrappedFakeClient(&pod)
 	// expectations should be met
 	met, err = d.expectationsMet(sset.StatefulSetList{statefulSet})
 	require.NoError(t, err)

@@ -10,10 +10,8 @@ import (
 
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func es(v string) *estype.Elasticsearch {
@@ -27,7 +25,6 @@ func es(v string) *estype.Elasticsearch {
 }
 
 func TestValidation_noDowngrades(t *testing.T) {
-	assert.NoError(t, estype.SchemeBuilder.AddToScheme(scheme.Scheme))
 	type args struct {
 		toValidate estype.Elasticsearch
 	}

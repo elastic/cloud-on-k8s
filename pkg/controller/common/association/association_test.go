@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestGetCredentials(t *testing.T) {
@@ -38,13 +37,13 @@ func TestGetCredentials(t *testing.T) {
 	}{
 		{
 			name: "When auth details are defined",
-			client: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+			client: k8s.WrappedFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
-			})),
+			}),
 			assocConf: commonv1beta1.AssociationConf{
 				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
 				AuthSecretKey:  "elastic-internal-apm",
@@ -56,13 +55,13 @@ func TestGetCredentials(t *testing.T) {
 		},
 		{
 			name: "When auth details are undefined",
-			client: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+			client: k8s.WrappedFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
-			})),
+			}),
 			assocConf: commonv1beta1.AssociationConf{
 				CASecretName: "ca-secret",
 				URL:          "https://elasticsearch-sample-es-http.default.svc:9200",
@@ -70,13 +69,13 @@ func TestGetCredentials(t *testing.T) {
 		},
 		{
 			name: "When the auth secret does not exist",
-			client: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+			client: k8s.WrappedFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-secret",
 					Namespace: "default",
 				},
 				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
-			})),
+			}),
 			assocConf: commonv1beta1.AssociationConf{
 				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
 				AuthSecretKey:  "elastic-internal-apm",
