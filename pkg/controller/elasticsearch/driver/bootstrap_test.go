@@ -14,6 +14,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,6 +80,41 @@ func Test_annotateWithUUID(t *testing.T) {
 	err = k8sClient.Get(k8s.ExtractNamespacedName(cluster), &retrieved)
 	require.NoError(t, err)
 	require.True(t, AnnotatedForBootstrap(retrieved))
+}
+
+func Test_clusterIsBootstrapped(t *testing.T) {
+	tests := []struct {
+		name  string
+		state observer.State
+		want  bool
+	}{
+		{
+			name:  "empty state",
+			state: observer.State{},
+			want:  false,
+		},
+		{
+			name:  "cluster uuid empty",
+			state: observer.State{ClusterInfo: &esclient.Info{}},
+			want:  false,
+		},
+		{
+			name:  "cluster uuid _na_ (not available) yet, cluster is still forming",
+			state: observer.State{ClusterInfo: &esclient.Info{ClusterUUID: "_na_"}},
+			want:  false,
+		},
+		{
+			name:  "cluster uuid set, cluster bootstrapped",
+			state: observer.State{ClusterInfo: &esclient.Info{ClusterUUID: "6902c192-ec1d-11e9-81b4-2a2ae2dbcce4"}},
+			want:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, clusterIsBootstrapped(tt.state))
+		})
+	}
 }
 
 func TestReconcileClusterUUID(t *testing.T) {
