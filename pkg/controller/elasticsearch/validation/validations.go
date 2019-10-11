@@ -33,6 +33,20 @@ var Validations = []Validation{
 	noBlacklistedSettings,
 	validSanIP,
 	pvcModification,
+	checkNodeSetNameUniqueness,
+}
+
+func checkNodeSetNameUniqueness(ctx Context) validation.Result {
+	nodeSets := ctx.Proposed.Elasticsearch.Spec.NodeSets
+	names := make(map[string]interface{})
+	for _, nodeSet := range nodeSets {
+		if _, found := names[nodeSet.Name]; found {
+			msg := fmt.Sprintf("duplicate node set '%s'", nodeSet.Name)
+			return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
+		}
+		names[nodeSet.Name] = nil
+	}
+	return validation.OK
 }
 
 // validName checks whether the name is valid.
