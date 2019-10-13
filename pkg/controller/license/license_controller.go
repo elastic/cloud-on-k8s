@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -61,9 +62,10 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{
-		Client:  c,
-		scheme:  mgr.GetScheme(),
-		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
+		Client:    c,
+		scheme:    mgr.GetScheme(),
+		scheduler: scheduler.NewScheduler(),
+		checker:   license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
 }
 
@@ -89,7 +91,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *ReconcileLicenses) error {
 	// Create a new controller
 	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -100,6 +102,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err := c.Watch(
 		&source.Kind{Type: &v1beta1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
+		return err
+	}
+
+	if err := c.Watch(scheduler.Events(r.scheduler), reconciler.GenericEventHandler()); err != nil {
 		return err
 	}
 
@@ -146,6 +152,7 @@ type ReconcileLicenses struct {
 	scheme *runtime.Scheme
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
+	scheduler *scheduler.Scheduler
 	checker   license.Checker
 }
 
@@ -242,5 +249,12 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
 	}
-	return nextReconcile(newExpiry, defaultSafetyMargin), nil
+
+	result := nextReconcile(newExpiry, defaultSafetyMargin)
+	if result.RequeueAfter > 0 {
+		// use internal scheduler to avoid timer leaks
+		r.scheduler.Schedule(request.NamespacedName, result.RequeueAfter)
+		return reconcile.Result{}, nil
+	}
+	return result, nil
 }
