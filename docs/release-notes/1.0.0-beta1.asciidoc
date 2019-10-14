@@ -10,7 +10,8 @@
 
 * Rename nodes to nodeSets, nodeCount to count {pull}1843[#1843]
 * Remove setVmMaxMapCount from Elasticsearch CRD {pull}1839[#1839] (issue: {issue}1712[#1712])
-* Bump CRD versions to v1betav1 {pull}1782[#1782]
+* Bump CRD versions to v1beta1 {pull}1782[#1782]
+* Allow for multiple user specified secure settings secrets {pull}1627[#1627]
 * Add webhook check for PVC modification {pull}1517[#1517] (issue: {issue}1293[#1293])
 * Refactor nodes orchestration to rely on StatefulSets {pull}1463[#1463] (issue: {issue}1299[#1299])
 * Orchestrate zen1 and zen2 settings for StatefulSets {pull}1262[#1262] (issue: {issue}1173[#1173])
@@ -43,7 +44,6 @@
 * Upgrade to Kubebuilder v2 {pull}1723[#1723] (issues: {issue}1188[#1188], {issue}1604[#1604])
 * Support more secret volume fields in secure settings {pull}1665[#1665]
 * Validate Elasticsearch resource names {pull}1647[#1647]
-* Allow for multiple user specified secure settings secrets {pull}1627[#1627]
 * Allow users to disable TLS for HTTP in the Elasticsearch spec {pull}1623[#1623]
 * Preserve labels and annotations on public cert secrets {pull}1580[#1580]
 * Generate events for reconcililation errors {pull}1578[#1578]
