@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -364,9 +363,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 		resources      []runtime.Object
 		recorder       record.EventRecorder
 		dynamicWatches watches.DynamicWatches
-		finalizers     finalizer.Handler
 		Parameters     operator.Parameters
-		iteration      uint64
 	}
 	type args struct {
 		request reconcile.Request
@@ -411,7 +408,6 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				scheme:         scheme.Scheme,
 				recorder:       tt.fields.recorder,
 				dynamicWatches: tt.fields.dynamicWatches,
-				finalizers:     tt.fields.finalizers,
 				Parameters:     tt.fields.Parameters,
 			}
 			got, err := r.doReconcile(tt.args.request, tt.as.DeepCopy())
