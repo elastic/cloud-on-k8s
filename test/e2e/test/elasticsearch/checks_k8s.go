@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"testing"
 
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -19,10 +18,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -327,9 +324,27 @@ func AnnotatePodsWithBuilderHash(b Builder, k *test.K8sClient) []test.Step {
 	return []test.Step{
 		{
 			Name: "Annotate Pods with a hash of their Builder spec",
-			Test: func(t *testing.T) {
-				annotateWithRetries(b, k, t)
-			},
+			Test: test.Eventually(func() error {
+				es := b.Elasticsearch
+				for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
+					pods, err := sset.GetActualPodsForStatefulSet(k.Client, types.NamespacedName{
+						Namespace: es.Namespace,
+						Name:      esname.StatefulSet(es.Name, nodeSet.Name),
+					})
+					if err != nil {
+						return err
+					}
+					for i := range pods {
+						pods[i].Annotations[BuilderHashAnnotation] = nodeSetHash(es, nodeSet)
+						if err := k.Client.Update(&pods[i]); err != nil {
+							// may error out with a conflict if concurrently updated by the operator,
+							// which is why we retry with `test.Eventually`
+							return err
+						}
+					}
+				}
+				return nil
+			}),
 		},
 		// make sure this is propagated to the local cache so next test steps can expect annotated pods
 		{
@@ -347,27 +362,6 @@ func AnnotatePodsWithBuilderHash(b Builder, k *test.K8sClient) []test.Step {
 				return nil
 			}),
 		},
-	}
-}
-
-func annotateWithRetries(b Builder, k *test.K8sClient, t *testing.T) {
-	es := b.Elasticsearch
-	for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
-		pods, err := sset.GetActualPodsForStatefulSet(k.Client, types.NamespacedName{
-			Namespace: es.Namespace,
-			Name:      esname.StatefulSet(es.Name, nodeSet.Name),
-		})
-		require.NoError(t, err)
-		for i := range pods {
-			pods[i].Annotations[BuilderHashAnnotation] = nodeSetHash(es, nodeSet)
-			err := k.Client.Update(&pods[i])
-			if err != nil && apierrors.IsConflict(err) {
-				// pod was updated concurrently, retry
-				annotateWithRetries(b, k, t)
-			} else {
-				require.NoError(t, err)
-			}
-		}
 	}
 }
 
