@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
@@ -42,6 +43,7 @@ func TestReconcile(t *testing.T) {
 			Client:  k8s.WrapClient(mgr.GetClient()),
 			scheme:  mgr.GetScheme(),
 			checker: license.MockChecker{},
+			scheduler: scheduler.NewScheduler(),
 		})
 	}, operator.Parameters{})
 	defer stop()
