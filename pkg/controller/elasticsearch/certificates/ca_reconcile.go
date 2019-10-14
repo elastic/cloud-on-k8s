@@ -59,7 +59,7 @@ func Reconcile(
 
 	// make sure to requeue before the CA cert expires
 	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCA.Cert.NotAfter, caRotation.RotateBefore),
+		RequeueAfter: certificates.ShouldReconcileIn(time.Now(), httpCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// discover and maybe reconcile for the http certificates to use
@@ -96,7 +96,7 @@ func Reconcile(
 	}
 	// make sure to requeue before the CA cert expires
 	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
+		RequeueAfter: certificates.ShouldReconcileIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// reconcile transport public certs secret:

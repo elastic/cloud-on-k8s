@@ -12,6 +12,8 @@ const (
 	// DefaultRotateBefore defines how long before expiration a certificate
 	// should be re-issued
 	DefaultRotateBefore = 24 * time.Hour
+	// MaxReconciliationPeriod defines the maximum period of time between 2 certificates rotation.
+	MaxReconciliationPeriod = 10 * time.Hour
 )
 
 // RotationParams defines validity and a safety margin for certificate rotation.
@@ -22,9 +24,9 @@ type RotationParams struct {
 	RotateBefore time.Duration
 }
 
-// ShouldRotateIn computes the duration after which a certificate rotation should be scheduled
+// shouldRotateIn computes the duration after which a certificate rotation should be scheduled
 // in order for the CA cert to be rotated before it expires.
-func ShouldRotateIn(now time.Time, certExpiration time.Time, caCertRotateBefore time.Duration) time.Duration {
+func shouldRotateIn(now time.Time, certExpiration time.Time, caCertRotateBefore time.Duration) time.Duration {
 	// make sure we are past the safety margin when rotating, by making it a little bit shorter
 	safetyMargin := caCertRotateBefore - 1*time.Second
 	requeueTime := certExpiration.Add(-safetyMargin)
@@ -34,4 +36,17 @@ func ShouldRotateIn(now time.Time, certExpiration time.Time, caCertRotateBefore 
 		requeueIn = 0
 	}
 	return requeueIn
+}
+
+// ShouldReconcileIn returns the duration after which a reconciliation should be done
+// to make sure certificates do not expire.
+func ShouldReconcileIn(now time.Time, certExpiration time.Time, caCertRotateBefore time.Duration) time.Duration {
+	rotateIn := shouldRotateIn(now, certExpiration, caCertRotateBefore)
+	if rotateIn > MaxReconciliationPeriod {
+		// We don't want to wait for rotateIn to be reached, because of an underlying leaky timer issue.
+		// See https://github.com/elastic/cloud-on-k8s/issues/1984.
+		// TODO: remove once https://github.com/kubernetes/client-go/issues/701 is fixed.
+		return MaxReconciliationPeriod
+	}
+	return rotateIn
 }

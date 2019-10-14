@@ -48,7 +48,7 @@ func Reconcile(
 
 	// handle CA expiry via requeue
 	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, rotation.RotateBefore),
+		RequeueAfter: certificates.ShouldReconcileIn(time.Now(), httpCa.Cert.NotAfter, rotation.RotateBefore),
 	})
 
 	// discover and maybe reconcile for the http certificates to use

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func TestShouldRotateIn(t *testing.T) {
+func Test_shouldRotateIn(t *testing.T) {
 	now := time.Now()
 	tests := []struct {
 		name               string
@@ -49,8 +49,41 @@ func TestShouldRotateIn(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ShouldRotateIn(tt.now, tt.certExpiration, tt.caCertRotateBefore); got != tt.want {
+			if got := shouldRotateIn(tt.now, tt.certExpiration, tt.caCertRotateBefore); got != tt.want {
 				t.Errorf("shouldRequeueIn() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestShouldReconcileIn(t *testing.T) {
+	now := time.Now()
+	tests := []struct {
+		name               string
+		now                time.Time
+		certExpiration     time.Time
+		caCertRotateBefore time.Duration
+		want               time.Duration
+	}{
+		{
+			name:               "rotation scheduled in less than 10 hours: requeue at that time",
+			now:                now,
+			certExpiration:     now.Add(10 * time.Hour),
+			caCertRotateBefore: 1 * time.Hour,
+			want:               9*time.Hour + 1*time.Second,
+		},
+		{
+			name:               "rotation scheduled in more than 10 hours: requeue in 10 hours",
+			now:                now,
+			certExpiration:     now.Add(30 * time.Hour),
+			caCertRotateBefore: 1 * time.Hour,
+			want:               10 * time.Hour,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ShouldReconcileIn(tt.now, tt.certExpiration, tt.caCertRotateBefore); got != tt.want {
+				t.Errorf("ShouldReconcileIn() = %v, want %v", got, tt.want)
 			}
 		})
 	}
