@@ -62,7 +62,7 @@ func Test_nextTakesPrecedence(t *testing.T) {
 	}
 }
 
-func TestResults(t *testing.T) {
+func TestResults_Aggregate(t *testing.T) {
 	tests := []struct {
 		name string
 		args []reconcile.Result
@@ -82,6 +82,11 @@ func TestResults(t *testing.T) {
 			name: "multiple",
 			args: []reconcile.Result{{}, {Requeue: true}, {RequeueAfter: 1 * time.Second}},
 			want: reconcile.Result{RequeueAfter: 1 * time.Second},
+		},
+		{
+			name: "multiple with large RequeueAfter: reduced to the maximum value",
+			args: []reconcile.Result{{}, {Requeue: true}, {RequeueAfter: 100 * time.Hour}},
+			want: reconcile.Result{RequeueAfter: MaximumRequeueAfter},
 		},
 	}
 	for _, tt := range tests {

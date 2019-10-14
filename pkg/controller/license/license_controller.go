@@ -48,7 +48,8 @@ var log = logf.Log.WithName(name)
 // This happens independently from any watch triggered reconcile request.
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
-	return r.reconcileInternal(request)
+	results := r.reconcileInternal(request)
+	return results.Aggregate()
 }
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -221,26 +222,29 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 	return matchingSpec.ExpiryTime(), err
 }
 
-func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconciler.Results {
+	res := &reconciler.Results{}
+
 	// Fetch the cluster to ensure it still exists
 	cluster := v1beta1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &cluster)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// nothing to do no cluster
-			return reconcile.Result{}, nil
+			return res
 		}
-		return reconcile.Result{}, err
+		return res.WithError(err)
 	}
 
 	if !cluster.DeletionTimestamp.IsZero() {
 		// cluster is being deleted nothing to do
-		return reconcile.Result{}, nil
+		return res
 	}
 
 	newExpiry, err := r.reconcileClusterLicense(cluster)
 	if err != nil {
-		return reconcile.Result{Requeue: true}, err
+		return res.WithError(err)
 	}
-	return nextReconcile(newExpiry, defaultSafetyMargin), nil
+
+	return res.WithResult(nextReconcile(newExpiry, defaultSafetyMargin))
 }
