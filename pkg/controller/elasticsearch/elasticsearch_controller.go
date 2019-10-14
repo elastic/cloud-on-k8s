@@ -289,6 +289,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
+		EventScheduler:     r.scheduler,
 	}).Reconcile()
 }
 
