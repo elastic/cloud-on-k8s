@@ -56,12 +56,20 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 			want: reconcile.Result{Requeue: true},
 		},
 		{
-			name: "default: requeue after expiry - safety/2 ",
+			name: "default: requeue every 10 hour ",
 			args: args{
 				expiry: chrono.MustParseTime("2019-02-03"),
-				safety: 48 * time.Hour,
+				safety: 24 * time.Hour,
 			},
-			want: reconcile.Result{RequeueAfter: 24 * time.Hour},
+			want: reconcile.Result{RequeueAfter: 10 * time.Hour},
+		},
+		{
+			name: "requeue after expiry - safety/2 ",
+			args: args{
+				expiry: chrono.MustParseTime("2019-02-02"),
+				safety: 30 * time.Hour,
+			},
+			want: reconcile.Result{RequeueAfter: 9 * time.Hour}, // 24-(30/2)
 		},
 	}
 	for _, tt := range tests {

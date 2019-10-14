@@ -38,6 +38,8 @@ const (
 	// In case of any operational issues affecting this controller clusters will have enough runway on their current license.
 	defaultSafetyMargin  = 30 * 24 * time.Hour
 	minimumRetryInterval = 1 * time.Hour
+	// MaxReconciliationPeriod defines the maximum period of time between 2 license reconciliations.
+	maxReconciliationPeriod = 10 * time.Hour
 )
 
 var log = logf.Log.WithName(name)
@@ -78,12 +80,19 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 			RequeueAfter: minimumRetryInterval,
 		}
 	}
+	// requeue at expiry minus safetyMargin/2 to ensure we actually reissue a license on the next attempt
 	requeueAfter := expiry.Add(-1 * (safety / 2)).Sub(now)
 	if requeueAfter <= 0 {
 		return reconcile.Result{Requeue: true}
 	}
+	if requeueAfter > maxReconciliationPeriod {
+		// We don't want to wait for rotateIn to be reached, because of an underlying leaky timer issue.
+		// See https://github.com/elastic/cloud-on-k8s/issues/1984.
+		// TODO: remove once https://github.com/kubernetes/client-go/issues/701 is fixed.
+		requeueAfter = maxReconciliationPeriod
+	}
+
 	return reconcile.Result{
-		// requeue at expiry minus safetyMargin/2 to ensure we actually reissue a license on the next attempt
 		RequeueAfter: requeueAfter,
 	}
 }
