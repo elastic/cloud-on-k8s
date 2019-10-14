@@ -14,20 +14,29 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-type Scheduler struct {
+// Scheduler allows to schedule generic reconciliation events on a channel.
+type Scheduler interface {
+	// Schedule an event for NamespacedName nsn after duration.
+	Schedule(nsn types.NamespacedName, after time.Duration)
+	// Events returns the channel onto which events are scheduled.
+	Events() chan event.GenericEvent
+}
+
+type scheduler struct {
 	timers map[types.NamespacedName]*time.Timer
 	mutex  sync.Mutex
 	out    chan event.GenericEvent
 }
 
-func NewScheduler() *Scheduler {
-	return &Scheduler{
+// NewScheduler creates a new scheduler.
+func NewScheduler() Scheduler {
+	return &scheduler{
 		timers: map[types.NamespacedName]*time.Timer{},
-		out: make(chan event.GenericEvent),
+		out:    make(chan event.GenericEvent),
 	}
 }
 
-func (s *Scheduler) Schedule(nsn types.NamespacedName, after time.Duration) {
+func (s *scheduler) Schedule(nsn types.NamespacedName, after time.Duration) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	timer, exists := s.timers[nsn]
@@ -44,8 +53,13 @@ func (s *Scheduler) Schedule(nsn types.NamespacedName, after time.Duration) {
 	})
 }
 
-func Events(m *Scheduler) *source.Channel {
+func (s *scheduler) Events() chan event.GenericEvent {
+	return s.out
+}
+
+// Events returns a channel source for the events in Scheduler m.
+func Events(m Scheduler) *source.Channel {
 	return &source.Channel{
-		Source: m.out,
+		Source: m.Events(),
 	}
 }

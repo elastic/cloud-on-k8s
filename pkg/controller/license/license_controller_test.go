@@ -12,6 +12,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
@@ -174,10 +175,12 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 			client := k8s.WrapClient(fake.NewFakeClient(tt.k8sResources...))
+			mockScheduler := scheduler.MockScheduler{}
 			r := &ReconcileLicenses{
-				Client:  client,
-				scheme:  scheme.Scheme,
-				checker: commonlicense.MockChecker{},
+				Client:    client,
+				scheme:    scheme.Scheme,
+				checker:   commonlicense.MockChecker{},
+				scheduler: &mockScheduler,
 			}
 			nsn := k8s.ExtractNamespacedName(tt.cluster)
 			res, err := r.reconcileInternal(reconcile.Request{NamespacedName: nsn})
@@ -192,7 +195,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			}
 			if tt.wantRequeueAfter {
 				require.False(t, res.Requeue)
-				require.NotZero(t, res.RequeueAfter)
+				require.NotZero(t, mockScheduler.Scheduled[nsn])
 			}
 			// verify that a cluster license was created
 			// following the es naming convention

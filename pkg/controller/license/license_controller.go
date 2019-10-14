@@ -152,7 +152,7 @@ type ReconcileLicenses struct {
 	scheme *runtime.Scheme
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
-	scheduler *scheduler.Scheduler
+	scheduler scheduler.Scheduler
 	checker   license.Checker
 }
 

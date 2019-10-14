@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type CertificateResources struct {
@@ -42,7 +41,8 @@ func Reconcile(
 ) (*CertificateResources, *reconciler.Results) {
 	results := &reconciler.Results{}
 
-	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
+	nsn := k8s.ExtractNamespacedName(&es)
+	labels := label.NewLabels(nsn)
 
 	httpCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
@@ -58,9 +58,10 @@ func Reconcile(
 	}
 
 	// make sure to requeue before the CA cert expires
-	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCA.Cert.NotAfter, caRotation.RotateBefore),
-	})
+	driver.Scheduler().Schedule(
+		nsn,
+		certificates.ShouldRotateIn(time.Now(), httpCA.Cert.NotAfter, caRotation.RotateBefore),
+	)
 
 	// discover and maybe reconcile for the http certificates to use
 	httpCertificates, err := http.ReconcileHTTPCertificates(
@@ -95,9 +96,10 @@ func Reconcile(
 		return nil, results.WithError(err)
 	}
 	// make sure to requeue before the CA cert expires
-	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
-	})
+	driver.Scheduler().Schedule(
+		nsn,
+		certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
+	)
 
 	// reconcile transport public certs secret:
 	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), driver.Scheme(), es, transportCA); err != nil {

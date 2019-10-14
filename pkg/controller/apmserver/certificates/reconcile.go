@@ -14,8 +14,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	coverv1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func Reconcile(
@@ -46,10 +46,8 @@ func Reconcile(
 		return *results.WithError(err)
 	}
 
-	// handle CA expiry via requeue
-	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, rotation.RotateBefore),
-	})
+	// handle CA expiry via custom scheduler as it may be far in the future
+	driver.Scheduler().Schedule(k8s.ExtractNamespacedName(apm), certificates.ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, rotation.RotateBefore))
 
 	// discover and maybe reconcile for the http certificates to use
 	httpCertificates, err := http.ReconcileHTTPCertificates(

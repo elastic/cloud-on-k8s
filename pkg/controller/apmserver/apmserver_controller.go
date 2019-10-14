@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -92,6 +93,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
+		scheduler:      scheduler.NewScheduler(),
 		Parameters:     params,
 	}
 }
@@ -132,6 +134,11 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 		return err
 	}
 
+	// funnel scheduled events back into the reconciliation loop
+	if err := c.Watch(scheduler.Events(r.scheduler), reconciler.GenericEventHandler()); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -150,9 +157,14 @@ type ReconcileApmServer struct {
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	finalizers     finalizer.Handler
+	scheduler      scheduler.Scheduler
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
+}
+
+func (r *ReconcileApmServer) Scheduler() scheduler.Scheduler {
+	return r.scheduler
 }
 
 func (r *ReconcileApmServer) K8sClient() k8s.Client {

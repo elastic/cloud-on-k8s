@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -52,6 +53,7 @@ type driver struct {
 	settingsFactory func(kb kbtype.Kibana) map[string]interface{}
 	dynamicWatches  watches.DynamicWatches
 	recorder        record.EventRecorder
+	scheduler       scheduler.Scheduler
 }
 
 func (d *driver) DynamicWatches() watches.DynamicWatches {
@@ -68,6 +70,10 @@ func (d *driver) Recorder() record.EventRecorder {
 
 func (d *driver) Scheme() *runtime.Scheme {
 	return d.scheme
+}
+
+func (d *driver) Scheduler() scheduler.Scheduler {
+	return d.scheduler
 }
 
 var _ driver2.Interface = &driver{}

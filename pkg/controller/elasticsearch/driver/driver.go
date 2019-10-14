@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -82,11 +83,17 @@ type DefaultDriverParameters struct {
 	// Expectations control some expectations set on resources in the cache, in order to
 	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
 	Expectations *expectations.Expectations
+	// EventScheduler allows scheduling reconciliation events with significant delay.
+	EventScheduler scheduler.Scheduler
 }
 
 // defaultDriver is the default Driver implementation
 type defaultDriver struct {
 	DefaultDriverParameters
+}
+
+func (d *defaultDriver) Scheduler() scheduler.Scheduler {
+	return d.EventScheduler
 }
 
 func (d *defaultDriver) K8sClient() k8s.Client {
