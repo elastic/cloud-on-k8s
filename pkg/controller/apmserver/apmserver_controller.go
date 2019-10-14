@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	apmcerts "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
@@ -97,7 +98,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 
 func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	// Watch for changes to ApmServer
-	err := c.Watch(&source.Kind{Type: &apmv1alpha1.ApmServer{}}, &handler.EnqueueRequestForObject{})
+	err := c.Watch(&source.Kind{Type: &apmv1beta1.ApmServer{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -105,7 +106,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	// Watch Deployments
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &apmv1alpha1.ApmServer{},
+		OwnerType:    &apmv1beta1.ApmServer{},
 	}); err != nil {
 		return err
 	}
@@ -113,7 +114,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &apmv1alpha1.ApmServer{},
+		OwnerType:    &apmv1beta1.ApmServer{},
 	}); err != nil {
 		return err
 	}
@@ -121,7 +122,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	// Watch secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &apmv1alpha1.ApmServer{},
+		OwnerType:    &apmv1beta1.ApmServer{},
 	}); err != nil {
 		return err
 	}
@@ -177,7 +178,7 @@ var _ driver.Interface = &ReconcileApmServer{}
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
-	var as apmv1alpha1.ApmServer
+	var as apmv1beta1.ApmServer
 	if ok, err := association.FetchWithAssociation(r.Client, request, &as); !ok {
 		return reconcile.Result{}, err
 	}
@@ -211,7 +212,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	return r.doReconcile(request, &as)
 }
 
-func (r *ReconcileApmServer) isCompatible(as *apmv1alpha1.ApmServer) (bool, error) {
+func (r *ReconcileApmServer) isCompatible(as *apmv1beta1.ApmServer) (bool, error) {
 	selector := map[string]string{labels.ApmServerNameLabelName: as.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
@@ -220,7 +221,7 @@ func (r *ReconcileApmServer) isCompatible(as *apmv1alpha1.ApmServer) (bool, erro
 	return compat, err
 }
 
-func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1alpha1.ApmServer) (reconcile.Result, error) {
+func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1beta1.ApmServer) (reconcile.Result, error) {
 	state := NewState(request, as)
 	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(*as), as)
 	if err != nil {
@@ -248,7 +249,7 @@ func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1alp
 	return r.updateStatus(state)
 }
 
-func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1alpha1.ApmServer) (*corev1.Secret, error) {
+func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1beta1.ApmServer) (*corev1.Secret, error) {
 	expectedApmServerSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
@@ -305,9 +306,9 @@ func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1alpha1.ApmServer)
 }
 
 func (r *ReconcileApmServer) deploymentParams(
-	as *apmv1alpha1.ApmServer,
+	as *apmv1beta1.ApmServer,
 	params PodSpecParams,
-) (DeploymentParams, error) {
+) (deployment.Params, error) {
 
 	podSpec := newPodSpec(as, params)
 	podLabels := labels.NewLabels(as.Name)
@@ -337,7 +338,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: as.Namespace, Name: esCASecretName}
 		if err := r.Get(key, &esPublicCASecret); err != nil {
-			return DeploymentParams{}, err
+			return deployment.Params{}, err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			certsChecksum = fmt.Sprintf("%x", sha256.Sum224(certPem))
@@ -365,36 +366,35 @@ func (r *ReconcileApmServer) deploymentParams(
 			Name:      certificates.HTTPCertsInternalSecretName(apmname.APMNamer, as.Name),
 		}, &httpCerts)
 		if err != nil {
-			return DeploymentParams{}, err
+			return deployment.Params{}, err
 		}
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
 		httpCertsVolume := http.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
 		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
-		apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1alpha1.APMServerContainerName)
+		apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1beta1.APMServerContainerName)
 		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())
 	}
 
 	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	// TODO: also need to hash secret token?
 
-	deploymentLabels := labels.NewLabels(as.Name)
 	podSpec.Labels = defaults.SetDefaultLabels(podSpec.Labels, podLabels)
 
-	return DeploymentParams{
+	return deployment.Params{
 		Name:            apmname.Deployment(as.Name),
 		Namespace:       as.Namespace,
-		Replicas:        as.Spec.NodeCount,
-		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
+		Replicas:        as.Spec.Count,
+		Selector:        labels.NewLabels(as.Name),
+		Labels:          labels.NewLabels(as.Name),
 		PodTemplateSpec: podSpec,
 	}, nil
 }
 
 func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	state State,
-	as *apmv1alpha1.ApmServer,
+	as *apmv1beta1.ApmServer,
 ) (State, error) {
 	reconciledApmServerSecret, err := r.reconcileApmServerSecret(as)
 	if err != nil {
@@ -432,8 +432,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
-	deploy := NewDeployment(params)
-	result, err := r.ReconcileDeployment(deploy, as)
+	deploy := deployment.New(params)
+	result, err := deployment.Reconcile(r.K8sClient(), r.Scheme(), deploy, as)
 	if err != nil {
 		return state, err
 	}
@@ -460,8 +460,8 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 }
 
 // finalizersFor returns the list of finalizers applying to a given APM deployment
-func (r *ReconcileApmServer) finalizersFor(as apmv1alpha1.ApmServer) []finalizer.Finalizer {
+func (r *ReconcileApmServer) finalizersFor(as apmv1beta1.ApmServer) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
-		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, as.Kind()),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, as.Kind),
 	}
 }

@@ -36,27 +36,12 @@ spec:
         resources:
           limits:
             cpu: 1
-            memory: 100Mi
+            memory: 150Mi
           requests:
             cpu: 100m
-            memory: 20Mi
+            memory: 50Mi
         ports:
         - containerPort: 9876
           name: webhook-server
           protocol: TCP
-        volumeMounts:
-        - mountPath: /tmp/cert
-          name: cert
-          readOnly: true
       terminationGracePeriodSeconds: 10
-      volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: webhook-server-secret
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: webhook-server-secret
-  namespace: <NAMESPACE>

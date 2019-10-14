@@ -24,7 +24,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.12', "${BUILD_TAG}-12")
+                        runWith('1.12', "eck-gke12-${BUILD_NUMBER}-e2e")
                     }
                 }
                 stage("1.13") {
@@ -33,7 +33,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.13', "${BUILD_TAG}-13")
+                        runWith('1.13', "eck-gke13-${BUILD_NUMBER}-e2e")
                     }
                 }
                 stage("1.14") {
@@ -42,7 +42,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.14', "${BUILD_TAG}-14")
+                        runWith('1.14', "eck-gke14-${BUILD_NUMBER}-e2e")
                     }
                 }
             }
@@ -64,7 +64,7 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["${BUILD_TAG}-12", "${BUILD_TAG}-13", "${BUILD_TAG}-14"]
+                clusters = ["eck-gke12-${BUILD_NUMBER}-e2e", "eck-gke13-${BUILD_NUMBER}-e2e", "eck-gke14-${BUILD_NUMBER}-e2e"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
@@ -77,7 +77,8 @@ pipeline {
 }
 
 void runWith(clusterVersion, clusterName) {
-    sh """
+    sh """#!/bin/bash
+
         cat >.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 LATEST_RELEASED_IMG = "$IMAGE"
@@ -85,7 +86,12 @@ OPERATOR_IMAGE = "$IMAGE"
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 SKIP_DOCKER_COMMAND = true
+E2E_JSON = true
 EOF
+        if [[ "${clusterVersion}" < "1.14" ]]; then
+            echo "Setting CRD_FLAVOR to trivial-versions to support K8s < 1.14"
+            echo "CRD_FLAVOR = trivial-versions" >> .env
+        fi
         cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
@@ -99,6 +105,13 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-        make -C build/ci TARGET=ci-e2e ci
     """
+    script {
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+
+        sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+        junit "e2e-tests.xml"
+
+        sh 'exit $SHELL_EXIT_CODE'
+    }
 }

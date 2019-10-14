@@ -1,20 +1,28 @@
 # This sample sets up a single Kibana instance pointing to a remote Elasticsearch cluster
-apiVersion: kibana.k8s.elastic.co/v1alpha1
+apiVersion: kibana.k8s.elastic.co/v1beta1
 kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: 7.3.0
-  elasticsearch:
-    url: https://url.to.elasticsearch:9200
-    auth:
-      # reference to a secret containing credentials in the given key
-      secret:
-        name: secret-name
-        key: user # key is the user, value is the password for that user
-    certificateAuthorities:
-      secretName: my-ca-cert # reference to a secret containing certificates under "tls.crt"
-  nodeCount: 1
+  version: 7.4.0
+  config:
+    elasticsearch.hosts:
+    - https://url.to.elasticsearch:9200
+    elasticsearch.username: my-kibana-user
+    elasticsearch.password: $PASSWORD
+    elasticsearch.ssl.certificateAuthorities: /mnt/certs/elasticsearch/ca.crt
+  count: 1
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        volumeMounts:
+        - name: certs
+          mountPath: /mnt/certs/elasticsearch
+      volumes:
+      - name: certs
+        secret:
+          secretName: my-es-http-certs
 #   http:
 #     service:
 #       spec:

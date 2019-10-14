@@ -7,7 +7,7 @@ package elasticsearch
 import (
 	"testing"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ import (
 
 func usesEmptyDir(es estype.Elasticsearch) bool {
 	var emptyDirUsed bool
-	for _, n := range es.Spec.Nodes {
+	for _, n := range es.Spec.NodeSets {
 		for _, v := range n.PodTemplate.Spec.Volumes {
 			if v.EmptyDir != nil && v.Name == volume.ElasticsearchDataVolumeName {
 				emptyDirUsed = true

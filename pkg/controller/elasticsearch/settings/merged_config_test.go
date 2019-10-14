@@ -7,7 +7,7 @@ package settings
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	"github.com/stretchr/testify/require"
@@ -104,8 +104,8 @@ func TestNewMergedESConfig(t *testing.T) {
 			cfg, err := NewMergedESConfig(
 				"clusterName",
 				*ver,
-				v1alpha1.HTTPConfig{},
-				v1alpha1.Config{Data: tt.cfgData},
+				v1beta1.HTTPConfig{},
+				v1beta1.Config{Data: tt.cfgData},
 				&certificates.CertificateResources{},
 			)
 			require.NoError(t, err)

@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -35,7 +35,7 @@ type CertificateResources struct {
 // reconcileGenericResources reconciles the expected generic resources of a cluster.
 func Reconcile(
 	driver driver.Interface,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	services []corev1.Service,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,

@@ -8,10 +8,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
@@ -85,7 +86,7 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 	}
 }
 
-func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
+func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d,
@@ -95,7 +96,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		initContainersParameters,
 	)
 	if err != nil {
-		return nil, err
+		return deployment.Params{}, err
 	}
 
 	kibanaPodSpec := pod.NewPodTemplateSpec(*kb, keystoreResources)
@@ -116,11 +117,11 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			Watched: []types.NamespacedName{esAuthSecret},
 			Watcher: k8s.ExtractNamespacedName(kb),
 		}); err != nil {
-			return nil, err
+			return deployment.Params{}, err
 		}
 		sec := corev1.Secret{}
 		if err := d.client.Get(esAuthSecret, &sec); err != nil {
-			return nil, err
+			return deployment.Params{}, err
 		}
 		_, _ = configChecksum.Write(sec.Data[kb.AssociationConf().GetAuthSecretKey()])
 	} else {
@@ -136,11 +137,11 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			Watched: []types.NamespacedName{key},
 			Watcher: k8s.ExtractNamespacedName(kb),
 		}); err != nil {
-			return nil, err
+			return deployment.Params{}, err
 		}
 
 		if err := d.client.Get(key, &esPublicCASecret); err != nil {
-			return nil, err
+			return deployment.Params{}, err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(certPem)
@@ -171,7 +172,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			Name:      certificates.HTTPCertsInternalSecretName(kbname.KBNamer, kb.Name),
 		}, &httpCerts)
 		if err != nil {
-			return nil, err
+			return deployment.Params{}, err
 		}
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
@@ -189,7 +190,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	configSecret := corev1.Secret{}
 	err = d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
 	if err != nil {
-		return nil, err
+		return deployment.Params{}, err
 	}
 	_, _ = configChecksum.Write(configSecret.Data[config.SettingsFilename])
 
@@ -197,10 +198,10 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	// changes, which will trigger a rolling update)
 	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
-	return &DeploymentParams{
+	return deployment.Params{
 		Name:            kbname.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
-		Replicas:        kb.Spec.NodeCount,
+		Replicas:        kb.Spec.Count,
 		Selector:        label.NewLabels(kb.Name),
 		Labels:          label.NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
@@ -249,8 +250,8 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	expectedDp := NewDeployment(*deploymentParams)
-	reconciledDp, err := ReconcileDeployment(d.client, d.scheme, expectedDp, kb)
+	expectedDp := deployment.New(deploymentParams)
+	reconciledDp, err := deployment.Reconcile(d.client, d.scheme, expectedDp, kb)
 	if err != nil {
 		return results.WithError(err)
 	}

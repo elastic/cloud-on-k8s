@@ -34,6 +34,7 @@ const (
 	kubePollInterval = 10 * time.Second  // Kube API polling interval
 	logBufferSize    = 1024              // Size of the log buffer (1KiB)
 	testRunLabel     = "test-run"        // name of the label applied to resources
+	testsLogFile     = "e2e-tests.json"  // name of file to keep all test logs in JSON format
 )
 
 type stepFunc func() error
@@ -172,19 +173,7 @@ func (h *helper) createE2ENamespaceAndRoleBindings() error {
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	crds, err := filepath.Glob("config/crds/*.yaml")
-	if err != nil {
-		return errors.Wrap(err, "failed to list CRDs")
-	}
-
-	for _, crd := range crds {
-		log.V(1).Info("Installing CRD", "crd", crd)
-		if _, err := h.kubectlApplyTemplate(crd, h.testContext); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return h.kubectl("apply", "-k", "config/crds-flavor-"+h.crdFlavor)
 }
 
 func (h *helper) createOperatorNamespaces() error {
@@ -352,8 +341,19 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 	defer stream.Close()
 
+	writer := io.MultiWriter(os.Stdout)
+	if h.logToFile {
+		f, err := os.Create(testsLogFile)
+		if err != nil {
+			log.Error(err, "Can't create file for test output")
+			return
+		}
+		defer f.Close()
+		writer = io.MultiWriter(writer, f)
+	}
+
 	var buffer [logBufferSize]byte
-	if _, err := io.CopyBuffer(os.Stdout, stream, buffer[:]); err != nil {
+	if _, err := io.CopyBuffer(writer, stream, buffer[:]); err != nil {
 		if err == io.EOF {
 			log.Info("Log stream ended")
 			return

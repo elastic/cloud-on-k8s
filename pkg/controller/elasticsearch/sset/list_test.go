@@ -79,14 +79,20 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 			},
 		},
 	}
-	client := k8s.WrapClient(fake.NewFakeClient(&pod1, &pod2))
+	// pod not belonging to the sset
+	podNotInSset := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod-not-in-sset",
+			Labels: map[string]string{
+				label.StatefulSetNameLabelName: "different-sset",
+			},
+		},
+	}
+	client := k8s.WrapClient(fake.NewFakeClient(&pod1, &pod2, &podNotInSset))
 	pods, err := StatefulSetList{ssetv7}.GetActualPods(client)
 	require.NoError(t, err)
 	require.Equal(t, []corev1.Pod{pod1, pod2}, pods)
-	// TODO: test with an additional pod that does not belong to the sset and
-	//  check it is not returned.
-	//  This cannot be done currently since the fake client does not support label list options.
-	//  See https://github.com/kubernetes-sigs/controller-runtime/pull/311
+	require.NotContains(t, pods, podNotInSset)
 }
 
 func TestStatefulSetList_PodReconciliationDone(t *testing.T) {

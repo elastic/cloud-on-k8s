@@ -9,7 +9,7 @@
           description: "Docker image with ECK"
       - string:
           name: VERSION
-          default: 1.12
+          default: 1.13
           description: "Kubernetes version, default is 1.12"
       - bool:
           name: SEND_NOTIFICATIONS

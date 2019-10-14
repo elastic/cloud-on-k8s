@@ -10,6 +10,8 @@ import (
 
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,7 +57,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 			},
 			current: es("2.0.0"),
 			// want:    validation.Result{Allowed: false, Reason: noDowngradesMsg},
-			want: errors.New("")
+			want: errors.New(""),
 		},
 		{
 			name: "allow upgrades",

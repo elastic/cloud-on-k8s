@@ -13,7 +13,6 @@ require (
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
-	github.com/go-logr/zapr v0.1.0
 	github.com/go-test/deep v1.0.3
 	github.com/gogo/protobuf v1.3.0 // indirect
 	github.com/google/uuid v1.1.1 // indirect

@@ -45,7 +45,7 @@ import (
 
 const (
 	MetricsPortFlag   = "metrics-port"
-	DefaultMetricPort = 8080
+	DefaultMetricPort = 0 // disabled
 
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespaceFlagName       = "namespace"
@@ -217,12 +217,12 @@ func execute() {
 		Namespace: viper.GetString(NamespaceFlagName),
 	}
 
-	// only expose prometheus metrics if provided a specific port
+	// only expose prometheus metrics if provided a non-zero port
 	metricsPort := viper.GetInt(MetricsPortFlag)
 	if metricsPort != 0 {
 		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
-		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
 	}
+	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {

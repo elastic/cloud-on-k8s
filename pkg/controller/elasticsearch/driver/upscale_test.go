@@ -8,12 +8,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -35,17 +35,15 @@ func init() {
 }
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
-	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 	k8sClient := k8s.WrapClient(fake.NewFakeClient())
-	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	ctx := upscaleCtx{
-		k8sClient:           k8sClient,
-		es:                  es,
-		scheme:              scheme.Scheme,
-		observedState:       observer.State{},
-		esState:             nil,
-		upscaleStateBuilder: &upscaleStateBuilder{},
-		expectations:        expectations.NewExpectations(),
+		k8sClient:    k8sClient,
+		es:           es,
+		scheme:       scheme.Scheme,
+		esState:      nil,
+		expectations: expectations.NewExpectations(),
 	}
 	expectedResources := nodespec.ResourcesList{
 		{
@@ -97,6 +95,9 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 			Config: settings.CanonicalConfig{},
 		},
 	}
+
+	expectedResources[0].StatefulSet.Labels = hash.SetTemplateHashLabel(expectedResources[0].StatefulSet.Labels, expectedResources[0].StatefulSet.Spec)
+	expectedResources[1].StatefulSet.Labels = hash.SetTemplateHashLabel(expectedResources[1].StatefulSet.Labels, expectedResources[1].StatefulSet.Spec)
 
 	// when no StatefulSets already exists
 	actualStatefulSets := sset.StatefulSetList{}
@@ -189,7 +190,7 @@ func Test_isReplicaIncrease(t *testing.T) {
 
 func Test_adjustStatefulSetReplicas(t *testing.T) {
 	type args struct {
-		ctx                upscaleCtx
+		state              upscaleState
 		actualStatefulSets sset.StatefulSetList
 		expected           appsv1.StatefulSet
 	}
@@ -201,12 +202,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
-				ctx: upscaleCtx{
-					upscaleStateBuilder: &upscaleStateBuilder{
-						once:         onceDone,
-						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
-					},
-				},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
@@ -215,12 +211,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "same StatefulSet already exists",
 			args: args{
-				ctx: upscaleCtx{
-					upscaleStateBuilder: &upscaleStateBuilder{
-						once:         onceDone,
-						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
-					},
-				},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
@@ -229,12 +220,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "downscale case",
 			args: args{
-				ctx: upscaleCtx{
-					upscaleStateBuilder: &upscaleStateBuilder{
-						once:         onceDone,
-						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
-					},
-				},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
@@ -243,12 +229,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: data nodes",
 			args: args{
-				ctx: upscaleCtx{
-					upscaleStateBuilder: &upscaleStateBuilder{
-						once:         onceDone,
-						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: false},
-					},
-				},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
@@ -257,12 +238,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: master nodes - one by one",
 			args: args{
-				ctx: upscaleCtx{
-					upscaleStateBuilder: &upscaleStateBuilder{
-						once:         onceDone,
-						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
-					},
-				},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
@@ -271,12 +247,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: new additional master sset - one by one",
 			args: args{
-				ctx: upscaleCtx{
-					upscaleStateBuilder: &upscaleStateBuilder{
-						once:         onceDone,
-						upscaleState: &upscaleState{isBootstrapped: true, allowMasterCreation: true},
-					},
-				},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: common.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -285,7 +256,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := adjustStatefulSetReplicas(tt.args.ctx, tt.args.actualStatefulSets, tt.args.expected)
+			got, err := adjustStatefulSetReplicas(tt.args.state, tt.args.actualStatefulSets, tt.args.expected)
 			require.NoError(t, err)
 			require.Nil(t, deep.Equal(got, tt.want))
 		})
@@ -293,18 +264,18 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 }
 
 func Test_adjustZenConfig(t *testing.T) {
-	bootstrappedES := v1alpha1.Elasticsearch{
+	bootstrappedES := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        TestEsName,
 			Namespace:   TestEsNamespace,
 			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
 		},
 	}
-	notBootstrappedES := v1alpha1.Elasticsearch{}
+	notBootstrappedES := v1beta1.Elasticsearch{}
 
 	tests := []struct {
 		name                      string
-		es                        v1alpha1.Elasticsearch
+		es                        v1beta1.Elasticsearch
 		statefulSet               sset.TestSset
 		pods                      []runtime.Object
 		wantMinimumMasterNodesSet bool

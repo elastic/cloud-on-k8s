@@ -8,9 +8,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,34 +28,15 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		k:  k,
 	}
 	return test.StepList{
-		e.CheckESReachable(),
+		e.CheckESNodesTopology(b.Elasticsearch),
 		e.CheckESVersion(b.Elasticsearch),
 		e.CheckESHealthGreen(),
-		e.CheckESNodesTopology(b.Elasticsearch),
 	}
 }
 
 func (e *esClusterChecks) newESClient() (client.Client, error) {
 	// recreate ES client for tests that switch between TlS/no TLS
 	return NewElasticsearchClient(e.es, e.k)
-}
-
-func (e *esClusterChecks) CheckESReachable() test.Step {
-	return test.Step{
-		Name: "ES cluster health endpoint should eventually be reachable",
-		Test: test.Eventually(func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-			defer cancel()
-			esClient, err := e.newESClient()
-			if err != nil {
-				return err
-			}
-			if _, err := esClient.GetClusterHealth(ctx); err != nil {
-				return err
-			}
-			return nil
-		}),
-	}
 }
 
 func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) test.Step {
@@ -133,17 +115,27 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 			}
 
 			// flatten the topology
-			var expectedTopology []estype.NodeSpec
-			for _, node := range es.Spec.Nodes {
-				for i := 0; i < int(node.NodeCount); i++ {
+			var expectedTopology []estype.NodeSet
+			for _, node := range es.Spec.NodeSets {
+				for i := 0; i < int(node.Count); i++ {
 					expectedTopology = append(expectedTopology, node)
 				}
 			}
 			// match each actual node to an expected node
 			for nodeID, node := range nodes.Nodes {
-				nodeRoles := rolesToConfig(node.Roles)
+				// check if node is coming from the expected stateful set based on its name,
+				// ignore nodes coming from StatefulSets in the process of being downscaled
+				found := false
+				for _, spec := range es.Spec.NodeSets {
+					if strings.Contains(node.Name, spec.Name) {
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("none of spec names was found in %s", node.Name)
+				}
 
-				var found bool
+				found = false
 				for k := range nodesStats.Nodes {
 					if k == nodeID {
 						found = true
@@ -153,9 +145,10 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 					return fmt.Errorf("%s was not in %+v", nodeID, nodesStats.Nodes)
 				}
 
+				nodeRoles := rolesToConfig(node.Roles)
 				nodeStats := nodesStats.Nodes[nodeID]
 				for i, topoElem := range expectedTopology {
-					cfg, err := v1alpha1.UnpackConfig(topoElem.Config)
+					cfg, err := v1beta1.UnpackConfig(topoElem.Config)
 					if err != nil {
 						return err
 					}
@@ -202,10 +195,10 @@ func rolesToConfig(roles []string) estype.Node {
 	return node
 }
 
-func compareMemoryLimit(topologyElement estype.NodeSpec, cgroupMemoryLimitsInBytes int64) bool {
+func compareMemoryLimit(topologyElement estype.NodeSet, cgroupMemoryLimitsInBytes int64) bool {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
-		if c.Name == v1alpha1.ElasticsearchContainerName {
+		if c.Name == v1beta1.ElasticsearchContainerName {
 			memoryLimit = c.Resources.Limits.Memory()
 		}
 	}

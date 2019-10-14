@@ -8,8 +8,8 @@ import (
 	"sort"
 	"testing"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var sampleES = v1alpha1.Elasticsearch{
+var sampleES = v1beta1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Namespace: "namespace",
 		Name:      "name",
@@ -33,13 +33,13 @@ var sampleES = v1alpha1.Elasticsearch{
 			"cluster-annotation-name": "cluster-annotation-value",
 		},
 	},
-	Spec: v1alpha1.ElasticsearchSpec{
+	Spec: v1beta1.ElasticsearchSpec{
 		Version: "7.2.0",
-		Nodes: []v1alpha1.NodeSpec{
+		NodeSets: []v1beta1.NodeSet{
 			{
-				Name:      "nodespec-1",
-				NodeCount: 2,
-				Config: &commonv1alpha1.Config{
+				Name:  "nodeset-1",
+				Count: 2,
+				Config: &commonv1beta1.Config{
 					Data: map[string]interface{}{
 						"node.attr.foo": "bar",
 						"node.master":   "true",
@@ -80,8 +80,8 @@ var sampleES = v1alpha1.Elasticsearch{
 				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
 			},
 			{
-				Name:      "nodespec-1",
-				NodeCount: 2,
+				Name:  "nodeset-1",
+				Count: 2,
 			},
 		},
 	},
@@ -89,13 +89,13 @@ var sampleES = v1alpha1.Elasticsearch{
 
 func TestBuildPodTemplateSpec(t *testing.T) {
 	certResources := certificates.CertificateResources{HTTPCACertProvided: true}
-	nodeSpec := sampleES.Spec.Nodes[0]
+	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
-	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSpec.Config, &certResources)
+	cfg, err := settings.NewMergedESConfig(sampleES.Name, *ver, sampleES.Spec.HTTP, *nodeSet.Config, &certResources)
 	require.NoError(t, err)
 
-	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.Nodes[0], cfg, nil)
+	actual, err := BuildPodTemplateSpec(sampleES, sampleES.Spec.NodeSets[0], cfg, nil)
 	require.NoError(t, err)
 
 	// build expected PodTemplateSpec
@@ -103,14 +103,13 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	terminationGracePeriodSeconds := DefaultTerminationGracePeriodSeconds
 	varFalse := false
 
-	volumes, volumeMounts := buildVolumes(sampleES.Name, nodeSpec, nil)
+	volumes, volumeMounts := buildVolumes(sampleES.Name, nodeSet, nil)
 	// should be sorted
 	sort.Slice(volumes, func(i, j int) bool { return volumes[i].Name < volumes[j].Name })
 	sort.Slice(volumeMounts, func(i, j int) bool { return volumeMounts[i].Name < volumeMounts[j].Name })
 
 	initContainers, err := initcontainer.NewInitContainers(
 		"docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
-		nil,
 		transportCertificatesVolume(sampleES.Name),
 		sampleES.Name,
 		nil,
@@ -138,17 +137,17 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	expected := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                        "elasticsearch",
-				"elasticsearch.k8s.elastic.co/cluster-name":         "name",
-				"elasticsearch.k8s.elastic.co/config-template-hash": "593041036",
-				"elasticsearch.k8s.elastic.co/http-scheme":          "https",
-				"elasticsearch.k8s.elastic.co/node-data":            "false",
-				"elasticsearch.k8s.elastic.co/node-ingest":          "true",
-				"elasticsearch.k8s.elastic.co/node-master":          "true",
-				"elasticsearch.k8s.elastic.co/node-ml":              "true",
-				"elasticsearch.k8s.elastic.co/statefulset":          "name-es-nodespec-1",
-				"elasticsearch.k8s.elastic.co/version":              "7.2.0",
-				"pod-template-label-name":                           "pod-template-label-value",
+				"common.k8s.elastic.co/type":                    "elasticsearch",
+				"elasticsearch.k8s.elastic.co/cluster-name":     "name",
+				"elasticsearch.k8s.elastic.co/config-hash":      "593041036",
+				"elasticsearch.k8s.elastic.co/http-scheme":      "https",
+				"elasticsearch.k8s.elastic.co/node-data":        "false",
+				"elasticsearch.k8s.elastic.co/node-ingest":      "true",
+				"elasticsearch.k8s.elastic.co/node-master":      "true",
+				"elasticsearch.k8s.elastic.co/node-ml":          "true",
+				"elasticsearch.k8s.elastic.co/statefulset-name": "name-es-nodeset-1",
+				"elasticsearch.k8s.elastic.co/version":          "7.2.0",
+				"pod-template-label-name":                       "pod-template-label-value",
 			},
 			Annotations: map[string]string{
 				"pod-template-annotation-name": "pod-template-annotation-value",

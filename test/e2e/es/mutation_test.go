@@ -31,7 +31,7 @@ func TestMutationHTTPToHTTPS(t *testing.T) {
 // then mutates it to a 3 node cluster running without TLS on the HTTP layer.
 func TestMutationHTTPSToHTTP(t *testing.T) {
 	// create a 3 md node cluster
-	b := elasticsearch.NewBuilder("test-mutation-http-to-https").
+	b := elasticsearch.NewBuilder("test-mutation-https-to-http").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	// mutate to http
@@ -173,6 +173,20 @@ func TestMutationAndReversal(t *testing.T) {
 	mutation.MutatedFrom = &b
 	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, b})
 
+}
+
+func TestMutationWithChangeBudget(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-change-budget").
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(5, "data1", elasticsearch.DefaultResources)
+
+	// rename data set from data1 to data2, add change budget
+	mutated := b.WithNoESTopology().
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(5, "data2", elasticsearch.DefaultResources).
+		WithChangeBudget(1, 1)
+
+	RunESMutation(t, b, mutated)
 }
 
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {

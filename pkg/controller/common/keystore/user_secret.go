@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
@@ -141,7 +141,7 @@ func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystor
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1alpha1.SecretSource) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1beta1.SecretSource) (*corev1.Secret, bool, error) {
 	namespace := hasKeystore.GetNamespace()
 	secretName := secretSrc.SecretName
 
@@ -206,7 +206,7 @@ func secureSettingsWatchName(namespacedName types.NamespacedName) string {
 // Only one watch per cluster is registered:
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
-func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1alpha1.SecretSource, nn types.NamespacedName) error {
+func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1beta1.SecretSource, nn types.NamespacedName) error {
 	watchName := secureSettingsWatchName(nn)
 	if secureSettingsRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)
@@ -227,8 +227,6 @@ func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []com
 }
 
 // Finalizer removes any dynamic watches on external user created secret.
-// TODO: Kind of an object can be retrieved programmatically with object.GetObjectKind(), unfortunately it does not seem
-//  to be reliable with controller-runtime < v0.2.0-beta.4
 func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches, kind string) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: "finalizer." + strings.ToLower(kind) + ".k8s.elastic.co/secure-settings-secret",

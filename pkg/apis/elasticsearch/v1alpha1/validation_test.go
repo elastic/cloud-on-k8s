@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 )
@@ -114,7 +114,7 @@ func TestValidate(t *testing.T) {
 					},
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
 								Name: "default",
 								Config: &common.Config{
@@ -125,7 +125,7 @@ func TestValidate(t *testing.T) {
 										estype.NodeML:     "false",
 									},
 								},
-								NodeCount: 1,
+								Count: 1,
 							}},
 					},
 				},
@@ -140,7 +140,20 @@ func TestValidate(t *testing.T) {
 						Namespace: "ns",
 						Name:      "test-es",
 					},
-					Spec: estype.ElasticsearchSpec{Version: "7.0.0"},
+					Spec: estype.ElasticsearchSpec{
+						Version: "7.0.0",
+						NodeSets: []estype.NodeSet{
+							{
+								Name:  "name",
+								Count: 1,
+								Config: &common.Config{
+									Data: map[string]interface{}{
+										estype.NodeMaster: "false",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 			wantErr: false,
@@ -169,9 +182,9 @@ func TestValidate(t *testing.T) {
 								},
 							},
 						},
-						Nodes: []estype.NodeSpec{
+						NodeSets: []estype.NodeSet{
 							{
-								NodeCount: 1,
+								Count: 1,
 								Config: &common.Config{
 									Data: map[string]interface{}{
 										estype.NodeMaster: false,
