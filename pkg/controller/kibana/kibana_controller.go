@@ -16,6 +16,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
@@ -60,6 +62,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
+		scheduler:      scheduler.NewScheduler(),
 		params:         params,
 	}
 }
@@ -105,6 +108,10 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 		return err
 	}
 
+	if err := c.Watch(scheduler.Events(r.scheduler), reconciler.GenericEventHandler()); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -118,6 +125,7 @@ type ReconcileKibana struct {
 
 	finalizers     finalizer.Handler
 	dynamicWatches watches.DynamicWatches
+	scheduler      scheduler.Scheduler
 
 	params operator.Parameters
 
@@ -191,7 +199,7 @@ func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kibanav1bet
 	}
 
 	state := NewState(request, kb)
-	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches, r.recorder)
+	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches, r.recorder, r.scheduler)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

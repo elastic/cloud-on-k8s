@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
@@ -72,6 +73,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 		finalizers:     finalizer.NewHandler(client),
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewExpectations(),
+		scheduler:      scheduler.NewScheduler(),
 
 		Parameters: params,
 	}
@@ -150,6 +152,10 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
+	if err := c.Watch(scheduler.Events(r.scheduler), reconciler.GenericEventHandler()); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -167,6 +173,8 @@ type ReconcileElasticsearch struct {
 	finalizers finalizer.Handler
 
 	dynamicWatches watches.DynamicWatches
+
+	scheduler scheduler.Scheduler
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.

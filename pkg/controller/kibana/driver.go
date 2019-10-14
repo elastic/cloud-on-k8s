@@ -271,12 +271,14 @@ func newDriver(
 	version version.Version,
 	watches watches.DynamicWatches,
 	recorder record.EventRecorder,
+	scheduler scheduler.Scheduler,
 ) (*driver, error) {
 	d := driver{
 		client:         client,
 		scheme:         scheme,
 		dynamicWatches: watches,
 		recorder:       recorder,
+		scheduler:      scheduler,
 	}
 	switch version.Major {
 	case 6:

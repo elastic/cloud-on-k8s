@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheduler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
@@ -205,7 +206,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 
 			kbVersion, err := version.Parse(kb.Spec.Version)
 			assert.NoError(t, err)
-			d, err := newDriver(client, s, *kbVersion, w, record.NewFakeRecorder(100))
+			d, err := newDriver(client, s, *kbVersion, w, record.NewFakeRecorder(100), &scheduler.MockScheduler{})
 			assert.NoError(t, err)
 
 			got, err := d.deploymentParams(kb)

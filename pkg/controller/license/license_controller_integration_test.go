@@ -40,9 +40,9 @@ func TestMain(m *testing.M) {
 func TestReconcile(t *testing.T) {
 	c, stop := test.StartManager(t, func(mgr manager.Manager, p operator.Parameters) error {
 		return add(mgr, &ReconcileLicenses{
-			Client:  k8s.WrapClient(mgr.GetClient()),
-			scheme:  mgr.GetScheme(),
-			checker: license.MockChecker{},
+			Client:    k8s.WrapClient(mgr.GetClient()),
+			scheme:    mgr.GetScheme(),
+			checker:   license.MockChecker{},
 			scheduler: scheduler.NewScheduler(),
 		})
 	}, operator.Parameters{})
