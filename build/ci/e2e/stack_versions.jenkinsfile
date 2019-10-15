@@ -87,7 +87,7 @@ pipeline {
                     }
 
                     slackSend botUser: true,
-                        channel: '#cloud-k8s',
+                        channel: '#cloud-qa-notification',
                         color: 'danger',
                         message: msg,
                         tokenCredentialId: 'cloud-ci-slack-integration-token'
