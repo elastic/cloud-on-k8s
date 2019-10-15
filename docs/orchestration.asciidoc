@@ -61,7 +61,7 @@ ECK handles smooth upgrades from one cluster specification to another. You can a
 
 Here are a few examples based on the Elasticsearch specification above:
 
-- To add five additional data nodes: change `count: 10` to `count: 15` in the `data-nodes` `NodeSet`.
+- To add five additional Elasticsearch data nodes: change `count: 10` to `count: 15` in the `data-nodes` `NodeSet`.
 - To increase the RAM memory limit of data nodes to 32Gi: link:k8s-managing-compute-resources.html[set a different resources limits] in the existing `data-nodes` `NodeSet` PodTemplate.
 - To replace dedicated master and dedicated data nodes by nodes having both master and data roles: replace the 2 existing `NodeSets` by a single one with a different name and the corresponding Elasticsearch configuration settings.
 - To upgrade Elasticsearch from version `7.2.0` to `7.3.0`: change the value in the `version` field.
@@ -117,7 +117,7 @@ If an Elasticsearch node holds the only copy of a shard, this shard becomes unav
 * Elasticsearch `Pods` may stay `Pending` during a rolling upgrade if the Kubernetes scheduler cannot re-schedule them back. This is especially important when using local `PersistentVolumes`. If the Kubernetes node bound to a local `PersistentVolume` does not have enough capacity to host an upgraded `Pod` which was temporarily removed, that `Pod` will stay Pending.
 
 * Rolling upgrades can only make progress if the Elasticsearch cluster health is green. It is risky to attempt upgrading a cluster in the yellow state as some shards could become completely unavailable and degrade the cluster health to red. ECK takes the cautionary approach of waiting for green health before progressing but advanced users may force an upgrade by manually deleting `Pods` themselves. The deleted `Pods` will be automatically recreated at the latest revision. There are two exceptions to this rule:
-** If all the nodes of a `NodeSet` are unavailable, probably caused by a misconfiguration, the operator ignores the cluster health and upgrades nodes of the `NodeSet`.
+** If all the Elasticsearch nodes of a `NodeSet` are unavailable, probably caused by a misconfiguration, the operator ignores the cluster health and upgrades nodes of the `NodeSet`.
 ** If an Elasticsearch node to upgrade is not healthy, and not part of the Elasticsearch cluster, the operator ignores the cluster health and upgrades the Elasticsearch node.
 
 * Elasticsearch versions cannot be downgraded. For example it is impossible to downgrade an existing cluster from version 7.3.0 to 7.2.0. This is not supported by Elasticsearch.

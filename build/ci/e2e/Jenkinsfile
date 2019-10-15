@@ -45,6 +45,7 @@ REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
+E2E_JSON = true
 EOF
                     cat >deployer-config.yml <<EOF
 id: gke-ci
@@ -57,8 +58,15 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-                    make -C build/ci TARGET=ci-e2e ci
                 """
+                script {
+                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+
+                    sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+                    junit "e2e-tests.xml"
+
+                    sh 'exit $SHELL_EXIT_CODE'
+                }
             }
         }
     }

@@ -107,24 +107,18 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 			Name:      "es",
 		},
 	}
-	// TODO this is currently broken due to an upstream bug in the fake client. when we upgrade controller runtime
-	// to a version that contains this PR we can uncomment this and add the service to the client
-
-	// add existing svc that is not part of cluster to make sure we have label selectors correct
-	// https://github.com/kubernetes-sigs/controller-runtime/pull/311
-	// svc := &corev1.Service{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Namespace: "ns",
-	// 		Name:      "svc",
-	// 		Labels: map[string]string{
-	// 			label.ClusterNameLabelName: "literallyanything",
-	// 		},
-	// 	},
-	// }
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "svc",
+			Labels: map[string]string{
+				label.ClusterNameLabelName: "literallyanything",
+			},
+		},
+	}
 
 	sc := setupScheme(t)
-	// client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es, svc))
-	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
+	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es, svc))
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)

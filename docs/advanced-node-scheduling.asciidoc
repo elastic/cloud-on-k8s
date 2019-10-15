@@ -7,7 +7,7 @@ endif::[]
 
 === Advanced Elasticsearch node scheduling
 
-Elastic Cloud on Kubernetes (ECK) offers full control over cluster nodes scheduling by combining Elasticsearch configuration with Kubernetes scheduling options:
+Elastic Cloud on Kubernetes (ECK) offers full control over Elasticsearch cluster nodes scheduling by combining Elasticsearch configuration with Kubernetes scheduling options:
 
 * <<{p}-define-elasticsearch-nodes-roles,Define Elasticsearch nodes roles>>
 * <<{p}-affinity-options,Pod affinity and anti-affinity>>
@@ -103,7 +103,7 @@ spec:
         affinity: {}
 ----
 
-The default affinity is using `preferredDuringSchedulingIgnoredDuringExecution`, which acts as best effort and won't prevent a node to be scheduled on a host if there are no other hosts available. Scheduling a 4-nodes Elasticsearch cluster on a 3-hosts Kubernetes cluster would then successfully schedule 2 nodes on the same host. To enforce a strict single node per host, specify `requiredDuringSchedulingIgnoredDuringExecution` instead:
+The default affinity is using `preferredDuringSchedulingIgnoredDuringExecution`, which acts as best effort and won't prevent an Elasticsearch node from being scheduled on a host if there are no other hosts available. Scheduling a 4-nodes Elasticsearch cluster on a 3-host Kubernetes cluster would then successfully schedule 2 Elasticsearch nodes on the same host. To enforce a strict single node per host, specify `requiredDuringSchedulingIgnoredDuringExecution` instead:
 
 [source,yaml,subs="attributes"]
 ----
@@ -131,7 +131,7 @@ spec:
 [float]
 ===== Local Persistent Volume constraints
 
-By default, volumes can be bound to a pod before the pod gets scheduled to a particular node. This can be a problem if the PersistentVolume can only be accessed from a particular host or set of hosts. Local persistent volumes are a good example: they are accessible from a single host. If the pod gets scheduled to a different host based on any affinity or anti-affinity rule, the volume may not be available.
+By default, volumes can be bound to a pod before the pod gets scheduled to a particular Kubernetes node. This can be a problem if the PersistentVolume can only be accessed from a particular host or set of hosts. Local persistent volumes are a good example: they are accessible from a single host. If the pod gets scheduled to a different host based on any affinity or anti-affinity rule, the volume may not be available.
 
 To solve this problem, you can link:https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode[set the Volume Binding Mode] of the `StorageClass` you are using. Make sure  `volumeBindingMode: WaitForFirstConsumer` is set, link:https://kubernetes.io/docs/concepts/storage/volumes/#local[especially if you are using local persistent volumes].
 
@@ -148,7 +148,7 @@ volumeBindingMode: WaitForFirstConsumer
 [float]
 ===== Node affinity
 
-To restrict the scheduling to a particular set of nodes based on labels, use a link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector[NodeSelector].
+To restrict the scheduling to a particular set of Kubernetes nodes based on labels, use a link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector[NodeSelector].
 The following example schedules Elasticsearch pods on Kubernetes nodes tagged with both labels `diskType: ssd` and `environment: production`.
 
 [source,yaml,subs="attributes"]
@@ -204,7 +204,7 @@ spec:
                     - ssd
 ----
 
-This example restricts Elasticsearch nodes to be scheduled on Kubernetes hosts tagged with `environment: e2e` or `environment: production`. It favors nodes tagged with `diskType: ssd`.
+This example restricts Elasticsearch nodes from being scheduled on Kubernetes hosts tagged with `environment: e2e` or `environment: production`. It favors nodes tagged with `diskType: ssd`.
 
 [float]
 [id="{p}-availability-zone-awareness"]
@@ -257,8 +257,8 @@ spec:
 
 This example relies on:
 
-- nodes from each zone being labeled accordingly. `failure-domain.beta.kubernetes.io/zone` link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels[is standard], but any label can be used.
-- node affinity for each group of nodes set to match the Kubernetes nodes zone.
+- Kubernetes nodes in each zone being labeled accordingly. `failure-domain.beta.kubernetes.io/zone` link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels[is standard], but any label can be used.
+- node affinity for each group of nodes set to match the Kubernetes nodes' zone.
 - Elasticsearch configured to link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[allocate shards based on node attributes]. Here we specified `node.attr.zone`, but any attribute name can be used. `node.attr.rack_id` is another common example.
 
 [float]
@@ -342,11 +342,11 @@ spec:
         storageClassName: local-storage
 ----
 
-In this example, we configure two groups of nodes:
+In this example, we configure two groups of Elasticsearch nodes:
 
-- the first group has the `data` attribute set to `hot`. It is intended to run on hosts with high CPU resources and fast IO (SSD). Here we restrict pods to be scheduled on Kubernetes nodes labeled with `beta.kubernetes.io/instance-type: highio` (to adapt to your Kubernetes nodes labels).
-- the second group has the `data` attribute set to `warm`. It is intended to run on hosts with larger but maybe slower storage. Pods are restricted to be scheduled on nodes labeled with `beta.kubernetes.io/instance-type: highstorage`.
+- the first group has the `data` attribute set to `hot`. It is intended to run on hosts with high CPU resources and fast IO (SSD). Here we restrict pods to be scheduled on Kubernetes nodes labeled with `beta.kubernetes.io/instance-type: highio` (to adapt to your Kubernetes nodes' labels).
+- the second group has the `data` attribute set to `warm`. It is intended to run on hosts with larger but maybe slower storage. Pods are only able to be scheduled on nodes labeled with `beta.kubernetes.io/instance-type: highstorage`.
 
-NOTE: this example uses link:https://kubernetes.io/docs/concepts/storage/volumes/#local[Local Persistent Volumes] for both groups, but can be adapted to use high-performance volumes for `hot` nodes and high-storage volumes for `warm` nodes.
+NOTE: this example uses link:https://kubernetes.io/docs/concepts/storage/volumes/#local[Local Persistent Volumes] for both groups, but can be adapted to use high-performance volumes for `hot` Elasticsearch nodes and high-storage volumes for `warm` Elasticsearch nodes.
 
 Finally, setup link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html[Index Lifecycle Management] policies on your indices, link:https://www.elastic.co/blog/implementing-hot-warm-cold-in-elasticsearch-with-index-lifecycle-management[optimizing for hot-warm architectures].

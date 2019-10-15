@@ -17,9 +17,10 @@ Eager to get started? This quick guide shows you how to:
 * <<{p}-persistent-storage,Use persistent storage>>
 * <<{p}-check-samples,Check out the samples>>
 
-**Requirements**
-
-Make sure that you have link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] version 1.11+ installed.
+**Supported versions**
+--
+include::supported-versions.asciidoc[]
+--
 
 [float]
 [id="{p}-deploy-eck"]
@@ -29,13 +30,22 @@ IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempt
 
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
-NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is allowed to communicate with nodes port 443. This is required for communication with the Validating Webhook. For more information, see link:https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html[Recommended inbound traffic].
+NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is allowed to communicate with the Kubernetes nodes on port 443. This is required for communication with the Validating Webhook. For more information, see link:https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html[Recommended inbound traffic].
 
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
++
+For Kubernetes clusters running version 1.13 or higher:
 +
 [source,sh,subs="attributes"]
 ----
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
+----
++
+For Kubernetes clusters running version 1.12 or lower:
++
+[source,sh,subs="attributes"]
+----
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one-no-validation.yaml
 ----
 
 . Monitor the operator logs:
@@ -49,9 +59,9 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 [id="{p}-deploy-elasticsearch"]
 === Deploy an Elasticsearch cluster
 
-Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
+Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one Elasticsearch node:
 
-NOTE: If your Kubernetes cluster does not have any nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
+NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
 
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -90,7 +100,7 @@ kubectl get elasticsearch
 [source,sh,subs="attributes"]
 ----
 NAME          HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         {version}     Ready   1m
+quickstart    green     1         {version}     Ready         1m
 ----
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.
@@ -246,7 +256,7 @@ kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | ba
 
 You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (e.g., existing volume claims cannot be resized). The operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods etc.).
 
-For example, you can grow the cluster to three nodes:
+For example, you can grow the cluster to three Elasticsearch nodes:
 
 [source,yaml,subs="attributes,+macros"]
 ----
