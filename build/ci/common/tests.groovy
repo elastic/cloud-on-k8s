@@ -4,11 +4,17 @@
 
 // Common test related code for Jenkins pipelines
 
-def getListOfFailedTests() {
+def getListOfFailedTests(details = "") {
     def failed = currentBuild.rawBuild.getAction(hudson.tasks.test.AbstractTestResultAction.class)?.getResult()?.getFailedTests()
     def result = []
     failed.each { ft ->
-        result.add(String.format("%s\r\n%s", ft.getDisplayName(), ft.getErrorStackTrace()))
+        def sb = new StringBuilder()
+        if (details != "") {
+            sb.append(String.format("Details: %s", details))
+            sb.append("\r\n")
+        }
+        sb.append(String.format("%s\r\n%s", ft.getDisplayName(), ft.getErrorStackTrace()))
+        result.add(sb.toString())
     }
     return result
 }
