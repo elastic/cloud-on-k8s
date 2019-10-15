@@ -1,4 +1,5 @@
 def failedTests = []
+def testScript
 
 pipeline {
 
@@ -18,6 +19,13 @@ pipeline {
     }
 
     stages {
+        stage('Load common scripts') {
+            steps {
+                script {
+                    testScript = load "build/ci/common/tests.groovy"
+                }
+            }
+        }
         stage('Run tests for different k8s versions in GKE') {
             parallel {
                 stage("1.12") {
@@ -55,21 +63,9 @@ pipeline {
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    def msg = "E2E tests for different k8s versions in GKE failed!\r\n" + env.RUN_DISPLAY_URL
-
                     Set<String> filter = new HashSet<>()
                     filter.addAll(failedTests)
-
-                    if (filter.size() > 0) {
-                        def sb = new StringBuilder()
-                        sb.append("\r\n")
-                        sb.append("List of failed tests:")
-                        filter.each { ft ->
-                            sb.append("\r\n")
-                            sb.append(ft)
-                        }
-                        msg += sb.toString()
-                    }
+                    def msg = testScript.generateSlackMessage("E2E tests for different k8s versions in GKE failed!", env.RUN_DISPLAY_URL, filter)
 
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
@@ -130,8 +126,7 @@ EOF
         junit "e2e-tests.xml"
 
         if (env.SHELL_EXIT_CODE != 0) {
-            def script = load "build/ci/common/tests.groovy"
-            failedTests.addAll(script.getListOfFailedTests())
+            failedTests.addAll(testScript.getListOfFailedTests())
         }
 
         sh 'exit $SHELL_EXIT_CODE'

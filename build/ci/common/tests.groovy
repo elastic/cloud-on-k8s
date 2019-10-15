@@ -13,4 +13,21 @@ def getListOfFailedTests() {
     return result
 }
 
+def generateSlackMessage(baseMsg, URL, failedTests) {
+    def sb = new StringBuilder()
+    sb.append(baseMsg)
+    sb.append("\r\n")
+    sb.append(URL)
+    if (failedTests.size > 0) {
+        sb.append("\r\n")
+        sb.append("List of failed tests:")
+        failedTests.each { ft ->
+            sb.append("\r\n")
+            sb.append(ft)
+        }
+    }
+    println(sb.toString())
+    return sb.toString()
+}
+
 return this
