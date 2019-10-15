@@ -1,4 +1,4 @@
-package v1alpha1
+package v1beta1
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 
 // https://book.kubebuilder.io/cronjob-tutorial/webhook-implementation.html
 
-// +kubebuilder:webhook:path=/validate-v1-alpha1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1alpha1,name=elastic-es-validation
+// +kubebuilder:webhook:path=/validate-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1beta1,name=elastic-es-validation
 func (r *Elasticsearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
@@ -29,8 +29,8 @@ func (r *Elasticsearch) ValidateCreate() error {
 	return r.validateElasticsearch()
 }
 
+// ValidateDelete is required to implement webhook.Validator, but we do not actually validate deletes
 func (r *Elasticsearch) ValidateDelete() error {
-	// ValidateDelete implements webhook.Validator, but we do not actually validate deletes
 	return nil
 }
 

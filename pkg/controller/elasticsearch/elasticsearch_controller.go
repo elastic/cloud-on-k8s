@@ -25,7 +25,7 @@ import (
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
+	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
@@ -244,21 +244,21 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	violations, err := validation.Validate(es)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if len(violations) > 0 {
-		log.Error(
-			fmt.Errorf("manifest validation failed"),
-			"Elasticsearch manifest validation failed",
-			"namespace", es.Namespace,
-			"es_name", es.Name,
-			"violations", violations,
-		)
-		reconcileState.UpdateElasticsearchInvalid(violations)
-		return results
-	}
+	// violations, err := validation.Validate(es)
+	// if err != nil {
+	// 	return results.WithError(err)
+	// }
+	// if len(violations) > 0 {
+	// 	log.Error(
+	// 		fmt.Errorf("manifest validation failed"),
+	// 		"Elasticsearch manifest validation failed",
+	// 		"namespace", es.Namespace,
+	// 		"es_name", es.Name,
+	// 		"violations", violations,
+	// 	)
+	// 	reconcileState.UpdateElasticsearchInvalid(violations)
+	// 	return results
+	// }
 
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {

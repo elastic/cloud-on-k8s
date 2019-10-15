@@ -2,9 +2,10 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package v1alpha1
+package v1beta1
 
 import (
+	"errors"
 	"net"
 	"reflect"
 	"strconv"
@@ -28,6 +29,8 @@ const (
 	invalidSanIPErrMsg       = "invalid SAN IP address"
 	pvcImmutableMsg          = "Volume claim templates cannot be modified"
 	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
+	unsupportedVersionErrMsg = "Unsupported version"
+	blacklistedConfigErrMsg  = "Configuration setting is not user-configurable"
 )
 
 type validation func(*Elasticsearch) *field.Error
@@ -68,9 +71,8 @@ func supportedVersion(es *Elasticsearch) *field.Error {
 			return nil
 		}
 	}
-	// todo sabo update this to unsupportedVersion() error message
-	return field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, invalidNamesErrMsg)
-
+	// TODO sabo update tests to look for this message
+	return field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionErrMsg)
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
@@ -138,7 +140,7 @@ func noBlacklistedSettings(es *Elasticsearch) *field.Error {
 	// sb.WriteString(" is not user configurable")
 	// todo sabo how to make this so we give it the path to the correct config value that is wrong? also update the message
 	// guessing we need to update the string builder
-	return field.Invalid(field.NewPath("spec").Child("nodes", "config"), es.Spec.Nodes[0].Config, masterRequiredMsg)
+	return field.Invalid(field.NewPath("spec").Child("nodes", "config"), es.Spec.Nodes[0].Config, blacklistedConfigErrMsg)
 	// return validation.Result{
 	// 	Allowed: false,
 	// 	Reason:  sb.String(),
@@ -161,7 +163,6 @@ func validSanIP(es *Elasticsearch) *field.Error {
 }
 
 // pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
-// TODO sabo update this to make sure it is only called on updates
 func pvcModification(old, current *Elasticsearch) *field.Error {
 	if old == nil {
 		return nil
@@ -179,6 +180,32 @@ func pvcModification(old, current *Elasticsearch) *field.Error {
 			return field.Invalid(field.NewPath("spec").Child("nodes", "volumeClaimTemplates"), currNode.VolumeClaimTemplates, pvcImmutableMsg)
 		}
 	}
+	return nil
+}
+
+// TODO sabo does this still make sense? im not sure it does
+func specUpdatedToBeta() error {
+	oldAPIVersion := "elasticsearch.k8s.elastic.co/v1alpha1"
+
+	es := Elasticsearch{}
+	if es.APIVersion == oldAPIVersion {
+		// return validation.Result{Reason: fmt.Sprintf("%s: outdated APIVersion", validationFailedMsg)}
+		return errors.New("")
+	}
+
+	if len(es.Spec.NodeSets) == 0 {
+		// return validation.Result{Reason: fmt.Sprintf("%s: at least one nodeSet must be defined", validationFailedMsg)}
+		return errors.New("")
+	}
+
+	for _, set := range es.Spec.NodeSets {
+		if set.Count == 0 {
+			// msg := fmt.Sprintf("node count of node set '%s' should not be zero", set.Name)
+			// return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
+			return errors.New("")
+		}
+	}
+
 	return nil
 }
 

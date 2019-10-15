@@ -452,6 +452,7 @@ k8s.io/utils v0.0.0-20190506122338-8fab8cb257d5/go.mod h1:sZAwmy6armz5eXlNoLmJcl
 sigs.k8s.io/controller-runtime v0.2.1 h1:XwUV7gwU/2Uerl9Vb5TpoA3wMQgOxI/LdLq8UhkSSRA=
 sigs.k8s.io/controller-runtime v0.2.1/go.mod h1:9dyohw3ZtoXQuV1e766PHUn+cmrRCIcBh6XIMFNMZ+I=
 sigs.k8s.io/controller-runtime v0.2.2 h1:JT/vJJhUjjL9NZNwnm8AXmqCBUXSCFKmTaNjwDi28N0=
+sigs.k8s.io/controller-runtime v0.3.0 h1:ZtdgqJXVHsIytjdmDuk0QjagnzyLq9FjojXRqIp+dU4=
 sigs.k8s.io/controller-tools v0.2.1 h1:HoCik83vXOpPi7KSJWdPRmiGntyOzK0v0BTV4U+pl8o=
 sigs.k8s.io/controller-tools v0.2.1/go.mod h1:cenyhL7t2e7izk/Zy7ZxDqQ9YEj0niU5VDL1PWMgZ5s=
 sigs.k8s.io/structured-merge-diff v0.0.0-20190525122527-15d366b2352e/go.mod h1:wWxsB5ozmmv/SG7nM11ayaAW51xMvak/t1r0CSlcokI=
