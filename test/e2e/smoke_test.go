@@ -37,7 +37,8 @@ func TestSmoke(t *testing.T) {
 	esBuilder = esBuilder.
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithDefaultPersistentVolumes()
 	kbBuilder = kbBuilder.
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
