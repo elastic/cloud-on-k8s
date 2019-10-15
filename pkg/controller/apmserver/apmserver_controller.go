@@ -246,7 +246,15 @@ func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1bet
 
 	state.UpdateApmServerExternalService(*svc)
 
-	return r.updateStatus(state)
+	// update status
+	err = r.updateStatus(state)
+	if err != nil && errors.IsConflict(err) {
+		log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
+		return reconcile.Result{Requeue: true}, nil
+	}
+	res, err := results.WithError(err).Aggregate()
+	k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
+	return res, err
 }
 
 func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1beta1.ApmServer) (*corev1.Secret, error) {
@@ -441,22 +449,16 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	return state, nil
 }
 
-func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error) {
+func (r *ReconcileApmServer) updateStatus(state State) error {
 	current := state.originalApmServer
 	if reflect.DeepEqual(current.Status, state.ApmServer.Status) {
-		return state.Result, nil
+		return nil
 	}
 	if state.ApmServer.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
 	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "as_name", state.ApmServer.Name, "iteration", atomic.LoadUint64(&r.iteration))
-	err := r.Status().Update(state.ApmServer)
-	if err != nil && errors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status")
-		return reconcile.Result{Requeue: true}, nil
-	}
-
-	return state.Result, err
+	return r.Status().Update(state.ApmServer)
 }
 
 // finalizersFor returns the list of finalizers applying to a given APM deployment

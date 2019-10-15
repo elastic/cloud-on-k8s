@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/go-test/deep"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint
@@ -351,6 +353,72 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			if diff := deep.Equal(got, tt.want.Params); diff != nil {
 				t.Error(diff)
 			}
+		})
+	}
+}
+
+func TestReconcileApmServer_doReconcile(t *testing.T) {
+	require.NoError(t, apmv1beta1.AddToScheme(scheme.Scheme))
+	type fields struct {
+		resources      []runtime.Object
+		recorder       record.EventRecorder
+		dynamicWatches watches.DynamicWatches
+		Parameters     operator.Parameters
+	}
+	type args struct {
+		request reconcile.Request
+	}
+	tests := []struct {
+		name        string
+		as          apmv1beta1.ApmServer
+		fields      fields
+		args        args
+		wantRequeue bool
+		wantErr     bool
+	}{
+		{
+			name: "If no error ensure a requeue is scheduled for CA",
+			as: apmv1beta1.ApmServer{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "apmserver",
+					Namespace: "default",
+				},
+			},
+			fields: fields{
+				resources:      []runtime.Object{},
+				recorder:       record.NewFakeRecorder(100),
+				dynamicWatches: watches.NewDynamicWatches(),
+				Parameters: operator.Parameters{
+					CACertRotation: certificates.RotationParams{
+						Validity:     certificates.DefaultCertValidity,
+						RotateBefore: certificates.DefaultRotateBefore,
+					},
+				},
+			},
+			args: args{
+				request: reconcile.Request{},
+			},
+			wantRequeue: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &ReconcileApmServer{
+				Client:         k8s.WrapClient(fake.NewFakeClientWithScheme(scheme.Scheme, &tt.as)),
+				scheme:         scheme.Scheme,
+				recorder:       tt.fields.recorder,
+				dynamicWatches: tt.fields.dynamicWatches,
+				Parameters:     tt.fields.Parameters,
+			}
+			got, err := r.doReconcile(tt.args.request, tt.as.DeepCopy())
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReconcileApmServer.doReconcile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			require.NotNil(t, got)
+			require.Equal(t, got.Requeue, tt.wantRequeue)
+			// We just check that the requeue is not zero
+			require.True(t, got.RequeueAfter > 0)
 		})
 	}
 }
