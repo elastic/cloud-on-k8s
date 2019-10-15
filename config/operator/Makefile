@@ -44,12 +44,13 @@ endif
 		-e "/# /d" \
 		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
 		-e "s|<NAMESPACE>|$$NAMESPACE|g" \
-		-e "s|<MANAGED_NAMESPACE_LIST>|$${MANAGED_NAMESPACES// /,}|g"
+		-e "s|<MANAGED_NAMESPACE_LIST>|$$MANAGED_NAMESPACES|g"
 
-	@ for managed_ns in $(MANAGED_NAMESPACES); do \
+	@ (MANAGED_NS_LIST=$${MANAGED_NAMESPACES//,/ }; \
+	  for managed_ns in $$MANAGED_NS_LIST; do \
 		printf "\n---\n" && sed \
 		-e "/# /d" \
 		-e "s|<NAMESPACE>|$$NAMESPACE|g" \
 		-e "s|<MANAGED_NAMESPACE>|$$managed_ns|g" \
 		namespace/managed_ns_role_binding.template.yaml ;\
-	  done
+	  done)

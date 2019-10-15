@@ -82,7 +82,7 @@ SKIP_DOCKER_COMMAND ?= false
 GLOBAL_OPERATOR_NAMESPACE ?= elastic-system
 # namespace in which the namespace operator is deployed (see config/namespace-operator)
 NAMESPACE_OPERATOR_NAMESPACE ?= elastic-namespace-operators
-# namespaces in which the namespace operator should watch resources
+# comma separated list of namespaces in which the namespace operator should watch resources
 MANAGED_NAMESPACES ?=
 
 ## -- Security
@@ -171,7 +171,7 @@ go-run:
 				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default \
-				--namespace-list=$(shell echo $(MANAGED_NAMESPACES) | tr ' ' ',') \
+				--namespace-list=$(MANAGED_NAMESPACES) \
 				--auto-install-webhooks=false
 
 go-debug:
@@ -185,7 +185,7 @@ go-debug:
 		--ca-cert-validity=10h \
 		--ca-cert-rotate-before=1h \
 		--operator-namespace=default \
-		--namespace-list=$(shell echo $MANAGED_NAMESPACES | tr ' ' ',') \
+		--namespace-list=$(MANAGED_NAMESPACES) \
 		--auto-install-webhooks=false)
 
 build-operator-image:
