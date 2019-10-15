@@ -128,7 +128,7 @@ EOF
 
         if (env.SHELL_EXIT_CODE != 0) {
             def script = load "build/ci/common/tests.groovy"
-            failedTests.addAll(script.getListOfFailedTests("GKE Kubernetes " + clusterVersion))
+            failedTests.addAll(script.getListOfFailedTests())
         }
 
         sh 'exit $SHELL_EXIT_CODE'
