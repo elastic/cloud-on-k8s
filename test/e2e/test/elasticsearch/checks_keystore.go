@@ -25,7 +25,7 @@ func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string)
 				return err
 			}
 			// wait for any ongoing rolling-upgrade to be over
-			if err := allPodsReady(b, k); err != nil {
+			if err := checkExpectedPodsReady(b, k); err != nil {
 				return err
 			}
 			if err := clusterHealthGreen(b, k); err != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -39,7 +40,7 @@ func PodRevision(pod corev1.Pod) string {
 
 // GetActualPodsForStatefulSet returns the existing pods associated to this StatefulSet.
 // The returned pods may not match the expected StatefulSet replicas in a transient situation.
-func GetActualPodsForStatefulSet(c k8s.Client, sset appsv1.StatefulSet) ([]corev1.Pod, error) {
+func GetActualPodsForStatefulSet(c k8s.Client, sset types.NamespacedName) ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	ns := client.InNamespace(sset.Namespace)
 	matchLabels := client.MatchingLabels(map[string]string{
@@ -82,7 +83,7 @@ func GetActualMastersForCluster(c k8s.Client, es v1beta1.Elasticsearch) ([]corev
 
 func PodReconciliationDoneForSset(c k8s.Client, statefulSet appsv1.StatefulSet) (bool, error) {
 	// check all expected pods are there: no more, no less
-	actualPods, err := GetActualPodsForStatefulSet(c, statefulSet)
+	actualPods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&statefulSet))
 	if err != nil {
 		return false, err
 	}

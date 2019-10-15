@@ -5,24 +5,34 @@
 package elasticsearch
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
 
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
+
+// BuilderHashAnnotation is the name of an annotation set by the E2E tests on Elasticsearch resources
+// containing the hash of their Builder, for comparison purposes (pre/post rolling upgrade).
+const BuilderHashAnnotation = "elasticsearch.k8s.elastic.co/e2e-builder-hash"
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		CheckCertificateAuthority(b, k),
+		CheckExpectedPodsEventuallyReady(b, k),
 		CheckESVersion(b, k),
-		CheckESPodsRunning(b, k),
 		CheckServices(b, k),
-		CheckESPodsReady(b, k),
 		CheckPodCertificates(b, k),
 		CheckServicesEndpoints(b, k),
 		CheckClusterHealth(b, k),
@@ -74,11 +84,6 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 }
 
 // CheckESPodsRunning checks that all ES pods for the given ES are running
-func CheckESPodsRunning(b Builder, k *test.K8sClient) test.Step {
-	return checkESPodsPhase(b, k, corev1.PodRunning)
-}
-
-// CheckESPodsRunning checks that all ES pods for the given ES are running
 func CheckESPodsPending(b Builder, k *test.K8sClient) test.Step {
 	return checkESPodsPhase(b, k, corev1.PodPending)
 }
@@ -113,7 +118,6 @@ func CheckPodsCondition(b Builder, k *test.K8sClient, name string, condition fun
 }
 
 // CheckESVersion checks that the running ES version is the expected one
-// TODO: request ES endpoint instead, not the k8s implementation detail
 func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES version should be the expected one",
@@ -136,40 +140,6 @@ func CheckESVersion(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
-}
-
-// CheckESPodsReady retrieves ES pods from the given ES,
-// and check they are in status ready, until success
-func CheckESPodsReady(b Builder, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "ES pods should eventually be ready",
-		Test: test.Eventually(func() error {
-			return allPodsReady(b, k)
-		}),
-	}
-}
-
-func allPodsReady(b Builder, k *test.K8sClient) error {
-	pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
-	if err != nil {
-		return err
-	}
-	// check number of pods
-	if len(pods) != int(b.Elasticsearch.Spec.NodeCount()) {
-		return fmt.Errorf("expected %d pods, got %d", b.Elasticsearch.Spec.NodeCount(), len(pods))
-	}
-	// check pod statuses
-podsLoop:
-	for _, p := range pods {
-		for _, c := range p.Status.Conditions {
-			if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
-				// pod is ready, move on to next pod
-				continue podsLoop
-			}
-		}
-		return fmt.Errorf("pod %s is not ready yet. Phase: %s. Reason: %s", p.Name, p.Status.Phase, p.Status.Reason)
-	}
-	return nil
 }
 
 // CheckClusterHealth checks that the given ES status reports a green ES health
@@ -253,4 +223,152 @@ func CheckESPassword(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
+}
+
+func CheckExpectedPodsEventuallyReady(b Builder, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "All expected Pods should eventually be ready",
+		Test: test.Eventually(func() error {
+			return checkExpectedPodsReady(b, k)
+		}),
+	}
+}
+
+// checkExpectedPodsReady checks that all expected Pods (no more, no less) are there, ready,
+// and that any rolling upgrade is over.
+// It does not check the entire spec of the Pods.
+func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
+	// check StatefulSets are expected
+	if err := checkStatefulSetsReplicas(b, k); err != nil {
+		return err
+	}
+	// for each StatefulSet, make sure all Pods are there and Ready
+	for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
+		// retrieve the corresponding StatefulSet
+		var statefulSet appsv1.StatefulSet
+		if err := k.Client.Get(
+			types.NamespacedName{
+				Namespace: b.Elasticsearch.Namespace,
+				Name:      esname.StatefulSet(b.Elasticsearch.Name, nodeSet.Name),
+			},
+			&statefulSet,
+		); err != nil {
+			return err
+		}
+		// the exact expected list of Pods (no more, no less) should exist
+		expectedPodNames := sset.PodNames(statefulSet)
+		actualPods, err := sset.GetActualPodsForStatefulSet(k.Client, k8s.ExtractNamespacedName(&statefulSet))
+		if err != nil {
+			return err
+		}
+		actualPodNames := make([]string, 0, len(actualPods))
+		for _, p := range actualPods {
+			actualPodNames = append(actualPodNames, p.Name)
+		}
+		// sort alphabetically for comparison purposes
+		sort.Strings(expectedPodNames)
+		sort.Strings(actualPodNames)
+		if !reflect.DeepEqual(expectedPodNames, actualPodNames) {
+			return fmt.Errorf("invalid Pods for StatefulSet %s: expected %v, got %v", statefulSet.Name, expectedPodNames, actualPodNames)
+		}
+
+		// all Pods should be running and ready
+		for _, p := range actualPods {
+			if !k8s.IsPodReady(p) {
+				// pretty-print status JSON
+				statusJSON, err := json.MarshalIndent(p.Status, "", "    ")
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf("pod %s is not Ready.\nStatus:%s", p.Name, statusJSON)
+			}
+			// Pod should either:
+			// - be annotated with the hash of the current ES spec from previous E2E steps
+			// - not be annotated at all (if recreated/upgraded, or not a mutation)
+			// But **not** be annotated with the hash of a different ES spec, meaning
+			// it probably still matches the spec of the pre-mutation builder (rolling upgrade not over).
+			//
+			// Important: this does not catch rolling upgrades due to a keystore change, where the Builder hash
+			// would stay the same.
+			expectedHash := nodeSetHash(b.Elasticsearch, nodeSet)
+			if p.Annotations[BuilderHashAnnotation] != "" && p.Annotations[BuilderHashAnnotation] != expectedHash {
+				return fmt.Errorf("pod %s was not upgraded (yet?) to match the expected Elasticsearch specification", p.Name)
+			}
+		}
+	}
+	return nil
+}
+
+func checkStatefulSetsReplicas(b Builder, k *test.K8sClient) error {
+	// build names and replicas count of expected StatefulSets
+	expected := make(map[string]int32, len(b.Elasticsearch.Spec.NodeSets)) // map[StatefulSetName]Replicas
+	for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
+		expected[esname.StatefulSet(b.Elasticsearch.Name, nodeSet.Name)] = nodeSet.Count
+	}
+	statefulSets, err := k.GetESStatefulSets(b.Elasticsearch.Namespace, b.Elasticsearch.Name)
+	if err != nil {
+		return err
+	}
+	// compare with actual StatefulSets
+	actual := make(map[string]int32, len(statefulSets)) // map[StatefulSetName]Replicas
+	for _, statefulSet := range statefulSets {
+		actual[statefulSet.Name] = *statefulSet.Spec.Replicas // should not be nil
+	}
+	if !reflect.DeepEqual(expected, actual) {
+		return fmt.Errorf("invalid StatefulSets: expected %v, got %v", expected, actual)
+	}
+	return nil
+}
+
+func AnnotatePodsWithBuilderHash(b Builder, k *test.K8sClient) []test.Step {
+	return []test.Step{
+		{
+			Name: "Annotate Pods with a hash of their Builder spec",
+			Test: test.Eventually(func() error {
+				es := b.Elasticsearch
+				for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
+					pods, err := sset.GetActualPodsForStatefulSet(k.Client, types.NamespacedName{
+						Namespace: es.Namespace,
+						Name:      esname.StatefulSet(es.Name, nodeSet.Name),
+					})
+					if err != nil {
+						return err
+					}
+					for i := range pods {
+						pods[i].Annotations[BuilderHashAnnotation] = nodeSetHash(es, nodeSet)
+						if err := k.Client.Update(&pods[i]); err != nil {
+							// may error out with a conflict if concurrently updated by the operator,
+							// which is why we retry with `test.Eventually`
+							return err
+						}
+					}
+				}
+				return nil
+			}),
+		},
+		// make sure this is propagated to the local cache so next test steps can expect annotated pods
+		{
+			Name: "Wait for annotated Pods to appear in the cache",
+			Test: test.Eventually(func() error {
+				pods, err := sset.GetActualPodsForCluster(k.Client, b.Elasticsearch)
+				if err != nil {
+					return err
+				}
+				for _, p := range pods {
+					if p.Annotations[BuilderHashAnnotation] == "" {
+						return fmt.Errorf("pod %s is not annotated with %s yet", p.Name, BuilderHashAnnotation)
+					}
+				}
+				return nil
+			}),
+		},
+	}
+}
+
+// nodeSetHash builds a hash of the nodeSet specification in the given ES resource.
+func nodeSetHash(es estype.Elasticsearch, nodeSet estype.NodeSet) string {
+	specHash := hash.HashObject(nodeSet)
+	esVersionHash := hash.HashObject(es.Spec.Version)
+	httpServiceHash := hash.HashObject(es.Spec.HTTP)
+	return hash.HashObject(specHash + esVersionHash + httpServiceHash)
 }
