@@ -4,7 +4,7 @@
 
 // Common test related code for Jenkins pipelines
 
-def getListOfFailedTests(details = "") {
+def getListOfFailedTests() {
     def failed = currentBuild.rawBuild.getAction(hudson.tasks.test.AbstractTestResultAction.class)?.getResult()?.getFailedTests()
     def result = []
     failed.each { ft ->
