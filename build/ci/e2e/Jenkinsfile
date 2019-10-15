@@ -1,3 +1,5 @@
+def failedTests = []
+
 pipeline {
 
     agent {
@@ -65,6 +67,11 @@ EOF
                     sh 'make -C build/ci TARGET=e2e-generate-xml ci'
                     junit "e2e-tests.xml"
 
+                    if (env.SHELL_EXIT_CODE != 0) {
+                        def script = load "build/ci/common/tests.groovy"
+                        failedTests = script.getListOfFailedTests()
+                    }
+
                     sh 'exit $SHELL_EXIT_CODE'
                 }
             }
@@ -75,6 +82,18 @@ EOF
         unsuccessful {
             script {
                 def msg = "E2E tests failed!\r\n" + env.BUILD_URL
+
+                if (failedTests.size > 0) {
+                    def sb = new StringBuilder()
+                    sb.append("\r\n")
+                    sb.append("List of failed tests:")
+                    failedTests.each { ft ->
+                        sb.append("\r\n")
+                        sb.append(ft)
+                    }
+                    msg += sb.toString()
+                }
+
                 slackSend botUser: true,
                       channel: '#cloud-k8s',
                       color: 'danger',
