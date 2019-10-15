@@ -57,11 +57,14 @@ pipeline {
                 if (params.SEND_NOTIFICATIONS) {
                     def msg = "E2E tests for different k8s versions in GKE failed!\r\n" + env.RUN_DISPLAY_URL
 
-                    if (failedTests.size > 0) {
+                    Set<String> filter = new HashSet<>()
+                    filter.addAll(failedTests)
+
+                    if (filter.size() > 0) {
                         def sb = new StringBuilder()
                         sb.append("\r\n")
                         sb.append("List of failed tests:")
-                        failedTests.each { ft ->
+                        filter.each { ft ->
                             sb.append("\r\n")
                             sb.append(ft)
                         }
