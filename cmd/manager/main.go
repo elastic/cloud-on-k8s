@@ -39,6 +39,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
@@ -49,6 +50,7 @@ const (
 
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespaceFlagName       = "namespace"
+	NamespaceListFlagName   = "namespace-list"
 
 	CACertValidityFlag     = "ca-cert-validity"
 	CACertRotateBeforeFlag = "ca-cert-rotate-before"
@@ -84,6 +86,11 @@ func init() {
 		NamespaceFlagName,
 		"",
 		"namespace in which this operator should manage resources (defaults to all namespaces)",
+	)
+	Cmd.Flags().StringSlice(
+		NamespaceListFlagName,
+		nil,
+		"List of namespaces to be managed (overrides the namespace flag)",
 	)
 	Cmd.Flags().Bool(
 		AutoPortForwardFlagName,
@@ -213,8 +220,23 @@ func execute() {
 	log.Info("Setting up manager")
 	opts := ctrl.Options{
 		Scheme: clientgoscheme.Scheme,
-		// restrict the operator to watch resources within a single namespace, unless empty
-		Namespace: viper.GetString(NamespaceFlagName),
+	}
+
+	// figure out the managed namespaces (namespace-list flag overrides the namespace flag)
+	managedNamespace := viper.GetString(NamespaceFlagName)
+	managedNamespaceList := viper.GetStringSlice(NamespaceListFlagName)
+	switch {
+	case len(managedNamespaceList) == 1:
+		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaceList[0])
+		opts.Namespace = managedNamespaceList[0]
+	case len(managedNamespaceList) > 1:
+		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaceList)
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaceList)
+	case managedNamespace == "":
+		log.Info("Operator configured to manage all namespaces")
+	default:
+		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespace)
+		opts.Namespace = managedNamespace
 	}
 
 	// only expose prometheus metrics if provided a non-zero port

@@ -34,14 +34,22 @@ generate-global:
 		-e "s|<NAMESPACE>|$$NAMESPACE|g"
 
 generate-namespace:
-ifndef MANAGED_NAMESPACE
-	$(error MANAGED_NAMESPACE not set)
+ifndef MANAGED_NAMESPACES
+	$(error MANAGED_NAMESPACES not set)
 endif
-	@ for yaml in $$(LC_COLLATE=C ls namespace/*yaml); do \
+	@ for yaml in $(shell find namespace -type f -name '*.yaml' ! -name 'managed_ns_role_binding.template.yaml'); do \
 		printf "\n---\n" && cat $$yaml ; \
 	done | \
 	sed \
 		-e "/# /d" \
 		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
 		-e "s|<NAMESPACE>|$$NAMESPACE|g" \
-		-e "s|<MANAGED_NAMESPACE>|$$MANAGED_NAMESPACE|g"
+		-e "s|<MANAGED_NAMESPACE_LIST>|$${MANAGED_NAMESPACES// /,}|g"
+
+	@ for managed_ns in $(MANAGED_NAMESPACES); do \
+		printf "\n---\n" && sed \
+		-e "/# /d" \
+		-e "s|<NAMESPACE>|$$NAMESPACE|g" \
+		-e "s|<MANAGED_NAMESPACE>|$$managed_ns|g" \
+		namespace/managed_ns_role_binding.template.yaml ;\
+	  done
