@@ -213,7 +213,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 	}
 
 	// Expect the updated statefulset in the cache for next reconciliation.
-	downscaleCtx.expectations.ExpectGeneration(downscale.statefulSet.ObjectMeta)
+	downscaleCtx.expectations.ExpectGeneration(downscale.statefulSet)
 
 	return nil
 }

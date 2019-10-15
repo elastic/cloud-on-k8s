@@ -4,131 +4,99 @@
 
 package expectations
 
-import (
-	"errors"
+import "github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-)
+/*
 
-var (
-	log = logf.Log.WithName("expectations")
-)
+# Expectations FAQ
 
-type deleteExpectations map[types.NamespacedName]map[types.NamespacedName]types.UID
+## What are expectations?
+Expectations are in-memory data structures that we use to register an action we performed during a reconciliation.
+Example: a StatefulSet was updated, a Pod was deleted.
 
-// Note: expectations are NOT thread-safe.
-// TODO: garbage collect/finalize deprecated expectation
+## Why do we need them?
+Our Kubernetes client caches all resources locally, and relies on apiserver watches to maintain the cache up-to-date.
+The cache is never invalidated. For example, it is possible to:
+
+1. Delete a Pod.
+2. List all Pods: the deleted Pod is still there in the cache (and not marked for termination). It's impossible
+to know it was actually deleted before.
+3. List all Pods again later: the Pod is correctly deleted.
+
+These steps may correspond to different reconciliation attempts. Step 2 can be particularly dangerous when dealing
+with external systems such as Elasticsearch. What if we update Elasticsearch orchestration settings based on an
+out-of-date number of Pods?
+
+## What are we tracking exactly? When?
+
+* Updates on StatefulSets specification, that we track through the StatefulSet Generation attribute. They are updated
+every time we do an update on StatefulSets, changing the spec or number of replicas.
+* Pods deletions, that we track using UID of deleted Pods. They are updated every time we manually delete a Pod during
+a rolling upgrade. They are not updated during downscales: the updated StatefulSets replicas is tracked through the
+StatefulSets generation expectations.
+
+## Give me some concrete examples why this is useful!
+
+Things that could happen without this mechanism in place:
+- create more than one master node at a time
+- delete more than one master node at a time
+- outgrow the changeBudget during upscale and downscales
+- clear shards allocation excludes for a node that is not removed yet
+- update zen1/zen2 minimum_master_nodes/initial_master_nodes based on the wrong number of nodes
+- update zen1/zen2 minimum_master_nodes/initial_master_nodes based on the wrong nodes specification (ignoring master->data upgrades)
+- clear voting_config_exclusions while a Pod has not finished its restart yet (or maybe just started)
+
+## What if the operator restarts?
+
+All in-memory expectations are lost if the operator restarts. This is fine, because the operator re-populates its cache
+with the current resources in the apiserver. These resources do take into account any create/update/delete operation
+that was performed before the operator restarted.
+
+## Don't we need that for... basically everything?
+
+No. In most situations, it's totally fine to rely on Kubernetes optimistic locking:
+* if we create a resource that already exists, the operation fails
+* if we update an out-of-date resource, the operation fails
+* if we delete a resource that does not exist, the operation fails
+
+The only cases where we need it are (so far):
+- when interacting with external systems own orchestration mechanism (Elasticsearch zen1/zen2)
+- when trying to control how many creations/deletions/upgrades happen in parallel
+
+## Where does it come from?
+
+Kubernetes Deployment controller relies on expectations to control pods creation and deletion:
+https://github.com/kubernetes/kubernetes/blob/245189b8a198e9e29494b2d992dc05bd7164c973/pkg/controller/controller_utils.go#L115
+Our expectations mechanism is inspired from it.
+A major difference is the Deployments one is directly plugged to watches events to track creation and deletion.
+Instead, we just inspect resources in the cache when we need to; which makes it a bit simpler to understand, but
+technically less efficient.
+
+*/
+
+// Expectations stores expectations for a single cluster. It is not thread-safe.
 type Expectations struct {
-	// StatefulSet -> generation
-	generations map[types.UID]int64
-	// Cluster -> Pod -> UID
-	deletions deleteExpectations
+	*ExpectedGenerations
+	*ExpectedDeletions
 }
 
-func NewExpectations() *Expectations {
+// NewExpectations returns an initialized Expectations.
+func NewExpectations(client k8s.Client) *Expectations {
 	return &Expectations{
-		generations: make(map[types.UID]int64),
-		deletions:   make(deleteExpectations),
+		ExpectedGenerations: NewExpectedGenerations(client),
+		ExpectedDeletions:   NewExpectedDeletions(client),
 	}
 }
 
-// -- Deletions expectations
-
-// ExpectDeletion registers an expected deletion for the given Pod.
-func (e *Expectations) ExpectDeletion(pod corev1.Pod) {
-	cluster, exists := getClusterFromPodLabel(pod)
-	if !exists {
-		return // Should not happen as all Pods should have the correct labels
-	}
-	var expectedDeletions map[types.NamespacedName]types.UID
-	expectedDeletions, exists = e.deletions[cluster]
-	if !exists {
-		expectedDeletions = map[types.NamespacedName]types.UID{}
-		e.deletions[cluster] = expectedDeletions
-	}
-	expectedDeletions[k8s.ExtractNamespacedName(&pod)] = pod.UID
-}
-
-// CancelExpectedDeletion removes an expected deletion for the given Pod.
-func (e *Expectations) CancelExpectedDeletion(pod corev1.Pod) {
-	cluster, exists := getClusterFromPodLabel(pod)
-	if !exists {
-		return // Should not happen as all Pods should have the correct labels
-	}
-	var expectedDeletions map[types.NamespacedName]types.UID
-	expectedDeletions, exists = e.deletions[cluster]
-	if !exists {
-		return
-	}
-	delete(expectedDeletions, k8s.ExtractNamespacedName(&pod))
-}
-
-func getClusterFromPodLabel(pod corev1.Pod) (types.NamespacedName, bool) {
-	cluster, exists := label.ClusterFromResourceLabels(pod.GetObjectMeta())
-	if !exists {
-		log.Error(errors.New("cannot find the cluster label on Pod"),
-			"Failed to get cluster from Pod annotation",
-			"pod_name", pod.Name,
-			"pod_namespace", pod.Namespace)
-	}
-	return cluster, exists
-}
-
-// SatisfiedDeletions uses the provided DeletionChecker to check if the delete expectations are satisfied.
-func (e *Expectations) SatisfiedDeletions(client k8s.Client, cluster types.NamespacedName) (bool, error) {
-	// Get all the deletions expected for this cluster
-	deletions, ok := e.deletions[cluster]
-	if !ok {
-		return true, nil
-	}
-	for pod, uid := range deletions {
-		canRemove, err := canRemoveExpectation(client, pod, uid)
-		if err != nil {
-			return false, err
-		}
-		if canRemove {
-			delete(deletions, pod)
-		} else {
-			return false, nil
-		}
-	}
-	return len(deletions) == 0, nil
-}
-func canRemoveExpectation(client k8s.Client, podName types.NamespacedName, uid types.UID) (bool, error) {
-	// Try to get the Pod
-	var currentPod corev1.Pod
-	err := client.Get(podName, &currentPod)
+// Satisfied returns true if both deletions and generations are expected.
+func (e *Expectations) Satisfied() (bool, error) {
+	deletionsSatisfied, err := e.DeletionsSatisfied()
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
 		return false, err
 	}
-	return currentPod.UID != uid, nil
-}
-
-// -- Generations expectations
-
-func (e *Expectations) ExpectGeneration(meta metav1.ObjectMeta) {
-	e.generations[meta.UID] = meta.Generation
-}
-
-func (e *Expectations) SatisfiedGenerations(metaObjs ...metav1.ObjectMeta) bool {
-	for _, meta := range metaObjs {
-		if expectedGen, exists := e.generations[meta.UID]; exists && meta.Generation < expectedGen {
-			return false
-		}
+	generationsSatisfied, err := e.GenerationsSatisfied()
+	if err != nil {
+		return false, err
 	}
-	return true
-}
-
-// GetGenerations returns the map of generations, for testing purpose mostly.
-func (e *Expectations) GetGenerations() map[types.UID]int64 {
-	return e.generations
+	return deletionsSatisfied && generationsSatisfied, nil
 }

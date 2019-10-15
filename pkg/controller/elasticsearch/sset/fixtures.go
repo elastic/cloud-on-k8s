@@ -56,6 +56,9 @@ func (t TestSset) Build() appsv1.StatefulSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      t.Name,
 			Namespace: t.Namespace,
+			Labels: map[string]string{
+				label.ClusterNameLabelName: t.ClusterName,
+			},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &t.Replicas,

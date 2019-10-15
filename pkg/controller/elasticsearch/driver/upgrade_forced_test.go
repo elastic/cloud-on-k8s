@@ -168,7 +168,7 @@ func Test_defaultDriver_maybeForceUpgrade(t *testing.T) {
 			d := &defaultDriver{
 				DefaultDriverParameters: DefaultDriverParameters{
 					Client:       k8sClient,
-					Expectations: expectations.NewExpectations(),
+					Expectations: expectations.NewExpectations(k8sClient),
 				},
 			}
 
