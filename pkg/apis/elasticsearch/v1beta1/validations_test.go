@@ -346,7 +346,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
-										settings.ClusterInitialMasterNodes: "foo",
+										ClusterInitialMasterNodes: "foo",
 									},
 								},
 								Count: 1,
@@ -367,14 +367,14 @@ func Test_noBlacklistedSettings(t *testing.T) {
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
-										settings.ClusterInitialMasterNodes: "foo",
+										ClusterInitialMasterNodes: "foo",
 									},
 								},
 							},
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
-										settings.XPackSecurityTransportSslVerificationMode: "bar",
+										XPackSecurityTransportSslVerificationMode: "bar",
 									},
 								},
 							},
@@ -417,7 +417,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 							{
 								Config: &common.Config{
 									Data: map[string]interface{}{
-										settings.XPackSecurityTransportSslCertificateAuthorities: "foo",
+										XPackSecurityTransportSslCertificateAuthorities: "foo",
 									},
 								},
 							},

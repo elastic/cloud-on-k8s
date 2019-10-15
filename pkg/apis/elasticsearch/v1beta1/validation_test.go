@@ -188,7 +188,7 @@ func TestValidate(t *testing.T) {
 								Config: &common.Config{
 									Data: map[string]interface{}{
 										estype.NodeMaster: false,
-										settings.XPackSecurityTransportSslCertificate: "blacklisted setting",
+										XPackSecurityTransportSslCertificate: "blacklisted setting",
 									},
 								},
 							},

@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package settings
+package v1beta1
 
 const (
 	ClusterName = "cluster.name"
@@ -35,7 +35,7 @@ const (
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
 )
 
-var Blacklist = []string{
+var SettingsBlacklist = []string{
 	ClusterName,
 	DiscoveryZenMinimumMasterNodes,
 	ClusterInitialMasterNodes,

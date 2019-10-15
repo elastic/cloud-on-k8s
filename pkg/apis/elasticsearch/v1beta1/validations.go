@@ -13,8 +13,8 @@ import (
 
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+
+	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
@@ -53,8 +53,9 @@ var updateValidations = []updateValidation{
 }
 
 // validName checks whether the name is valid.
+// TODO SABO fix this
 func validName(es *Elasticsearch) *field.Error {
-	if err := name.Validate(&es); err != nil {
+	if err := validateNames(&es); err != nil {
 		return field.Invalid(field.NewPath("metadata").Child("name"), es.Name, invalidNamesErrMsg)
 	}
 	return nil
@@ -105,7 +106,7 @@ func noBlacklistedSettings(es *Elasticsearch) *field.Error {
 			}
 			continue
 		}
-		forbidden := config.HasKeys(settings.Blacklist)
+		forbidden := config.HasKeys(SettingsBlacklist)
 		// remove duplicates
 		set := set.Make(forbidden...)
 		if set.Count() > 0 {
