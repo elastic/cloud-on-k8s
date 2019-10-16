@@ -34,7 +34,7 @@ func NewExpectedGenerations(client k8s.Client) *ExpectedGenerations {
 	}
 }
 
-// ExpectGeneration markes the Generation of the given StatefulSets as expected.
+// ExpectGeneration registers the Generation of the given StatefulSets as expected.
 func (e *ExpectedGenerations) ExpectGeneration(statefulSet appsv1.StatefulSet) {
 	resource := types.NamespacedName{Namespace: statefulSet.Namespace, Name: statefulSet.Name}
 	e.generations[resource] = ResourceGeneration{
