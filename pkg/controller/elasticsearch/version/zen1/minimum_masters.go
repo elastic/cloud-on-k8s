@@ -56,7 +56,7 @@ func SetupMinimumMasterNodesConfig(
 			masters += int(sset.GetReplicas(resource.StatefulSet))
 		} else {
 			// Second situation: not a sset of masters, but we check if there are some of them waiting for a rolling upgrade
-			actualPods, err := sset.GetActualPodsForStatefulSet(c, resource.StatefulSet)
+			actualPods, err := sset.GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&resource.StatefulSet))
 			if err != nil {
 				return err
 			}

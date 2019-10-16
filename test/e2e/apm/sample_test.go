@@ -43,7 +43,8 @@ func TestApmEsKibanaSample(t *testing.T) {
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithDefaultPersistentVolumes()
 	kbBuilder = kbBuilder.
 		WithSuffix(randSuffix).
 		WithNamespace(ns).

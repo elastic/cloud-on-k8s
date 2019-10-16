@@ -89,8 +89,8 @@ func validateNames(es v1beta1.Elasticsearch) error {
 }
 
 // StatefulSet returns the name of the StatefulSet corresponding to the given NodeSet.
-func StatefulSet(esName string, nodeSpecName string) string {
-	return ESNamer.Suffix(esName, nodeSpecName)
+func StatefulSet(esName string, nodeSetName string) string {
+	return ESNamer.Suffix(esName, nodeSetName)
 }
 
 func ConfigSecret(ssetName string) string {

@@ -385,7 +385,7 @@ e2e-local:
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--crd-flavor=$(CRD_FLAVOR)
-	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
+	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##
