@@ -237,4 +237,4 @@ kibana-sample-kb-97c6b6b8d-lqfd2 scc:restricted
 [id="{p}-openshift-es-plugins"]
 === Elasticsearch plugins
 
-Note that Elasticsearch plugins cannot be installed at runtime in most OpenShift environments. This is because the plugin installer must run as root, but Elasticsearch is restricted from running as root. To add plugins to Elasticsearch, you can use custom images as described in <<{p}-custom-images">>.
+Note that Elasticsearch plugins cannot be installed at runtime in most OpenShift environments. This is because the plugin installer must run as root, but Elasticsearch is restricted from running as root. To add plugins to Elasticsearch, you can use custom images as described in <<{p}-custom-images>>.
