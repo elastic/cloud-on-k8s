@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	// we setup our own storageClass with "volumeBindingMode: waitForFirstConsumer" that we
+	// reference in the VolumeClaimTemplates section of the Elasticsearch spec
 	defaultStorageClass = "e2e-default"
 	defaultVolumeName   = "e2e-default-volume"
 )

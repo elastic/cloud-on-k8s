@@ -48,17 +48,12 @@ func createStorageClass() error {
 
 	sc = strings.Replace(sc, fmt.Sprintf("name: %s", defaultName), "name: e2e-default", -1)
 	sc = strings.Replace(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer", -1)
-	err = NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
-%s
-EOF`, sc)).Run()
-	if err != nil {
-		return err
-	}
-
 	// Some providers (AKS) don't allow changing the default. To avoid having two defaults, set newly created storage
 	// class to be non-default. Depending on k8s version, a different annotation is needed. To avoid parsing version
 	// string, both are set.
-	patch := `'{ "metadata": { "annotations": { "storageclass.kubernetes.io/is-default-class":"false", "storageclass.beta.kubernetes.io/is-default-class":"false"} } }'`
-	cmd := fmt.Sprintf(`kubectl patch storageclass e2e-default -p %s`, patch)
-	return NewCommand(cmd).Run()
+	sc = strings.Replace(sc, `storageclass.kubernetes.io/is-default-class: "true"`, `storageclass.kubernetes.io/is-default-class: "false"`, -1)
+	sc = strings.Replace(sc, `storageclass.beta.kubernetes.io/is-default-class: "true"`, `storageclass.beta.kubernetes.io/is-default-class: "false"`, -1)
+	return NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
+%s
+EOF`, sc)).Run()
 }
