@@ -76,15 +76,15 @@ technically less efficient.
 
 // Expectations stores expectations for a single cluster. It is not thread-safe.
 type Expectations struct {
-	*ExpectedGenerations
-	*ExpectedDeletions
+	*ExpectedStatefulSetUpdates
+	*ExpectedPodDeletions
 }
 
 // NewExpectations returns an initialized Expectations.
 func NewExpectations(client k8s.Client) *Expectations {
 	return &Expectations{
-		ExpectedGenerations: NewExpectedGenerations(client),
-		ExpectedDeletions:   NewExpectedDeletions(client),
+		ExpectedStatefulSetUpdates: NewExpectedStatefulSetUpdates(client),
+		ExpectedPodDeletions:       NewExpectedPodDeletions(client),
 	}
 }
 

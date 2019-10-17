@@ -29,7 +29,7 @@ func newPod(name string, uuid types.UID) corev1.Pod {
 	}
 }
 
-func TestExpectedDeletions_DeletionsSatisfied(t *testing.T) {
+func TestExpectedPodDeletions_DeletionsSatisfied(t *testing.T) {
 	pod1 := newPod("pod1", uuid.NewUUID())
 	pod1Recreated := newPod("pod1", uuid.NewUUID()) // same name, different UID
 	pod2 := newPod("pod2", uuid.NewUUID())
@@ -89,7 +89,7 @@ func TestExpectedDeletions_DeletionsSatisfied(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require.NoError(t, scheme.SetupScheme())
 			client := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
-			e := NewExpectedDeletions(client)
+			e := NewExpectedPodDeletions(client)
 			for i := range tt.expectDeletions {
 				e.ExpectDeletion(tt.expectDeletions[i])
 				require.Contains(t, e.podDeletions, k8s.ExtractNamespacedName(&tt.expectDeletions[i]))

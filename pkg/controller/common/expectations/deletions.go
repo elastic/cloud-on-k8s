@@ -12,38 +12,38 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// ExpectedGenerations stores UID of Pods that we did delete, but whose deletion may not be
+// ExpectedPodDeletions stores UID of Pods that we did delete, but whose deletion may not be
 // done yet, or not visible yet in the cache.
 // It allows making sure we're not working with an out-of-date list of Pods that includes
 // Pods which do not exist anymore.
-type ExpectedDeletions struct {
+type ExpectedPodDeletions struct {
 	client       k8s.Client
 	podDeletions map[types.NamespacedName]types.UID
 }
 
-// NewExpectedDeletions returns an initialized ExpectedDeletions.
-func NewExpectedDeletions(client k8s.Client) *ExpectedDeletions {
-	return &ExpectedDeletions{
+// NewExpectedPodDeletions returns an initialized ExpectedPodDeletions.
+func NewExpectedPodDeletions(client k8s.Client) *ExpectedPodDeletions {
+	return &ExpectedPodDeletions{
 		client:       client,
 		podDeletions: make(map[types.NamespacedName]types.UID),
 	}
 }
 
 // ExpectDeletion registers an expected deletion for the given Pod.
-func (e *ExpectedDeletions) ExpectDeletion(pod corev1.Pod) {
+func (e *ExpectedPodDeletions) ExpectDeletion(pod corev1.Pod) {
 	e.podDeletions[k8s.ExtractNamespacedName(&pod)] = pod.UID
 }
 
 // CancelExpectedDeletion removes an expected deletion for the given Pod.
-// It's mostly used if a deletion call failed, but the expectations was already registered.
-func (e *ExpectedDeletions) CancelExpectedDeletion(pod corev1.Pod) {
+// It's mostly used if a deletion call failed, but the expectation was already registered.
+func (e *ExpectedPodDeletions) CancelExpectedDeletion(pod corev1.Pod) {
 	delete(e.podDeletions, k8s.ExtractNamespacedName(&pod))
 }
 
 // DeletionsSatisfied ensures all registered Pods deletions are satisfied: meaning
 // the corresponding Pods do not exist in the cache anymore.
 // Expectations are cleared once fulfilled.
-func (e *ExpectedDeletions) DeletionsSatisfied() (bool, error) {
+func (e *ExpectedPodDeletions) DeletionsSatisfied() (bool, error) {
 	for pod, uid := range e.podDeletions {
 		isDeleted, err := podDeleted(e.client, pod, uid)
 		if err != nil {

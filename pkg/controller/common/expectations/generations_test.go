@@ -29,7 +29,7 @@ func newStatefulSet(name string, uid types.UID, generation int64) appsv1.Statefu
 	}
 }
 
-func TestExpectedGenerations_GenerationsSatisfied(t *testing.T) {
+func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 	sset1 := newStatefulSet("sset1", uuid.NewUUID(), 3)
 	sset1DifferentUID := newStatefulSet("sset1", uuid.NewUUID(), 3)
 	sset1HigherGen := newStatefulSet("sset1", sset1.UID, 7)
@@ -105,7 +105,7 @@ func TestExpectedGenerations_GenerationsSatisfied(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require.NoError(t, scheme.SetupScheme())
 			client := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
-			e := NewExpectedGenerations(client)
+			e := NewExpectedStatefulSetUpdates(client)
 			for i := range tt.expectGenerations {
 				e.ExpectGeneration(tt.expectGenerations[i])
 				require.Contains(t, e.generations, k8s.ExtractNamespacedName(&tt.expectGenerations[i]))

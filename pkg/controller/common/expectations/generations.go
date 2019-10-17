@@ -12,10 +12,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// ExpectedGenerations stores StatefulSets generations that are expected in the cache,
+// ExpectedStatefulSetUpdates stores StatefulSets generations that are expected in the cache,
 // following a StatefulSet update. It allows making sure we're not working with an
 // out-of-date version of the StatefulSet resource we previously updated.
-type ExpectedGenerations struct {
+type ExpectedStatefulSetUpdates struct {
 	client      k8s.Client
 	generations map[types.NamespacedName]ResourceGeneration // per StatefulSet
 }
@@ -26,16 +26,16 @@ type ResourceGeneration struct {
 	Generation int64
 }
 
-// NewExpectedGenerations returns an initialized ExpectedGenerations.
-func NewExpectedGenerations(client k8s.Client) *ExpectedGenerations {
-	return &ExpectedGenerations{
+// NewExpectedStatefulSetUpdates returns an initialized ExpectedStatefulSetUpdates.
+func NewExpectedStatefulSetUpdates(client k8s.Client) *ExpectedStatefulSetUpdates {
+	return &ExpectedStatefulSetUpdates{
 		client:      client,
 		generations: make(map[types.NamespacedName]ResourceGeneration),
 	}
 }
 
 // ExpectGeneration registers the Generation of the given StatefulSets as expected.
-func (e *ExpectedGenerations) ExpectGeneration(statefulSet appsv1.StatefulSet) {
+func (e *ExpectedStatefulSetUpdates) ExpectGeneration(statefulSet appsv1.StatefulSet) {
 	resource := types.NamespacedName{Namespace: statefulSet.Namespace, Name: statefulSet.Name}
 	e.generations[resource] = ResourceGeneration{
 		UID:        statefulSet.UID,
@@ -46,7 +46,7 @@ func (e *ExpectedGenerations) ExpectGeneration(statefulSet appsv1.StatefulSet) {
 // GenerationsSatisfied compares expected StatefulSets generations with the ones we have in the cache,
 // and returns true if they all match.
 // Expectations are cleared once they are matched.
-func (e *ExpectedGenerations) GenerationsSatisfied() (bool, error) {
+func (e *ExpectedStatefulSetUpdates) GenerationsSatisfied() (bool, error) {
 	for statefulSet, expectedGen := range e.generations {
 		satisfied, err := e.generationSatisfied(statefulSet, expectedGen)
 		if err != nil {
@@ -62,7 +62,7 @@ func (e *ExpectedGenerations) GenerationsSatisfied() (bool, error) {
 }
 
 // generationSatisfied returns true if the generation of the cached StatefulSet matches what is expected.
-func (e *ExpectedGenerations) generationSatisfied(statefulSet types.NamespacedName, expected ResourceGeneration) (bool, error) {
+func (e *ExpectedStatefulSetUpdates) generationSatisfied(statefulSet types.NamespacedName, expected ResourceGeneration) (bool, error) {
 	var ssetInCache appsv1.StatefulSet
 	err := e.client.Get(statefulSet, &ssetInCache)
 	if err != nil {
@@ -84,6 +84,6 @@ func (e *ExpectedGenerations) generationSatisfied(statefulSet types.NamespacedNa
 }
 
 // GetGenerations returns the map of generations, for testing purposes mostly.
-func (e *ExpectedGenerations) GetGenerations() map[types.NamespacedName]ResourceGeneration {
+func (e *ExpectedStatefulSetUpdates) GetGenerations() map[types.NamespacedName]ResourceGeneration {
 	return e.generations
 }
