@@ -175,7 +175,7 @@ func TestMutationRollingDownscaleCombination(t *testing.T) {
 			"data-1": {
 				"node.attr.important": "attribute", // triggers the rolling update on data-1
 			},
-	})
+		})
 	RunESMutation(t, b, mutated)
 }
 
