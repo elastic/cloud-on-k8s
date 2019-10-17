@@ -49,8 +49,7 @@ const (
 	DefaultMetricPort = 0 // disabled
 
 	AutoPortForwardFlagName = "auto-port-forward"
-	NamespaceFlagName       = "namespace"
-	NamespaceListFlagName   = "namespace-list"
+	NamespacesFlag          = "namespaces"
 
 	CACertValidityFlag     = "ca-cert-validity"
 	CACertRotateBeforeFlag = "ca-cert-rotate-before"
@@ -82,15 +81,10 @@ var (
 
 func init() {
 
-	Cmd.Flags().String(
-		NamespaceFlagName,
-		"",
-		"namespace in which this operator should manage resources (defaults to all namespaces)",
-	)
 	Cmd.Flags().StringSlice(
-		NamespaceListFlagName,
+		NamespacesFlag,
 		nil,
-		"List of namespaces to be managed (overrides the namespace flag)",
+		"comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
 	)
 	Cmd.Flags().Bool(
 		AutoPortForwardFlagName,
@@ -222,21 +216,17 @@ func execute() {
 		Scheme: clientgoscheme.Scheme,
 	}
 
-	// figure out the managed namespaces (namespace-list flag overrides the namespace flag)
-	managedNamespace := viper.GetString(NamespaceFlagName)
-	managedNamespaceList := viper.GetStringSlice(NamespaceListFlagName)
-	switch {
-	case len(managedNamespaceList) == 1:
-		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaceList[0])
-		opts.Namespace = managedNamespaceList[0]
-	case len(managedNamespaceList) > 1:
-		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaceList)
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaceList)
-	case managedNamespace == "":
+	// configure the manager cache based on the number of managed namespaces
+	managedNamespaces := viper.GetStringSlice(NamespacesFlag)
+	switch len(managedNamespaces) {
+	case 0:
 		log.Info("Operator configured to manage all namespaces")
+	case 1:
+		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0])
+		opts.Namespace = managedNamespaces[0]
 	default:
-		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespace)
-		opts.Namespace = managedNamespace
+		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces)
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
 	}
 
 	// only expose prometheus metrics if provided a non-zero port

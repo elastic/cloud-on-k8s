@@ -198,7 +198,7 @@ func (h *helper) deployGlobalOperator() error {
 }
 
 func (h *helper) deployNamespaceOperator() error {
-	log.Info("Deploying namespace operators")
+	log.Info("Deploying namespace operator")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/namespace_operator.yaml", h.testContext)
 }
 

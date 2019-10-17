@@ -171,7 +171,7 @@ go-run:
 				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default \
-				--namespace-list=$(MANAGED_NAMESPACES) \
+				--namespaces=$(MANAGED_NAMESPACES) \
 				--auto-install-webhooks=false
 
 go-debug:
@@ -185,7 +185,7 @@ go-debug:
 		--ca-cert-validity=10h \
 		--ca-cert-rotate-before=1h \
 		--operator-namespace=default \
-		--namespace-list=$(MANAGED_NAMESPACES) \
+		--namespaces=$(MANAGED_NAMESPACES) \
 		--auto-install-webhooks=false)
 
 build-operator-image:
