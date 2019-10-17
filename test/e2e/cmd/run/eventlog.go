@@ -67,9 +67,9 @@ func newEventLogger(client *kubernetes.Clientset, testCtx test.Context, logFileP
 	s := struct{}{}
 	el.interestingNamespaces[testCtx.E2ENamespace] = s
 	el.interestingNamespaces[testCtx.GlobalOperator.Namespace] = s
-	for _, ns := range testCtx.NamespaceOperators {
-		el.interestingNamespaces[ns.Namespace] = s
-		el.interestingNamespaces[ns.ManagedNamespace] = s
+	el.interestingNamespaces[testCtx.NamespaceOperator.Namespace] = s
+	for _, ns := range testCtx.NamespaceOperator.ManagedNamespaces {
+		el.interestingNamespaces[ns] = s
 	}
 
 	return el
