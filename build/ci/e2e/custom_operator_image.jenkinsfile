@@ -1,3 +1,6 @@
+def failedTests = []
+def testScript
+
 pipeline {
 
     agent {
@@ -16,6 +19,13 @@ pipeline {
     }
 
     stages {
+        stage('Load common scripts') {
+            steps {
+                script {
+                    testScript = load "build/ci/common/tests.groovy"
+                }
+            }
+        }
         stage('Checkout from GitHub') {
             steps {
                 checkout scm
@@ -53,6 +63,10 @@ EOF
                     sh 'make -C build/ci TARGET=e2e-generate-xml ci'
                     junit "e2e-tests.xml"
 
+                    if (env.SHELL_EXIT_CODE != 0) {
+                        failedTests = testScript.getListOfFailedTests()
+                    }
+
                     sh 'exit $SHELL_EXIT_CODE'
                 }
             }
@@ -63,7 +77,8 @@ EOF
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    def msg = "E2E tests failed!\r\n" + env.BUILD_URL
+                    def msg = testScript.generateSlackMessage("E2E tests failed!", env.BUILD_URL, failedTests)
+
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
                         color: 'danger',

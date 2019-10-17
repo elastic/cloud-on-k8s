@@ -1,3 +1,6 @@
+def failedTests = []
+def testScript
+
 pipeline {
 
     agent {
@@ -16,6 +19,13 @@ pipeline {
     }
 
     stages {
+        stage('Load common scripts') {
+            steps {
+                script {
+                    testScript = load "build/ci/common/tests.groovy"
+                }
+            }
+        }
         stage('Run tests for different ELK stack versions in GKE') {
             parallel {
                 stage("6.8.2") {
@@ -68,7 +78,10 @@ pipeline {
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    def msg = "E2E tests for different Elastic stack versions failed!\r\n" + env.RUN_DISPLAY_URL
+                    Set<String> filter = new HashSet<>()
+                    filter.addAll(failedTests)
+                    def msg = testScript.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.RUN_DISPLAY_URL, filter)
+
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
                         color: 'danger',
@@ -122,6 +135,10 @@ EOF
 
         sh 'make -C build/ci TARGET=e2e-generate-xml ci'
         junit "e2e-tests.xml"
+
+        if (env.SHELL_EXIT_CODE != 0) {
+            failedTests.addAll(testScript.getListOfFailedTests())
+        }
 
         sh 'exit $SHELL_EXIT_CODE'
     }
