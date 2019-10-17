@@ -163,14 +163,14 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 // TestMutationRollingDownscaleCombination combines a rolling update with scale down operation.
 func TestMutationRollingDownscaleCombination(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-combined-upgrade-downscale").
-		WithESMasterNodes(3, elasticsearch.DefaultResources).
-		WithNamedESDataNodes(2, "data-1", elasticsearch.DefaultResources).
-		WithNamedESDataNodes(3, "data-2", elasticsearch.DefaultResources)
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(1, "data-1", elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data-2", elasticsearch.DefaultResources)
 
 	mutated := b.WithNoESTopology().
-		WithESMasterNodes(3, elasticsearch.DefaultResources).
-		WithNamedESDataNodes(2, "data-1", elasticsearch.DefaultResources).
-		WithNamedESDataNodes(2, "data-2", elasticsearch.DefaultResources). // scaling down data-2
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(1, "data-1", elasticsearch.DefaultResources).
+		WithNamedESDataNodes(1, "data-2", elasticsearch.DefaultResources). // scaling down data-2
 		WithAdditionalConfig(map[string]map[string]interface{}{
 			"data-1": {
 				"node.attr.important": "attribute", // triggers the rolling update on data-1
