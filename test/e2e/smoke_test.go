@@ -17,13 +17,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
+const sampleApmEsKibanaFile = "../../config/samples/apm/apm_es_kibana.yaml"
+
 // TestSmoke runs a test suite using the ApmServer + Kibana + ES sample.
 func TestSmoke(t *testing.T) {
 	var esBuilder elasticsearch.Builder
 	var kbBuilder kibana.Builder
 	var apmBuilder apmserver.Builder
 
-	yamlFile, err := os.Open(SampleApmEsKibanaFile)
+	yamlFile, err := os.Open(sampleApmEsKibanaFile)
 	test.ExitOnErr(err)
 
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))

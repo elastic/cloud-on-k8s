@@ -367,6 +367,9 @@ func AnnotatePodsWithBuilderHash(b Builder, k *test.K8sClient) []test.Step {
 
 // nodeSetHash builds a hash of the nodeSet specification in the given ES resource.
 func nodeSetHash(es estype.Elasticsearch, nodeSet estype.NodeSet) string {
+	// Normalize the count to zero to exclude it from the hash. Otherwise scaling up/down would affect the hash but
+	// existing nodes not affected by the scaling will not be cycled and therefore be annotated with the previous hash.
+	nodeSet.Count = 0
 	specHash := hash.HashObject(nodeSet)
 	esVersionHash := hash.HashObject(es.Spec.Version)
 	httpServiceHash := hash.HashObject(es.Spec.HTTP)

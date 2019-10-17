@@ -88,8 +88,15 @@ func (b Builder) WithElasticsearchRef(ref commonv1beta1.ObjectSelector) Builder 
 }
 
 func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
-	b.ApmServer.Spec.Config = &commonv1beta1.Config{
-		Data: cfg,
+	if b.ApmServer.Spec.Config == nil || b.ApmServer.Spec.Config.Data == nil {
+		b.ApmServer.Spec.Config = &commonv1beta1.Config{
+			Data: cfg,
+		}
+		return b
+	}
+
+	for k, v := range cfg {
+		b.ApmServer.Spec.Config.Data[k] = v
 	}
 	return b
 }
