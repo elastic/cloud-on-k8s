@@ -24,7 +24,7 @@ import (
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	defaultSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.TransportCertificatesSecret(testES.Name),
+			Name:      v1beta1.TransportCertificatesSecret(testES.Name),
 			Namespace: testES.Namespace,
 			Labels: map[string]string{
 				label.ClusterNameLabelName: testES.Name,

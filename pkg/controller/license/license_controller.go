@@ -166,7 +166,7 @@ func reconcileSecret(
 	parent string,
 	esLicense esclient.License,
 ) error {
-	secretName := esname.LicenseSecretName(cluster.Name)
+	secretName := v1beta1.LicenseSecretName(cluster.Name)
 
 	licenseBytes, err := json.Marshal(esLicense)
 	if err != nil {

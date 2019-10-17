@@ -139,7 +139,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 			if err := tt.args.c.Get(
 				types.NamespacedName{
 					Namespace: "ns1",
-					Name:      name.UnicastHostsConfigMap(es.Name),
+					Name:      v1beta1.UnicastHostsConfigMap(es.Name),
 				}, file); err != nil {
 				t.Errorf("Error while getting the seed hosts configmap: %v", err)
 			}

@@ -2,76 +2,22 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package version
+package driver
 
 import (
+	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	corev1 "k8s.io/api/core/v1"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var (
-	testPodWithoutVersionLabel = corev1.Pod{}
-)
 
-func TestSupportedVersions(t *testing.T) {
-	type args struct {
-		v version.Version
-	}
-	tests := []struct {
-		name        string
-		args        args
-		supported   []version.Version
-		unsupported []version.Version
-	}{
-		{
-			name: "6.x",
-			args: args{
-				v: version.MustParse("6.8.0"),
-			},
-			supported: []version.Version{
-				version.MustParse("6.8.0"),
-				version.MustParse("6.99.99"),
-			},
-			unsupported: []version.Version{
-				version.MustParse("6.5.0"),
-				version.MustParse("7.0.0"),
-			},
-		},
-		{
-			name: "7.x",
-			args: args{
-				v: version.MustParse("7.1.0"),
-			},
-			supported: []version.Version{
-				version.MustParse("6.8.0"), //wire compat
-				version.MustParse("7.2.0"),
-				version.MustParse("7.99.99"),
-			},
-			unsupported: []version.Version{
-				version.MustParse("6.6.0"),
-				version.MustParse("8.0.0"),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			vs := SupportedVersions(tt.args.v)
-			for _, v := range tt.supported {
-				require.NoError(t, vs.Supports(v))
-			}
-			for _, v := range tt.unsupported {
-				require.Error(t, vs.Supports(v))
-			}
-		})
-	}
-}
+// var (
+// 	testPodWithoutVersionLabel = corev1.Pod{}
+// )
 
 // func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T) {
 // 	newPodWithVersionLabel := func(v version.Version) corev1.Pod {
@@ -166,3 +112,85 @@ func TestSupportedVersions(t *testing.T) {
 // 		})
 // 	}
 // }
+
+
+func TestCurrentVersions(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []corev1.Pod
+		want    *version.Version
+		wantErr bool
+	}{
+		{
+			name:    "no pods",
+			args:    nil,
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "no versions in pods",
+			args: []corev1.Pod{
+				{},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "one pod",
+			args: []corev1.Pod{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Labels: map[string]string{
+							label.VersionLabelName: "1.0.0",
+						},
+					},
+				},
+			},
+			want: &version.Version{
+				Major: 1,
+				Minor: 0,
+				Patch: 0,
+				Label: "",
+			},
+			wantErr: false,
+		},
+		{
+			name: "n pods",
+			args: []corev1.Pod{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Labels: map[string]string{
+							label.VersionLabelName: "2.0.0",
+						},
+					},
+				},
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Labels: map[string]string{
+							label.VersionLabelName: "1.0.0",
+						},
+					},
+				},
+			},
+			want: &version.Version{
+				Major: 1,
+				Minor: 0,
+				Patch: 0,
+				Label: "",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := minVersion(tt.args)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("minVersion() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("minVersion() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

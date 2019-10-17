@@ -308,6 +308,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
 		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind),
-		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, esname.ESNamer),
+		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, elasticsearchv1beta1.ESNamer),
 	}
 }

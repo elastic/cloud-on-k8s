@@ -116,8 +116,8 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset2")}, &corev1.Service{}))
 	// config should be created for both
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: name.ConfigSecret("sset1")}, &corev1.Secret{}))
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: name.ConfigSecret("sset2")}, &corev1.Secret{}))
+	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: v1beta1.ConfigSecret("sset1")}, &corev1.Secret{}))
+	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: v1beta1.ConfigSecret("sset2")}, &corev1.Secret{}))
 
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
@@ -331,9 +331,9 @@ func Test_adjustZenConfig(t *testing.T) {
 			err := adjustZenConfig(client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {
-				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{settings.DiscoveryZenMinimumMasterNodes})) > 0
+				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{v1beta1.DiscoveryZenMinimumMasterNodes})) > 0
 				require.Equal(t, tt.wantMinimumMasterNodesSet, hasMinimumMasterNodes)
-				hasInitialMasterNodes := len(res.Config.HasKeys([]string{settings.ClusterInitialMasterNodes})) > 0
+				hasInitialMasterNodes := len(res.Config.HasKeys([]string{v1beta1.ClusterInitialMasterNodes})) > 0
 				require.Equal(t, tt.wantInitialMasterNodesSet, hasInitialMasterNodes)
 			}
 		})

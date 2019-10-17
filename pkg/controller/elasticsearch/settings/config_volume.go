@@ -31,7 +31,7 @@ const (
 
 // ConfigSecretName is the name of the secret that holds the ES config for the given StatefulSet.
 func ConfigSecretName(ssetName string) string {
-	return name.ConfigSecret(ssetName)
+	return v1beta1.ConfigSecret(ssetName)
 }
 
 // ConfigSecretVolume returns a SecretVolume to hold the config of nodes in the given stateful set..

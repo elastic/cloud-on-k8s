@@ -38,7 +38,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		},
 	}
 
-	namespacedSecretName := PublicCertsSecretRef(name.ESNamer, k8s.ExtractNamespacedName(owner))
+	namespacedSecretName := PublicCertsSecretRef(v1beta1.ESNamer, k8s.ExtractNamespacedName(owner))
 
 	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
 		t.Helper()
@@ -128,7 +128,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcileHTTPCertsPublicSecret(client, scheme.Scheme, owner, name.ESNamer, certificate)
+			err := ReconcileHTTPCertsPublicSecret(client, scheme.Scheme, owner, v1beta1.ESNamer, certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return

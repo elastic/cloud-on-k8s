@@ -41,7 +41,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	esCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      certificates.PublicSecretName(esname.ESNamer, es.Name, certificates.HTTPCAType),
+			Name:      certificates.PublicSecretName(estype.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
@@ -51,7 +51,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	updatedEsCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      certificates.PublicSecretName(esname.ESNamer, es.Name, certificates.HTTPCAType),
+			Name:      certificates.PublicSecretName(estype.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("updated-fake-cert"),

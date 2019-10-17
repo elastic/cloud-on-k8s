@@ -7,11 +7,11 @@ package version
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/pkg/errors"
+	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	// "github.com/pkg/errors"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	corev1 "k8s.io/api/core/v1"
+	// corev1 "k8s.io/api/core/v1"
 )
 
 // LowestHighestSupportedVersions expresses the wire-format compatibility range for a version.
@@ -41,21 +41,21 @@ func SupportedVersions(v version.Version) *LowestHighestSupportedVersions {
 	}
 }
 
-// VerifySupportsExistingPods checks the given pods against the supported version range in lh.
-func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
-	pods []corev1.Pod,
-) error {
-	for _, pod := range pods {
-		v, err := label.ExtractVersion(pod.Labels)
-		if err != nil {
-			return err
-		}
-		if err := lh.Supports(*v); err != nil {
-			return errors.Wrapf(err, "%s has incompatible version", pod.Name)
-		}
-	}
-	return nil
-}
+// // VerifySupportsExistingPods checks the given pods against the supported version range in lh.
+// func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
+// 	pods []corev1.Pod,
+// ) error {
+// 	for _, pod := range pods {
+// 		v, err := label.ExtractVersion(pod.Labels)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		if err := lh.Supports(*v); err != nil {
+// 			return errors.Wrapf(err, "%s has incompatible version", pod.Name)
+// 		}
+// 	}
+// 	return nil
+// }
 
 // Supports compares a given with the supported version range and returns an error if out of bounds.
 func (lh LowestHighestSupportedVersions) Supports(v version.Version) error {

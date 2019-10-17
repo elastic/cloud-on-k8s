@@ -28,7 +28,7 @@ const (
 // ExternalServiceName returns the name for the external service
 // associated to this cluster
 func ExternalServiceName(esName string) string {
-	return name.HTTPService(esName)
+	return v1beta1.HTTPService(esName)
 }
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint

@@ -116,7 +116,7 @@ func ensureTransportCertificatesSecretExists(
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      name.TransportCertificatesSecret(es.Name),
+			Name:      v1beta1.TransportCertificatesSecret(es.Name),
 
 			Labels: map[string]string{
 				// a label showing which es these certificates belongs to

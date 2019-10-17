@@ -56,7 +56,7 @@ func BuildStatefulSet(
 	keystoreResources *keystore.Resources,
 	scheme *runtime.Scheme,
 ) (appsv1.StatefulSet, error) {
-	statefulSetName := name.StatefulSet(es.Name, nodeSet.Name)
+	statefulSetName := v1beta1.StatefulSet(es.Name, nodeSet.Name)
 
 	// ssetSelector is used to match the sset pods
 	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)

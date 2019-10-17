@@ -197,7 +197,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			// verify that a cluster license was created
 			// following the es naming convention
 			licenseNsn := nsn
-			licenseNsn.Name = esname.LicenseSecretName(licenseNsn.Name)
+			licenseNsn.Name = v1beta1.LicenseSecretName(licenseNsn.Name)
 			var license corev1.Secret
 			err = client.Get(licenseNsn, &license)
 			if !tt.wantNewLicense {

@@ -317,7 +317,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, e
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(kibanaKey),
-		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
+		Watched: []types.NamespacedName{http.PublicCertsSecretRef(estype.ESNamer, es)},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return association.CASecret{}, err

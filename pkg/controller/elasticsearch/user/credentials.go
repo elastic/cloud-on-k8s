@@ -12,6 +12,7 @@ import (
 
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/ghodss/yaml"
@@ -31,17 +32,17 @@ const (
 
 // XPackFileRealmSecretName is the name of the secret containing all users and roles information in ES format.
 func XPackFileRealmSecretName(ownerName string) string {
-	return name.XPackFileRealmSecret(ownerName)
+	return v1beta1.XPackFileRealmSecret(ownerName)
 }
 
 // ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials.
 func ElasticInternalUsersSecretName(ownerName string) string {
-	return name.InternalUsersSecret(ownerName)
+	return v1beta1.InternalUsersSecret(ownerName)
 }
 
 // ElasticExternalUsersSecretName is the name of the secret containing the external users' credentials.
 func ElasticExternalUsersSecretName(ownerName string) string {
-	return name.ElasticUserSecret(ownerName)
+	return v1beta1.ElasticUserSecret(ownerName)
 }
 
 // UserCredentials captures Elasticsearch user credentials and their representation in a k8s secret.

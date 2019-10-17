@@ -121,7 +121,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
@@ -140,7 +140,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 				},
@@ -152,7 +152,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
@@ -167,7 +167,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			errors: map[client.ObjectKey]error{
 				types.NamespacedName{
 					Namespace: clusterName.Namespace,
-					Name:      name.LicenseSecretName("test"),
+					Name:      v1beta1.LicenseSecretName("test"),
 				}: errors.New("boom"),
 			},
 		},

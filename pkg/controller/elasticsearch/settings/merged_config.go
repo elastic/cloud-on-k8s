@@ -6,8 +6,8 @@ package settings
 
 import (
 	"path"
-
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -20,8 +20,8 @@ import (
 func NewMergedESConfig(
 	clusterName string,
 	ver version.Version,
-	httpConfig v1beta1.HTTPConfig,
-	userConfig v1beta1.Config,
+	httpConfig commonv1beta1.HTTPConfig,
+	userConfig commonv1beta1.Config,
 	certResources *escerts.CertificateResources,
 ) (CanonicalConfig, error) {
 	config, err := common.NewCanonicalConfigFrom(userConfig.Data)
@@ -42,64 +42,64 @@ func NewMergedESConfig(
 func baseConfig(clusterName string) *CanonicalConfig {
 	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
-		NodeName:    "${" + EnvPodName + "}",
-		ClusterName: clusterName,
+		estype.NodeName:    "${" + EnvPodName + "}",
+		estype.ClusterName: clusterName,
 
-		DiscoveryZenHostsProvider: "file",
+		estype.DiscoveryZenHostsProvider: "file",
 
 		// derive IP dynamically from the pod IP, injected as env var
-		NetworkPublishHost: "${" + EnvPodIP + "}",
-		NetworkHost:        "0.0.0.0",
+		estype.NetworkPublishHost: "${" + EnvPodIP + "}",
+		estype.NetworkHost:        "0.0.0.0",
 
-		PathData: volume.ElasticsearchDataMountPath,
-		PathLogs: volume.ElasticsearchLogsMountPath,
+		estype.PathData: volume.ElasticsearchDataMountPath,
+		estype.PathLogs: volume.ElasticsearchLogsMountPath,
 	}
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg v1beta1.HTTPConfig, certResources *escerts.CertificateResources) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg commonv1beta1.HTTPConfig, certResources *escerts.CertificateResources) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
-		XPackSecurityEnabled:                      "true",
-		XPackSecurityAuthcReservedRealmEnabled:    "false",
-		XPackSecurityTransportSslVerificationMode: "certificate",
+		estype.XPackSecurityEnabled:                      "true",
+		estype.XPackSecurityAuthcReservedRealmEnabled:    "false",
+		estype.XPackSecurityTransportSslVerificationMode: "certificate",
 
 		// x-pack security http settings
-		XPackSecurityHttpSslEnabled:     httpCfg.TLS.Enabled(),
-		XPackSecurityHttpSslKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
-		XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		estype.XPackSecurityHttpSslEnabled:     httpCfg.TLS.Enabled(),
+		estype.XPackSecurityHttpSslKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
+		estype.XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 
 		// x-pack security transport settings
-		XPackSecurityTransportSslEnabled: "true",
-		XPackSecurityTransportSslKey: path.Join(
+		estype.XPackSecurityTransportSslEnabled: "true",
+		estype.XPackSecurityTransportSslKey: path.Join(
 			volume.ConfigVolumeMountPath,
 			volume.NodeTransportCertificatePathSegment,
 			volume.NodeTransportCertificateKeyFile,
 		),
-		XPackSecurityTransportSslCertificate: path.Join(
+		estype.XPackSecurityTransportSslCertificate: path.Join(
 			volume.ConfigVolumeMountPath,
 			volume.NodeTransportCertificatePathSegment,
 			volume.NodeTransportCertificateCertFile,
 		),
-		XPackSecurityTransportSslCertificateAuthorities: []string{
+		estype.XPackSecurityTransportSslCertificateAuthorities: []string{
 			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
 		},
 	}
 
 	if certResources.HTTPCACertProvided {
-		cfg[XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
+		cfg[estype.XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
 	}
 
 	// always enable the built-in file internal realm for user auth, ordered as first
 	if ver.Major < 7 {
 		// 6.x syntax
-		cfg[XPackSecurityAuthcRealmsFile1Type] = "file"
-		cfg[XPackSecurityAuthcRealmsFile1Order] = -100
+		cfg[estype.XPackSecurityAuthcRealmsFile1Type] = "file"
+		cfg[estype.XPackSecurityAuthcRealmsFile1Order] = -100
 	} else {
 		// 7.x syntax
-		cfg[XPackSecurityAuthcRealmsFileFile1Order] = -100
+		cfg[estype.XPackSecurityAuthcRealmsFileFile1Order] = -100
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}

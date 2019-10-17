@@ -91,7 +91,7 @@ func init() {
 	testCSR, _ := x509.ParseCertificateRequest(testCSRBytes)
 
 	validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
-		k8s.ExtractNamespacedName(&testES), name.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+		k8s.ExtractNamespacedName(&testES), v1beta1.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
 	)
 
 	certData, err := testCA.CreateCertificate(*validatedCertificateTemplate)
@@ -171,7 +171,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 			}
 
 			got, err := ReconcileHTTPCertificates(
-				testDriver, &tt.args.es, name.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
+				testDriver, &tt.args.es, v1beta1.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
 				certificates.RotationParams{
 					Validity:     certificates.DefaultCertValidity,
 					RotateBefore: certificates.DefaultRotateBefore,
@@ -258,7 +258,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := createValidatedHTTPCertificateTemplate(
 				k8s.ExtractNamespacedName(&tt.args.es),
-				name.ESNamer,
+				v1beta1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
 				tt.args.svcs,
 				&x509.CertificateRequest{},
@@ -360,7 +360,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := shouldIssueNewHTTPCertificate(
 				k8s.ExtractNamespacedName(&tt.args.es),
-				name.ESNamer,
+				v1beta1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
 				&tt.args.secret,
 				[]corev1.Service{testSvc},

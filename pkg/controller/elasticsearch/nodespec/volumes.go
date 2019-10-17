@@ -20,19 +20,19 @@ import (
 
 func buildVolumes(esName string, nodeSpec v1beta1.NodeSet, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
 
-	configVolume := settings.ConfigSecretVolume(name.StatefulSet(esName, nodeSpec.Name))
+	configVolume := settings.ConfigSecretVolume(v1beta1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(esName), esvolume.ProbeUserVolumeName,
 		esvolume.ProbeUserSecretMountPath, []string{user.InternalProbeUserName},
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
-		certificates.HTTPCertsInternalSecretName(name.ESNamer, esName),
+		certificates.HTTPCertsInternalSecretName(v1beta1.ESNamer, esName),
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
 	transportCertificatesVolume := transportCertificatesVolume(esName)
 	unicastHostsVolume := volume.NewConfigMapVolume(
-		name.UnicastHostsConfigMap(esName), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
+		v1beta1.UnicastHostsConfigMap(esName), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 	)
 	usersSecretVolume := volume.NewSecretVolumeWithMountPath(
 		user.XPackFileRealmSecretName(esName),
@@ -40,7 +40,7 @@ func buildVolumes(esName string, nodeSpec v1beta1.NodeSet, keystoreResources *ke
 		esvolume.XPackFileRealmVolumeMountPath,
 	)
 	scriptsVolume := volume.NewConfigMapVolumeWithMode(
-		name.ScriptsConfigMap(esName),
+		v1beta1.ScriptsConfigMap(esName),
 		esvolume.ScriptsVolumeName,
 		esvolume.ScriptsVolumeMountPath,
 		0755)

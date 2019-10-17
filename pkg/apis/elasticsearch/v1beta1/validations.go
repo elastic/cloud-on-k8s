@@ -23,6 +23,7 @@ import (
 
 const (
 	cfgInvalidMsg            = "configuration invalid"
+	validationFailedMsg      = "Spec validation failed"
 	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
@@ -55,7 +56,7 @@ var updateValidations = []updateValidation{
 // validName checks whether the name is valid.
 // TODO SABO fix this
 func validName(es *Elasticsearch) *field.Error {
-	if err := validateNames(&es); err != nil {
+	if err := validateNames(es); err != nil {
 		return field.Invalid(field.NewPath("metadata").Child("name"), es.Name, invalidNamesErrMsg)
 	}
 	return nil
@@ -79,12 +80,13 @@ func supportedVersion(es *Elasticsearch) *field.Error {
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
 func hasMaster(es *Elasticsearch) *field.Error {
 	var hasMaster bool
-	for _, t := range es.Spec.Nodes {
+	for _, t := range es.Spec.NodeSets {
 		cfg, err := UnpackConfig(t.Config)
 		if err != nil {
-			return field.Invalid(field.NewPath("spec").Child("nodes"), es.Name, masterRequiredMsg)
+			// TODO sabo double check this nodesets
+			return field.Invalid(field.NewPath("spec").Child("nodesets"), es.Name, masterRequiredMsg)
 		}
-		hasMaster = hasMaster || (cfg.Node.Master && t.NodeCount > 0)
+		hasMaster = hasMaster || (cfg.Node.Master && t.Count > 0)
 	}
 	if hasMaster {
 		return nil
@@ -95,7 +97,7 @@ func hasMaster(es *Elasticsearch) *field.Error {
 // todo sabo add comment and update this to return a list of errors
 func noBlacklistedSettings(es *Elasticsearch) *field.Error {
 	violations := make(map[int]set.StringSet)
-	for i, n := range es.Spec.Nodes {
+	for i, n := range es.Spec.NodeSets {
 		if n.Config == nil {
 			continue
 		}
@@ -119,7 +121,7 @@ func noBlacklistedSettings(es *Elasticsearch) *field.Error {
 	var sb strings.Builder
 	var sep string
 	// iterate again to build validation message in node order
-	for i := range es.Spec.Nodes {
+	for i := range es.Spec.NodeSets {
 		vs := violations[i]
 		if vs == nil {
 			continue
@@ -141,7 +143,7 @@ func noBlacklistedSettings(es *Elasticsearch) *field.Error {
 	// sb.WriteString(" is not user configurable")
 	// todo sabo how to make this so we give it the path to the correct config value that is wrong? also update the message
 	// guessing we need to update the string builder
-	return field.Invalid(field.NewPath("spec").Child("nodes", "config"), es.Spec.Nodes[0].Config, blacklistedConfigErrMsg)
+	return field.Invalid(field.NewPath("spec").Child("nodes", "config"), es.Spec.NodeSets[0].Config, blacklistedConfigErrMsg)
 	// return validation.Result{
 	// 	Allowed: false,
 	// 	Reason:  sb.String(),
@@ -168,7 +170,7 @@ func pvcModification(old, current *Elasticsearch) *field.Error {
 	if old == nil {
 		return nil
 	}
-	for _, node := range old.Spec.Nodes {
+	for _, node := range old.Spec.NodeSets {
 		currNode := getNode(node.Name, current)
 		if currNode == nil {
 			// this is a new sset, so there is nothing to check
@@ -210,10 +212,10 @@ func specUpdatedToBeta() error {
 	return nil
 }
 
-func getNode(name string, es *Elasticsearch) *NodeSpec {
-	for i := range es.Spec.Nodes {
-		if es.Spec.Nodes[i].Name == name {
-			return &es.Spec.Nodes[i]
+func getNode(name string, es *Elasticsearch) *NodeSet {
+	for i := range es.Spec.NodeSets {
+		if es.Spec.NodeSets[i].Name == name {
+			return &es.Spec.NodeSets[i]
 		}
 	}
 	return nil

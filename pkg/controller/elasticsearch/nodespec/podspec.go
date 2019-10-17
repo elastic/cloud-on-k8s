@@ -69,7 +69,7 @@ func BuildPodTemplateSpec(
 
 func transportCertificatesVolume(esName string) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		name.TransportCertificatesSecret(esName),
+		v1beta1.TransportCertificatesSecret(esName),
 		esvolume.TransportCertificatesSecretVolumeName,
 		esvolume.TransportCertificatesSecretVolumeMountPath,
 	)
@@ -97,7 +97,7 @@ func buildLabels(
 
 	podLabels, err := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
-		name.StatefulSet(es.Name, nodeSet.Name),
+		v1beta1.StatefulSet(es.Name, nodeSet.Name),
 		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Scheme(),
 	)
 	if err != nil {

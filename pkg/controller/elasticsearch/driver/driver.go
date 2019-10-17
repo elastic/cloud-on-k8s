@@ -145,7 +145,8 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	if err != nil {
 		return results.WithError(err)
 	}
-	min, err := esversion.MinVersion(resourcesState.CurrentPods)
+	min, err := minVersion(resourcesState.CurrentPods)
+	// min, err := esversion.MinVersion(resourcesState.CurrentPods)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -169,7 +170,8 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	}
 
-	if err := d.SupportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
+	// if err := d.SupportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
+		if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return results.WithError(err)
 	}
 
@@ -217,7 +219,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	keystoreResources, err := keystore.NewResources(
 		d,
 		&d.ES,
-		name.ESNamer,
+		v1beta1.ESNamer,
 		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
 		initcontainer.KeystoreParams,
 	)

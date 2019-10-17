@@ -64,7 +64,7 @@ func UpdateSeedHostsConfigMap(
 	}
 	expected := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.UnicastHostsConfigMap(es.Name),
+			Name:      v1beta1.UnicastHostsConfigMap(es.Name),
 			Namespace: es.Namespace,
 			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
 		},
