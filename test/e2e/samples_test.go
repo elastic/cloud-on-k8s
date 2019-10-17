@@ -97,16 +97,18 @@ func createBuilders(t *testing.T, decoder runtime.Decoder, sampleFile string) []
 			b.Kibana = *decodedObj
 			builder = b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakElasticsearchRef(b.Kibana.Spec.ElasticsearchRef, namespace, suffix)).
+				WithElasticsearchRef(tweakElasticsearchRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
 				WithRestrictedSecurityContext()
 		case *apmtype.ApmServer:
 			b := apmserver.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.ApmServer = *decodedObj
 			builder = b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithElasticsearchRef(tweakElasticsearchRef(b.ApmServer.Spec.ElasticsearchRef, namespace, suffix)).
+				WithElasticsearchRef(tweakElasticsearchRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext()
+		default:
+			t.Fatalf("Unexpected object type [%t] in the YAML file: %s", decodedObj, sampleFile)
 		}
 
 		builders = append(builders, builder)
@@ -115,12 +117,11 @@ func createBuilders(t *testing.T, decoder runtime.Decoder, sampleFile string) []
 	return builders
 }
 
-func tweakElasticsearchRef(ref commonv1beta1.ObjectSelector, namespace, suffix string) commonv1beta1.ObjectSelector {
+func tweakElasticsearchRef(ref commonv1beta1.ObjectSelector, suffix string) commonv1beta1.ObjectSelector {
+	// All the objects defined in the YAML file will have a random test suffix added to prevent clashes with previous runs.
+	// This necessitates changing the Elasticsearch reference to match the suffixed name.
 	if ref.Name != "" {
 		ref.Name = ref.Name + "-" + suffix
-		if ref.Namespace == "" {
-			ref.Namespace = namespace
-		}
 	}
 
 	return ref
