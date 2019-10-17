@@ -26,7 +26,6 @@ def generateSlackMessage(baseMsg, URL, failedTests) {
             sb.append(ft)
         }
     }
-    println(sb.toString())
     return sb.toString()
 }
 
