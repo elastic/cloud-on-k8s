@@ -160,14 +160,13 @@ func deletePod(k8sClient k8s.Client, es v1beta1.Elasticsearch, pod corev1.Pod, e
 	opt := client.Preconditions{
 		UID: &pod.UID,
 	}
-	// expect the pod to not be there in the cache at next reconciliation
-	expectations.ExpectDeletion(pod)
 	err := k8sClient.Delete(&pod, opt)
 	if err != nil {
-		// cancel our expectation since the Pod may not be deleted
-		expectations.CancelExpectedDeletion(pod)
+		return err
 	}
-	return err
+	// expect the pod to not be there in the cache at next reconciliation
+	expectations.ExpectDeletion(pod)
+	return nil
 }
 
 func runPredicates(

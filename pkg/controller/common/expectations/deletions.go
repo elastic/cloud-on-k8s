@@ -34,12 +34,6 @@ func (e *ExpectedPodDeletions) ExpectDeletion(pod corev1.Pod) {
 	e.podDeletions[k8s.ExtractNamespacedName(&pod)] = pod.UID
 }
 
-// CancelExpectedDeletion removes an expected deletion for the given Pod.
-// It's mostly used if a deletion call failed, but the expectation was already registered.
-func (e *ExpectedPodDeletions) CancelExpectedDeletion(pod corev1.Pod) {
-	delete(e.podDeletions, k8s.ExtractNamespacedName(&pod))
-}
-
 // DeletionsSatisfied ensures all registered Pods deletions are satisfied: meaning
 // the corresponding Pods do not exist in the cache anymore.
 // Expectations are cleared once fulfilled.
