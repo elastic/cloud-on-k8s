@@ -150,9 +150,11 @@ func UpdateMinimumMasterNodesTo(
 	)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
+
 	if err := esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes); err != nil {
 		return nil
 	}
+
 	// Save the current value in an annotation
 	return annotateWithMinimumMasterNodes(c, es, minimumMasterNodes)
 }

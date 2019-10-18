@@ -95,8 +95,9 @@ func Test_updateLicense(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			c, err := esclient.NewMockClient(version.MustParse("6.8.0"), tt.reqFn)
+			require.NoError(t, err)
 
-			c := esclient.NewMockClient(version.MustParse("6.8.0"), tt.reqFn)
 			if err := updateLicense(c, tt.args.current, tt.args.desired); (err != nil) != tt.wantErr {
 				t.Errorf("updateLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}

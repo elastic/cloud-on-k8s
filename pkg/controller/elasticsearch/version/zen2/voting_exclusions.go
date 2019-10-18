@@ -7,12 +7,11 @@ package zen2
 import (
 	"context"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -31,9 +30,11 @@ func AddToVotingConfigExclusions(c k8s.Client, esClient client.Client, es v1beta
 	log.Info("Setting voting config exclusions", "namespace", es.Namespace, "nodes", excludeNodes)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
-	if err := esClient.AddVotingConfigExclusions(ctx, excludeNodes, ""); err != nil {
+
+	if err := esClient.AddVotingConfigExclusions(ctx, excludeNodes); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -75,8 +76,10 @@ func ClearVotingConfigExclusions(es v1beta1.Elasticsearch, c k8s.Client, esClien
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
 	log.Info("Ensuring no voting exclusions are set", "namespace", es.Namespace, "es_name", es.Name)
-	if err := esClient.DeleteVotingConfigExclusions(ctx, false); err != nil {
+
+	if err := esClient.DeleteVotingConfigExclusions(ctx); err != nil {
 		return false, err
 	}
+
 	return false, nil
 }

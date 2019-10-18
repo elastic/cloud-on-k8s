@@ -6,17 +6,8 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 const (
@@ -51,6 +42,18 @@ type Role struct {
 	TransientMetadata *struct {
 		Enabled bool `json:"enabled"`
 	} `json:"transient_metadata,omitempty"`*/
+}
+
+// AllocationSetter captures Elasticsearch API calls around allocation filtering.
+type AllocationSetter interface {
+	// ExcludeFromShardAllocation takes a comma-separated string of node names and
+	// configures transient allocation exclusions for the given nodes.
+	ExcludeFromShardAllocation(nodes string) error
+}
+
+// ShardLister captures Elasticsearch API calls around shards retrieval.
+type ShardLister interface {
+	GetShards() (Shards, error)
 }
 
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
@@ -92,88 +95,22 @@ type Client interface {
 	// If timeout is the empty string, the default is used.
 	//
 	// Introduced in: Elasticsearch 7.0.0
-	AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error
+	AddVotingConfigExclusions(ctx context.Context, nodeNames []string) error
 	// DeleteVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	//
 	// Introduced in: Elasticsearch 7.0.0
-	DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error
+	DeleteVotingConfigExclusions(ctx context.Context) error
 	// Request exposes a low level interface to the underlying HTTP client e.g. for testing purposes.
 	// The Elasticsearch endpoint will be added automatically to the request URL which should therefore just be the path
 	// with a leading /
 	Request(ctx context.Context, r *http.Request) (*http.Response, error)
 }
 
-// NewElasticsearchClient creates a new client for the target cluster.
-//
-// If dialer is not nil, it will be used to create new TCP connections
-func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, v version.Version, caCerts []*x509.Certificate) Client {
-	certPool := x509.NewCertPool()
-	for _, c := range caCerts {
-		certPool.AddCert(c)
-	}
-
-	transportConfig := http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs: certPool,
-
-			// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
-			// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
-			// we opt to skip verifying here because we're not validating based on DNS names or IP addresses, which means
-			// we have to do our verification in the VerifyPeerCertificate instead.
-			InsecureSkipVerify: true,
-			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-				return errors.New("tls: verify peer certificate not setup")
-			},
-		},
-	}
-
-	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-		if verifiedChains != nil {
-			return errors.New("tls: non-nil verifiedChains argument breaks crypto/tls.Config.VerifyPeerCertificate contract")
-		}
-		_, _, err := cryptutil.VerifyCertificateExceptServerName(rawCerts, transportConfig.TLSClientConfig)
-		return err
-	}
-
-	// use the custom dialer if provided
-	if dialer != nil {
-		transportConfig.DialContext = dialer.DialContext
-	}
-	base := &baseClient{
-		Endpoint:  esURL,
-		User:      esUser,
-		caCerts:   caCerts,
-		transport: &transportConfig,
-		HTTP: &http.Client{
-			Transport: &transportConfig,
-		},
-	}
-	return versioned(base, v)
-}
-
-// APIError is a non 2xx response from the Elasticsearch API
-type APIError struct {
-	response *http.Response
-}
-
-// Error() implements the error interface.
-func (e *APIError) Error() string {
-	defer e.response.Body.Close()
-	reason := "unknown"
-	// Elasticsearch has a detailed error message in the response body
-	var errMsg ErrorResponse
-	err := json.NewDecoder(e.response.Body).Decode(&errMsg)
-	if err == nil {
-		reason = errMsg.Error.Reason
-	}
-	return fmt.Sprintf("%s: %s", e.response.Status, reason)
-}
-
 // IsNotFound checks whether the error was an HTTP 404 error.
 func IsNotFound(err error) bool {
 	switch err := err.(type) {
-	case *APIError:
-		return err.response.StatusCode == http.StatusNotFound
+	case *officialAPIError:
+		return err.statusCode == http.StatusNotFound
 	default:
 		return false
 	}
@@ -182,8 +119,8 @@ func IsNotFound(err error) bool {
 // IsConflict checks whether the error was an HTTP 409 error.
 func IsConflict(err error) bool {
 	switch err := err.(type) {
-	case *APIError:
-		return err.response.StatusCode == http.StatusConflict
+	case *officialAPIError:
+		return err.statusCode == http.StatusConflict
 	default:
 		return false
 	}

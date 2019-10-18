@@ -8,15 +8,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 type fakeESClient struct {
@@ -24,7 +23,7 @@ type fakeESClient struct {
 	client.Client
 }
 
-func (f *fakeESClient) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+func (f *fakeESClient) DeleteVotingConfigExclusions(ctx context.Context) error {
 	f.called = true
 	return nil
 }

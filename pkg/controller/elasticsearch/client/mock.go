@@ -18,19 +18,25 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req), nil
 }
 
-func NewMockClient(v version.Version, fn RoundTripFunc) Client {
+func NewMockClient(v version.Version, fn RoundTripFunc) (Client, error) {
 	return NewMockClientWithUser(v, UserAuth{}, fn)
 }
 
-func NewMockClientWithUser(v version.Version, u UserAuth, fn RoundTripFunc) Client {
-	baseClient := &baseClient{
-		HTTP: &http.Client{
-			Transport: fn,
-		},
-		Endpoint: "http://example.com",
-		User:     u,
+func NewMockClientWithUser(v version.Version, u UserAuth, fn http.RoundTripper) (Client, error) {
+	endpoint := "http://example.com"
+
+	es, err := newElasticsearchClients(v, endpoint, u, fn)
+	if err != nil {
+		return nil, err
 	}
-	return versioned(baseClient, v)
+
+	baseClient := &defaultClient{
+		esVersion:            v,
+		endpoint:             endpoint,
+		userAuth:             u,
+		elasticsearchClients: es,
+	}
+	return baseClient, nil
 }
 
 func NewMockResponse(statusCode int, r *http.Request, body string) *http.Response {

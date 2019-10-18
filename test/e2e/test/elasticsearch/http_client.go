@@ -42,6 +42,5 @@ func NewElasticsearchClient(es v1beta1.Elasticsearch, k *test.K8sClient) (client
 	if err != nil {
 		return nil, err
 	}
-	esClient := client.NewElasticsearchClient(dialer, inClusterURL, esUser, *v, caCert)
-	return esClient, nil
+	return client.NewDefaultElasticsearchClient(dialer, inClusterURL, esUser, *v, caCert)
 }

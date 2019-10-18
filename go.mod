@@ -9,6 +9,9 @@ require (
 	github.com/Masterminds/sprig v2.20.0+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
+	github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20191014085904-8effe049d43f
+	github.com/elastic/go-elasticsearch/v7 v7.4.2-0.20191014090905-7c0c926d43a6
+	github.com/elastic/go-elasticsearch/v8 v8.0.0-20191014081254-c4f3d4024478
 	github.com/elastic/go-ucfg v0.7.0
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect

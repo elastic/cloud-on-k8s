@@ -65,6 +65,12 @@ github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96/go.mod h1:Qh8CwZ
 github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c h1:ZfSZ3P3BedhKGUhzj7BQlPSU4OvT6tfOKe3DVHzOA7s=
 github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c/go.mod h1:Qh8CwZgvJUkLughtfhJv5dyTYa91l1fOUCrgjqmcifM=
 github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815/go.mod h1:WwZ+bS3ebgob9U8Nd0kOddGdZWjyMGR8Wziv+TBNwSE=
+github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20191014085904-8effe049d43f h1:Yu3SVi3CtDhWyxr7yl5NAMyTpT1C/U7T87aRzMdMAyg=
+github.com/elastic/go-elasticsearch/v6 v6.8.3-0.20191014085904-8effe049d43f/go.mod h1:UwaDJsD3rWLM5rKNFzv9hgox93HoX8utj1kxD9aFUcI=
+github.com/elastic/go-elasticsearch/v7 v7.4.2-0.20191014090905-7c0c926d43a6 h1:/CJaSi19eZ/3wg6c1VG2iE9sSMBuWy1HOo7Di/BaP7E=
+github.com/elastic/go-elasticsearch/v7 v7.4.2-0.20191014090905-7c0c926d43a6/go.mod h1:OJ4wdbtDNk5g503kvlHLyErCgQwwzmDtaFC4XyOxXA4=
+github.com/elastic/go-elasticsearch/v8 v8.0.0-20191014081254-c4f3d4024478 h1:meg9x+TZTS+YzME3r5iSLzHTWpoMaX4wZZPBe/M7SVk=
+github.com/elastic/go-elasticsearch/v8 v8.0.0-20191014081254-c4f3d4024478/go.mod h1:xe9a/L2aeOgFKKgrO3ibQTnMdpAeL0GC+5/HpGScSa4=
 github.com/elastic/go-ucfg v0.7.0 h1:1+C/sZdJKww8hKl7XtLPTjs4cFslhQF2fazKTF+ZE+4=
 github.com/elastic/go-ucfg v0.7.0/go.mod h1:iaiY0NBIYeasNgycLyTvhJftQlQEUO2hpF+FX0JKxzo=
 github.com/elazarl/goproxy v0.0.0-20170405201442-c4fc26588b6e/go.mod h1:/Zj4wYkgs4iZTTu3o/KG3Itv/qCCa8VVMlb3i9OVuzc=

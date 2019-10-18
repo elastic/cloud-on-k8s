@@ -22,21 +22,24 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func fakeEsClient200(user client.UserAuth) client.Client {
-	return client.NewMockClientWithUser(version.MustParse("6.8.0"),
+func fakeEsClient200(t *testing.T, user client.UserAuth) client.Client {
+	c, err := client.NewMockClientWithUser(version.MustParse("6.8.0"),
 		user,
-		func(req *http.Request) *http.Response {
+		client.RoundTripFunc(func(req *http.Request) *http.Response {
 			return &http.Response{
 				StatusCode: 200,
 				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.SampleShards)),
 				Header:     make(http.Header),
 				Request:    req,
 			}
-		})
+		}),
+	)
+	require.NoError(t, err)
+	return c
 }
 
-func createAndRunTestObserver(onObs OnObservation) *Observer {
-	fakeEsClient := fakeEsClient200(client.UserAuth{})
+func createAndRunTestObserver(t *testing.T, onObs OnObservation) *Observer {
+	fakeEsClient := fakeEsClient200(t, client.UserAuth{})
 	obs := NewObserver(cluster("cluster"), fakeEsClient, Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
@@ -50,7 +53,7 @@ func TestObserver_retrieveState(t *testing.T) {
 	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
 		atomic.AddInt32(&counter, 1)
 	}
-	fakeEsClient := fakeEsClient200(client.UserAuth{})
+	fakeEsClient := fakeEsClient200(t, client.UserAuth{})
 	observer := Observer{
 		esClient:      fakeEsClient,
 		onObservation: onObservation,
@@ -63,7 +66,7 @@ func TestObserver_retrieveState(t *testing.T) {
 
 func TestObserver_retrieveState_nilFunction(t *testing.T) {
 	var nilFunc OnObservation
-	fakeEsClient := fakeEsClient200(client.UserAuth{})
+	fakeEsClient := fakeEsClient200(t, client.UserAuth{})
 	observer := Observer{
 		esClient:      fakeEsClient,
 		onObservation: nilFunc,
@@ -77,7 +80,7 @@ func TestNewObserver(t *testing.T) {
 	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
 		events <- cluster
 	}
-	observer := createAndRunTestObserver(onObservation)
+	observer := createAndRunTestObserver(t, onObservation)
 	defer observer.Stop()
 	// let it observe at least 3 times
 	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
@@ -90,7 +93,7 @@ func TestObserver_Stop(t *testing.T) {
 	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
 		atomic.AddInt32(&counter, 1)
 	}
-	observer := createAndRunTestObserver(onObservation)
+	observer := createAndRunTestObserver(t, onObservation)
 	// force at least one observation
 	observer.retrieveState(context.Background())
 	// stop the observer

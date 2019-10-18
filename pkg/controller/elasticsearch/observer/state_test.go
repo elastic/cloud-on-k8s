@@ -20,8 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func fakeEsClient(healthRespErr, infoRespErr, licenseRespErr bool) client.Client {
-	return client.NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
+func fakeEsClient(t *testing.T, healthRespErr, infoRespErr, licenseRespErr bool) client.Client {
+	c, err := client.NewMockClient(version.MustParse("6.8.0"), func(req *http.Request) *http.Response {
 		statusCode := 200
 		var respBody io.ReadCloser
 
@@ -54,6 +54,8 @@ func fakeEsClient(healthRespErr, infoRespErr, licenseRespErr bool) client.Client
 			Request:    req,
 		}
 	})
+	require.NoError(t, err)
+	return c
 }
 
 func TestRetrieveState(t *testing.T) {
@@ -104,7 +106,7 @@ func TestRetrieveState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cluster := types.NamespacedName{Namespace: "ns1", Name: "es1"}
-			esClient := fakeEsClient(!tt.wantHealth, !tt.wantInfo, !tt.wantLicense)
+			esClient := fakeEsClient(t, !tt.wantHealth, !tt.wantInfo, !tt.wantLicense)
 			state := RetrieveState(context.Background(), cluster, esClient)
 			if tt.wantHealth {
 				require.NotNil(t, state.ClusterHealth)
