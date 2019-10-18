@@ -19,16 +19,16 @@ pipeline {
     }
 
     stages {
+        stage('Checkout from GitHub') {
+            steps {
+                checkout scm
+            }
+        }
         stage('Load common scripts') {
             steps {
                 script {
                     testScript = load "build/ci/common/tests.groovy"
                 }
-            }
-        }
-        stage('Checkout from GitHub') {
-            steps {
-                checkout scm
             }
         }
         stage("Run E2E tests") {

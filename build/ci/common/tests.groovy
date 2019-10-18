@@ -18,7 +18,7 @@ def generateSlackMessage(baseMsg, URL, failedTests) {
     sb.append(baseMsg)
     sb.append("\r\n")
     sb.append(URL)
-    if (failedTests.size > 0) {
+    if (failedTests.size() > 0) {
         sb.append("\r\n")
         sb.append("List of failed tests:")
         failedTests.each { ft ->
