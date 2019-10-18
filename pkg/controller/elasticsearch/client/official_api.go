@@ -232,6 +232,8 @@ func (c *elasticsearchClients) SetMinimumMasterNodes(ctx context.Context, minimu
 }
 
 func (c *elasticsearchClients) AddVotingConfigExclusions(ctx context.Context, excludeNodes []string) error {
+	// the voting config exclusions API is not part of the rest-api-spec, so we have to use custom requests to use it.
+	// see https://github.com/elastic/elasticsearch/issues/48131
 	url := fmt.Sprintf(
 		"/_cluster/voting_config_exclusions/%s?timeout=%s",
 		strings.Join(excludeNodes, ","),
@@ -264,6 +266,9 @@ func (c *elasticsearchClients) AddVotingConfigExclusions(ctx context.Context, ex
 }
 
 func (c *elasticsearchClients) DeleteVotingConfigExclusions(ctx context.Context) error {
+	// the voting config exclusions API is not part of the rest-api-spec, so we have to use custom requests to use it.
+	// see https://github.com/elastic/elasticsearch/issues/48131
+
 	if err := c.doVersionedRequestWithUnversionedResponse(versionedRequestWithUnversionedResponse{
 		ES6: func(es *elasticsearch6.Client) (*esapi6.Response, error) {
 			return nil, errors.New("voting config exclusions not supported in Elasticsearch 6.x")
