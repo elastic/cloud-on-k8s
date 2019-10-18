@@ -49,18 +49,20 @@ func (e *ExpectedStatefulSetUpdates) ExpectGeneration(statefulSet appsv1.Statefu
 // and returns true if they all match.
 // Expectations are cleared once they are matched.
 func (e *ExpectedStatefulSetUpdates) GenerationsSatisfied() (bool, error) {
+	allSatisfied := true
 	for statefulSet, expectedGen := range e.generations {
 		satisfied, err := e.generationSatisfied(statefulSet, expectedGen)
 		if err != nil {
 			return false, err
 		}
 		if !satisfied {
-			return false, nil
+			allSatisfied = false
+		} else {
+			// cache is up-to-date: remove the existing expectation
+			delete(e.generations, statefulSet)
 		}
-		// cache is up-to-date: remove the existing expectation
-		delete(e.generations, statefulSet)
 	}
-	return true, nil
+	return allSatisfied, nil
 }
 
 // generationSatisfied returns true if the generation of the cached StatefulSet matches what is expected.
