@@ -12,13 +12,13 @@ linters:
     - funlen
     - gochecknoglobals
     - gochecknoinits
+    - gocognit # added in 1.20
+    - godox # added in 1.19
     - interfacer
     - lll
     - scopelint
-    - wsl # added in 1.20
-    - gocognit # added in 1.20
     - whitespace # added in 1.19
-    - godox # added in 1.19
+    - wsl # added in 1.20
 linters-settings:
   maligned:
     suggest-new: true
