@@ -244,19 +244,19 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
-						Name: "elasticsearch-certs",
+						Name: "config",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName: "es-ca-secret",
+								SecretName: "test-kb-config",
 								Optional:   &false,
 							},
 						},
 					},
 					{
-						Name: "config",
+						Name: "elasticsearch-certs",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-kb-config",
+								SecretName: "es-ca-secret",
 								Optional:   &false,
 							},
 						},
@@ -279,14 +279,14 @@ func expectedDeploymentParams() deployment.Params {
 							MountPath: volume.DataVolumeMountPath,
 						},
 						{
-							Name:      "elasticsearch-certs",
-							ReadOnly:  true,
-							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
-						},
-						{
 							Name:      "config",
 							ReadOnly:  true,
 							MountPath: "/usr/share/kibana/config",
+						},
+						{
+							Name:      "elasticsearch-certs",
+							ReadOnly:  true,
+							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 						},
 						{
 							Name:      http.HTTPCertificatesSecretVolumeName,

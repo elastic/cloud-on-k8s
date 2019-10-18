@@ -93,6 +93,11 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1beta1.AssociationConf) {
 	k.assocConf = assocConf
 }
 
+// RequiresAssociation returns true if the spec specifies an Elasticsearch reference.
+func (k *Kibana) RequiresAssociation() bool {
+	return k.Spec.ElasticsearchRef.Name != ""
+}
+
 // +kubebuilder:object:root=true
 
 // Kibana is the Schema for the kibanas API
