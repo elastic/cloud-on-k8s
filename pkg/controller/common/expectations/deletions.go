@@ -53,7 +53,7 @@ func (e *ExpectedPodDeletions) DeletionsSatisfied() (bool, error) {
 	return len(e.podDeletions) == 0, nil
 }
 
-// podDeleted returns true if the pod can be considered as deleted.
+// podDeleted returns true if the pod with the given UID does not exist anymore.
 func podDeleted(client k8s.Client, pod types.NamespacedName, uid types.UID) (bool, error) {
 	var podInCache corev1.Pod
 	err := client.Get(pod, &podInCache)

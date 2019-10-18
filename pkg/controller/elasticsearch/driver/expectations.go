@@ -9,20 +9,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// expectationsMet checks that resources in our local cache match what we expect.
+// expectationsSatisfied checks that resources in our local cache match what we expect.
 // If not, it's safer to not move on with StatefulSets and Pods reconciliation.
 // Continuing with the reconciliation at this point may lead to:
 // - calling ES orchestration settings (zen1/zen2/allocation excludes) with wrong assumptions
 // (eg. incorrect number of nodes or master-eligible nodes topology)
 // - create or delete more than one master node at once
-func (d *defaultDriver) expectationsMet() (bool, error) {
+func (d *defaultDriver) expectationsSatisfied() (bool, error) {
 	// make sure the cache is up-to-date
 	expectationsOK, err := d.Expectations.Satisfied()
 	if err != nil {
 		return false, err
 	}
 	if !expectationsOK {
-		log.V(1).Info("Cache expectations are not met yet, re-queueing", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+		log.V(1).Info("Cache expectations are not satisfied yet, re-queueing", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 		return false, nil
 	}
 	// make sure pods have been reconciled by the StatefulSet controller

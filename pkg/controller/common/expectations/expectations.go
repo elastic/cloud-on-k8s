@@ -67,7 +67,7 @@ The only cases where we need it are (so far):
 
 Kubernetes Deployment controller relies on expectations to control pods creation and deletion:
 https://github.com/kubernetes/kubernetes/blob/245189b8a198e9e29494b2d992dc05bd7164c973/pkg/controller/controller_utils.go#L115
-Our expectations mechanism is inspired from it.
+Our expectations mechanism is inspired by it.
 A major difference is the Deployments one is directly plugged to watches events to track creation and deletion.
 Instead, we just inspect resources in the cache when we need to; which makes it a bit simpler to understand, but
 technically less efficient.

@@ -18,7 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func Test_defaultDriver_expectationsMet(t *testing.T) {
+func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	client := k8s.WrapClient(fake.NewFakeClient())
 	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
@@ -33,7 +33,7 @@ func Test_defaultDriver_expectationsMet(t *testing.T) {
 	}}
 
 	// no expectations set
-	met, err := d.expectationsMet()
+	met, err := d.expectationsSatisfied()
 	require.NoError(t, err)
 	require.True(t, met)
 
@@ -41,16 +41,16 @@ func Test_defaultDriver_expectationsMet(t *testing.T) {
 	statefulSet := sset.TestSset{Namespace: es.Namespace, Name: "sset", ClusterName: es.Name}.Build()
 	statefulSet.Generation = 123
 	d.Expectations.ExpectGeneration(statefulSet)
-	// but not met yet
+	// but not satisfied yet
 	statefulSet.Generation = 122
 	require.NoError(t, client.Create(&statefulSet))
-	met, err = d.expectationsMet()
+	met, err = d.expectationsSatisfied()
 	require.NoError(t, err)
 	require.False(t, met)
-	// met now
+	// satisfied now
 	statefulSet.Generation = 123
 	require.NoError(t, client.Update(&statefulSet))
-	met, err = d.expectationsMet()
+	met, err = d.expectationsSatisfied()
 	require.NoError(t, err)
 	require.True(t, met)
 
@@ -59,15 +59,15 @@ func Test_defaultDriver_expectationsMet(t *testing.T) {
 	statefulSet.Spec.Replicas = common.Int32(1)
 	require.NoError(t, client.Update(&statefulSet))
 	// expectations should not be met: we miss a pod
-	met, err = d.expectationsMet()
+	met, err = d.expectationsSatisfied()
 	require.NoError(t, err)
 	require.False(t, met)
 
 	// add the missing pod
 	pod := sset.TestPod{Namespace: es.Namespace, Name: "sset-0", StatefulSetName: statefulSet.Name}.Build()
 	require.NoError(t, client.Create(&pod))
-	// expectations should be met
-	met, err = d.expectationsMet()
+	// expectations should be satisfied
+	met, err = d.expectationsSatisfied()
 	require.NoError(t, err)
 	require.True(t, met)
 }

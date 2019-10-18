@@ -35,7 +35,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	results := &reconciler.Results{}
 
 	// check if actual StatefulSets and corresponding pods match our expectations before applying any change
-	ok, err := d.expectationsMet()
+	ok, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}

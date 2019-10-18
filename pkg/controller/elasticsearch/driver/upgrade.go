@@ -27,10 +27,10 @@ func (d *defaultDriver) handleRollingUpgrades(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	// We need to check that all the expectations are met before continuing.
+	// We need to check that all the expectations are satisfied before continuing.
 	// This is to be sure that none of the previous steps has changed the state and
 	// that we are not running with a stale cache.
-	ok, err := d.expectationsMet()
+	ok, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -261,7 +261,7 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	}
 
 	// Make sure all pods scheduled for upgrade have been upgraded.
-	done, err := d.expectationsMet()
+	done, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
