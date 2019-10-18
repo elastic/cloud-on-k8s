@@ -35,7 +35,6 @@ const (
 )
 
 type validation func(*Elasticsearch) *field.Error
-type updateValidation func(*Elasticsearch, *Elasticsearch) *field.Error
 
 // validations are the validation funcs that apply to creates or updates
 var validations = []validation{
@@ -45,6 +44,8 @@ var validations = []validation{
 	noBlacklistedSettings,
 	validSanIP,
 }
+
+type updateValidation func(*Elasticsearch, *Elasticsearch) *field.Error
 
 // updateValidations are the validation funcs that only apply to updates
 var updateValidations = []updateValidation{
