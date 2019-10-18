@@ -15,6 +15,7 @@ import (
 // https://book.kubebuilder.io/cronjob-tutorial/webhook-implementation.html
 
 // +kubebuilder:webhook:path=/validate-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1beta1,name=elastic-es-validation
+
 func (r *Elasticsearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
@@ -22,6 +23,7 @@ func (r *Elasticsearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 var eslog = logf.Log.WithName("es-resource")
+
 var _ webhook.Validator = &Elasticsearch{}
 
 func (r *Elasticsearch) ValidateCreate() error {
