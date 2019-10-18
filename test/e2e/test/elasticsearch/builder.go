@@ -21,7 +21,6 @@ const (
 	// we setup our own storageClass with "volumeBindingMode: waitForFirstConsumer" that we
 	// reference in the VolumeClaimTemplates section of the Elasticsearch spec
 	defaultStorageClass = "e2e-default"
-	defaultVolumeName   = "e2e-default-volume"
 )
 
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
@@ -216,15 +215,17 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 	storageClass := defaultStorageClass
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		for _, existing := range b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates {
-			if existing.Name == defaultVolumeName {
+			if existing.Name == volume.ElasticsearchDataVolumeName {
+				// already defined, don't set our defaults
 				goto next
 			}
 		}
 
+		// setup default claim with the custom storage class
 		b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates,
 			corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: defaultVolumeName,
+					Name: volume.ElasticsearchDataVolumeName,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -238,17 +239,6 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 					StorageClassName: &storageClass,
 				},
 			})
-		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
-			{
-				Name: defaultVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: defaultVolumeName,
-						ReadOnly:  false,
-					},
-				},
-			},
-		}
 
 	next:
 	}
