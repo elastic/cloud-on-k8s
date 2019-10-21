@@ -90,6 +90,17 @@ pipeline {
     }
 
     post {
+        always {
+            script {
+                if (notOnlyDocs()) {
+                    googleStorageUpload bucket: "gs://devops-ci-artifacts/eck/data-dump",
+                        credentialsId: "devops-ci-gcs-plugin",
+                        pattern: "*.tgz",
+                        sharedPublicly: true,
+                        showInline: true
+                }
+            }
+        }
         cleanup {
             script {
                 if (notOnlyDocs()) {
