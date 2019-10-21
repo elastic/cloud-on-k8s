@@ -1,10 +1,25 @@
 {
     "hideMemberFields": [
+        "assocConf",
+        "Status",
         "TypeMeta"
     ],
     "hideTypePatterns": [
+        "ApmServerHealth$",
+        "ApmServerStatus$",
+        "Associated$",
+        "AssociationConf$",
+        "AssociationStatus$",
+        "Associator$",
+        "ElasticsearchHealth$",
+        "ElasticsearchOrchestrationPhase$",
+        "ElasticsearchStatus$",
+        "KibanaHealth$",
+        "KibanaStatus$",
+        "List$",
         "ParseError$",
-        "List$"
+        "ReconcilerStatus$",
+        "ZenDiscoveryStatus$"
     ],
     "externalPackages": [
         {
@@ -14,10 +29,6 @@
         {
             "typeMatchPrefix": "^k8s\\.io/(api|apimachinery/pkg/apis)/",
             "docsURLTemplate": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#{{lower .TypeIdentifier}}-{{arrIndex .PackageSegments -1}}-{{arrIndex .PackageSegments -2}}"
-        },
-        {
-            "typeMatchPrefix": "^github\\.com/knative/pkg/apis/duck/",
-            "docsURLTemplate": "https://godoc.org/github.com/knative/pkg/apis/duck/{{arrIndex .PackageSegments -1}}#{{.TypeIdentifier}}"
         }
     ],
     "typeDisplayNamePrefixOverrides": {

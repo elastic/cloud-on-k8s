@@ -9,31 +9,42 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${SCRIPT_DIR}/../.."
 DOCS_DIR="${SCRIPT_DIR}/../../docs"
-REFDOCS_PKG="github.com/elastic/gen-crd-api-reference-docs"
+REFDOCS_REPO="https://github.com/elastic/gen-crd-api-reference-docs.git"
 REFDOCS_VER="master"
-REFDOCS_BIN="$(go env GOPATH)/bin/$(basename $REFDOCS_PKG)"
 
-install_refdocs() {
-    local INSTALL_DIR=$(mktemp -d)
-    (
-        cd $INSTALL_DIR
-        GO111MODULE=on go mod init github.com/elastic/eck-refdocs
-        GO111MODULE=on go get -u "${REFDOCS_PKG}@${REFDOCS_VER}"
-    )
+log() {
+    echo ">> $1"
 }
 
 build_docs() {
-    local TEMP_OUT_FILE=$(mktemp)
-    $REFDOCS_BIN -api-dir=github.com/elastic/cloud-on-k8s/pkg/apis \
-        -template-dir="${SCRIPT_DIR}/templates" \
-        -out-file=$TEMP_OUT_FILE \
-        -config="${SCRIPT_DIR}/config.json"
+    local INSTALL_DIR=$(mktemp -d)
+    (
+        log "Building refdoc binary..."
+        cd $INSTALL_DIR
+        git clone -q --depth 1 --branch $REFDOCS_VER --single-branch $REFDOCS_REPO
+        cd gen-crd-api-reference-docs
+        go mod edit --replace=github.com/elastic/cloud-on-k8s@latest=$REPO_ROOT
+        go build
+    )
 
-    mv $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
+    local REFDOCS_BIN=${INSTALL_DIR}/gen-crd-api-reference-docs/gen-crd-api-reference-docs
+    local TEMP_OUT_FILE=$(mktemp)
+    (
+        log "Generating API reference documentation..."
+        cd $REPO_ROOT
+        $REFDOCS_BIN -api-dir=./pkg/apis \
+            -template-dir="${SCRIPT_DIR}/templates" \
+            -out-file=$TEMP_OUT_FILE \
+            -config="${SCRIPT_DIR}/config.json" \
+            -logtostderr=true \
+            -stderrthreshold=3
+        mv $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
+        log "API reference documentation generated successfully."
+    )
+
+    rm -rf $INSTALL_DIR || log "Failed to clean-up $INSTALL_DIR"
 }
 
-if [[ ! -x "$REFDOCS_BIN" ]]; then
-    install_refdocs
-fi
 build_docs
