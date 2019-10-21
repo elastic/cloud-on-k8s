@@ -21,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var testNamer = name.Namer{
@@ -194,9 +193,6 @@ func Test_renewCA(t *testing.T) {
 	require.NoError(t, err)
 	internalCASecret := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
 
-	err = v1beta1.AddToScheme(scheme.Scheme)
-	require.NoError(t, err)
-
 	tests := []struct {
 		name        string
 		client      k8s.Client
@@ -205,12 +201,12 @@ func Test_renewCA(t *testing.T) {
 	}{
 		{
 			name:     "create new CA",
-			client:   k8s.WrapClient(fake.NewFakeClient()),
+			client:   k8s.WrappedFakeClient(),
 			expireIn: DefaultCertValidity,
 		},
 		{
 			name:        "replace existing CA",
-			client:      k8s.WrapClient(fake.NewFakeClient(&internalCASecret)),
+			client:      k8s.WrappedFakeClient(&internalCASecret),
 			expireIn:    DefaultCertValidity,
 			notExpected: testCa, // existing CA should be replaced
 		},
@@ -227,9 +223,6 @@ func Test_renewCA(t *testing.T) {
 }
 
 func TestReconcileCAForCluster(t *testing.T) {
-	err := v1beta1.AddToScheme(scheme.Scheme)
-	require.NoError(t, err)
-
 	validCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
 	internalCASecret := internalSecretForCA(validCa, testNamer, &testCluster, nil, TransportCAType)
@@ -258,31 +251,31 @@ func TestReconcileCAForCluster(t *testing.T) {
 	}{
 		{
 			name:           "no existing CA cert nor private key",
-			cl:             k8s.WrapClient(fake.NewFakeClient()),
+			cl:             k8s.WrappedFakeClient(),
 			caCertValidity: DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing CA cert but no private key",
-			cl:             k8s.WrapClient(fake.NewFakeClient(internalCASecretWithoutPrivateKey)),
+			cl:             k8s.WrappedFakeClient(internalCASecretWithoutPrivateKey),
 			caCertValidity: DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing private key cert but no cert",
-			cl:             k8s.WrapClient(fake.NewFakeClient(internalCASecretWithoutCACert)),
+			cl:             k8s.WrappedFakeClient(internalCASecretWithoutCACert),
 			caCertValidity: DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing valid internal secret",
-			cl:             k8s.WrapClient(fake.NewFakeClient(&internalCASecret)),
+			cl:             k8s.WrappedFakeClient(&internalCASecret),
 			caCertValidity: DefaultCertValidity,
 			shouldReuseCa:  validCa, // should reuse existing one
 		},
 		{
 			name:             "existing internal cert is soon to expire",
-			cl:               k8s.WrapClient(fake.NewFakeClient(&soonToExpireInternalCASecret)),
+			cl:               k8s.WrappedFakeClient(&soonToExpireInternalCASecret),
 			caCertValidity:   DefaultCertValidity,
 			shouldReuseCa:    nil,            // should create a new one
 			shouldNotReuseCa: soonToExpireCa, // and not reuse existing one

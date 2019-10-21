@@ -96,6 +96,24 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsNativeNative1Order})))
 			},
 		},
+		{
+			name:    "in 6.x, seed hosts setting should be discovery.zen.hosts_provider",
+			version: "6.8.0",
+			cfgData: map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				require.Equal(t, 1, len(cfg.HasKeys([]string{DiscoveryZenHostsProvider})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{DiscoverySeedProviders})))
+			},
+		},
+		{
+			name:    "starting 7.x, seed hosts settings should be discovery.seed_providers",
+			version: "7.0.0",
+			cfgData: map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				require.Equal(t, 0, len(cfg.HasKeys([]string{DiscoveryZenHostsProvider})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{DiscoverySeedProviders})))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

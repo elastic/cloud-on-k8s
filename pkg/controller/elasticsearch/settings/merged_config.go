@@ -29,7 +29,7 @@ func NewMergedESConfig(
 		return CanonicalConfig{}, err
 	}
 	err = config.MergeWith(
-		baseConfig(clusterName).CanonicalConfig,
+		baseConfig(clusterName, ver).CanonicalConfig,
 		xpackConfig(ver, httpConfig, certResources).CanonicalConfig,
 	)
 	if err != nil {
@@ -39,13 +39,11 @@ func NewMergedESConfig(
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string) *CanonicalConfig {
+func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		estype.NodeName:    "${" + EnvPodName + "}",
 		estype.ClusterName: clusterName,
-
-		estype.DiscoveryZenHostsProvider: "file",
 
 		// derive IP dynamically from the pod IP, injected as env var
 		estype.NetworkPublishHost: "${" + EnvPodIP + "}",
@@ -54,6 +52,15 @@ func baseConfig(clusterName string) *CanonicalConfig {
 		estype.PathData: volume.ElasticsearchDataMountPath,
 		estype.PathLogs: volume.ElasticsearchLogsMountPath,
 	}
+
+	// seed hosts setting name changed starting ES 7.X
+	fileProvider := "file"
+	if ver.Major < 7 {
+		cfg[DiscoveryZenHostsProvider] = fileProvider
+	} else {
+		cfg[DiscoverySeedProviders] = fileProvider
+	}
+
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 

@@ -18,15 +18,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const ElasticsearchCASecretSuffix = "xx-es-ca" // nolint
 
 func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
-	// setup scheme and init watches
-	require.NoError(t, estype.AddToScheme(scheme.Scheme))
-	require.NoError(t, kbtype.AddToScheme(scheme.Scheme))
+	// init watches
 	w := watches.NewDynamicWatches()
 	require.NoError(t, w.Secrets.InjectScheme(scheme.Scheme))
 
@@ -89,7 +86,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	}{
 		{
 			name:   "create new CA in kibana namespace",
-			client: k8s.WrapClient(fake.NewFakeClient(&es, &esCA)),
+			client: k8s.WrappedFakeClient(&es, &esCA),
 			kibana: kibanaFixture,
 			es:     esFixture,
 			want:   ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
@@ -97,7 +94,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		},
 		{
 			name:   "update existing CA in kibana namespace",
-			client: k8s.WrapClient(fake.NewFakeClient(&es, &updatedEsCA, &kibanaEsCA)),
+			client: k8s.WrappedFakeClient(&es, &updatedEsCA, &kibanaEsCA),
 			kibana: kibanaFixture,
 			es:     esFixture,
 			want:   ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
@@ -105,7 +102,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		},
 		{
 			name:   "ES CA secret does not exist (yet)",
-			client: k8s.WrapClient(fake.NewFakeClient(&es)),
+			client: k8s.WrappedFakeClient(&es),
 			kibana: kibanaFixture,
 			es:     esFixture,
 			want:   "",

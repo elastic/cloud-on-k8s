@@ -17,6 +17,8 @@ import (
 	// "k8s.io/client-go/kubernetes/scheme"
 )
 
+// TODO sabo merge changes in https://github.com/elastic/cloud-on-k8s/commit/dcee46a39bd798413f9e5b38e9f2a9bfc7ea5881#diff-5525b0a5eb4a1f7cd0e1a50a288c54e5
+
 func es(v string) *Elasticsearch {
 	return &Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
