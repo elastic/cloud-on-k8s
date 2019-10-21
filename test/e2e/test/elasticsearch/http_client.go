@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+
 	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
@@ -25,7 +26,7 @@ func NewElasticsearchClient(es v1beta1.Elasticsearch, k *test.K8sClient) (client
 	}
 	esUser := client.UserAuth{Name: "elastic", Password: password}
 
-	caCert, err := k.GetHTTPCerts(name.ESNamer, es.Namespace, es.Name)
+	caCert, err := k.GetHTTPCerts(v1beta1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return nil, err
 	}

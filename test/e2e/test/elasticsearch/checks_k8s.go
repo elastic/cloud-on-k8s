@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+
 	// esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -170,7 +171,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 		Name: "ES services should be created",
 		Test: test.Eventually(func() error {
 			for _, s := range []string{
-				esname.HTTPService(b.Elasticsearch.Name),
+				estype.HTTPService(b.Elasticsearch.Name),
 			} {
 				if _, err := k.GetService(b.Elasticsearch.Namespace, s); err != nil {
 					return err
@@ -187,7 +188,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 		Name: "ES services should have endpoints",
 		Test: test.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				esname.HTTPService(b.Elasticsearch.Name): int(b.Elasticsearch.Spec.NodeCount()),
+				estype.HTTPService(b.Elasticsearch.Name): int(b.Elasticsearch.Spec.NodeCount()),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana
@@ -249,7 +250,7 @@ func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
 		if err := k.Client.Get(
 			types.NamespacedName{
 				Namespace: b.Elasticsearch.Namespace,
-				Name:      esname.StatefulSet(b.Elasticsearch.Name, nodeSet.Name),
+				Name:      estype.StatefulSet(b.Elasticsearch.Name, nodeSet.Name),
 			},
 			&statefulSet,
 		); err != nil {
@@ -303,7 +304,7 @@ func checkStatefulSetsReplicas(b Builder, k *test.K8sClient) error {
 	// build names and replicas count of expected StatefulSets
 	expected := make(map[string]int32, len(b.Elasticsearch.Spec.NodeSets)) // map[StatefulSetName]Replicas
 	for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
-		expected[esname.StatefulSet(b.Elasticsearch.Name, nodeSet.Name)] = nodeSet.Count
+		expected[estype.StatefulSet(b.Elasticsearch.Name, nodeSet.Name)] = nodeSet.Count
 	}
 	statefulSets, err := k.GetESStatefulSets(b.Elasticsearch.Namespace, b.Elasticsearch.Name)
 	if err != nil {
@@ -329,7 +330,7 @@ func AnnotatePodsWithBuilderHash(b Builder, k *test.K8sClient) []test.Step {
 				for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 					pods, err := sset.GetActualPodsForStatefulSet(k.Client, types.NamespacedName{
 						Namespace: es.Namespace,
-						Name:      esname.StatefulSet(es.Name, nodeSet.Name),
+						Name:      estype.StatefulSet(es.Name, nodeSet.Name),
 					})
 					if err != nil {
 						return err

@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+
 	// esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -217,7 +218,7 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ownerNamespace,
-		Name:      certificates.CAInternalSecretName(esname.ESNamer, ownerName, caType),
+		Name:      certificates.CAInternalSecretName(estype.ESNamer, ownerName, caType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
@@ -253,7 +254,7 @@ func (k *K8sClient) GetTransportCert(esName, podName string) (caCert, transportC
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: Ctx().ManagedNamespace(0),
-		Name:      esname.TransportCertificatesSecret(esName),
+		Name:      estype.TransportCertificatesSecret(esName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
 		return nil, nil, err
