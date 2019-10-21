@@ -9,7 +9,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 )
 
 func TestPodName(t *testing.T) {
@@ -32,7 +32,7 @@ func TestPodNames(t *testing.T) {
 				Name:      "sset",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: pointer.Int32(3),
+				Replicas: pointer.Int32Ptr(3),
 			},
 		}),
 	)

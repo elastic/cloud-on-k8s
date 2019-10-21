@@ -10,8 +10,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/pointer"
 )
 
 func Test_defaultDriver_expectationsMet(t *testing.T) {
@@ -42,7 +42,7 @@ func Test_defaultDriver_expectationsMet(t *testing.T) {
 
 	// we expect some sset replicas to exist
 	// but corresponding pod does not exist
-	statefulSet.Spec.Replicas = pointer.Int32(1)
+	statefulSet.Spec.Replicas = pointer.Int32Ptr(1)
 	// expectations should not be met: we miss a pod
 	met, err = d.expectationsMet(sset.StatefulSetList{statefulSet})
 	require.NoError(t, err)
