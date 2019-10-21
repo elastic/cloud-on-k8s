@@ -194,8 +194,8 @@ func TestMutationAndReversal(t *testing.T) {
 
 }
 
-func TestMutationWithChangeBudget(t *testing.T) {
-	b := elasticsearch.NewBuilder("test-change-budget").
+func TestMutationNodeSetReplacementWithChangeBudget(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-1-change-budget").
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(5, "data1", elasticsearch.DefaultResources)
 
@@ -204,6 +204,25 @@ func TestMutationWithChangeBudget(t *testing.T) {
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(5, "data2", elasticsearch.DefaultResources).
 		WithChangeBudget(1, 1)
+
+	RunESMutation(t, b, mutated)
+}
+
+func TestMutationWithLargerChangeBudget(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-2-change-budget").
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data1", elasticsearch.DefaultResources)
+
+	// trigger a mutation that will lead to a rolling upgrade
+	mutated := b.WithNoESTopology().
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data1", elasticsearch.DefaultResources).
+		WithAdditionalConfig(map[string]map[string]interface{}{
+			"data1": {
+				"node.attr.value": "this-is-fine",
+			},
+		}).
+		WithChangeBudget(1, 2)
 
 	RunESMutation(t, b, mutated)
 }
