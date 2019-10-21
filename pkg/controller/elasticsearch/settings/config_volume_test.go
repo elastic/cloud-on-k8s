@@ -12,12 +12,9 @@ import (
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestConfigSecretName(t *testing.T) {
@@ -55,7 +52,7 @@ func TestGetESConfigContent(t *testing.T) {
 	}{
 		{
 			name:      "valid config exists",
-			client:    k8s.WrapClient(fake.NewFakeClient(&secret)),
+			client:    k8s.WrappedFakeClient(&secret),
 			namespace: namespace,
 			ssetName:  ssetName,
 			want:      CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})},
@@ -63,7 +60,7 @@ func TestGetESConfigContent(t *testing.T) {
 		},
 		{
 			name:      "config does not exist",
-			client:    k8s.WrapClient(fake.NewFakeClient()),
+			client:    k8s.WrappedFakeClient(),
 			namespace: namespace,
 			ssetName:  ssetName,
 			want:      CanonicalConfig{},
@@ -71,7 +68,7 @@ func TestGetESConfigContent(t *testing.T) {
 		},
 		{
 			name:      "stored config is invalid",
-			client:    k8s.WrapClient(fake.NewFakeClient(&secretInvalid)),
+			client:    k8s.WrappedFakeClient(&secretInvalid),
 			namespace: namespace,
 			ssetName:  ssetName,
 			want:      CanonicalConfig{},
@@ -93,8 +90,6 @@ func TestGetESConfigContent(t *testing.T) {
 }
 
 func TestReconcileConfig(t *testing.T) {
-	err := v1beta1.AddToScheme(scheme.Scheme)
-	assert.NoError(t, err)
 	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -128,7 +123,7 @@ func TestReconcileConfig(t *testing.T) {
 	}{
 		{
 			name:     "config does not exist",
-			client:   k8s.WrapClient(fake.NewFakeClient()),
+			client:   k8s.WrappedFakeClient(),
 			es:       es,
 			ssetName: ssetName,
 			config:   config,
@@ -136,7 +131,7 @@ func TestReconcileConfig(t *testing.T) {
 		},
 		{
 			name:     "config already exists",
-			client:   k8s.WrapClient(fake.NewFakeClient(&configSecret)),
+			client:   k8s.WrappedFakeClient(&configSecret),
 			es:       es,
 			ssetName: ssetName,
 			config:   config,
@@ -144,7 +139,7 @@ func TestReconcileConfig(t *testing.T) {
 		},
 		{
 			name:     "config should be updated",
-			client:   k8s.WrapClient(fake.NewFakeClient(&configSecret)),
+			client:   k8s.WrappedFakeClient(&configSecret),
 			es:       es,
 			ssetName: ssetName,
 			config:   CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "different"})},

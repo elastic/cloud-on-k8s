@@ -7,6 +7,8 @@ package association
 import (
 	"testing"
 
+	"k8s.io/client-go/kubernetes/scheme"
+
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
@@ -23,8 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -60,20 +60,7 @@ var kibanaFixture = kbtype.Kibana{
 	},
 }
 
-func setupScheme(t *testing.T) *runtime.Scheme {
-	sc := scheme.Scheme
-	if err := kbtype.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to add Kibana types")
-	}
-	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to add Es types")
-	}
-	return sc
-}
-
 func Test_reconcileEsUser(t *testing.T) {
-	sc := setupScheme(t)
-
 	type args struct {
 		initialObjects []runtime.Object
 		kibana         kbtype.Kibana
@@ -263,11 +250,11 @@ func Test_reconcileEsUser(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		c := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
+		c := k8s.WrappedFakeClient(tt.args.initialObjects...)
 		t.Run(tt.name, func(t *testing.T) {
 			if err := ReconcileEsUser(
 				c,
-				sc,
+				scheme.Scheme,
 				&tt.args.kibana,
 				map[string]string{
 					associationLabelName:      tt.args.kibana.Name,

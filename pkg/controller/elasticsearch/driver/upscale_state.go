@@ -7,14 +7,13 @@ package driver
 import (
 	"sync"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type upscaleState struct {
@@ -171,12 +170,12 @@ func (s *upscaleState) limitNodesCreation(
 	actualReplicas := sset.GetReplicas(actual)
 	targetReplicas := sset.GetReplicas(toApply)
 
-	nodespec.UpdateReplicas(&toApply, common.Int32(actualReplicas))
+	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))
 	replicasToCreate := targetReplicas - actualReplicas
 	replicasToCreate = s.getMaxNodesToCreate(replicasToCreate)
 
 	if replicasToCreate > 0 {
-		nodespec.UpdateReplicas(&toApply, common.Int32(actualReplicas+replicasToCreate))
+		nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas+replicasToCreate))
 		s.recordNodesCreation(replicasToCreate)
 		ssetLogger(toApply).Info(
 			"Creating nodes",
@@ -201,7 +200,7 @@ func (s *upscaleState) limitMasterNodesCreation(
 	actualReplicas := sset.GetReplicas(actual)
 	targetReplicas := sset.GetReplicas(toApply)
 
-	nodespec.UpdateReplicas(&toApply, common.Int32(actualReplicas))
+	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))
 	for rep := actualReplicas + 1; rep <= targetReplicas; rep++ {
 		if !s.canCreateMasterNode() {
 			ssetLogger(toApply).Info(
@@ -212,7 +211,7 @@ func (s *upscaleState) limitMasterNodesCreation(
 			break
 		}
 		// allow one more master node to be created
-		nodespec.UpdateReplicas(&toApply, common.Int32(rep))
+		nodespec.UpdateReplicas(&toApply, pointer.Int32(rep))
 		s.recordMasterNodeCreation()
 		ssetLogger(toApply).Info(
 			"Creating master node",

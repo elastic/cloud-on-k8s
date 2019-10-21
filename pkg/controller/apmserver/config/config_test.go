@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestNewConfigFromSpec(t *testing.T) {
@@ -83,7 +82,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(mkAuthSecret()))
+			client := k8s.WrappedFakeClient(mkAuthSecret())
 			apmServer := mkAPMServer(tc.configOverrides, tc.assocConf)
 			gotConf, err := NewConfigFromSpec(client, apmServer)
 			if tc.wantErr {

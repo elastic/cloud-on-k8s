@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestPodName(t *testing.T) {
@@ -33,7 +32,7 @@ func TestPodNames(t *testing.T) {
 				Name:      "sset",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: common.Int32(3),
+				Replicas: pointer.Int32(3),
 			},
 		}),
 	)
@@ -83,7 +82,7 @@ func TestGetActualPodsForStatefulSet(t *testing.T) {
 		getPodSample("pod2", "ns0", "sset1", "clus1", "0"),
 		getPodSample("pod3", "ns0", "sset1", "clus0", "0"),
 	}
-	c := k8s.WrapClient(fake.NewFakeClient(objs...))
+	c := k8s.WrappedFakeClient(objs...)
 	sset0 := getSsetSample("sset0", "ns0", "clus0")
 	pods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&sset0))
 	require.NoError(t, err)
@@ -107,7 +106,7 @@ func TestGetActualMastersForCluster(t *testing.T) {
 		getPodSample("pod3", "ns0", "sset1", "clus1", "0"),
 		getPodSample("pod4", "ns0", "sset1", "clus0", "0"),
 	}
-	c := k8s.WrapClient(fake.NewFakeClient(objs...))
+	c := k8s.WrappedFakeClient(objs...)
 
 	es := v1beta1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{
