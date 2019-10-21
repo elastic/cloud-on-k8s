@@ -54,10 +54,11 @@ func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 	}
 
 	// seed hosts setting name changed starting ES 7.X
+	fileProvider := "file"
 	if ver.Major < 7 {
-		cfg[DiscoveryZenHostsProvider] = "file"
+		cfg[DiscoveryZenHostsProvider] = fileProvider
 	} else {
-		cfg[DiscoverySeedProviders] = "file"
+		cfg[DiscoverySeedProviders] = fileProvider
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
