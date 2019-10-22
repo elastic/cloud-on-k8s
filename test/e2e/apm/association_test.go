@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -22,12 +22,6 @@ import (
 
 // TestCrossNSAssociation tests associating Elasticsearch and an APM Server running in different namespaces.
 func TestCrossNSAssociation(t *testing.T) {
-	// This test currently does not work in the E2E environment because each namespace has a dedicated
-	// controller (see https://github.com/elastic/cloud-on-k8s/issues/1438)
-	if !(test.Ctx().Local) {
-		t.SkipNow()
-	}
-
 	esNamespace := test.Ctx().ManagedNamespace(0)
 	apmNamespace := test.Ctx().ManagedNamespace(1)
 	name := "test-cross-ns-assoc"
@@ -46,14 +40,13 @@ func TestCrossNSAssociation(t *testing.T) {
 			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
 		})
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).
-		RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).RunSequential(t)
 }
 
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
 	name := "test-apm-assoc-non-existent-es"
 	apmBuilder := apmserver.NewBuilder(name).
-		WithElasticsearchRef(commonv1alpha1.ObjectSelector{
+		WithElasticsearchRef(commonv1beta1.ObjectSelector{
 			Name: "non-existent-es",
 		}).
 		WithNodeCount(1)
@@ -97,7 +90,7 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 			test.Step{
 				Name: "Updating to invalid Elasticsearch reference should succeed",
 				Test: func(t *testing.T) {
-					var apm v1alpha1.ApmServer
+					var apm v1beta1.ApmServer
 					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&apmBuilder.ApmServer), &apm))
 					apm.Spec.ElasticsearchRef.Namespace = "xxxx"
 					require.NoError(t, k.Client.Update(&apm))
@@ -119,11 +112,11 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 						switch {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
 							prevStatus, currStatus := annotation.ExtractAssociationStatus(evt.ObjectMeta)
-							if prevStatus == commonv1alpha1.AssociationEstablished && currStatus != prevStatus {
+							if prevStatus == commonv1beta1.AssociationEstablished && currStatus != prevStatus {
 								assocLostEventSeen = true
 							}
 
-							if currStatus == commonv1alpha1.AssociationEstablished {
+							if currStatus == commonv1beta1.AssociationEstablished {
 								assocEstablishedEventSeen = true
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:

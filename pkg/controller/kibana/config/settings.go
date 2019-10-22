@@ -7,8 +7,8 @@ package config
 import (
 	"path"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -27,10 +27,10 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, error) {
+func NewConfigSettings(client k8s.Client, kb v1beta1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
 	specConfig := kb.Spec.Config
 	if specConfig == nil {
-		specConfig = &commonv1alpha1.Config{}
+		specConfig = &commonv1beta1.Config{}
 	}
 
 	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
@@ -38,16 +38,25 @@ func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, 
 		return CanonicalConfig{}, err
 	}
 
+	cfg := settings.MustCanonicalConfig(baseSettings(kb))
+	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
+
+	if !kb.RequiresAssociation() {
+		if err := cfg.MergeWith(versionSpecificCfg, kibanaTLSCfg, userSettings); err != nil {
+			return CanonicalConfig{}, err
+		}
+		return CanonicalConfig{cfg}, nil
+	}
+
 	username, password, err := association.ElasticsearchAuthSettings(client, &kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
 
-	cfg := settings.MustCanonicalConfig(baseSettings(kb))
-
 	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
-		settings.MustCanonicalConfig(kibanaTLSSettings(kb)),
+		versionSpecificCfg,
+		kibanaTLSCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
 		settings.MustCanonicalConfig(
 			map[string]interface{}{
@@ -64,7 +73,7 @@ func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, 
 	return CanonicalConfig{cfg}, nil
 }
 
-func baseSettings(kb v1alpha1.Kibana) map[string]interface{} {
+func baseSettings(kb v1beta1.Kibana) map[string]interface{} {
 	return map[string]interface{}{
 		ServerName:         kb.Name,
 		ServerHost:         "0",
@@ -73,7 +82,7 @@ func baseSettings(kb v1alpha1.Kibana) map[string]interface{} {
 	}
 }
 
-func kibanaTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
+func kibanaTLSSettings(kb v1beta1.Kibana) map[string]interface{} {
 	if !kb.Spec.HTTP.TLS.Enabled() {
 		return nil
 	}
@@ -84,7 +93,7 @@ func kibanaTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
 	}
 }
 
-func elasticsearchTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
+func elasticsearchTLSSettings(kb v1beta1.Kibana) map[string]interface{} {
 	cfg := map[string]interface{}{
 		ElasticsearchSslVerificationMode: "certificate",
 	}

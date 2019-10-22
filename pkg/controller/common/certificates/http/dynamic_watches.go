@@ -7,7 +7,7 @@ package http
 import (
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -20,7 +20,7 @@ func httpCertificateWatchKey(namer name.Namer, ownerName string) string {
 }
 
 // reconcileDynamicWatches reconciles the dynamic watches needed by the HTTP certificates.
-func reconcileDynamicWatches(dynamicWatches watches.DynamicWatches, owner types.NamespacedName, namer name.Namer, tls v1alpha1.TLSOptions) error {
+func reconcileDynamicWatches(dynamicWatches watches.DynamicWatches, owner types.NamespacedName, namer name.Namer, tls v1beta1.TLSOptions) error {
 	// watch the Secret specified in es.Spec.HTTP.TLS.Certificate because if it changes we should reconcile the new
 	// user provided certificates.
 	httpCertificateWatch := watches.NamedWatch{

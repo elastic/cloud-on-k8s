@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -17,7 +17,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -26,7 +25,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
 
-	owner := &v1alpha1.Elasticsearch{
+	owner := &v1beta1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 	}
 
@@ -42,7 +41,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 
 	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
 		t.Helper()
-		return k8s.WrapClient(fake.NewFakeClient(objs...))
+		return k8s.WrappedFakeClient(objs...)
 	}
 
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {

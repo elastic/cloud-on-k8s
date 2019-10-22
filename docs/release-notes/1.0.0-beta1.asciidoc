@@ -1,0 +1,77 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.0.0-beta1]]
+== {n} version 1.0.0-beta1
+
+[[breaking-1.0.0-beta1]]
+[float]
+=== Breaking changes
+
+* Rename nodes to nodeSets, nodeCount to count {pull}1843[#1843]
+* Remove setVmMaxMapCount from Elasticsearch CRD {pull}1839[#1839] (issue: {issue}1712[#1712])
+* Bump CRD versions to v1beta1 {pull}1782[#1782]
+* Allow for multiple user specified secure settings secrets {pull}1627[#1627]
+* Add webhook check for PVC modification {pull}1517[#1517] (issue: {issue}1293[#1293])
+* Refactor nodes orchestration to rely on StatefulSets {pull}1463[#1463] (issue: {issue}1299[#1299])
+* Orchestrate zen1 and zen2 settings for StatefulSets {pull}1262[#1262] (issue: {issue}1173[#1173])
+* Implement rolling upgrades with StatefulSets {pull}1219[#1219]
+
+
+
+[[enhancement-1.0.0-beta1]]
+[float]
+=== Enhancements
+
+* Log validation errors {pull}1942[#1942]
+* Disable serving prometheus metrics by default {pull}1930[#1930]
+* Add StatefulSets info in eck-dump tool {pull}1920[#1920]
+* Rename statefulset label name with the &#34;-name&#34; suffix {pull}1913[#1913]
+* Rename Elasticsearch Pod hash labels {pull}1912[#1912] (issue: {issue}1911[#1911])
+* Force upgrade pods of a same StatefulSet {pull}1888[#1888] (issue: {issue}1847[#1847])
+* Add best effort spec validation {pull}1887[#1887]
+* Force upgrade all Pods if non-ready {pull}1827[#1827] (issue: {issue}1799[#1799])
+* Set Kibana default memory requests and limits to 1Gi  {pull}1818[#1818] (issue: {issue}1454[#1454])
+* Set APM Server default memory requests and limits to 512MiB {pull}1815[#1815] (issue: {issue}1454[#1454])
+* Add support for MaxSurge and MaxUnavailable during scaling {pull}1812[#1812]
+* Set Elasticsearch Pod  default memory limit to 2Gi  {pull}1810[#1810] (issue: {issue}1454[#1454])
+* Use synchronous HTTP calls to fetch shards  {pull}1778[#1778]
+* Bind ES Pod readiness to a node-local endpoint {pull}1777[#1777] (issues: {issue}916[#916], {issue}1748[#1748])
+* Set a dynamic MinAvailable value for the default PDB {pull}1775[#1775] (issues: {issue}916[#916], {issue}1773[#1773], {issue}1774[#1774])
+* Rolling Upgrade: Support master node type change {pull}1745[#1745]
+* Remove PersistentVolumeClaims when removing Elasticsearch nodes {pull}1736[#1736] (issue: {issue}1288[#1288])
+* Ignore synced flush conflict during rolling upgrades {pull}1733[#1733]
+* Upgrade to Kubebuilder v2 {pull}1723[#1723] (issues: {issue}1188[#1188], {issue}1604[#1604])
+* Support more secret volume fields in secure settings {pull}1665[#1665]
+* Validate Elasticsearch resource names {pull}1647[#1647]
+* Allow users to disable TLS for HTTP in the Elasticsearch spec {pull}1623[#1623]
+* Preserve labels and annotations on public cert secrets {pull}1580[#1580]
+* Generate events for reconcililation errors {pull}1578[#1578]
+* Remove ElasticsearchInlineAuth from associations {pull}1566[#1566]
+* HTTP: Add support for external CA {pull}1538[#1538]
+
+[[bug-1.0.0-beta1]]
+[float]
+=== Bug fixes
+
+* Manifest generation: prefix objects with YAML document separator {pull}1901[#1901]
+* Set BlockOwnerDeletion to false on PVCs {pull}1891[#1891]
+* Parse /_cat/shards output {pull}1840[#1840]
+* Set expectations when upscaling a StatefulSet {pull}1813[#1813] (issue: {issue}1678[#1678])
+* Fix handling of HTTP CA {pull}1742[#1742]
+* When using OnDelete strategy don&#39;t rely on current/updated revision {pull}1732[#1732]
+* Remove StatefulSet config secret and headless service on delete {pull}1730[#1730] (issue: {issue}1713[#1713])
+* Update ES resource phase to operational {pull}1719[#1719]
+* Always enable file based user auth {pull}1698[#1698]
+* Take master change budget into account when adding new StatefulSets {pull}1682[#1682]
+* Re-bootstrap single master 7.x clusters when upgrading from 6.x {pull}1681[#1681]
+* Make sure there is no ongoing Pod deletion before downscaling {pull}1534[#1534] (issue: {issue}1523[#1523])
+* Prevent HealthCheckNodePort updates {pull}1519[#1519]
+* Fix version validation {pull}1480[#1480]
+* Workaround controller-runtime webhook upsert bug {pull}1337[#1337]
+* Add console output to standalone APM sample {pull}1321[#1321]
+* Allow license secret webhook to fail {pull}1301[#1301]
+* Add HTTP certs to config checksum {pull}1267[#1267]
+* Respect TLSOptions for APM server {pull}1246[#1246]
+
+

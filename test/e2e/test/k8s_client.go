@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"os"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -24,6 +24,7 @@ import (
 	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -107,6 +108,18 @@ func (k *K8sClient) GetPod(namespace, name string) (corev1.Pod, error) {
 		return corev1.Pod{}, err
 	}
 	return pod, nil
+}
+
+func (k *K8sClient) GetESStatefulSets(namespace string, esName string) ([]appsv1.StatefulSet, error) {
+	var ssetList appsv1.StatefulSetList
+	if err := k.Client.List(&ssetList,
+		k8sclient.InNamespace(namespace),
+		k8sclient.MatchingLabels{
+			label.ClusterNameLabelName: esName,
+		}); err != nil {
+		return nil, err
+	}
+	return ssetList.Items, nil
 }
 
 func (k *K8sClient) DeletePod(pod corev1.Pod) error {

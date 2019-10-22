@@ -9,12 +9,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -39,7 +40,7 @@ func PodRevision(pod corev1.Pod) string {
 
 // GetActualPodsForStatefulSet returns the existing pods associated to this StatefulSet.
 // The returned pods may not match the expected StatefulSet replicas in a transient situation.
-func GetActualPodsForStatefulSet(c k8s.Client, sset appsv1.StatefulSet) ([]corev1.Pod, error) {
+func GetActualPodsForStatefulSet(c k8s.Client, sset types.NamespacedName) ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	ns := client.InNamespace(sset.Namespace)
 	matchLabels := client.MatchingLabels(map[string]string{
@@ -52,7 +53,7 @@ func GetActualPodsForStatefulSet(c k8s.Client, sset appsv1.StatefulSet) ([]corev
 }
 
 // GetActualPodsForCluster return the existing pods associated to this cluster.
-func GetActualPodsForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.Pod, error) {
+func GetActualPodsForCluster(c k8s.Client, es v1beta1.Elasticsearch) ([]corev1.Pod, error) {
 	var pods corev1.PodList
 
 	ns := client.InNamespace(es.Namespace)
@@ -66,17 +67,23 @@ func GetActualPodsForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.
 }
 
 // GetActualMastersForCluster returns the list of existing master-eligible pods for the cluster.
-func GetActualMastersForCluster(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.Pod, error) {
-	pods, err := GetActualPodsForCluster(c, es)
-	if err != nil {
+func GetActualMastersForCluster(c k8s.Client, es v1beta1.Elasticsearch) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+
+	ns := client.InNamespace(es.Namespace)
+	matchLabels := client.MatchingLabels(map[string]string{
+		label.ClusterNameLabelName:             es.Name,
+		string(label.NodeTypesMasterLabelName): "true",
+	})
+	if err := c.List(&pods, ns, matchLabels); err != nil {
 		return nil, err
 	}
-	return label.FilterMasterNodePods(pods), nil
+	return pods.Items, nil
 }
 
 func PodReconciliationDoneForSset(c k8s.Client, statefulSet appsv1.StatefulSet) (bool, error) {
 	// check all expected pods are there: no more, no less
-	actualPods, err := GetActualPodsForStatefulSet(c, statefulSet)
+	actualPods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&statefulSet))
 	if err != nil {
 		return false, err
 	}

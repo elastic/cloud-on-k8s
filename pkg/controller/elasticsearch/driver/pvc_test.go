@@ -8,17 +8,15 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func buildSsetWithClaims(name string, replicas int32, claims ...string) appsv1.StatefulSet {
@@ -134,14 +132,14 @@ func Test_pvcsToRemove(t *testing.T) {
 func TestGarbageCollectPVCs(t *testing.T) {
 	// Test_pvcsToRemove covers most of the testing logic,
 	// let's just check everything is correctly plugged to the k8s api here.
-	es := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	existingPVCS := []runtime.Object{
 		buildPVCPtr("claim1-sset1-0"),   // should not be removed
 		buildPVCPtr("claim1-oldsset-0"), // should be removed
 	}
 	actualSsets := sset.StatefulSetList{buildSsetWithClaims("sset1", 1, "claim1")}
 	expectedSsets := sset.StatefulSetList{buildSsetWithClaims("sset2", 1, "claim1")}
-	k8sClient := k8s.WrapClient(fake.NewFakeClient(existingPVCS...))
+	k8sClient := k8s.WrappedFakeClient(existingPVCS...)
 	err := GarbageCollectPVCs(k8sClient, es, actualSsets, expectedSsets)
 	require.NoError(t, err)
 

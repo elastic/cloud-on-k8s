@@ -5,24 +5,24 @@
 package elasticsearch
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 )
 
-func MustNumDataNodes(es v1alpha1.Elasticsearch) int {
+func MustNumDataNodes(es v1beta1.Elasticsearch) int {
 	var numNodes int
-	for _, n := range es.Spec.Nodes {
+	for _, n := range es.Spec.NodeSets {
 		if isDataNode(n) {
-			numNodes += int(n.NodeCount)
+			numNodes += int(n.Count)
 		}
 	}
 	return numNodes
 }
 
-func isDataNode(node v1alpha1.NodeSpec) bool {
+func isDataNode(node v1beta1.NodeSet) bool {
 	if node.Config == nil {
-		return v1alpha1.DefaultCfg.Node.Data // if not specified use the default
+		return v1beta1.DefaultCfg.Node.Data // if not specified use the default
 	}
 	config, err := common.NewCanonicalConfigFrom(node.Config.Data)
 	if err != nil {

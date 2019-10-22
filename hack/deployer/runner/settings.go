@@ -25,8 +25,7 @@ type Plan struct {
 	MachineType       string `yaml:"machineType"`
 	ServiceAccount    bool   `yaml:"serviceAccount"`
 
-	Psp      bool `yaml:"psp"`
-	VmMapMax bool `yaml:"vmMapMax"` //nolint
+	Psp bool `yaml:"psp"`
 
 	Gke *GkeSettings `yaml:"gke,omitempty"`
 	Aks *AksSettings `yaml:"aks,omitempty"`

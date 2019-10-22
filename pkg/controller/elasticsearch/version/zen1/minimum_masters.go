@@ -8,7 +8,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -32,7 +32,7 @@ const (
 // This function should not be called unless all the expectations are met.
 func SetupMinimumMasterNodesConfig(
 	c k8s.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	nodeSpecResources nodespec.ResourcesList,
 ) error {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.
@@ -56,7 +56,7 @@ func SetupMinimumMasterNodesConfig(
 			masters += int(sset.GetReplicas(resource.StatefulSet))
 		} else {
 			// Second situation: not a sset of masters, but we check if there are some of them waiting for a rolling upgrade
-			actualPods, err := sset.GetActualPodsForStatefulSet(c, resource.StatefulSet)
+			actualPods, err := sset.GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&resource.StatefulSet))
 			if err != nil {
 				return err
 			}
@@ -87,7 +87,7 @@ func SetupMinimumMasterNodesConfig(
 // It returns true if this should be retried later (re-queued).
 func UpdateMinimumMasterNodes(
 	c k8s.Client,
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	esClient client.Client,
 	actualStatefulSets sset.StatefulSetList,
 ) (bool, error) {
@@ -132,7 +132,7 @@ func UpdateMinimumMasterNodes(
 // to the given value, if the cluster is using zen1.
 // Should only be called it there are some Zen1 compatible masters
 func UpdateMinimumMasterNodesTo(
-	es v1alpha1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	c k8s.Client,
 	esClient client.Client,
 	minimumMasterNodes int,
@@ -157,7 +157,7 @@ func UpdateMinimumMasterNodesTo(
 	return annotateWithMinimumMasterNodes(c, es, minimumMasterNodes)
 }
 
-func minimumMasterNodesFromAnnotation(es v1alpha1.Elasticsearch) int {
+func minimumMasterNodesFromAnnotation(es v1beta1.Elasticsearch) int {
 	annotationStr, set := es.Annotations[Zen1MiniumMasterNodesAnnotationName]
 	if !set {
 		return 0
@@ -170,7 +170,7 @@ func minimumMasterNodesFromAnnotation(es v1alpha1.Elasticsearch) int {
 	return mmn
 }
 
-func annotateWithMinimumMasterNodes(c k8s.Client, es v1alpha1.Elasticsearch, minimumMasterNodes int) error {
+func annotateWithMinimumMasterNodes(c k8s.Client, es v1beta1.Elasticsearch, minimumMasterNodes int) error {
 	if es.Annotations == nil {
 		es.Annotations = make(map[string]string)
 	}

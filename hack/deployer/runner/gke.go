@@ -17,6 +17,11 @@ const (
 	GkeServiceAccountVaultFieldName = "service-account"
 )
 
+var (
+	// GKE uses 18 chars to prefix the pvc created by a cluster
+	pvcPrefixMaxLength = 18
+)
+
 func init() {
 	drivers[GkeDriverID] = &GkeDriverFactory{}
 }
@@ -30,11 +35,16 @@ type GkeDriver struct {
 }
 
 func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
+	pvcPrefix := plan.ClusterName
+	if len(pvcPrefix) > pvcPrefixMaxLength {
+		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
+	}
 	return &GkeDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
 			"GCloudProject":     plan.Gke.GCloudProject,
 			"ClusterName":       plan.ClusterName,
+			"PVCPrefix":         pvcPrefix,
 			"Region":            plan.Gke.Region,
 			"AdminUsername":     plan.Gke.AdminUsername,
 			"KubernetesVersion": plan.KubernetesVersion,
@@ -67,10 +77,6 @@ func (d *GkeDriver) Execute() error {
 		if exists {
 			log.Printf("not creating as cluster exists")
 		} else {
-			if err := d.configSSH(); err != nil {
-				return err
-			}
-
 			if err := d.create(); err != nil {
 				return err
 			}
@@ -84,17 +90,11 @@ func (d *GkeDriver) Execute() error {
 			return err
 		}
 
-		if d.plan.VmMapMax {
-			if err := d.setMaxMapCount(); err != nil {
-				return err
-			}
-		}
-
 		if err := d.configureDocker(); err != nil {
 			return err
 		}
 
-		if err := d.patchStorageClass(); err != nil {
+		if err := createStorageClass(); err != nil {
 			return err
 		}
 	default:
@@ -147,11 +147,6 @@ func (d *GkeDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-func (d *GkeDriver) configSSH() error {
-	log.Println("Configuring ssh...")
-	return NewCommand("gcloud --quiet --project {{.GCloudProject}} compute config-ssh").AsTemplate(d.ctx).Run()
-}
-
 func (d *GkeDriver) create() error {
 	log.Println("Creating cluster...")
 	pspOption := ""
@@ -180,39 +175,6 @@ func (d *GkeDriver) bindRoles() error {
 	return NewCommand(cmd).Run()
 }
 
-func (d *GkeDriver) setMaxMapCount() error {
-	log.Println("Setting max map count...")
-	instances, err := NewCommand(`gcloud compute instances list --project={{.GCloudProject}} ` +
-		`--filter="metadata.items.key['cluster-name']['value']='{{.ClusterName}}' AND metadata.items.key['cluster-name']['value']!='' " ` +
-		`--format="value[separator=','](name,zone)"`).
-		AsTemplate(d.ctx).
-		StdoutOnly().
-		OutputList()
-	if err != nil {
-		return err
-	}
-
-	for _, instance := range instances {
-		nameZone := strings.Split(instance, ",")
-		if len(nameZone) != 2 {
-			return fmt.Errorf("instance %s could not be parsed", instance)
-		}
-
-		name, zone := nameZone[0], nameZone[1]
-		if err := NewCommand(`gcloud -q compute ssh jenkins@{{.Name}} --project={{.GCloudProject}} --zone={{.Zone}} --command="sudo sysctl -w vm.max_map_count=262144"`).
-			AsTemplate(map[string]interface{}{
-				"GCloudProject": d.plan.Gke.GCloudProject,
-				"Name":          name,
-				"Zone":          zone,
-			}).
-			Run(); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (d *GkeDriver) configureDocker() error {
 	log.Println("Configuring Docker...")
 	return NewCommand("gcloud auth configure-docker --quiet").Run()
@@ -224,57 +186,6 @@ func (d *GkeDriver) GetCredentials() error {
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 
-// patchStorageClass based on standard storageclass, creates new default with "volumeBindingMode: WaitForFirstConsumer"
-func (d *GkeDriver) patchStorageClass() error {
-	log.Println("Patching storage class...")
-
-	if exists, err := NewCommand("kubectl get sc").OutputContainsAny("standard-customized"); err != nil {
-		return err
-	} else if exists {
-		return nil
-	}
-
-	defaultName := ""
-	for _, annotation := range []string{
-		`storageclass\.kubernetes\.io/is-default-class`,
-		`storageclass\.beta\.kubernetes\.io/is-default-class`,
-	} {
-		template := `kubectl get sc -o=jsonpath="{$.items[?(@.metadata.annotations.%s=='true')].metadata.name}"`
-		baseScs, err := NewCommand(fmt.Sprintf(template, annotation)).OutputList()
-		if err != nil {
-			return err
-		}
-
-		if len(baseScs) != 0 {
-			defaultName = baseScs[0]
-			break
-		}
-	}
-
-	if defaultName == "" {
-		return fmt.Errorf("default storageclass not found")
-	}
-
-	sc, err := NewCommand(fmt.Sprintf("kubectl get sc %s -o yaml", defaultName)).Output()
-	if err != nil {
-		return err
-	}
-
-	sc = strings.Replace(sc, fmt.Sprintf("name: %s", defaultName), "name: standard-customized", -1)
-	sc = strings.Replace(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer", -1)
-	err = NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
-%s
-EOF`, sc)).Run()
-	if err != nil {
-		return err
-	}
-
-	// Depending on K8s version, a different annotation is needed. To avoid parsing version string, both are set.
-	patch := `'{ "metadata": { "annotations": { "storageclass.kubernetes.io/is-default-class":"false", "storageclass.beta.kubernetes.io/is-default-class":"false"} } }'`
-	cmd := fmt.Sprintf(`kubectl patch storageclass %s -p %s`, defaultName, patch)
-	return NewCommand(cmd).Run()
-}
-
 func (d *GkeDriver) delete() error {
 	log.Println("Deleting cluster...")
 	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
@@ -283,7 +194,7 @@ func (d *GkeDriver) delete() error {
 	}
 
 	// Deleting clusters in GKE does not delete associated disks, we have to delete them manually.
-	cmd = `gcloud compute disks list --filter="-users:*" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
+	cmd = `gcloud compute disks list --filter="name~^gke-{{.PVCPrefix}}.*-pvc-.+" --format="value[separator=','](name,zone)" --project {{.GCloudProject}}`
 	disks, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err

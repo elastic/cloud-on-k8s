@@ -102,6 +102,7 @@ main() {
 
   # get info from the namespaces in which resources are managed 
   for ns in $RESOURCES_NS; do
+    get_resources $ns statefulsets
     get_resources $ns replicasets
     get_resources $ns deployments
     get_resources $ns pods

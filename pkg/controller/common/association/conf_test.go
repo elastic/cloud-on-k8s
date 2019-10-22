@@ -7,16 +7,14 @@ package association
 import (
 	"testing"
 
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
-	kbv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -26,22 +24,20 @@ func TestFetchWithAssociation(t *testing.T) {
 }
 
 func testFetchAPMServer(t *testing.T) {
-	require.NoError(t, apmv1alpha1.AddToScheme(scheme.Scheme))
-
 	testCases := []struct {
 		name          string
-		apmServer     *apmv1alpha1.ApmServer
+		apmServer     *apmv1beta1.ApmServer
 		request       reconcile.Request
 		wantOK        bool
 		wantErr       bool
-		wantAssocConf *commonv1alpha1.AssociationConf
+		wantAssocConf *commonv1beta1.AssociationConf
 	}{
 		{
 			name:      "with association annotation",
 			apmServer: mkAPMServer(true),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "apm-server-test", Namespace: "apm-ns"}},
 			wantOK:    true,
-			wantAssocConf: &commonv1alpha1.AssociationConf{
+			wantAssocConf: &commonv1beta1.AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "apm-user",
 				CASecretName:   "ca-secret",
@@ -64,9 +60,9 @@ func testFetchAPMServer(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(tc.apmServer))
+			client := k8s.WrappedFakeClient(tc.apmServer)
 
-			var got apmv1alpha1.ApmServer
+			var got apmv1beta1.ApmServer
 			ok, err := FetchWithAssociation(client, tc.request, &got)
 
 			if tc.wantErr {
@@ -79,22 +75,22 @@ func testFetchAPMServer(t *testing.T) {
 				require.Equal(t, "apm-server-test", got.Name)
 				require.Equal(t, "apm-ns", got.Namespace)
 				require.Equal(t, "test-image", got.Spec.Image)
-				require.EqualValues(t, 1, got.Spec.NodeCount)
+				require.EqualValues(t, 1, got.Spec.Count)
 				require.Equal(t, tc.wantAssocConf, got.AssociationConf())
 			}
 		})
 	}
 }
 
-func mkAPMServer(withAnnotations bool) *apmv1alpha1.ApmServer {
-	apmServer := &apmv1alpha1.ApmServer{
+func mkAPMServer(withAnnotations bool) *apmv1beta1.ApmServer {
+	apmServer := &apmv1beta1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apm-server-test",
 			Namespace: "apm-ns",
 		},
-		Spec: apmv1alpha1.ApmServerSpec{
-			Image:     "test-image",
-			NodeCount: 1,
+		Spec: apmv1beta1.ApmServerSpec{
+			Image: "test-image",
+			Count: 1,
 		},
 	}
 
@@ -108,22 +104,20 @@ func mkAPMServer(withAnnotations bool) *apmv1alpha1.ApmServer {
 }
 
 func testFetchKibana(t *testing.T) {
-	require.NoError(t, kbv1alpha1.AddToScheme(scheme.Scheme))
-
 	testCases := []struct {
 		name          string
-		kibana        *kbv1alpha1.Kibana
+		kibana        *kbv1beta1.Kibana
 		request       reconcile.Request
 		wantOK        bool
 		wantErr       bool
-		wantAssocConf *commonv1alpha1.AssociationConf
+		wantAssocConf *commonv1beta1.AssociationConf
 	}{
 		{
 			name:    "with association annotation",
 			kibana:  mkKibana(true),
 			request: reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}},
 			wantOK:  true,
-			wantAssocConf: &commonv1alpha1.AssociationConf{
+			wantAssocConf: &commonv1beta1.AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "kb-user",
 				CASecretName:   "ca-secret",
@@ -146,9 +140,9 @@ func testFetchKibana(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(tc.kibana))
+			client := k8s.WrappedFakeClient(tc.kibana)
 
-			var got kbv1alpha1.Kibana
+			var got kbv1beta1.Kibana
 			ok, err := FetchWithAssociation(client, tc.request, &got)
 
 			if tc.wantErr {
@@ -161,22 +155,22 @@ func testFetchKibana(t *testing.T) {
 				require.Equal(t, "kb-test", got.Name)
 				require.Equal(t, "kb-ns", got.Namespace)
 				require.Equal(t, "test-image", got.Spec.Image)
-				require.EqualValues(t, 1, got.Spec.NodeCount)
+				require.EqualValues(t, 1, got.Spec.Count)
 				require.Equal(t, tc.wantAssocConf, got.AssociationConf())
 			}
 		})
 	}
 }
 
-func mkKibana(withAnnotations bool) *kbv1alpha1.Kibana {
-	kb := &kbv1alpha1.Kibana{
+func mkKibana(withAnnotations bool) *kbv1beta1.Kibana {
+	kb := &kbv1beta1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "kb-test",
 			Namespace: "kb-ns",
 		},
-		Spec: kbv1alpha1.KibanaSpec{
-			Image:     "test-image",
-			NodeCount: 1,
+		Spec: kbv1beta1.KibanaSpec{
+			Image: "test-image",
+			Count: 1,
 		},
 	}
 
@@ -190,12 +184,11 @@ func mkKibana(withAnnotations bool) *kbv1alpha1.Kibana {
 }
 
 func TestUpdateAssociationConf(t *testing.T) {
-	require.NoError(t, kbv1alpha1.AddToScheme(scheme.Scheme))
 	kb := mkKibana(true)
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
-	client := k8s.WrapClient(fake.NewFakeClient(kb))
+	client := k8s.WrappedFakeClient(kb)
 
-	assocConf := &commonv1alpha1.AssociationConf{
+	assocConf := &commonv1beta1.AssociationConf{
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "kb-user",
 		CASecretName:   "ca-secret",
@@ -203,17 +196,17 @@ func TestUpdateAssociationConf(t *testing.T) {
 	}
 
 	// check the existing values
-	var got kbv1alpha1.Kibana
+	var got kbv1beta1.Kibana
 	ok, _ := FetchWithAssociation(client, request, &got)
 	require.True(t, ok)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
-	require.EqualValues(t, 1, got.Spec.NodeCount)
+	require.EqualValues(t, 1, got.Spec.Count)
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// update and check the new values
-	newAssocConf := &commonv1alpha1.AssociationConf{
+	newAssocConf := &commonv1beta1.AssociationConf{
 		AuthSecretName: "new-auth-secret",
 		AuthSecretKey:  "new-kb-user",
 		CASecretName:   "new-ca-secret",
@@ -228,17 +221,16 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
-	require.EqualValues(t, 1, got.Spec.NodeCount)
+	require.EqualValues(t, 1, got.Spec.Count)
 	require.Equal(t, newAssocConf, got.AssociationConf())
 }
 
 func TestRemoveAssociationConf(t *testing.T) {
-	require.NoError(t, kbv1alpha1.AddToScheme(scheme.Scheme))
 	kb := mkKibana(true)
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
-	client := k8s.WrapClient(fake.NewFakeClient(kb))
+	client := k8s.WrappedFakeClient(kb)
 
-	assocConf := &commonv1alpha1.AssociationConf{
+	assocConf := &commonv1beta1.AssociationConf{
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "kb-user",
 		CASecretName:   "ca-secret",
@@ -246,13 +238,13 @@ func TestRemoveAssociationConf(t *testing.T) {
 	}
 
 	// check the existing values
-	var got kbv1alpha1.Kibana
+	var got kbv1beta1.Kibana
 	ok, _ := FetchWithAssociation(client, request, &got)
 	require.True(t, ok)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
-	require.EqualValues(t, 1, got.Spec.NodeCount)
+	require.EqualValues(t, 1, got.Spec.Count)
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// remove and check the new values
@@ -264,6 +256,6 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
-	require.EqualValues(t, 1, got.Spec.NodeCount)
+	require.EqualValues(t, 1, got.Spec.Count)
 	require.Nil(t, got.AssociationConf())
 }

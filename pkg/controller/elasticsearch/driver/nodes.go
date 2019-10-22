@@ -5,6 +5,9 @@
 package driver
 
 import (
+	"fmt"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -17,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func (d *defaultDriver) reconcileNodeSpecs(
@@ -30,18 +34,18 @@ func (d *defaultDriver) reconcileNodeSpecs(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
-	if err != nil {
-		return results.WithError(err)
-	}
-
 	// check if actual StatefulSets and corresponding pods match our expectations before applying any change
-	ok, err := d.expectationsMet(actualStatefulSets)
+	ok, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !ok {
 		return results.WithResult(defaultRequeue)
+	}
+
+	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme(), certResources)
@@ -57,16 +61,16 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
-		k8sClient:           d.K8sClient(),
-		es:                  d.ES,
-		scheme:              d.Scheme(),
-		observedState:       observedState,
-		esState:             esState,
-		upscaleStateBuilder: &upscaleStateBuilder{},
-		expectations:        d.Expectations,
+		k8sClient:     d.K8sClient(),
+		es:            d.ES,
+		scheme:        d.Scheme(),
+		observedState: observedState,
+		esState:       esState,
+		expectations:  d.Expectations,
 	}
 	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReconciliationError, fmt.Sprintf("Failed to apply spec change: %v", err))
 		return results.WithError(err)
 	}
 
@@ -75,50 +79,49 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	if !esReachable {
-		// Cannot perform next operations if we cannot request Elasticsearch.
-		log.Info("ES external service not ready yet for further reconciliation, re-queuing.", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+	if esReachable {
+		// Update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
+		requeue, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, actualStatefulSets)
+		if err != nil {
+			return results.WithError(err)
+		}
+		if requeue {
+			results.WithResult(defaultRequeue)
+		}
+		// Maybe clear zen2 voting config exclusions.
+		requeue, err = zen2.ClearVotingConfigExclusions(d.ES, d.Client, esClient, actualStatefulSets)
+		if err != nil {
+			return results.WithError(err)
+		}
+		if requeue {
+			results.WithResult(defaultRequeue)
+		}
+
+		// Phase 2: handle sset scale down.
+		// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
+		// or because it should be removed entirely.
+		downscaleCtx := newDownscaleContext(
+			d.Client,
+			esClient,
+			resourcesState,
+			observedState,
+			reconcileState,
+			d.Expectations,
+			d.ES,
+		)
+		downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
+		results.WithResults(downscaleRes)
+		if downscaleRes.HasError() {
+			return results
+		}
+	} else {
+		// ES cannot be reached right now, let's make sure we requeue.
 		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
-		return results.WithResult(defaultRequeue)
-	}
-
-	// Update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
-	requeue, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, actualStatefulSets)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if requeue {
 		results.WithResult(defaultRequeue)
-	}
-	// Maybe clear zen2 voting config exclusions.
-	requeue, err = zen2.ClearVotingConfigExclusions(d.ES, d.Client, esClient, actualStatefulSets)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if requeue {
-		results.WithResult(defaultRequeue)
-	}
-
-	// Phase 2: handle sset scale down.
-	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
-	// or because it should be removed entirely.
-	downscaleCtx := newDownscaleContext(
-		d.Client,
-		esClient,
-		resourcesState,
-		observedState,
-		reconcileState,
-		d.Expectations,
-		d.ES,
-	)
-	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
-	results.WithResults(downscaleRes)
-	if downscaleRes.HasError() {
-		return results
 	}
 
 	// Phase 3: handle rolling upgrades.
-	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esState, actualStatefulSets, expectedResources.MasterNodesNames())
+	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esReachable, esState, expectedResources.MasterNodesNames())
 	results.WithResults(rollingUpgradesRes)
 	if rollingUpgradesRes.HasError() {
 		return results

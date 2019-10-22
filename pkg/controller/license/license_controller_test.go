@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -22,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -73,7 +72,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 	}
 }
 
-var cluster = &v1alpha1.Elasticsearch{
+var cluster = &v1beta1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "cluster",
 		Namespace: "namespace",
@@ -117,7 +116,7 @@ func enterpriseLicense(t *testing.T, licenseType commonlicense.ElasticsearchLice
 func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	tests := []struct {
 		name             string
-		cluster          *v1alpha1.Elasticsearch
+		cluster          *v1beta1.Elasticsearch
 		k8sResources     []runtime.Object
 		wantErr          string
 		wantNewLicense   bool
@@ -172,15 +171,14 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
-			client := k8s.WrapClient(fake.NewFakeClient(tt.k8sResources...))
+			client := k8s.WrappedFakeClient(tt.k8sResources...)
 			r := &ReconcileLicenses{
 				Client:  client,
 				scheme:  scheme.Scheme,
 				checker: commonlicense.MockChecker{},
 			}
 			nsn := k8s.ExtractNamespacedName(tt.cluster)
-			res, err := r.reconcileInternal(reconcile.Request{NamespacedName: nsn})
+			res, err := r.reconcileInternal(reconcile.Request{NamespacedName: nsn}).Aggregate()
 			if tt.wantErr != "" {
 				require.EqualError(t, err, tt.wantErr)
 				return

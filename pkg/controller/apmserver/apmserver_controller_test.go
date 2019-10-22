@@ -7,12 +7,13 @@ package apmserver
 import (
 	"testing"
 
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/go-test/deep"
@@ -24,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint
@@ -140,7 +141,7 @@ func expectedDeploymentParams() testParams {
 								MountPath: "/mnt/elastic-internal/http-certs",
 							},
 						},
-						Name:  apmv1alpha1.APMServerContainerName,
+						Name:  apmv1beta1.APMServerContainerName,
 						Image: "docker.elastic.co/apm/apm-server:1.0",
 						Command: []string{
 							"apm-server",
@@ -188,12 +189,7 @@ func expectedDeploymentParams() testParams {
 }
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
-	s := scheme.Scheme
-	if err := apmv1alpha1.SchemeBuilder.AddToScheme(s); err != nil {
-		t.Error(err)
-	}
-
-	apmFixture := &apmv1alpha1.ApmServer{
+	apmFixture := &apmv1beta1.ApmServer{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "test-apm-server",
 		},
@@ -217,7 +213,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	}
 
 	type args struct {
-		as             *apmv1alpha1.ApmServer
+		as             *apmv1beta1.ApmServer
 		podSpecParams  PodSpecParams
 		initialObjects []runtime.Object
 	}
@@ -333,12 +329,12 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
+			client := k8s.WrappedFakeClient(tt.args.initialObjects...)
 			w := watches.NewDynamicWatches()
-			require.NoError(t, w.Secrets.InjectScheme(s))
+			require.NoError(t, w.Secrets.InjectScheme(scheme.Scheme))
 			r := &ReconcileApmServer{
 				Client:         client,
-				scheme:         s,
+				scheme:         scheme.Scheme,
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: w,
 			}
@@ -351,6 +347,71 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			if diff := deep.Equal(got, tt.want.Params); diff != nil {
 				t.Error(diff)
 			}
+		})
+	}
+}
+
+func TestReconcileApmServer_doReconcile(t *testing.T) {
+	type fields struct {
+		resources      []runtime.Object
+		recorder       record.EventRecorder
+		dynamicWatches watches.DynamicWatches
+		Parameters     operator.Parameters
+	}
+	type args struct {
+		request reconcile.Request
+	}
+	tests := []struct {
+		name        string
+		as          apmv1beta1.ApmServer
+		fields      fields
+		args        args
+		wantRequeue bool
+		wantErr     bool
+	}{
+		{
+			name: "If no error ensure a requeue is scheduled for CA",
+			as: apmv1beta1.ApmServer{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "apmserver",
+					Namespace: "default",
+				},
+			},
+			fields: fields{
+				resources:      []runtime.Object{},
+				recorder:       record.NewFakeRecorder(100),
+				dynamicWatches: watches.NewDynamicWatches(),
+				Parameters: operator.Parameters{
+					CACertRotation: certificates.RotationParams{
+						Validity:     certificates.DefaultCertValidity,
+						RotateBefore: certificates.DefaultRotateBefore,
+					},
+				},
+			},
+			args: args{
+				request: reconcile.Request{},
+			},
+			wantRequeue: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &ReconcileApmServer{
+				Client:         k8s.WrappedFakeClient(&tt.as),
+				scheme:         scheme.Scheme,
+				recorder:       tt.fields.recorder,
+				dynamicWatches: tt.fields.dynamicWatches,
+				Parameters:     tt.fields.Parameters,
+			}
+			got, err := r.doReconcile(tt.args.request, tt.as.DeepCopy())
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReconcileApmServer.doReconcile() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			require.NotNil(t, got)
+			require.Equal(t, got.Requeue, tt.wantRequeue)
+			// We just check that the requeue is not zero
+			require.True(t, got.RequeueAfter > 0)
 		})
 	}
 }

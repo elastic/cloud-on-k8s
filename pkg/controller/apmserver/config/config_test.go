@@ -7,21 +7,20 @@ package config
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestNewConfigFromSpec(t *testing.T) {
 	testCases := []struct {
 		name            string
 		configOverrides map[string]interface{}
-		assocConf       *commonv1alpha1.AssociationConf
+		assocConf       *commonv1beta1.AssociationConf
 		wantConf        map[string]interface{}
 		wantErr         bool
 	}{
@@ -39,7 +38,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 		},
 		{
 			name: "without Elasticsearch CA cert",
-			assocConf: &commonv1alpha1.AssociationConf{
+			assocConf: &commonv1beta1.AssociationConf{
 				AuthSecretName: "test-es-elastic-user",
 				AuthSecretKey:  "elastic",
 				CASecretName:   "test-es-http-ca-public",
@@ -54,7 +53,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 		},
 		{
 			name: "with Elasticsearch CA cert",
-			assocConf: &commonv1alpha1.AssociationConf{
+			assocConf: &commonv1beta1.AssociationConf{
 				AuthSecretName: "test-es-elastic-user",
 				AuthSecretKey:  "elastic",
 				CASecretName:   "test-es-http-ca-public",
@@ -70,7 +69,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 		},
 		{
 			name: "missing auth secret",
-			assocConf: &commonv1alpha1.AssociationConf{
+			assocConf: &commonv1beta1.AssociationConf{
 				AuthSecretName: "wrong-secret",
 				AuthSecretKey:  "elastic",
 				CASecretName:   "test-es-http-ca-public",
@@ -83,7 +82,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(mkAuthSecret()))
+			client := k8s.WrappedFakeClient(mkAuthSecret())
 			apmServer := mkAPMServer(tc.configOverrides, tc.assocConf)
 			gotConf, err := NewConfigFromSpec(client, apmServer)
 			if tc.wantErr {
@@ -100,13 +99,13 @@ func TestNewConfigFromSpec(t *testing.T) {
 	}
 }
 
-func mkAPMServer(config map[string]interface{}, assocConf *commonv1alpha1.AssociationConf) *v1alpha1.ApmServer {
-	apmServer := &v1alpha1.ApmServer{
+func mkAPMServer(config map[string]interface{}, assocConf *commonv1beta1.AssociationConf) *v1beta1.ApmServer {
+	apmServer := &v1beta1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "apm-server",
 		},
-		Spec: v1alpha1.ApmServerSpec{
-			Config: &commonv1alpha1.Config{Data: config},
+		Spec: v1beta1.ApmServerSpec{
+			Config: &commonv1beta1.Config{Data: config},
 		},
 	}
 

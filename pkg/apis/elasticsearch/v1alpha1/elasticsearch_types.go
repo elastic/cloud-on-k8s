@@ -10,10 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	ElasticsearchContainerName = "elasticsearch"
-	Kind                       = "Elasticsearch"
-)
+const ElasticsearchContainerName = "elasticsearch"
 
 // ElasticsearchSpec defines the desired state of Elasticsearch
 type ElasticsearchSpec struct {
@@ -22,12 +19,6 @@ type ElasticsearchSpec struct {
 
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
-
-	// SetVMMaxMapCount indicates whether an init container should be used to ensure that the `vm.max_map_count`
-	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
-	// Setting this to true requires the kubelet to allow running privileged containers.
-	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
-	SetVMMaxMapCount *bool `json:"setVmMaxMapCount,omitempty"`
 
 	// HTTP contains settings for HTTP.
 	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
@@ -197,9 +188,13 @@ const (
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
-	commonv1alpha1.ReconcilerStatus
-	Health ElasticsearchHealth             `json:"health,omitempty"`
-	Phase  ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	commonv1alpha1.ReconcilerStatus `json:",inline"`
+	Health                          ElasticsearchHealth             `json:"health,omitempty"`
+	Phase                           ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	ClusterUUID                     string                          `json:"clusterUUID,omitempty"`
+	MasterNode                      string                          `json:"masterNode,omitempty"`
+	ExternalService                 string                          `json:"service,omitempty"`
+	ZenDiscovery                    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {
@@ -214,9 +209,8 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 // +kubebuilder:object:root=true
 
 // Elasticsearch is the Schema for the elasticsearches API
+// +kubebuilder:resource:categories=elastic,shortName=es
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=es
-// +kubebuilder:categories=elastic
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Elasticsearch version"
@@ -237,12 +231,6 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 
 func (e Elasticsearch) SecureSettings() []commonv1alpha1.SecretSource {
 	return e.Spec.SecureSettings
-}
-
-// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
-// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
-func (e Elasticsearch) Kind() string {
-	return Kind
 }
 
 // +kubebuilder:object:root=true

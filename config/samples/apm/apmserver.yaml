@@ -1,10 +1,10 @@
-apiVersion: apm.k8s.elastic.co/v1alpha1
+apiVersion: apm.k8s.elastic.co/v1beta1
 kind: ApmServer
 metadata:
   name: apmserver-sample
 spec:
-  version: 7.3.0
-  nodeCount: 1
+  version: 7.4.0
+  count: 1
   config:
     output.console:
       pretty: true

@@ -164,8 +164,8 @@ func dataIntegrityReplicas(b Builder) int {
 	// are tricky to capture and ignored here.
 	isVersionUpgrade := initial.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
 	httpOptionsChange := reflect.DeepEqual(initial.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
-	for _, initialNs := range initial.Elasticsearch.Spec.Nodes {
-		for _, mutatedNs := range b.Elasticsearch.Spec.Nodes {
+	for _, initialNs := range initial.Elasticsearch.Spec.NodeSets {
+		for _, mutatedNs := range b.Elasticsearch.Spec.NodeSets {
 			if initialNs.Name == mutatedNs.Name &&
 				(isVersionUpgrade || httpOptionsChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
 				// a rolling upgrade is scheduled for that NodeSpec

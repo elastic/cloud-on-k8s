@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	elasticsearchv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -71,7 +71,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 
 		finalizers:     finalizer.NewHandler(client),
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewExpectations(),
+		expectations:   expectations.NewClustersExpectations(client),
 
 		Parameters: params,
 	}
@@ -86,7 +86,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		&source.Kind{Type: &elasticsearchv1alpha1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
+		&source.Kind{Type: &elasticsearchv1beta1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	if err := c.Watch(
 		&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+			OwnerType:    &elasticsearchv1beta1.Elasticsearch{},
 		},
 	); err != nil {
 		return err
@@ -127,7 +127,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+		OwnerType:    &elasticsearchv1beta1.Elasticsearch{},
 	}); err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
 		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+			OwnerType:    &elasticsearchv1beta1.Elasticsearch{},
 		},
 	}); err != nil {
 		return err
@@ -170,7 +170,7 @@ type ReconcileElasticsearch struct {
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
-	expectations *expectations.Expectations
+	expectations *expectations.ClustersExpectation
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -182,11 +182,13 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// Fetch the Elasticsearch instance
-	es := elasticsearchv1alpha1.Elasticsearch{}
+	es := elasticsearchv1beta1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
+			// Stop tracking that cluster in expectations - without the finalizer overhead.
+			r.expectations.RemoveCluster(request.NamespacedName)
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
@@ -229,7 +231,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 }
 
 func (r *ReconcileElasticsearch) internalReconcile(
-	es elasticsearchv1alpha1.Elasticsearch,
+	es elasticsearchv1beta1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
@@ -249,6 +251,13 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 	if len(violations) > 0 {
+		log.Error(
+			fmt.Errorf("manifest validation failed"),
+			"Elasticsearch manifest validation failed",
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+			"violations", violations,
+		)
 		reconcileState.UpdateElasticsearchInvalid(violations)
 		return results
 	}
@@ -270,7 +279,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Scheme:             r.scheme,
 		Recorder:           r.recorder,
 		Version:            *ver,
-		Expectations:       r.expectations,
+		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
@@ -278,7 +287,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
-	es elasticsearchv1alpha1.Elasticsearch,
+	es elasticsearchv1beta1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
 	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", es.Namespace, "es_name", es.Name)
@@ -295,12 +304,12 @@ func (r *ReconcileElasticsearch) updateStatus(
 
 // finalizersFor returns the list of finalizers applying to a given es cluster
 func (r *ReconcileElasticsearch) finalizersFor(
-	es elasticsearchv1alpha1.Elasticsearch,
+	es elasticsearchv1beta1.Elasticsearch,
 ) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
-		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind()),
-		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind(), es.Name, esname.ESNamer),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind),
+		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, esname.ESNamer),
 	}
 }

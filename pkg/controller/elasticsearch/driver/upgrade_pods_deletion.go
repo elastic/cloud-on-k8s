@@ -7,8 +7,11 @@ package driver
 import (
 	"sort"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -66,9 +69,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		if err := ctx.handleMasterScaleChange(podToDelete); err != nil {
 			return deletedPods, err
 		}
-		ctx.expectations.ExpectDeletion(podToDelete)
-		if err := ctx.delete(&podToDelete); err != nil {
-			ctx.expectations.CancelExpectedDeletion(podToDelete)
+		if err := deletePod(ctx.client, ctx.ES, podToDelete, ctx.expectations); err != nil {
 			return deletedPods, err
 		}
 		deletedPods = append(deletedPods, podToDelete)
@@ -80,13 +81,16 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 func (ctx *rollingUpgradeCtx) getAllowedDeletions() (int, bool) {
 	// Check if we are not over disruption budget
 	// Upscale is done, we should have the required number of Pods
-	expectedPods := ctx.statefulSets.PodNames()
-	unhealthyPods := len(expectedPods) - len(ctx.healthyPods)
-	maxUnavailable := 1
-	if ctx.ES.Spec.UpdateStrategy.ChangeBudget != nil {
-		maxUnavailable = ctx.ES.Spec.UpdateStrategy.ChangeBudget.MaxUnavailable
+	actualPods := ctx.statefulSets.PodNames()
+	unhealthyPods := len(actualPods) - len(ctx.healthyPods)
+
+	maxUnavailable := ctx.ES.Spec.UpdateStrategy.ChangeBudget.GetMaxUnavailableOrDefault()
+	if maxUnavailable == nil {
+		// maxUnavailable is unbounded, we allow removing all pods
+		return len(actualPods), false
 	}
-	allowedDeletions := maxUnavailable - unhealthyPods
+
+	allowedDeletions := int(*maxUnavailable) - unhealthyPods
 	// If maxUnavailable is reached the deletion driver still allows one unhealthy Pod to be restarted.
 	maxUnavailableReached := allowedDeletions <= 0
 	return allowedDeletions, maxUnavailableReached
@@ -148,15 +152,21 @@ func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	return nil
 }
 
-func (ctx *rollingUpgradeCtx) delete(pod *corev1.Pod) error {
-	log.Info("Deleting pod for rolling upgrade", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
+func deletePod(k8sClient k8s.Client, es v1beta1.Elasticsearch, pod corev1.Pod, expectations *expectations.Expectations) error {
+	log.Info("Deleting pod for rolling upgrade", "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
 	// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
 	// If not it means that we are running with a stale cache.
 	opt := client.Preconditions{
 		UID: &pod.UID,
 	}
-	return ctx.client.Delete(pod, opt)
+	err := k8sClient.Delete(&pod, opt)
+	if err != nil {
+		return err
+	}
+	// expect the pod to not be there in the cache at next reconciliation
+	expectations.ExpectDeletion(pod)
+	return nil
 }
 
 func runPredicates(

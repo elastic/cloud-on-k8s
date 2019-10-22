@@ -135,7 +135,7 @@ func (l StatefulSetList) PVCNames() []string {
 func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 	allPods := []corev1.Pod{}
 	for _, statefulSet := range l {
-		pods, err := GetActualPodsForStatefulSet(c, statefulSet)
+		pods, err := GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&statefulSet))
 		if err != nil {
 			return nil, err
 		}

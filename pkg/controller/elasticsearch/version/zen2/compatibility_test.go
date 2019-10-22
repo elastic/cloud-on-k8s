@@ -7,17 +7,15 @@ package zen2
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func createStatefulSetWithESVersion(version string) appsv1.StatefulSet {
@@ -62,7 +60,7 @@ func TestIsCompatibleWithZen2(t *testing.T) {
 }
 
 func TestAllMastersCompatibleWithZen2(t *testing.T) {
-	es := v1alpha1.Elasticsearch{
+	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "cluster",
@@ -107,7 +105,7 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AllMastersCompatibleWithZen2(k8s.WrapClient(fake.NewFakeClient(tt.pods...)), es)
+			got, err := AllMastersCompatibleWithZen2(k8s.WrappedFakeClient(tt.pods...), es)
 			require.NoError(t, err)
 			if got != tt.want {
 				t.Errorf("AllMastersCompatibleWithZen2() got = %v, want %v", got, tt.want)
@@ -119,7 +117,7 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 func TestIsInitialZen2Upgrade(t *testing.T) {
 	type args struct {
 		c  k8s.Client
-		es v1alpha1.Elasticsearch
+		es v1beta1.Elasticsearch
 	}
 	tests := []struct {
 		name    string
@@ -130,8 +128,8 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 		{
 			name: "new 7.x",
 			args: args{
-				c:  k8s.WrapClient(fake.NewFakeClient()),
-				es: v1alpha1.Elasticsearch{Spec: v1alpha1.ElasticsearchSpec{Version: "7.3.0"}},
+				c:  k8s.WrappedFakeClient(),
+				es: v1beta1.Elasticsearch{Spec: v1beta1.ElasticsearchSpec{Version: "7.3.0"}},
 			},
 			want:    true,
 			wantErr: false,
@@ -139,16 +137,16 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 		{
 			name: "6.x to 7.x",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(sset.TestPod{
+				c: k8s.WrappedFakeClient(sset.TestPod{
 					Namespace:       "default",
 					Name:            "pod-0",
 					ClusterName:     "es",
 					StatefulSetName: "masters",
 					Version:         "6.8.0",
 					Master:          true,
-				}.BuildPtr())),
-				es: v1alpha1.Elasticsearch{
-					Spec: v1alpha1.ElasticsearchSpec{Version: "7.3.0"},
+				}.BuildPtr()),
+				es: v1beta1.Elasticsearch{
+					Spec: v1beta1.ElasticsearchSpec{Version: "7.3.0"},
 				},
 			},
 			want:    true,
@@ -157,20 +155,20 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 		{
 			name: "7.x to 7.x",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(sset.TestPod{
+				c: k8s.WrappedFakeClient(sset.TestPod{
 					Namespace:       "default",
 					Name:            "pod-0",
 					ClusterName:     "es",
 					StatefulSetName: "masters",
 					Version:         "7.1.0",
 					Master:          true,
-				}.BuildPtr())),
-				es: v1alpha1.Elasticsearch{
+				}.BuildPtr()),
+				es: v1beta1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "es",
 						Namespace: "default",
 					},
-					Spec: v1alpha1.ElasticsearchSpec{Version: "7.3.0"},
+					Spec: v1beta1.ElasticsearchSpec{Version: "7.3.0"},
 				},
 			},
 			want:    false,
@@ -179,16 +177,16 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 		{
 			name: "6.x to 6.x",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(sset.TestPod{
+				c: k8s.WrappedFakeClient(sset.TestPod{
 					Namespace:       "default",
 					Name:            "pod-0",
 					ClusterName:     "es",
 					StatefulSetName: "masters",
 					Version:         "6.8.0",
 					Master:          true,
-				}.BuildPtr())),
-				es: v1alpha1.Elasticsearch{
-					Spec: v1alpha1.ElasticsearchSpec{Version: "6.8.1"},
+				}.BuildPtr()),
+				es: v1beta1.Elasticsearch{
+					Spec: v1beta1.ElasticsearchSpec{Version: "6.8.1"},
 				},
 			},
 			want:    false,

@@ -5,7 +5,7 @@
 package apmserver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -14,16 +14,16 @@ import (
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an ApmServer
 // resource for status updates.
 type State struct {
-	ApmServer *v1alpha1.ApmServer
+	ApmServer *v1beta1.ApmServer
 	Result    reconcile.Result
 	Request   reconcile.Request
 
-	originalApmServer *v1alpha1.ApmServer
+	originalApmServer *v1beta1.ApmServer
 }
 
 // NewState creates a new reconcile state based on the given request and ApmServer resource with the resource
 // state reset to empty.
-func NewState(request reconcile.Request, as *v1alpha1.ApmServer) State {
+func NewState(request reconcile.Request, as *v1beta1.ApmServer) State {
 	return State{Request: request, ApmServer: as, originalApmServer: as.DeepCopy()}
 }
 
@@ -31,10 +31,10 @@ func NewState(request reconcile.Request, as *v1alpha1.ApmServer) State {
 func (s State) UpdateApmServerState(deployment v1.Deployment, apmServerSecret corev1.Secret) {
 	s.ApmServer.Status.SecretTokenSecretName = apmServerSecret.Name
 	s.ApmServer.Status.AvailableNodes = int(deployment.Status.AvailableReplicas) // TODO lossy type conversion
-	s.ApmServer.Status.Health = v1alpha1.ApmServerRed
+	s.ApmServer.Status.Health = v1beta1.ApmServerRed
 	for _, c := range deployment.Status.Conditions {
 		if c.Type == v1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
-			s.ApmServer.Status.Health = v1alpha1.ApmServerGreen
+			s.ApmServer.Status.Health = v1beta1.ApmServerGreen
 		}
 	}
 }

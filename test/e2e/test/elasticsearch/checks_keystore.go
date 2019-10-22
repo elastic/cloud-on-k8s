@@ -24,6 +24,14 @@ func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string)
 			if err != nil {
 				return err
 			}
+			// wait for any ongoing rolling-upgrade to be over
+			if err := checkExpectedPodsReady(b, k); err != nil {
+				return err
+			}
+			if err := clusterHealthGreen(b, k); err != nil {
+				return err
+			}
+			// check keystore entries on all Pods
 			if err := test.OnAllPods(pods, func(p corev1.Pod) error {
 				// exec into the pod to list keystore entries
 				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), []string{initcontainer.KeystoreBinPath, "list"})
@@ -50,14 +58,6 @@ func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string)
 				return err
 			}
 
-			// rolling upgrade leading to that correct keystore configuration should eventually be over,
-			// with cluster health green
-			if err := allPodsReady(b, k); err != nil {
-				return err
-			}
-			if err := clusterHealthGreen(b, k); err != nil {
-				return err
-			}
 			return nil
 		}),
 	}

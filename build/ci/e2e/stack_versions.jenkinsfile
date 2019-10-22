@@ -1,3 +1,6 @@
+def failedTests = []
+def testScript
+
 pipeline {
 
     agent {
@@ -16,12 +19,19 @@ pipeline {
     }
 
     stages {
+        stage('Load common scripts') {
+            steps {
+                script {
+                    testScript = load "build/ci/common/tests.groovy"
+                }
+            }
+        }
         stage('Run tests for different ELK stack versions in GKE') {
             parallel {
                 stage("6.8.2") {
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-682", "6.8.2")
+                        runWith("eck-682-${BUILD_NUMBER}-e2e", "6.8.2")
                     }
                 }
                 stage("7.1.1") {
@@ -30,7 +40,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-711", "7.1.1")
+                        runWith("eck-711-${BUILD_NUMBER}-e2e", "7.1.1")
                     }
                 }
                 stage("7.2.1") {
@@ -39,7 +49,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-721", "7.2.1")
+                        runWith("eck-721-${BUILD_NUMBER}-e2e", "7.2.1")
                     }
                 }
                 stage("7.3.1") {
@@ -48,7 +58,16 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("${BUILD_TAG}-731", "7.3.1")
+                        runWith("eck-731-${BUILD_NUMBER}-e2e", "7.3.1")
+                    }
+                }
+                stage("7.4.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+                        runWith("eck-740-${BUILD_NUMBER}-e2e", "7.4.0")
                     }
                 }
             }
@@ -59,7 +78,10 @@ pipeline {
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    def msg = "E2E tests for different Elastic stack versions failed!\r\n" + env.RUN_DISPLAY_URL
+                    Set<String> filter = new HashSet<>()
+                    filter.addAll(failedTests)
+                    def msg = testScript.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter)
+
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
                         color: 'danger',
@@ -70,7 +92,7 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["${BUILD_TAG}-682", "${BUILD_TAG}-711", "${BUILD_TAG}-721", "${BUILD_TAG}-731"]
+                clusters = ["eck-682-${BUILD_NUMBER}-e2e", "eck-711-${BUILD_NUMBER}-e2e", "eck-721-${BUILD_NUMBER}-e2e", "eck-731-${BUILD_NUMBER}-e2e", "eck-740-${BUILD_NUMBER}-e2e"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
@@ -93,6 +115,7 @@ STACK_VERSION = "${stackVersion}"
 SKIP_DOCKER_COMMAND = true
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
+E2E_JSON = true
 EOF
         cat >deployer-config.yml <<EOF
 id: gke-ci
@@ -106,6 +129,17 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-        make -C build/ci TARGET=ci-e2e ci
     """
+    script {
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+
+        sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+        junit "e2e-tests.xml"
+
+        if (env.SHELL_EXIT_CODE != 0) {
+            failedTests.addAll(testScript.getListOfFailedTests())
+        }
+
+        sh 'exit $SHELL_EXIT_CODE'
+    }
 }

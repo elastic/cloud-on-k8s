@@ -8,18 +8,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -35,11 +31,6 @@ func (f *failingClient) List(list runtime.Object, opts ...client.ListOption) err
 var _ k8s.Client = &failingClient{}
 
 func Test_listAffectedLicenses(t *testing.T) {
-	s := scheme.Scheme
-	if err := v1alpha1.SchemeBuilder.AddToScheme(s); err != nil {
-		assert.Fail(t, "failed to build custom scheme")
-	}
-
 	true := true
 
 	type args struct {
@@ -89,7 +80,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
+			client := k8s.WrappedFakeClient(tt.args.initialObjects...)
 			if tt.injectedError != nil {
 				client = &failingClient{Client: client, Error: tt.injectedError}
 			}

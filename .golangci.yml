@@ -12,9 +12,13 @@ linters:
     - funlen
     - gochecknoglobals
     - gochecknoinits
+    - gocognit # added in 1.20
+    - godox # added in 1.19
     - interfacer
     - lll
     - scopelint
+    - whitespace # added in 1.19
+    - wsl # added in 1.20
 linters-settings:
   maligned:
     suggest-new: true
@@ -86,3 +90,6 @@ issues:
       text: 'Consider preallocating `errs`'
     - path: test/e2e/test/elasticsearch/steps_license\.go
       text: 'G101: Potential hardcoded credentials'
+    - linters:
+        - stylecheck
+      text: 'ST1016: methods on the same type should have the same receiver name.*"in".*'

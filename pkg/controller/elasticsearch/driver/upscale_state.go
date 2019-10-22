@@ -7,61 +7,89 @@ package driver
 import (
 	"sync"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
-
-type upscaleStateBuilder struct {
-	once         *sync.Once
-	upscaleState *upscaleState
-}
-
-func (o *upscaleStateBuilder) InitOnce(c k8s.Client, es v1alpha1.Elasticsearch, esState ESState) (*upscaleState, error) {
-	if o.once == nil {
-		o.once = &sync.Once{}
-	}
-	var err error
-	o.once.Do(func() {
-		o.upscaleState, err = newUpscaleState(c, es, esState)
-	})
-	return o.upscaleState, err
-}
 
 type upscaleState struct {
 	isBootstrapped      bool
 	allowMasterCreation bool
+	// indicates how many creates, out of createsAllowed, were already recorded
+	recordedCreates int32
+	// indicates how many creates are allowed when taking into account maxSurge setting,
+	// nil indicates that any number of pods can be created, negative value is not expected.
+	createsAllowed *int32
+	ctx            upscaleCtx
+	once           *sync.Once
 }
 
-func newUpscaleState(c k8s.Client, es v1alpha1.Elasticsearch, esState ESState) (*upscaleState, error) {
-	state := &upscaleState{
-		isBootstrapped:      AnnotatedForBootstrap(es),
-		allowMasterCreation: true,
+func newUpscaleState(
+	ctx upscaleCtx,
+	actualStatefulSets sset.StatefulSetList,
+	expectedResources nodespec.ResourcesList,
+) *upscaleState {
+	return &upscaleState{
+		once: &sync.Once{},
+		ctx:  ctx,
+		createsAllowed: calculateCreatesAllowed(
+			ctx.es.Spec.UpdateStrategy.ChangeBudget.GetMaxSurgeOrDefault(),
+			actualStatefulSets.ExpectedNodeCount(),
+			expectedResources.StatefulSets().ExpectedNodeCount()),
 	}
-	if !state.isBootstrapped {
-		return state, nil
+}
+
+func buildOnce(s *upscaleState) error {
+	if s.once == nil {
+		return nil
 	}
-	// is there a master node creation in progress already?
-	masters, err := sset.GetActualMastersForCluster(c, es)
-	if err != nil {
-		return nil, err
-	}
-	for _, masterNodePod := range masters {
-		isJoining, err := isMasterNodeJoining(masterNodePod, esState)
-		if err != nil {
-			return nil, err
+
+	var result error
+	s.once.Do(func() {
+		s.isBootstrapped = AnnotatedForBootstrap(s.ctx.es)
+		s.allowMasterCreation = true
+
+		if s.isBootstrapped {
+			// is there a master node creation in progress already?
+			masters, err := sset.GetActualMastersForCluster(s.ctx.k8sClient, s.ctx.es)
+			if err != nil {
+				result = err
+				return
+			}
+			for _, masterNodePod := range masters {
+				var isJoining bool
+				isJoining, err = isMasterNodeJoining(masterNodePod, s.ctx.esState)
+				if err != nil {
+					result = err
+					return
+				}
+				if isJoining {
+					s.recordMasterNodeCreation()
+				}
+			}
 		}
-		if isJoining {
-			state.recordMasterNodeCreation()
-		}
+	})
+
+	return result
+}
+
+// calculateCreatesAllowed calculates how many replicas can we create according to desired state and maxSurge
+func calculateCreatesAllowed(maxSurge *int32, actual, expected int32) *int32 {
+	if maxSurge == nil {
+		// unbounded
+		return nil
 	}
-	return state, nil
+
+	createsAllowed := *maxSurge + expected - actual
+	if createsAllowed < 0 {
+		createsAllowed = 0
+	}
+
+	return &createsAllowed
 }
 
 func isMasterNodeJoining(pod corev1.Pod, esState ESState) (bool, error) {
@@ -101,41 +129,96 @@ func (s *upscaleState) recordMasterNodeCreation() {
 	if s.isBootstrapped {
 		s.allowMasterCreation = false
 	}
+	s.recordNodesCreation(1)
 }
 
-func (s *upscaleState) canAddMasterNode() bool {
-	return s.allowMasterCreation
+func (s *upscaleState) canCreateMasterNode() bool {
+	return s.getMaxNodesToCreate(1) == 1 && s.allowMasterCreation
+}
+
+func (s *upscaleState) recordNodesCreation(count int32) {
+	s.recordedCreates += count
+}
+
+func (s *upscaleState) getMaxNodesToCreate(noMoreThan int32) int32 {
+	if s.createsAllowed == nil {
+		// unbounded, so allow all that was requested
+		return noMoreThan
+	}
+
+	left := *s.createsAllowed - s.recordedCreates
+	if left < noMoreThan {
+		return left
+	}
+
+	return noMoreThan
+}
+
+// limitNodesCreation decreases replica count in specs as needed, assumes an upscale is requested
+func (s *upscaleState) limitNodesCreation(
+	actual appsv1.StatefulSet,
+	toApply appsv1.StatefulSet,
+) (appsv1.StatefulSet, error) {
+	if err := buildOnce(s); err != nil {
+		return appsv1.StatefulSet{}, err
+	}
+
+	if label.IsMasterNodeSet(toApply) {
+		return s.limitMasterNodesCreation(actual, toApply)
+	}
+
+	actualReplicas := sset.GetReplicas(actual)
+	targetReplicas := sset.GetReplicas(toApply)
+
+	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))
+	replicasToCreate := targetReplicas - actualReplicas
+	replicasToCreate = s.getMaxNodesToCreate(replicasToCreate)
+
+	if replicasToCreate > 0 {
+		nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas+replicasToCreate))
+		s.recordNodesCreation(replicasToCreate)
+		ssetLogger(toApply).Info(
+			"Creating nodes",
+			"actualReplicas", actualReplicas,
+			"replicasToCreate", replicasToCreate,
+		)
+	} else {
+		ssetLogger(toApply).Info(
+			"Limiting nodes creation to respect maxSurge setting",
+			"target", targetReplicas,
+			"actual", actualReplicas,
+		)
+	}
+
+	return toApply, nil
 }
 
 func (s *upscaleState) limitMasterNodesCreation(
-	actualStatefulSets sset.StatefulSetList,
-	ssetToApply appsv1.StatefulSet,
-) appsv1.StatefulSet {
-	if !label.IsMasterNodeSet(ssetToApply) {
-		return ssetToApply
-	}
+	actual appsv1.StatefulSet,
+	toApply appsv1.StatefulSet,
+) (appsv1.StatefulSet, error) {
+	actualReplicas := sset.GetReplicas(actual)
+	targetReplicas := sset.GetReplicas(toApply)
 
-	targetReplicas := sset.GetReplicas(ssetToApply)
-	actual, alreadyExists := actualStatefulSets.GetByName(ssetToApply.Name)
-	actualReplicas := int32(0)
-	if alreadyExists {
-		actualReplicas = sset.GetReplicas(actual)
-	}
-
-	nodespec.UpdateReplicas(&ssetToApply, common.Int32(actualReplicas))
+	nodespec.UpdateReplicas(&toApply, pointer.Int32(actualReplicas))
 	for rep := actualReplicas + 1; rep <= targetReplicas; rep++ {
-		if !s.canAddMasterNode() {
-			ssetLogger(ssetToApply).Info(
+		if !s.canCreateMasterNode() {
+			ssetLogger(toApply).Info(
 				"Limiting master nodes creation to one at a time",
 				"target", targetReplicas,
-				"current", sset.GetReplicas(ssetToApply),
+				"actual", actualReplicas,
 			)
 			break
 		}
 		// allow one more master node to be created
-		nodespec.UpdateReplicas(&ssetToApply, common.Int32(rep))
+		nodespec.UpdateReplicas(&toApply, pointer.Int32(rep))
 		s.recordMasterNodeCreation()
+		ssetLogger(toApply).Info(
+			"Creating master node",
+			"actualReplicas", actualReplicas,
+			"targetReplicas", rep,
+		)
 	}
 
-	return ssetToApply
+	return toApply, nil
 }

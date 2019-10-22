@@ -5,7 +5,7 @@
 package sset
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -15,7 +15,7 @@ import (
 )
 
 // ReconcileStatefulSet creates or updates the expected StatefulSet.
-func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch, expected appsv1.StatefulSet, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
+func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1beta1.Elasticsearch, expected appsv1.StatefulSet, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
 	var reconciled appsv1.StatefulSet
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
@@ -36,7 +36,7 @@ func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elas
 			if expectations != nil {
 				// expect the reconciled StatefulSet to be there in the cache for next reconciliations,
 				// to prevent assumptions based on the wrong replica count
-				expectations.ExpectGeneration(reconciled.ObjectMeta)
+				expectations.ExpectGeneration(reconciled)
 			}
 		},
 	})

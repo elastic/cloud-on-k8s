@@ -29,15 +29,15 @@ pipeline {
         stage('Run checks') {
             when {
                 expression {
-                    checkout scm
                     notOnlyDocs()
                 }
             }
-            agent {
-                label 'linux'
-            }
             steps {
+                echo "Running checks for Go sources..."
                 sh 'make -C build/ci TARGET=ci-check ci'
+
+                echo "Validating Jenkins pipelines..."
+                sh 'make -C build/ci TARGET=validate-jenkins-pipelines ci'
             }
         }
         stage('Run tests in parallel') {
@@ -70,12 +70,17 @@ pipeline {
                         label 'eck'
                     }
                     steps {
-                        createKindConfig()
-                        sh """
-                            make -C build/ci TARGET=dependencies ci
-                            make kind-e2e-cluster
-                            make -C build/ci TARGET=kind-e2e-run ci
-                        """
+                        script {
+                            createKindConfig()
+
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true,
+                                script: "make -C build/ci TARGET=dependencies ci && make kind-e2e-cluster && make -C build/ci TARGET=kind-e2e-run ci")
+
+                            sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+                            junit "e2e-tests.xml"
+
+                            sh 'exit $SHELL_EXIT_CODE'
+                        }
                     }
                 }
             }
@@ -84,6 +89,13 @@ pipeline {
 
     post {
         cleanup {
+            script {
+                if (notOnlyDocs()) {
+                    build job: 'cloud-on-k8s-e2e-cleanup',
+                        parameters: [string(name: 'GKE_CLUSTER', value: "eck-pr-${BUILD_NUMBER}")],
+                        wait: false
+                }
+            }
             cleanWs()
         }
     }
@@ -106,6 +118,23 @@ REPOSITORY = "$GCLOUD_PROJECT"
 TESTS_MATCH = TestSmoke
 SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
+E2E_JSON = true
+EOF
+    """
+}
+
+def createDeployerConfig() {
+    sh """
+        cat >deployer-config.yml <<EOF
+id: gke-ci
+overrides:
+  clusterName: eck-pr-$BUILD_NUMBER
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
 EOF
     """
 }
@@ -115,6 +144,7 @@ def createKindConfig() {
         cat >.env <<EOF
 TESTS_MATCH = TestSmoke
 IMG_SUFFIX = -ci
+E2E_JSON = true
 EOF
     """
 }

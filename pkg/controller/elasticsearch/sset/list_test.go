@@ -8,16 +8,14 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var ssetv7 = appsv1.StatefulSet{
@@ -79,14 +77,20 @@ func TestStatefulSetList_GetExistingPods(t *testing.T) {
 			},
 		},
 	}
-	client := k8s.WrapClient(fake.NewFakeClient(&pod1, &pod2))
+	// pod not belonging to the sset
+	podNotInSset := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod-not-in-sset",
+			Labels: map[string]string{
+				label.StatefulSetNameLabelName: "different-sset",
+			},
+		},
+	}
+	client := k8s.WrappedFakeClient(&pod1, &pod2, &podNotInSset)
 	pods, err := StatefulSetList{ssetv7}.GetActualPods(client)
 	require.NoError(t, err)
 	require.Equal(t, []corev1.Pod{pod1, pod2}, pods)
-	// TODO: test with an additional pod that does not belong to the sset and
-	//  check it is not returned.
-	//  This cannot be done currently since the fake client does not support label list options.
-	//  See https://github.com/kubernetes-sigs/controller-runtime/pull/311
+	require.NotContains(t, pods, podNotInSset)
 }
 
 func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
@@ -100,21 +104,21 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 		{
 			name: "no pods, no sset",
 			l:    nil,
-			c:    k8s.WrapClient(fake.NewFakeClient()),
+			c:    k8s.WrappedFakeClient(),
 			want: true,
 		},
 		{
 			name: "some pods, no sset",
 			l:    nil,
-			c: k8s.WrapClient(fake.NewFakeClient(
+			c: k8s.WrappedFakeClient(
 				TestPod{Namespace: "ns", Name: "sset-0", StatefulSetName: "sset", Revision: "current-rev"}.BuildPtr(),
-			)),
+			),
 			want: true,
 		},
 		{
 			name: "some statefulSets, no pod",
 			l:    StatefulSetList{TestSset{Name: "sset1", Replicas: 3}.Build()},
-			c:    k8s.WrapClient(fake.NewFakeClient(TestSset{Name: "sset1", Replicas: 3}.BuildPtr())),
+			c:    k8s.WrappedFakeClient(TestSset{Name: "sset1", Replicas: 3}.BuildPtr()),
 			want: false,
 		},
 		{
@@ -122,12 +126,12 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 			l: StatefulSetList{
 				TestSset{Name: "sset1", Namespace: "ns", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
-			c: k8s.WrapClient(fake.NewFakeClient(
+			c: k8s.WrappedFakeClient(
 				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 				TestPod{Namespace: "ns", Name: "sset1-1", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
 				TestPod{Namespace: "ns", Name: "sset2-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
 				TestPod{Namespace: "ns0", Name: "sset1-0", StatefulSetName: "sset1", Revision: "current-rev"}.BuildPtr(),
-			)),
+			),
 			want: true,
 		},
 		{
@@ -135,9 +139,9 @@ func TestStatefulSetList_PodReconciliationDone(t *testing.T) {
 			l: StatefulSetList{
 				TestSset{Name: "sset1", Replicas: 2, Status: appsv1.StatefulSetStatus{CurrentRevision: "current-rev"}}.Build(),
 			},
-			c: k8s.WrapClient(fake.NewFakeClient(
+			c: k8s.WrappedFakeClient(
 				TestPod{Namespace: "ns", Name: "sset1-0", StatefulSetName: "sset2", Revision: "current-rev"}.BuildPtr(),
-			)),
+			),
 			want: false,
 		},
 		// TODO: test more than one StatefulSet once https://github.com/kubernetes-sigs/controller-runtime/pull/311 is available

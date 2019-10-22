@@ -8,7 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	kbcerts "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
@@ -128,6 +129,8 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(*kb))
 	}
 
+	volumes := []commonvolume.SecretVolume{config.SecretVolume(*kb)}
+
 	if kb.AssociationConf().CAIsConfigured() {
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
@@ -149,19 +152,12 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 
 		// TODO: this is a little ugly as it reaches into the ES controller bits
 		esCertsVolume := es.CaCertSecretVolume(*kb)
-		configVolume := config.SecretVolume(*kb)
-
-		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes,
-			esCertsVolume.Volume(), configVolume.Volume())
-
+		volumes = append(volumes, esCertsVolume)
 		for i := range kibanaPodSpec.Spec.InitContainers {
 			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(kibanaPodSpec.Spec.InitContainers[i].VolumeMounts,
 				esCertsVolume.VolumeMount())
 		}
 
-		kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
-		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts,
-			esCertsVolume.VolumeMount(), configVolume.VolumeMount())
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
@@ -178,12 +174,15 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 			_, _ = configChecksum.Write(httpCert)
 		}
 
-		// add volume/mount for http certs to pod spec
 		httpCertsVolume := http.HTTPCertSecretVolume(kbname.KBNamer, kb.Name)
-		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, httpCertsVolume.Volume())
-		kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
-		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, httpCertsVolume.VolumeMount())
+		volumes = append(volumes, httpCertsVolume)
+	}
 
+	// attach volumes
+	kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
+	for _, volume := range volumes {
+		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, volume.Volume())
+		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, volume.VolumeMount())
 	}
 
 	// get config secret to add its content to the config checksum
@@ -201,7 +200,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 	return deployment.Params{
 		Name:            kbname.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
-		Replicas:        kb.Spec.NodeCount,
+		Replicas:        kb.Spec.Count,
 		Selector:        label.NewLabels(kb.Name),
 		Labels:          label.NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
@@ -214,9 +213,9 @@ func (d *driver) Reconcile(
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.Results{}
-	if !kb.AssociationConf().IsConfigured() {
+	if kb.RequiresAssociation() && !kb.AssociationConf().IsConfigured() {
 		d.recorder.Event(kb, corev1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
-		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured", "namespace", kb.Namespace, "kibana_name", kb.Name)
+		log.Info("Elasticsearch association not established: skipping Kibana deployment reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return &results
 	}
 
@@ -231,16 +230,12 @@ func (d *driver) Reconcile(
 		return &results
 	}
 
-	kbSettings, err := config.NewConfigSettings(d.client, *kb)
+	versionSpecificCfg := settings.MustCanonicalConfig(d.settingsFactory(*kb))
+	kbSettings, err := config.NewConfigSettings(d.client, *kb, versionSpecificCfg)
 	if err != nil {
 		return results.WithError(err)
 	}
-	err = kbSettings.MergeWith(
-		settings.MustCanonicalConfig(d.settingsFactory(*kb)),
-	)
-	if err != nil {
-		return results.WithError(err)
-	}
+
 	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings, params.OperatorInfo)
 	if err != nil {
 		return results.WithError(err)

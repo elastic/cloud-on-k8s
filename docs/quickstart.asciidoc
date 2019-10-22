@@ -1,0 +1,301 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-quickstart.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-quickstart"]
+== Quickstart
+
+With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your Elasticsearch cluster, and much more.
+
+Eager to get started? This quick guide shows you how to:
+
+* <<{p}-deploy-eck,Deploy ECK in your Kubernetes cluster>>
+* <<{p}-deploy-elasticsearch,Deploy an Elasticsearch cluster>>
+* <<{p}-deploy-kibana,Deploy a Kibana instance>>
+* <<{p}-upgrade-deployment,Upgrade your deployment>>
+* <<{p}-persistent-storage,Use persistent storage>>
+* <<{p}-check-samples,Check out the samples>>
+
+**Supported versions**
+--
+include::supported-versions.asciidoc[]
+--
+
+[float]
+[id="{p}-deploy-eck"]
+=== Deploy ECK in your Kubernetes cluster
+
+IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempting to upgrade an existing ECK deployment.
+
+NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
+
+NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is allowed to communicate with the Kubernetes nodes on port 443. This is required for communication with the Validating Webhook. For more information, see link:https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html[Recommended inbound traffic].
+
+. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
++
+For Kubernetes clusters running version 1.13 or higher:
++
+[source,sh,subs="attributes"]
+----
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
+----
++
+For Kubernetes clusters running version 1.12 or lower:
++
+[source,sh,subs="attributes"]
+----
+kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one-no-validation.yaml
+----
+
+. Monitor the operator logs:
++
+[source,sh]
+----
+kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
+----
+
+[float]
+[id="{p}-deploy-elasticsearch"]
+=== Deploy an Elasticsearch cluster
+
+Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one Elasticsearch node:
+
+NOTE: If your Kubernetes cluster does not have any Kubernetes nodes with at least 2GiB of free memory, the pod will be stuck in `Pending` state. See <<{p}-managing-compute-resources>> for more information about resource requirements and how to configure them.
+
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+      node.store.allow_mmap: false
+EOF
+----
+
+The operator automatically creates and manages Kubernetes resources to achieve the desired state of the Elasticsearch cluster. It may take up to a few minutes until all the resources are created and the cluster is ready for use.
+
+CAUTION: Setting `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
+
+[float]
+==== Monitor cluster health and creation progress
+
+Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including health, version and number of nodes:
+
+[source,sh]
+----
+kubectl get elasticsearch
+----
+
+[source,sh,subs="attributes"]
+----
+NAME          HEALTH    NODES     VERSION   PHASE         AGE
+quickstart    green     1         {version}     Ready         1m
+----
+
+When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.
+
+You can see that one Pod is in the process of being started:
+
+[source,sh]
+----
+kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=quickstart'
+----
+
+[source,sh]
+----
+NAME                      READY   STATUS    RESTARTS   AGE
+quickstart-es-default-0   1/1     Running   0          79s
+----
+
+Access the logs for that Pod:
+
+[source,sh]
+----
+kubectl logs -f quickstart-es-default-0
+----
+
+[float]
+==== Request Elasticsearch access
+
+A ClusterIP Service is automatically created for your cluster:
+
+[source,sh]
+----
+kubectl get service quickstart-es-http
+----
+
+[source,sh]
+----
+NAME                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+quickstart-es-http   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
+----
+
+. Get the credentials.
++
+A default user named `elastic` is automatically created with the password stored in a Kubernetes secret:
++
+[source,sh]
+----
+PASSWORD=$(kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+----
+
+. Request the Elasticsearch endpoint.
++
+From inside the Kubernetes cluster:
++
+[source,sh]
+----
+curl -u "elastic:$PASSWORD" -k "https://quickstart-es-http:9200"
+----
++
+From your local workstation, use the following command in a separate terminal:
++
+[source,sh]
+----
+kubectl port-forward service/quickstart-es-http 9200
+----
++
+Then request `localhost`:
++
+[source,sh]
+----
+curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
+----
+
+NOTE: Disabling certificate verification using the `-k` flag is not recommended and should be used for testing purposes only. See: <<{p}-setting-up-your-own-certificate>>
+
+[source,json]
+----
+{
+  "name" : "quickstart-es-default-0",
+  "cluster_name" : "quickstart",
+  "cluster_uuid" : "XqWg0xIiRmmEBg4NMhnYPg",
+  "version" : {...},
+  "tagline" : "You Know, for Search"
+}
+----
+
+[float]
+[id="{p}-deploy-kibana"]
+=== Deploy a Kibana instance
+
+To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance go through the following steps.
+
+. Specify a Kibana instance and associate it with your Elasticsearch cluster:
++
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+EOF
+----
+
+. Monitor Kibana health and creation progress.
++
+Similar to Elasticsearch, you can retrieve details about Kibana instances:
++
+[source,sh]
+----
+kubectl get kibana
+----
++
+And the associated Pods:
++
+[source,sh]
+----
+kubectl get pod --selector='kibana.k8s.elastic.co/name=quickstart'
+----
+
+. Access Kibana.
++
+A `ClusterIP` Service is automatically created for Kibana:
++
+[source,sh]
+----
+kubectl get service quickstart-kb-http
+----
++
+Use `kubectl port-forward` to access Kibana from your local workstation:
++
+[source,sh]
+----
+kubectl port-forward service/quickstart-kb-http 5601
+----
++
+Open `https://localhost:5601` in your browser. Your browser will show a warning because the self-signed certificate configured by default is not verified by a third party certificate authority and not trusted by your browser. You can temporarily acknowledge the warning for the purposes of this quick start but it is highly recommended that you <<{p}-setting-up-your-own-certificate,configure valid certificates>> for any production deployments.
++
+Login as the `elastic` user. The password can be obtained with the following command:
++
+[source,sh]
+----
+kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
+----
+
+[float]
+[id="{p}-upgrade-deployment"]
+=== Upgrade your deployment
+
+You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (e.g., existing volume claims cannot be resized). The operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods etc.).
+
+For example, you can grow the cluster to three Elasticsearch nodes:
+
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+      node.store.allow_mmap: false
+EOF
+----
+
+[float]
+[id="{p}-persistent-storage"]
+=== Use persistent storage
+
+The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for production workloads. Refer to <<{p}-volume-claim-templates>> for more information.
+
+
+[float]
+[id="{p}-check-samples"]
+=== Check out the samples
+
+You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/master/config/samples[in the project repository].
+To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/master/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample].
+
+For a full description of each `CustomResourceDefinition`, go to link:https://github.com/elastic/cloud-on-k8s/tree/master/config/crds[the project repository].
+You can also retrieve it from the cluster. For example, describe the Elasticsearch CRD specification with:
+
+[source,sh]
+----
+kubectl describe crd elasticsearch
+----

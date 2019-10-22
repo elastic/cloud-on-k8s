@@ -6,13 +6,10 @@ metadata:
   name: {{ .GlobalOperator.Namespace }}
   labels:
     test-run: {{ $testRun }}
-
-{{- range .OperatorNamespaces }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ . }}
+  name: {{ .NamespaceOperator.Namespace }}
   labels:
     test-run: {{ $testRun }}
-{{- end }}

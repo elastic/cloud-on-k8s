@@ -35,14 +35,14 @@ func CheckKibanaDeployment(b Builder, k *test.K8sClient) test.Step {
 				Namespace: b.Kibana.Namespace,
 				Name:      kbname.Deployment(b.Kibana.Name),
 			}, &dep)
-			if b.Kibana.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {
+			if b.Kibana.Spec.Count == 0 && apierrors.IsNotFound(err) {
 				return nil
 			}
 			if err != nil {
 				return err
 			}
-			if *dep.Spec.Replicas != b.Kibana.Spec.NodeCount {
-				return fmt.Errorf("invalid Kibana replicas count: expected %d, got %d", b.Kibana.Spec.NodeCount, *dep.Spec.Replicas)
+			if *dep.Spec.Replicas != b.Kibana.Spec.Count {
+				return fmt.Errorf("invalid Kibana replicas count: expected %d, got %d", b.Kibana.Spec.Count, *dep.Spec.Replicas)
 			}
 			return nil
 		}),
@@ -54,7 +54,7 @@ func CheckKibanaPodsCount(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana pods count should match the expected one",
 		Test: test.Eventually(func() error {
-			return k.CheckPodCount(int(b.Kibana.Spec.NodeCount), test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
+			return k.CheckPodCount(int(b.Kibana.Spec.Count), test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
 		}),
 	}
 }
@@ -101,7 +101,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 		Name: "Kibana services should have endpoints",
 		Test: test.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				kbname.HTTPService(b.Kibana.Name): int(b.Kibana.Spec.NodeCount),
+				kbname.HTTPService(b.Kibana.Name): int(b.Kibana.Spec.Count),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana in this b
