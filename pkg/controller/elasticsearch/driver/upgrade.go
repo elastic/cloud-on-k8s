@@ -23,15 +23,14 @@ func (d *defaultDriver) handleRollingUpgrades(
 	esClient esclient.Client,
 	esReachable bool,
 	esState ESState,
-	statefulSets sset.StatefulSetList,
 	expectedMaster []string,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	// We need to check that all the expectations are met before continuing.
+	// We need to check that all the expectations are satisfied before continuing.
 	// This is to be sure that none of the previous steps has changed the state and
 	// that we are not running with a stale cache.
-	ok, err := d.expectationsMet(statefulSets)
+	ok, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -40,6 +39,10 @@ func (d *defaultDriver) handleRollingUpgrades(
 	}
 
 	// Get the pods to upgrade
+	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	if err != nil {
+		return results.WithError(err)
+	}
 	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
 		return results.WithError(err)
@@ -95,7 +98,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	}
 
 	// Maybe re-enable shards allocation if upgraded nodes are back into the cluster.
-	res := d.MaybeEnableShardsAllocation(esClient, esState, statefulSets)
+	res := d.MaybeEnableShardsAllocation(esClient, esState)
 	results.WithResults(res)
 
 	return results
@@ -248,7 +251,6 @@ func doSyncFlush(es v1beta1.Elasticsearch, esClient esclient.Client) error {
 func (d *defaultDriver) MaybeEnableShardsAllocation(
 	esClient esclient.Client,
 	esState ESState,
-	statefulSets sset.StatefulSetList,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	alreadyEnabled, err := esState.ShardAllocationsEnabled()
@@ -260,31 +262,17 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	}
 
 	// Make sure all pods scheduled for upgrade have been upgraded.
-	done, err := statefulSets.PodReconciliationDone(d.Client)
+	done, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !done {
-		log.V(1).Info(
-			"Rolling upgrade not over yet, some pods don't have the updated revision, keeping shard allocations disabled",
-			"namespace", d.ES.Namespace,
-			"es_name", d.ES.Name,
-		)
 		return results.WithResult(defaultRequeue)
 	}
 
-	// Check if we have some deletions in progress
-	satisfiedDeletion, err := d.Expectations.SatisfiedDeletions(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	statefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return results.WithError(err)
-	}
-	if !satisfiedDeletion {
-		log.V(1).Info(
-			"Rolling upgrade not over yet, still waiting for some Pods to be deleted, keeping shard allocations disabled",
-			"namespace", d.ES.Namespace,
-			"es_name", d.ES.Name,
-		)
-		return results.WithResult(defaultRequeue)
 	}
 
 	// Make sure all nodes scheduled for upgrade are back into the cluster.

@@ -34,18 +34,18 @@ func (d *defaultDriver) reconcileNodeSpecs(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
-	if err != nil {
-		return results.WithError(err)
-	}
-
 	// check if actual StatefulSets and corresponding pods match our expectations before applying any change
-	ok, err := d.expectationsMet(actualStatefulSets)
+	ok, err := d.expectationsSatisfied()
 	if err != nil {
 		return results.WithError(err)
 	}
 	if !ok {
 		return results.WithResult(defaultRequeue)
+	}
+
+	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme(), certResources)
@@ -121,7 +121,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Phase 3: handle rolling upgrades.
-	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esReachable, esState, actualStatefulSets, expectedResources.MasterNodesNames())
+	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esReachable, esState, expectedResources.MasterNodesNames())
 	results.WithResults(rollingUpgradesRes)
 	if rollingUpgradesRes.HasError() {
 		return results

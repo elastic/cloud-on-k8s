@@ -130,14 +130,15 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 		}
 		esClient := &fakeESClient{}
 		es := tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable)
+		k8sClient := k8s.WrappedFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, nothing)...)
 		ctx := rollingUpgradeCtx{
-			client:          k8s.WrappedFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, nothing)...),
+			client:          k8sClient,
 			ES:              es,
 			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 			esClient:        esClient,
 			shardLister:     migration.NewFakeShardLister(client.Shards{}),
 			esState:         esState,
-			expectations:    expectations.NewExpectations(),
+			expectations:    expectations.NewExpectations(k8sClient),
 			reconcileState:  reconcile.NewState(v1beta1.Elasticsearch{}),
 			expectedMasters: tt.fields.upgradeTestPods.toMasters(tt.fields.mutation),
 			actualMasters:   tt.fields.upgradeTestPods.toMasterPods(),
@@ -388,14 +389,15 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			green:     tt.fields.green,
 		}
 		esClient := &fakeESClient{}
+		k8sClient := k8s.WrappedFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, tt.fields.podFilter)...)
 		ctx := rollingUpgradeCtx{
-			client:          k8s.WrappedFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, tt.fields.podFilter)...),
+			client:          k8sClient,
 			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),
 			statefulSets:    tt.fields.upgradeTestPods.toStatefulSetList(),
 			esClient:        esClient,
 			shardLister:     tt.fields.shardLister,
 			esState:         esState,
-			expectations:    expectations.NewExpectations(),
+			expectations:    expectations.NewExpectations(k8sClient),
 			expectedMasters: tt.fields.upgradeTestPods.toMasters(noMutation),
 			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
 			healthyPods:     tt.fields.upgradeTestPods.toHealthyPods(),
