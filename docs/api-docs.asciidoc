@@ -13,7 +13,7 @@
 
 [id="apm-k8s-elastic-co-v1beta1"]
 === apm.k8s.elastic.co/v1beta1
-Package v1beta1 contains API schema definitions for managing APM server resources.
+Package v1beta1 contains API schema definitions for managing APM Server resources.
 
 .Resource Types
 --
@@ -113,7 +113,7 @@ See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8
 |===
 [id="common-k8s-elastic-co-v1beta1"]
 === common.k8s.elastic.co/v1beta1
-Package v1beta1 contains API Schema definitions for common types used by all resources.
+Package v1beta1 contains API schema definitions for common types used by all resources.
 
 .Resource Types
 --
@@ -483,7 +483,7 @@ _link:#common-k8s-elastic-co-v1beta1-secretref[$$SecretRef$$]_
 Certificate is a reference to a Kubernetes secret that contains the certificate and private key for enabling TLS.
 The referenced secret should contain the following:
 
-- `ca.crt`: The certificate authority (optional)
+- `ca.crt`: The certificate authority (optional).
 - `tls.crt`: The certificate (or a chain).
 - `tls.key`: The private key to the first certificate in the certificate chain.
 |===
@@ -668,7 +668,7 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 |===
 [id="kibana-k8s-elastic-co-v1beta1"]
 === kibana.k8s.elastic.co/v1beta1
-Package v1beta1 contains API Schema definitions for managing Kibana resources.
+Package v1beta1 contains API schema definitions for managing Kibana resources.
 
 .Resource Types
 --
