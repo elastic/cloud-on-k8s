@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// Package v1beta1 contains API Schema definitions for common types used by all resources.
+// Package v1beta1 contains API schema definitions for common types used by all resources.
 // +kubebuilder:object:generate=true
 // +groupName=common.k8s.elastic.co
 package v1beta1
