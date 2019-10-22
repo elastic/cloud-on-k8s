@@ -208,7 +208,7 @@ func TestMutationNodeSetReplacementWithChangeBudget(t *testing.T) {
 	RunESMutation(t, b, mutated)
 }
 
-func TestMutationWithLargerChangeBudget(t *testing.T) {
+func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-2-change-budget").
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(2, "data1", elasticsearch.DefaultResources)
