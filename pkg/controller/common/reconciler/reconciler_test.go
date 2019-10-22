@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func withoutControllerRef(obj runtime.Object) runtime.Object {
@@ -261,7 +260,7 @@ func TestReconcileResource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			client := k8s.WrapClient(fake.NewFakeClient(tt.initialObjects...))
+			client := k8s.WrappedFakeClient(tt.initialObjects...)
 			args := tt.args()
 			p := Params{
 				Client:           client,

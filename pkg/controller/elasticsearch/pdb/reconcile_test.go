@@ -23,12 +23,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func TestReconcile(t *testing.T) {
-	require.NoError(t, esv1beta1.AddToScheme(scheme.Scheme))
 	defaultPDB := func() *v1beta1.PodDisruptionBudget {
 		return &v1beta1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
@@ -61,7 +59,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "no existing pdb: should create one",
 			args: args{
-				k8sClient:    k8s.WrapClient(fake.NewFakeClient()),
+				k8sClient:    k8s.WrappedFakeClient(),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
@@ -70,7 +68,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb already exists: should remain unmodified",
 			args: args{
-				k8sClient:    k8s.WrapClient(fake.NewFakeClient(withHashLabel(withOwnerRef(defaultPDB(), defaultEs)))),
+				k8sClient:    k8s.WrappedFakeClient(withHashLabel(withOwnerRef(defaultPDB(), defaultEs))),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
@@ -79,7 +77,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb needs a MinAvailable update",
 			args: args{
-				k8sClient:    k8s.WrapClient(fake.NewFakeClient(defaultPDB())),
+				k8sClient:    k8s.WrappedFakeClient(defaultPDB()),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 5, Master: true, Data: true}.Build()},
 			},
@@ -103,7 +101,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb disabled in the ES spec: should delete the existing one",
 			args: args{
-				k8sClient: k8s.WrapClient(fake.NewFakeClient(defaultPDB())),
+				k8sClient: k8s.WrappedFakeClient(defaultPDB()),
 				es: esv1beta1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec:       esv1beta1.ElasticsearchSpec{PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{}},
@@ -149,7 +147,6 @@ func intStrPtr(intStr intstr.IntOrString) *intstr.IntOrString {
 }
 
 func Test_expectedPDB(t *testing.T) {
-	require.NoError(t, esv1beta1.AddToScheme(scheme.Scheme))
 	type args struct {
 		es           esv1beta1.Elasticsearch
 		statefulSets sset.StatefulSetList

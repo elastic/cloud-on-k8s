@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // These tests are focused on "type changes", i.e. when the type of a nodeSet is changed.
@@ -131,9 +130,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 		}
 		esClient := &fakeESClient{}
 		es := tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable)
-		k8sClient := k8s.WrapClient(
-			fake.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, nothing)...),
-		)
+		k8sClient := k8s.WrappedFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, nothing)...)
 		ctx := rollingUpgradeCtx{
 			client:          k8sClient,
 			ES:              es,
@@ -392,9 +389,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			green:     tt.fields.green,
 		}
 		esClient := &fakeESClient{}
-		k8sClient := k8s.WrapClient(
-			fake.NewFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, tt.fields.podFilter)...),
-		)
+		k8sClient := k8s.WrappedFakeClient(tt.fields.upgradeTestPods.toRuntimeObjects(tt.fields.maxUnavailable, tt.fields.podFilter)...)
 		ctx := rollingUpgradeCtx{
 			client:          k8sClient,
 			ES:              tt.fields.upgradeTestPods.toES(tt.fields.maxUnavailable),

@@ -7,16 +7,14 @@ package expectations
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/uuid"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestExpectations_Satisfied(t *testing.T) {
-	require.NoError(t, scheme.SetupScheme())
-	client := k8s.WrapClient(fake.NewFakeClient())
+	client := k8s.WrappedFakeClient()
 	e := NewExpectations(client)
 
 	// initially satisfied

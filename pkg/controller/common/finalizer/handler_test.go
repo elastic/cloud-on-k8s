@@ -9,10 +9,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -115,7 +113,7 @@ func TestHandler_Handle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// pretend resource already exists in api server
-			fakeClient := fake.NewFakeClient(&tt.resource)
+			fakeClient := k8s.FakeClient(&tt.resource)
 			handler := Handler{
 				client: k8s.WrapClient(fakeClient),
 			}

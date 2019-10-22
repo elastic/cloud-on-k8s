@@ -13,6 +13,7 @@ This page shows how to run ECK on OpenShift.
 * <<{p}-openshift-deploy-elasticsearch,Deploy an Elasticsearch instance with a route>>
 * <<{p}-openshift-deploy-kibana,Deploy a Kibana instance with a route>>
 * <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
+* <<{p}-openshift-es-plugins>>
 
 NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint]. To run the APM Server on OpenShift you must allow the Pod to run with the `anyuid` SCC as described in <<{p}-openshift-apm,Deploy an APM Server instance with a route>>
 
@@ -231,3 +232,9 @@ elasticsearch-sample-es-6qk52mz5jk scc:restricted
 elasticsearch-sample-es-dg4vvpm2mr scc:restricted
 kibana-sample-kb-97c6b6b8d-lqfd2 scc:restricted
 ----
+
+[float]
+[id="{p}-openshift-es-plugins"]
+=== Elasticsearch plugins
+
+Note that Elasticsearch plugins cannot be installed at runtime in most OpenShift environments. This is because the plugin installer must run as root, but Elasticsearch is restricted from running as root. To add plugins to Elasticsearch, you can use custom images as described in <<{p}-custom-images>>.

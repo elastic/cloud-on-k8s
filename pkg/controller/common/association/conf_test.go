@@ -15,8 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -26,8 +24,6 @@ func TestFetchWithAssociation(t *testing.T) {
 }
 
 func testFetchAPMServer(t *testing.T) {
-	require.NoError(t, apmv1beta1.AddToScheme(scheme.Scheme))
-
 	testCases := []struct {
 		name          string
 		apmServer     *apmv1beta1.ApmServer
@@ -64,7 +60,7 @@ func testFetchAPMServer(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(tc.apmServer))
+			client := k8s.WrappedFakeClient(tc.apmServer)
 
 			var got apmv1beta1.ApmServer
 			ok, err := FetchWithAssociation(client, tc.request, &got)
@@ -108,8 +104,6 @@ func mkAPMServer(withAnnotations bool) *apmv1beta1.ApmServer {
 }
 
 func testFetchKibana(t *testing.T) {
-	require.NoError(t, kbv1beta1.AddToScheme(scheme.Scheme))
-
 	testCases := []struct {
 		name          string
 		kibana        *kbv1beta1.Kibana
@@ -146,7 +140,7 @@ func testFetchKibana(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(tc.kibana))
+			client := k8s.WrappedFakeClient(tc.kibana)
 
 			var got kbv1beta1.Kibana
 			ok, err := FetchWithAssociation(client, tc.request, &got)
@@ -190,10 +184,9 @@ func mkKibana(withAnnotations bool) *kbv1beta1.Kibana {
 }
 
 func TestUpdateAssociationConf(t *testing.T) {
-	require.NoError(t, kbv1beta1.AddToScheme(scheme.Scheme))
 	kb := mkKibana(true)
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
-	client := k8s.WrapClient(fake.NewFakeClient(kb))
+	client := k8s.WrappedFakeClient(kb)
 
 	assocConf := &commonv1beta1.AssociationConf{
 		AuthSecretName: "auth-secret",
@@ -233,10 +226,9 @@ func TestUpdateAssociationConf(t *testing.T) {
 }
 
 func TestRemoveAssociationConf(t *testing.T) {
-	require.NoError(t, kbv1beta1.AddToScheme(scheme.Scheme))
 	kb := mkKibana(true)
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
-	client := k8s.WrapClient(fake.NewFakeClient(kb))
+	client := k8s.WrappedFakeClient(kb)
 
 	assocConf := &commonv1beta1.AssociationConf{
 		AuthSecretName: "auth-secret",

@@ -22,12 +22,6 @@ import (
 
 // TestCrossNSAssociation tests associating Elasticsearch and an APM Server running in different namespaces.
 func TestCrossNSAssociation(t *testing.T) {
-	// This test currently does not work in the E2E environment because each namespace has a dedicated
-	// controller (see https://github.com/elastic/cloud-on-k8s/issues/1438)
-	if !(test.Ctx().Local) {
-		t.SkipNow()
-	}
-
 	esNamespace := test.Ctx().ManagedNamespace(0)
 	apmNamespace := test.Ctx().ManagedNamespace(1)
 	name := "test-cross-ns-assoc"
@@ -46,8 +40,7 @@ func TestCrossNSAssociation(t *testing.T) {
 			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
 		})
 
-	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).
-		RunSequential(t)
+	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).RunSequential(t)
 }
 
 func TestAPMAssociationWithNonExistentES(t *testing.T) {

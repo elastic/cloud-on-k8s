@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
@@ -17,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var onceDone = &sync.Once{}
@@ -35,8 +34,7 @@ func init() {
 }
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
-	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
-	k8sClient := k8s.WrapClient(fake.NewFakeClient())
+	k8sClient := k8s.WrappedFakeClient()
 	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
@@ -53,11 +51,11 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 					Name:      "sset1",
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: common.Int32(3),
+					Replicas: pointer.Int32(3),
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-							Partition: common.Int32(3),
+							Partition: pointer.Int32(3),
 						},
 					},
 				},
@@ -77,11 +75,11 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 					Name:      "sset2",
 				},
 				Spec: appsv1.StatefulSetSpec{
-					Replicas: common.Int32(4),
+					Replicas: pointer.Int32(4),
 					UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-							Partition: common.Int32(4),
+							Partition: pointer.Int32(4),
 						},
 					},
 				},
@@ -106,11 +104,11 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// StatefulSets should be created with their expected replicas
 	var sset1 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset1"}, &sset1))
-	require.Equal(t, common.Int32(3), sset1.Spec.Replicas)
+	require.Equal(t, pointer.Int32(3), sset1.Spec.Replicas)
 	require.Equal(t, updatedStatefulSets[0], sset1)
 	var sset2 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
-	require.Equal(t, common.Int32(4), sset2.Spec.Replicas)
+	require.Equal(t, pointer.Int32(4), sset2.Spec.Replicas)
 	require.Equal(t, updatedStatefulSets[1], sset2)
 	// headless services should be created for both
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
@@ -121,11 +119,11 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
-	expectedResources[1].StatefulSet.Spec.Replicas = common.Int32(10)
+	expectedResources[1].StatefulSet.Spec.Replicas = pointer.Int32(10)
 	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
-	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
+	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
 	require.Equal(t, updatedStatefulSets[1], sset2)
 	// expectations should have been set
 	require.NotEmpty(t, ctx.expectations.GetGenerations())
@@ -141,7 +139,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
-	expectedResources[1].StatefulSet.Spec.Replicas = common.Int32(2)
+	expectedResources[1].StatefulSet.Spec.Replicas = pointer.Int32(2)
 	expectedResources[1].StatefulSet.Spec.Template.Labels = map[string]string{"a": "c"}
 	updatedStatefulSets, err = HandleUpscaleAndSpecChanges(ctx, actualStatefulSets, expectedResources)
 	require.NoError(t, err)
@@ -149,7 +147,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	// spec should be updated
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
-	require.Equal(t, common.Int32(10), sset2.Spec.Replicas)
+	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
 	require.Equal(t, updatedStatefulSets[1], sset2)
 }
 
@@ -202,7 +200,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "new StatefulSet to create",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
@@ -211,7 +209,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "same StatefulSet already exists",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
@@ -220,7 +218,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "downscale case",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
@@ -229,7 +227,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: data nodes",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: common.Int32(3)},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
@@ -238,7 +236,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: master nodes - one by one",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: common.Int32(3)},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
@@ -247,7 +245,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		{
 			name: "upscale case: new additional master sset - one by one",
 			args: args{
-				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: common.Int32(3)},
+				state:              upscaleState{isBootstrapped: true, allowMasterCreation: true, createsAllowed: pointer.Int32(3)},
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -327,7 +325,7 @@ func Test_adjustZenConfig(t *testing.T) {
 			if pods == nil {
 				pods = tt.statefulSet.Pods()
 			}
-			client := k8s.WrapClient(fake.NewFakeClient(pods...))
+			client := k8s.WrappedFakeClient(pods...)
 			err := adjustZenConfig(client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {

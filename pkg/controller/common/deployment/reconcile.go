@@ -10,10 +10,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 var (
@@ -39,7 +39,7 @@ func New(params Params) appsv1.Deployment {
 			Labels:    params.Labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			RevisionHistoryLimit: common.Int32(defaultRevisionHistoryLimit),
+			RevisionHistoryLimit: pointer.Int32(defaultRevisionHistoryLimit),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selector,
 			},

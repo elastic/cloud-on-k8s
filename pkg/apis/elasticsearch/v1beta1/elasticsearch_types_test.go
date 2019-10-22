@@ -11,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,7 +135,7 @@ func Test_GetMaxSurgeOrDefault(t *testing.T) {
 	}{
 		{
 			name:     "negative in spec results in unbounded",
-			fromSpec: common.Int32(-1),
+			fromSpec: pointer.Int32(-1),
 			want:     nil,
 		},
 		{
@@ -149,13 +150,13 @@ func Test_GetMaxSurgeOrDefault(t *testing.T) {
 		},
 		{
 			name:     "0 in spec results in 0",
-			fromSpec: common.Int32(0),
-			want:     common.Int32(0),
+			fromSpec: pointer.Int32(0),
+			want:     pointer.Int32(0),
 		},
 		{
 			name:     "1 in spec results in 1",
-			fromSpec: common.Int32(1),
-			want:     common.Int32(1),
+			fromSpec: pointer.Int32(1),
+			want:     pointer.Int32(1),
 		},
 	}
 
@@ -177,7 +178,7 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 	}{
 		{
 			name:     "negative in spec results in unbounded",
-			fromSpec: common.Int32(-1),
+			fromSpec: pointer.Int32(-1),
 			want:     nil,
 		},
 		{
@@ -188,17 +189,17 @@ func Test_GetMaxUnavailableOrDefault(t *testing.T) {
 		{
 			name:     "nil in spec results in default, currently 1",
 			fromSpec: nil,
-			want:     common.Int32(1),
+			want:     pointer.Int32(1),
 		},
 		{
 			name:     "0 in spec results in 0",
-			fromSpec: common.Int32(0),
-			want:     common.Int32(0),
+			fromSpec: pointer.Int32(0),
+			want:     pointer.Int32(0),
 		},
 		{
 			name:     "1 in spec results in 1",
-			fromSpec: common.Int32(1),
-			want:     common.Int32(1),
+			fromSpec: pointer.Int32(1),
+			want:     pointer.Int32(1),
 		},
 	}
 

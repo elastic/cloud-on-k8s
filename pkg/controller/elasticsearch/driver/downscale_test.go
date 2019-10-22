@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
@@ -22,14 +21,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // Sample StatefulSets to use in tests
@@ -135,7 +133,7 @@ func TestHandleDownscale(t *testing.T) {
 	// We want to downscale 2 StatefulSets (masters 3 -> 1 and data 4 -> 2) in version 7.X,
 	// but should only be allowed a partial downscale (3 -> 2 and 4 -> 3).
 
-	k8sClient := k8s.WrapClient(fake.NewFakeClient(runtimeObjs...))
+	k8sClient := k8s.WrappedFakeClient(runtimeObjs...)
 	esClient := &fakeESClient{}
 	actualStatefulSets := sset.StatefulSetList{ssetMaster3Replicas, ssetData4Replicas}
 	downscaleCtx := downscaleContext{
@@ -158,10 +156,10 @@ func TestHandleDownscale(t *testing.T) {
 
 	// request master nodes downscale from 3 to 1 replicas
 	ssetMaster3ReplicasDownscaled := *ssetMaster3Replicas.DeepCopy()
-	nodespec.UpdateReplicas(&ssetMaster3ReplicasDownscaled, common.Int32(1))
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasDownscaled, pointer.Int32(1))
 	// request data nodes downscale from 4 to 2 replicas
 	ssetData4ReplicasDownscaled := *ssetData4Replicas.DeepCopy()
-	nodespec.UpdateReplicas(&ssetData4ReplicasDownscaled, common.Int32(2))
+	nodespec.UpdateReplicas(&ssetData4ReplicasDownscaled, pointer.Int32(2))
 	requestedStatefulSets := sset.StatefulSetList{ssetMaster3ReplicasDownscaled, ssetData4ReplicasDownscaled}
 
 	// do the downscale
@@ -175,11 +173,11 @@ func TestHandleDownscale(t *testing.T) {
 	// only part of the expected replicas of ssetMaster3Replicas should be updated,
 	// since we remove only one master at a time
 	ssetMaster3ReplicasExpectedAfterDownscale := *ssetMaster3Replicas.DeepCopy()
-	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, common.Int32(2))
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(2))
 	// only part of the expected replicas of ssetData4Replicas should be updated,
 	// since a node still needs to migrate data
 	ssetData4ReplicasExpectedAfterDownscale := *ssetData4Replicas.DeepCopy()
-	nodespec.UpdateReplicas(&ssetData4ReplicasExpectedAfterDownscale, common.Int32(3))
+	nodespec.UpdateReplicas(&ssetData4ReplicasExpectedAfterDownscale, pointer.Int32(3))
 
 	expectedAfterDownscale := []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
 
@@ -208,7 +206,7 @@ func TestHandleDownscale(t *testing.T) {
 	require.Equal(t, requeueResults, results)
 
 	// one less master
-	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, common.Int32(1))
+	nodespec.UpdateReplicas(&ssetMaster3ReplicasExpectedAfterDownscale, pointer.Int32(1))
 	expectedAfterDownscale = []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
 	err = k8sClient.List(&actual)
 	require.NoError(t, err)
@@ -222,7 +220,7 @@ func TestHandleDownscale(t *testing.T) {
 			{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-1"},
 		},
 	)
-	nodespec.UpdateReplicas(&expectedAfterDownscale[1], common.Int32(2))
+	nodespec.UpdateReplicas(&expectedAfterDownscale[1], pointer.Int32(2))
 	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
 	require.False(t, results.HasError())
 	require.Equal(t, emptyResults, results)
@@ -258,7 +256,7 @@ func Test_calculateDownscales(t *testing.T) {
 				Name:      "sset0",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: common.Int32(3),
+				Replicas: pointer.Int32(3),
 			},
 		},
 		{
@@ -267,7 +265,7 @@ func Test_calculateDownscales(t *testing.T) {
 				Name:      "sset1",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: common.Int32(3)},
+				Replicas: pointer.Int32(3)},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -275,7 +273,7 @@ func Test_calculateDownscales(t *testing.T) {
 				Name:      "sset2",
 			},
 			Spec: appsv1.StatefulSetSpec{
-				Replicas: common.Int32(3)},
+				Replicas: pointer.Int32(3)},
 		},
 	}
 
@@ -345,7 +343,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset0",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: common.Int32(3),
+						Replicas: pointer.Int32(3),
 					},
 				},
 				{
@@ -354,7 +352,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: common.Int32(2)},
+						Replicas: pointer.Int32(2)},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -362,7 +360,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: common.Int32(1)},
+						Replicas: pointer.Int32(1)},
 				},
 			},
 			actualStatefulSets: ssets,
@@ -390,7 +388,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset0",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: common.Int32(4),
+						Replicas: pointer.Int32(4),
 					},
 				},
 				{
@@ -399,7 +397,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset1",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: common.Int32(5)},
+						Replicas: pointer.Int32(5)},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
@@ -407,7 +405,7 @@ func Test_calculateDownscales(t *testing.T) {
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: common.Int32(3)},
+						Replicas: pointer.Int32(3)},
 				},
 			},
 			actualStatefulSets: ssets,
@@ -469,7 +467,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  3,
 					finalReplicas:   3,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(1)},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -489,7 +487,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  2,
 					finalReplicas:   2,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(1)},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -510,7 +508,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  3,
 					finalReplicas:   2,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(0)},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(0)},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -532,7 +530,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   2,
 				},
 				// a master node has already been removed
-				state:           &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: common.Int32(1)},
+				state:           &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -555,7 +553,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   1,
 				},
 				// invariants limits us to one master node downscale only
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: common.Int32(1)},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -578,7 +576,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   0,
 				},
 				// only one master is running
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: common.Int32(1)},
+				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: pointer.Int32(1)},
 				allLeavingNodes: []string{"node-1", "node-2"},
 			},
 			want: ssetDownscale{
@@ -617,7 +615,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 0,
 				targetReplicas:  0,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(0)},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(0)},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "should-be-removed", Version: "7.1.0", Replicas: 0, Master: true, Data: true}.Build(),
 				sset.TestSset{Name: "should-stay", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
@@ -633,7 +631,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  3,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(1)},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(1)},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -648,7 +646,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  4,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(1)},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(1)},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -663,7 +661,7 @@ func Test_attemptDownscale(t *testing.T) {
 				initialReplicas: 3,
 				targetReplicas:  2,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(1)},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(1)},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -679,7 +677,7 @@ func Test_attemptDownscale(t *testing.T) {
 				targetReplicas:  3,
 				finalReplicas:   2,
 			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: common.Int32(0)},
+			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(0)},
 			statefulSets: sset.StatefulSetList{
 				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
 			},
@@ -694,7 +692,7 @@ func Test_attemptDownscale(t *testing.T) {
 			for i := range tt.statefulSets {
 				runtimeObjs = append(runtimeObjs, &tt.statefulSets[i])
 			}
-			k8sClient := k8s.WrapClient(fake.NewFakeClient(runtimeObjs...))
+			k8sClient := k8s.WrappedFakeClient(runtimeObjs...)
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
@@ -719,7 +717,7 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	sset1.Generation = 1
 	sset2 := ssetData4Replicas
 	sset2.Generation = 1
-	k8sClient := k8s.WrapClient(fake.NewFakeClient(&sset1, &sset2))
+	k8sClient := k8s.WrappedFakeClient(&sset1, &sset2)
 	downscaleCtx := downscaleContext{
 		k8sClient:    k8sClient,
 		expectations: expectations.NewExpectations(k8sClient),
@@ -821,7 +819,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 					},
 				},
 			}
-			k8sClient := k8s.WrapClient(fake.NewFakeClient(&ssetMasters, &ssetData, &v7Pod))
+			k8sClient := k8s.WrappedFakeClient(&ssetMasters, &ssetData, &v7Pod)
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
@@ -919,7 +917,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrapClient(fake.NewFakeClient(tt.apiserverResources...))
+			k8sClient := k8s.WrappedFakeClient(tt.apiserverResources...)
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
@@ -946,7 +944,6 @@ func Test_removeStatefulSetResources(t *testing.T) {
 	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
 	svc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), sset.Name)
 
-	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 	tests := []struct {
 		name      string
 		resources []runtime.Object
@@ -962,7 +959,7 @@ func Test_removeStatefulSetResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
+			k8sClient := k8s.WrappedFakeClient(tt.resources...)
 			err := removeStatefulSetResources(k8sClient, es, sset)
 			require.NoError(t, err)
 			// sset, cfg and headless services should not be there anymore

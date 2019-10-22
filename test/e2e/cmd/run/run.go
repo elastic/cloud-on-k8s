@@ -64,7 +64,7 @@ func doRun(flags runFlags) error {
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployGlobalOperator,
-			helper.deployNamespaceOperators,
+			helper.deployNamespaceOperator,
 			helper.deployTestJob,
 			helper.runTestJob,
 		}
@@ -129,23 +129,23 @@ func (h *helper) initTestContext() error {
 			Name:      fmt.Sprintf("%s-global-operator", h.testRunName),
 			Namespace: fmt.Sprintf("%s-elastic-system", h.testRunName),
 		},
-		Local:              h.local,
-		LogVerbosity:       h.logVerbosity,
-		NamespaceOperators: make([]test.NamespaceOperator, len(h.managedNamespaces)),
-		OperatorImage:      h.operatorImage,
-		TestLicence:        h.testLicence,
-		TestRegex:          h.testRegex,
-		TestRun:            h.testRunName,
+		Local:        h.local,
+		LogVerbosity: h.logVerbosity,
+		NamespaceOperator: test.NamespaceOperator{
+			ClusterResource: test.ClusterResource{
+				Name:      fmt.Sprintf("%s-ns-operator", h.testRunName),
+				Namespace: fmt.Sprintf("%s-ns-operators", h.testRunName),
+			},
+			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
+		},
+		OperatorImage: h.operatorImage,
+		TestLicence:   h.testLicence,
+		TestRegex:     h.testRegex,
+		TestRun:       h.testRunName,
 	}
 
 	for i, ns := range h.managedNamespaces {
-		h.testContext.NamespaceOperators[i] = test.NamespaceOperator{
-			ClusterResource: test.ClusterResource{
-				Name:      fmt.Sprintf("%s-%s-ns-operator", h.testRunName, ns),
-				Namespace: fmt.Sprintf("%s-ns-operators", h.testRunName),
-			},
-			ManagedNamespace: fmt.Sprintf("%s-%s", h.testRunName, ns),
-		}
+		h.testContext.NamespaceOperator.ManagedNamespaces[i] = fmt.Sprintf("%s-%s", h.testRunName, ns)
 	}
 
 	// write the test context if required
@@ -197,8 +197,8 @@ func (h *helper) deployGlobalOperator() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/global_operator.yaml", h.testContext)
 }
 
-func (h *helper) deployNamespaceOperators() error {
-	log.Info("Deploying namespace operators")
+func (h *helper) deployNamespaceOperator() error {
+	log.Info("Deploying namespace operator")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/namespace_operator.yaml", h.testContext)
 }
 

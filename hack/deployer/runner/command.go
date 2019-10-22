@@ -91,7 +91,7 @@ func (c *Command) output() (string, error) {
 		c.command = b.String()
 	}
 
-	cmd := exec.Command("/usr/bin/env", "bash", "-c", c.command)
+	cmd := exec.Command("/usr/bin/env", "bash", "-c", c.command) // #nosec G204
 	cmd.Env = append(os.Environ(), c.variables...)
 
 	b := bytes.Buffer{}

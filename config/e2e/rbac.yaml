@@ -59,11 +59,9 @@ subjects:
   - kind: ServiceAccount
     name: {{ .GlobalOperator.Name }}
     namespace: {{ .GlobalOperator.Namespace }}
-{{- range .NamespaceOperators }}
   - kind: ServiceAccount
-    name: {{ .Name }}
-    namespace: {{ .Namespace }}
-{{- end }}
+    name: {{ .NamespaceOperator.Name }}
+    namespace: {{ .NamespaceOperator.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

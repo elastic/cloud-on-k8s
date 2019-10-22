@@ -9,7 +9,9 @@ const (
 
 	DiscoveryZenMinimumMasterNodes = "discovery.zen.minimum_master_nodes"
 	ClusterInitialMasterNodes      = "cluster.initial_master_nodes"
-	DiscoveryZenHostsProvider      = "discovery.zen.hosts_provider"
+
+	DiscoveryZenHostsProvider = "discovery.zen.hosts_provider" // ES < 7.X
+	DiscoverySeedProviders    = "discovery.seed_providers"     // ES >= 7.X
 
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"

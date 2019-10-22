@@ -22,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestSetupMinimumMasterNodesConfig(t *testing.T) {
@@ -76,7 +75,7 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(tt.pods...))
+			client := k8s.WrappedFakeClient(tt.pods...)
 			err := SetupMinimumMasterNodesConfig(client, testES, tt.nodeSpecResources)
 			require.NoError(t, err)
 			for i := 0; i < len(tt.nodeSpecResources); i++ {
@@ -159,11 +158,11 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 			name:               "no v6 nodes",
 			actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "nodes", Namespace: ns, Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build()},
 			wantCalled:         false,
-			c:                  k8s.WrapClient(fake.NewFakeClient(createMasterPodsWithVersion("nodes", "7.1.0", 3)...)),
+			c:                  k8s.WrappedFakeClient(createMasterPodsWithVersion("nodes", "7.1.0", 3)...),
 		},
 		{
 			name:               "correct mmn already set in ES annotation",
-			c:                  k8s.WrapClient(fake.NewFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2])),
+			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
 			es: v1beta1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -178,7 +177,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		},
 		{
 			name:               "mmn should be updated, it's different in the ES annotation",
-			c:                  k8s.WrapClient(fake.NewFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2])),
+			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
 			es: v1beta1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -194,7 +193,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		},
 		{
 			name:               "mmn should be updated, it isn't set in the ES annotation",
-			c:                  k8s.WrapClient(fake.NewFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2])),
+			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
 			es:                 v1beta1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         true,
@@ -202,7 +201,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		},
 		{
 			name:               "cannot update since not enough masters available",
-			c:                  k8s.WrapClient(fake.NewFakeClient(&podsReady1[0], &podsReady1[1], &podsReady1[2])),
+			c:                  k8s.WrappedFakeClient(&podsReady1[0], &podsReady1[1], &podsReady1[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
 			es:                 v1beta1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         false,

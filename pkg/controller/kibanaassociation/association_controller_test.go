@@ -20,8 +20,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -44,17 +42,6 @@ var esRefFixture = metav1.OwnerReference{
 	UID:                "f8d564d9-885e-11e9-896d-08002703f062",
 	Controller:         &t,
 	BlockOwnerDeletion: &t,
-}
-
-func setupScheme(t *testing.T) *runtime.Scheme {
-	sc := scheme.Scheme
-	if err := kbtype.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to add Kibana types")
-	}
-	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to add Es types")
-	}
-	return sc
 }
 
 var kibanaFixtureUID types.UID = "82257b19-8862-11e9-896d-08002703f062"
@@ -86,7 +73,6 @@ var ownerRefFixture = metav1.OwnerReference{
 }
 
 func Test_deleteOrphanedResources(t *testing.T) {
-	s := setupScheme(t)
 	tests := []struct {
 		name           string
 		kibana         kbtype.Kibana
@@ -307,7 +293,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrapClient(fake.NewFakeClientWithScheme(s, tt.initialObjects...))
+			c := k8s.WrappedFakeClient(tt.initialObjects...)
 			if err := deleteOrphanedResources(c, &tt.kibana); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
