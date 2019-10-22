@@ -6,6 +6,7 @@ package v1beta1
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"reflect"
 	"strconv"
@@ -32,6 +33,7 @@ const (
 	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
 	unsupportedVersionErrMsg = "Unsupported version"
 	blacklistedConfigErrMsg  = "Configuration setting is not user-configurable"
+	duplicateNodeSets        = "NodeSet names must be unique"
 )
 
 type validation func(*Elasticsearch) *field.Error
@@ -54,11 +56,12 @@ var updateValidations = []updateValidation{
 	pvcModification,
 }
 
+// todo sabo convert these to return a field.ErrorList and unroll them all
+
 // validName checks whether the name is valid.
-// TODO SABO fix this
 func validName(es *Elasticsearch) *field.Error {
 	if err := validateNames(es); err != nil {
-		return field.Invalid(field.NewPath("metadata").Child("name"), es.Name, invalidNamesErrMsg)
+		return field.Invalid(field.NewPath("metadata").Child("name"), es.Name, fmt.Sprintf("%s: %s", invalidNamesErrMsg, err))
 	}
 	return nil
 }
@@ -85,17 +88,92 @@ func hasMaster(es *Elasticsearch) *field.Error {
 		cfg, err := UnpackConfig(t.Config)
 		if err != nil {
 			// TODO sabo double check this nodesets
-			return field.Invalid(field.NewPath("spec").Child("nodesets"), es.Name, masterRequiredMsg)
+			return field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Name, masterRequiredMsg)
 		}
 		hasMaster = hasMaster || (cfg.Node.Master && t.Count > 0)
 	}
 	if hasMaster {
 		return nil
 	}
-	return field.Invalid(field.NewPath("spec").Child("nodes"), es.Name, masterRequiredMsg)
+	return field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Name, masterRequiredMsg)
 }
 
 // todo sabo add comment and update this to return a list of errors
+// func noBlacklistedSettings(es *Elasticsearch) *field.Error {
+// 	violations := make(map[int]set.StringSet)
+// 	for i, n := range es.Spec.NodeSets {
+// 		if n.Config == nil {
+// 			continue
+// 		}
+// 		config, err := common.NewCanonicalConfigFrom(n.Config.Data)
+// 		if err != nil {
+// 			violations[i] = map[string]struct{}{
+// 				cfgInvalidMsg: {},
+// 			}
+// 			continue
+// 		}
+// 		forbidden := config.HasKeys(SettingsBlacklist)
+// 		// remove duplicates
+// 		set := set.Make(forbidden...)
+// 		if set.Count() > 0 {
+// 			violations[i] = set
+// 		}
+// 	}
+// 	if len(violations) == 0 {
+// 		return nil
+// 	}
+// 	var sb strings.Builder
+// 	var sep string
+// 	// iterate again to build validation message in node order
+// 	for i := range es.Spec.NodeSets {
+// 		vs := violations[i]
+// 		if vs == nil {
+// 			continue
+// 		}
+// 		sb.WriteString(sep)
+// 		sb.WriteString("node[")
+// 		sb.WriteString(strconv.FormatInt(int64(i), 10))
+// 		sb.WriteString("]: ")
+// 		var sep2 string
+// 		list := vs.AsSlice()
+// 		list.Sort()
+// 		for _, msg := range list {
+// 			sb.WriteString(sep2)
+// 			sb.WriteString(msg)
+// 			sep2 = ", "
+// 		}
+// 		sep = "; "
+// 	}
+// 	// sb.WriteString(" is not user configurable")
+// 	// todo sabo how to make this so we give it the path to the correct config value that is wrong? also update the message
+// 	// guessing we need to update the string builder
+// 	return field.Invalid(field.NewPath("spec").Child("nodes", "config"), es.Spec.NodeSets[0].Config, blacklistedConfigErrMsg)
+// 	// return validation.Result{
+// 	// 	Allowed: false,
+// 	// 	Reason:  sb.String(),
+// 	// }
+// }
+
+// TODO sabo how do we unroll this? it has a different signature than the rest. we could update the rest to return a list but that seems like a smell. theres not really a great way to wrap this one either
+func betterblacklist(es *Elasticsearch) []*field.Error {
+	var errs []*field.Error
+	for i, nodeSet := range es.Spec.NodeSets {
+		if nodeSet.Config == nil {
+			continue
+		}
+		config, err := common.NewCanonicalConfigFrom(nodeSet.Config.Data)
+		if err != nil {
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
+			continue
+		}
+		forbidden := config.HasKeys(SettingsBlacklist)
+		for _, setting := range forbidden {
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), setting, blacklistedConfigErrMsg))
+		}
+	}
+	return errs
+}
+
 func noBlacklistedSettings(es *Elasticsearch) *field.Error {
 	violations := make(map[int]set.StringSet)
 	for i, n := range es.Spec.NodeSets {
@@ -141,14 +219,11 @@ func noBlacklistedSettings(es *Elasticsearch) *field.Error {
 		}
 		sep = "; "
 	}
-	// sb.WriteString(" is not user configurable")
-	// todo sabo how to make this so we give it the path to the correct config value that is wrong? also update the message
-	// guessing we need to update the string builder
-	return field.Invalid(field.NewPath("spec").Child("nodes", "config"), es.Spec.NodeSets[0].Config, blacklistedConfigErrMsg)
+	sb.WriteString(" is not user configurable")
+	return field.Invalid(field.NewPath("spec").Child("nodeSets", "config"), es.Spec.NodeSets[0].Config, blacklistedConfigErrMsg)
 	// return validation.Result{
 	// 	Allowed: false,
 	// 	Reason:  sb.String(),
-	// }
 }
 
 func validSanIP(es *Elasticsearch) *field.Error {
@@ -166,12 +241,30 @@ func validSanIP(es *Elasticsearch) *field.Error {
 	return nil
 }
 
+func checkNodeSetNameUniqueness(es *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	nodeSets := es.Spec.NodeSets
+	names := make(map[string]struct{})
+	// todo sabo this seems goofy, do we need another map?
+	duplicates := make(map[string]struct{})
+	for _, nodeSet := range nodeSets {
+		if _, found := names[nodeSet.Name]; found {
+			duplicates[nodeSet.Name] = struct{}{}
+		}
+		names[nodeSet.Name] = struct{}{}
+	}
+	for _, dupe := range duplicates {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), dupe, duplicateNodeSets))
+	}
+	return errs
+}
+
 // pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
 func pvcModification(old, current *Elasticsearch) *field.Error {
 	if old == nil {
 		return nil
 	}
-	for _, node := range old.Spec.NodeSets {
+	for i, node := range old.Spec.NodeSets {
 		currNode := getNode(node.Name, current)
 		if currNode == nil {
 			// this is a new sset, so there is nothing to check
@@ -181,7 +274,8 @@ func pvcModification(old, current *Elasticsearch) *field.Error {
 		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
 		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
 		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
-			return field.Invalid(field.NewPath("spec").Child("nodes", "volumeClaimTemplates"), currNode.VolumeClaimTemplates, pvcImmutableMsg)
+			// TODO sabo this does not correctly have the right path, we really need the index in _new_ spec
+			return field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), currNode.VolumeClaimTemplates, pvcImmutableMsg)
 		}
 	}
 	return nil

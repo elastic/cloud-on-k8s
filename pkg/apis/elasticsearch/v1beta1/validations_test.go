@@ -8,13 +8,12 @@ import (
 	// "fmt"
 	// "reflect"
 	// "strings"
-	// "testing"
+	"testing"
 
 	// "k8s.io/apimachinery/pkg/api/resource"
 
 	// "github.com/stretchr/testify/require"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	// common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	// // "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	// // estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
@@ -25,79 +24,73 @@ import (
 	// corev1 "k8s.io/api/core/v1"
 )
 
-// func Test_checkNodeSetNameUniqueness(t *testing.T) {
-// 	type args struct {
-// 		name        string
-// 		es          Elasticsearch
-// 		wantReason  string
-// 		wantAllowed bool
-// 	}
-// 	tests := []args{
-// 		{
-// 			name: "several duplicate nodeSets",
-// 			es: Elasticsearch{
-// 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
-// 				Spec: ElasticsearchSpec{
-// 					Version: "7.4.0",
-// 					NodeSets: []NodeSet{
-// 						{Name: "foo", Count: 1}, {Name: "foo", Count: 1},
-// 						{Name: "bar", Count: 1}, {Name: "bar", Count: 1},
-// 					},
-// 				},
-// 			},
-// 			wantAllowed: false,
-// 			wantReason:  validationFailedMsg,
-// 		},
-// 		{
-// 			name: "good spec with 1 nodeSet",
-// 			es: Elasticsearch{
-// 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
-// 				Spec: ElasticsearchSpec{
-// 					Version:  "7.4.0",
-// 					NodeSets: []NodeSet{{Name: "foo", Count: 1}},
-// 				},
-// 			},
-// 			wantAllowed: true,
-// 		},
-// 		{
-// 			name: "good spec with 2 nodeSets",
-// 			es: Elasticsearch{
-// 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
-// 				Spec: ElasticsearchSpec{
-// 					Version:  "7.4.0",
-// 					NodeSets: []NodeSet{{Name: "foo", Count: 1}, {Name: "bar", Count: 1}},
-// 				},
-// 			},
-// 			wantAllowed: true,
-// 		},
-// 		{
-// 			name: "duplicate nodeSet",
-// 			es: Elasticsearch{
-// 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
-// 				Spec: ElasticsearchSpec{
-// 					Version:  "7.4.0",
-// 					NodeSets: []NodeSet{{Name: "foo", Count: 1}, {Name: "foo", Count: 1}},
-// 				},
-// 			},
-// 			wantAllowed: false,
-// 			wantReason:  validationFailedMsg,
-// 		},
-// 	}
+func Test_checkNodeSetNameUniqueness(t *testing.T) {
+	type args struct {
+		name         string
+		es           *Elasticsearch
+		expectErrors bool
+	}
+	tests := []args{
+		{
+			name: "several duplicate nodeSets",
+			es: &Elasticsearch{
+				// TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: ElasticsearchSpec{
+					Version: "7.4.0",
+					NodeSets: []NodeSet{
+						{Name: "foo", Count: 1}, {Name: "foo", Count: 1},
+						{Name: "bar", Count: 1}, {Name: "bar", Count: 1},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "good spec with 1 nodeSet",
+			es: &Elasticsearch{
+				// TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []NodeSet{{Name: "foo", Count: 1}},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "good spec with 2 nodeSets",
+			es: &Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []NodeSet{{Name: "foo", Count: 1}, {Name: "bar", Count: 1}},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "duplicate nodeSet",
+			es: &Elasticsearch{
+				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
+				Spec: ElasticsearchSpec{
+					Version:  "7.4.0",
+					NodeSets: []NodeSet{{Name: "foo", Count: 1}, {Name: "foo", Count: 1}},
+				},
+			},
+			expectErrors: true,
+		},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			ctx, err := NewValidationContext(nil, tt.es)
-// 			require.NoError(t, err)
-// 			got := checkNodeSetNameUniqueness(*ctx)
-// 			if got.Allowed != tt.wantAllowed {
-// 				t.Errorf("checkNodeSetNameUniqueness() = %v, want %v", got.Allowed, tt.wantAllowed)
-// 			}
-// 			if !strings.Contains(got.Reason, tt.wantReason) {
-// 				t.Errorf("checkNodeSetNameUniqueness() = %v, want %v", got.Reason, tt.wantReason)
-// 			}
-// 		})
-// 	}
-// }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := checkNodeSetNameUniqueness(tt.es)
+			actualErrors := len(actual) > 0
+
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed checkNodeSetNameUniqueness(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.NodeSets)
+			}
+		})
+	}
+}
 
 // func Test_hasMaster(t *testing.T) {
 // 	// failedValidation := validation.Result{Allowed: false, Reason: masterRequiredMsg}
