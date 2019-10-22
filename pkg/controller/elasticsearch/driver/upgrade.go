@@ -131,6 +131,7 @@ func newRollingUpgrade(
 		ES:              d.ES,
 		statefulSets:    statefulSets,
 		esClient:        esClient,
+		shardLister:     esClient,
 		esState:         esState,
 		expectations:    d.Expectations,
 		reconcileState:  d.ReconcileState,
