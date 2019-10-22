@@ -15,9 +15,9 @@ import (
 
 func TestNewMergedESConfig(t *testing.T) {
 	nodeML := "node.ml"
-	xPackSecurityAuthcRealmsNativeNative1Order := "xpack.security.authc.realms.native.native1.order"
-	xPackSecurityAuthcRealmsNative1Type := "xpack.security.authc.realms.native1.type"
-	xPackSecurityAuthcRealmsNative1Order := "xpack.security.authc.realms.native1.order"
+	xPackSecurityAuthcRealmsActiveDirectoryAD1Order := "xpack.security.authc.realms.active_directory.ad1.order"
+	xPackSecurityAuthcRealmsAD1Type := "xpack.security.authc.realms.ad1.type"
+	xPackSecurityAuthcRealmsAD1Order := "xpack.security.authc.realms.ad1.order"
 
 	tests := []struct {
 		name    string
@@ -26,13 +26,15 @@ func TestNewMergedESConfig(t *testing.T) {
 		assert  func(cfg CanonicalConfig)
 	}{
 		{
-			name:    "in 6.x, empty config should have the default file realm settings configured",
+			name:    "in 6.x, empty config should have the default file and native realm settings configured",
 			version: "6.8.0",
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Type})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Order})))
 			},
 		},
 		{
@@ -45,35 +47,40 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Type})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Order})))
 			},
 		},
 		{
-			name:    "in 6.x, native realm settings should be merged with the default file realm settings",
+			name:    "in 6.x, active_directory realm settings should be merged with the default file and native realm settings",
 			version: "6.8.0",
 			cfgData: map[string]interface{}{
-				nodeML:                               true,
-				xPackSecurityAuthcRealmsNative1Type:  "native",
-				xPackSecurityAuthcRealmsNative1Order: 0,
+				nodeML:                           true,
+				xPackSecurityAuthcRealmsAD1Type:  "active_directory",
+				xPackSecurityAuthcRealmsAD1Order: 0,
 			},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Type})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsNative1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsAD1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsAD1Order})))
 			},
 		},
 		{
-			name:    "in 7.x, empty config should have the default file realm settings configured",
+			name:    "in 7.x, empty config should have the default file and native realm settings configured",
 			version: "7.3.0",
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFileFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNativeNative1Order})))
 			},
 		},
 		{
-			name:    "in 7.x, sample config should have the default file realm settings configured",
+			name:    "in 7.x, sample config should have the default file and native realm settings configured",
 			version: "7.3.0",
 			cfgData: map[string]interface{}{
 				nodeML: true,
@@ -81,19 +88,21 @@ func TestNewMergedESConfig(t *testing.T) {
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFileFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNativeNative1Order})))
 			},
 		},
 		{
-			name:    "in 7.x, native realm settings should be merged with the default file realm settings",
+			name:    "in 7.x, active_directory realm settings should be merged with the default file and native realm settings",
 			version: "7.3.0",
 			cfgData: map[string]interface{}{
 				nodeML: true,
-				xPackSecurityAuthcRealmsNativeNative1Order: 0,
+				xPackSecurityAuthcRealmsActiveDirectoryAD1Order: 0,
 			},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFileFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsNativeNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNativeNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsActiveDirectoryAD1Order})))
 			},
 		},
 		{
