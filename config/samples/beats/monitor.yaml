@@ -6,11 +6,6 @@ metadata:
   namespace: beats
 spec:
   version: 7.4.0
-  secureSettings:
-  - secretName: gcs-creds
-    entries:
-    - key: service-account.json
-      path: gcs.client.default.credentials_file
   nodeSets:
   - name: mdi
     count: 3
@@ -19,13 +14,6 @@ spec:
         annotations:
            "co.elastic.logs/module": elasticsearch
       spec:
-        initContainers:
-        - name: install-gcs
-          command:
-          - sh
-          - -c
-          - |
-            bin/elasticsearch-plugin install --batch repository-gcs
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
@@ -46,6 +34,10 @@ spec:
   count: 1
   elasticsearchRef:
     name: "monitor"
+  podTemplate:
+    metadata:
+      annotations:
+        "co.elastic.logs/module": kibana
   http:
     service:
       spec:
