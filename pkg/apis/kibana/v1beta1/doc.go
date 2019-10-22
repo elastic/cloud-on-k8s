@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// Package v1beta1 contains API Schema definitions for the kibana v1beta1 API group
+// Package v1beta1 contains API Schema definitions for managing Kibana resources.
 // +kubebuilder:object:generate=true
 // +groupName=kibana.k8s.elastic.co
 package v1beta1

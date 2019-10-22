@@ -12,9 +12,8 @@
 
 
 [id="apm-k8s-elastic-co-v1beta1"]
-[float]
 === apm.k8s.elastic.co/v1beta1
-Package v1beta1 contains API Schema definitions for the apm v1beta1 API group
+Package v1beta1 contains API schema definitions for managing APM server resources.
 
 .Resource Types
 --
@@ -25,7 +24,7 @@ Package v1beta1 contains API Schema definitions for the apm v1beta1 API group
 [float]
 ==== ApmServer
 
-ApmServer is the Schema for the apmservers API
+ApmServer represents an APM Server resource in a Kubernetes cluster.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -48,30 +47,22 @@ _link:#apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$]_
 ---
 
 *`version`*  _string_::
-Version represents the version of the APM Server
+Version of the APM Server.
 *`image`*  _string_::
-Image represents the docker image that will be used.
+Image is the APM Server Docker image to deploy.
 *`count`*  _int32_::
-Count defines how many nodes the Apm Server deployment must have.
+Count of APM Server instances to deploy.
 *`config`* _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_::
-Config represents the APM configuration.
+Config holds APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
 *`http`* _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
-HTTP contains settings for HTTP.
+HTTP holds HTTP layer configuration for the APM Server resource.
 *`elasticsearchRef`* _link:#common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_::
-ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
-If the namespace is not specified, the current resource namespace will be used.
+ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 *`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate can be used to propagate configuration to APM Server pods.
-This allows specifying custom annotations, labels, environment variables,
-affinity, resources, etc. for the pods created from this spec.
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the APM Server pods.
 *`secureSettings`* _link:#common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
-SecureSettings references secrets containing secure settings, to be injected
-into the APM keystore on each node.
-Each individual key/value entry in the referenced secrets is considered as an
-individual secure setting to be injected.
-You can use the `entries` and `key` fields to consider only a subset of the secret
-entries and the `path` field to change the target path of a secret entry key.
-The secret must exist in the same namespace as the APM resource.
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
 |===
 
 [id="apm-k8s-elastic-co-v1beta1-apmserverspec"]
@@ -81,7 +72,7 @@ The secret must exist in the same namespace as the APM resource.
 link:#apm-k8s-elastic-co-v1beta1-apmserver[ApmServer]
 )
 
-ApmServerSpec defines the desired state of ApmServer
+ApmServerSpec holds the specification of an APM Server.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -89,49 +80,40 @@ ApmServerSpec defines the desired state of ApmServer
 | *`version`* +
 _string_
 |
-Version represents the version of the APM Server
+Version of the APM Server.
 | *`image`* +
 _string_
 |
-Image represents the docker image that will be used.
+Image is the APM Server Docker image to deploy.
 | *`count`* +
 _int32_
 |
-Count defines how many nodes the Apm Server deployment must have.
+Count of APM Server instances to deploy.
 | *`config`* +
 _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_
 |
-Config represents the APM configuration.
+Config holds APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
 | *`http`* +
 _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_
 |
-HTTP contains settings for HTTP.
+HTTP holds HTTP layer configuration for the APM Server resource.
 | *`elasticsearchRef`* +
 _link:#common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_
 |
-ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
-If the namespace is not specified, the current resource namespace will be used.
+ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 | *`podTemplate`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
 |
-PodTemplate can be used to propagate configuration to APM Server pods.
-This allows specifying custom annotations, labels, environment variables,
-affinity, resources, etc. for the pods created from this spec.
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the APM Server pods.
 | *`secureSettings`* +
 _link:#common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |
-SecureSettings references secrets containing secure settings, to be injected
-into the APM keystore on each node.
-Each individual key/value entry in the referenced secrets is considered as an
-individual secure setting to be injected.
-You can use the `entries` and `key` fields to consider only a subset of the secret
-entries and the `path` field to change the target path of a secret entry key.
-The secret must exist in the same namespace as the APM resource.
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
 |===
 [id="common-k8s-elastic-co-v1beta1"]
-[float]
 === common.k8s.elastic.co/v1beta1
-Package v1beta1 contains API Schema definitions for the common v1beta1 API group
+Package v1beta1 contains API Schema definitions for common types used by all resources.
 
 .Resource Types
 --
@@ -154,6 +136,7 @@ Config represents untyped YAML configuration inside a spec.
 | *`Data`* +
 _map[string]interface{}_
 |
+Data holds the configuration keys and values.
 This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/issues/528
 |===
 
@@ -166,7 +149,7 @@ link:#elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[ElasticsearchSpec],
 link:#kibana-k8s-elastic-co-v1beta1-kibanaspec[KibanaSpec]
 )
 
-HTTPConfig configures an HTTP-based service.
+HTTPConfig holds the HTTP layer configuration for resources.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -174,11 +157,11 @@ HTTPConfig configures an HTTP-based service.
 | *`service`* +
 _link:#common-k8s-elastic-co-v1beta1-servicetemplate[$$ServiceTemplate$$]_
 |
-Service is a template for the Kubernetes Service
+Service defines the template for the associated Kubernetes Service object.
 | *`tls`* +
 _link:#common-k8s-elastic-co-v1beta1-tlsoptions[$$TLSOptions$$]_
 |
-TLS describe additional options to consider when generating HTTP TLS certificates.
+TLS defines options for configuring TLS for HTTP.
 |===
 
 [id="common-k8s-elastic-co-v1beta1-keytopath"]
@@ -188,7 +171,7 @@ TLS describe additional options to consider when generating HTTP TLS certificate
 link:#common-k8s-elastic-co-v1beta1-secretsource[SecretSource]
 )
 
-Maps a string key to a path within a volume.
+KeyToPath defines how to map a key in a Secret object to a filesystem path.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -196,14 +179,12 @@ Maps a string key to a path within a volume.
 | *`key`* +
 _string_
 |
-The key to project.
+Key is the key contained in the secret.
 | *`path`* +
 _string_
 |
-The relative path of the file to map the key to.
-May not be an absolute path.
-May not contain the path element '..'.
-May not start with the string '..'.
+Path is the relative file path to map the key to.
+Path must not be an absolute file path and must not contain any ".." components.
 |===
 
 [id="common-k8s-elastic-co-v1beta1-objectselector"]
@@ -214,7 +195,7 @@ link:#apm-k8s-elastic-co-v1beta1-apmserverspec[ApmServerSpec],
 link:#kibana-k8s-elastic-co-v1beta1-kibanaspec[KibanaSpec]
 )
 
-ObjectSelector allows to specify a reference to an object across namespace boundaries.
+ObjectSelector defines a reference to a Kubernetes object.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -222,11 +203,11 @@ ObjectSelector allows to specify a reference to an object across namespace bound
 | *`name`* +
 _string_
 |
----
+Name of the Kubernetes object.
 | *`namespace`* +
 _string_
 |
----
+Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 |===
 
 [id="common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate"]
@@ -236,7 +217,7 @@ _string_
 link:#elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[ElasticsearchSpec]
 )
 
-PodDisruptionBudgetTemplate contains a template for creating a PodDisruptionBudget.
+PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -244,13 +225,13 @@ PodDisruptionBudgetTemplate contains a template for creating a PodDisruptionBudg
 | *`metadata`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
 |
-ObjectMeta is metadata for the service.
+ObjectMeta is the metadata of the PDB.
 The name and namespace provided here is managed by ECK and will be ignored.
 Refer to the Kubernetes API documentation for the fields of the `metadata` field.
 | *`spec`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#poddisruptionbudgetspec-v1beta1-policy[$$Kubernetes policy/v1beta1.PodDisruptionBudgetSpec$$]_
 |
-Spec of the desired behavior of the PodDisruptionBudget
+Spec is the specification of the PDB.
 
 *`minAvailable`*  _Kubernetes intstr.IntOrString_::
 _(Optional)_
@@ -277,7 +258,7 @@ by specifying 0. This is a mutually exclusive setting with "minAvailable".
 link:#common-k8s-elastic-co-v1beta1-tlsoptions[TLSOptions]
 )
 
-SecretRef reference a secret by name.
+SecretRef is a reference to a secret that exists in the same namespace.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -285,7 +266,7 @@ SecretRef reference a secret by name.
 | *`secretName`* +
 _string_
 |
----
+SecretName is the name of the secret.
 |===
 
 [id="common-k8s-elastic-co-v1beta1-secretsource"]
@@ -297,7 +278,7 @@ link:#elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[ElasticsearchSpec],
 link:#kibana-k8s-elastic-co-v1beta1-kibanaspec[KibanaSpec]
 )
 
-
+SecretSource defines a data source based on a Kubernetes Secret.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -305,16 +286,13 @@ link:#kibana-k8s-elastic-co-v1beta1-kibanaspec[KibanaSpec]
 | *`secretName`* +
 _string_
 |
-Name of the secret in the pod's namespace to use.
-More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
+SecretName is the name of the secret.
 | *`entries`* +
 _link:#common-k8s-elastic-co-v1beta1-keytopath[$$[]KeyToPath$$]_
 |
-If unspecified, each key-value pair in the Data field of the referenced
-Secret will be projected into the volume as a file whose name is the
-key and content is the value. If specified, the listed keys will be
-projected into the specified paths, and unlisted keys will not be
-present.
+Entries define how to project each key-value pair in the secret to filesystem paths.
+If not defined, all keys will be projected to similarly named paths in the filesystem.
+If defined, only the specified keys will be projected to the corresponding paths.
 |===
 
 [id="common-k8s-elastic-co-v1beta1-selfsignedcertificate"]
@@ -324,7 +302,7 @@ present.
 link:#common-k8s-elastic-co-v1beta1-tlsoptions[TLSOptions]
 )
 
-
+SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -332,12 +310,11 @@ link:#common-k8s-elastic-co-v1beta1-tlsoptions[TLSOptions]
 | *`subjectAltNames`* +
 _link:#common-k8s-elastic-co-v1beta1-subjectalternativename[$$[]SubjectAlternativeName$$]_
 |
-SubjectAlternativeNames is a list of SANs to include in the HTTP TLS certificates.
-For example: a wildcard DNS to expose the cluster.
+SubjectAlternativeNames is a list of SANs to include in the generated HTTP TLS certificate.
 | *`disabled`* +
 _bool_
 |
-Disabled turns off the provisioning of self-signed HTTP TLS certificates.
+Disabled indicates that the provisioning of the self-signed certifcate should be disabled.
 |===
 
 [id="common-k8s-elastic-co-v1beta1-servicetemplate"]
@@ -347,7 +324,7 @@ Disabled turns off the provisioning of self-signed HTTP TLS certificates.
 link:#common-k8s-elastic-co-v1beta1-httpconfig[HTTPConfig]
 )
 
-ServiceTemplate describes the data a service should have when created from a template
+ServiceTemplate defines the template for a Kubernetes Service.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -355,13 +332,13 @@ ServiceTemplate describes the data a service should have when created from a tem
 | *`metadata`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
 |
-ObjectMeta is metadata for the service.
+ObjectMeta is the metadata of the service.
 The name and namespace provided here is managed by ECK and will be ignored.
 Refer to the Kubernetes API documentation for the fields of the `metadata` field.
 | *`spec`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#servicespec-v1-core[$$Kubernetes core/v1.ServiceSpec$$]_
 |
-Spec defines the behavior of the service.
+Spec is the specification of the service.
 
 *`ports`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#serviceport-v1-core[$$[]Kubernetes core/v1.ServicePort$$]_::
 The list of ports that are exposed by this service.
@@ -469,7 +446,7 @@ sessionAffinityConfig contains the configurations of session affinity.
 link:#common-k8s-elastic-co-v1beta1-selfsignedcertificate[SelfSignedCertificate]
 )
 
-
+SubjectAlternativeName represents a SAN entry in a x509 certificate.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -477,11 +454,11 @@ link:#common-k8s-elastic-co-v1beta1-selfsignedcertificate[SelfSignedCertificate]
 | *`dns`* +
 _string_
 |
----
+DNS is the DNS name of the subject.
 | *`ip`* +
 _string_
 |
----
+IP is the IP address of the subject.
 |===
 
 [id="common-k8s-elastic-co-v1beta1-tlsoptions"]
@@ -491,7 +468,7 @@ _string_
 link:#common-k8s-elastic-co-v1beta1-httpconfig[HTTPConfig]
 )
 
-
+TLSOptions holds TLS configuration options.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -499,23 +476,20 @@ link:#common-k8s-elastic-co-v1beta1-httpconfig[HTTPConfig]
 | *`selfSignedCertificate`* +
 _link:#common-k8s-elastic-co-v1beta1-selfsignedcertificate[$$SelfSignedCertificate$$]_
 |
-SelfSignedCertificate define options to apply to self-signed certificate
-managed by the operator.
+SelfSignedCertificate allows configuring the self-signed certificate generated by the operator.
 | *`certificate`* +
 _link:#common-k8s-elastic-co-v1beta1-secretref[$$SecretRef$$]_
 |
-Certificate is a reference to a secret that contains the certificate and private key to be used.
-
-The secret should have the following content:
+Certificate is a reference to a Kubernetes secret that contains the certificate and private key for enabling TLS.
+The referenced secret should contain the following:
 
 - `ca.crt`: The certificate authority (optional)
 - `tls.crt`: The certificate (or a chain).
 - `tls.key`: The private key to the first certificate in the certificate chain.
 |===
 [id="elasticsearch-k8s-elastic-co-v1beta1"]
-[float]
 === elasticsearch.k8s.elastic.co/v1beta1
-Package v1beta1 contains API Schema definitions for the elasticsearch v1beta1 API group
+Package v1beta1 contains API schema definitions for managing Elasticsearch resources.
 
 .Resource Types
 --
@@ -526,7 +500,7 @@ Package v1beta1 contains API Schema definitions for the elasticsearch v1beta1 AP
 [float]
 ==== Elasticsearch
 
-Elasticsearch is the Schema for the elasticsearches API
+Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -549,28 +523,22 @@ _link:#elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpe
 ---
 
 *`version`*  _string_::
-Version represents the version of the stack
+Version of Elasticsearch.
 *`image`*  _string_::
-Image represents the docker image that will be used.
+Image is the Elasticsearch Docker image to deploy.
 *`http`* _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
-HTTP contains settings for HTTP.
+HTTP holds HTTP layer settings for Elasticsearch.
 *`nodeSets`* _link:#elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$[]NodeSet$$]_::
-NodeSets represents a list of groups of nodes with the same configuration to be part of the cluster
+NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 *`updateStrategy`* _link:#elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]_::
 UpdateStrategy specifies how updates to the cluster should be performed.
 *`podDisruptionBudget`* _link:#common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
-PodDisruptionBudget allows full control of the default pod disruption budget.
-
-The default budget selects all cluster pods and sets maxUnavailable to 1.
-To disable it entirely, set to the empty value (`{}` in YAML).
+PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
+The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set to the empty value (`{}` in YAML).
 *`secureSettings`* _link:#common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
-SecureSettings references secrets containing secure settings, to be injected
-into Elasticsearch keystore on each node.
-Each individual key/value entry in the referenced secrets is considered as an
-individual secure setting to be injected.
-You can use the `entries` and `key` fields to consider only a subset of the secret
-entries and the `path` field to change the target path of a secret entry key.
-The secret must exist in the same namespace as the Elasticsearch resource.
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1beta1-changebudget"]
@@ -580,7 +548,7 @@ The secret must exist in the same namespace as the Elasticsearch resource.
 link:#elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[UpdateStrategy]
 )
 
-ChangeBudget defines how Pods in a single group should be updated.
+ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -588,52 +556,15 @@ ChangeBudget defines how Pods in a single group should be updated.
 | *`maxUnavailable`* +
 _int32_
 |
-MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to the
-actions controlled by the operator. Setting negative value will result in no restrictions on number of unavailable
-pods. By default, a fixed value of 1 is used.
+MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to
+circumstances under the control of the operator. Setting a negative value will disable this restriction.
+Defaults to 1 if not specified.
 | *`maxSurge`* +
 _int32_
 |
-MaxSurge is the maximum number of pods that can be scheduled above the original number of pods. MaxSurge
-is only taken into the account when scaling up. Setting negative value will result in no restrictions on number
-of pods scheduled. By default, it's unbounded.
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1beta1-clustersettings"]
-[float]
-==== ClusterSettings
-(*Appears on:*
-link:#elasticsearch-k8s-elastic-co-v1beta1-elasticsearchsettings[ElasticsearchSettings]
-)
-
-ClusterSettings is the cluster node in elasticsearch.yml.
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`InitialMasterNodes`* +
-_[]string_
-|
----
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1beta1-elasticsearchsettings"]
-[float]
-==== ElasticsearchSettings
-
-ElasticsearchSettings is a typed subset of elasticsearch.yml for purposes of the operator.
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`Node`* +
-_link:#elasticsearch-k8s-elastic-co-v1beta1-node[$$Node$$]_
-|
----
-| *`Cluster`* +
-_link:#elasticsearch-k8s-elastic-co-v1beta1-clustersettings[$$ClusterSettings$$]_
-|
----
+MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in the spec.
+MaxSurge is only taken into consideration when scaling up. Setting a negative value will disable the restriction.
+Defaults to unbounded if not specified.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec"]
@@ -643,7 +574,7 @@ _link:#elasticsearch-k8s-elastic-co-v1beta1-clustersettings[$$ClusterSettings$$]
 link:#elasticsearch-k8s-elastic-co-v1beta1-elasticsearch[Elasticsearch]
 )
 
-ElasticsearchSpec defines the desired state of Elasticsearch
+ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -651,19 +582,20 @@ ElasticsearchSpec defines the desired state of Elasticsearch
 | *`version`* +
 _string_
 |
-Version represents the version of the stack
+Version of Elasticsearch.
 | *`image`* +
 _string_
 |
-Image represents the docker image that will be used.
+Image is the Elasticsearch Docker image to deploy.
 | *`http`* +
 _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_
 |
-HTTP contains settings for HTTP.
+HTTP holds HTTP layer settings for Elasticsearch.
 | *`nodeSets`* +
 _link:#elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$[]NodeSet$$]_
 |
-NodeSets represents a list of groups of nodes with the same configuration to be part of the cluster
+NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 | *`updateStrategy`* +
 _link:#elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]_
 |
@@ -671,50 +603,13 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 | *`podDisruptionBudget`* +
 _link:#common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_
 |
-PodDisruptionBudget allows full control of the default pod disruption budget.
-
-The default budget selects all cluster pods and sets maxUnavailable to 1.
-To disable it entirely, set to the empty value (`{}` in YAML).
+PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
+The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set to the empty value (`{}` in YAML).
 | *`secureSettings`* +
 _link:#common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |
-SecureSettings references secrets containing secure settings, to be injected
-into Elasticsearch keystore on each node.
-Each individual key/value entry in the referenced secrets is considered as an
-individual secure setting to be injected.
-You can use the `entries` and `key` fields to consider only a subset of the secret
-entries and the `path` field to change the target path of a secret entry key.
-The secret must exist in the same namespace as the Elasticsearch resource.
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1beta1-node"]
-[float]
-==== Node
-(*Appears on:*
-link:#elasticsearch-k8s-elastic-co-v1beta1-elasticsearchsettings[ElasticsearchSettings]
-)
-
-Node is the node section in elasticsearch.yml.
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`Master`* +
-_bool_
-|
----
-| *`Data`* +
-_bool_
-|
----
-| *`Ingest`* +
-_bool_
-|
----
-| *`ML`* +
-_bool_
-|
----
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1beta1-nodeset"]
@@ -724,7 +619,7 @@ _bool_
 link:#elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[ElasticsearchSpec]
 )
 
-NodeSet defines a common topology for a set of Elasticsearch nodes
+NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -732,30 +627,26 @@ NodeSet defines a common topology for a set of Elasticsearch nodes
 | *`name`* +
 _string_
 |
-Name is a logical name for this set of nodes. Used as a part of the managed Elasticsearch node.name setting.
+Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
 | *`config`* +
 _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_
 |
-Config represents Elasticsearch configuration.
+Config holds the Elasticsearch configuration.
 | *`count`* +
 _int32_
 |
-Count defines how many nodes this topology should have.
+Count of Elasticsearch nodes to deploy.
 | *`podTemplate`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
 |
-PodTemplate can be used to propagate configuration to Elasticsearch pods.
-This allows specifying custom annotations, labels, environment variables,
-volumes, affinity, resources, etc. for the pods created from this NodeSet.
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Pods belonging to this NodeSet.
 | *`volumeClaimTemplates`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaim-v1-core[$$[]Kubernetes core/v1.PersistentVolumeClaim$$]_
 |
-VolumeClaimTemplates is a list of claims that pods are allowed to reference.
-Every claim in this list must have at least one matching (by name) volumeMount in one
-container in the template. A claim in this list takes precedence over
-any volumes in the template, with the same name.
-TODO: Define the behavior if a claim already exists with the same name.
-TODO: define special behavior based on claim metadata.name. (e.g data / logs volumes)
+VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
+Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
+Items defined here take precedence over any default claims added by the operator with the same name.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1beta1-updatestrategy"]
@@ -773,12 +664,11 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 | *`changeBudget`* +
 _link:#elasticsearch-k8s-elastic-co-v1beta1-changebudget[$$ChangeBudget$$]_
 |
-ChangeBudget is the change budget that should be used when performing mutations to the cluster.
+ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 |===
 [id="kibana-k8s-elastic-co-v1beta1"]
-[float]
 === kibana.k8s.elastic.co/v1beta1
-Package v1beta1 contains API Schema definitions for the kibana v1beta1 API group
+Package v1beta1 contains API Schema definitions for managing Kibana resources.
 
 .Resource Types
 --
@@ -789,7 +679,7 @@ Package v1beta1 contains API Schema definitions for the kibana v1beta1 API group
 [float]
 ==== Kibana
 
-Kibana is the Schema for the kibanas API
+Kibana represents a Kibana resource in a Kubernetes cluster.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -812,30 +702,22 @@ _link:#kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]_
 ---
 
 *`version`*  _string_::
-Version represents the version of Kibana
+Version of Kibana.
 *`image`*  _string_::
-Image represents the docker image that will be used.
+Image is the Kibana Docker image to deploy.
 *`count`*  _int32_::
-Count defines how many nodes the Kibana deployment must have.
+Count of Kibana instances to deploy.
 *`elasticsearchRef`* _link:#common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_::
-ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
-If the namespace is not specified, the current resource namespace will be used.
+ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 *`config`* _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_::
-Config represents Kibana configuration.
+Config holds Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 *`http`* _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
-HTTP contains settings for HTTP.
+HTTP holds HTTP layer configuration for Kibana.
 *`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate can be used to propagate configuration to Kibana pods.
-This allows specifying custom annotations, labels, environment variables,
-affinity, resources, etc. for the pods created from this spec.
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Kibana pods
 *`secureSettings`* _link:#common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
-SecureSettings references secrets containing secure settings, to be injected
-into Kibana keystore on each node.
-Each individual key/value entry in the referenced secrets is considered as an
-individual secure setting to be injected.
-You can use the `entries` and `key` fields to consider only a subset of the secret
-entries and the `path` field to change the target path of a secret entry key.
-The secret must exist in the same namespace as the Kibana resource.
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 |===
 
 [id="kibana-k8s-elastic-co-v1beta1-kibanaspec"]
@@ -845,7 +727,7 @@ The secret must exist in the same namespace as the Kibana resource.
 link:#kibana-k8s-elastic-co-v1beta1-kibana[Kibana]
 )
 
-KibanaSpec defines the desired state of Kibana
+KibanaSpec holds the specification of a Kibana instance.
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -853,42 +735,34 @@ KibanaSpec defines the desired state of Kibana
 | *`version`* +
 _string_
 |
-Version represents the version of Kibana
+Version of Kibana.
 | *`image`* +
 _string_
 |
-Image represents the docker image that will be used.
+Image is the Kibana Docker image to deploy.
 | *`count`* +
 _int32_
 |
-Count defines how many nodes the Kibana deployment must have.
+Count of Kibana instances to deploy.
 | *`elasticsearchRef`* +
 _link:#common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_
 |
-ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
-If the namespace is not specified, the current resource namespace will be used.
+ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 | *`config`* +
 _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_
 |
-Config represents Kibana configuration.
+Config holds Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 | *`http`* +
 _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_
 |
-HTTP contains settings for HTTP.
+HTTP holds HTTP layer configuration for Kibana.
 | *`podTemplate`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
 |
-PodTemplate can be used to propagate configuration to Kibana pods.
-This allows specifying custom annotations, labels, environment variables,
-affinity, resources, etc. for the pods created from this spec.
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Kibana pods
 | *`secureSettings`* +
 _link:#common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |
-SecureSettings references secrets containing secure settings, to be injected
-into Kibana keystore on each node.
-Each individual key/value entry in the referenced secrets is considered as an
-individual secure setting to be injected.
-You can use the `entries` and `key` fields to consider only a subset of the secret
-entries and the `path` field to change the target path of a secret entry key.
-The secret must exist in the same namespace as the Kibana resource.
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 |===

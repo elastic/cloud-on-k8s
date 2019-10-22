@@ -38,8 +38,9 @@ build_docs() {
             -template-dir="${SCRIPT_DIR}/templates" \
             -out-file=$TEMP_OUT_FILE \
             -config="${SCRIPT_DIR}/config.json" \
-            -logtostderr=true \
-            -stderrthreshold=3
+            -alsologtostderr=false \
+            -logtostderr=false \
+            -stderrthreshold=ERROR
         mv $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
         log "API reference documentation generated successfully."
     )

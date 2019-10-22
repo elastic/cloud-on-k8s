@@ -13,40 +13,32 @@ import (
 
 const KibanaContainerName = "kibana"
 
-// KibanaSpec defines the desired state of Kibana
+// KibanaSpec holds the specification of a Kibana instance.
 type KibanaSpec struct {
-	// Version represents the version of Kibana
+	// Version of Kibana.
 	Version string `json:"version,omitempty"`
 
-	// Image represents the docker image that will be used.
+	// Image is the Kibana Docker image to deploy.
 	Image string `json:"image,omitempty"`
 
-	// Count defines how many nodes the Kibana deployment must have.
+	// Count of Kibana instances to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
-	// If the namespace is not specified, the current resource namespace will be used.
+	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1beta1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// Config represents Kibana configuration.
+	// Config holds Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
-	// HTTP contains settings for HTTP.
+	// HTTP holds HTTP layer configuration for Kibana.
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
-	// PodTemplate can be used to propagate configuration to Kibana pods.
-	// This allows specifying custom annotations, labels, environment variables,
-	// affinity, resources, etc. for the pods created from this spec.
+	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Kibana pods
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
-	// SecureSettings references secrets containing secure settings, to be injected
-	// into Kibana keystore on each node.
-	// Each individual key/value entry in the referenced secrets is considered as an
-	// individual secure setting to be injected.
-	// You can use the `entries` and `key` fields to consider only a subset of the secret
-	// entries and the `path` field to change the target path of a secret entry key.
-	// The secret must exist in the same namespace as the Kibana resource.
+	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
+	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 
@@ -95,7 +87,7 @@ func (k *Kibana) SetAssociationConf(assocConf *commonv1beta1.AssociationConf) {
 
 // +kubebuilder:object:root=true
 
-// Kibana is the Schema for the kibanas API
+// Kibana represents a Kibana resource in a Kubernetes cluster.
 // +kubebuilder:resource:categories=elastic,shortName=kb
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"

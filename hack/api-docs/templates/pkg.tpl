@@ -14,7 +14,6 @@
 
 {{ range .packages }}
 [id="{{ packageAnchorID . | safeIdentifier }}"]
-[float]
 === {{ packageDisplayName . }}
 {{- with (index .GoPackages 0 ) }}
 {{- with .DocComments }}
