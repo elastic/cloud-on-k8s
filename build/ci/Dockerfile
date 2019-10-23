@@ -56,7 +56,7 @@ RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v$
     rm gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz
 
 # Install Kind to run k8s cluster locally in Docker
-RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v{KIND_VERSION}/kind-linux-amd64 && \
+RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64 && \
     mv kind-linux-amd64 /usr/local/bin/kind && chmod +x /usr/local/bin/kind
 
 # Add Go dependencies to Docker image
