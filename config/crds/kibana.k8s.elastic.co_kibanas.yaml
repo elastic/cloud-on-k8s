@@ -4679,7 +4679,7 @@ spec:
             description: KibanaSpec holds the specification of a Kibana instance.
             properties:
               config:
-                description: 'Config holds Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
+                description: 'Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html'
                 type: object
               count:
                 description: Count of Kibana instances to deploy.
@@ -4700,7 +4700,7 @@ spec:
                 - name
                 type: object
               http:
-                description: HTTP holds HTTP layer configuration for Kibana.
+                description: HTTP holds the HTTP layer configuration for Kibana.
                 properties:
                   service:
                     description: Service defines the template for the associated Kubernetes

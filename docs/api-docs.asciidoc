@@ -53,9 +53,9 @@ Image is the APM Server Docker image to deploy.
 *`count`*  _int32_::
 Count of APM Server instances to deploy.
 *`config`* _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_::
-Config holds APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
 *`http`* _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds HTTP layer configuration for the APM Server resource.
+HTTP holds the HTTP layer configuration for the APM Server resource.
 *`elasticsearchRef`* _link:#common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_::
 ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 *`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
@@ -92,11 +92,11 @@ Count of APM Server instances to deploy.
 | *`config`* +
 _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_
 |
-Config holds APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
 | *`http`* +
 _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_
 |
-HTTP holds HTTP layer configuration for the APM Server resource.
+HTTP holds the HTTP layer configuration for the APM Server resource.
 | *`elasticsearchRef`* +
 _link:#common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_
 |
@@ -710,9 +710,9 @@ Count of Kibana instances to deploy.
 *`elasticsearchRef`* _link:#common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_::
 ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 *`config`* _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_::
-Config holds Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 *`http`* _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds HTTP layer configuration for Kibana.
+HTTP holds the HTTP layer configuration for Kibana.
 *`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
 PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Kibana pods
 *`secureSettings`* _link:#common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
@@ -751,11 +751,11 @@ ElasticsearchRef is a reference to an Elasticsearch cluster running in the same 
 | *`config`* +
 _link:#common-k8s-elastic-co-v1beta1-config[$$Config$$]_
 |
-Config holds Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
 | *`http`* +
 _link:#common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_
 |
-HTTP holds HTTP layer configuration for Kibana.
+HTTP holds the HTTP layer configuration for Kibana.
 | *`podTemplate`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
 |

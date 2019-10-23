@@ -4689,7 +4689,7 @@ spec:
             description: ApmServerSpec holds the specification of an APM Server.
             properties:
               config:
-                description: 'Config holds APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
+                description: 'Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html'
                 type: object
               count:
                 description: Count of APM Server instances to deploy.
@@ -4710,7 +4710,7 @@ spec:
                 - name
                 type: object
               http:
-                description: HTTP holds HTTP layer configuration for the APM Server
+                description: HTTP holds the HTTP layer configuration for the APM Server
                   resource.
                 properties:
                   service:
