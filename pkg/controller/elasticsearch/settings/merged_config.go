@@ -6,8 +6,9 @@ package settings
 
 import (
 	"path"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -56,9 +57,9 @@ func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 	// seed hosts setting name changed starting ES 7.X
 	fileProvider := "file"
 	if ver.Major < 7 {
-		cfg[DiscoveryZenHostsProvider] = fileProvider
+		cfg[estype.DiscoveryZenHostsProvider] = fileProvider
 	} else {
-		cfg[DiscoverySeedProviders] = fileProvider
+		cfg[estype.DiscoverySeedProviders] = fileProvider
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
