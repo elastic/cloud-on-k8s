@@ -2,3 +2,23 @@ resources:
   - apm.k8s.elastic.co_apmservers.yaml
   - elasticsearch.k8s.elastic.co_elasticsearches.yaml
   - kibana.k8s.elastic.co_kibanas.yaml
+
+patchesJson6902:
+  - target:
+      group: apiextensions.k8s.io
+      version: v1beta1
+      kind: CustomResourceDefinition
+      name: apmservers.apm.k8s.elastic.co
+    path: patch-apm-kibana.yaml
+  - target:
+      group: apiextensions.k8s.io
+      version: v1beta1
+      kind: CustomResourceDefinition
+      name: elasticsearches.elasticsearch.k8s.elastic.co
+    path: patch-elasticsearch.yaml
+  - target:
+      group: apiextensions.k8s.io
+      version: v1beta1
+      kind: CustomResourceDefinition
+      name: kibanas.kibana.k8s.elastic.co
+    path: patch-apm-kibana.yaml

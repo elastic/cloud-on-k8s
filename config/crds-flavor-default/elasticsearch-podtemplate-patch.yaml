@@ -4,3 +4,10 @@
 # remove spec.nodeSets[].podTemplate for v1beta1
 - op: remove
   path: /spec/versions/1/schema/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/podTemplate
+# replace per-version schema by top-level validation of v1beta1 version
+- op: move
+  from: /spec/versions/1/schema
+  path: /spec/validation
+# remove v1alpha1 schema
+- op: remove
+  path: /spec/versions/0/schema

@@ -1,0 +1,16 @@
+# Move v1beta1 schema into the top-level validation field,
+# since per-version schema is only officially supported starting Kubernetes 1.16.
+# All resources creation/update will be validated against the v1beta1 schema.
+- op: move
+  from: /spec/versions/1/schema
+  path: /spec/validation
+# Remove v1alpha1 schema, mutually exclusive with the top-level validation.
+- op: remove
+  path: /spec/versions/0/schema
+# Remove spec.nodeSets[].podTemplate, since its verbosity may lead
+# to the CRD exceeding the maximum size limit.
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/podTemplate
+# Remove the deprecated misleading 'version' field, replaced by 'versions'.
+- op: remove
+  path: /spec/version

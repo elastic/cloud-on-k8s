@@ -43,14 +43,6 @@ endif
 
 CRD_OPTIONS ?= "crd"
 
-# CRD_FLAVOR can be used to select specific flavors of CRDs
-CRD_FLAVOR ?= default
-CRD_AVAILABLE_FLAVORS := default trivial-versions
-# verify that the CRD_FLAVOR is valid:
-ifeq ($(filter $(CRD_FLAVOR),$(CRD_AVAILABLE_FLAVORS)),)
-$(error $(CRD_FLAVOR) is not a valid CRD_FLAVOR. Possible values are: $(CRD_AVAILABLE_FLAVORS));
-endif
-
 ## -- Docker image
 
 # on GKE, use GCR and GCLOUD_PROJECT
@@ -109,10 +101,8 @@ generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/..." output:crd:artifacts:config=config/crds
-	# verify that the available crd flavors still can generate cleanly
-	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
-		kubectl kustomize config/crds-flavor-$$crd_flavor > /dev/null; \
-	done
+	# Error out if CRDs cannot be generated
+	kubectl kustomize config/crds > /dev/null
 	$(MAKE) --no-print-directory generate-all-in-one
 	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
 	# $(MAKE) --no-print-directory generate-api-docs
@@ -217,18 +207,16 @@ apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
 
 generate-all-in-one:
-	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
-	    ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-flavor-$$crd_flavor.yaml; \
-        kubectl kustomize config/crds-flavor-$$crd_flavor > $${ALL_IN_ONE_OUTPUT_FILE}; \
-        OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
-            NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-            $(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $${ALL_IN_ONE_OUTPUT_FILE}; \
-	done
+	ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml; \
+	kubectl kustomize config/crds > $${ALL_IN_ONE_OUTPUT_FILE}; \
+	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
+		NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $${ALL_IN_ONE_OUTPUT_FILE}
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: docker-build docker-push
-	kubectl apply -f config/all-in-one-flavor-$(CRD_FLAVOR).yaml
+	kubectl apply -f config/all-in-one.yaml
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
