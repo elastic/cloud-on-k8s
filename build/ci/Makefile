@@ -33,7 +33,7 @@ ci-interactive:
 
 ci-internal: ci-build-image
 	@ docker run --rm -t $(DOCKER_OPTS) \
-		--net=host \
+		--network="host" \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-v ${HOME}/.kube:/root/.kube \
