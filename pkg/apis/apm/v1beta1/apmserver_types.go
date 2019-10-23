@@ -23,10 +23,10 @@ type ApmServerSpec struct {
 	// Count of APM Server instances to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// Config holds APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+	// Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
-	// HTTP holds HTTP layer configuration for the APM Server resource.
+	// HTTP holds the HTTP layer configuration for the APM Server resource.
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
 	// ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
