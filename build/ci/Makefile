@@ -36,7 +36,7 @@ ci-internal: ci-build-image
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
-		--network=host \
+		--network="host" \
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)"
 
