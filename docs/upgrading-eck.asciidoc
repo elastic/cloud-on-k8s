@@ -24,7 +24,7 @@ It is recommended to install ECK 1.0.0-beta1 in a fresh Kubernetes cluster and m
 - Existing Elasticsearch, Kibana and APM Server resources created by an old version of the operator will continue to work but they will not be managed by the new operator. This means that the orchestration benefits provided by the operator such as rolling upgrades will no longer be available to those resources.
 - If the old operator is replaced without removing old resources first, you will have to manually disable finalizers to delete them later.
 - Existing Kubernetes manifests should be converted to the new format in order to work with the new operator.
-- link:https://github.com/elastic/cloud-on-k8s/issues/2039[Some incompatible settings] in Elasticsearch resources created for an older ECK version lead to parsing errors in ECK 1.0.0-beta1, preventing any reconciliation to happen.
+- link:https://github.com/elastic/cloud-on-k8s/issues/2039[Some incompatible settings] in Elasticsearch resources created for an older ECK version lead to parsing errors in ECK 1.0.0-beta1, preventing any reconciliation from happening.
 
 If some downtime is acceptable, upgrading in place can be performed as follows:
 
