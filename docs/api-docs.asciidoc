@@ -25,6 +25,9 @@ Package v1beta1 contains API schema definitions for managing APM Server resource
 ==== ApmServer
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
+
+
+
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -68,11 +71,14 @@ See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8
 [id="apm-k8s-elastic-co-v1beta1-apmserverspec"]
 [float]
 ==== ApmServerSpec
-(*Appears on:*
-link:xref:apm-k8s-elastic-co-v1beta1-apmserver[$$ApmServer$$]
-)
 
 ApmServerSpec holds the specification of an APM Server.
+
+
+.Appears in:
+****
+- xref:apm-k8s-elastic-co-v1beta1-apmserver[$$ApmServer$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -122,13 +128,16 @@ Package v1beta1 contains API schema definitions for common types used by all res
 [id="common-k8s-elastic-co-v1beta1-config"]
 [float]
 ==== Config
-(*Appears on:*
-link:xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
-link:xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$], 
-link:xref:elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$NodeSet$$]
-)
 
 Config represents untyped YAML configuration inside a spec.
+
+
+.Appears in:
+****
+- xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
+- xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$], 
+- xref:elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$NodeSet$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -143,13 +152,16 @@ This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/
 [id="common-k8s-elastic-co-v1beta1-httpconfig"]
 [float]
 ==== HTTPConfig
-(*Appears on:*
-link:xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
-link:xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$], 
-link:xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
-)
 
 HTTPConfig holds the HTTP layer configuration for resources.
+
+
+.Appears in:
+****
+- xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
+- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$], 
+- xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -167,11 +179,14 @@ TLS defines options for configuring TLS for HTTP.
 [id="common-k8s-elastic-co-v1beta1-keytopath"]
 [float]
 ==== KeyToPath
-(*Appears on:*
-link:xref:common-k8s-elastic-co-v1beta1-secretsource[$$SecretSource$$]
-)
 
 KeyToPath defines how to map a key in a Secret object to a filesystem path.
+
+
+.Appears in:
+****
+- xref:common-k8s-elastic-co-v1beta1-secretsource[$$SecretSource$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -190,12 +205,15 @@ Path must not be an absolute file path and must not contain any ".." components.
 [id="common-k8s-elastic-co-v1beta1-objectselector"]
 [float]
 ==== ObjectSelector
-(*Appears on:*
-link:xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
-link:xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
-)
 
 ObjectSelector defines a reference to a Kubernetes object.
+
+
+.Appears in:
+****
+- xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
+- xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -213,11 +231,14 @@ Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 [id="common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate"]
 [float]
 ==== PodDisruptionBudgetTemplate
-(*Appears on:*
-link:xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
-)
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -254,11 +275,14 @@ by specifying 0. This is a mutually exclusive setting with "minAvailable".
 [id="common-k8s-elastic-co-v1beta1-secretref"]
 [float]
 ==== SecretRef
-(*Appears on:*
-link:xref:common-k8s-elastic-co-v1beta1-tlsoptions[$$TLSOptions$$]
-)
 
 SecretRef is a reference to a secret that exists in the same namespace.
+
+
+.Appears in:
+****
+- xref:common-k8s-elastic-co-v1beta1-tlsoptions[$$TLSOptions$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -272,13 +296,16 @@ SecretName is the name of the secret.
 [id="common-k8s-elastic-co-v1beta1-secretsource"]
 [float]
 ==== SecretSource
-(*Appears on:*
-link:xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
-link:xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$], 
-link:xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
-)
 
 SecretSource defines a data source based on a Kubernetes Secret.
+
+
+.Appears in:
+****
+- xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
+- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$], 
+- xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -298,11 +325,14 @@ If defined, only the specified keys will be projected to the corresponding paths
 [id="common-k8s-elastic-co-v1beta1-selfsignedcertificate"]
 [float]
 ==== SelfSignedCertificate
-(*Appears on:*
-link:xref:common-k8s-elastic-co-v1beta1-tlsoptions[$$TLSOptions$$]
-)
 
 SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
+
+
+.Appears in:
+****
+- xref:common-k8s-elastic-co-v1beta1-tlsoptions[$$TLSOptions$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -320,11 +350,14 @@ Disabled indicates that the provisioning of the self-signed certifcate should be
 [id="common-k8s-elastic-co-v1beta1-servicetemplate"]
 [float]
 ==== ServiceTemplate
-(*Appears on:*
-link:xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]
-)
 
 ServiceTemplate defines the template for a Kubernetes Service.
+
+
+.Appears in:
+****
+- xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -442,11 +475,14 @@ sessionAffinityConfig contains the configurations of session affinity.
 [id="common-k8s-elastic-co-v1beta1-subjectalternativename"]
 [float]
 ==== SubjectAlternativeName
-(*Appears on:*
-link:xref:common-k8s-elastic-co-v1beta1-selfsignedcertificate[$$SelfSignedCertificate$$]
-)
 
 SubjectAlternativeName represents a SAN entry in a x509 certificate.
+
+
+.Appears in:
+****
+- xref:common-k8s-elastic-co-v1beta1-selfsignedcertificate[$$SelfSignedCertificate$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -464,11 +500,14 @@ IP is the IP address of the subject.
 [id="common-k8s-elastic-co-v1beta1-tlsoptions"]
 [float]
 ==== TLSOptions
-(*Appears on:*
-link:xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]
-)
 
 TLSOptions holds TLS configuration options.
+
+
+.Appears in:
+****
+- xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -501,6 +540,9 @@ Package v1beta1 contains API schema definitions for managing Elasticsearch resou
 ==== Elasticsearch
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
+
+
+
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -544,11 +586,14 @@ See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings
 [id="elasticsearch-k8s-elastic-co-v1beta1-changebudget"]
 [float]
 ==== ChangeBudget
-(*Appears on:*
-link:xref:elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]
-)
 
 ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -570,11 +615,14 @@ Defaults to unbounded if not specified.
 [id="elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec"]
 [float]
 ==== ElasticsearchSpec
-(*Appears on:*
-link:xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearch[$$Elasticsearch$$]
-)
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearch[$$Elasticsearch$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -615,11 +663,14 @@ See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings
 [id="elasticsearch-k8s-elastic-co-v1beta1-nodeset"]
 [float]
 ==== NodeSet
-(*Appears on:*
-link:xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
-)
 
 NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -652,11 +703,14 @@ See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templ
 [id="elasticsearch-k8s-elastic-co-v1beta1-updatestrategy"]
 [float]
 ==== UpdateStrategy
-(*Appears on:*
-link:xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
-)
 
 UpdateStrategy specifies how updates to the cluster should be performed.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -680,6 +734,9 @@ Package v1beta1 contains API schema definitions for managing Kibana resources.
 ==== Kibana
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
+
+
+
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
@@ -723,11 +780,14 @@ See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-ki
 [id="kibana-k8s-elastic-co-v1beta1-kibanaspec"]
 [float]
 ==== KibanaSpec
-(*Appears on:*
-link:xref:kibana-k8s-elastic-co-v1beta1-kibana[$$Kibana$$]
-)
 
 KibanaSpec holds the specification of a Kibana instance.
+
+
+.Appears in:
+****
+- xref:kibana-k8s-elastic-co-v1beta1-kibana[$$Kibana$$]
+****
 [cols="20a,80a", options="header"]
 |===
 |Field |Description
