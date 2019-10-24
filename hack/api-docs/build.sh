@@ -8,6 +8,15 @@
 
 set -euo pipefail
 
+SCRATCH_DIR=$(mktemp -d)
+
+cleanup() {
+    rm -rf $SCRATCH_DIR || echo "Failed to clean-up $SCRATCH_DIR"
+}
+
+trap cleanup EXIT
+
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR}/../.."
 DOCS_DIR="${SCRIPT_DIR}/../../docs"
@@ -19,7 +28,7 @@ log() {
 }
 
 build_docs() {
-    local INSTALL_DIR=$(mktemp -d)
+    local INSTALL_DIR=$SCRATCH_DIR
     (
         log "Building refdoc binary..."
         cd $INSTALL_DIR
@@ -30,7 +39,7 @@ build_docs() {
     )
 
     local REFDOCS_BIN=${INSTALL_DIR}/gen-crd-api-reference-docs/gen-crd-api-reference-docs
-    local TEMP_OUT_FILE=$(mktemp)
+    local TEMP_OUT_FILE="${SCRATCH_DIR}/api-docs.asciidoc"
     (
         log "Generating API reference documentation..."
         cd $REPO_ROOT
@@ -38,14 +47,14 @@ build_docs() {
             -template-dir="${SCRIPT_DIR}/templates" \
             -out-file=$TEMP_OUT_FILE \
             -config="${SCRIPT_DIR}/config.json" \
+            -log_dir=$SCRATCH_DIR \
             -alsologtostderr=false \
             -logtostderr=false \
             -stderrthreshold=ERROR
-        mv $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
+        cp $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
         log "API reference documentation generated successfully."
     )
-
-    rm -rf $INSTALL_DIR || log "Failed to clean-up $INSTALL_DIR"
 }
 
 build_docs
+cleanup
