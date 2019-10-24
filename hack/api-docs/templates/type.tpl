@@ -8,7 +8,7 @@
 {{- range . }}
 {{- if $prev }}, {{ end -}}
 {{- $prev = . }}
-link:{{ linkForType . }}[{{ typeDisplayName . }}]
+link:{{ template "link_template" . }}
 {{- end }}
 )
 {{- end }}
