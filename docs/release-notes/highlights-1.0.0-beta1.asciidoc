@@ -58,7 +58,7 @@ Elasticsearch configuration (link:https://github.com/elastic/cloud-on-k8s/issues
 
 [float]
 ==== Memory leak in the ECK process
-The operator process is slowly leaking memory which will eventually lead to an out of memory situation and a restart of the operator process. There is no workaround. Managed workloads are not affected. (https://github.com/elastic/cloud-on-k8s/issues/1984[#1984])
+The operator process is slowly leaking memory which will eventually lead to an out of memory situation and a restart of the operator process. The operator is designed to be resilient to restarts and will resume functioning once it is restarted. Managed resources (Elasticsearch, Kibana and APM Server) are not affected. There is no workaround.  (https://github.com/elastic/cloud-on-k8s/issues/1984[#1984])
 
 [float]
 ==== ECK restarts when using non-default change budget
