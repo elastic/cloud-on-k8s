@@ -8,7 +8,7 @@ def getListOfFailedTests() {
     def failed = currentBuild.rawBuild.getAction(hudson.tasks.test.AbstractTestResultAction.class)?.getResult()?.getFailedTests()
     def result = []
     failed.each { ft ->
-        result.add(String.format("%s\r\n%s", ft.getDisplayName(), ft.getErrorStackTrace()))
+        result.add(ft.getDisplayName())
     }
     return result
 }
@@ -18,7 +18,8 @@ def generateSlackMessage(baseMsg, URL, failedTests) {
     sb.append(baseMsg)
     sb.append("\r\n")
     sb.append(URL)
-    if (failedTests.size > 0) {
+    sb.append("/testReport")
+    if (failedTests.size() > 0) {
         sb.append("\r\n")
         sb.append("List of failed tests:")
         failedTests.each { ft ->

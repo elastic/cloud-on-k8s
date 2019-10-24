@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
@@ -24,7 +23,6 @@ import (
 )
 
 func TestReconcileStatefulSet(t *testing.T) {
-	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -57,26 +55,26 @@ func TestReconcileStatefulSet(t *testing.T) {
 	}{
 		{
 			name:                    "create new sset",
-			c:                       k8s.WrapClient(fake.NewFakeClient()),
+			c:                       k8s.WrappedFakeClient(),
 			expected:                ssetSample,
 			wantExpectationsUpdated: false,
 		},
 		{
 			name:                    "no update on existing sset",
-			c:                       k8s.WrapClient(fake.NewFakeClient(&ssetSample)),
+			c:                       k8s.WrappedFakeClient(&ssetSample),
 			expected:                ssetSample,
 			wantExpectationsUpdated: false,
 		},
 		{
 			name:                    "update on sset with different template hash",
-			c:                       k8s.WrapClient(fake.NewFakeClient(&ssetSample)),
+			c:                       k8s.WrappedFakeClient(&ssetSample),
 			expected:                updatedSset,
 			wantExpectationsUpdated: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			exp := expectations.NewExpectations()
+			exp := expectations.NewExpectations(tt.c)
 			returned, err := ReconcileStatefulSet(tt.c, scheme.Scheme, es, tt.expected, exp)
 			require.NoError(t, err)
 

@@ -8,16 +8,14 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestWithTemplateHash(t *testing.T) {
@@ -27,7 +25,7 @@ func TestWithTemplateHash(t *testing.T) {
 			Namespace: "ns",
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: common.Int32(2),
+			Replicas: pointer.Int32(2),
 		},
 	}
 
@@ -42,7 +40,7 @@ func TestWithTemplateHash(t *testing.T) {
 	require.Equal(t, withHash.Labels[hash.TemplateHashLabelName], withSameHash.Labels[hash.TemplateHashLabelName])
 
 	// label should be different if the spec changed
-	d.Spec.Replicas = common.Int32(3)
+	d.Spec.Replicas = pointer.Int32(3)
 	withDifferentHash := WithTemplateHash(d)
 	require.NotEmpty(t, withDifferentHash.Labels[hash.TemplateHashLabelName])
 	require.NotEqual(t, withHash.Labels[hash.TemplateHashLabelName], withDifferentHash.Labels[hash.TemplateHashLabelName])
@@ -50,7 +48,7 @@ func TestWithTemplateHash(t *testing.T) {
 
 func TestReconcile(t *testing.T) {
 	require.NoError(t, commonscheme.SetupScheme())
-	k8sClient := k8s.WrapClient(fake.NewFakeClient())
+	k8sClient := k8s.WrappedFakeClient()
 	expected := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "dep",
@@ -60,7 +58,7 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: common.Int32(2),
+			Replicas: pointer.Int32(2),
 		},
 	}
 	owner := v1beta1.Elasticsearch{} // can be any type
@@ -69,7 +67,7 @@ func TestReconcile(t *testing.T) {
 	reconciled, err := Reconcile(k8sClient, scheme.Scheme, expected, &owner)
 	require.NoError(t, err)
 	// reconciled should match expected spec, and have the hash label set
-	require.Equal(t, common.Int32(2), reconciled.Spec.Replicas)
+	require.Equal(t, pointer.Int32(2), reconciled.Spec.Replicas)
 	require.Equal(t, "b", reconciled.Labels["a"])
 	require.NotEmpty(t, reconciled.Labels[hash.TemplateHashLabelName])
 	// resource should exist in the apiserver
@@ -84,11 +82,11 @@ func TestReconcile(t *testing.T) {
 	require.Equal(t, reconciled, reconciledAgain)
 
 	// update with a new spec
-	expected.Spec.Replicas = common.Int32(3)
+	expected.Spec.Replicas = pointer.Int32(3)
 	reconciled, err = Reconcile(k8sClient, scheme.Scheme, expected, &owner)
 	require.NoError(t, err)
 	// both returned and retrieved should match that new spec
-	require.Equal(t, common.Int32(3), reconciled.Spec.Replicas)
+	require.Equal(t, pointer.Int32(3), reconciled.Spec.Replicas)
 	require.NotEqual(t, reconciled.Labels[hash.TemplateHashLabelName], reconciledAgain.Labels[hash.TemplateHashLabelName])
 	err = k8sClient.Get(k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)

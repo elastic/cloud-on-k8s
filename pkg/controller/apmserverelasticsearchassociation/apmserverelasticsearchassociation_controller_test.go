@@ -9,7 +9,6 @@ import (
 
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,8 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -50,19 +47,7 @@ var apmFixture = apmtype.ApmServer{
 	},
 }
 
-func setupScheme(t *testing.T) *runtime.Scheme {
-	sc := scheme.Scheme
-	if err := apmtype.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to add apm types")
-	}
-	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to add Es types")
-	}
-	return sc
-}
-
 func Test_deleteOrphanedResources(t *testing.T) {
-	s := setupScheme(t)
 	tests := []struct {
 		name           string
 		args           apmtype.ApmServer
@@ -149,7 +134,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrapClient(fake.NewFakeClientWithScheme(s, tt.initialObjects...))
+			c := k8s.WrappedFakeClient(tt.initialObjects...)
 			if err := deleteOrphanedResources(c, &tt.args); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}

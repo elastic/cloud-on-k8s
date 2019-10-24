@@ -80,7 +80,7 @@ pipeline {
                 if (params.SEND_NOTIFICATIONS) {
                     Set<String> filter = new HashSet<>()
                     filter.addAll(failedTests)
-                    def msg = testScript.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.RUN_DISPLAY_URL, filter)
+                    def msg = testScript.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter)
 
                     slackSend botUser: true,
                         channel: '#cloud-k8s',

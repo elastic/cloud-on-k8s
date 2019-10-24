@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var (
@@ -61,9 +60,6 @@ var (
 )
 
 func TestResources(t *testing.T) {
-	sc := scheme.Scheme
-	require.NoError(t, v1beta1.SchemeBuilder.AddToScheme(sc))
-
 	varFalse := false
 	tests := []struct {
 		name           string
@@ -75,7 +71,7 @@ func TestResources(t *testing.T) {
 	}{
 		{
 			name:           "no secure settings specified: no resources",
-			client:         k8s.WrapClient(fake.NewFakeClient()),
+			client:         k8s.WrappedFakeClient(),
 			kb:             testKibana,
 			wantContainers: nil,
 			wantVersion:    "",
@@ -83,7 +79,7 @@ func TestResources(t *testing.T) {
 		},
 		{
 			name:   "secure settings specified: return volume, init container and (empty) version",
-			client: k8s.WrapClient(fake.NewFakeClient(&testSecureSettingsSecret)),
+			client: k8s.WrappedFakeClient(&testSecureSettingsSecret),
 			kb:     testKibanaWithSecureSettings,
 			wantContainers: &corev1.Container{
 				Command: []string{
@@ -131,7 +127,7 @@ echo "Keystore initialization successful."
 		},
 		{
 			name:           "secure settings specified but secret not there: no resources",
-			client:         k8s.WrapClient(fake.NewFakeClient()),
+			client:         k8s.WrappedFakeClient(),
 			kb:             testKibanaWithSecureSettings,
 			wantContainers: nil,
 			wantVersion:    "",

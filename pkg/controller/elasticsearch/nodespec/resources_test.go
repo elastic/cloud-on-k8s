@@ -10,11 +10,11 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func TestResourcesList_MasterNodesNames(t *testing.T) {
@@ -58,7 +58,6 @@ func TestSetVolumeClaimsControllerReference(t *testing.T) {
 			UID:       "ABCDEF",
 		},
 	}
-	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 	type args struct {
 		volumeClaims []corev1.PersistentVolumeClaim
 	}
@@ -90,7 +89,7 @@ func TestSetVolumeClaimsControllerReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := setVolumeClaimsControllerReference(tt.args.volumeClaims, es, scheme.Scheme)
+			got, err := setVolumeClaimsControllerReference(tt.args.volumeClaims, es, k8s.Scheme())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildExpectedResources() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -27,7 +27,7 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(client k8s.Client, kb v1beta1.Kibana) (CanonicalConfig, error) {
+func NewConfigSettings(client k8s.Client, kb v1beta1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
 	specConfig := kb.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1beta1.Config{}
@@ -38,16 +38,25 @@ func NewConfigSettings(client k8s.Client, kb v1beta1.Kibana) (CanonicalConfig, e
 		return CanonicalConfig{}, err
 	}
 
+	cfg := settings.MustCanonicalConfig(baseSettings(kb))
+	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
+
+	if !kb.RequiresAssociation() {
+		if err := cfg.MergeWith(versionSpecificCfg, kibanaTLSCfg, userSettings); err != nil {
+			return CanonicalConfig{}, err
+		}
+		return CanonicalConfig{cfg}, nil
+	}
+
 	username, password, err := association.ElasticsearchAuthSettings(client, &kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
 
-	cfg := settings.MustCanonicalConfig(baseSettings(kb))
-
 	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
-		settings.MustCanonicalConfig(kibanaTLSSettings(kb)),
+		versionSpecificCfg,
+		kibanaTLSCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
 		settings.MustCanonicalConfig(
 			map[string]interface{}{

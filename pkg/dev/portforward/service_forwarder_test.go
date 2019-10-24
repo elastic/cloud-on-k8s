@@ -11,13 +11,13 @@ import (
 	"net"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_parseServiceAddr(t *testing.T) {
@@ -80,7 +80,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 			fields: fields{
 				network: "tcp",
 				addr:    "foo.bar.svc:9200",
-				client: fake.NewFakeClient(
+				client: k8s.FakeClient(
 					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
@@ -133,7 +133,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 			fields: fields{
 				network: "tcp",
 				addr:    "foo.bar.svc:1234",
-				client: fake.NewFakeClient(
+				client: k8s.FakeClient(
 					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",

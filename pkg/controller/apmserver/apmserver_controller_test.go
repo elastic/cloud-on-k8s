@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -190,11 +189,6 @@ func expectedDeploymentParams() testParams {
 }
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
-	s := scheme.Scheme
-	if err := apmv1beta1.SchemeBuilder.AddToScheme(s); err != nil {
-		t.Error(err)
-	}
-
 	apmFixture := &apmv1beta1.ApmServer{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "test-apm-server",
@@ -335,12 +329,12 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
+			client := k8s.WrappedFakeClient(tt.args.initialObjects...)
 			w := watches.NewDynamicWatches()
-			require.NoError(t, w.Secrets.InjectScheme(s))
+			require.NoError(t, w.Secrets.InjectScheme(scheme.Scheme))
 			r := &ReconcileApmServer{
 				Client:         client,
-				scheme:         s,
+				scheme:         scheme.Scheme,
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: w,
 			}
@@ -358,7 +352,6 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 }
 
 func TestReconcileApmServer_doReconcile(t *testing.T) {
-	require.NoError(t, apmv1beta1.AddToScheme(scheme.Scheme))
 	type fields struct {
 		resources      []runtime.Object
 		recorder       record.EventRecorder
@@ -404,7 +397,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileApmServer{
-				Client:         k8s.WrapClient(fake.NewFakeClientWithScheme(scheme.Scheme, &tt.as)),
+				Client:         k8s.WrappedFakeClient(&tt.as),
 				scheme:         scheme.Scheme,
 				recorder:       tt.fields.recorder,
 				dynamicWatches: tt.fields.dynamicWatches,
