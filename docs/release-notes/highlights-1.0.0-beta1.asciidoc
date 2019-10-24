@@ -45,6 +45,7 @@ Default limits are now set for the various resource types if none are explicitly
 
 The 1.0.0-beta version of the operator does not delete resources created by older versions of the operator, but it also does not manage them. 
 Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. Please see the <<{p}-1.0.0-beta1-backwards-compatibility, upgrading documentation>> for more information.
+
 [float]
 [id="{p}-known-issues-1.0.0-beta1"]
 === Known Issues
