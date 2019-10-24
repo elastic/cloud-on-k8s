@@ -89,7 +89,7 @@ SKIP_DOCKER_COMMAND = true
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 E2E_JSON = true
-KIND_NODE_IMAGE = "${kindImage}"
+KIND_NODE_IMAGE = ${kindImage}
 EOF
     """
     script {
