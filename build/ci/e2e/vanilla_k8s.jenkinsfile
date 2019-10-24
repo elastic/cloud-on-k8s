@@ -31,7 +31,7 @@ pipeline {
                 stage("1.11.10") {
                     steps {
                         checkout scm
-                        run("kindest/node:v1.11.10")
+                        runTests("kindest/node:v1.11.10")
                     }
                 }
                 stage("1.15.3") {
@@ -40,7 +40,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        run("kindest/node:v1.15.3")
+                        runTests("kindest/node:v1.15.3")
                     }
                 }
                 stage("1.16.2") {
@@ -49,7 +49,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        run("kindest/node:v1.16.2")
+                        runTests("kindest/node:v1.16.2")
                     }
                 }
             }
@@ -79,7 +79,7 @@ pipeline {
 
 }
 
-def run(image) {
+def runTests(kindImage) {
     sh """
         cat >.env <<EOF
 OPERATOR_IMAGE = "${IMAGE}"
@@ -89,7 +89,7 @@ SKIP_DOCKER_COMMAND = true
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 E2E_JSON = true
-KIND_NODE_IMAGE = "${image}"
+KIND_NODE_IMAGE = "${kindImage}"
 EOF
     """
     script {
