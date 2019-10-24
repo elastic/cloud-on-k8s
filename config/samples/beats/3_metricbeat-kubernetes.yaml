@@ -21,12 +21,6 @@ data:
           host: ${NODE_NAME}
           hints.enabled: true
 
-    setup.dashboards.enabled: true
-    setup.kibana.host: https://monitor-kb-http:5601
-    setup.kibana.ssl.enabled: true
-    setup.kibana.ssl.certificate_authorities:
-    - /mnt/kibana/ca.crt
-
     processors:
       - add_cloud_metadata:
 
@@ -170,10 +164,6 @@ spec:
           mountPath: /mnt/elastic/tls.crt
           readOnly: true
           subPath: tls.crt
-        - name: kb-certs
-          mountPath:  /mnt/kibana/ca.crt
-          readOnly: true
-          subPath: ca.crt
       volumes:
       - name: proc
         hostPath:
@@ -199,9 +189,6 @@ spec:
       - name: es-certs
         secret:
           secretName: monitor-es-http-certs-public
-      - name: kb-certs
-        secret:
-          secretName: monitor-kb-http-certs-public
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -220,6 +207,14 @@ data:
 
     processors:
       - add_cloud_metadata:
+    
+    setup.dashboards.enabled: true
+
+    setup.kibana:
+      host: "https://${KIBANA_HOST:kibana}:${KIBANA_PORT:5601}"
+      ssl.enabled: true
+      ssl.certificate_authorities:
+      - /mnt/kibana/ca.crt
 
     output.elasticsearch:
       hosts: ['http://${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
@@ -292,6 +287,10 @@ spec:
             secretKeyRef:
               key: elastic
               name: monitor-es-elastic-user
+        - name: KIBANA_HOST
+          value: monitor-kb-http
+        - name: KIBANA_PORT
+          value: "5601"
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -316,6 +315,10 @@ spec:
           mountPath: /mnt/elastic/tls.crt
           readOnly: true
           subPath: tls.crt
+        - name: kb-certs
+          mountPath:  /mnt/kibana/ca.crt
+          readOnly: true
+          subPath: ca.crt
       volumes:
       - name: config
         configMap:
@@ -328,6 +331,9 @@ spec:
       - name: es-certs
         secret:
           secretName: monitor-es-http-certs-public
+      - name: kb-certs
+        secret:
+          secretName: monitor-kb-http-certs-public
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
