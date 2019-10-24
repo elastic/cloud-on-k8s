@@ -21,7 +21,6 @@ import (
 
 func (d *defaultDriver) handleRollingUpgrades(
 	esClient esclient.Client,
-	esReachable bool,
 	esState ESState,
 	expectedMaster []string,
 ) *reconciler.Results {
@@ -47,27 +46,11 @@ func (d *defaultDriver) handleRollingUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	actualPods, err := statefulSets.GetActualPods(d.Client)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	// Maybe force upgrade all Pods, bypassing any safety check and ES interaction.
-	if forced, err := d.maybeForceUpgrade(actualPods, podsToUpgrade); err != nil || forced {
-		return results.WithError(err)
-	}
-
-	if !esReachable {
-		// Cannot move on with rolling upgrades if ES cannot be reached.
-		return results.WithResult(defaultRequeue)
-	}
-
 	// Get the healthy Pods (from a K8S point of view + in the ES cluster)
 	healthyPods, err := healthyPods(d.Client, statefulSets, esState)
 	if err != nil {
 		return results.WithError(err)
 	}
-
 	// Get current masters
 	actualMasters, err := sset.GetActualMastersForCluster(d.Client, d.ES)
 	if err != nil {

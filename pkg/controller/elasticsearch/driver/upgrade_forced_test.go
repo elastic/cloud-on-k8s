@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func Test_defaultDriver_maybeForceUpgrade(t *testing.T) {
+func Test_defaultDriver_maybeForceUpgradePods(t *testing.T) {
 	tests := []struct {
 		name              string
 		actualPods        []corev1.Pod
@@ -169,7 +169,7 @@ func Test_defaultDriver_maybeForceUpgrade(t *testing.T) {
 				},
 			}
 
-			attempted, err := d.maybeForceUpgrade(tt.actualPods, tt.podsToUpgrade)
+			attempted, err := d.maybeForceUpgradePods(tt.actualPods, tt.podsToUpgrade)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantAttempted, attempted)
 			var pods corev1.PodList

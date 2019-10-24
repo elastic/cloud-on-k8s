@@ -79,49 +79,60 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	if esReachable {
-		// Update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
-		requeue, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, actualStatefulSets)
-		if err != nil {
-			return results.WithError(err)
-		}
-		if requeue {
-			results.WithResult(defaultRequeue)
-		}
-		// Maybe clear zen2 voting config exclusions.
-		requeue, err = zen2.ClearVotingConfigExclusions(d.ES, d.Client, esClient, actualStatefulSets)
-		if err != nil {
-			return results.WithError(err)
-		}
-		if requeue {
-			results.WithResult(defaultRequeue)
-		}
-
-		// Phase 2: handle sset scale down.
-		// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
-		// or because it should be removed entirely.
-		downscaleCtx := newDownscaleContext(
-			d.Client,
-			esClient,
-			resourcesState,
-			observedState,
-			reconcileState,
-			d.Expectations,
-			d.ES,
-		)
-		downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
-		results.WithResults(downscaleRes)
-		if downscaleRes.HasError() {
-			return results
-		}
-	} else {
-		// ES cannot be reached right now, let's make sure we requeue.
+	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it.
+	attempted, err := d.MaybeForceUpgrade(actualStatefulSets)
+	if err != nil || attempted {
+		// If attempted, we're in a transient state where it's safer to requeue.
+		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
+		// Next reconciliation will check expectations again.
 		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
+		return results.WithError(err)
+	}
+
+	// Next operations require the Elasticsearch API to be available.
+	if !esReachable {
+		log.Info("ES cannot be reached yet, re-queuing", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
+		return results.WithResult(defaultRequeue)
+	}
+
+	// Update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
+	requeue, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, actualStatefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if requeue {
+		results.WithResult(defaultRequeue)
+	}
+	// Maybe clear zen2 voting config exclusions.
+	requeue, err = zen2.ClearVotingConfigExclusions(d.ES, d.Client, esClient, actualStatefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if requeue {
 		results.WithResult(defaultRequeue)
 	}
 
+	// Phase 2: handle sset scale down.
+	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
+	// or because it should be removed entirely.
+	downscaleCtx := newDownscaleContext(
+		d.Client,
+		esClient,
+		resourcesState,
+		observedState,
+		reconcileState,
+		d.Expectations,
+		d.ES,
+	)
+	downscaleRes := HandleDownscale(downscaleCtx, expectedResources.StatefulSets(), actualStatefulSets)
+	results.WithResults(downscaleRes)
+	if downscaleRes.HasError() {
+		return results
+	}
+
 	// Phase 3: handle rolling upgrades.
-	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esReachable, esState, expectedResources.MasterNodesNames())
+	rollingUpgradesRes := d.handleRollingUpgrades(esClient, esState, expectedResources.MasterNodesNames())
 	results.WithResults(rollingUpgradesRes)
 	if rollingUpgradesRes.HasError() {
 		return results
