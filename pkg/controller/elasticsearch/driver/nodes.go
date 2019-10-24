@@ -81,7 +81,10 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// Phase 2: if there is any Pending or bootlooping Pod to upgrade, do it.
 	attempted, err := d.MaybeForceUpgrade(actualStatefulSets)
-	if err != nil || attempted { // if attempted, we're in a transient state where it's safer to requeue
+	if err != nil || attempted {
+		// If attempted, we're in a transient state where it's safer to requeue.
+		// We don't want to re-upgrade in a regular way the pods we just force-upgraded.
+		// Next reconciliation will check expectations again.
 		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
 		return results.WithError(err)
 	}
