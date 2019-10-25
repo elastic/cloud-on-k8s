@@ -45,3 +45,21 @@ Default limits are now set for the various resource types if none are explicitly
 
 The 1.0.0-beta version of the operator does not delete resources created by older versions of the operator, but it also does not manage them. 
 Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. Please see the <<{p}-1.0.0-beta1-backwards-compatibility, upgrading documentation>> for more information.
+
+[float]
+[id="{p}-known-issues-1.0.0-beta1"]
+=== Known Issues
+The following are known issues that will be addressed in the next release:
+
+[float]
+==== Native realm disabled
+The native realm is incorrectly disabled by default. Users can reenable the native realm by https://www.elastic.co/guide/en/elasticsearch/reference/current/configuring-native-realm.html[adding it to the realm chain] in their
+Elasticsearch configuration (link:https://github.com/elastic/cloud-on-k8s/issues/2037[#2037])
+
+[float]
+==== Memory leak in the ECK process
+The operator process is slowly leaking memory which will eventually lead to an out of memory situation and a restart of the operator process. The operator is designed to be resilient to restarts and will resume functioning once it is restarted. Managed resources (Elasticsearch, Kibana and APM Server) are not affected. There is no workaround.  (https://github.com/elastic/cloud-on-k8s/issues/1984[#1984])
+
+[float]
+==== ECK restarts when using non-default change budget
+When using a non-default <<{p}-update-strategy, change budget>> with `maxUnavailable` set to a value greater than 1 to manage an Elasticsearch cluster with dedicated master nodes, the process will continuously crash with a nil pointer dereference related panic and restart. There is no workaround other than using the default change budget. (https://github.com/elastic/cloud-on-k8s/issues/2034[#2034])
