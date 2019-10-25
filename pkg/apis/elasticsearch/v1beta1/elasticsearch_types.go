@@ -32,7 +32,8 @@ type ElasticsearchSpec struct {
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-	// The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set to the empty value (`{}` in YAML).
+	// The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
+	// to the empty value (`{}` in YAML).
 	// +kubebuilder:validation:Optional
 	PodDisruptionBudget *commonv1beta1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
@@ -63,7 +64,7 @@ type NodeSet struct {
 	// Count of Elasticsearch nodes to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Pods belonging to this NodeSet.
+	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
@@ -98,9 +99,9 @@ type ChangeBudget struct {
 	// Defaults to 1 if not specified.
 	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
 
-	// MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in the spec.
-	// MaxSurge is only taken into consideration when scaling up. Setting a negative value will disable the restriction.
-	// Defaults to unbounded if not specified.
+	// MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in
+	// the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will
+	// disable the restriction. Defaults to unbounded if not specified.
 	MaxSurge *int32 `json:"maxSurge,omitempty"`
 }
 

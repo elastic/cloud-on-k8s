@@ -62,7 +62,7 @@ HTTP holds the HTTP layer configuration for the APM Server resource.
 *`elasticsearchRef`* _xref:common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_::
 ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 *`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the APM Server pods.
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 *`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
@@ -110,7 +110,7 @@ ElasticsearchRef is a reference to the output Elasticsearch cluster running in t
 | *`podTemplate`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
 |
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the APM Server pods.
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 | *`secureSettings`* +
 _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |
@@ -129,7 +129,7 @@ Package v1beta1 contains API schema definitions for common types used by all res
 [float]
 ==== Config
 
-Config represents untyped YAML configuration inside a spec.
+Config represents untyped YAML configuration.
 
 
 .Appears in:
@@ -247,7 +247,7 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
 |
 ObjectMeta is the metadata of the PDB.
-The name and namespace provided here is managed by ECK and will be ignored.
+The name and namespace provided here are managed by ECK and will be ignored.
 Refer to the Kubernetes API documentation for the fields of the `metadata` field.
 | *`spec`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#poddisruptionbudgetspec-v1beta1-policy[$$Kubernetes policy/v1beta1.PodDisruptionBudgetSpec$$]_
@@ -366,7 +366,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
 |
 ObjectMeta is the metadata of the service.
-The name and namespace provided here is managed by ECK and will be ignored.
+The name and namespace provided here are managed by ECK and will be ignored.
 Refer to the Kubernetes API documentation for the fields of the `metadata` field.
 | *`spec`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#servicespec-v1-core[$$Kubernetes core/v1.ServiceSpec$$]_
@@ -577,7 +577,8 @@ See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 UpdateStrategy specifies how updates to the cluster should be performed.
 *`podDisruptionBudget`* _xref:common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
 PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set to the empty value (`{}` in YAML).
+The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
+to the empty value (`{}` in YAML).
 *`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
@@ -607,9 +608,9 @@ Defaults to 1 if not specified.
 | *`maxSurge`* +
 _int32_
 |
-MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in the spec.
-MaxSurge is only taken into consideration when scaling up. Setting a negative value will disable the restriction.
-Defaults to unbounded if not specified.
+MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in
+the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will
+disable the restriction. Defaults to unbounded if not specified.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec"]
@@ -652,7 +653,8 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 _xref:common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_
 |
 PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set to the empty value (`{}` in YAML).
+The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
+to the empty value (`{}` in YAML).
 | *`secureSettings`* +
 _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |
@@ -690,7 +692,7 @@ Count of Elasticsearch nodes to deploy.
 | *`podTemplate`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
 |
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Pods belonging to this NodeSet.
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 | *`volumeClaimTemplates`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaim-v1-core[$$[]Kubernetes core/v1.PersistentVolumeClaim$$]_
 |
@@ -771,7 +773,7 @@ Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kiba
 *`http`* _xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
 HTTP holds the HTTP layer configuration for Kibana.
 *`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Kibana pods
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 *`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
@@ -819,7 +821,7 @@ HTTP holds the HTTP layer configuration for Kibana.
 | *`podTemplate`* +
 _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
 |
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests etc.) for the Kibana pods
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 | *`secureSettings`* +
 _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |

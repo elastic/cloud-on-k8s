@@ -4719,8 +4719,8 @@ spec:
                     properties:
                       metadata:
                         description: ObjectMeta is the metadata of the service. The
-                          name and namespace provided here is managed by ECK and will
-                          be ignored.
+                          name and namespace provided here are managed by ECK and
+                          will be ignored.
                         type: object
                       spec:
                         description: Spec is the specification of the service.
@@ -4952,7 +4952,8 @@ spec:
                 type: string
               podTemplate:
                 description: PodTemplate provides customisation options (labels, annotations,
-                  affinity rules, resource requests etc.) for the APM Server pods.
+                  affinity rules, resource requests, and so on) for the APM Server
+                  pods.
                 properties:
                   metadata:
                     description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata'

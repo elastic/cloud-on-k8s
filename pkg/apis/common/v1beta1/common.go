@@ -102,7 +102,7 @@ type SubjectAlternativeName struct {
 // ServiceTemplate defines the template for a Kubernetes Service.
 type ServiceTemplate struct {
 	// ObjectMeta is the metadata of the service.
-	// The name and namespace provided here is managed by ECK and will be ignored.
+	// The name and namespace provided here are managed by ECK and will be ignored.
 	// +kubebuilder:validation:Optional
 	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -117,7 +117,7 @@ var DefaultPodDisruptionBudgetMaxUnavailable = intstr.FromInt(1)
 // PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 type PodDisruptionBudgetTemplate struct {
 	// ObjectMeta is the metadata of the PDB.
-	// The name and namespace provided here is managed by ECK and will be ignored.
+	// The name and namespace provided here are managed by ECK and will be ignored.
 	// +kubebuilder:validation:Optional
 	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
 
