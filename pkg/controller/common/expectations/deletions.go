@@ -38,19 +38,20 @@ func (e *ExpectedPodDeletions) ExpectDeletion(pod corev1.Pod) {
 // the corresponding Pods do not exist in the cache anymore.
 // Expectations are cleared once fulfilled.
 func (e *ExpectedPodDeletions) DeletionsSatisfied() (bool, error) {
+	allSatisfied := true
 	for pod, uid := range e.podDeletions {
 		isDeleted, err := podDeleted(e.client, pod, uid)
 		if err != nil {
 			return false, err
 		}
 		if isDeleted {
-			// expectation fulfilled
+			// cache is up-to-date: expectation is fulfilled, remove it
 			delete(e.podDeletions, pod)
 		} else {
-			return false, nil
+			allSatisfied = false
 		}
 	}
-	return len(e.podDeletions) == 0, nil
+	return allSatisfied, nil
 }
 
 // podDeleted returns true if the pod with the given UID does not exist anymore.
