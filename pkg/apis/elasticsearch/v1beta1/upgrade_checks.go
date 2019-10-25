@@ -24,50 +24,53 @@ func unsupportedUpgradePath(v1, v2 version.Version) string {
 	return fmt.Sprintf("unsupported version upgrade from %v to %v", v1, v2)
 }
 
-// TODO sabo make a new type for transient checks
-// TODO sabo do we need to check if old is nil? i dont think so
-func noDowngrades(old, current *Elasticsearch) *field.Error {
-	if old == nil {
-		return nil
-	}
+func noDowngrades(old, current *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	oldVer, err := version.Parse(old.Spec.Version)
 	if err != nil {
-		return field.Invalid(field.NewPath("spec").Child("version"), old.Spec.Version, parseStoredVersionErrMsg)
+		// this should not happen, since this is the already persisted version
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), old.Spec.Version, parseStoredVersionErrMsg))
 	}
 	currVer, err := version.Parse(current.Spec.Version)
 	if err != nil {
-		return field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseVersionErrMsg)
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseVersionErrMsg))
+	}
+	if len(errs) != 0 {
+		return errs
 	}
 	if !currVer.IsSameOrAfter(*oldVer) {
-		return field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, noDowngradesMsg)
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, noDowngradesMsg))
 	}
-	return nil
+	return errs
 }
 
-func validUpgradePath(old, current *Elasticsearch) *field.Error {
-	if old == nil {
-		return nil
-	}
+func validUpgradePath(old, current *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	oldVer, err := version.Parse(old.Spec.Version)
 	if err != nil {
-		return field.Invalid(field.NewPath("spec").Child("version"), old.Spec.Version, parseStoredVersionErrMsg)
+		// this should not happen, since this is the already persisted version
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), old.Spec.Version, parseStoredVersionErrMsg))
 	}
 	currVer, err := version.Parse(current.Spec.Version)
 	if err != nil {
-		return field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseVersionErrMsg)
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseVersionErrMsg))
+	}
+	if len(errs) != 0 {
+		return errs
 	}
 	// TODO sabo i think we can remove this since we are already checking if it is a supported version?
 	v := esversion.SupportedVersions(*currVer)
 	if v == nil {
 		// TODO sabo make this a constant
-		return field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, "Unsupported version")
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, "Unsupported version"))
+		return errs
 	}
 
 	err = v.Supports(*oldVer)
 	if err != nil {
-		return field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, "Unsupported upgrade path")
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, "Unsupported upgrade path"))
 	}
-	return nil
+	return errs
 }
 
 func invalidName(err error) string {

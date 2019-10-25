@@ -13,8 +13,8 @@ import (
 	// "k8s.io/apimachinery/pkg/api/resource"
 
 	// "github.com/stretchr/testify/require"
+	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	// // "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	// // estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	// common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -92,104 +92,104 @@ func Test_checkNodeSetNameUniqueness(t *testing.T) {
 	}
 }
 
-// func Test_hasMaster(t *testing.T) {
-// 	// failedValidation := validation.Result{Allowed: false, Reason: masterRequiredMsg}
-// 	type args struct {
-// 		esCluster Elasticsearch
-// 	}
-// 	tests := []struct {
-// 		name string
-// 		args args
-// 		want validation.Result
-// 	}{
-// 		{
-// 			name: "no topology",
-// 			args: args{
-// 				esCluster: *es("6.8.0"),
-// 			},
-// 			want: failedValidation,
-// 		},
-// 		{
-// 			name: "topology but no master",
-// 			args: args{
-// 				esCluster: Elasticsearch{
-// 					Spec: ElasticsearchSpec{
-// 						Version: "7.0.0",
-// 						NodeSets: []NodeSet{
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										NodeMaster: "false",
-// 										NodeData:   "false",
-// 										NodeIngest: "false",
-// 										NodeML:     "false",
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: failedValidation,
-// 		},
-// 		{
-// 			name: "master but zero sized",
-// 			args: args{
-// 				esCluster: Elasticsearch{
-// 					Spec: ElasticsearchSpec{
-// 						Version: "7.0.0",
-// 						NodeSets: []NodeSet{
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										NodeMaster: "true",
-// 										NodeData:   "false",
-// 										NodeIngest: "false",
-// 										NodeML:     "false",
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: failedValidation,
-// 		},
-// 		{
-// 			name: "has master",
-// 			args: args{
-// 				esCluster: Elasticsearch{
-// 					Spec: ElasticsearchSpec{
-// 						Version: "7.0.0",
-// 						NodeSets: []NodeSet{
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										NodeMaster: "true",
-// 										NodeData:   "false",
-// 										NodeIngest: "false",
-// 										NodeML:     "false",
-// 									},
-// 								},
-// 								Count: 1,
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: validation.Result{Allowed: true},
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			ctx, err := NewValidationContext(nil, tt.args.esCluster)
-// 			require.NoError(t, err)
-// 			if got := hasMaster(*ctx); got != tt.want {
-// 				t.Errorf("hasMaster() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+func Test_hasMaster(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           *Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name:         "no topology",
+			es:           es("6.8.0"),
+			expectErrors: true,
+		},
+		{
+			name: "topology but no master",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									NodeMaster: "false",
+									NodeData:   "false",
+									NodeIngest: "false",
+									NodeML:     "false",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "master but zero sized",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									NodeMaster: "true",
+									NodeData:   "false",
+									NodeIngest: "false",
+									NodeML:     "false",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "has master",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									NodeMaster: "false",
+									NodeData:   "true",
+									NodeIngest: "false",
+									NodeML:     "false",
+								},
+							},
+							Count: 1,
+						},
+
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									NodeMaster: "true",
+									NodeData:   "false",
+									NodeIngest: "false",
+									NodeML:     "false",
+								},
+							},
+							Count: 1,
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := hasMaster(tt.es)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed hasMaster(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.NodeSets)
+			}
+		})
+	}
+}
 
 // func Test_specUpdatedToBeta(t *testing.T) {
 // 	type args struct {

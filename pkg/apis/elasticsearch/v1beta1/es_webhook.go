@@ -46,7 +46,7 @@ func (r *Elasticsearch) ValidateUpdate(old runtime.Object) error {
 
 	for _, val := range updateValidations {
 		if err := val(oldEs, r); err != nil {
-			errs = append(errs, err)
+			errs = append(errs, err...)
 		}
 	}
 	if len(errs) > 0 {
@@ -77,7 +77,7 @@ func (r *Elasticsearch) validateElasticsearch() error {
 	var errs field.ErrorList
 	for _, val := range validations {
 		if err := val(r); err != nil {
-			errs = append(errs, err)
+			errs = append(errs, err...)
 		}
 	}
 
@@ -90,6 +90,7 @@ func (r *Elasticsearch) validateElasticsearch() error {
 		r.Name, errs)
 }
 
+// TODO SABO WAHT IS THIS
 func (r *Elasticsearch) validateEsName() *field.Error {
 	return nil
 }

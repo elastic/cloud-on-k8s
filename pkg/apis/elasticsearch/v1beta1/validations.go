@@ -36,7 +36,7 @@ const (
 	duplicateNodeSets        = "NodeSet names must be unique"
 )
 
-type validation func(*Elasticsearch) *field.Error
+type validation func(*Elasticsearch) field.ErrorList
 
 // validations are the validation funcs that apply to creates or updates
 var validations = []validation{
@@ -47,7 +47,7 @@ var validations = []validation{
 	validSanIP,
 }
 
-type updateValidation func(*Elasticsearch, *Elasticsearch) *field.Error
+type updateValidation func(*Elasticsearch, *Elasticsearch) field.ErrorList
 
 // updateValidations are the validation funcs that only apply to updates
 var updateValidations = []updateValidation{
@@ -59,43 +59,47 @@ var updateValidations = []updateValidation{
 // todo sabo convert these to return a field.ErrorList and unroll them all
 
 // validName checks whether the name is valid.
-func validName(es *Elasticsearch) *field.Error {
+func validName(es *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	if err := validateNames(es); err != nil {
-		return field.Invalid(field.NewPath("metadata").Child("name"), es.Name, fmt.Sprintf("%s: %s", invalidNamesErrMsg, err))
+		errs = append(errs, field.Invalid(field.NewPath("metadata").Child("name"), es.Name, fmt.Sprintf("%s: %s", invalidNamesErrMsg, err)))
 	}
-	return nil
+	return errs
 }
 
 // supportedVersion checks if the version is supported.
-func supportedVersion(es *Elasticsearch) *field.Error {
+func supportedVersion(es *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
-		return field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg))
+		return errs
 	}
 	if v := esversion.SupportedVersions(*ver); v != nil {
-		if err := v.Supports(*ver); err == nil {
-			return nil
+		if err := v.Supports(*ver); err != nil {
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionErrMsg))
 		}
 	}
 	// TODO sabo update tests to look for this message
-	return field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionErrMsg)
+	return errs
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
-func hasMaster(es *Elasticsearch) *field.Error {
+func hasMaster(es *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	var hasMaster bool
 	for _, t := range es.Spec.NodeSets {
 		cfg, err := UnpackConfig(t.Config)
 		if err != nil {
-			// TODO sabo double check this nodesets
-			return field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Name, masterRequiredMsg)
+			// TODO sabo change this to config invalid
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Name, masterRequiredMsg))
 		}
 		hasMaster = hasMaster || (cfg.Node.Master && t.Count > 0)
 	}
-	if hasMaster {
-		return nil
+	if !hasMaster {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Name, masterRequiredMsg))
 	}
-	return field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Name, masterRequiredMsg)
+	return errs
 }
 
 // todo sabo add comment and update this to return a list of errors
@@ -155,7 +159,7 @@ func hasMaster(es *Elasticsearch) *field.Error {
 // }
 
 // TODO sabo how do we unroll this? it has a different signature than the rest. we could update the rest to return a list but that seems like a smell. theres not really a great way to wrap this one either
-func betterblacklist(es *Elasticsearch) []*field.Error {
+func betterblacklist(es *Elasticsearch) field.ErrorList {
 	var errs []*field.Error
 	for i, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.Config == nil {
@@ -174,7 +178,8 @@ func betterblacklist(es *Elasticsearch) []*field.Error {
 	return errs
 }
 
-func noBlacklistedSettings(es *Elasticsearch) *field.Error {
+func noBlacklistedSettings(es *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	violations := make(map[int]set.StringSet)
 	for i, n := range es.Spec.NodeSets {
 		if n.Config == nil {
@@ -220,25 +225,26 @@ func noBlacklistedSettings(es *Elasticsearch) *field.Error {
 		sep = "; "
 	}
 	sb.WriteString(" is not user configurable")
-	return field.Invalid(field.NewPath("spec").Child("nodeSets", "config"), es.Spec.NodeSets[0].Config, blacklistedConfigErrMsg)
+	return append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets", "config"), es.Spec.NodeSets[0].Config, blacklistedConfigErrMsg))
 	// return validation.Result{
 	// 	Allowed: false,
 	// 	Reason:  sb.String(),
 }
 
-func validSanIP(es *Elasticsearch) *field.Error {
+func validSanIP(es *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	selfSignedCerts := es.Spec.HTTP.TLS.SelfSignedCertificate
 	if selfSignedCerts != nil {
 		for _, san := range selfSignedCerts.SubjectAlternativeNames {
 			if san.IP != "" {
 				ip := netutil.MaybeIPTo4(net.ParseIP(san.IP))
 				if ip == nil {
-					return field.Invalid(field.NewPath("spec").Child("http", "tls", "selfSignedCertificate", "subjectAlternativeNames"), san.IP, invalidSanIPErrMsg)
+					errs = append(errs, field.Invalid(field.NewPath("spec").Child("http", "tls", "selfSignedCertificate", "subjectAlternativeNames"), san.IP, invalidSanIPErrMsg))
 				}
 			}
 		}
 	}
-	return nil
+	return errs
 }
 
 func checkNodeSetNameUniqueness(es *Elasticsearch) field.ErrorList {
@@ -260,10 +266,8 @@ func checkNodeSetNameUniqueness(es *Elasticsearch) field.ErrorList {
 }
 
 // pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
-func pvcModification(old, current *Elasticsearch) *field.Error {
-	if old == nil {
-		return nil
-	}
+func pvcModification(old, current *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	for i, node := range old.Spec.NodeSets {
 		currNode := getNode(node.Name, current)
 		if currNode == nil {
@@ -275,7 +279,7 @@ func pvcModification(old, current *Elasticsearch) *field.Error {
 		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
 		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
 			// TODO sabo this does not correctly have the right path, we really need the index in _new_ spec
-			return field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), currNode.VolumeClaimTemplates, pvcImmutableMsg)
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), currNode.VolumeClaimTemplates, pvcImmutableMsg))
 		}
 	}
 	return nil
