@@ -295,147 +295,131 @@ func Test_supportedVersion(t *testing.T) {
 	}
 }
 
-// func Test_noBlacklistedSettings(t *testing.T) {
-// 	type args struct {
-// 		es Elasticsearch
-// 	}
-// 	tests := []struct {
-// 		name string
-// 		args args
-// 		want validation.Result
-// 	}{
-// 		{
-// 			name: "no settings OK",
-// 			args: args{
-// 				es: *es("7.0.0"),
-// 			},
-// 			want: validation.OK,
-// 		},
-// 		{
-// 			name: "enforce blacklist FAIL",
-// 			args: args{
-// 				es: Elasticsearch{
-// 					Spec: ElasticsearchSpec{
-// 						Version: "7.0.0",
-// 						NodeSets: []NodeSet{
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										ClusterInitialMasterNodes: "foo",
-// 									},
-// 								},
-// 								Count: 1,
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: validation.Result{Allowed: false, Reason: "node[0]: cluster.initial_master_nodes is not user configurable"},
-// 		},
-// 		{
-// 			name: "enforce blacklist in multiple nodes FAIL",
-// 			args: args{
-// 				es: Elasticsearch{
-// 					Spec: ElasticsearchSpec{
-// 						Version: "7.0.0",
-// 						NodeSets: []NodeSet{
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										ClusterInitialMasterNodes: "foo",
-// 									},
-// 								},
-// 							},
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										XPackSecurityTransportSslVerificationMode: "bar",
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: validation.Result{
-// 				Allowed: false,
-// 				Reason:  "node[0]: cluster.initial_master_nodes; node[1]: xpack.security.transport.ssl.verification_mode is not user configurable",
-// 			},
-// 		},
-// 		{
-// 			name: "non blacklisted setting OK",
-// 			args: args{
-// 				es: Elasticsearch{
-// 					Spec: ElasticsearchSpec{
-// 						Version: "7.0.0",
-// 						NodeSets: []NodeSet{
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										"node.attr.box_type": "foo",
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: validation.OK,
-// 		},
-// 		{
-// 			name: "non blacklisted settings with blacklisted string prefix OK",
-// 			args: args{
-// 				es: Elasticsearch{
-// 					Spec: ElasticsearchSpec{
-// 						Version: "7.0.0",
-// 						NodeSets: []NodeSet{
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										XPackSecurityTransportSslCertificateAuthorities: "foo",
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: validation.OK,
-// 		},
-// 		{
-// 			name: "settings are canonicalized before validation",
-// 			args: args{
-// 				es: Elasticsearch{
-// 					Spec: ElasticsearchSpec{
-// 						Version: "7.0.0",
-// 						NodeSets: []NodeSet{
-// 							{
-// 								Config: &common.Config{
-// 									Data: map[string]interface{}{
-// 										"cluster": map[string]interface{}{
-// 											"initial_master_nodes": []string{"foo", "bar"},
-// 										},
-// 										"node.attr.box_type": "foo",
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: validation.Result{Allowed: false, Reason: "node[0]: cluster.initial_master_nodes is not user configurable"},
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			ctx, err := NewValidationContext(nil, tt.args.es)
-// 			require.NoError(t, err)
-// 			if got := noBlacklistedSettings(*ctx); !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("noBlacklistedSettings() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+func Test_noBlacklistedSettings(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           *Elasticsearch
+		expectErrors bool
+	}{
+
+		{
+			name:         "no settings OK",
+			es:           es("7.0.0"),
+			expectErrors: false,
+		},
+		{
+			name: "enforce blacklist FAIL",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									ClusterInitialMasterNodes: "foo",
+								},
+							},
+							Count: 1,
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "enforce blacklist in multiple nodes FAIL",
+
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									ClusterInitialMasterNodes: "foo",
+								},
+							},
+						},
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									XPackSecurityTransportSslVerificationMode: "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "non blacklisted setting OK",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									"node.attr.box_type": "foo",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "non blacklisted settings with blacklisted string prefix OK",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									XPackSecurityTransportSslCertificateAuthorities: "foo",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
+		{
+			name: "settings are canonicalized before validation",
+			es: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.0.0",
+					NodeSets: []NodeSet{
+						{
+							Config: &common.Config{
+								Data: map[string]interface{}{
+									"cluster": map[string]interface{}{
+										"initial_master_nodes": []string{"foo", "bar"},
+									},
+									"node.attr.box_type": "foo",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := noBlacklistedSettings(tt.es)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed noBlacklistedSettings(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
+			}
+		})
+	}
+}
 
 // func TestValidNames(t *testing.T) {
 // 	type args struct {

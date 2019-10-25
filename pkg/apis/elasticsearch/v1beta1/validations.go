@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"net"
 	"reflect"
-	"strconv"
-	"strings"
 
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -18,7 +16,6 @@ import (
 	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/set"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -98,65 +95,8 @@ func hasMaster(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-// todo sabo add comment and update this to return a list of errors
-// func noBlacklistedSettings(es *Elasticsearch) *field.Error {
-// 	violations := make(map[int]set.StringSet)
-// 	for i, n := range es.Spec.NodeSets {
-// 		if n.Config == nil {
-// 			continue
-// 		}
-// 		config, err := common.NewCanonicalConfigFrom(n.Config.Data)
-// 		if err != nil {
-// 			violations[i] = map[string]struct{}{
-// 				cfgInvalidMsg: {},
-// 			}
-// 			continue
-// 		}
-// 		forbidden := config.HasKeys(SettingsBlacklist)
-// 		// remove duplicates
-// 		set := set.Make(forbidden...)
-// 		if set.Count() > 0 {
-// 			violations[i] = set
-// 		}
-// 	}
-// 	if len(violations) == 0 {
-// 		return nil
-// 	}
-// 	var sb strings.Builder
-// 	var sep string
-// 	// iterate again to build validation message in node order
-// 	for i := range es.Spec.NodeSets {
-// 		vs := violations[i]
-// 		if vs == nil {
-// 			continue
-// 		}
-// 		sb.WriteString(sep)
-// 		sb.WriteString("node[")
-// 		sb.WriteString(strconv.FormatInt(int64(i), 10))
-// 		sb.WriteString("]: ")
-// 		var sep2 string
-// 		list := vs.AsSlice()
-// 		list.Sort()
-// 		for _, msg := range list {
-// 			sb.WriteString(sep2)
-// 			sb.WriteString(msg)
-// 			sep2 = ", "
-// 		}
-// 		sep = "; "
-// 	}
-// 	// sb.WriteString(" is not user configurable")
-// 	// todo sabo how to make this so we give it the path to the correct config value that is wrong? also update the message
-// 	// guessing we need to update the string builder
-// 	return field.Invalid(field.NewPath("spec").Child("nodes", "config"), es.Spec.NodeSets[0].Config, blacklistedConfigErrMsg)
-// 	// return validation.Result{
-// 	// 	Allowed: false,
-// 	// 	Reason:  sb.String(),
-// 	// }
-// }
-
-// TODO sabo how do we unroll this? it has a different signature than the rest. we could update the rest to return a list but that seems like a smell. theres not really a great way to wrap this one either
-func betterblacklist(es *Elasticsearch) field.ErrorList {
-	var errs []*field.Error
+func noBlacklistedSettings(es *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
 	for i, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.Config == nil {
 			continue
@@ -172,59 +112,6 @@ func betterblacklist(es *Elasticsearch) field.ErrorList {
 		}
 	}
 	return errs
-}
-
-func noBlacklistedSettings(es *Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
-	violations := make(map[int]set.StringSet)
-	for i, n := range es.Spec.NodeSets {
-		if n.Config == nil {
-			continue
-		}
-		config, err := common.NewCanonicalConfigFrom(n.Config.Data)
-		if err != nil {
-			violations[i] = map[string]struct{}{
-				cfgInvalidMsg: {},
-			}
-			continue
-		}
-		forbidden := config.HasKeys(SettingsBlacklist)
-		// remove duplicates
-		set := set.Make(forbidden...)
-		if set.Count() > 0 {
-			violations[i] = set
-		}
-	}
-	if len(violations) == 0 {
-		return nil
-	}
-	var sb strings.Builder
-	var sep string
-	// iterate again to build validation message in node order
-	for i := range es.Spec.NodeSets {
-		vs := violations[i]
-		if vs == nil {
-			continue
-		}
-		sb.WriteString(sep)
-		sb.WriteString("node[")
-		sb.WriteString(strconv.FormatInt(int64(i), 10))
-		sb.WriteString("]: ")
-		var sep2 string
-		list := vs.AsSlice()
-		list.Sort()
-		for _, msg := range list {
-			sb.WriteString(sep2)
-			sb.WriteString(msg)
-			sep2 = ", "
-		}
-		sep = "; "
-	}
-	sb.WriteString(" is not user configurable")
-	return append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets", "config"), es.Spec.NodeSets[0].Config, blacklistedConfigErrMsg))
-	// return validation.Result{
-	// 	Allowed: false,
-	// 	Reason:  sb.String(),
 }
 
 func validSanIP(es *Elasticsearch) field.ErrorList {
