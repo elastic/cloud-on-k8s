@@ -261,57 +261,39 @@ func Test_hasMaster(t *testing.T) {
 // 	}
 // }
 
-// func Test_supportedVersion(t *testing.T) {
-// 	type args struct {
-// 		esCluster Elasticsearch
-// 	}
-// 	tests := []struct {
-// 		name string
-// 		args args
-// 		want validation.Result
-// 	}{
-// 		{
-// 			name: "unsupported major version should fail",
-// 			args: args{
-// 				esCluster: *es("6.0.0"),
-// 			},
-// 			want: validation.Result{Allowed: false, Reason: unsupportedVersion(&version.Version{
-// 				Major: 6,
-// 				Minor: 0,
-// 				Patch: 0,
-// 				Label: "",
-// 			})},
-// 		},
-// 		{
-// 			name: "unsupported FAIL",
-// 			args: args{
-// 				esCluster: *es("1.0.0"),
-// 			},
-// 			want: validation.Result{Allowed: false, Reason: unsupportedVersion(&version.Version{
-// 				Major: 1,
-// 				Minor: 0,
-// 				Patch: 0,
-// 				Label: "",
-// 			})},
-// 		},
-// 		{
-// 			name: "supported OK",
-// 			args: args{
-// 				esCluster: *es("6.8.0"),
-// 			},
-// 			want: validation.OK,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			ctx, err := NewValidationContext(nil, tt.args.esCluster)
-// 			require.NoError(t, err)
-// 			if got := supportedVersion(*ctx); !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+func Test_supportedVersion(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           *Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name: "unsupported minor version should fail",
+			es:   es("6.0.0"),
+
+			expectErrors: true,
+		},
+		{
+			name:         "unsupported major should fail",
+			es:           es("1.0.0"),
+			expectErrors: true,
+		},
+		{
+			name:         "supported OK",
+			es:           es("6.8.0"),
+			expectErrors: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := supportedVersion(tt.es)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed supportedVersion(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
+			}
+		})
+	}
+}
 
 // func Test_noBlacklistedSettings(t *testing.T) {
 // 	type args struct {

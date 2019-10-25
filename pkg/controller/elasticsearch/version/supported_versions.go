@@ -20,6 +20,7 @@ type LowestHighestSupportedVersions struct {
 	HighestSupportedVersion version.Version
 }
 
+// SupportedVersions returns the supported minor versions for given major version
 func SupportedVersions(v version.Version) *LowestHighestSupportedVersions {
 	switch v.Major {
 	case 6:

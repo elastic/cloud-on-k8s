@@ -67,21 +67,17 @@ func validName(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-// supportedVersion checks if the version is supported.
 func supportedVersion(es *Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
 	ver, err := version.Parse(es.Spec.Version)
 	if err != nil {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg))
-		return errs
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, parseVersionErrMsg)}
 	}
 	if v := esversion.SupportedVersions(*ver); v != nil {
-		if err := v.Supports(*ver); err != nil {
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionErrMsg))
+		if err := v.Supports(*ver); err == nil {
+			return field.ErrorList{}
 		}
 	}
-	// TODO sabo update tests to look for this message
-	return errs
+	return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), es.Spec.Version, unsupportedVersionErrMsg)}
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
