@@ -328,7 +328,6 @@ func Test_noBlacklistedSettings(t *testing.T) {
 		},
 		{
 			name: "enforce blacklist in multiple nodes FAIL",
-
 			es: &Elasticsearch{
 				Spec: ElasticsearchSpec{
 					Version: "7.0.0",
@@ -421,55 +420,43 @@ func Test_noBlacklistedSettings(t *testing.T) {
 	}
 }
 
-// func TestValidNames(t *testing.T) {
-// 	type args struct {
-// 		esCluster Elasticsearch
-// 	}
-// 	tests := []struct {
-// 		name string
-// 		args args
-// 		want validation.Result
-// 	}{
-// 		{
-// 			name: "name length too long",
-// 			args: args{
-// 				esCluster: Elasticsearch{
-// 					ObjectMeta: metav1.ObjectMeta{
-// 						Namespace: "default",
-// 						Name:      "that-is-a-very-long-name-with-37chars",
-// 					},
-// 					Spec: ElasticsearchSpec{Version: "6.8.0"},
-// 				},
-// 			},
-// 			want: validation.Result{
-// 				Allowed: false,
-// 				Reason:  invalidName(fmt.Errorf("name exceeds maximum allowed length of %d", common_name.MaxResourceNameLength)),
-// 			},
-// 		},
-// 		{
-// 			name: "name length OK",
-// 			args: args{
-// 				esCluster: Elasticsearch{
-// 					ObjectMeta: metav1.ObjectMeta{
-// 						Namespace: "default",
-// 						Name:      "that-is-a-very-long-name-with-36char",
-// 					},
-// 					Spec: ElasticsearchSpec{Version: "6.8.0"},
-// 				},
-// 			},
-// 			want: validation.OK,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			ctx, err := NewValidationContext(nil, tt.args.esCluster)
-// 			require.NoError(t, err)
-// 			if got := validName(*ctx); !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+func TestValidNames(t *testing.T) {
+	tests := []struct {
+		name         string
+		es           *Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name: "name length too long",
+			es: &Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "that-is-a-very-long-name-with-37chars",
+				},
+			},
+			expectErrors: true,
+		},
+		{
+			name: "name length OK",
+			es: &Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "that-is-a-very-long-name-with-36char",
+				},
+			},
+			expectErrors: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := validName(tt.es)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed validName(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Name)
+			}
+		})
+	}
+}
 
 // func Test_validSanIP(t *testing.T) {
 // 	validIP := "3.4.5.6"
