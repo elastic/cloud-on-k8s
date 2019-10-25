@@ -246,6 +246,34 @@ func TestHandleDownscale(t *testing.T) {
 	// data migration settings should have been cleared
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
 	require.Equal(t, "none_excluded", esClient.ExcludeFromShardAllocationCalledWith)
+
+	// simulate the existence of a third StatefulSet with data nodes
+	// that we want to remove
+	ssetToRemove := sset.TestSset{
+		Name:      "ssetToRemove",
+		Namespace: "ns",
+		Version:   "7.2.0",
+		Replicas:  2,
+		Master:    false,
+		Data:      true,
+	}.Build()
+	require.NoError(t, k8sClient.Create(&ssetToRemove))
+	// do the downscale, that third StatefulSet is not part of the expected ones
+	err = k8sClient.List(&actual)
+	require.NoError(t, err)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	require.False(t, results.HasError())
+	// the StatefulSet replicas should be decreased to 0, but StatefulSet should still be around
+	err = k8sClient.Get(k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
+	require.NoError(t, err)
+	require.Equal(t, int32(0), sset.GetReplicas(ssetToRemove))
+	// run downscale again: this time the StatefulSet should be removed
+	err = k8sClient.List(&actual)
+	require.NoError(t, err)
+	results = HandleDownscale(downscaleCtx, requestedStatefulSets, actual.Items)
+	require.False(t, results.HasError())
+	err = k8sClient.Get(k8s.ExtractNamespacedName(&ssetToRemove), &ssetToRemove)
+	require.True(t, apierrors.IsNotFound(err))
 }
 
 func Test_calculateDownscales(t *testing.T) {
@@ -277,46 +305,65 @@ func Test_calculateDownscales(t *testing.T) {
 		},
 	}
 
-	masterSset := sset.StatefulSetList{
-		sset.TestSset{
-			Name:      "masters",
-			Namespace: "ns",
-			Replicas:  0,
-			Master:    true,
-		}.Build(),
-	}
-
-	dataSset := sset.StatefulSetList{
-		sset.TestSset{
-			Name:      "masters",
-			Namespace: "ns",
-			Replicas:  0,
-			Master:    false,
-		}.Build(),
-	}
-
 	var tests = []struct {
 		name                 string
 		expectedStatefulSets sset.StatefulSetList
 		actualStatefulSets   sset.StatefulSetList
-		want                 []ssetDownscale
+		wantDownscales       []ssetDownscale
+		wantDeletions        sset.StatefulSetList
 	}{
 		{
-			name:               "no actual statefulset: no downscale",
+			name:               "no actual statefulset: nothing to do",
 			actualStatefulSets: nil,
-			want:               []ssetDownscale{},
+			wantDownscales:     nil,
+			wantDeletions:      nil,
+		},
+
+		{
+			name: "upscale: nothing to do",
+			expectedStatefulSets: sset.StatefulSetList{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sset0",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(4),
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(5)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sset2",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(3)},
+				},
+			},
+			actualStatefulSets: ssets,
+			wantDownscales:     nil,
+			wantDeletions:      nil,
 		},
 		{
 			name:                 "expected == actual",
 			expectedStatefulSets: ssets,
 			actualStatefulSets:   ssets,
-			want:                 []ssetDownscale{},
+			wantDownscales:       nil,
+			wantDeletions:        nil,
 		},
 		{
-			name:                 "remove all ssets",
+			name:                 "downscale all ssets",
 			expectedStatefulSets: nil,
 			actualStatefulSets:   ssets,
-			want: []ssetDownscale{
+			wantDownscales: []ssetDownscale{
 				{
 					statefulSet:     ssets[0],
 					initialReplicas: *ssets[0].Spec.Replicas,
@@ -333,6 +380,8 @@ func Test_calculateDownscales(t *testing.T) {
 					targetReplicas:  0,
 				},
 			},
+			// should not delete any statefulset, only downscale existing ones to 0
+			wantDeletions: nil,
 		},
 		{
 			name: "downscale 2 out of 3 StatefulSets",
@@ -364,7 +413,7 @@ func Test_calculateDownscales(t *testing.T) {
 				},
 			},
 			actualStatefulSets: ssets,
-			want: []ssetDownscale{
+			wantDownscales: []ssetDownscale{
 				{
 					statefulSet:     ssets[1],
 					initialReplicas: *ssets[1].Spec.Replicas,
@@ -378,69 +427,89 @@ func Test_calculateDownscales(t *testing.T) {
 					finalReplicas:   1,
 				},
 			},
+			wantDeletions: nil,
 		},
 		{
-			name: "upscale: no downscale",
+			name: "delete actual statefulsets with 0 replicas",
 			expectedStatefulSets: sset.StatefulSetList{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset0",
-					},
-					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(4),
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "ns",
-						Name:      "sset1",
-					},
-					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(5)},
-				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "ns",
 						Name:      "sset2",
 					},
 					Spec: appsv1.StatefulSetSpec{
-						Replicas: pointer.Int32(3)},
+						Replicas: pointer.Int32(1)},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sset3",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
 				},
 			},
-			actualStatefulSets: ssets,
-			want:               []ssetDownscale{},
-		},
-		{
-			name:               "master statefulset removal",
-			actualStatefulSets: masterSset,
-			want: []ssetDownscale{
+			actualStatefulSets: sset.StatefulSetList{
+				// statefulset with 0 replicas which has no corresponding expected statefulset: should be deleted
 				{
-					statefulSet:     masterSset[0],
-					initialReplicas: 0,
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+				// statefulset with 0 replicas which has a corresponding expected statefulset with 1 replica: should be kept
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sset2",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
+				},
+				// statefulset with 1 replicas that should be downscaled to 0
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sset3",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(1)},
+				},
+			},
+			wantDownscales: []ssetDownscale{
+				{
+					statefulSet: appsv1.StatefulSet{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "ns",
+							Name:      "sset3",
+						},
+						Spec: appsv1.StatefulSetSpec{
+							Replicas: pointer.Int32(1)},
+					},
+					initialReplicas: 1,
 					targetReplicas:  0,
 					finalReplicas:   0,
 				},
 			},
-		},
-		{
-			name:               "data statefulset removal",
-			actualStatefulSets: dataSset,
-			want: []ssetDownscale{
+			wantDeletions: sset.StatefulSetList{
 				{
-					statefulSet:     dataSset[0],
-					initialReplicas: 0,
-					targetReplicas:  0,
-					finalReplicas:   0,
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sset1",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Replicas: pointer.Int32(0)},
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := calculateDownscales(downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("calculateDownscales() = %v, want %v", got, tt.want)
-			}
+			gotDownscales, gotDeletions := calculateDownscales(downscaleState{}, tt.expectedStatefulSets, tt.actualStatefulSets)
+			require.Equal(t, tt.wantDownscales, gotDownscales)
+			require.Equal(t, tt.wantDeletions, gotDeletions)
 		})
 	}
 }
@@ -608,52 +677,6 @@ func Test_attemptDownscale(t *testing.T) {
 		statefulSets         sset.StatefulSetList
 		expectedStatefulSets []appsv1.StatefulSet
 	}{
-		{
-			name: "1 statefulset should be removed",
-			downscale: ssetDownscale{
-				statefulSet:     sset.TestSset{Name: "should-be-removed", Version: "7.1.0", Replicas: 0, Master: true, Data: true}.Build(),
-				initialReplicas: 0,
-				targetReplicas:  0,
-			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(0)},
-			statefulSets: sset.StatefulSetList{
-				sset.TestSset{Name: "should-be-removed", Version: "7.1.0", Replicas: 0, Master: true, Data: true}.Build(),
-				sset.TestSset{Name: "should-stay", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
-			},
-			expectedStatefulSets: []appsv1.StatefulSet{
-				sset.TestSset{Name: "should-stay", Version: "7.1.0", Replicas: 2, Master: true, Data: true}.Build(),
-			},
-		},
-		{
-			name: "target replicas == initial replicas",
-			downscale: ssetDownscale{
-				statefulSet:     sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
-				initialReplicas: 3,
-				targetReplicas:  3,
-			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(1)},
-			statefulSets: sset.StatefulSetList{
-				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
-			},
-			expectedStatefulSets: []appsv1.StatefulSet{
-				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
-			},
-		},
-		{
-			name: "upscale case",
-			downscale: ssetDownscale{
-				statefulSet:     sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
-				initialReplicas: 3,
-				targetReplicas:  4,
-			},
-			state: &downscaleState{runningMasters: 2, masterRemovalInProgress: false, removalsAllowed: pointer.Int32(1)},
-			statefulSets: sset.StatefulSetList{
-				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
-			},
-			expectedStatefulSets: []appsv1.StatefulSet{
-				sset.TestSset{Name: "default", Version: "7.1.0", Replicas: 3, Master: true, Data: true}.Build(),
-			},
-		},
 		{
 			name: "perform 3 -> 2 downscale",
 			downscale: ssetDownscale{
@@ -938,7 +961,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 	}
 }
 
-func Test_removeStatefulSetResources(t *testing.T) {
+func Test_deleteStatefulSetResources(t *testing.T) {
 	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
 	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
 	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
@@ -960,12 +983,60 @@ func Test_removeStatefulSetResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.WrappedFakeClient(tt.resources...)
-			err := removeStatefulSetResources(k8sClient, es, sset)
+			err := deleteStatefulSetResources(k8sClient, es, sset)
 			require.NoError(t, err)
 			// sset, cfg and headless services should not be there anymore
 			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&sset), &sset)))
 			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&cfg), &cfg)))
 			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&svc), &svc)))
+		})
+	}
+}
+
+func Test_deleteStatefulSets(t *testing.T) {
+	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
+	tests := []struct {
+		name          string
+		toDelete      sset.StatefulSetList
+		objs          []runtime.Object
+		wantRemaining sset.StatefulSetList
+	}{
+		{
+			name:     "nothing to delete",
+			toDelete: nil,
+			objs: []runtime.Object{
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.BuildPtr(),
+			},
+			wantRemaining: sset.StatefulSetList{
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.Build(),
+			},
+		},
+		{
+			name: "two StatefulSets to delete",
+			toDelete: sset.StatefulSetList{
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
+				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.Build(),
+			},
+			objs: []runtime.Object{
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.BuildPtr(),
+				sset.TestSset{Namespace: "ns", Name: "sset3", ClusterName: es.Name}.BuildPtr(),
+			},
+			wantRemaining: sset.StatefulSetList{
+				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.Build(),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := k8s.WrappedFakeClient(tt.objs...)
+			err := deleteStatefulSets(tt.toDelete, client, es)
+			require.NoError(t, err)
+			var remainingSsets appsv1.StatefulSetList
+			require.NoError(t, client.List(&remainingSsets))
+			require.Equal(t, tt.wantRemaining, sset.StatefulSetList(remainingSsets.Items))
 		})
 	}
 }
