@@ -74,7 +74,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			exp := expectations.NewExpectations()
+			exp := expectations.NewExpectations(tt.c)
 			returned, err := ReconcileStatefulSet(tt.c, scheme.Scheme, es, tt.expected, exp)
 			require.NoError(t, err)
 

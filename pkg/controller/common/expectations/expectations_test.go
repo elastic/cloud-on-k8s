@@ -7,116 +7,54 @@ package expectations
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/magiconair/properties/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
-func TestGenerationsExpectations(t *testing.T) {
-	expectations := NewExpectations()
-	// check expectations that were not set
-	obj := metav1.ObjectMeta{
-		UID:        types.UID("abc"),
-		Name:       "name",
-		Namespace:  "namespace",
-		Generation: 2,
-	}
-	require.True(t, expectations.SatisfiedGenerations(obj))
-	// set expectations
-	expectations.ExpectGeneration(obj)
-	// check expectations are met for this object
-	require.True(t, expectations.SatisfiedGenerations(obj))
-	// but not for the same object with a smaller generation
-	obj.Generation = 1
-	require.False(t, expectations.SatisfiedGenerations(obj))
-	// a different object (different UID) should have expectations met
-	obj.UID = types.UID("another")
-	require.True(t, expectations.SatisfiedGenerations(obj))
-}
+func TestExpectations_Satisfied(t *testing.T) {
+	client := k8s.WrappedFakeClient()
+	e := NewExpectations(client)
 
-func newPod(clusterName types.NamespacedName, podName string) corev1.Pod {
-	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: clusterName.Namespace,
-			Name:      podName,
-			UID:       uuid.NewUUID(),
-			Labels:    label.NewLabels(clusterName),
-		},
-	}
-}
-
-func TestExpectations_ExpectDeletion(t *testing.T) {
-	testCluster1 := types.NamespacedName{
-		Namespace: "ns1",
-		Name:      "cluster1",
-	}
-	testCluster2 := types.NamespacedName{
-		Namespace: "ns2",
-		Name:      "cluster2",
-	}
-	testCluster3 := types.NamespacedName{
-		Namespace: "ns2",
-		Name:      "cluster3",
-	}
-
-	e := NewExpectations()
-	// Initial state
-	assert.Equal(t, len(e.deletions[testCluster1]), 0)
-	assert.Equal(t, len(e.deletions[testCluster2]), 0)
-
-	cluster1Pod1 := newPod(testCluster1, "cluster1Pod1")
-	e.ExpectDeletion(cluster1Pod1)
-	assert.Equal(t, len(e.deletions[testCluster1]), 1)
-	assert.Equal(t, len(e.deletions[testCluster2]), 0)
-
-	cluster2Pod1 := newPod(testCluster2, "cluster2Pod1")
-	e.ExpectDeletion(cluster2Pod1)
-	assert.Equal(t, len(e.deletions[testCluster1]), 1)
-	assert.Equal(t, len(e.deletions[testCluster2]), 1)
-
-	cluster1Pod2 := newPod(testCluster1, "cluster1Pod2")
-	e.ExpectDeletion(cluster1Pod2)
-	assert.Equal(t, len(e.deletions[testCluster1]), 2)
-	assert.Equal(t, len(e.deletions[testCluster2]), 1)
-
-	cluster1Pod3 := newPod(testCluster1, "cluster1Pod3")
-	e.ExpectDeletion(cluster1Pod3)
-	assert.Equal(t, len(e.deletions[testCluster1]), 3)
-	assert.Equal(t, len(e.deletions[testCluster2]), 1)
-
-	e.CancelExpectedDeletion(cluster1Pod1)
-	assert.Equal(t, len(e.deletions[testCluster1]), 2)
-	assert.Equal(t, len(e.deletions[testCluster2]), 1)
-
-	e.CancelExpectedDeletion(cluster1Pod2)
-	assert.Equal(t, len(e.deletions[testCluster1]), 1)
-	assert.Equal(t, len(e.deletions[testCluster2]), 1)
-
-	cluster3Pod1 := newPod(testCluster1, "cluster3Pod1")
-	e.CancelExpectedDeletion(cluster3Pod1)
-	assert.Equal(t, len(e.deletions[testCluster1]), 1)
-	assert.Equal(t, len(e.deletions[testCluster2]), 1)
-	assert.Equal(t, len(e.deletions[testCluster3]), 0)
-
-	// Create a fake client with new UID for the last remaining Pod in cluster1
-	cluster1Pod3 = newPod(testCluster1, "cluster1Pod3")
-	client := k8s.WrappedFakeClient(&cluster1Pod3, &cluster2Pod1)
-
-	// UID has changed for the last Pod of cluster1, expectation must be satisfied
-	satisfied, err := e.SatisfiedDeletions(client, testCluster1)
+	// initially satisfied
+	satisfied, err := e.Satisfied()
 	require.NoError(t, err)
-	assert.Equal(t, satisfied, true)
-	cluster1deletions := e.deletions[testCluster1]
-	assert.Equal(t, len(cluster1deletions), 0)
+	require.True(t, satisfied)
 
-	// We still have a remaining Pod for cluster2
-	satisfied, err = e.SatisfiedDeletions(client, testCluster2)
+	// expect a Pod to be deleted
+	pod := newPod("pod1", uuid.NewUUID())
+	require.NoError(t, client.Create(&pod))
+	e.ExpectDeletion(pod)
+
+	// expectations should not be satisfied
+	satisfied, err = e.Satisfied()
 	require.NoError(t, err)
-	assert.Equal(t, satisfied, false)
+	require.False(t, satisfied)
+
+	// expect a StatefulSet generation
+	sset := newStatefulSet("sset1", uuid.NewUUID(), 1)
+	require.NoError(t, client.Create(&sset))
+	updatedSset := sset
+	updatedSset.Generation = 2
+	e.ExpectGeneration(updatedSset)
+
+	// expectations should not be satisfied
+	satisfied, err = e.Satisfied()
+	require.NoError(t, err)
+	require.False(t, satisfied)
+
+	// observe the StatefulSet with the updated generation
+	require.NoError(t, client.Update(&updatedSset))
+	// expectations should not be satisfied (because of the deletions)
+	satisfied, err = e.Satisfied()
+	require.NoError(t, err)
+	require.False(t, satisfied)
+
+	// delete the Pod
+	require.NoError(t, client.Delete(&pod))
+	// expectations should be satisfied
+	satisfied, err = e.Satisfied()
+	require.NoError(t, err)
+	require.True(t, satisfied)
 }

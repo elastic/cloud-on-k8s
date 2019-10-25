@@ -156,18 +156,19 @@ func deletePod(k8sClient k8s.Client, es v1beta1.Elasticsearch, pod corev1.Pod, e
 	log.Info("Deleting pod for rolling upgrade", "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
 	// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.
-	// If not it means that we are running with a stale cache.
+	// We also check the version of the Pod resource, to make sure its status is the current one and we're not deleting
+	// eg. a Pending Pod that is not Pending anymore.
 	opt := client.Preconditions{
-		UID: &pod.UID,
+		UID:             &pod.UID,
+		ResourceVersion: &pod.ResourceVersion,
+	}
+	err := k8sClient.Delete(&pod, opt)
+	if err != nil {
+		return err
 	}
 	// expect the pod to not be there in the cache at next reconciliation
 	expectations.ExpectDeletion(pod)
-	err := k8sClient.Delete(&pod, opt)
-	if err != nil {
-		// cancel our expectation since the Pod may not be deleted
-		expectations.CancelExpectedDeletion(pod)
-	}
-	return err
+	return nil
 }
 
 func runPredicates(

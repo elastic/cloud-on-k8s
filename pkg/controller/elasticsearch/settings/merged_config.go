@@ -100,14 +100,17 @@ func xpackConfig(ver version.Version, httpCfg commonv1beta1.HTTPConfig, certReso
 		cfg[estype.XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
 	}
 
-	// always enable the built-in file internal realm for user auth, ordered as first
+	// always enable the built-in file and native internal realms for user auth, ordered as first
 	if ver.Major < 7 {
 		// 6.x syntax
 		cfg[estype.XPackSecurityAuthcRealmsFile1Type] = "file"
 		cfg[estype.XPackSecurityAuthcRealmsFile1Order] = -100
+		cfg[estype.XPackSecurityAuthcRealmsNative1Type] = "native"
+		cfg[estype.XPackSecurityAuthcRealmsNative1Order] = -99
 	} else {
 		// 7.x syntax
 		cfg[estype.XPackSecurityAuthcRealmsFileFile1Order] = -100
+		cfg[estype.XPackSecurityAuthcRealmsNativeNative1Order] = -99
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}

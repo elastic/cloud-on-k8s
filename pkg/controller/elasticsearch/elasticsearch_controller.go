@@ -71,7 +71,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 
 		finalizers:     finalizer.NewHandler(client),
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewExpectations(),
+		expectations:   expectations.NewClustersExpectations(client),
 
 		Parameters: params,
 	}
@@ -170,7 +170,7 @@ type ReconcileElasticsearch struct {
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
-	expectations *expectations.Expectations
+	expectations *expectations.ClustersExpectation
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -187,6 +187,8 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
+			// Stop tracking that cluster in expectations - without the finalizer overhead.
+			r.expectations.RemoveCluster(request.NamespacedName)
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
@@ -277,7 +279,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Scheme:             r.scheme,
 		Recorder:           r.recorder,
 		Version:            *ver,
-		Expectations:       r.expectations,
+		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,

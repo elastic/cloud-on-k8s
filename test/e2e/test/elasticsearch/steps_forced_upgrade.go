@@ -8,15 +8,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
-// ForcedUpgradeTestSteps creates the initial cluster that is not expected to run, wait for condition to be reached,
+// ForcedUpgradeTestSteps creates the initial cluster that is not expected to run, wait for conditions to be met,
 // then mutates it to the fixed cluster, that is expected to become healthy.
-func ForcedUpgradeTestSteps(k *test.K8sClient, initial Builder, condition test.Step, fixed Builder) test.StepList {
+func ForcedUpgradeTestSteps(k *test.K8sClient, initial Builder, conditions []test.Step, fixed Builder) test.StepList {
 	return test.StepList{}.
 		// create the initial (failing) cluster
 		WithSteps(initial.InitTestSteps(k)).
 		WithSteps(initial.CreationTestSteps(k)).
-		// wait for condition to be met
-		WithStep(condition).
+		// wait for conditions to be met
+		WithSteps(conditions).
 		// apply the fixed Elasticsearch resource
 		WithSteps(fixed.UpgradeTestSteps(k)).
 		// ensure the cluster eventually becomes healthy

@@ -6,32 +6,26 @@ package e2e
 
 import (
 	"bufio"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 func TestSamples(t *testing.T) {
 	sampleFiles, err := filepath.Glob("../../config/samples/*/*.yaml")
 	require.NoError(t, err, "Failed to find samples")
 
-	decoder := createDecoder(t)
+	decoder := helper.NewYAMLDecoder()
 	for _, sample := range sampleFiles {
 		builders := createBuilders(t, decoder, sample)
 		testName := mkTestName(t, sample)
@@ -39,16 +33,6 @@ func TestSamples(t *testing.T) {
 			test.Sequence(nil, test.EmptySteps, builders...).RunSequential(t)
 		})
 	}
-}
-
-func createDecoder(t *testing.T) runtime.Decoder {
-	t.Helper()
-
-	scheme := runtime.NewScheme()
-	scheme.AddKnownTypes(estype.GroupVersion, &estype.Elasticsearch{}, &estype.ElasticsearchList{})
-	scheme.AddKnownTypes(kbtype.GroupVersion, &kbtype.Kibana{}, &kbtype.KibanaList{})
-	scheme.AddKnownTypes(apmtype.GroupVersion, &apmtype.ApmServer{}, &apmtype.ApmServerList{})
-	return serializer.NewCodecFactory(scheme).UniversalDeserializer()
 }
 
 func mkTestName(t *testing.T, path string) string {
@@ -60,60 +44,39 @@ func mkTestName(t *testing.T, path string) string {
 	return filepath.Join(parentDir, baseName)
 }
 
-func createBuilders(t *testing.T, decoder runtime.Decoder, sampleFile string) []test.Builder {
+func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile string) []test.Builder {
 	t.Helper()
 
 	f, err := os.Open(sampleFile)
 	require.NoError(t, err, "Failed to open file %s", sampleFile)
 	defer f.Close()
 
-	var builders []test.Builder
 	namespace := test.Ctx().ManagedNamespace(0)
 	suffix := rand.String(4)
-
-	yamlReader := yaml.NewYAMLReader(bufio.NewReader(f))
-	for {
-		yamlBytes, err := yamlReader.Read()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			require.NoError(t, err, "Failed to read YAML from %s", sampleFile)
-		}
-		obj, _, err := decoder.Decode(yamlBytes, nil, nil)
-		require.NoError(t, err, "Failed to decode YAML from %s", sampleFile)
-
-		var builder test.Builder
-
-		switch decodedObj := obj.(type) {
-		case *estype.Elasticsearch:
-			b := elasticsearch.NewBuilderWithoutSuffix(decodedObj.Name)
-			b.Elasticsearch = *decodedObj
-			builder = b.WithNamespace(namespace).
+	transform := func(builder test.Builder) test.Builder {
+		switch b := builder.(type) {
+		case elasticsearch.Builder:
+			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithRestrictedSecurityContext()
-		case *kbtype.Kibana:
-			b := kibana.NewBuilderWithoutSuffix(decodedObj.Name)
-			b.Kibana = *decodedObj
-			builder = b.WithNamespace(namespace).
+		case kibana.Builder:
+			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakElasticsearchRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
 				WithRestrictedSecurityContext()
-		case *apmtype.ApmServer:
-			b := apmserver.NewBuilderWithoutSuffix(decodedObj.Name)
-			b.ApmServer = *decodedObj
-			builder = b.WithNamespace(namespace).
+		case apmserver.Builder:
+			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakElasticsearchRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
 				WithRestrictedSecurityContext()
 		default:
-			t.Fatalf("Unexpected object type [%t] in the YAML file: %s", decodedObj, sampleFile)
+			return b
 		}
-
-		builders = append(builders, builder)
 	}
 
+	builders, err := decoder.ToBuilders(bufio.NewReader(f), transform)
+	require.NoError(t, err, "Failed to create builders")
 	return builders
 }
 

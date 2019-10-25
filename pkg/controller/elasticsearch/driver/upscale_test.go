@@ -41,7 +41,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 		es:           es,
 		scheme:       scheme.Scheme,
 		esState:      nil,
-		expectations: expectations.NewExpectations(),
+		expectations: expectations.NewExpectations(k8sClient),
 	}
 	expectedResources := nodespec.ResourcesList{
 		{
