@@ -37,11 +37,18 @@ func HandleDownscale(
 		return results.WithError(err)
 	}
 
-	// compute the list of StatefulSet downscales to perform
-	downscales := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets)
-	leavingNodes := leavingNodeNames(downscales)
+	// compute the list of StatefulSet downscales and deletions to perform
+	downscales, deletions := calculateDownscales(*downscaleState, expectedStatefulSets, actualStatefulSets)
 
-	// migrate data away from nodes that should be removed, if leavingNodes is empty, it clears any existing settings
+	// remove actual StatefulSets that should not exist anymore (already downscaled to 0 in the past)
+	// this is safe thanks to expectations: we're sure 0 actual replicas means 0 corresponding pods exist
+	if err := deleteStatefulSets(deletions, downscaleCtx.k8sClient, downscaleCtx.es); err != nil {
+		return results.WithError(err)
+	}
+
+	// migrate data away from nodes that should be removed
+	// if leavingNodes is empty, it clears any existing settings
+	leavingNodes := leavingNodeNames(downscales)
 	if len(leavingNodes) != 0 {
 		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
 	}
@@ -64,27 +71,46 @@ func HandleDownscale(
 	return results
 }
 
-// calculateDownscales compares expected and actual StatefulSets to return a list of ssetDownscale.
-// We also include StatefulSets removal (0 replicas) in those downscales.
-func calculateDownscales(state downscaleState, expectedStatefulSets sset.StatefulSetList, actualStatefulSets sset.StatefulSetList) []ssetDownscale {
-	downscales := []ssetDownscale{}
+// deleteStatefulSets deletes the given StatefulSets along with their associated resources.
+func deleteStatefulSets(toDelete sset.StatefulSetList, k8sClient k8s.Client, es v1beta1.Elasticsearch) error {
+	for _, toDelete := range toDelete {
+		if err := deleteStatefulSetResources(k8sClient, es, toDelete); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// calculateDownscales compares expected and actual StatefulSets to return a list of StatefulSets
+// that can be downscaled (replica decrease) or deleted (no replicas).
+func calculateDownscales(
+	state downscaleState,
+	expectedStatefulSets sset.StatefulSetList,
+	actualStatefulSets sset.StatefulSetList,
+) (downscales []ssetDownscale, deletions sset.StatefulSetList) {
 	for _, actualSset := range actualStatefulSets {
 		actualReplicas := sset.GetReplicas(actualSset)
 		expectedSset, shouldExist := expectedStatefulSets.GetByName(actualSset.Name)
-		expectedReplicas := int32(0) // sset removal
-		if shouldExist {             // sset downscale
+		expectedReplicas := int32(0)
+		if shouldExist {
 			expectedReplicas = sset.GetReplicas(expectedSset)
 		}
-		if expectedReplicas == 0 || // removal
-			expectedReplicas < actualReplicas { // downscale
+
+		switch {
+		case actualReplicas == 0 && expectedReplicas == 0:
+			// the StatefulSet should not exist, and currently has no replicas
+			// it is safe to delete
+			deletions = append(deletions, actualSset)
+
+		case expectedReplicas < actualReplicas:
+			// the StatefulSet should be downscaled
 			if canDownscale, reason := checkDownscaleInvariants(state, actualSset); !canDownscale {
 				ssetLogger(actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
 				continue
 			}
-
 			toDelete := actualReplicas - expectedReplicas
-			if label.IsMasterNodeSet(actualSset) && toDelete > 0 {
-				toDelete = 1 // Only one removal allowed for masters and if it's not already at 0
+			if label.IsMasterNodeSet(actualSset) {
+				toDelete = 1 // only one removal allowed for masters
 			}
 			toDelete = state.getMaxNodesToRemove(toDelete)
 			downscales = append(downscales, ssetDownscale{
@@ -93,15 +119,16 @@ func calculateDownscales(state downscaleState, expectedStatefulSets sset.Statefu
 				targetReplicas:  actualReplicas - toDelete,
 				finalReplicas:   expectedReplicas,
 			})
+			state.recordNodeRemoval(actualSset, toDelete)
 
-			state.recordRemoval(actualSset, toDelete)
+		default:
+			// nothing to do
 		}
 	}
-	return downscales
+	return downscales, deletions
 }
 
-// attemptDownscale attempts to decrement the number of replicas of the given StatefulSet,
-// or deletes the StatefulSet entirely if it should not contain any replica.
+// attemptDownscale attempts to decrement the number of replicas of the given StatefulSet.
 // Nodes whose data migration is not over will not be removed.
 // A boolean is returned to indicate if a requeue should be scheduled if the entire downscale could not be performed.
 func attemptDownscale(
@@ -110,33 +137,23 @@ func attemptDownscale(
 	allLeavingNodes []string,
 	statefulSets sset.StatefulSetList,
 ) (bool, error) {
-	switch {
-	case downscale.isRemoval():
-		return false, removeStatefulSetResources(ctx.k8sClient, ctx.es, downscale.statefulSet)
-
-	case downscale.isReplicaDecrease():
-		// adjust the theoretical downscale to one we can safely perform
-		performable, err := calculatePerformableDownscale(ctx, downscale, allLeavingNodes)
-		if err != nil {
-			return true, err
-		}
-		if !performable.isReplicaDecrease() {
-			// no downscale can be performed for now, let's requeue
-			return true, nil
-		}
-		// do performable downscale, and requeue if needed
-		shouldRequeue := performable.targetReplicas != downscale.finalReplicas
-		return shouldRequeue, doDownscale(ctx, performable, statefulSets)
-
-	default:
-		// nothing to do
-		return false, nil
+	// adjust the theoretical downscale to one we can safely perform
+	performable, err := calculatePerformableDownscale(ctx, downscale, allLeavingNodes)
+	if err != nil {
+		return true, err
 	}
+	if performable.targetReplicas == performable.initialReplicas {
+		// no downscale can be performed for now, let's requeue
+		return true, nil
+	}
+	// do performable downscale, and requeue if needed
+	shouldRequeue := performable.targetReplicas != downscale.finalReplicas
+	return shouldRequeue, doDownscale(ctx, performable, statefulSets)
 }
 
-// removeStatefulSetResources deletes the given StatefulSet along with the corresponding
+// deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
 // headless service and configuration secret.
-func removeStatefulSetResources(k8sClient k8s.Client, es v1beta1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+func deleteStatefulSetResources(k8sClient k8s.Client, es v1beta1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	headlessSvc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
 	err := k8sClient.Delete(&headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {

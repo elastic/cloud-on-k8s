@@ -270,7 +270,7 @@ func Test_downscaleState_recordRemoval(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.state.recordRemoval(tt.statefulSet, tt.removals)
+			tt.state.recordNodeRemoval(tt.statefulSet, tt.removals)
 			require.Equal(t, tt.wantState, tt.state)
 		})
 	}

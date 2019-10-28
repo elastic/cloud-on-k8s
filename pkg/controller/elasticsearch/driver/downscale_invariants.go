@@ -95,8 +95,8 @@ func (s *downscaleState) getMaxNodesToRemove(noMoreThan int32) int32 {
 	return noMoreThan
 }
 
-// recordRemoval updates the state to consider n-replica downscale of the given statefulSet.
-func (s *downscaleState) recordRemoval(statefulSet appsv1.StatefulSet, accountedRemovals int32) {
+// recordNodeRemoval updates the state to consider n-replica downscale of the given statefulSet.
+func (s *downscaleState) recordNodeRemoval(statefulSet appsv1.StatefulSet, accountedRemovals int32) {
 	if accountedRemovals == 0 {
 		return
 	}
