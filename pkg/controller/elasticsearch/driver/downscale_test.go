@@ -1000,6 +1000,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 		toDelete      sset.StatefulSetList
 		objs          []runtime.Object
 		wantRemaining sset.StatefulSetList
+		wantErr       func(err error) bool
 	}{
 		{
 			name:     "nothing to delete",
@@ -1028,12 +1029,27 @@ func Test_deleteStatefulSets(t *testing.T) {
 				sset.TestSset{Namespace: "ns", Name: "sset2", ClusterName: es.Name}.Build(),
 			},
 		},
+		{
+			name: "statefulSet already deleted",
+			toDelete: sset.StatefulSetList{
+				sset.TestSset{Namespace: "ns", Name: "sset1", ClusterName: es.Name}.Build(),
+			},
+			objs:          []runtime.Object{},
+			wantRemaining: nil,
+			wantErr: func(err error) bool {
+				return apierrors.IsNotFound(err)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.objs...)
 			err := deleteStatefulSets(tt.toDelete, client, es)
-			require.NoError(t, err)
+			if tt.wantErr != nil {
+				require.True(t, tt.wantErr(err))
+			} else {
+				require.NoError(t, err)
+			}
 			var remainingSsets appsv1.StatefulSetList
 			require.NoError(t, client.List(&remainingSsets))
 			require.Equal(t, tt.wantRemaining, sset.StatefulSetList(remainingSsets.Items))
