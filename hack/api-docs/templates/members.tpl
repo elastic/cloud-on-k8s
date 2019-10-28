@@ -3,7 +3,7 @@
 {{- if not (hiddenMember .)}}
 | *`{{ fieldName . }}`* +
 {{- if linkForType .Type }}
-_link:{{ linkForType .Type}}[$${{ typeDisplayName .Type }}$$]_
+_{{ template "link_template" .Type }}_
 {{- else }}
 _{{ typeDisplayName .Type }}_
 {{- end }}
