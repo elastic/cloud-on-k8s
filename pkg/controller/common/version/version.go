@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // Version is a parsed version
@@ -30,47 +32,36 @@ func (v Version) String() string {
 
 var (
 	// TooFewSegmentsErrorMessage is used as an error message when a version has too few dot-separated segments
-	TooFewSegmentsErrorMessage = "version string has too few segments"
+	TooFewSegmentsErrorMessage = "version string has too few segments: %s"
 	// TooManySegmentsErrorMessage is used as an error message when a version has too many dot-separated segments
-	TooManySegmentsErrorMessage = "version string has too many segments"
+	TooManySegmentsErrorMessage = "version string has too many segments: %s"
 )
-
-// versionParseError is used when parsing fails.
-type versionParseError struct {
-	msg     string
-	version string
-}
-
-// Error formats the version parse error into a string
-func (e versionParseError) Error() string {
-	return fmt.Sprintf("%s for version %s", e.msg, e.version)
-}
 
 // Parse returns a parsed version of a string from the format {major}.{minor}.{patch}[-{label}]
 func Parse(version string) (*Version, error) {
 	segments := strings.SplitN(version, ".", 3)
 	if len(segments) < 3 {
-		return nil, versionParseError{msg: TooFewSegmentsErrorMessage, version: version}
+		return nil, errors.Errorf(TooFewSegmentsErrorMessage, version)
 	}
 	if len(segments) > 4 {
-		return nil, versionParseError{msg: TooManySegmentsErrorMessage, version: version}
+		return nil, errors.Errorf(TooManySegmentsErrorMessage, version)
 	}
 
 	major, err := strconv.Atoi(segments[0])
 	if err != nil {
-		return nil, versionParseError{msg: fmt.Sprintf("invalid major format: %s", err), version: version}
+		return nil, errors.Wrapf(err, "invalid major format. version: %s", version)
 	}
 
 	minor, err := strconv.Atoi(segments[1])
 	if err != nil {
-		return nil, versionParseError{msg: fmt.Sprintf("invalid minor format: %s", err), version: version}
+		return nil, errors.Wrapf(err, "invalid minor format. version: %s", version)
 	}
 
 	patchSegments := strings.SplitN(segments[2], "-", 2)
 
 	patch, err := strconv.Atoi(patchSegments[0])
 	if err != nil {
-		return nil, versionParseError{msg: fmt.Sprintf("invalid patch format: %s", err), version: version}
+		return nil, errors.Wrapf(err, "invalid patch format. version: %s", version)
 	}
 
 	label := ""
