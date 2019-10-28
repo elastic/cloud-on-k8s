@@ -28,6 +28,9 @@ const (
 	unsupportedVersionErrMsg = "Unsupported version"
 	blacklistedConfigErrMsg  = "Configuration setting is not user-configurable"
 	duplicateNodeSets        = "NodeSet names must be unique"
+	noDowngradesMsg          = "Downgrades are not supported"
+	unsupportedVersionMsg    = "Unsupported version"
+	unsupportedUpgradeMsg    = "Unsupported version upgrade"
 )
 
 type validation func(*Elasticsearch) field.ErrorList
@@ -163,6 +166,54 @@ func pvcModification(current, proposed *Elasticsearch) field.ErrorList {
 		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), node.VolumeClaimTemplates, pvcImmutableMsg))
 		}
+	}
+	return errs
+}
+
+func noDowngrades(current, proposed *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	currentVer, err := version.Parse(current.Spec.Version)
+	if err != nil {
+		// this should not happen, since this is the already persisted version
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg))
+	}
+	currVer, err := version.Parse(proposed.Spec.Version)
+	if err != nil {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, parseVersionErrMsg))
+	}
+	if len(errs) != 0 {
+		return errs
+	}
+	if !currVer.IsSameOrAfter(*currentVer) {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, noDowngradesMsg))
+	}
+	return errs
+}
+
+func validUpgradePath(current, proposed *Elasticsearch) field.ErrorList {
+	var errs field.ErrorList
+	currentVer, err := version.Parse(current.Spec.Version)
+	if err != nil {
+		// this should not happen, since this is the already persisted version
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg))
+	}
+	currVer, err := version.Parse(proposed.Spec.Version)
+	if err != nil {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, parseVersionErrMsg))
+	}
+	if len(errs) != 0 {
+		return errs
+	}
+
+	v := esversion.SupportedVersions(*currVer)
+	if v == nil {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedVersionMsg))
+		return errs
+	}
+
+	err = v.Supports(*currentVer)
+	if err != nil {
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedUpgradeMsg))
 	}
 	return errs
 }
