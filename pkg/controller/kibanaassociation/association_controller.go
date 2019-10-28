@@ -20,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	// esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	elasticsearchuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"

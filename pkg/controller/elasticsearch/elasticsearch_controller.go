@@ -22,12 +22,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-
-	// esname // "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 

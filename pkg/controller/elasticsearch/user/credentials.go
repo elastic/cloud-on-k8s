@@ -10,11 +10,10 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

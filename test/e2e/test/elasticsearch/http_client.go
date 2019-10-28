@@ -8,8 +8,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"

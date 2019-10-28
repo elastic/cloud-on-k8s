@@ -20,8 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-
-	// esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"

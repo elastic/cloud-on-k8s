@@ -9,7 +9,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"

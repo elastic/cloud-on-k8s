@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/api/policy/v1beta1"

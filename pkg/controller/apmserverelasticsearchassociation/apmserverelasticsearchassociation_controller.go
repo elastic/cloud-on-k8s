@@ -21,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	// esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
