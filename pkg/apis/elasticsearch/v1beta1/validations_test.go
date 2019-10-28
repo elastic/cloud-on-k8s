@@ -10,18 +10,19 @@ import (
 	// "strings"
 	"testing"
 
-	// "k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	// "github.com/stretchr/testify/require"
 	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	// // "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	// // estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	// common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	// "github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
 	// "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	// // "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	// corev1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func Test_checkNodeSetNameUniqueness(t *testing.T) {
@@ -191,76 +192,6 @@ func Test_hasMaster(t *testing.T) {
 	}
 }
 
-// func Test_specUpdatedToBeta(t *testing.T) {
-// 	type args struct {
-// 		name        string
-// 		es          Elasticsearch
-// 		wantReason  string
-// 		wantAllowed bool
-// 	}
-// 	tests := []args{
-// 		{
-// 			name: "good spec",
-// 			es: Elasticsearch{
-// 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
-// 				Spec: ElasticsearchSpec{
-// 					Version:  "7.4.0",
-// 					NodeSets: []NodeSet{{Count: 1}},
-// 				},
-// 			},
-// 			wantAllowed: true,
-// 		},
-// 		{
-// 			name: "nodes instead of nodeSets",
-// 			es: Elasticsearch{
-// 				Spec: ElasticsearchSpec{
-// 					Version: "7.4.0",
-// 				},
-// 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
-// 			},
-// 			wantReason: validationFailedMsg,
-// 		},
-// 		{
-// 			name: "nodeCount instead of count",
-// 			es: Elasticsearch{
-// 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1beta1"},
-// 				Spec: ElasticsearchSpec{
-// 					Version:  "7.4.0",
-// 					NodeSets: []NodeSet{{}},
-// 				},
-// 			},
-// 			wantReason:  validationFailedMsg,
-// 			wantAllowed: false,
-// 		},
-// 		{
-// 			name: "alpha instead of beta version",
-// 			es: Elasticsearch{
-// 				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1alpha1"},
-// 				Spec: ElasticsearchSpec{
-// 					Version:  "7.4.0",
-// 					NodeSets: []NodeSet{{Count: 1}},
-// 				},
-// 			},
-// 			wantReason:  validationFailedMsg,
-// 			wantAllowed: false,
-// 		},
-// 	}
-
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			ctx, err := NewValidationContext(nil, tt.es)
-// 			require.NoError(t, err)
-// 			got := specUpdatedToBeta(*ctx)
-// 			if got.Allowed != tt.wantAllowed {
-// 				t.Errorf("specUpdatedToBeta() = %v, want %v", got.Allowed, tt.wantAllowed)
-// 			}
-// 			if !strings.Contains(got.Reason, tt.wantReason) {
-// 				t.Errorf("specUpdatedToBeta() = %v, want %v", got.Reason, tt.wantReason)
-// 			}
-// 		})
-// 	}
-// }
-
 func Test_supportedVersion(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -420,7 +351,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 	}
 }
 
-func TestValidNames(t *testing.T) {
+func Test_validName(t *testing.T) {
 	tests := []struct {
 		name         string
 		es           *Elasticsearch
@@ -535,235 +466,236 @@ func Test_validSanIP(t *testing.T) {
 	}
 }
 
-// func Test_pvcModified(t *testing.T) {
-// 	failedValidation := validation.Result{Allowed: false, Reason: pvcImmutableMsg}
-// 	current := getEsCluster()
-// 	tests := []struct {
-// 		name     string
-// 		current  *Elasticsearch
-// 		proposed Elasticsearch
-// 		want     validation.Result
-// 	}{
-// 		{
-// 			name:    "resize fails",
-// 			current: current,
-// 			proposed: Elasticsearch{
-// 				Spec: ElasticsearchSpec{
-// 					Version: "7.2.0",
-// 					NodeSets: []NodeSet{
-// 						{
-// 							Name: "master",
-// 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-// 								{
-// 									ObjectMeta: metav1.ObjectMeta{
-// 										Name: "elasticsearch-data",
-// 									},
-// 									Spec: corev1.PersistentVolumeClaimSpec{
-// 										Resources: corev1.ResourceRequirements{
-// 											Requests: corev1.ResourceList{
-// 												corev1.ResourceStorage: resource.MustParse("10Gi"),
-// 											},
-// 										},
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: failedValidation,
-// 		},
+func Test_pvcModified(t *testing.T) {
+	current := getEsCluster()
 
-// 		{
-// 			name:    "same size accepted",
-// 			current: current,
-// 			proposed: Elasticsearch{
-// 				Spec: ElasticsearchSpec{
-// 					Version: "7.2.0",
-// 					NodeSets: []NodeSet{
-// 						{
-// 							Name: "master",
-// 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-// 								{
-// 									ObjectMeta: metav1.ObjectMeta{
-// 										Name: "elasticsearch-data",
-// 									},
-// 									Spec: corev1.PersistentVolumeClaimSpec{
-// 										Resources: corev1.ResourceRequirements{
-// 											Requests: corev1.ResourceList{
-// 												corev1.ResourceStorage: resource.MustParse("5Gi"),
-// 											},
-// 										},
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: validation.OK,
-// 		},
+	tests := []struct {
+		name         string
+		current      *Elasticsearch
+		proposed     *Elasticsearch
+		expectErrors bool
+	}{
+		{
+			name:    "resize fails",
+			current: current,
+			proposed: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.2.0",
+					NodeSets: []NodeSet{
+						{
+							Name: "master",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("10Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
 
-// 		{
-// 			name:    "additional PVC fails",
-// 			current: current,
-// 			proposed: Elasticsearch{
-// 				Spec: ElasticsearchSpec{
-// 					Version: "7.2.0",
-// 					NodeSets: []NodeSet{
-// 						{
-// 							Name: "master",
-// 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-// 								{
-// 									ObjectMeta: metav1.ObjectMeta{
-// 										Name: "elasticsearch-data",
-// 									},
-// 									Spec: corev1.PersistentVolumeClaimSpec{
-// 										Resources: corev1.ResourceRequirements{
-// 											Requests: corev1.ResourceList{
-// 												corev1.ResourceStorage: resource.MustParse("5Gi"),
-// 											},
-// 										},
-// 									},
-// 								},
-// 								{
-// 									ObjectMeta: metav1.ObjectMeta{
-// 										Name: "elasticsearch-data1",
-// 									},
-// 									Spec: corev1.PersistentVolumeClaimSpec{
-// 										Resources: corev1.ResourceRequirements{
-// 											Requests: corev1.ResourceList{
-// 												corev1.ResourceStorage: resource.MustParse("5Gi"),
-// 											},
-// 										},
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: failedValidation,
-// 		},
+		{
+			name:    "same size accepted",
+			current: current,
+			proposed: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.2.0",
+					NodeSets: []NodeSet{
+						{
+							Name: "master",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
 
-// 		{
-// 			name:    "name change rejected",
-// 			current: current,
-// 			proposed: Elasticsearch{
-// 				Spec: ElasticsearchSpec{
-// 					Version: "7.2.0",
-// 					NodeSets: []NodeSet{
-// 						{
-// 							Name: "master",
-// 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-// 								{
-// 									ObjectMeta: metav1.ObjectMeta{
-// 										Name: "elasticsearch-data1",
-// 									},
-// 									Spec: corev1.PersistentVolumeClaimSpec{
-// 										Resources: corev1.ResourceRequirements{
-// 											Requests: corev1.ResourceList{
-// 												corev1.ResourceStorage: resource.MustParse("5Gi"),
-// 											},
-// 										},
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: failedValidation,
-// 		},
+		{
+			name:    "additional PVC fails",
+			current: current,
+			proposed: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.2.0",
+					NodeSets: []NodeSet{
+						{
+							Name: "master",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data1",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
 
-// 		{
-// 			name:    "add new node set accepted",
-// 			current: current,
-// 			proposed: Elasticsearch{
-// 				Spec: ElasticsearchSpec{
-// 					Version: "7.2.0",
-// 					NodeSets: []NodeSet{
-// 						{
-// 							Name: "master",
-// 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-// 								{
-// 									ObjectMeta: metav1.ObjectMeta{
-// 										Name: "elasticsearch-data",
-// 									},
-// 									Spec: corev1.PersistentVolumeClaimSpec{
-// 										Resources: corev1.ResourceRequirements{
-// 											Requests: corev1.ResourceList{
-// 												corev1.ResourceStorage: resource.MustParse("5Gi"),
-// 											},
-// 										},
-// 									},
-// 								},
-// 							},
-// 						},
-// 						{
-// 							Name: "ingest",
-// 							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-// 								{
-// 									ObjectMeta: metav1.ObjectMeta{
-// 										Name: "elasticsearch-data",
-// 									},
-// 									Spec: corev1.PersistentVolumeClaimSpec{
-// 										Resources: corev1.ResourceRequirements{
-// 											Requests: corev1.ResourceList{
-// 												corev1.ResourceStorage: resource.MustParse("10Gi"),
-// 											},
-// 										},
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 			want: validation.OK,
-// 		},
+		{
+			name:    "name change rejected",
+			current: current,
+			proposed: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.2.0",
+					NodeSets: []NodeSet{
+						{
+							Name: "master",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data1",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: true,
+		},
 
-// 		{
-// 			name:     "new instance accepted",
-// 			current:  nil,
-// 			proposed: *current,
-// 			want:     validation.OK,
-// 		},
-// 	}
+		{
+			name:    "add new node set accepted",
+			current: current,
+			proposed: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.2.0",
+					NodeSets: []NodeSet{
+						{
+							Name: "master",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+						{
+							Name: "ingest",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("10Gi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			ctx, err := NewValidationContext(current, tt.proposed)
-// 			require.NoError(t, err)
-// 			require.Equal(t, tt.want, pvcModification(*ctx))
-// 		})
-// 	}
-// }
+		{
+			name:         "new instance accepted",
+			current:      nil,
+			proposed:     current,
+			expectErrors: false,
+		},
+	}
+
+	for _, tt := range tests {
+		actual := pvcModification(tt.current, tt.proposed)
+		actualErrors := len(actual) > 0
+		if tt.expectErrors != actualErrors {
+			// TODO sabo make this more useful
+			t.Errorf("failed pvcModification(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.proposed)
+		}
+	}
+}
 
 // // getEsCluster returns a ES cluster test fixture
-// func getEsCluster() *Elasticsearch {
-// 	return &Elasticsearch{
-// 		Spec: ElasticsearchSpec{
-// 			Version: "7.2.0",
-// 			NodeSets: []NodeSet{
-// 				{
-// 					Name: "master",
-// 					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-// 						{
-// 							ObjectMeta: metav1.ObjectMeta{
-// 								Name: "elasticsearch-data",
-// 							},
-// 							Spec: corev1.PersistentVolumeClaimSpec{
-// 								Resources: corev1.ResourceRequirements{
-// 									Requests: corev1.ResourceList{
-// 										corev1.ResourceStorage: resource.MustParse("5Gi"),
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// }
+func getEsCluster() *Elasticsearch {
+	return &Elasticsearch{
+		Spec: ElasticsearchSpec{
+			Version: "7.2.0",
+			NodeSets: []NodeSet{
+				{
+					Name: "master",
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "elasticsearch-data",
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										corev1.ResourceStorage: resource.MustParse("5Gi"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}

@@ -5570,6 +5570,7 @@ spec:
                       description: Count defines how many nodes this topology should
                         have.
                       format: int32
+                      minimum: 1
                       type: integer
                     name:
                       description: Name is a logical name for this set of nodes. Used
@@ -10367,8 +10368,10 @@ spec:
                         type: object
                       type: array
                   required:
+                  - count
                   - name
                   type: object
+                minItems: 1
                 type: array
               podDisruptionBudget:
                 description: "PodDisruptionBudget allows full control of the default
@@ -10518,6 +10521,8 @@ spec:
               version:
                 description: Version represents the version of the stack
                 type: string
+            required:
+            - nodeSets
             type: object
           status:
             description: ElasticsearchStatus defines the observed state of Elasticsearch

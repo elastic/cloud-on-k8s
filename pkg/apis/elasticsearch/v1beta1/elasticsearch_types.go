@@ -25,7 +25,8 @@ type ElasticsearchSpec struct {
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
 	// NodeSets represents a list of groups of nodes with the same configuration to be part of the cluster
-	NodeSets []NodeSet `json:"nodeSets,omitempty"`
+	// +kubebuilder:validation:MinItems=1
+	NodeSets []NodeSet `json:"nodeSets"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
@@ -67,7 +68,8 @@ type NodeSet struct {
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
 	// Count defines how many nodes this topology should have.
-	Count int32 `json:"count,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	Count int32 `json:"count"`
 
 	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
 	// This allows specifying custom annotations, labels, environment variables,

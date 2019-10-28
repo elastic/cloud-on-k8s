@@ -5,15 +5,12 @@
 package v1beta1
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"reflect"
 
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -149,9 +146,12 @@ func checkNodeSetNameUniqueness(es *Elasticsearch) field.ErrorList {
 }
 
 // pvcModification ensures no PVCs are changed, as volume claim templates are immutable in stateful sets
-func pvcModification(old, current *Elasticsearch) field.ErrorList {
+func pvcModification(current, proposed *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
-	for i, node := range old.Spec.NodeSets {
+	if current == nil || proposed == nil {
+		return errs
+	}
+	for i, node := range proposed.Spec.NodeSets {
 		currNode := getNode(node.Name, current)
 		if currNode == nil {
 			// this is a new sset, so there is nothing to check
@@ -161,37 +161,10 @@ func pvcModification(old, current *Elasticsearch) field.ErrorList {
 		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
 		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
 		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
-			// TODO sabo this does not correctly have the right path, we really need the index in _new_ spec
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), currNode.VolumeClaimTemplates, pvcImmutableMsg))
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), node.VolumeClaimTemplates, pvcImmutableMsg))
 		}
 	}
-	return nil
-}
-
-// TODO sabo does this still make sense? im not sure it does
-func specUpdatedToBeta() error {
-	oldAPIVersion := "elasticsearch.k8s.elastic.co/v1alpha1"
-
-	es := Elasticsearch{}
-	if es.APIVersion == oldAPIVersion {
-		// return validation.Result{Reason: fmt.Sprintf("%s: outdated APIVersion", validationFailedMsg)}
-		return errors.New("")
-	}
-
-	if len(es.Spec.NodeSets) == 0 {
-		// return validation.Result{Reason: fmt.Sprintf("%s: at least one nodeSet must be defined", validationFailedMsg)}
-		return errors.New("")
-	}
-
-	for _, set := range es.Spec.NodeSets {
-		if set.Count == 0 {
-			// msg := fmt.Sprintf("node count of node set '%s' should not be zero", set.Name)
-			// return validation.Result{Reason: fmt.Sprintf("%s: %s", validationFailedMsg, msg)}
-			return errors.New("")
-		}
-	}
-
-	return nil
+	return errs
 }
 
 func getNode(name string, es *Elasticsearch) *NodeSet {
