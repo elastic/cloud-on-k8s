@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
@@ -38,7 +38,7 @@ func (r *Elasticsearch) ValidateUpdate(old runtime.Object) error {
 	eslog.Info("validate update", "name", r.Name)
 	oldEs, ok := old.(*Elasticsearch)
 	if !ok {
-		return errors.New("Cannot cast old object to Elasticsearch type")
+		return errors.New("cannot cast old object to Elasticsearch type")
 	}
 	var errs field.ErrorList
 
