@@ -24,6 +24,7 @@ func NewService(as v1beta1.ApmServer) *corev1.Service {
 	labels := labels.NewLabels(as.Name)
 	ports := []corev1.ServicePort{
 		{
+			Name:     as.Spec.HTTP.Protocol(),
 			Protocol: corev1.ProtocolTCP,
 			Port:     HTTPPort,
 		},

@@ -33,7 +33,7 @@ func ExternalServiceName(esName string) string {
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
 func ExternalServiceURL(es v1beta1.Elasticsearch) string {
-	return stringsutil.Concat(es.Spec.HTTP.Scheme(), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
+	return stringsutil.Concat(es.Spec.HTTP.Protocol(), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }
 
 // NewExternalService returns the external service associated to the given cluster
@@ -52,7 +52,7 @@ func NewExternalService(es v1beta1.Elasticsearch) *corev1.Service {
 	labels := label.NewLabels(nsn)
 	ports := []corev1.ServicePort{
 		{
-			Name:     "https",
+			Name:     es.Spec.HTTP.Protocol(),
 			Protocol: corev1.ProtocolTCP,
 			Port:     network.HTTPPort,
 		},
@@ -100,7 +100,7 @@ func ElasticsearchURL(es v1beta1.Elasticsearch, pods []corev1.Pod) string {
 	var schemeChange bool
 	for _, p := range pods {
 		scheme, exists := p.Labels[label.HTTPSchemeLabelName]
-		if exists && scheme != es.Spec.HTTP.Scheme() {
+		if exists && scheme != es.Spec.HTTP.Protocol() {
 			// scheme in existing pods does not match scheme in spec, user toggled HTTP(S)
 			schemeChange = true
 		}

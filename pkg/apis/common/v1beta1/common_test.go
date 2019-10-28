@@ -126,8 +126,8 @@ func TestHTTPConfig_Scheme(t *testing.T) {
 			http := HTTPConfig{
 				TLS: tt.fields.TLS,
 			}
-			if got := http.Scheme(); got != tt.want {
-				t.Errorf("Scheme() = %v, want %v", got, tt.want)
+			if got := http.Protocol(); got != tt.want {
+				t.Errorf("Protocol() = %v, want %v", got, tt.want)
 			}
 		})
 	}
