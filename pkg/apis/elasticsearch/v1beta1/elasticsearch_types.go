@@ -22,6 +22,7 @@ type ElasticsearchSpec struct {
 	Image string `json:"image,omitempty"`
 
 	// HTTP holds HTTP layer settings for Elasticsearch.
+	// +kubebuilder:validation:Optional
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
@@ -30,6 +31,7 @@ type ElasticsearchSpec struct {
 	NodeSets []NodeSet `json:"nodeSets"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
+	// +kubebuilder:validation:Optional
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
@@ -40,6 +42,7 @@ type ElasticsearchSpec struct {
 
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 
