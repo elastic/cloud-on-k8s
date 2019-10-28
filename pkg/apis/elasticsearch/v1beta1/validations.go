@@ -30,7 +30,7 @@ const (
 	duplicateNodeSets        = "NodeSet names must be unique"
 	noDowngradesMsg          = "Downgrades are not supported"
 	unsupportedVersionMsg    = "Unsupported version"
-	unsupportedUpgradeMsg    = "Unsupported version upgrade"
+	unsupportedUpgradeMsg    = "Unsupported version upgrade path"
 )
 
 type validation func(*Elasticsearch) field.ErrorList
@@ -52,8 +52,6 @@ var updateValidations = []updateValidation{
 	validUpgradePath,
 	pvcModification,
 }
-
-// todo sabo convert these to return a field.ErrorList and unroll them all
 
 // validName checks whether the name is valid.
 func validName(es *Elasticsearch) field.ErrorList {

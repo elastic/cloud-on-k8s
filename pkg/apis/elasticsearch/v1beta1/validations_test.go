@@ -5,28 +5,13 @@
 package v1beta1
 
 import (
-	// "fmt"
-	// "reflect"
-	// "strings"
-
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
-	// "github.com/stretchr/testify/require"
 	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	// // "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	// // estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	// common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/common/validation"
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	// // "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// TODO sabo merge changes in https://github.com/elastic/cloud-on-k8s/commit/dcee46a39bd798413f9e5b38e9f2a9bfc7ea5881#diff-5525b0a5eb4a1f7cd0e1a50a288c54e5
 
 func Test_checkNodeSetNameUniqueness(t *testing.T) {
 	type args struct {

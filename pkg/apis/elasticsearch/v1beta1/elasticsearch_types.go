@@ -27,7 +27,7 @@ type ElasticsearchSpec struct {
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 	// +kubebuilder:validation:MinItems=1
-	NodeSets []NodeSet `json:"nodeSets,omitempty"`
+	NodeSets []NodeSet `json:"nodeSets"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
@@ -64,7 +64,7 @@ type NodeSet struct {
 
 	// Count of Elasticsearch nodes to deploy.
 	// +kubebuilder:validation:Minimum=1
-	Count int32 `json:"count,omitempty"`
+	Count int32 `json:"count"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
