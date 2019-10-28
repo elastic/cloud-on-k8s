@@ -22,7 +22,6 @@ import (
 
 const (
 	DefaultRetryDelay = 3 * time.Second
-	defaultTimeout    = 10 * time.Minute
 )
 
 func CheckKeystoreEntries(k *K8sClient, keystoreCmd []string, expectedKeys []string, opts ...client.ListOption) Step {
@@ -71,6 +70,7 @@ func ExitOnErr(err error) {
 // with a default timeout
 func Eventually(f func() error) func(*testing.T) {
 	return func(t *testing.T) {
+		defaultTimeout := Ctx().TestTimeout
 		fmt.Printf("Retries (%s timeout): ", defaultTimeout)
 		err := retry.UntilSuccess(func() error {
 			fmt.Print(".") // super modern progress bar 2.0!
