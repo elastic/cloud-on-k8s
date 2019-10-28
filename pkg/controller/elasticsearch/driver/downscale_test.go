@@ -1036,9 +1036,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 			},
 			objs:          []runtime.Object{},
 			wantRemaining: nil,
-			wantErr: func(err error) bool {
-				return apierrors.IsNotFound(err)
-			},
+			wantErr:       apierrors.IsNotFound,
 		},
 	}
 	for _, tt := range tests {
