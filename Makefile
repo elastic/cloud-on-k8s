@@ -114,8 +114,7 @@ generate: controller-gen
 		kubectl kustomize config/crds-flavor-$$crd_flavor > /dev/null; \
 	done
 	$(MAKE) --no-print-directory generate-all-in-one
-	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
-	# $(MAKE) --no-print-directory generate-api-docs
+	$(MAKE) --no-print-directory generate-api-docs
 	$(MAKE) --no-print-directory generate-notice-file
 
 generate-api-docs:

@@ -224,6 +224,7 @@ func (h *helper) runTestJob() error {
 
 	if err != nil {
 		h.dumpEventLog()
+		h.dumpK8sData()
 		return errors.Wrap(err, "test run failed")
 	}
 
@@ -470,5 +471,15 @@ func (h *helper) dumpEventLog() {
 	var buffer [1024]byte
 	if _, err := io.CopyBuffer(os.Stdout, f, buffer[:]); err != nil {
 		log.Error(err, "Failed to output event log")
+	}
+}
+
+func (h *helper) dumpK8sData() {
+	operatorNs := h.testContext.GlobalOperator.Namespace + "," + h.testContext.NamespaceOperator.Namespace
+	managedNs := strings.Join(h.testContext.NamespaceOperator.ManagedNamespaces, ",")
+	cmd := exec.Command("hack/eck-dump.sh", "-N", operatorNs, "-n", managedNs, "-o", h.testContext.TestRun, "-z")
+	err := cmd.Run()
+	if err != nil {
+		log.Error(err, "Failed to run hack/eck-dump.sh")
 	}
 }

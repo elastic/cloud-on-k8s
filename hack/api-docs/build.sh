@@ -8,32 +8,53 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOCS_DIR="${SCRIPT_DIR}/../../docs"
-REFDOCS_PKG="github.com/elastic/gen-crd-api-reference-docs"
-REFDOCS_VER="master"
-REFDOCS_BIN="$(go env GOPATH)/bin/$(basename $REFDOCS_PKG)"
+SCRATCH_DIR=$(mktemp -d)
 
-install_refdocs() {
-    local INSTALL_DIR=$(mktemp -d)
-    (
-        cd $INSTALL_DIR
-        GO111MODULE=on go mod init github.com/elastic/eck-refdocs
-        GO111MODULE=on go get -u "${REFDOCS_PKG}@${REFDOCS_VER}"
-    )
+cleanup() {
+    rm -rf $SCRATCH_DIR || echo "Failed to clean-up $SCRATCH_DIR"
+}
+
+trap cleanup EXIT
+
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${SCRIPT_DIR}/../.."
+DOCS_DIR="${SCRIPT_DIR}/../../docs"
+REFDOCS_REPO="https://github.com/elastic/gen-crd-api-reference-docs.git"
+REFDOCS_VER="master"
+
+log() {
+    echo ">> $1"
 }
 
 build_docs() {
-    local TEMP_OUT_FILE=$(mktemp)
-    $REFDOCS_BIN -api-dir=github.com/elastic/cloud-on-k8s/pkg/apis \
-        -template-dir="${SCRIPT_DIR}/templates" \
-        -out-file=$TEMP_OUT_FILE \
-        -config="${SCRIPT_DIR}/config.json"
+    local INSTALL_DIR=$SCRATCH_DIR
+    (
+        log "Building refdoc binary..."
+        cd $INSTALL_DIR
+        git clone -q --depth 1 --branch $REFDOCS_VER --single-branch $REFDOCS_REPO
+        cd gen-crd-api-reference-docs
+        go mod edit --replace=github.com/elastic/cloud-on-k8s@latest=$REPO_ROOT
+        go build
+    )
 
-    mv $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
+    local REFDOCS_BIN=${INSTALL_DIR}/gen-crd-api-reference-docs/gen-crd-api-reference-docs
+    local TEMP_OUT_FILE="${SCRATCH_DIR}/api-docs.asciidoc"
+    (
+        log "Generating API reference documentation..."
+        cd $REPO_ROOT
+        $REFDOCS_BIN -api-dir=./pkg/apis \
+            -template-dir="${SCRIPT_DIR}/templates" \
+            -out-file=$TEMP_OUT_FILE \
+            -config="${SCRIPT_DIR}/config.json" \
+            -log_dir=$SCRATCH_DIR \
+            -alsologtostderr=false \
+            -logtostderr=false \
+            -stderrthreshold=ERROR
+        cp $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
+        log "API reference documentation generated successfully."
+    )
 }
 
-if [[ ! -x "$REFDOCS_BIN" ]]; then
-    install_refdocs
-fi
 build_docs
+cleanup
