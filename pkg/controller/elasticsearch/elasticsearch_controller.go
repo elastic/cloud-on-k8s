@@ -22,9 +22,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+
 	// esname // "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+
 	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -246,21 +248,18 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	// violations, err := validation.Validate(es)
-	// if err != nil {
-	// 	return results.WithError(err)
-	// }
-	// if len(violations) > 0 {
-	// 	log.Error(
-	// 		fmt.Errorf("manifest validation failed"),
-	// 		"Elasticsearch manifest validation failed",
-	// 		"namespace", es.Namespace,
-	// 		"es_name", es.Name,
-	// 		"violations", violations,
-	// 	)
-	// 	reconcileState.UpdateElasticsearchInvalid(violations)
-	// 	return results
-	// }
+	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
+	err := es.ValidateCreate()
+	if err != nil {
+		log.Error(
+			err,
+			"Elasticsearch manifest validation failed",
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+		)
+		reconcileState.UpdateElasticsearchInvalid(err)
+		return results
+	}
 
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {

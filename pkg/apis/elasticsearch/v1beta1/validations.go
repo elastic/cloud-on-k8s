@@ -79,16 +79,15 @@ func supportedVersion(es *Elasticsearch) field.ErrorList {
 func hasMaster(es *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	var hasMaster bool
-	for _, t := range es.Spec.NodeSets {
+	for i, t := range es.Spec.NodeSets {
 		cfg, err := UnpackConfig(t.Config)
 		if err != nil {
-			// TODO sabo change this to config invalid
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Name, masterRequiredMsg))
+			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i), t.Config, cfgInvalidMsg))
 		}
 		hasMaster = hasMaster || (cfg.Node.Master && t.Count > 0)
 	}
 	if !hasMaster {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Name, masterRequiredMsg))
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, masterRequiredMsg))
 	}
 	return errs
 }
@@ -132,7 +131,6 @@ func checkNodeSetNameUniqueness(es *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	nodeSets := es.Spec.NodeSets
 	names := make(map[string]struct{})
-	// todo sabo this seems goofy, do we need another map?
 	duplicates := make(map[string]struct{})
 	for _, nodeSet := range nodeSets {
 		if _, found := names[nodeSet.Name]; found {

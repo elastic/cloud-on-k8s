@@ -652,7 +652,6 @@ func Test_pvcModified(t *testing.T) {
 		actual := pvcModification(tt.current, tt.proposed)
 		actualErrors := len(actual) > 0
 		if tt.expectErrors != actualErrors {
-			// TODO sabo make this more useful
 			t.Errorf("failed pvcModification(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.proposed)
 		}
 	}
