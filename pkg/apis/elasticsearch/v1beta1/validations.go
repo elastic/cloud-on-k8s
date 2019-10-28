@@ -172,6 +172,9 @@ func pvcModification(current, proposed *Elasticsearch) field.ErrorList {
 
 func noDowngrades(current, proposed *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
+	if current == nil || proposed == nil {
+		return errs
+	}
 	currentVer, err := version.Parse(current.Spec.Version)
 	if err != nil {
 		// this should not happen, since this is the already persisted version
@@ -192,6 +195,9 @@ func noDowngrades(current, proposed *Elasticsearch) field.ErrorList {
 
 func validUpgradePath(current, proposed *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
+	if current == nil || proposed == nil {
+		return errs
+	}
 	currentVer, err := version.Parse(current.Spec.Version)
 	if err != nil {
 		// this should not happen, since this is the already persisted version

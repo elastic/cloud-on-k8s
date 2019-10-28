@@ -8,7 +8,7 @@ import (
 	// "fmt"
 	// "reflect"
 	// "strings"
-	"errors"
+
 	"testing"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -673,124 +673,93 @@ func Test_pvcModified(t *testing.T) {
 	}
 }
 
-
 func TestValidation_noDowngrades(t *testing.T) {
-	type args struct {
-		toValidate *Elasticsearch
-	}
 	tests := []struct {
-		name    string
-		args    args
-		current *Elasticsearch
-		want    error
-		wantErr bool
+		name         string
+		current      *Elasticsearch
+		proposed     *Elasticsearch
+		expectErrors bool
 	}{
 		{
-			name: "no validation on create",
-			args: args{
-				toValidate: es("6.8.0"),
-			},
-			current: nil,
-			want:    nil,
+			name:         "no validation on create",
+			current:      nil,
+			proposed:     es("6.8.0"),
+			expectErrors: false,
 		},
 		{
-			name: "prevent downgrade",
-			args: args{
-				toValidate: es("1.0.0"),
-			},
-			current: es("2.0.0"),
-			// want:    validation.Result{Allowed: false, Reason: noDowngradesMsg},
-			want: errors.New(""),
+			name:         "prevent downgrade",
+			current:      es("2.0.0"),
+			proposed:     es("1.0.0"),
+			expectErrors: true,
 		},
 		{
-			name: "allow upgrades",
-			args: args{
-				toValidate: es("1.2.0"),
-			},
-			current: es("1.0.0"),
-			want:    nil,
+			name:         "allow upgrades",
+			current:      es("1.0.0"),
+			proposed:     es("1.2.0"),
+			expectErrors: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// ctx, err := NewValidationContext(tt.current, tt.args.toValidate)
-			// require.NoError(t, err)
-			// got := noDowngrades(tt.current, tt.args.toValidate)
-			// todo sabo fix
-			// if got.Allowed != tt.want.Allowed || got.Reason != tt.want.Reason || got.Error != nil != tt.wantErr {
-			// 	t.Errorf("ValidationHandler.noDowngrades() = %+v, want %+v", got, tt.want)
-			// }
+			actual := noDowngrades(tt.current, tt.proposed)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed noDowngrades(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.proposed)
+			}
 		})
 	}
 }
 
 func Test_validUpgradePath(t *testing.T) {
-	type args struct {
-		current  *Elasticsearch
-		proposed Elasticsearch
-	}
+
 	tests := []struct {
-		name string
-		args args
-		want error
+		name         string
+		current      *Elasticsearch
+		proposed     *Elasticsearch
+		expectErrors bool
 	}{
 		{
-			name: "new cluster validation.OK",
-			args: args{
-				current:  nil,
-				proposed: *es("1.0.0"),
-			},
-			want: nil,
+			name:         "new cluster accepted",
+			current:      nil,
+			proposed:     es("1.0.0"),
+			expectErrors: false,
 		},
 		{
-			name: "unsupported version FAIL",
-			args: args{
-				current:  es("1.0.0"),
-				proposed: *es("2.0.0"),
-			},
-			// want: validation.Result{Allowed: false, Reason: "unsupported version: 2.0.0"},
-			want: errors.New(""),
+			name:     "unsupported version rejected",
+			current:  es("1.0.0"),
+			proposed: es("2.0.0"),
+
+			expectErrors: true,
 		},
 		{
-			name: "too old FAIL",
-			args: args{
-				current:  es("6.5.0"),
-				proposed: *es("7.0.0"),
-			},
-			// want: validation.Result{Allowed: false, Reason: "unsupported version upgrade from 6.5.0 to 7.0.0"},
-			want: errors.New(""),
+			name:         "too old version rejected",
+			current:      es("6.5.0"),
+			proposed:     es("7.0.0"),
+			expectErrors: true,
 		},
 		{
-			name: "too new FAIL",
-			args: args{
-				current:  es("7.0.0"),
-				proposed: *es("6.5.0"),
-			},
-			// want: validation.Result{Allowed: false, Reason: "unsupported version upgrade from 7.0.0 to 6.5.0"},
-			want: errors.New(""),
+			name:         "too new rejected",
+			current:      es("7.0.0"),
+			proposed:     es("6.5.0"),
+			expectErrors: true,
 		},
 		{
-			name: "in range validation.OK",
-			args: args{
-				current:  es("6.8.0"),
-				proposed: *es("7.1.0"),
-			},
-			want: nil,
+			name:         "in range accepted",
+			current:      es("6.8.0"),
+			proposed:     es("7.1.0"),
+			expectErrors: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// ctx, err := NewValidationContext(tt.args.current, tt.args.proposed)
-			// require.NoError(t, err)
-			// TODO sabo make these just all ptrs?
-			// got := validUpgradePath(tt.args.current, &tt.args.proposed)
-			// if got := validUpgradePath(*ctx); !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("validUpgradePath() = %v, want %v", got, tt.want)
-			// }
+			actual := validUpgradePath(tt.current, tt.proposed)
+			actualErrors := len(actual) > 0
+			if tt.expectErrors != actualErrors {
+				t.Errorf("failed validUpgradePath(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.proposed)
+			}
 		})
 	}
 }
-
 
 // es returns an es fixture at a given version
 func es(v string) *Elasticsearch {
