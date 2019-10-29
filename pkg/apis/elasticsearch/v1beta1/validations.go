@@ -17,11 +17,11 @@ import (
 )
 
 const (
-	cfgInvalidMsg            = "configuration invalid"
+	cfgInvalidMsg            = "Configuration invalid"
 	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
-	invalidSanIPErrMsg       = "invalid SAN IP address"
+	invalidSanIPErrMsg       = "Invalid SAN IP address"
 	pvcImmutableMsg          = "Volume claim templates cannot be modified"
 	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
 	unsupportedVersionErrMsg = "Unsupported version"

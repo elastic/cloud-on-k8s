@@ -29,7 +29,7 @@ var eslog = logf.Log.WithName("es-validation")
 var _ webhook.Validator = &Elasticsearch{}
 
 func (r *Elasticsearch) ValidateCreate() error {
-	eslog.Info("validate create", "name", r.Name)
+	eslog.V(1).Info("validate create", "name", r.Name)
 	return r.validateElasticsearch()
 }
 
@@ -39,13 +39,13 @@ func (r *Elasticsearch) ValidateDelete() error {
 }
 
 func (r *Elasticsearch) ValidateUpdate(old runtime.Object) error {
-	eslog.Info("validate update", "name", r.Name)
+	eslog.V(1).Info("validate update", "name", r.Name)
 	oldEs, ok := old.(*Elasticsearch)
 	if !ok {
 		return errors.New("cannot cast old object to Elasticsearch type")
 	}
-	var errs field.ErrorList
 
+	var errs field.ErrorList
 	for _, val := range updateValidations {
 		if err := val(oldEs, r); err != nil {
 			errs = append(errs, err...)
