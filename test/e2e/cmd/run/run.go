@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -500,19 +499,25 @@ func (h *helper) dumpK8sData() {
 func (h *helper) cleanupLogFile() func() {
 	return func() {
 		log.Info("Cleaning up file with test log output")
-		content, err := ioutil.ReadFile(testsLogFile)
+		f, err := os.Open(testsLogFile)
 		if err != nil {
 			log.Error(err, "Can't read content of file with test output")
 		}
 
-		lines := strings.Split(string(content), "\n")
-		for _, v := range lines {
-			err := json.Unmarshal([]byte(v), &GoTestJSON{})
+		var lines []string
+		r := bufio.NewReader(f)
+		for {
+			bytez, err := r.ReadBytes('\n')
+			if err != nil {
+				break
+			}
+			err = json.Unmarshal(bytez, &GoTestJSON{})
 			if err == nil {
-				lines = append(lines, v)
+				lines = append(lines, string(bytez))
 			}
 		}
 
+		f.Close()
 		err = os.Remove(testsLogFile)
 		if err != nil {
 			log.Error(err, "Failed to remove file with test output")
@@ -527,7 +532,6 @@ func (h *helper) cleanupLogFile() func() {
 		w := bufio.NewWriter(file)
 		for _, line := range lines {
 			w.WriteString(line) //nolint:errcheck
-			w.WriteString("\n") //nolint:errcheck
 		}
 
 		err = w.Flush()
