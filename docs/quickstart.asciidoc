@@ -18,10 +18,9 @@ Eager to get started? This quick guide shows you how to:
 * <<{p}-check-samples,Check out the samples>>
 
 **Supported versions**
-
-* link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] 1.11+
-* Kubernetes: 1.11+
-* Elasticsearch: 6.8+, 7.1+
+--
+include::supported-versions.asciidoc[]
+--
 
 [float]
 [id="{p}-deploy-eck"]
@@ -101,7 +100,7 @@ kubectl get elasticsearch
 [source,sh,subs="attributes"]
 ----
 NAME          HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         {version}     Ready   1m
+quickstart    green     1         {version}     Ready         1m
 ----
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is empty. After a while, the `PHASE` turns into `Ready`, and `HEALTH` becomes `green`.

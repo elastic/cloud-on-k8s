@@ -17,7 +17,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -42,7 +41,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 
 	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
 		t.Helper()
-		return k8s.WrapClient(fake.NewFakeClient(objs...))
+		return k8s.WrappedFakeClient(objs...)
 	}
 
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {

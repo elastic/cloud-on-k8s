@@ -22,7 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -172,15 +171,14 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
-			client := k8s.WrapClient(fake.NewFakeClient(tt.k8sResources...))
+			client := k8s.WrappedFakeClient(tt.k8sResources...)
 			r := &ReconcileLicenses{
 				Client:  client,
 				scheme:  scheme.Scheme,
 				checker: commonlicense.MockChecker{},
 			}
 			nsn := k8s.ExtractNamespacedName(tt.cluster)
-			res, err := r.reconcileInternal(reconcile.Request{NamespacedName: nsn})
+			res, err := r.reconcileInternal(reconcile.Request{NamespacedName: nsn}).Aggregate()
 			if tt.wantErr != "" {
 				require.EqualError(t, err, tt.wantErr)
 				return

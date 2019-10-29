@@ -1,7 +1,7 @@
 {{- define "spec" -}}
 {{- range .Members -}}
 {{- if not (hiddenMember .)}}
-*`{{ fieldName . }}`* {{ if linkForType .Type }}_link:{{ linkForType .Type}}[$${{ typeDisplayName .Type }}$$]_ {{- else }} _{{ typeDisplayName .Type }}_ {{- end -}}::
+*`{{ fieldName . }}`* {{ if linkForType .Type }}_{{ template "link_template" .Type }}_ {{- else }} _{{ typeDisplayName .Type }}_ {{- end -}}::
 {{- if fieldEmbedded . }}
     (Members of `{{ fieldName . }}` are embedded into this type.)
 {{- end }}

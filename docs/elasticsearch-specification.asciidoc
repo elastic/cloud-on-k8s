@@ -137,7 +137,7 @@ spec:
         storageClassName: standard
 ----
 
-ECK automatically deletes VolumeClaimTemplates resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
+ECK automatically deletes PersistentVolumeClaim resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
 
 IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes <<{p}-orchestration-limitations,cannot be resized after they are created>>. When you define volume claims, consider future storage requirements and make sure you have enough space to support the expected growth.
 
@@ -305,7 +305,7 @@ NOTE: The first option has the advantage that you can verify the correctness of 
 maximum flexibility. But the second option also means you might catch any errors only at runtime. Plugin installation at runtime has another drawback in that it needs access to the Internet from your cluster
 and downloads each plugin multiple times, once for each Elasticsearch node.
 
-Building your custom Docker images is outside the scope of this documentation despite being the better solution for most users.
+See link:custom-images.asciidoc[Creating custom images] for instructions on how to build custom Docker images based on the official Elastic images.
 
 The following example describes option 2, using a repository plugin. To install the plugin before the Elasticsearch
 nodes start, use an init container to run the link:https://www.elastic.co/guide/en/elasticsearch/plugins/current/installation.html[plugin installation tool].
@@ -394,9 +394,9 @@ spec:
       maxSurge: 3
       maxUnavailable: 1
 ----
-`maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in the currently applied specification. This setting might be useful when new specification has similar number of Pods, but different node sets (for example, when migrating Pods to a new node set). It will prevent the operator from creating all new Pods before removing the old ones thus preventing having (temporarily) as many as two times more pods than the specification defines.
+`maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in the currently applied specification. This setting might be useful when the new specification has similar number of Pods, but different node sets (for example, when migrating Pods to a new node set). It will prevent the operator from creating all new Pods before removing the old ones thus preventing having (temporarily) as many as two times more pods than the specification defines.
 
-`maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in the currently applied specification. Unavailable is defined as Pod being not ready from Kubernetes perspective.
+`maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in the currently applied specification. Unavailable is defined as a Pod being not ready from Kubernetes perspective.
 
 As these constraints are enforced immediately after the specification is applied, it is possible the the actual state of the cluster might violate these constraints. When the cluster is outside these constraints, the operator can add or remove nodes only with the purpose of getting closer to these constraints. When the cluster is within these constraints, the operator can either add or remove nodes, as long as the cluster remains within the predefined constraints.
 

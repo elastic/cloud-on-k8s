@@ -29,7 +29,7 @@ func NewMergedESConfig(
 		return CanonicalConfig{}, err
 	}
 	err = config.MergeWith(
-		baseConfig(clusterName).CanonicalConfig,
+		baseConfig(clusterName, ver).CanonicalConfig,
 		xpackConfig(ver, httpConfig, certResources).CanonicalConfig,
 	)
 	if err != nil {
@@ -39,13 +39,11 @@ func NewMergedESConfig(
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string) *CanonicalConfig {
+func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
-
-		DiscoveryZenHostsProvider: "file",
 
 		// derive IP dynamically from the pod IP, injected as env var
 		NetworkPublishHost: "${" + EnvPodIP + "}",
@@ -54,6 +52,15 @@ func baseConfig(clusterName string) *CanonicalConfig {
 		PathData: volume.ElasticsearchDataMountPath,
 		PathLogs: volume.ElasticsearchLogsMountPath,
 	}
+
+	// seed hosts setting name changed starting ES 7.X
+	fileProvider := "file"
+	if ver.Major < 7 {
+		cfg[DiscoveryZenHostsProvider] = fileProvider
+	} else {
+		cfg[DiscoverySeedProviders] = fileProvider
+	}
+
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
@@ -92,14 +99,17 @@ func xpackConfig(ver version.Version, httpCfg v1beta1.HTTPConfig, certResources 
 		cfg[XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
 	}
 
-	// always enable the built-in file internal realm for user auth, ordered as first
+	// always enable the built-in file and native internal realms for user auth, ordered as first
 	if ver.Major < 7 {
 		// 6.x syntax
 		cfg[XPackSecurityAuthcRealmsFile1Type] = "file"
 		cfg[XPackSecurityAuthcRealmsFile1Order] = -100
+		cfg[XPackSecurityAuthcRealmsNative1Type] = "native"
+		cfg[XPackSecurityAuthcRealmsNative1Order] = -99
 	} else {
 		// 7.x syntax
 		cfg[XPackSecurityAuthcRealmsFileFile1Order] = -100
+		cfg[XPackSecurityAuthcRealmsNativeNative1Order] = -99
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}

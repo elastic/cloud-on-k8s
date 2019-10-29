@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -67,10 +66,6 @@ var (
 )
 
 func init() {
-	if err := v1beta1.AddToScheme(scheme.Scheme); err != nil {
-		panic(err)
-	}
-
 	var err error
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
@@ -121,7 +116,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 		{
 			name: "should generate new certificates if none exists",
 			args: args{
-				c:  k8s.WrapClient(fake.NewFakeClient()),
+				c:  k8s.WrappedFakeClient(),
 				es: testES,
 				ca: testCA,
 			},
@@ -133,13 +128,13 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 		{
 			name: "should use custom certificates if provided",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+				c: k8s.WrappedFakeClient(&corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
 					Data: map[string][]byte{
 						certificates.CertFileName: tls,
 						certificates.KeyFileName:  key,
 					},
-				})),
+				}),
 				es: v1beta1.Elasticsearch{
 					ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: v1beta1.ElasticsearchSpec{

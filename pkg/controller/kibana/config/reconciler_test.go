@@ -17,9 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var defaultKibana = v1beta1.Kibana{
@@ -104,11 +102,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sc := scheme.Scheme
-			if err := v1beta1.SchemeBuilder.AddToScheme(sc); err != nil {
-				assert.Fail(t, "failed to build custom scheme")
-			}
-			k8sClient := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, tt.args.initialObjects...))
+			k8sClient := k8s.WrappedFakeClient(tt.args.initialObjects...)
 
 			err := ReconcileConfigSecret(k8sClient, tt.args.kb, CanonicalConfig{settings.NewCanonicalConfig()}, about.OperatorInfo{})
 			assert.NoError(t, err)

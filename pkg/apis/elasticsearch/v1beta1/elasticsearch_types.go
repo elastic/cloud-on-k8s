@@ -6,44 +6,39 @@ package v1beta1
 
 import (
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const ElasticsearchContainerName = "elasticsearch"
 
-// ElasticsearchSpec defines the desired state of Elasticsearch
+// ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 type ElasticsearchSpec struct {
-	// Version represents the version of the stack
+	// Version of Elasticsearch.
 	Version string `json:"version,omitempty"`
 
-	// Image represents the docker image that will be used.
+	// Image is the Elasticsearch Docker image to deploy.
 	Image string `json:"image,omitempty"`
 
-	// HTTP contains settings for HTTP.
+	// HTTP holds HTTP layer settings for Elasticsearch.
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
-	// NodeSets represents a list of groups of nodes with the same configuration to be part of the cluster
+	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 	NodeSets []NodeSet `json:"nodeSets,omitempty"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
-	// PodDisruptionBudget allows full control of the default pod disruption budget.
-	//
-	// The default budget selects all cluster pods and sets maxUnavailable to 1.
-	// To disable it entirely, set to the empty value (`{}` in YAML).
+	// PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
+	// The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
+	// to the empty value (`{}` in YAML).
 	// +kubebuilder:validation:Optional
 	PodDisruptionBudget *commonv1beta1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
-	// SecureSettings references secrets containing secure settings, to be injected
-	// into Elasticsearch keystore on each node.
-	// Each individual key/value entry in the referenced secrets is considered as an
-	// individual secure setting to be injected.
-	// You can use the `entries` and `key` fields to consider only a subset of the secret
-	// entries and the `path` field to change the target path of a secret entry key.
-	// The secret must exist in the same namespace as the Elasticsearch resource.
+	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
+	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 
@@ -56,31 +51,27 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 	return count
 }
 
-// NodeSet defines a common topology for a set of Elasticsearch nodes
+// NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
 type NodeSet struct {
-	// Name is a logical name for this set of nodes. Used as a part of the managed Elasticsearch node.name setting.
+	// Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
 	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+
 	// +kubebuilder:validation:MaxLength=23
 	Name string `json:"name"`
 
-	// Config represents Elasticsearch configuration.
+	// Config holds the Elasticsearch configuration.
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
-	// Count defines how many nodes this topology should have.
+	// Count of Elasticsearch nodes to deploy.
 	Count int32 `json:"count,omitempty"`
 
-	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
-	// This allows specifying custom annotations, labels, environment variables,
-	// volumes, affinity, resources, etc. for the pods created from this NodeSet.
+	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
-	// VolumeClaimTemplates is a list of claims that pods are allowed to reference.
-	// Every claim in this list must have at least one matching (by name) volumeMount in one
-	// container in the template. A claim in this list takes precedence over
-	// any volumes in the template, with the same name.
-	// TODO: Define the behavior if a claim already exists with the same name.
-	// TODO: define special behavior based on claim metadata.name. (e.g data / logs volumes)
+	// VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
+	// Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
+	// Items defined here take precedence over any default claims added by the operator with the same name.
+	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
 	// +kubebuilder:validation:Optional
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
@@ -97,20 +88,20 @@ func (n NodeSet) GetESContainerTemplate() *corev1.Container {
 
 // UpdateStrategy specifies how updates to the cluster should be performed.
 type UpdateStrategy struct {
-	// ChangeBudget is the change budget that should be used when performing mutations to the cluster.
+	// ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 	ChangeBudget ChangeBudget `json:"changeBudget,omitempty"`
 }
 
-// ChangeBudget defines how Pods in a single group should be updated.
+// ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 type ChangeBudget struct {
-	// MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to the
-	// actions controlled by the operator. Setting negative value will result in no restrictions on number of unavailable
-	// pods. By default, a fixed value of 1 is used.
+	// MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to
+	// circumstances under the control of the operator. Setting a negative value will disable this restriction.
+	// Defaults to 1 if not specified.
 	MaxUnavailable *int32 `json:"maxUnavailable,omitempty"`
 
-	// MaxSurge is the maximum number of pods that can be scheduled above the original number of pods. MaxSurge
-	// is only taken into the account when scaling up. Setting negative value will result in no restrictions on number
-	// of pods scheduled. By default, it's unbounded.
+	// MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in
+	// the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will
+	// disable the restriction. Defaults to unbounded if not specified.
 	MaxSurge *int32 `json:"maxSurge,omitempty"`
 }
 
@@ -118,7 +109,7 @@ type ChangeBudget struct {
 // most cases.
 var DefaultChangeBudget = ChangeBudget{
 	MaxSurge:       nil,
-	MaxUnavailable: common.Int32(1),
+	MaxUnavailable: pointer.Int32(1),
 }
 
 func (cb ChangeBudget) GetMaxSurgeOrDefault() *int32 {
@@ -210,7 +201,7 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 
 // +kubebuilder:object:root=true
 
-// Elasticsearch is the Schema for the elasticsearches API
+// Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 // +kubebuilder:resource:categories=elastic,shortName=es
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"

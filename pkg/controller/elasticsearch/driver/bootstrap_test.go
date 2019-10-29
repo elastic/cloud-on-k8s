@@ -7,17 +7,15 @@ package driver
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/go-test/deep"
-	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func bootstrappedES() *v1beta1.Elasticsearch {
@@ -65,11 +63,9 @@ func TestAnnotatedForBootstrap(t *testing.T) {
 }
 
 func Test_annotateWithUUID(t *testing.T) {
-	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
-
 	cluster := notBootstrappedES()
 	observedState := observer.State{ClusterInfo: &client.Info{ClusterUUID: "cluster-uuid"}}
-	k8sClient := k8s.WrapClient(fake.NewFakeClient(cluster))
+	k8sClient := k8s.WrappedFakeClient(cluster)
 
 	err := annotateWithUUID(cluster, observedState, k8sClient)
 	require.NoError(t, err)
@@ -81,8 +77,42 @@ func Test_annotateWithUUID(t *testing.T) {
 	require.True(t, AnnotatedForBootstrap(retrieved))
 }
 
+func Test_clusterIsBootstrapped(t *testing.T) {
+	tests := []struct {
+		name  string
+		state observer.State
+		want  bool
+	}{
+		{
+			name:  "empty state",
+			state: observer.State{},
+			want:  false,
+		},
+		{
+			name:  "cluster uuid empty",
+			state: observer.State{ClusterInfo: &esclient.Info{}},
+			want:  false,
+		},
+		{
+			name:  "cluster uuid _na_ (not available) yet, cluster is still forming",
+			state: observer.State{ClusterInfo: &esclient.Info{ClusterUUID: "_na_"}},
+			want:  false,
+		},
+		{
+			name:  "cluster uuid set, cluster bootstrapped",
+			state: observer.State{ClusterInfo: &esclient.Info{ClusterUUID: "6902c192-ec1d-11e9-81b4-2a2ae2dbcce4"}},
+			want:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, clusterIsBootstrapped(tt.state))
+		})
+	}
+}
+
 func TestReconcileClusterUUID(t *testing.T) {
-	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 	tests := []struct {
 		name          string
 		c             k8s.Client
@@ -92,54 +122,54 @@ func TestReconcileClusterUUID(t *testing.T) {
 	}{
 		{
 			name:        "already annotated",
-			c:           k8s.WrapClient(fake.NewFakeClient()),
+			c:           k8s.WrappedFakeClient(),
 			cluster:     bootstrappedES(),
 			wantCluster: bootstrappedES(),
 		},
 		{
 			name:          "not annotated, but not bootstrapped yet (cluster state empty)",
 			cluster:       notBootstrappedES(),
-			c:             k8s.WrapClient(fake.NewFakeClient()),
+			c:             k8s.WrappedFakeClient(),
 			observedState: observer.State{ClusterInfo: nil},
 			wantCluster:   notBootstrappedES(),
 		},
 		{
 			name:          "not annotated, but not bootstrapped yet (cluster UUID empty)",
 			cluster:       notBootstrappedES(),
-			c:             k8s.WrapClient(fake.NewFakeClient()),
+			c:             k8s.WrappedFakeClient(),
 			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: ""}},
 			wantCluster:   notBootstrappedES(),
 		},
 		{
 			name:          "not annotated, but bootstrapped",
-			c:             k8s.WrapClient(fake.NewFakeClient(notBootstrappedES())),
+			c:             k8s.WrappedFakeClient(notBootstrappedES()),
 			cluster:       notBootstrappedES(),
 			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
 			wantCluster:   bootstrappedES(),
 		},
 		{
 			name: "annotated, bootstrapped, but needs re-bootstrapping due to single node upgrade ",
-			c: k8s.WrapClient(fake.NewFakeClient(
+			c: k8s.WrappedFakeClient(
 				bootstrappedES(),
 				sset.TestPod{
 					ClusterName: "cluster",
 					Version:     "6.8.0",
 					Master:      true,
-				}.BuildPtr())),
+				}.BuildPtr()),
 			cluster:       bootstrappedES(),
 			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
 			wantCluster:   reBootstrappingES(),
 		},
 		{
 			name: "not annotated, bootstrapped, but still on pre-upgrade version",
-			c: k8s.WrapClient(fake.NewFakeClient(
+			c: k8s.WrappedFakeClient(
 				reBootstrappingES(),
 				sset.TestPod{
 					ClusterName: "cluster",
 					Version:     "6.8.0",
 					Master:      true,
 				}.BuildPtr(),
-			)),
+			),
 			cluster:       reBootstrappingES(),
 			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
 			wantCluster:   reBootstrappingES(),

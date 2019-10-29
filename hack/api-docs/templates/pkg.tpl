@@ -6,15 +6,14 @@
 .Packages
 
 {{- range . }}
-* xref:{{ packageAnchorID . | safeIdentifier }}[{{ packageDisplayName . }}]
+* xref:{p}-{{ packageAnchorID . | safeIdentifier }}[{{ packageDisplayName . }}]
 {{- end }}
 {{- end }}
 
 '''
 
 {{ range .packages }}
-[id="{{ packageAnchorID . | safeIdentifier }}"]
-[float]
+[id="{p}-{{ packageAnchorID . | safeIdentifier }}"]
 === {{ packageDisplayName . }}
 {{- with (index .GoPackages 0 ) }}
 {{- with .DocComments }}
@@ -26,7 +25,7 @@
 --
 {{- range (visibleTypes (sortedTypes .Types)) }}
 {{- if isExportedType . }}
-- link:{{ linkForType . }}[$${{ typeDisplayName . }}$$]
+- {{ template "link_template" . }}
 {{- end }}
 {{- end }}
 --

@@ -1118,8 +1118,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    ConfigMap or it's key must be
-                                                    defined
+                                                    ConfigMap or its key must be defined
                                                   type: boolean
                                               required:
                                               - key
@@ -1185,7 +1184,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    Secret or it's key must be defined
+                                                    Secret or its key must be defined
                                                   type: boolean
                                               required:
                                               - key
@@ -1915,6 +1914,26 @@ spec:
                                               that applies to the container.
                                             type: string
                                         type: object
+                                      windowsOptions:
+                                        description: Windows security options.
+                                        properties:
+                                          gmsaCredentialSpec:
+                                            description: GMSACredentialSpec is where
+                                              the GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa)
+                                              inlines the contents of the GMSA credential
+                                              spec named by the GMSACredentialSpecName
+                                              field. This field is alpha-level and
+                                              is only honored by servers that enable
+                                              the WindowsGMSA feature flag.
+                                            type: string
+                                          gmsaCredentialSpecName:
+                                            description: GMSACredentialSpecName is
+                                              the name of the GMSA credential spec
+                                              to use. This field is alpha-level and
+                                              is only honored by servers that enable
+                                              the WindowsGMSA feature flag.
+                                            type: string
+                                        type: object
                                     type: object
                                   stdin:
                                     description: Whether this container should allocate
@@ -2029,7 +2048,7 @@ spec:
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
                                             and SubPath are mutually exclusive. This
-                                            field is alpha in 1.14.
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -2253,8 +2272,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    ConfigMap or it's key must be
-                                                    defined
+                                                    ConfigMap or its key must be defined
                                                   type: boolean
                                               required:
                                               - key
@@ -2320,7 +2338,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    Secret or it's key must be defined
+                                                    Secret or its key must be defined
                                                   type: boolean
                                               required:
                                               - key
@@ -3050,6 +3068,26 @@ spec:
                                               that applies to the container.
                                             type: string
                                         type: object
+                                      windowsOptions:
+                                        description: Windows security options.
+                                        properties:
+                                          gmsaCredentialSpec:
+                                            description: GMSACredentialSpec is where
+                                              the GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa)
+                                              inlines the contents of the GMSA credential
+                                              spec named by the GMSACredentialSpecName
+                                              field. This field is alpha-level and
+                                              is only honored by servers that enable
+                                              the WindowsGMSA feature flag.
+                                            type: string
+                                          gmsaCredentialSpecName:
+                                            description: GMSACredentialSpecName is
+                                              the name of the GMSA credential spec
+                                              to use. This field is alpha-level and
+                                              is only honored by servers that enable
+                                              the WindowsGMSA feature flag.
+                                            type: string
+                                        type: object
                                     type: object
                                   stdin:
                                     description: Whether this container should allocate
@@ -3164,7 +3202,7 @@ spec:
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
                                             and SubPath are mutually exclusive. This
-                                            field is alpha in 1.14.
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -3195,6 +3233,13 @@ spec:
                                 must match a node''s labels for the pod to be scheduled
                                 on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
                               type: object
+                            preemptionPolicy:
+                              description: PreemptionPolicy is the Policy for preempting
+                                pods with lower priority. One of Never, PreemptLowerPriority.
+                                Defaults to PreemptLowerPriority if unset. This field
+                                is alpha-level and is only honored by servers that
+                                enable the NonPreemptingPriority feature.
+                              type: string
                             priority:
                               description: The priority value. Various system components
                                 use this field to find the priority of the pod. When
@@ -3245,7 +3290,7 @@ spec:
                                 which is an implicit class with an empty definition
                                 that uses the default runtime handler. More info:
                                 https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md
-                                This is an alpha feature and may change in the future.'
+                                This is a beta feature as of Kubernetes v1.14.'
                               type: string
                             schedulerName:
                               description: If specified, the pod will be dispatched
@@ -3353,6 +3398,25 @@ spec:
                                     - value
                                     type: object
                                   type: array
+                                windowsOptions:
+                                  description: Windows security options.
+                                  properties:
+                                    gmsaCredentialSpec:
+                                      description: GMSACredentialSpec is where the
+                                        GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa)
+                                        inlines the contents of the GMSA credential
+                                        spec named by the GMSACredentialSpecName field.
+                                        This field is alpha-level and is only honored
+                                        by servers that enable the WindowsGMSA feature
+                                        flag.
+                                      type: string
+                                    gmsaCredentialSpecName:
+                                      description: GMSACredentialSpecName is the name
+                                        of the GMSA credential spec to use. This field
+                                        is alpha-level and is only honored by servers
+                                        that enable the WindowsGMSA feature flag.
+                                      type: string
+                                  type: object
                               type: object
                             serviceAccount:
                               description: 'DeprecatedServiceAccount is a depreciated
@@ -3694,7 +3758,7 @@ spec:
                                         type: string
                                       optional:
                                         description: Specify whether the ConfigMap
-                                          or it's keys must be defined
+                                          or its keys must be defined
                                         type: boolean
                                     type: object
                                   csi:
@@ -4315,7 +4379,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    ConfigMap or it's keys must be
+                                                    ConfigMap or its keys must be
                                                     defined
                                                   type: boolean
                                               type: object
@@ -4735,7 +4799,7 @@ spec:
                                         type: array
                                       optional:
                                         description: Specify whether the Secret or
-                                          it's keys must be defined
+                                          its keys must be defined
                                         type: boolean
                                       secretName:
                                         description: 'Name of the secret in the pod''s
@@ -5239,7 +5303,8 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Elasticsearch is the Schema for the elasticsearches API
+        description: Elasticsearch represents an Elasticsearch resource in a Kubernetes
+          cluster.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -5254,21 +5319,23 @@ spec:
           metadata:
             type: object
           spec:
-            description: ElasticsearchSpec defines the desired state of Elasticsearch
+            description: ElasticsearchSpec holds the specification of an Elasticsearch
+              cluster.
             properties:
               http:
-                description: HTTP contains settings for HTTP.
+                description: HTTP holds HTTP layer settings for Elasticsearch.
                 properties:
                   service:
-                    description: Service is a template for the Kubernetes Service
+                    description: Service defines the template for the associated Kubernetes
+                      Service object.
                     properties:
                       metadata:
-                        description: ObjectMeta is metadata for the service. The name
-                          and namespace provided here is managed by ECK and will be
-                          ignored.
+                        description: ObjectMeta is the metadata of the service. The
+                          name and namespace provided here are managed by ECK and
+                          will be ignored.
                         type: object
                       spec:
-                        description: Spec defines the behavior of the service.
+                        description: Spec is the specification of the service.
                         properties:
                           clusterIP:
                             description: 'clusterIP is the IP address of the service
@@ -5452,37 +5519,40 @@ spec:
                         type: object
                     type: object
                   tls:
-                    description: TLS describe additional options to consider when
-                      generating HTTP TLS certificates.
+                    description: TLS defines options for configuring TLS for HTTP.
                     properties:
                       certificate:
-                        description: "Certificate is a reference to a secret that
-                          contains the certificate and private key to be used. \n
-                          The secret should have the following content: \n - `ca.crt`:
-                          The certificate authority (optional) - `tls.crt`: The certificate
-                          (or a chain). - `tls.key`: The private key to the first
-                          certificate in the certificate chain."
+                        description: "Certificate is a reference to a Kubernetes secret
+                          that contains the certificate and private key for enabling
+                          TLS. The referenced secret should contain the following:
+                          \n - `ca.crt`: The certificate authority (optional). - `tls.crt`:
+                          The certificate (or a chain). - `tls.key`: The private key
+                          to the first certificate in the certificate chain."
                         properties:
                           secretName:
+                            description: SecretName is the name of the secret.
                             type: string
                         type: object
                       selfSignedCertificate:
-                        description: SelfSignedCertificate define options to apply
-                          to self-signed certificate managed by the operator.
+                        description: SelfSignedCertificate allows configuring the
+                          self-signed certificate generated by the operator.
                         properties:
                           disabled:
-                            description: Disabled turns off the provisioning of self-signed
-                              HTTP TLS certificates.
+                            description: Disabled indicates that the provisioning
+                              of the self-signed certifcate should be disabled.
                             type: boolean
                           subjectAltNames:
-                            description: 'SubjectAlternativeNames is a list of SANs
-                              to include in the HTTP TLS certificates. For example:
-                              a wildcard DNS to expose the cluster.'
+                            description: SubjectAlternativeNames is a list of SANs
+                              to include in the generated HTTP TLS certificate.
                             items:
+                              description: SubjectAlternativeName represents a SAN
+                                entry in a x509 certificate.
                               properties:
                                 dns:
+                                  description: DNS is the DNS name of the subject.
                                   type: string
                                 ip:
+                                  description: IP is the IP address of the subject.
                                   type: string
                               type: object
                             type: array
@@ -5490,34 +5560,32 @@ spec:
                     type: object
                 type: object
               image:
-                description: Image represents the docker image that will be used.
+                description: Image is the Elasticsearch Docker image to deploy.
                 type: string
               nodeSets:
-                description: NodeSets represents a list of groups of nodes with the
-                  same configuration to be part of the cluster
+                description: 'NodeSets allow specifying groups of Elasticsearch nodes
+                  sharing the same configuration and Pod templates. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html'
                 items:
-                  description: NodeSet defines a common topology for a set of Elasticsearch
-                    nodes
+                  description: NodeSet is the specification for a group of Elasticsearch
+                    nodes sharing the same configuration and a Pod template.
                   properties:
                     config:
-                      description: Config represents Elasticsearch configuration.
+                      description: Config holds the Elasticsearch configuration.
                       type: object
                     count:
-                      description: Count defines how many nodes this topology should
-                        have.
+                      description: Count of Elasticsearch nodes to deploy.
                       format: int32
                       type: integer
                     name:
-                      description: Name is a logical name for this set of nodes. Used
-                        as a part of the managed Elasticsearch node.name setting.
+                      description: Name of this set of nodes. Becomes a part of the
+                        Elasticsearch node.name setting.
                       maxLength: 23
                       pattern: '[a-zA-Z0-9-]+'
                       type: string
                     podTemplate:
-                      description: PodTemplate can be used to propagate configuration
-                        to Elasticsearch pods. This allows specifying custom annotations,
-                        labels, environment variables, volumes, affinity, resources,
-                        etc. for the pods created from this NodeSet.
+                      description: PodTemplate provides customisation options (labels,
+                        annotations, affinity rules, resource requests, and so on)
+                        for the Pods belonging to this NodeSet.
                       properties:
                         metadata:
                           description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata'
@@ -6316,8 +6384,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    ConfigMap or it's key must be
-                                                    defined
+                                                    ConfigMap or its key must be defined
                                                   type: boolean
                                               required:
                                               - key
@@ -6383,7 +6450,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    Secret or it's key must be defined
+                                                    Secret or its key must be defined
                                                   type: boolean
                                               required:
                                               - key
@@ -7113,6 +7180,26 @@ spec:
                                               that applies to the container.
                                             type: string
                                         type: object
+                                      windowsOptions:
+                                        description: Windows security options.
+                                        properties:
+                                          gmsaCredentialSpec:
+                                            description: GMSACredentialSpec is where
+                                              the GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa)
+                                              inlines the contents of the GMSA credential
+                                              spec named by the GMSACredentialSpecName
+                                              field. This field is alpha-level and
+                                              is only honored by servers that enable
+                                              the WindowsGMSA feature flag.
+                                            type: string
+                                          gmsaCredentialSpecName:
+                                            description: GMSACredentialSpecName is
+                                              the name of the GMSA credential spec
+                                              to use. This field is alpha-level and
+                                              is only honored by servers that enable
+                                              the WindowsGMSA feature flag.
+                                            type: string
+                                        type: object
                                     type: object
                                   stdin:
                                     description: Whether this container should allocate
@@ -7227,7 +7314,7 @@ spec:
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
                                             and SubPath are mutually exclusive. This
-                                            field is alpha in 1.14.
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -7451,8 +7538,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    ConfigMap or it's key must be
-                                                    defined
+                                                    ConfigMap or its key must be defined
                                                   type: boolean
                                               required:
                                               - key
@@ -7518,7 +7604,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    Secret or it's key must be defined
+                                                    Secret or its key must be defined
                                                   type: boolean
                                               required:
                                               - key
@@ -8248,6 +8334,26 @@ spec:
                                               that applies to the container.
                                             type: string
                                         type: object
+                                      windowsOptions:
+                                        description: Windows security options.
+                                        properties:
+                                          gmsaCredentialSpec:
+                                            description: GMSACredentialSpec is where
+                                              the GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa)
+                                              inlines the contents of the GMSA credential
+                                              spec named by the GMSACredentialSpecName
+                                              field. This field is alpha-level and
+                                              is only honored by servers that enable
+                                              the WindowsGMSA feature flag.
+                                            type: string
+                                          gmsaCredentialSpecName:
+                                            description: GMSACredentialSpecName is
+                                              the name of the GMSA credential spec
+                                              to use. This field is alpha-level and
+                                              is only honored by servers that enable
+                                              the WindowsGMSA feature flag.
+                                            type: string
+                                        type: object
                                     type: object
                                   stdin:
                                     description: Whether this container should allocate
@@ -8362,7 +8468,7 @@ spec:
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
                                             and SubPath are mutually exclusive. This
-                                            field is alpha in 1.14.
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -8393,6 +8499,13 @@ spec:
                                 must match a node''s labels for the pod to be scheduled
                                 on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/'
                               type: object
+                            preemptionPolicy:
+                              description: PreemptionPolicy is the Policy for preempting
+                                pods with lower priority. One of Never, PreemptLowerPriority.
+                                Defaults to PreemptLowerPriority if unset. This field
+                                is alpha-level and is only honored by servers that
+                                enable the NonPreemptingPriority feature.
+                              type: string
                             priority:
                               description: The priority value. Various system components
                                 use this field to find the priority of the pod. When
@@ -8443,7 +8556,7 @@ spec:
                                 which is an implicit class with an empty definition
                                 that uses the default runtime handler. More info:
                                 https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md
-                                This is an alpha feature and may change in the future.'
+                                This is a beta feature as of Kubernetes v1.14.'
                               type: string
                             schedulerName:
                               description: If specified, the pod will be dispatched
@@ -8551,6 +8664,25 @@ spec:
                                     - value
                                     type: object
                                   type: array
+                                windowsOptions:
+                                  description: Windows security options.
+                                  properties:
+                                    gmsaCredentialSpec:
+                                      description: GMSACredentialSpec is where the
+                                        GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa)
+                                        inlines the contents of the GMSA credential
+                                        spec named by the GMSACredentialSpecName field.
+                                        This field is alpha-level and is only honored
+                                        by servers that enable the WindowsGMSA feature
+                                        flag.
+                                      type: string
+                                    gmsaCredentialSpecName:
+                                      description: GMSACredentialSpecName is the name
+                                        of the GMSA credential spec to use. This field
+                                        is alpha-level and is only honored by servers
+                                        that enable the WindowsGMSA feature flag.
+                                      type: string
+                                  type: object
                               type: object
                             serviceAccount:
                               description: 'DeprecatedServiceAccount is a depreciated
@@ -8892,7 +9024,7 @@ spec:
                                         type: string
                                       optional:
                                         description: Specify whether the ConfigMap
-                                          or it's keys must be defined
+                                          or its keys must be defined
                                         type: boolean
                                     type: object
                                   csi:
@@ -9513,7 +9645,7 @@ spec:
                                                   type: string
                                                 optional:
                                                   description: Specify whether the
-                                                    ConfigMap or it's keys must be
+                                                    ConfigMap or its keys must be
                                                     defined
                                                   type: boolean
                                               type: object
@@ -9933,7 +10065,7 @@ spec:
                                         type: array
                                       optional:
                                         description: Specify whether the Secret or
-                                          it's keys must be defined
+                                          its keys must be defined
                                         type: boolean
                                       secretName:
                                         description: 'Name of the secret in the pod''s
@@ -10020,14 +10152,12 @@ spec:
                           type: object
                       type: object
                     volumeClaimTemplates:
-                      description: 'VolumeClaimTemplates is a list of claims that
-                        pods are allowed to reference. Every claim in this list must
-                        have at least one matching (by name) volumeMount in one container
-                        in the template. A claim in this list takes precedence over
-                        any volumes in the template, with the same name. TODO: Define
-                        the behavior if a claim already exists with the same name.
-                        TODO: define special behavior based on claim metadata.name.
-                        (e.g data / logs volumes)'
+                      description: 'VolumeClaimTemplates is a list of persistent volume
+                        claims to be used by each Pod in this NodeSet. Every claim
+                        in this list must have a matching volumeMount in one of the
+                        containers defined in the PodTemplate. Items defined here
+                        take precedence over any default claims added by the operator
+                        with the same name. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html'
                       items:
                         description: PersistentVolumeClaim is a user's request for
                           and claim to a persistent volume
@@ -10243,17 +10373,17 @@ spec:
                   type: object
                 type: array
               podDisruptionBudget:
-                description: "PodDisruptionBudget allows full control of the default
-                  pod disruption budget. \n The default budget selects all cluster
-                  pods and sets maxUnavailable to 1. To disable it entirely, set to
-                  the empty value (`{}` in YAML)."
+                description: PodDisruptionBudget provides access to the default pod
+                  disruption budget for the Elasticsearch cluster. The default budget
+                  selects all cluster pods and sets `maxUnavailable` to 1. To disable,
+                  set `PodDisruptionBudget` to the empty value (`{}` in YAML).
                 properties:
                   metadata:
-                    description: ObjectMeta is metadata for the service. The name
-                      and namespace provided here is managed by ECK and will be ignored.
+                    description: ObjectMeta is the metadata of the PDB. The name and
+                      namespace provided here are managed by ECK and will be ignored.
                     type: object
                   spec:
-                    description: Spec of the desired behavior of the PodDisruptionBudget
+                    description: Spec is the specification of the PDB.
                     properties:
                       maxUnavailable:
                         anyOf:
@@ -10322,40 +10452,37 @@ spec:
                     type: object
                 type: object
               secureSettings:
-                description: SecureSettings references secrets containing secure settings,
-                  to be injected into Elasticsearch keystore on each node. Each individual
-                  key/value entry in the referenced secrets is considered as an individual
-                  secure setting to be injected. You can use the `entries` and `key`
-                  fields to consider only a subset of the secret entries and the `path`
-                  field to change the target path of a secret entry key. The secret
-                  must exist in the same namespace as the Elasticsearch resource.
+                description: 'SecureSettings is a list of references to Kubernetes
+                  secrets containing sensitive configuration options for Elasticsearch.
+                  See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html'
                 items:
+                  description: SecretSource defines a data source based on a Kubernetes
+                    Secret.
                   properties:
                     entries:
-                      description: If unspecified, each key-value pair in the Data
-                        field of the referenced Secret will be projected into the
-                        volume as a file whose name is the key and content is the
-                        value. If specified, the listed keys will be projected into
-                        the specified paths, and unlisted keys will not be present.
+                      description: Entries define how to project each key-value pair
+                        in the secret to filesystem paths. If not defined, all keys
+                        will be projected to similarly named paths in the filesystem.
+                        If defined, only the specified keys will be projected to the
+                        corresponding paths.
                       items:
-                        description: Maps a string key to a path within a volume.
+                        description: KeyToPath defines how to map a key in a Secret
+                          object to a filesystem path.
                         properties:
                           key:
-                            description: The key to project.
+                            description: Key is the key contained in the secret.
                             type: string
                           path:
-                            description: The relative path of the file to map the
-                              key to. May not be an absolute path. May not contain
-                              the path element '..'. May not start with the string
-                              '..'.
+                            description: Path is the relative file path to map the
+                              key to. Path must not be an absolute file path and must
+                              not contain any ".." components.
                             type: string
                         required:
                         - key
                         type: object
                       type: array
                     secretName:
-                      description: 'Name of the secret in the pod''s namespace to
-                        use. More info: https://kubernetes.io/docs/concepts/storage/volumes#secret'
+                      description: SecretName is the name of the secret.
                       type: string
                   required:
                   - secretName
@@ -10366,29 +10493,29 @@ spec:
                   be performed.
                 properties:
                   changeBudget:
-                    description: ChangeBudget is the change budget that should be
-                      used when performing mutations to the cluster.
+                    description: ChangeBudget defines the constraints to consider
+                      when applying changes to the Elasticsearch cluster.
                     properties:
                       maxSurge:
-                        description: MaxSurge is the maximum number of pods that can
-                          be scheduled above the original number of pods. MaxSurge
-                          is only taken into the account when scaling up. Setting
-                          negative value will result in no restrictions on number
-                          of pods scheduled. By default, it's unbounded.
+                        description: MaxSurge is the maximum number of new pods that
+                          can be created exceeding the original number of pods defined
+                          in the specification. MaxSurge is only taken into consideration
+                          when scaling up. Setting a negative value will disable the
+                          restriction. Defaults to unbounded if not specified.
                         format: int32
                         type: integer
                       maxUnavailable:
                         description: MaxUnavailable is the maximum number of pods
                           that can be unavailable (not ready) during the update due
-                          to the actions controlled by the operator. Setting negative
-                          value will result in no restrictions on number of unavailable
-                          pods. By default, a fixed value of 1 is used.
+                          to circumstances under the control of the operator. Setting
+                          a negative value will disable this restriction. Defaults
+                          to 1 if not specified.
                         format: int32
                         type: integer
                     type: object
                 type: object
               version:
-                description: Version represents the version of the stack
+                description: Version of Elasticsearch.
                 type: string
             type: object
           status:

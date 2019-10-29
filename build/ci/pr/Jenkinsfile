@@ -90,6 +90,17 @@ pipeline {
     }
 
     post {
+        always {
+            script {
+                if (notOnlyDocs()) {
+                    googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
+                        credentialsId: "devops-ci-gcs-plugin",
+                        pattern: "*.tgz",
+                        sharedPublicly: true,
+                        showInline: true
+                }
+            }
+        }
         cleanup {
             script {
                 if (notOnlyDocs()) {
@@ -129,7 +140,7 @@ def createDeployerConfig() {
         cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
-  clusterName: $BUILD_TAG
+  clusterName: eck-pr-$BUILD_NUMBER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID

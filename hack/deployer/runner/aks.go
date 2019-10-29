@@ -104,6 +104,10 @@ func (d *AksDriver) Execute() error {
 		if err := d.GetCredentials(); err != nil {
 			return err
 		}
+
+		if err := createStorageClass(); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -205,7 +209,7 @@ func (d *AksDriver) configureDocker() error {
 
 func (d *AksDriver) GetCredentials() error {
 	log.Print("Getting credentials...")
-	cmd := `az aks get-credentials --resource-group {{.ResourceGroup}} --name {{.ClusterName}}`
+	cmd := `az aks get-credentials --overwrite-existing --resource-group {{.ResourceGroup}} --name {{.ClusterName}}`
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 

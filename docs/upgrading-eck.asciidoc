@@ -16,7 +16,7 @@ ECK 1.0.0-beta1 includes changes that are incompatible with previous versions of
 - Some CRD fields have been removed and some others have been renamed to clarify their purpose.
 - Elasticsearch cluster orchestration is now managed through link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/[StatefulSet] resources.
 
-NOTE: See the link:https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-release-notes.html[release notes] for more information about all the features included in this release.
+NOTE: See the <<release-notes-1.0.0-beta1>> for more information about all the features included in this release.
 
 It is recommended to install ECK 1.0.0-beta1 in a fresh Kubernetes cluster and migrate data over from existing clusters if possible. If you wish to install ECK into an existing Kubernetes cluster that has a previous version of the operator installed, it is important to consider the following:
 
@@ -24,6 +24,7 @@ It is recommended to install ECK 1.0.0-beta1 in a fresh Kubernetes cluster and m
 - Existing Elasticsearch, Kibana and APM Server resources created by an old version of the operator will continue to work but they will not be managed by the new operator. This means that the orchestration benefits provided by the operator such as rolling upgrades will no longer be available to those resources.
 - If the old operator is replaced without removing old resources first, you will have to manually disable finalizers to delete them later.
 - Existing Kubernetes manifests should be converted to the new format in order to work with the new operator.
+- link:https://github.com/elastic/cloud-on-k8s/issues/2039[Some incompatible settings] in Elasticsearch resources created for an older ECK version lead to parsing errors in ECK 1.0.0-beta1, preventing any reconciliation from happening.
 
 If some downtime is acceptable, upgrading in place can be performed as follows:
 
@@ -47,6 +48,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 * Remove `setVmMaxMapCount`. See: <<{p}-virtual-memory>>.
 * Remove `groups` from `updateStrategy`. See: <<{p}-update-strategy>>.
 * Remove `featureFlags`
+* If you specified `secureSettings`, convert `secretName` into an array item by prefixing it with `-`
 
 [source,patch,subs="attributes"]
 ----
@@ -63,6 +65,9 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
      changeBudget:
        maxUnavailable: 1
 -    groups: []
+   secureSettings:
+-    secretName: "gcs-credentials"
++  - secretName: "gcs-credentials"
 -  nodes:
 -  - nodeCount: 3
 +  nodeSets:
@@ -74,6 +79,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 .Kibana
 * Replace `v1alpha` in the `apiVersion` field with `v1beta1`
 * Rename `nodeCount` to `count`
+* If you specified `secureSettings`, convert `secretName` into an array item by prefixing it with `-`
 
 [source,patch,subs="attributes"]
 ----
@@ -88,12 +94,16 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 +  count: 1
    elasticsearchRef:
      name: "elasticsearch-sample"
+   secureSettings:
+-    secretName: "gcs-credentials"
++  - secretName: "gcs-credentials"
 ----
 
 
 .APM Server
 * Replace `v1alpha` in the `apiVersion` field with `v1beta1`
 * Rename `nodeCount` to `count`
+* If you specified `secureSettings`, convert `secretName` into an array item by prefixing it with `-`
 
 [source,patch,subs="attributes"]
 ----
@@ -108,4 +118,20 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 +  count: 1
    elasticsearchRef:
      name: "elasticsearch-sample"
+   secureSettings:
+-    secretName: "gcs-credentials"
++  - secretName: "gcs-credentials"
+----
+
+[float]
+[id="{p}-1.0.0-beta1-backwards-compatibility"]
+==== Backwards compatibility
+
+The 1.0.0-beta version of the operator does not delete resources created by older versions of the operator, but it also does not manage them. Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. To unblock the deletion, remove any registered finalizer from the resource (substituting the correct name for `quickstart`):
+
+[source,sh]
+----
+kubectl patch elasticsearch quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch kibana quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
+kubectl patch apmserver quickstart --patch '{"metadata": {"finalizers": []}}' --type=merge
 ----

@@ -15,6 +15,7 @@ import (
 const (
 	// ClusterUUIDAnnotationName used to store the cluster UUID as an annotation when cluster has been bootstrapped.
 	ClusterUUIDAnnotationName = "elasticsearch.k8s.elastic.co/cluster-uuid"
+	formingClusterUUID        = "_na_"
 )
 
 // AnnotatedForBootstrap returns true if the cluster has been annotated with the UUID already.
@@ -75,7 +76,9 @@ func clusterNeedsReBootstrap(client k8s.Client, es *v1beta1.Elasticsearch) (bool
 
 // clusterIsBootstrapped returns true if the cluster has formed and has a UUID.
 func clusterIsBootstrapped(observedState observer.State) bool {
-	return observedState.ClusterInfo != nil && len(observedState.ClusterInfo.ClusterUUID) > 0
+	return observedState.ClusterInfo != nil &&
+		len(observedState.ClusterInfo.ClusterUUID) > 0 &&
+		observedState.ClusterInfo.ClusterUUID != formingClusterUUID
 }
 
 // annotateWithUUID annotates the cluster with its UUID, to mark it as "bootstrapped".

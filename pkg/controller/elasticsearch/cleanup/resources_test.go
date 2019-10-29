@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestIsTooYoungForGC(t *testing.T) {
@@ -69,8 +67,6 @@ func secret(name string, clusterName string, podRef string, creationTime time.Ti
 }
 
 func TestDeleteOrphanedSecrets(t *testing.T) {
-	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
-
 	now := time.Now()
 	whileAgo := time.Now().Add(-DeleteAfter).Add(-1 * time.Minute)
 
@@ -98,16 +94,16 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 	}{
 		{
 			name:                "nothing in the cache",
-			client:              k8s.WrapClient(fake.NewFakeClient()),
+			client:              k8s.WrappedFakeClient(),
 			es:                  es,
 			secretsAfterCleanup: nil,
 		},
 		{
 			name: "nothing to delete, pod exists",
-			client: k8s.WrapClient(fake.NewFakeClient(
+			client: k8s.WrappedFakeClient(
 				&pod,
 				secret("s", es.Name, pod.Name, whileAgo),
-			)),
+			),
 			es: es,
 			secretsAfterCleanup: []*corev1.Secret{
 				secret("s", es.Name, pod.Name, whileAgo),
@@ -115,10 +111,10 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 		},
 		{
 			name: "2 secrets to cleanup but not old enough",
-			client: k8s.WrapClient(fake.NewFakeClient(
+			client: k8s.WrappedFakeClient(
 				secret("s1", es.Name, pod.Name, now),
 				secret("s2", es.Name, pod.Name, now),
-			)),
+			),
 			es: es,
 			secretsAfterCleanup: []*corev1.Secret{
 				secret("s1", es.Name, pod.Name, now),
@@ -127,19 +123,19 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 		},
 		{
 			name: "2 secrets to cleanup for the same pod",
-			client: k8s.WrapClient(fake.NewFakeClient(
+			client: k8s.WrappedFakeClient(
 				secret("s1", es.Name, pod.Name, whileAgo),
 				secret("s2", es.Name, pod.Name, whileAgo),
-			)),
+			),
 			es:                  es,
 			secretsAfterCleanup: nil,
 		},
 		{
 			name: "2 secrets to cleanup for different pods",
-			client: k8s.WrapClient(fake.NewFakeClient(
+			client: k8s.WrappedFakeClient(
 				secret("s1", es.Name, pod.Name, whileAgo),
 				secret("s2", es.Name, "pod2", whileAgo),
-			)),
+			),
 			es:                  es,
 			secretsAfterCleanup: nil,
 		},

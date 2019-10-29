@@ -82,8 +82,8 @@ SKIP_DOCKER_COMMAND ?= false
 GLOBAL_OPERATOR_NAMESPACE ?= elastic-system
 # namespace in which the namespace operator is deployed (see config/namespace-operator)
 NAMESPACE_OPERATOR_NAMESPACE ?= elastic-namespace-operators
-# namespace in which the namespace operator should watch resources
-MANAGED_NAMESPACE ?= default
+# comma separated list of namespaces in which the namespace operator should watch resources
+MANAGED_NAMESPACES ?=
 
 ## -- Security
 
@@ -114,8 +114,7 @@ generate: controller-gen
 		kubectl kustomize config/crds-flavor-$$crd_flavor > /dev/null; \
 	done
 	$(MAKE) --no-print-directory generate-all-in-one
-	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
-	# $(MAKE) --no-print-directory generate-api-docs
+	$(MAKE) --no-print-directory generate-api-docs
 	$(MAKE) --no-print-directory generate-notice-file
 
 generate-api-docs:
@@ -170,7 +169,8 @@ go-run:
 				--development --operator-roles=global,namespace \
 				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
-				--operator-namespace=default --namespace= \
+				--operator-namespace=default \
+				--namespaces=$(MANAGED_NAMESPACES) \
 				--auto-install-webhooks=false
 
 go-debug:
@@ -184,7 +184,7 @@ go-debug:
 		--ca-cert-validity=10h \
 		--ca-cert-rotate-before=1h \
 		--operator-namespace=default \
-		--namespace= \
+		--namespaces=$(MANAGED_NAMESPACES) \
 		--auto-install-webhooks=false)
 
 build-operator-image:
@@ -345,6 +345,7 @@ TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 STACK_VERSION ?= 7.4.0
 E2E_JSON ?= false
+TEST_TIMEOUT ?= 5m
 
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
@@ -363,7 +364,8 @@ e2e-run:
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--crd-flavor=$(CRD_FLAVOR) \
-		--log-to-file=$(E2E_JSON)
+		--log-to-file=$(E2E_JSON) \
+		--test-timeout=$(TEST_TIMEOUT)
 
 e2e-generate-xml:
 	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
@@ -384,8 +386,9 @@ e2e-local:
 		--auto-port-forwarding \
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \
-		--crd-flavor=$(CRD_FLAVOR)
-	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
+		--crd-flavor=$(CRD_FLAVOR) \
+		--test-timeout=$(TEST_TIMEOUT)
+	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##

@@ -5,6 +5,7 @@ The <<{p}-deploy-kibana,quickstart>> is a good starting point to quickly setup a
 The following sections describe how to customize a Kibana deployment to suit your requirements.
 
 * <<{p}-kibana-eck-managed-es,Use an Elasticsearch cluster managed by ECK>>
+* <<{p}-kibana-external-es,Connect to an Elasticsearch cluster not managed by ECK>>
 * <<{p}-kibana-advanced-configuration,Advanced configuration>>
 ** <<{p}-kibana-pod-configuration,Pod Configuration>>
 ** <<{p}-kibana-configuration,Kibana Configuration>>
@@ -38,6 +39,70 @@ spec:
 NOTE: `namespace` is optional if the Elasticsearch cluster is running in the same namespace as Kibana.
 
 The Kibana configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
+
+[float]
+[id="{p}-kibana-external-es"]
+=== Connect to an Elasticsearch cluster not managed by ECK
+
+It is also possible to configure Kibana to connect to an Elasticsearch cluster that is being managed by a different installation of ECK or running outside the Kubernetes cluster. In this case, you need to know the IP address or URL of the Elasticsearch cluster and a valid username and password pair to access the cluster.
+
+Use the <<{p}-kibana-secure-settings,secure settings>> mechanism to securely store the credentials of the external Elasticsearch cluster:
+
+[source,shell]
+----
+kubectl create secret generic kibana-elasticsearch-credentials --from-literal=elasticsearch.password=$PASSWORD
+----
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+metadata:
+  name: kibana-sample
+spec:
+  version: {version}
+  count: 1
+  config:
+    elasticsearch.hosts:
+      - https://elasticsearch.example.com:9200
+    elasticsearch.username: elastic
+  secureSettings:
+    - secretName: kibana-elasticsearch-credentials
+----
+
+
+If the external Elasticsearch cluster is using a self-signed certificate, create a Kubernetes secret containing the CA certificate and mount it to the Kibana container as follows:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+metadata:
+  name: kibana-sample
+spec:
+  version: {version}
+  count: 1
+  config:
+    elasticsearch.hosts:
+      - https://elasticsearch-sample-es-http:9200
+    elasticsearch.username: elastic
+    elasticsearch.ssl.certificateAuthorities: /etc/certs/ca.crt
+  secureSettings:
+    - secretName: kibana-elasticsearch-credentials
+  podTemplate:
+    spec:
+      volumes:
+        - name: elasticsearch-certs
+          secret:
+            secretName: elasticsearch-certs-secret
+      containers:
+        - name: kibana
+          volumeMounts:
+            - name: elasticsearch-certs
+              mountPath: /etc/certs
+              readOnly: true
+----
+
 
 [float]
 [id="{p}-kibana-advanced-configuration"]

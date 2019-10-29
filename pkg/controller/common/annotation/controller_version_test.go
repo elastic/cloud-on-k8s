@@ -7,22 +7,15 @@ package annotation
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	kibanav1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // Test UpdateControllerVersion updates annotation if there is an older version
@@ -37,8 +30,7 @@ func TestAnnotationUpdated(t *testing.T) {
 		},
 	}
 	obj := kibana.DeepCopy()
-	sc := setupScheme(t)
-	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, obj))
+	client := k8s.WrappedFakeClient(obj)
 	err := UpdateControllerVersion(client, obj, "newversion")
 	require.NoError(t, err)
 	require.Equal(t, obj.GetAnnotations()[ControllerVersionAnnotation], "newversion")
@@ -54,8 +46,7 @@ func TestAnnotationCreated(t *testing.T) {
 	}
 
 	obj := kibana.DeepCopy()
-	sc := setupScheme(t)
-	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, obj))
+	client := k8s.WrappedFakeClient(obj)
 	err := UpdateControllerVersion(client, obj, "newversion")
 	require.NoError(t, err)
 	actualKibana := &kibanav1beta1.Kibana{}
@@ -87,8 +78,7 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 			},
 		},
 	}
-	sc := setupScheme(t)
-	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es, svc))
+	client := k8s.WrappedFakeClient(es, svc)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
@@ -107,24 +97,17 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 			Name:      "es",
 		},
 	}
-	// TODO this is currently broken due to an upstream bug in the fake client. when we upgrade controller runtime
-	// to a version that contains this PR we can uncomment this and add the service to the client
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "svc",
+			Labels: map[string]string{
+				label.ClusterNameLabelName: "literallyanything",
+			},
+		},
+	}
 
-	// add existing svc that is not part of cluster to make sure we have label selectors correct
-	// https://github.com/kubernetes-sigs/controller-runtime/pull/311
-	// svc := &corev1.Service{
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Namespace: "ns",
-	// 		Name:      "svc",
-	// 		Labels: map[string]string{
-	// 			label.ClusterNameLabelName: "literallyanything",
-	// 		},
-	// 	},
-	// }
-
-	sc := setupScheme(t)
-	// client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es, svc))
-	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
+	client := k8s.WrappedFakeClient(es, svc)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
@@ -146,8 +129,7 @@ func TestSameAnnotation(t *testing.T) {
 			},
 		},
 	}
-	sc := setupScheme(t)
-	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
+	client := k8s.WrappedFakeClient(es)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
@@ -165,8 +147,7 @@ func TestIncompatibleAnnotation(t *testing.T) {
 			},
 		},
 	}
-	sc := setupScheme(t)
-	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
+	client := k8s.WrappedFakeClient(es)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	require.NoError(t, err)
@@ -185,24 +166,11 @@ func TestNewerAnnotation(t *testing.T) {
 			},
 		},
 	}
-	sc := setupScheme(t)
-	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
+	client := k8s.WrappedFakeClient(es)
 	selector := getElasticsearchSelector(es)
 	compat, err := ReconcileCompatibility(client, es, selector, MinCompatibleControllerVersion)
 	assert.NoError(t, err)
 	assert.True(t, compat)
-}
-
-// setupScheme creates a scheme to use for our fake clients so they know about our custom resources
-func setupScheme(t *testing.T) *runtime.Scheme {
-	sc := scheme.Scheme
-	err := apmtype.AddToScheme(sc)
-	require.NoError(t, err)
-	err = estype.SchemeBuilder.AddToScheme(sc)
-	require.NoError(t, err)
-	err = kibanav1beta1.SchemeBuilder.AddToScheme(sc)
-	require.NoError(t, err)
-	return sc
 }
 
 func getElasticsearchSelector(es *v1beta1.Elasticsearch) map[string]string {
