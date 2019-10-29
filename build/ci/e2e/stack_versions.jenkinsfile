@@ -28,10 +28,10 @@ pipeline {
         }
         stage('Run tests for different ELK stack versions in GKE') {
             parallel {
-                stage("6.8.2") {
+                stage("6.8.4") {
                     steps {
                         checkout scm
-                        runWith("eck-682-${BUILD_NUMBER}-e2e", "6.8.2")
+                        runWith("eck-68-${BUILD_NUMBER}-e2e", "6.8.4")
                     }
                 }
                 stage("7.1.1") {
@@ -40,7 +40,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-711-${BUILD_NUMBER}-e2e", "7.1.1")
+                        runWith("eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
                     }
                 }
                 stage("7.2.1") {
@@ -49,25 +49,25 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-721-${BUILD_NUMBER}-e2e", "7.2.1")
+                        runWith("eck-72-${BUILD_NUMBER}-e2e", "7.2.1")
                     }
                 }
-                stage("7.3.1") {
+                stage("7.3.2") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         checkout scm
-                        runWith("eck-731-${BUILD_NUMBER}-e2e", "7.3.1")
+                        runWith("eck-73-${BUILD_NUMBER}-e2e", "7.3.2")
                     }
                 }
-                stage("7.4.0") {
+                stage("7.4.1") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         checkout scm
-                        runWith("eck-740-${BUILD_NUMBER}-e2e", "7.4.0")
+                        runWith("eck-74-${BUILD_NUMBER}-e2e", "7.4.1")
                     }
                 }
             }
@@ -92,7 +92,7 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["eck-682-${BUILD_NUMBER}-e2e", "eck-711-${BUILD_NUMBER}-e2e", "eck-721-${BUILD_NUMBER}-e2e", "eck-731-${BUILD_NUMBER}-e2e", "eck-740-${BUILD_NUMBER}-e2e"]
+                clusters = ["eck-68-${BUILD_NUMBER}-e2e", "eck-71-${BUILD_NUMBER}-e2e", "eck-72-${BUILD_NUMBER}-e2e", "eck-73-${BUILD_NUMBER}-e2e", "eck-74-${BUILD_NUMBER}-e2e"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
