@@ -47,13 +47,14 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "wrong key",
+			name: "different key",
 			args: args{
 				raw: map[string][]byte{
 					"_": good,
 				},
 			},
-			wantErr: true,
+			want:    expectedLicenseSpec,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {

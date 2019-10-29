@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
@@ -121,7 +120,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						license.FileName: []byte(fixtures.LicenseSample),
+						"anything": []byte(fixtures.LicenseSample),
 					},
 				},
 			},
@@ -152,7 +151,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						license.FileName: {},
+						"anything2": {},
 					},
 				},
 			},

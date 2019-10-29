@@ -178,8 +178,9 @@ func reconcileSecret(
 			Name:      secretName,
 			Namespace: cluster.Namespace,
 			Labels: map[string]string{
+				common.TypeLabelName:     license.Type,
 				license.LicenseLabelName: parent,
-				common.TypeLabelName:     string(license.LicenseLabelElasticsearch),
+				license.LicenseLabelType: string(license.LicenseLabelElasticsearch),
 			},
 		},
 		Data: map[string][]byte{
