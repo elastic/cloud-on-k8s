@@ -245,7 +245,7 @@ data:
         #- event
       period: 10s
       host: ${NODE_NAME}
-      hosts: ["kube-state-metrics:8080"]
+      hosts: ["kube-state-metrics.kube-system:8080"]
 ---
 # Deploy singleton instance in the whole cluster for some unique data sources, like kube-state-metrics
 apiVersion: apps/v1
