@@ -25,7 +25,6 @@ func minVersion(pods []corev1.Pod) (*version.Version, error) {
 	return version.Min(vs), nil
 }
 
-
 func (d *defaultDriver) verifySupportsExistingPods(pods []corev1.Pod) error {
 	for _, pod := range pods {
 		v, err := label.ExtractVersion(pod.Labels)

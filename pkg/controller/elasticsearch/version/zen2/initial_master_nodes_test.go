@@ -7,12 +7,12 @@ package zen2
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	settings2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetupInitialMasterNodes(t *testing.T) {

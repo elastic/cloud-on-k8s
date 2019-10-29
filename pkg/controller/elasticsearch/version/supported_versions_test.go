@@ -7,17 +7,8 @@ package version
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	// "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	corev1 "k8s.io/api/core/v1"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-var (
-	testPodWithoutVersionLabel = corev1.Pod{}
+	"github.com/stretchr/testify/require"
 )
 
 func TestSupportedVersions(t *testing.T) {
@@ -73,96 +64,40 @@ func TestSupportedVersions(t *testing.T) {
 	}
 }
 
-// func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T) {
-// 	newPodWithVersionLabel := func(v version.Version) corev1.Pod {
-// 		return corev1.Pod{
-// 			ObjectMeta: metav1.ObjectMeta{
-// 				Labels: map[string]string{
-// 					label.VersionLabelName: v.String(),
-// 				},
-// 			},
-// 		}
-// 	}
-// 	type fields struct {
-// 		lowestSupportedVersion  version.Version
-// 		highestSupportedVersion version.Version
-// 	}
-// 	type args struct {
-// 		pods []corev1.Pod
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		fields  fields
-// 		args    args
-// 		wantErr bool
-// 	}{
-// 		{
-// 			name:    "no pods",
-// 			fields:  fields{},
-// 			args:    args{pods: []corev1.Pod{}},
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name: "pod with version label at higher bound",
-// 			fields: fields{
-// 				lowestSupportedVersion:  version.Version{Major: 6},
-// 				highestSupportedVersion: version.Version{Major: 7},
-// 			},
-// 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 7})}},
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name: "pod with version label at lower bound",
-// 			fields: fields{
-// 				lowestSupportedVersion:  version.Version{Major: 6},
-// 				highestSupportedVersion: version.Version{Major: 7},
-// 			},
-// 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 6})}},
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name: "pod with version label within bounds",
-// 			fields: fields{
-// 				lowestSupportedVersion:  version.Version{Major: 6},
-// 				highestSupportedVersion: version.Version{Major: 7},
-// 			},
-// 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 6, Minor: 4, Patch: 2})}},
-// 			wantErr: false,
-// 		},
-// 		{
-// 			name:    "pod without label",
-// 			fields:  fields{},
-// 			args:    args{pods: []corev1.Pod{testPodWithoutVersionLabel}},
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "pod with too low version label",
-// 			fields: fields{
-// 				lowestSupportedVersion:  version.Version{Major: 6},
-// 				highestSupportedVersion: version.Version{Major: 7},
-// 			},
-// 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 5})}},
-// 			wantErr: true,
-// 		},
-// 		{
-// 			name: "pod with too high version label",
-// 			fields: fields{
-// 				lowestSupportedVersion:  version.Version{Major: 6},
-// 				highestSupportedVersion: version.Version{Major: 7},
-// 			},
-// 			args:    args{pods: []corev1.Pod{newPodWithVersionLabel(version.Version{Major: 8})}},
-// 			wantErr: true,
-// 		},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			lh := LowestHighestSupportedVersions{
-// 				LowestSupportedVersion:  tt.fields.lowestSupportedVersion,
-// 				HighestSupportedVersion: tt.fields.highestSupportedVersion,
-// 			}
-// 			if err := lh.VerifySupportsExistingPods(tt.args.pods); (err != nil) != tt.wantErr {
-// 				t.Errorf("LowestHighestSupportedVersions.VerifySupportsExistingPods() error = %v, wantErr %v", err, tt.wantErr)
-// 			}
-// 		})
-// 	}
-// }
+func TestSupports(t *testing.T) {
+	tests := []struct {
+		name        string
+		lhsv        LowestHighestSupportedVersions
+		ver         version.Version
+		expectError bool
+	}{
+		{
+			name: "in range",
+			lhsv: LowestHighestSupportedVersions{
+				LowestSupportedVersion:  version.MustParse("2.0.1"),
+				HighestSupportedVersion: version.MustParse("3.0.0"),
+			},
+			ver:         version.MustParse("2.0.2-rc0"),
+			expectError: false,
+		},
+		{
+			name: "out of range",
+			lhsv: LowestHighestSupportedVersions{
+				LowestSupportedVersion:  version.MustParse("2.0.1"),
+				HighestSupportedVersion: version.MustParse("3.0.0"),
+			},
+			ver:         version.MustParse("3.0.1"),
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.lhsv.Supports(tt.ver)
+			actual := err != nil
+			if tt.expectError != actual {
+				t.Errorf("failed Supports(). Name: %v, actual: %v, wanted: %v, value: %v", tt.name, err, tt.expectError, tt.ver)
+			}
+		})
+	}
+}
