@@ -43,13 +43,12 @@ func applyLinkedLicense(
 		}
 		return err
 	}
-	if len(license.Data) != 1 {
-		return fmt.Errorf(
-			"linked Elasticsearch license secret needs to contain exactly one file called %s",
-			common_license.FileName,
-		)
+
+	bytes, err := common_license.FetchLicenseData(license.Data)
+	if err != nil {
+		return err
 	}
-	bytes := license.Data[common_license.FileName]
+
 	var lic esclient.License
 	err = json.Unmarshal(bytes, &lic)
 	if err != nil {

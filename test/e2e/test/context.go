@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	logutil "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/go-logr/logr"
@@ -90,6 +91,7 @@ type Context struct {
 	TestLicence         string            `json:"test_licence"`
 	TestRegex           string            `json:"test_regex"`
 	TestRun             string            `json:"test_run"`
+	TestTimeout         time.Duration     `json:"test_timeout"`
 	AutoPortForwarding  bool              `json:"auto_port_forwarding"`
 	Local               bool              `json:"local"`
 }
