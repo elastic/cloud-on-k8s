@@ -5,10 +5,12 @@
 package run
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,6 +38,15 @@ const (
 	testRunLabel     = "test-run"        // name of the label applied to resources
 	testsLogFile     = "e2e-tests.json"  // name of file to keep all test logs in JSON format
 )
+
+type GoTestJson struct {
+	Time    time.Time `json:"Time"`
+	Action  string    `json:"Action"`
+	Package string    `json:"Package"`
+	Test    string    `json:"Test"`
+	Output  string    `json:"Output,omitempty"`
+	Elapsed float64   `json:"Elapsed,omitempty"`
+}
 
 type stepFunc func() error
 
@@ -350,6 +361,7 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 		}
 		defer f.Close()
 		writer = io.MultiWriter(writer, f)
+		h.addCleanupFunc(h.cleanupLogFile())
 	}
 
 	var buffer [logBufferSize]byte
@@ -470,5 +482,41 @@ func (h *helper) dumpEventLog() {
 	var buffer [1024]byte
 	if _, err := io.CopyBuffer(os.Stdout, f, buffer[:]); err != nil {
 		log.Error(err, "Failed to output event log")
+	}
+}
+
+func (h *helper) cleanupLogFile() func() {
+	return func() {
+		log.Info("Cleaning up file with test log output")
+		content, err := ioutil.ReadFile(testsLogFile)
+		lines := strings.Split(string(content), "\n")
+		for _, v := range lines {
+			err := json.Unmarshal([]byte(v), &GoTestJson{})
+			if err == nil {
+				lines = append(lines, v)
+			}
+		}
+
+		err = os.Remove(testsLogFile)
+		if err != nil {
+			log.Error(err, "Failed to remove file with test output")
+		}
+
+		file, err := os.Create(testsLogFile)
+		if err != nil {
+			log.Error(err, "Failed to create file with test output")
+		}
+		defer file.Close()
+
+		w := bufio.NewWriter(file)
+		for _, line := range lines {
+			w.WriteString(line)
+			w.WriteString("\n")
+		}
+
+		err = w.Flush()
+		if err != nil {
+			log.Error(err, "Can't write cleaned test output to file")
+		}
 	}
 }
