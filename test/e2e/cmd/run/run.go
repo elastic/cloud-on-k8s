@@ -39,7 +39,7 @@ const (
 	testsLogFile     = "e2e-tests.json"  // name of file to keep all test logs in JSON format
 )
 
-type GoTestJson struct {
+type GoTestJSON struct {
 	Time    time.Time `json:"Time"`
 	Action  string    `json:"Action"`
 	Package string    `json:"Package"`
@@ -501,9 +501,13 @@ func (h *helper) cleanupLogFile() func() {
 	return func() {
 		log.Info("Cleaning up file with test log output")
 		content, err := ioutil.ReadFile(testsLogFile)
+		if err != nil {
+			log.Error(err, "Can't read content of file with test output")
+		}
+
 		lines := strings.Split(string(content), "\n")
 		for _, v := range lines {
-			err := json.Unmarshal([]byte(v), &GoTestJson{})
+			err := json.Unmarshal([]byte(v), &GoTestJSON{})
 			if err == nil {
 				lines = append(lines, v)
 			}
@@ -522,8 +526,8 @@ func (h *helper) cleanupLogFile() func() {
 
 		w := bufio.NewWriter(file)
 		for _, line := range lines {
-			w.WriteString(line)
-			w.WriteString("\n")
+			w.WriteString(line) //nolint:errcheck
+			w.WriteString("\n") //nolint:errcheck
 		}
 
 		err = w.Flush()
