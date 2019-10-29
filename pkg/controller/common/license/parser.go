@@ -28,7 +28,7 @@ func ParseEnterpriseLicense(raw map[string][]byte) (EnterpriseLicense, error) {
 
 func FetchLicenseData(raw map[string][]byte) ([]byte, error) {
 	if len(raw) != 1 {
-		return nil, errors.New("Elasticsearch license secret needs to contain exactly one file with any name")
+		return nil, errors.New("license secret needs to contain exactly one file with any name")
 	}
 
 	var result []byte
