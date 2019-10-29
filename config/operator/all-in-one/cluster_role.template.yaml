@@ -1,6 +1,5 @@
 # The all-in-one operator has cluster-wide permissions on all required resources.
 # Same resources as the namespace operator, except for the addition of:
-# - enterpriselicenses
 # - validating|mutatingwebhookconfigurations
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -30,18 +29,6 @@ rules:
   resources:
   - deployments
   - statefulsets
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - batch
-  resources:
-  - cronjobs
   verbs:
   - get
   - list
