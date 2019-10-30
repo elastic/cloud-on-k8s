@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -56,7 +55,7 @@ func BuildStatefulSet(
 	keystoreResources *keystore.Resources,
 	scheme *runtime.Scheme,
 ) (appsv1.StatefulSet, error) {
-	statefulSetName := name.StatefulSet(es.Name, nodeSet.Name)
+	statefulSetName := v1beta1.StatefulSet(es.Name, nodeSet.Name)
 
 	// ssetSelector is used to match the sset pods
 	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)

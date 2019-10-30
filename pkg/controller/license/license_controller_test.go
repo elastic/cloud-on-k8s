@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -195,7 +194,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			// verify that a cluster license was created
 			// following the es naming convention
 			licenseNsn := nsn
-			licenseNsn.Name = esname.LicenseSecretName(licenseNsn.Name)
+			licenseNsn.Name = v1beta1.LicenseSecretName(licenseNsn.Name)
 			var license corev1.Secret
 			err = client.Get(licenseNsn, &license)
 			if !tt.wantNewLicense {

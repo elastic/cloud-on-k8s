@@ -18,7 +18,6 @@ import (
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -31,7 +30,7 @@ const (
 
 // ConfigSecretName is the name of the secret that holds the ES config for the given StatefulSet.
 func ConfigSecretName(ssetName string) string {
-	return name.ConfigSecret(ssetName)
+	return v1beta1.ConfigSecret(ssetName)
 }
 
 // ConfigSecretVolume returns a SecretVolume to hold the config of nodes in the given stateful set..

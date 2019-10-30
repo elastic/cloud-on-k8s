@@ -22,10 +22,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
@@ -246,19 +244,16 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	violations, err := validation.Validate(es)
+	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
+	err := es.ValidateCreate()
 	if err != nil {
-		return results.WithError(err)
-	}
-	if len(violations) > 0 {
 		log.Error(
-			fmt.Errorf("manifest validation failed"),
+			err,
 			"Elasticsearch manifest validation failed",
 			"namespace", es.Namespace,
 			"es_name", es.Name,
-			"violations", violations,
 		)
-		reconcileState.UpdateElasticsearchInvalid(violations)
+		reconcileState.UpdateElasticsearchInvalid(err)
 		return results
 	}
 
@@ -310,6 +305,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
 		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind),
-		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, esname.ESNamer),
+		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, elasticsearchv1beta1.ESNamer),
 	}
 }

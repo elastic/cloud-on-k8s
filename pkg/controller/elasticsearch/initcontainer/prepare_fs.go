@@ -7,9 +7,9 @@ package initcontainer
 import (
 	"path"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
@@ -95,7 +95,7 @@ func NewPrepareFSInitContainer(
 	certificatesVolumeMount.MountPath = initContainerTransportCertificatesVolumeMountPath
 
 	scriptsVolume := volume.NewConfigMapVolumeWithMode(
-		name.ScriptsConfigMap(clusterName),
+		v1beta1.ScriptsConfigMap(clusterName),
 		esvolume.ScriptsVolumeName,
 		esvolume.ScriptsVolumeMountPath,
 		0755)

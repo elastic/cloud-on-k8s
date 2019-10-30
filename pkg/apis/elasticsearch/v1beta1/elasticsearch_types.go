@@ -22,13 +22,16 @@ type ElasticsearchSpec struct {
 	Image string `json:"image,omitempty"`
 
 	// HTTP holds HTTP layer settings for Elasticsearch.
+	// +kubebuilder:validation:Optional
 	HTTP commonv1beta1.HTTPConfig `json:"http,omitempty"`
 
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
-	NodeSets []NodeSet `json:"nodeSets,omitempty"`
+	// +kubebuilder:validation:MinItems=1
+	NodeSets []NodeSet `json:"nodeSets"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
+	// +kubebuilder:validation:Optional
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
 	// PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
@@ -39,6 +42,7 @@ type ElasticsearchSpec struct {
 
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 
@@ -62,7 +66,8 @@ type NodeSet struct {
 	Config *commonv1beta1.Config `json:"config,omitempty"`
 
 	// Count of Elasticsearch nodes to deploy.
-	Count int32 `json:"count,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	Count int32 `json:"count"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
 	// +kubebuilder:validation:Optional

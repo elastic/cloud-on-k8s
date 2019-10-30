@@ -142,6 +142,7 @@ func (h *helper) initTestContext() error {
 		TestLicence:   h.testLicence,
 		TestRegex:     h.testRegex,
 		TestRun:       h.testRunName,
+		TestTimeout:   h.testTimeout,
 	}
 
 	for i, ns := range h.managedNamespaces {

@@ -2,12 +2,11 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package name
+package v1beta1
 
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -51,19 +50,19 @@ func TestValidate(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			es := v1beta1.Elasticsearch{
+			es := &Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      tc.esName,
 					Namespace: "test",
 				},
-				Spec: v1beta1.ElasticsearchSpec{},
+				Spec: ElasticsearchSpec{},
 			}
 
 			for _, nodeSpecName := range tc.nodeSpecNames {
-				es.Spec.NodeSets = append(es.Spec.NodeSets, v1beta1.NodeSet{Name: nodeSpecName, Count: 10})
+				es.Spec.NodeSets = append(es.Spec.NodeSets, NodeSet{Name: nodeSpecName, Count: 10})
 			}
 
-			err := Validate(es)
+			err := validateNames(es)
 			if tc.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.wantErrMsg)

@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -28,7 +27,7 @@ const (
 // ExternalServiceName returns the name for the external service
 // associated to this cluster
 func ExternalServiceName(esName string) string {
-	return name.HTTPService(esName)
+	return v1beta1.HTTPService(esName)
 }
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint

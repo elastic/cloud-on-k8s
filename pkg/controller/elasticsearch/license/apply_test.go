@@ -8,11 +8,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -117,11 +116,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						license.FileName: []byte(fixtures.LicenseSample),
+						"anything": []byte(fixtures.LicenseSample),
 					},
 				},
 			},
@@ -136,7 +135,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 				},
@@ -148,11 +147,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						license.FileName: {},
+						"anything2": {},
 					},
 				},
 			},
@@ -163,7 +162,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			errors: map[client.ObjectKey]error{
 				types.NamespacedName{
 					Namespace: clusterName.Namespace,
-					Name:      name.LicenseSecretName("test"),
+					Name:      v1beta1.LicenseSecretName("test"),
 				}: errors.New("boom"),
 			},
 		},

@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common_license "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +32,7 @@ func applyLinkedLicense(
 	err := c.Get(
 		types.NamespacedName{
 			Namespace: esCluster.Namespace,
-			Name:      name.LicenseSecretName(esCluster.Name),
+			Name:      v1beta1.LicenseSecretName(esCluster.Name),
 		},
 		&license,
 	)
@@ -43,13 +43,12 @@ func applyLinkedLicense(
 		}
 		return err
 	}
-	if len(license.Data) != 1 {
-		return fmt.Errorf(
-			"linked Elasticsearch license secret needs to contain exactly one file called %s",
-			common_license.FileName,
-		)
+
+	bytes, err := common_license.FetchLicenseData(license.Data)
+	if err != nil {
+		return err
 	}
-	bytes := license.Data[common_license.FileName]
+
 	var lic esclient.License
 	err = json.Unmarshal(bytes, &lic)
 	if err != nil {

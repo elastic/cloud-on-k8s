@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -47,7 +46,7 @@ func Reconcile(
 	httpCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
 		driver.Scheme(),
-		name.ESNamer,
+		v1beta1.ESNamer,
 		&es,
 		labels,
 		certificates.HTTPCAType,
@@ -66,7 +65,7 @@ func Reconcile(
 	httpCertificates, err := http.ReconcileHTTPCertificates(
 		driver,
 		&es,
-		name.ESNamer,
+		v1beta1.ESNamer,
 		httpCA,
 		es.Spec.HTTP.TLS,
 		labels,
@@ -78,14 +77,14 @@ func Reconcile(
 	}
 
 	// reconcile http public certs secret:
-	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &es, name.ESNamer, httpCertificates); err != nil {
+	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &es, v1beta1.ESNamer, httpCertificates); err != nil {
 		return nil, results.WithError(err)
 	}
 
 	transportCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
 		driver.Scheme(),
-		name.ESNamer,
+		v1beta1.ESNamer,
 		&es,
 		labels,
 		certificates.TransportCAType,

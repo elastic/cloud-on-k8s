@@ -106,7 +106,7 @@ dependencies:
 generate: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
-	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
+	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/..." output:crd:artifacts:config=config/crds
 	# verify that the available crd flavors still can generate cleanly
@@ -345,6 +345,7 @@ TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 STACK_VERSION ?= 7.4.0
 E2E_JSON ?= false
+TEST_TIMEOUT ?= 5m
 
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
@@ -363,7 +364,8 @@ e2e-run:
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--crd-flavor=$(CRD_FLAVOR) \
-		--log-to-file=$(E2E_JSON)
+		--log-to-file=$(E2E_JSON) \
+		--test-timeout=$(TEST_TIMEOUT)
 
 e2e-generate-xml:
 	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
@@ -384,7 +386,8 @@ e2e-local:
 		--auto-port-forwarding \
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \
-		--crd-flavor=$(CRD_FLAVOR)
+		--crd-flavor=$(CRD_FLAVOR) \
+		--test-timeout=$(TEST_TIMEOUT)
 	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################

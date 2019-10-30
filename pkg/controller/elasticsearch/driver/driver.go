@@ -26,7 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
@@ -145,7 +144,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	if err != nil {
 		return results.WithError(err)
 	}
-	min, err := esversion.MinVersion(resourcesState.CurrentPods)
+	min, err := minVersion(resourcesState.CurrentPods)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -169,7 +168,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	}
 
-	if err := d.SupportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
+	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return results.WithError(err)
 	}
 
@@ -217,7 +216,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	keystoreResources, err := keystore.NewResources(
 		d,
 		&d.ES,
-		name.ESNamer,
+		v1beta1.ESNamer,
 		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
 		initcontainer.KeystoreParams,
 	)
