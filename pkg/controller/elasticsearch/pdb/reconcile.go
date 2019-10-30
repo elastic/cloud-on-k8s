@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/api/policy/v1beta1"
@@ -65,7 +64,7 @@ func deleteDefaultPDB(k8sClient k8s.Client, es esv1beta1.Elasticsearch) error {
 	pdb := v1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      name.DefaultPodDisruptionBudget(es.Name),
+			Name:      esv1beta1.DefaultPodDisruptionBudget(es.Name),
 		},
 	}
 	if err := k8sClient.Get(k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !errors.IsNotFound(err) {
@@ -96,7 +95,7 @@ func expectedPDB(es esv1beta1.Elasticsearch, statefulSets sset.StatefulSetList, 
 	}
 
 	// inherit user-provided ObjectMeta, but set our own name & namespace
-	expected.Name = name.DefaultPodDisruptionBudget(es.Name)
+	expected.Name = esv1beta1.DefaultPodDisruptionBudget(es.Name)
 	expected.Namespace = es.Namespace
 	// and append our labels
 	expected.Labels = defaults.SetDefaultLabels(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))

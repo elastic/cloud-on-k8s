@@ -48,13 +48,13 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
-					settings.DiscoveryZenMinimumMasterNodes: "4",
+					v1beta1.DiscoveryZenMinimumMasterNodes: "4",
 				})},
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
-					settings.DiscoveryZenMinimumMasterNodes: "4",
+					v1beta1.DiscoveryZenMinimumMasterNodes: "4",
 				})},
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
-					settings.DiscoveryZenMinimumMasterNodes: "4",
+					v1beta1.DiscoveryZenMinimumMasterNodes: "4",
 				})},
 			},
 			pods: []runtime.Object{},
@@ -66,7 +66,7 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
-					settings.DiscoveryZenMinimumMasterNodes: "2",
+					v1beta1.DiscoveryZenMinimumMasterNodes: "2",
 				})},
 				settings.NewCanonicalConfig(),
 			},

@@ -15,7 +15,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -94,7 +93,7 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ns,
-		Name:      certificates.PublicSecretName(esname.ESNamer, esName, certificates.HTTPCAType),
+		Name:      certificates.PublicSecretName(v1beta1.ESNamer, esName, certificates.HTTPCAType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err

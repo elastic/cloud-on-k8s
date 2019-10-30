@@ -5,9 +5,9 @@
 package zen2
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 )
 
 // SetupInitialMasterNodes modifies the ES config of the given resources to setup
@@ -28,7 +28,7 @@ func SetupInitialMasterNodes(
 			continue
 		}
 		// patch config with the expected initial master nodes
-		if err := nodeSpecResources[i].Config.SetStrings(settings.ClusterInitialMasterNodes, masters...); err != nil {
+		if err := nodeSpecResources[i].Config.SetStrings(v1beta1.ClusterInitialMasterNodes, masters...); err != nil {
 			return err
 		}
 	}

@@ -20,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	elasticsearchuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
@@ -317,7 +316,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbtype.Kibana, e
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(kibanaKey),
-		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esname.ESNamer, es)},
+		Watched: []types.NamespacedName{http.PublicCertsSecretRef(estype.ESNamer, es)},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return association.CASecret{}, err

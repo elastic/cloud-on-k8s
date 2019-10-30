@@ -11,7 +11,6 @@ import (
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +37,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	esCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      certificates.PublicSecretName(esname.ESNamer, es.Name, certificates.HTTPCAType),
+			Name:      certificates.PublicSecretName(estype.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
@@ -48,7 +47,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	updatedEsCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      certificates.PublicSecretName(esname.ESNamer, es.Name, certificates.HTTPCAType),
+			Name:      certificates.PublicSecretName(estype.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("updated-fake-cert"),

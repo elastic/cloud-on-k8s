@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -30,7 +29,7 @@ func TestReconcile(t *testing.T) {
 	defaultPDB := func() *v1beta1.PodDisruptionBudget {
 		return &v1beta1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name.DefaultPodDisruptionBudget("cluster"),
+				Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 				Namespace: "ns",
 				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 			},
@@ -83,7 +82,7 @@ func TestReconcile(t *testing.T) {
 			},
 			wantPDB: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -115,7 +114,7 @@ func TestReconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := Reconcile(tt.args.k8sClient, scheme.Scheme, tt.args.es, tt.args.statefulSets)
 			require.NoError(t, err)
-			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: name.DefaultPodDisruptionBudget(tt.args.es.Name)}
+			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1beta1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved v1beta1.PodDisruptionBudget
 			err = tt.args.k8sClient.Get(pdbNsn, &retrieved)
 			if tt.wantPDB == nil {
@@ -172,7 +171,7 @@ func Test_expectedPDB(t *testing.T) {
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -203,7 +202,7 @@ func Test_expectedPDB(t *testing.T) {
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -232,7 +231,7 @@ func Test_expectedPDB(t *testing.T) {
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},

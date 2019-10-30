@@ -63,7 +63,6 @@ func SetupMinimumMasterNodesConfig(
 			actualMasters := len(label.FilterMasterNodePods(actualPods))
 			masters += actualMasters
 		}
-
 	}
 
 	quorum := settings.Quorum(masters)
@@ -72,7 +71,7 @@ func SetupMinimumMasterNodesConfig(
 		// patch config with the expected minimum master nodes
 		if err := nodeSpecResources[i].Config.MergeWith(
 			common.MustNewSingleValue(
-				settings.DiscoveryZenMinimumMasterNodes,
+				v1beta1.DiscoveryZenMinimumMasterNodes,
 				strconv.Itoa(quorum),
 			),
 		); err != nil {

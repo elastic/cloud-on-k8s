@@ -7,8 +7,6 @@ package transport
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -23,7 +21,7 @@ import (
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	defaultSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.TransportCertificatesSecret(testES.Name),
+			Name:      v1beta1.TransportCertificatesSecret(testES.Name),
 			Namespace: testES.Namespace,
 			Labels: map[string]string{
 				label.ClusterNameLabelName: testES.Name,

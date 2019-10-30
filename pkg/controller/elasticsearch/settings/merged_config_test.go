@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	"github.com/stretchr/testify/require"
@@ -31,10 +32,10 @@ func TestNewMergedESConfig(t *testing.T) {
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFile1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNative1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNative1Order})))
 			},
 		},
 		{
@@ -45,10 +46,10 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFile1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNative1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNative1Order})))
 			},
 		},
 		{
@@ -61,10 +62,10 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Type})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFile1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNative1Type})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNative1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsAD1Type})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsAD1Order})))
 			},
@@ -75,8 +76,8 @@ func TestNewMergedESConfig(t *testing.T) {
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 0, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFileFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNativeNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFileFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNativeNative1Order})))
 			},
 		},
 		{
@@ -87,8 +88,8 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFileFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNativeNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFileFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNativeNative1Order})))
 			},
 		},
 		{
@@ -100,8 +101,8 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 			assert: func(cfg CanonicalConfig) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{nodeML})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsFileFile1Order})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{XPackSecurityAuthcRealmsNativeNative1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsFileFile1Order})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.XPackSecurityAuthcRealmsNativeNative1Order})))
 				require.Equal(t, 1, len(cfg.HasKeys([]string{xPackSecurityAuthcRealmsActiveDirectoryAD1Order})))
 			},
 		},
@@ -110,8 +111,8 @@ func TestNewMergedESConfig(t *testing.T) {
 			version: "6.8.0",
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 1, len(cfg.HasKeys([]string{DiscoveryZenHostsProvider})))
-				require.Equal(t, 0, len(cfg.HasKeys([]string{DiscoverySeedProviders})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.DiscoveryZenHostsProvider})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{estype.DiscoverySeedProviders})))
 			},
 		},
 		{
@@ -119,8 +120,8 @@ func TestNewMergedESConfig(t *testing.T) {
 			version: "7.0.0",
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
-				require.Equal(t, 0, len(cfg.HasKeys([]string{DiscoveryZenHostsProvider})))
-				require.Equal(t, 1, len(cfg.HasKeys([]string{DiscoverySeedProviders})))
+				require.Equal(t, 0, len(cfg.HasKeys([]string{estype.DiscoveryZenHostsProvider})))
+				require.Equal(t, 1, len(cfg.HasKeys([]string{estype.DiscoverySeedProviders})))
 			},
 		},
 	}

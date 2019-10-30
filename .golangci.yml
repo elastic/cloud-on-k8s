@@ -64,7 +64,7 @@ issues:
       text: 'struct of size 96 bytes could be of size 80 bytes'
     - path: pkg/controller/elasticsearch/reconcile/resources_state\.go
       text: 'ifElseChain: rewrite if\-else to switch statement'
-    - path: pkg/controller/elasticsearch/settings/fields\.go
+    - path: pkg/apis/elasticsearch/v1beta1/fields\.go
       text: 'const .* should be'
     - path: pkg/controller/elasticsearch/user/reconciler\.go
       text: 'Consider preallocating `allUsers`'
@@ -90,6 +90,10 @@ issues:
       text: 'Consider preallocating `errs`'
     - path: test/e2e/test/elasticsearch/steps_license\.go
       text: 'G101: Potential hardcoded credentials'
+    - path: pkg/apis/elasticsearch/v1beta1/name\.go
+      text: 'G101: Potential hardcoded credentials'
+    - path: pkg/controller/elasticsearch/driver/version\.go
+      text: 'Consider preallocating `vs`'
     - linters:
         - stylecheck
       text: 'ST1016: methods on the same type should have the same receiver name.*"in".*'

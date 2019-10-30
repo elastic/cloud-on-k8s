@@ -5575,6 +5575,7 @@ spec:
                     count:
                       description: Count of Elasticsearch nodes to deploy.
                       format: int32
+                      minimum: 1
                       type: integer
                     name:
                       description: Name of this set of nodes. Becomes a part of the
@@ -10369,8 +10370,10 @@ spec:
                         type: object
                       type: array
                   required:
+                  - count
                   - name
                   type: object
+                minItems: 1
                 type: array
               podDisruptionBudget:
                 description: PodDisruptionBudget provides access to the default pod
@@ -10517,6 +10520,8 @@ spec:
               version:
                 description: Version of Elasticsearch.
                 type: string
+            required:
+            - nodeSets
             type: object
           status:
             description: ElasticsearchStatus defines the observed state of Elasticsearch
