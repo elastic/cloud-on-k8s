@@ -97,7 +97,7 @@ func buildLabels(
 	podLabels, err := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
 		v1beta1.StatefulSet(es.Name, nodeSet.Name),
-		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Scheme(),
+		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Protocol(),
 	)
 	if err != nil {
 		return nil, err

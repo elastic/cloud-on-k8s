@@ -26,6 +26,7 @@ func NewService(kb kibanav1beta1.Kibana) *corev1.Service {
 	labels := label.NewLabels(kb.Name)
 	ports := []corev1.ServicePort{
 		{
+			Name:     kb.Spec.HTTP.Protocol(),
 			Protocol: corev1.ProtocolTCP,
 			Port:     pod.HTTPPort,
 		},

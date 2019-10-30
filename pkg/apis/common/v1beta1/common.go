@@ -55,8 +55,8 @@ type HTTPConfig struct {
 	TLS TLSOptions `json:"tls,omitempty"`
 }
 
-// Scheme returns the scheme for this HTTP config
-func (http HTTPConfig) Scheme() string {
+// Protocol returns the inferrred protocol (http or https) for this configuration.
+func (http HTTPConfig) Protocol() string {
 	if http.TLS.Enabled() {
 		return "https"
 	}
