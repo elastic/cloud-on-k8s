@@ -199,6 +199,9 @@ func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 
 func (b Builder) WithEmptyDirVolumes() Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
+		// remove any default claim
+		b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates = nil
+		// setup an EmptyDir for the data volume
 		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
 			{
 				Name: volume.ElasticsearchDataVolumeName,
