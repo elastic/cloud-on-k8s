@@ -30,7 +30,7 @@ func NewState(request reconcile.Request, as *v1beta1.ApmServer) State {
 // UpdateApmServerState updates the ApmServer status based on the given deployment.
 func (s State) UpdateApmServerState(deployment v1.Deployment, apmServerSecret corev1.Secret) {
 	s.ApmServer.Status.SecretTokenSecretName = apmServerSecret.Name
-	s.ApmServer.Status.AvailableNodes = int(deployment.Status.AvailableReplicas) // TODO lossy type conversion
+	s.ApmServer.Status.AvailableNodes = int64(deployment.Status.AvailableReplicas)
 	s.ApmServer.Status.Health = v1beta1.ApmServerRed
 	for _, c := range deployment.Status.Conditions {
 		if c.Type == v1.DeploymentAvailable && c.Status == corev1.ConditionTrue {

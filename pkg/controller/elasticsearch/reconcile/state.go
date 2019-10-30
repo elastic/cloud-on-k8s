@@ -43,7 +43,7 @@ func (s *State) updateWithPhase(
 	resourcesState ResourcesState,
 	observedState observer.State,
 ) *State {
-	s.status.AvailableNodes = len(AvailableElasticsearchNodes(resourcesState.CurrentPods))
+	s.status.AvailableNodes = int64(len(AvailableElasticsearchNodes(resourcesState.CurrentPods)))
 	s.status.Phase = phase
 
 	s.status.Health = v1beta1.ElasticsearchUnknownHealth
@@ -76,7 +76,7 @@ func (s *State) IsElasticsearchReady(observedState observer.State) bool {
 
 // UpdateElasticsearchApplyingChanges marks Elasticsearch as being the applying changes phase in the resource status.
 func (s *State) UpdateElasticsearchApplyingChanges(pods []corev1.Pod) *State {
-	s.status.AvailableNodes = len(AvailableElasticsearchNodes(pods))
+	s.status.AvailableNodes = int64(len(AvailableElasticsearchNodes(pods)))
 	s.status.Phase = v1beta1.ElasticsearchApplyingChangesPhase
 	s.status.Health = v1beta1.ElasticsearchRedHealth
 	return s
