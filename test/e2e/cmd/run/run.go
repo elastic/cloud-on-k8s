@@ -343,17 +343,18 @@ func (h *helper) streamTestJobOutput(streamStatus chan<- error, client *kubernet
 	}
 	defer stream.Close()
 
-	writer := io.MultiWriter(os.Stdout)
+	outputs := []io.Writer{os.Stdout}
 	if h.logToFile {
-		f, err := os.Create(testsLogFile)
+		jl, err := newJSONLogToFile(testsLogFile)
 		if err != nil {
-			log.Error(err, "Can't create file for test output")
+			log.Error(err, "Failed to create log file for test output")
 			return
 		}
-		defer f.Close()
-		writer = io.MultiWriter(writer, f)
+		defer jl.Close()
+		outputs = append(outputs, jl)
 	}
 
+	writer := io.MultiWriter(outputs...)
 	var buffer [logBufferSize]byte
 	if _, err := io.CopyBuffer(writer, stream, buffer[:]); err != nil {
 		if err == io.EOF {
