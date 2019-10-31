@@ -33,7 +33,7 @@ spec:
       containers:
         - name: e2e
           image: {{ .E2EImage }}
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           args: [{{- if .TestRegex -}}"-run", "{{ .TestRegex }}",{{- end -}}"-args", "-testContextPath","/etc/e2e/testcontext.json"]
           volumeMounts:
             - name: test-config

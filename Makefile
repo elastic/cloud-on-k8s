@@ -429,7 +429,7 @@ validate-jenkins-pipelines:
 # Kind specific targets #
 #########################
 KIND_NODES ?= 0
-KIND_NODE_IMAGE ?= kindest/node:v1.15.0
+KIND_NODE_IMAGE ?= kindest/node:v1.15.3
 KIND_CLUSTER_NAME ?= eck
 
 kind-node-variable-check:
@@ -470,6 +470,7 @@ ifneq ($(ECK_IMAGE),)
 else
 	$(MAKE) docker-build
 endif
+
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
