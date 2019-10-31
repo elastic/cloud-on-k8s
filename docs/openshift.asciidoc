@@ -27,7 +27,7 @@ NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https:/
 +
 Before deploying an Elasticsearch cluster with ECK, make sure that the Kubernetes nodes in your cluster have the correct `vm.max_map_count` sysctl setting applied. By default, Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) which restricts privileged access required to change this setting in the underlying Kubernetes nodes. 
 +
-Alternatively, you can opt for setting `node.store.allow_mmap: false` at the link:k8s-node-configuration.html[Elasticsearch node configuration] level, but note that this has performance implications and is not recommended for production workloads.
+Alternatively, you can opt for setting `node.store.allow_mmap: false` at the <<{p}-node-configuration,Elasticsearch node configuration>> level, but note that this has performance implications and is not recommended for production workloads.
 +
 For more details, see the ECK documentation on link:k8s-virtual-memory.html[Virtual memory].
 
