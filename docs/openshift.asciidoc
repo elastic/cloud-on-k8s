@@ -29,7 +29,7 @@ Before deploying an Elasticsearch cluster with ECK, make sure that the Kubernete
 +
 Alternatively, you can opt for setting `node.store.allow_mmap: false` at the <<{p}-node-configuration,Elasticsearch node configuration>> level, but note that this has performance implications and is not recommended for production workloads.
 +
-For more details, see the ECK documentation on link:k8s-virtual-memory.html[Virtual memory].
+For more information, see: <<{p}-virtual-memory>>.
 
 [float]
 [id="{p}-openshift-deploy-the-operator"]
