@@ -42,6 +42,7 @@ func TestCrossNSAssociation(t *testing.T) {
 func TestKibanaAssociationWithNonExistentES(t *testing.T) {
 	name := "test-kb-assoc-non-existent-es"
 	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(commonv1beta1.ObjectSelector{Name: "some-es"}).
 		WithNodeCount(1)
 
 	k := test.NewK8sClientOrFatal()
