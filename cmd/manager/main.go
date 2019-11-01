@@ -12,10 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
+	"github.com/elastic/cloud-on-k8s/pkg/about"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -29,16 +30,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-
-	// TODO (sabo): re-enable when webhooks are usable
-	// "github.com/elastic/cloud-on-k8s/pkg/webhook"
-
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -47,6 +43,7 @@ import (
 const (
 	MetricsPortFlag   = "metrics-port"
 	DefaultMetricPort = 0 // disabled
+	WebhookPort       = 9443
 
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespacesFlag          = "namespaces"
@@ -56,6 +53,7 @@ const (
 	CertValidityFlag       = "cert-validity"
 	CertRotateBeforeFlag   = "cert-rotate-before"
 
+	EnableWebhooksFlag      = "enable-webhooks"
 	AutoInstallWebhooksFlag = "auto-install-webhooks"
 	OperatorNamespaceFlag   = "operator-namespace"
 	WebhookSecretFlag       = "webhook-secret"
@@ -121,6 +119,11 @@ func init() {
 		CertRotateBeforeFlag,
 		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration TLS certificates should be reissued",
+	)
+	Cmd.Flags().Bool(
+		EnableWebhooksFlag,
+		false,
+		"enables serving webhooks from the operator pod. Webhook configuration must also be created to function",
 	)
 	Cmd.Flags().Bool(
 		AutoInstallWebhooksFlag,
@@ -236,6 +239,8 @@ func execute() {
 	}
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
+	// override the default of 443 because we run as non-root
+	opts.Port = WebhookPort
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "unable to create controller manager")
@@ -313,13 +318,12 @@ func execute() {
 			os.Exit(1)
 		}
 	}
-
-	// TODO (sabo): re-enable when webhooks are usable
-	// log.Info("Setting up webhooks")
-	// if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
-	// 	log.Error(err, "unable to register webhooks to the manager")
-	// 	os.Exit(1)
-	// }
+	if viper.GetBool(EnableWebhooksFlag) {
+		if err = (&estype.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
+			log.Error(err, "unable to create webhook", "webhook", "Elasticsearch")
+			os.Exit(1)
+		}
+	}
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,

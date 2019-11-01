@@ -86,7 +86,7 @@ func hasMaster(es *Elasticsearch) field.ErrorList {
 		hasMaster = hasMaster || (cfg.Node.Master && t.Count > 0)
 	}
 	if !hasMaster {
-		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, masterRequiredMsg))
+		errs = append(errs, field.Required(field.NewPath("spec").Child("nodeSets"), masterRequiredMsg))
 	}
 	return errs
 }
