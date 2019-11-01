@@ -1,0 +1,168 @@
+[id="{p}-webhook"]
+== Validating webhook
+
+A validating webhook provides additional validation of Elasticsearch resources beyond what can be specified in OpenAPI specs. This allows advanced validation to help prevent Elasticsearch resources that are invalid and will not function correctly from being admitted by the Kubernetes API server, which can aid troubleshooting. To enable the validating webhook, you must first install cert-manager v0.11+ as described in their instructions link:from being admitted by the Kubernetes API server[here].
+
+Once that is complete, you can apply this yaml to create all of the resources necessary for the validating webhook to function. This same yaml is also available in `cloud-on-k8s/config/recipes/cert-manager/webhook.yaml`:
+
+[source,yaml]
+----
+cat $$<<$$EOF | kubectl apply -f -
+---
+# this configures
+# - a self signed cert-manager issuer
+# - a service to point to the webhook
+# - a self signed certificate for the webhook service
+# - a validating webhook configuration
+# - updates the ECK operator statefulset to enable the webhook
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: elastic-system
+spec:
+  selfSigned: {}
+...
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: elastic-webhook
+  namespace: elastic-system
+spec:
+  commonName: elastic-webhook.elastic-system.svc
+  dnsNames:
+  - elastic-webhook.elastic-system.svc.cluster.local
+  - elastic-webhook.elastic-system.svc
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: elastic-webhook-server-cert
+...
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-webhook
+  namespace: elastic-system
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
+  selector:
+    control-plane: elastic-operator
+  sessionAffinity: None
+  type: ClusterIP
+...
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: elastic-webhook.k8s.elastic.co
+  annotations:
+    cert-manager.io/inject-ca-from: elastic-system/elastic-webhook
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: elastic-webhook
+      namespace: elastic-system
+      # this is the path controller-runtime automatically generates
+      path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
+  failurePolicy: Ignore
+  name: elastic-es-validation.k8s.elastic.co
+  timeoutSeconds: 5
+  sideEffects: None
+  rules:
+  - apiGroups:
+    - elasticsearch.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearches
+...
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    control-plane: elastic-operator
+  name: elastic-operator
+  namespace: elastic-system
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      control-plane: elastic-operator
+  serviceName: elastic-operator
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        control-plane: elastic-operator
+    spec:
+      containers:
+      - args:
+        - manager
+        - --operator-roles
+        - all
+        - --enable-debug-logs=true
+        - --enable-webhooks=true
+        env:
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_IMAGE
+          value: docker.elastic.co/eck/eck-operator:1.0.0-beta1
+        # this may need to be updated to a snapshot build
+        image: docker.elastic.co/eck/eck-operator:1.0.0-beta1
+        imagePullPolicy: Always
+        name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        volumeMounts:
+        # this is the path controller-runtime looks for certs and should not be changed
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+        resources:
+          limits:
+            cpu: "1"
+            memory: 150Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: elastic-webhook-server-cert 
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: elastic-operator
+      serviceAccountName: elastic-operator
+      terminationGracePeriodSeconds: 10
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+...
+EOF
+----
+
+
+=== Troubleshooting
+
+You can change the `failurePolicy` of the webhook configuration to `Fail`, which will cause creations to error out if there is an error contacting the webhook.
