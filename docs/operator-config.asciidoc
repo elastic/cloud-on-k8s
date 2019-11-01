@@ -15,6 +15,7 @@ You can use several options to configure ECK. Unless otherwise noted, these opti
 
 |`log-verbosity` |int |0 |Verbosity level of logs. -2=Error, -1=Warn, 0=Info, >0=Debug
 |`enable-debug-logs` |bool |false |Enables debug logs. Equivalent to `log-verbosity=1`
+|`enable-webhooks` |bool |false |Enables the webhook server. Requires a `ValidatingWebhookConfiguration` to be used by the cluster
 |`metrics-port` |int |0 |Port to use for exposing metrics in the Prometheus format. Set 0 to disable
 |`operator-roles` |[]string |all |Roles this operator should assume. Valid values are namespace, global, webhook or all. Accepts multiple comma separated values. See <<{p}-ns-config>> for more information
 |`namespaces` |[]string |`""` |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces. See <<{p}-ns-config>> for more information
