@@ -73,6 +73,11 @@ pipeline {
                         message: msg,
                         tokenCredentialId: 'cloud-ci-slack-integration-token'
                 }
+                googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
+                    credentialsId: "devops-ci-gcs-plugin",
+                    pattern: "*.tgz",
+                    sharedPublicly: true,
+                    showInline: true
             }
         }
         cleanup {
