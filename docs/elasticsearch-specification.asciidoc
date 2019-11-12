@@ -305,7 +305,7 @@ NOTE: The first option has the advantage that you can verify the correctness of 
 maximum flexibility. But the second option also means you might catch any errors only at runtime. Plugin installation at runtime has another drawback in that it needs access to the Internet from your cluster
 and downloads each plugin multiple times, once for each Elasticsearch node.
 
-See link:custom-images.asciidoc[Creating custom images] for instructions on how to build custom Docker images based on the official Elastic images.
+See link:k8s-custom-images.html[Creating custom images] for instructions on how to build custom Docker images based on the official Elastic images.
 
 The following example describes option 2, using a repository plugin. To install the plugin before the Elasticsearch
 nodes start, use an init container to run the link:https://www.elastic.co/guide/en/elasticsearch/plugins/current/installation.html[plugin installation tool].
