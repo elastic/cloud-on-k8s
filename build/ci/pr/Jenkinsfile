@@ -1,5 +1,5 @@
 def failedTests = []
-def testScript
+def lib
 
 pipeline {
 
@@ -22,7 +22,7 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    testScript = load "build/ci/common/tests.groovy"
+                    lib = load "build/ci/common/tests.groovy"
                 }
             }
         }
@@ -34,7 +34,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
+                        script {
+                            lib.runWith(failedTests, "eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
+                        }
                     }
                 }
             }
@@ -42,6 +44,12 @@ pipeline {
     }
 
     post {
+        always {
+            script {
+                env.X = failedTests.size()
+                sh 'echo "count failed tests: $X"'
+            }
+        }
         cleanup {
             script {
                 clusters = ["eck-71-${BUILD_NUMBER}-e2e"]
@@ -57,14 +65,3 @@ pipeline {
 
 }
 
-def runWith(clusterName, stackVersion) {
-    script {
-        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'fail')
-
-        if (env.SHELL_EXIT_CODE != 0) {
-            failedTests.addAll(testScript.getListOfFailedTests())
-        }
-
-        sh 'exit $SHELL_EXIT_CODE'
-    }
-}
