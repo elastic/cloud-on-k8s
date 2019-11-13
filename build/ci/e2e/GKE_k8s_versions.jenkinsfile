@@ -95,7 +95,7 @@ pipeline {
     }
 }
 
-void runWith(clusterVersion, clusterName) {
+def runWith(failedTests, clusterVersion, clusterName) {
     sh """#!/bin/bash
 
         cat >.env <<EOF

@@ -115,7 +115,7 @@ pipeline {
 
 }
 
-def runWith(clusterName, stackVersion) {
+def runWith(failedTests, clusterName, stackVersion) {
     sh """
         cat >.env <<EOF
 OPERATOR_IMAGE = "${IMAGE}"
