@@ -5,6 +5,7 @@
 package driver
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
@@ -468,6 +469,56 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 				if tt.want[i] != toUpgrade[i].Name {
 					t.Errorf("DeletionStrategyContext.SortFunction() = %v, want %v", names(toUpgrade), tt.want)
 				}
+			}
+		})
+	}
+}
+
+func Test_groupByPredicates(t *testing.T) {
+	type args struct {
+		fp failedPredicates
+	}
+	tests := []struct {
+		name string
+		args args
+		want map[string][]string
+	}{
+		{
+			name: "Do not fail if Nil",
+			args: args{fp: nil},
+			want: map[string][]string{},
+		},
+		{
+			name: "Do not fail if empty",
+			args: args{fp: []failedPredicate{}},
+			want: map[string][]string{},
+		},
+		{
+			name: "Simple test",
+			args: args{fp: []failedPredicate{
+				{
+					pod:       "pod-0",
+					predicate: "do_not_restart_healthy_node_if_MaxUnavailable_reached",
+				},
+				{
+					pod:       "pod-1",
+					predicate: "do_not_restart_healthy_node_if_MaxUnavailable_reached",
+				},
+				{
+					pod:       "pod-3",
+					predicate: "skip_already_terminating_pods",
+				},
+			}},
+			want: map[string][]string{
+				"do_not_restart_healthy_node_if_MaxUnavailable_reached": {"pod-0", "pod-1"},
+				"skip_already_terminating_pods":                         {"pod-3"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := groupByPredicates(tt.args.fp); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("groupByPredicates() = %v, want %v", got, tt.want)
 			}
 		})
 	}
