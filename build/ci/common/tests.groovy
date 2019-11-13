@@ -32,10 +32,13 @@ def generateSlackMessage(baseMsg, URL, failedTests) {
 
 def runWith(failedTests, clusterName, stackVersion) {
     script {
-        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'fail')
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'echo ok')
 
-        if (env.SHELL_EXIT_CODE != 0) {
-            failedTests.addAll(["test1", "test2"])
+        if (env.SHELL_EXIT_CODE != "0") {
+            echo "a) exit_code: ${env.SHELL_EXIT_CODE}"
+            failedTests.addAll(["test1", "test2", "test3"])
+        } else {
+            echo "b) exit_code: ${env.SHELL_EXIT_CODE}"
         }
 
         sh 'exit $SHELL_EXIT_CODE'
