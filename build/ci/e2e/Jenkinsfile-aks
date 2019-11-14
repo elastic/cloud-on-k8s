@@ -66,7 +66,6 @@ EOF
 id: aks-ci
 overrides:
   operation: delete
-  kubernetesVersion: "1.12.8"
   clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR
