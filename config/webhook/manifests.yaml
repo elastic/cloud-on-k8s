@@ -13,7 +13,7 @@ webhooks:
       namespace: system
       path: /validate-elasticsearch
   failurePolicy: Ignore
-  name: elastic-es-validation
+  name: elastic-es-validation.k8s.elastic.co
   rules:
   - apiGroups:
     - elasticsearch.k8s.elastic.co

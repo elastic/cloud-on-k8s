@@ -70,14 +70,14 @@ func ReconcileCAForOwner(
 	}
 
 	// build CA
-	ca := buildCAFromSecret(caInternalSecret)
+	ca := BuildCAFromSecret(caInternalSecret)
 	if ca == nil {
 		log.Info("Cannot build CA from secret, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, rotationParams.Validity, scheme, caType)
 	}
 
 	// renew if cannot reuse
-	if !canReuseCA(ca, rotationParams.RotateBefore) {
+	if !CanReuseCA(ca, rotationParams.RotateBefore) {
 		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, rotationParams.Validity, scheme, caType)
 	}
@@ -125,14 +125,14 @@ func renewCA(
 	return ca, nil
 }
 
-// canReuseCA returns true if the given CA is valid for reuse
-func canReuseCA(ca *CA, expirationSafetyMargin time.Duration) bool {
-	return PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && certIsValid(*ca.Cert, expirationSafetyMargin)
+// CanReuseCA returns true if the given CA is valid for reuse
+func CanReuseCA(ca *CA, expirationSafetyMargin time.Duration) bool {
+	return PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && CertIsValid(*ca.Cert, expirationSafetyMargin)
 }
 
-// certIsValid returns true if the given cert is valid,
+// CertIsValid returns true if the given cert is valid,
 // according to a safety time margin.
-func certIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
+func CertIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
 	now := time.Now()
 	if now.Before(cert.NotBefore) {
 		log.Info("CA cert is not valid yet", "subject", cert.Subject)
@@ -166,9 +166,9 @@ func internalSecretForCA(
 	}
 }
 
-// buildCAFromSecret parses the given secret into a CA.
+// BuildCAFromSecret parses the given secret into a CA.
 // It returns nil if the secrets could not be parsed into a CA.
-func buildCAFromSecret(caInternalSecret corev1.Secret) *CA {
+func BuildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	if caInternalSecret.Data == nil {
 		return nil
 	}

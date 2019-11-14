@@ -12,10 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
+
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
+	"github.com/elastic/cloud-on-k8s/pkg/about"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -29,16 +32,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-
-	// TODO (sabo): re-enable when webhooks are usable
-	// "github.com/elastic/cloud-on-k8s/pkg/webhook"
-
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -47,6 +45,7 @@ import (
 const (
 	MetricsPortFlag   = "metrics-port"
 	DefaultMetricPort = 0 // disabled
+	WebhookPort       = 9443
 
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespacesFlag          = "namespaces"
@@ -56,10 +55,11 @@ const (
 	CertValidityFlag       = "cert-validity"
 	CertRotateBeforeFlag   = "cert-rotate-before"
 
-	AutoInstallWebhooksFlag = "auto-install-webhooks"
-	OperatorNamespaceFlag   = "operator-namespace"
-	WebhookSecretFlag       = "webhook-secret"
-	WebhookPodsLabelFlag    = "webhook-pods-label"
+	AutoCertificatesWebhookFlag = "webhook-certificates-management"
+	OperatorNamespaceFlag       = "operator-namespace"
+	WebhookSecretFlag           = "webhook-secret"
+	WebhookDomainNameFlag       = "webhook-domain-name"
+	DefaultWebhookServiceFlag   = "elastic-webhook-server"
 
 	DebugHTTPServerListenAddressFlag = "debug-http-listen"
 )
@@ -123,19 +123,19 @@ func init() {
 		"Duration representing how long before expiration TLS certificates should be reissued",
 	)
 	Cmd.Flags().Bool(
-		AutoInstallWebhooksFlag,
+		AutoCertificatesWebhookFlag,
 		true,
-		"enables automatic webhook installation (RBAC permission for service, secret and validatingwebhookconfigurations needed)",
+		"enables automatic certificates management for the webhook, the Secret and the ValidatingWebhookConfiguration must be created before running the operator",
+	)
+	Cmd.Flags().String(
+		WebhookDomainNameFlag,
+		DefaultWebhookServiceFlag,
+		"k8s service name used to automatically the webhook certificate",
 	)
 	Cmd.Flags().String(
 		OperatorNamespaceFlag,
 		"",
 		"k8s namespace the operator runs in",
-	)
-	Cmd.Flags().String(
-		WebhookPodsLabelFlag,
-		"",
-		"k8s label to select pods running the operator",
 	)
 	Cmd.Flags().String(
 		WebhookSecretFlag,
@@ -236,6 +236,7 @@ func execute() {
 	}
 	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
+	opts.Port = WebhookPort
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {
 		log.Error(err, "unable to create controller manager")
@@ -281,6 +282,37 @@ func execute() {
 		},
 	}
 
+	if operator.HasRole(operator.WebhookServer, roles) {
+		autoWebhookCertificatesMngt := viper.GetBool(AutoCertificatesWebhookFlag)
+		if autoWebhookCertificatesMngt {
+			log.Info("Automatic management of the webhook certificates enabled")
+			// Ensure that all the certificates needed by the webhook server are already created
+			webhookParams := webhook.Params{
+				Namespace:                viper.GetString(OperatorNamespaceFlag),
+				SecretName:               viper.GetString(WebhookSecretFlag),
+				ServerDomainName:         viper.GetString(WebhookDomainNameFlag),
+				WebhookConfigurationName: "elastic-webhook.k8s.elastic.co",
+				Rotation:                 params.CertRotation,
+			}
+
+			// Force a first reconciliation to create the resources before the server is started
+			if err := webhookParams.ReconcileResources(clientset); err != nil {
+				log.Error(err, "unable to setup and fill the webhook certificates")
+				os.Exit(1)
+			}
+
+			if err = webhook.Add(mgr, webhookParams, clientset); err != nil {
+				log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
+				os.Exit(1)
+			}
+		}
+
+		if err = (&estype.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
+			log.Error(err, "unable to create webhook", "webhook", "Elasticsearch")
+			os.Exit(1)
+		}
+	}
+
 	if operator.HasRole(operator.NamespaceOperator, roles) {
 		if err = apmserver.Add(mgr, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "ApmServer")
@@ -314,13 +346,6 @@ func execute() {
 		}
 	}
 
-	// TODO (sabo): re-enable when webhooks are usable
-	// log.Info("Setting up webhooks")
-	// if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
-	// 	log.Error(err, "unable to register webhooks to the manager")
-	// 	os.Exit(1)
-	// }
-
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
@@ -330,26 +355,6 @@ func execute() {
 		os.Exit(1)
 	}
 }
-
-// TODO (sabo): re-enable when webhooks are usable
-// func newWebhookParameters() (*webhook.Parameters, error) {
-// 	autoInstall := viper.GetBool(AutoInstallWebhooksFlag)
-// 	ns := viper.GetString(OperatorNamespaceFlag)
-// 	if ns == "" && autoInstall {
-// 		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
-// 	}
-// 	svcSelector := viper.GetString(WebhookPodsLabelFlag)
-// 	sec := viper.GetString(WebhookSecretFlag)
-// 	return &webhook.Parameters{
-// 		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
-// 			Namespace:        ns,
-// 			ManagedNamespace: viper.GetString(NamespaceFlagName),
-// 			SecretName:       sec,
-// 			ServiceSelector:  svcSelector,
-// 		}),
-// 		AutoInstall: autoInstall,
-// 	}, nil
-// }
 
 func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration) {
 	certValidity := viper.GetDuration(validityFlag)
