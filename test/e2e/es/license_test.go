@@ -26,11 +26,11 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 
 	// create a single node cluster
 	esBuilder := elasticsearch.NewBuilder("test-es-license-provisioning").
-		WithESMasterNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutatedEsBuilder := esBuilder.
 		WithNoESTopology().
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
 
