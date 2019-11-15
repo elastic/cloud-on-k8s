@@ -1,48 +1,67 @@
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: "eck-{{ .Context.TestRun }}"
+  namespace: {{ .Context.E2ENamespace }}
+  labels:
+    test-run: {{ .Context.TestRun }}
+data:
+{{ range $key, $value := .Secrets.Data }}
+  {{ $key }}: |
+    {{ $value | b64enc }}
+{{ end }}
+
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: "eck-{{ .TestRun }}"
-  namespace: {{ .E2ENamespace }}
+  name: "eck-{{ .Context.TestRun }}"
+  namespace: {{ .Context.E2ENamespace }}
   labels:
-    test-run: {{ .TestRun }}
+    test-run: {{ .Context.TestRun }}
 data:
   testcontext.json: |
-{{ . | toPrettyJson | indent 4 }}
+{{ .Context | toPrettyJson | indent 4 }}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "eck-{{ .TestRun }}"
-  namespace: {{ .E2ENamespace }}
+  name: "eck-{{ .Context.TestRun }}"
+  namespace: {{ .Context.E2ENamespace }}
   labels:
-    test-run: {{ .TestRun }}
+    test-run: {{ .Context.TestRun }}
 spec:
   ttlSecondsAfterFinished: 360
   template:
     metadata:
       labels:
-        test-run: {{ .TestRun }}
+        test-run: {{ .Context.TestRun }}
     spec:
       securityContext:
         fsGroup: 101
         runAsNonRoot: true
         runAsUser: 101
         runAsGroup: 101
-      serviceAccountName: {{ .E2EServiceAccount }}
+      serviceAccountName: {{ .Context.E2EServiceAccount }}
       containers:
         - name: e2e
-          image: {{ .E2EImage }}
+          image: {{ .Context.E2EImage }}
           imagePullPolicy: IfNotPresent
-          args: [{{- if .TestRegex -}}"-run", "{{ .TestRegex }}",{{- end -}}"-args", "-testContextPath","/etc/e2e/testcontext.json"]
+          args: [{{- if .Context.TestRegex -}}"-run", "{{ .Context.TestRegex }}",{{- end -}}"-args", "-testContextPath","/etc/e2e/testcontext.json"]
           volumeMounts:
             - name: test-config
               mountPath: /etc/e2e
+            - name: test-secrets
+              mountPath: /etc/e2e-secrets
           securityContext:
             allowPrivilegeEscalation: false
       volumes:
         - name: test-config
           configMap:
-            name: "eck-{{ .TestRun }}"
+            name: "eck-{{ .Context.TestRun }}"
+        - name: test-secrets
+          secret:
+            secretName: "eck-{{ .Context.TestRun }}"
       restartPolicy: Never
   backoffLimit: 0 # don't retry a failed test
