@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -147,6 +148,14 @@ func (h *helper) initTestContext() error {
 
 	for i, ns := range h.managedNamespaces {
 		h.testContext.NamespaceOperator.ManagedNamespaces[i] = fmt.Sprintf("%s-%s", h.testRunName, ns)
+	}
+
+	if h.testLicence != "" {
+		bytes, err := ioutil.ReadFile(h.testLicence)
+		if err != nil {
+			return err
+		}
+		h.testContext.TestLicence = string(bytes)
 	}
 
 	// write the test context if required

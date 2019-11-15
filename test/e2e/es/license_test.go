@@ -5,13 +5,11 @@
 package es
 
 import (
-	"io/ioutil"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/stretchr/testify/require"
 )
 
 func TestEnterpriseLicenseSingle(t *testing.T) {
@@ -20,9 +18,6 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		t.SkipNow()
 	}
 	k := test.NewK8sClientOrFatal()
-
-	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicence)
-	require.NoError(t, err)
 
 	// create a single node cluster
 	esBuilder := elasticsearch.NewBuilder("test-es-license-provisioning").
@@ -43,7 +38,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		WithStep(licenseTestContext.Init()).
 		WithSteps(test.StepList{
 			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
-			licenseTestContext.CreateEnterpriseLicenseSecret(licenseBytes),
+			licenseTestContext.CreateEnterpriseLicenseSecret([]byte(test.Ctx().TestLicence)),
 		}).
 		// Mutation shortcuts the license provisioning check...
 		WithSteps(mutatedEsBuilder.MutationTestSteps(k)).
