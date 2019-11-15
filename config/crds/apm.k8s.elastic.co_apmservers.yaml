@@ -9285,7 +9285,7 @@ spec:
                   clusters.
                 type: string
               availableNodes:
-                format: int64
+                format: int32
                 type: integer
               health:
                 description: ApmServerHealth expresses the status of the Apm Server

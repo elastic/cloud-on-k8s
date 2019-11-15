@@ -10527,7 +10527,7 @@ spec:
             description: ElasticsearchStatus defines the observed state of Elasticsearch
             properties:
               availableNodes:
-                format: int64
+                format: int32
                 type: integer
               health:
                 description: ElasticsearchHealth is the health of the cluster as returned
