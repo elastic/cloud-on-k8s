@@ -214,14 +214,11 @@ apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
 
 generate-all-in-one:
-ifndef LATEST_RELEASED_IMG
-$(error LATEST_RELEASED_IMG must be set, e.g. "docker.elastic.co/eck/eck-operator:1.0.0")
-endif
 	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
 	    ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-flavor-$$crd_flavor.yaml; \
         kubectl kustomize config/crds-flavor-$$crd_flavor > $${ALL_IN_ONE_OUTPUT_FILE}; \
-        OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
-            NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+        OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+        NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
             $(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $${ALL_IN_ONE_OUTPUT_FILE}; \
 	done
 

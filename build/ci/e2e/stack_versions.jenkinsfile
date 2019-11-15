@@ -124,7 +124,6 @@ def runWith(failedTests, clusterName, stackVersion) {
     sh """
         cat >.env <<EOF
 OPERATOR_IMAGE = "${IMAGE}"
-LATEST_RELEASED_IMG = "${IMAGE}"
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 STACK_VERSION = "${stackVersion}"
 SKIP_DOCKER_COMMAND = true
