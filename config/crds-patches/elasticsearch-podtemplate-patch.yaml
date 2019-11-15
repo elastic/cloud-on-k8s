@@ -6,6 +6,7 @@
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/podTemplate/properties
 # Remove validation.Type that causes failures on k8s 1.11.
-# TODO: that should already not be there https://github.com/kubernetes-sigs/controller-tools/pull/72
+# This should have been fixed with https://github.com/kubernetes-sigs/controller-tools/pull/72, but it looks like
+# this commit has been lost in history. See https://github.com/kubernetes-sigs/controller-tools/issues/296.
 - op: remove
   path: /spec/validation/openAPIV3Schema/type
