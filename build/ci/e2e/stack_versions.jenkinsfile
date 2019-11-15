@@ -31,7 +31,9 @@ pipeline {
                 stage("6.8.4") {
                     steps {
                         checkout scm
-                        runWith("eck-68-${BUILD_NUMBER}-e2e", "6.8.4")
+                        script {
+                            runWith(failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.4")
+                        }
                     }
                 }
                 stage("7.1.1") {
@@ -40,7 +42,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
+                        script {
+                            runWith(failedTests, "eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
+                        }
                     }
                 }
                 stage("7.2.1") {
@@ -49,7 +53,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-72-${BUILD_NUMBER}-e2e", "7.2.1")
+                        script {
+                            runWith(failedTests, "eck-72-${BUILD_NUMBER}-e2e", "7.2.1")
+                        }
                     }
                 }
                 stage("7.3.2") {
@@ -58,7 +64,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-73-${BUILD_NUMBER}-e2e", "7.3.2")
+                        script {
+                            runWith(failedTests, "eck-73-${BUILD_NUMBER}-e2e", "7.3.2")
+                        }
                     }
                 }
                 stage("7.4.1") {
@@ -67,7 +75,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-74-${BUILD_NUMBER}-e2e", "7.4.1")
+                        script {
+                            runWith(failedTests, "eck-74-${BUILD_NUMBER}-e2e", "7.4.1")
+                        }
                     }
                 }
             }
@@ -110,7 +120,7 @@ pipeline {
 
 }
 
-def runWith(clusterName, stackVersion) {
+def runWith(failedTests, clusterName, stackVersion) {
     sh """
         cat >.env <<EOF
 OPERATOR_IMAGE = "${IMAGE}"

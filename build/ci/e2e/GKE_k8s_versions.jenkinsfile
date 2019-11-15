@@ -34,7 +34,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.12', "eck-gke12-${BUILD_NUMBER}-e2e")
+                        script {
+                            runWith(failedTests, '1.12', "eck-gke12-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
                 stage("1.13") {
@@ -43,7 +45,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.13', "eck-gke13-${BUILD_NUMBER}-e2e")
+                        script {
+                            runWith(failedTests, '1.13', "eck-gke13-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
                 stage("1.14") {
@@ -52,7 +56,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.14', "eck-gke14-${BUILD_NUMBER}-e2e")
+                        script {
+                            runWith(failedTests, '1.14', "eck-gke14-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
             }
@@ -94,7 +100,7 @@ pipeline {
     }
 }
 
-void runWith(clusterVersion, clusterName) {
+def runWith(failedTests, clusterVersion, clusterName) {
     sh """#!/bin/bash
 
         cat >.env <<EOF
