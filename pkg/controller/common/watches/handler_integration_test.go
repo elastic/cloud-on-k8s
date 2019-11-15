@@ -25,7 +25,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds"))
+	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds-patches"))
 }
 
 // TestDynamicEnqueueRequest tests the integration between a DynamicEnqueueRequest watch and
