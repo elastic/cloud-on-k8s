@@ -1306,10 +1306,10 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 --------------------------------------------------------------------------------
 Module  : github.com/imdario/mergo
-Version : v0.3.6
-Time    : 2018-07-30 21:26:40 +0000 UTC
+Version : v0.3.8
+Time    : 2019-10-03 07:39:17 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/github.com/imdario/mergo@v0.3.6/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/imdario/mergo@v0.3.8/LICENSE:
 
 Copyright (c) 2013 Dario Castañé. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
@@ -1592,10 +1592,10 @@ Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v0.0.5/LICE
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/pflag
-Version : v1.0.3
-Time    : 2018-08-31 15:14:32 +0000 UTC
+Version : v1.0.5
+Time    : 2019-09-18 19:59:20 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/pflag@v1.0.3/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/pflag@v1.0.5/LICENSE:
 
 Copyright (c) 2012 Alex Ogier. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
@@ -1688,10 +1688,10 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/zap
-Version : v1.10.0
-Time    : 2019-04-30 01:48:40 +0000 UTC
+Version : v1.12.0
+Time    : 2019-10-30 01:33:56 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.10.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.12.0/LICENSE.txt:
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
@@ -1716,10 +1716,10 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.0.0-20190911031432-227b76d455e7
-Time    : 2019-09-11 03:14:32 +0000 UTC
+Version : v0.0.0-20191011191535-87dc89f01550
+Time    : 2019-10-11 19:15:35 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.0.0-20190911031432-227b76d455e7/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.0.0-20191011191535-87dc89f01550/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -1752,10 +1752,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : gopkg.in/yaml.v2
-Version : v2.2.2
-Time    : 2018-11-15 11:05:04 +0000 UTC
+Version : v2.2.4
+Time    : 2019-10-02 18:33:36 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v2@v2.2.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v2@v2.2.4/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -1962,10 +1962,10 @@ Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v2@v2.2.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.0.0-20190409021203-6e4e0e4f393b
-Time    : 2019-04-09 02:12:03 +0000 UTC
+Version : v0.0.0-20190918195907-bd6ac527cfd2
+Time    : 2019-09-18 19:59:07 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.0.0-20190409021203-6e4e0e4f393b/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.0.0-20190918195907-bd6ac527cfd2/LICENSE:
 
 
                                  Apache License
@@ -2173,10 +2173,10 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.0.0-20190409021203-6
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.0.0-20190404173353-6a84e37a896d
-Time    : 2019-04-04 17:33:53 +0000 UTC
+Version : v0.0.0-20190817020851-f2f3a405f61d
+Time    : 2019-08-17 02:08:51 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.0.0-20190404173353-6a84e37a896d/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.0.0-20190817020851-f2f3a405f61d/LICENSE:
 
 
                                  Apache License
@@ -2384,10 +2384,10 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.0.0-2019040
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v11.0.1-0.20190409021438-1a26190bd76a+incompatible
-Time    : 2019-04-09 02:14:38 +0000 UTC
+Version : v0.0.0-20190918200256-06eb1244587a
+Time    : 2019-09-18 20:02:56 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v11.0.1-0.20190409021438-1a26190bd76a+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.0.0-20190918200256-06eb1244587a/LICENSE:
 
 
                                  Apache License
@@ -2595,10 +2595,10 @@ Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v11.0.1-0.2019040
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/klog
-Version : v0.4.0
-Time    : 2019-08-07 17:06:51 +0000 UTC
+Version : v1.0.0
+Time    : 2019-09-19 12:41:00 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/klog@v0.4.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/klog@v1.0.0/LICENSE:
 
 Apache License
 Version 2.0, January 2004
@@ -2795,10 +2795,10 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.2.1
-Time    : 2019-09-10 22:36:44 +0000 UTC
+Version : v0.3.0
+Time    : 2019-10-10 22:53:20 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.2.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.3.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004

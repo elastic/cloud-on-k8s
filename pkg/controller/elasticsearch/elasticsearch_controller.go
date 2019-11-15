@@ -22,10 +22,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/validation"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 
@@ -71,7 +69,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 
 		finalizers:     finalizer.NewHandler(client),
 		dynamicWatches: watches.NewDynamicWatches(),
-		expectations:   expectations.NewExpectations(),
+		expectations:   expectations.NewClustersExpectations(client),
 
 		Parameters: params,
 	}
@@ -170,7 +168,7 @@ type ReconcileElasticsearch struct {
 
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
-	expectations *expectations.Expectations
+	expectations *expectations.ClustersExpectation
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -187,6 +185,8 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
+			// Stop tracking that cluster in expectations - without the finalizer overhead.
+			r.expectations.RemoveCluster(request.NamespacedName)
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
@@ -244,12 +244,16 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	violations, err := validation.Validate(es)
+	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
+	err := es.ValidateCreate()
 	if err != nil {
-		return results.WithError(err)
-	}
-	if len(violations) > 0 {
-		reconcileState.UpdateElasticsearchInvalid(violations)
+		log.Error(
+			err,
+			"Elasticsearch manifest validation failed",
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+		)
+		reconcileState.UpdateElasticsearchInvalid(err)
 		return results
 	}
 
@@ -270,7 +274,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Scheme:             r.scheme,
 		Recorder:           r.recorder,
 		Version:            *ver,
-		Expectations:       r.expectations,
+		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
@@ -301,6 +305,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
 		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind),
-		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, esname.ESNamer),
+		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, elasticsearchv1beta1.ESNamer),
 	}
 }

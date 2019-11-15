@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -23,16 +22,14 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func TestReconcile(t *testing.T) {
-	require.NoError(t, esv1beta1.AddToScheme(scheme.Scheme))
 	defaultPDB := func() *v1beta1.PodDisruptionBudget {
 		return &v1beta1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name.DefaultPodDisruptionBudget("cluster"),
+				Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 				Namespace: "ns",
 				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 			},
@@ -61,7 +58,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "no existing pdb: should create one",
 			args: args{
-				k8sClient:    k8s.WrapClient(fake.NewFakeClient()),
+				k8sClient:    k8s.WrappedFakeClient(),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
@@ -70,7 +67,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb already exists: should remain unmodified",
 			args: args{
-				k8sClient:    k8s.WrapClient(fake.NewFakeClient(withHashLabel(withOwnerRef(defaultPDB(), defaultEs)))),
+				k8sClient:    k8s.WrappedFakeClient(withHashLabel(withOwnerRef(defaultPDB(), defaultEs))),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
@@ -79,13 +76,13 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb needs a MinAvailable update",
 			args: args{
-				k8sClient:    k8s.WrapClient(fake.NewFakeClient(defaultPDB())),
+				k8sClient:    k8s.WrappedFakeClient(defaultPDB()),
 				es:           defaultEs,
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 5, Master: true, Data: true}.Build()},
 			},
 			wantPDB: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -103,7 +100,7 @@ func TestReconcile(t *testing.T) {
 		{
 			name: "pdb disabled in the ES spec: should delete the existing one",
 			args: args{
-				k8sClient: k8s.WrapClient(fake.NewFakeClient(defaultPDB())),
+				k8sClient: k8s.WrappedFakeClient(defaultPDB()),
 				es: esv1beta1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
 					Spec:       esv1beta1.ElasticsearchSpec{PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{}},
@@ -117,7 +114,7 @@ func TestReconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := Reconcile(tt.args.k8sClient, scheme.Scheme, tt.args.es, tt.args.statefulSets)
 			require.NoError(t, err)
-			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: name.DefaultPodDisruptionBudget(tt.args.es.Name)}
+			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1beta1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved v1beta1.PodDisruptionBudget
 			err = tt.args.k8sClient.Get(pdbNsn, &retrieved)
 			if tt.wantPDB == nil {
@@ -149,7 +146,6 @@ func intStrPtr(intStr intstr.IntOrString) *intstr.IntOrString {
 }
 
 func Test_expectedPDB(t *testing.T) {
-	require.NoError(t, esv1beta1.AddToScheme(scheme.Scheme))
 	type args struct {
 		es           esv1beta1.Elasticsearch
 		statefulSets sset.StatefulSetList
@@ -175,7 +171,7 @@ func Test_expectedPDB(t *testing.T) {
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -206,7 +202,7 @@ func Test_expectedPDB(t *testing.T) {
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -235,7 +231,7 @@ func Test_expectedPDB(t *testing.T) {
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},

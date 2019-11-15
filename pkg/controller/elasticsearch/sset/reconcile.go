@@ -36,7 +36,7 @@ func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1beta1.Elast
 			if expectations != nil {
 				// expect the reconciled StatefulSet to be there in the cache for next reconciliations,
 				// to prevent assumptions based on the wrong replica count
-				expectations.ExpectGeneration(reconciled.ObjectMeta)
+				expectations.ExpectGeneration(reconciled)
 			}
 		},
 	})

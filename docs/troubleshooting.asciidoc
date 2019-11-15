@@ -1,3 +1,8 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-troubleshooting.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-troubleshooting"]
 == Troubleshooting
 
@@ -49,9 +54,9 @@ kibana-sample-kb-http          ClusterIP   10.19.246.116   <none>        5601/TC
 [id="{p}-describe-failing-resources"]
 === Describe failing resources
 
-If an Elasticsearch node does not come up, it is probably because Kubernetes cannot schedule the associated Pod.
+If an Elasticsearch node does not start up, it is probably because Kubernetes cannot schedule the associated Pod.
 
-Start by looking at the StatefulSets to check that the current number of replicas match the desired number of replicas.
+First, check the StatefulSets to see if the current number of replicas match the desired number of replicas.
 
 [source,sh]
 ----
@@ -61,11 +66,11 @@ NAME                              DESIRED   CURRENT   AGE
 elasticsearch-sample-es-default   1         1         4s
 ----
 
-Next, check the Pod status. If a pod fails to reach the `Running` status after a few seconds, something could be preventing it from being scheduled or starting up:
+Then, check the Pod status. If a Pod fails to reach the `Running` status after a few seconds, something is preventing it from being scheduled or starting up:
 
 [source,sh]
 ----
-kubectl get pods -l elasticsearch.k8s.elastic.co/statefulset=elasticsearch-sample-es-default
+kubectl get pods -l elasticsearch.k8s.elastic.co/statefulset-name=elasticsearch-sample-es-default
 
 NAME                                 READY     STATUS    RESTARTS   AGE
 elasticsearch-sample-es-66sv6dvt7g   0/1       Pending   0          3s
@@ -90,14 +95,14 @@ Events:
   Normal   NotTriggerScaleUp  4s (x11 over 1m)  cluster-autoscaler  pod didn't trigger scale-up (it wouldn't fit if a new node is added)
 ----
 
-If you see an error with unbound persistent volume claims (PVCs), it means there is not currently a persistent volume that can satisfy the claim. If you are using automatically provisioned storage (e.g. Amazon EBS provisioner), sometimes the storage provider can take a few minutes to provision a volume, so this may resolve itself in a few minutes. You can also check the status by running kubectl describe persistentvolumeclaims` to see events of the PVCs.
+If you see an error with unbound persistent volume claims (PVCs), it means there is not currently a persistent volume that can satisfy the claim. If you are using automatically provisioned storage (e.g. Amazon EBS provisioner), sometimes the storage provider can take a few minutes to provision a volume, so this may resolve itself in a few minutes. You can also check the status by running `kubectl describe persistentvolumeclaims` to see events of the PVCs.
 
 [float]
 [id="{p}-get-elasticsearch-logs"]
 === Get Elasticsearch logs
 
 Each Elasticsearch node name is mapped to the corresponding Pod name.
-To get the logs of a particular node, just fetch the Pod logs:
+To get the logs of a particular Elasticsearch node, just fetch the Pod logs:
 
 [source,sh]
 ----
@@ -123,7 +128,7 @@ Look at the link:https://kubernetes.io/docs/tasks/debug-application-cluster/debu
 [id="{p}-get-eck-logs"]
 === Get ECK logs
 
-Since the ECK operator is just a standard Pod running in the Kubernetes cluster, you can fetch its logs as any other Pod:
+Since the ECK operator is just a standard Pod running in the Kubernetes cluster, you can fetch its logs as you would for any other Pod:
 
 [source,sh]
 ----
@@ -132,10 +137,10 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 The operator constantly attempts to reconcile Kubernetes resources to match the desired state.
 Logs with `INFO` level provide some insights about what is going on.
-Logs with ERROR level indicate something is not going as expected.
+Logs with `ERROR` level indicate something is not going as expected.
 
 Due to link:https://github.com/eBay/Kubernetes/blob/master/docs/devel/api-conventions.md#concurrency-control-and-consistency[optimistic locking],
-you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, almost immediately after.
+you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, which will happen almost immediately.
 
 [float]
 [id="{p}-eck-debug-logs"]

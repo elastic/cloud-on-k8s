@@ -1,0 +1,13 @@
+[[eck-release-notes]]
+= Release notes
+
+[partintro]
+--
+
+This section summarizes the changes in each release.
+
+* <<release-notes-1.0.0-beta1>>
+
+--
+
+include::release-notes/1.0.0-beta1.asciidoc[]

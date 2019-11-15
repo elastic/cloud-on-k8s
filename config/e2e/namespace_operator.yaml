@@ -57,18 +57,6 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - batch
-  resources:
-  - cronjobs
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
   - policy
   resources:
   - poddisruptionbudgets
@@ -142,14 +130,12 @@ rules:
   - get
   - update
   - patch
-
-{{- range .NamespaceOperators }}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Name }}
-  namespace: {{ .Namespace }}
+  name: {{ .NamespaceOperator.Name }}
+  namespace: {{ .NamespaceOperator.Namespace }}
   labels:
     test-run: {{ $testRun }}
 ---
@@ -157,8 +143,8 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ .Name }}
-  namespace: {{ .Namespace }}
+  name: {{ .NamespaceOperator.Name }}
+  namespace: {{ .NamespaceOperator.Namespace }}
   labels:
     test-run: {{ $testRun }}
 roleRef:
@@ -167,15 +153,18 @@ roleRef:
   name: elastic-operator
 subjects:
 - kind: ServiceAccount
-  name: {{ .Name }}
-  namespace: {{ .Namespace }}
+  name: {{ .NamespaceOperator.Name }}
+  namespace: {{ .NamespaceOperator.Namespace }}
+
+{{- $nsOperator := .NamespaceOperator -}}
+{{ range $nsOperator.ManagedNamespaces }}
 ---
 # allow operator to manage resources in the managed namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ .Name }}
-  namespace: {{ .ManagedNamespace }}
+  name: {{ $nsOperator.Name }}
+  namespace: {{ . }}
   labels:
     test-run: {{ $testRun }}
 roleRef:
@@ -184,34 +173,36 @@ roleRef:
   name: elastic-namespace-operator
 subjects:
 - kind: ServiceAccount
-  name: {{ .Name }}
-  namespace: {{ .Namespace }}
+  name: {{ $nsOperator.Name }}
+  namespace: {{ $nsOperator.Namespace }}
+{{- end }}
+
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .Name }}
-  namespace: {{ .Namespace }}
+  name: {{ .NamespaceOperator.Name }}
+  namespace: {{ .NamespaceOperator.Namespace }}
   labels:
-    control-plane: {{ .Name }}
+    control-plane: {{ .NamespaceOperator.Name }}
     test-run: {{ $testRun }}
 spec:
   selector:
     matchLabels:
-      control-plane: {{ .Name }}
-  serviceName: {{ .Name }}
+      control-plane: {{ .NamespaceOperator.Name }}
+  serviceName: {{ .NamespaceOperator.Name }}
   template:
     metadata:
       labels:
-        control-plane: {{ .Name }}
+        control-plane: {{ .NamespaceOperator.Name }}
         test-run: {{ $testRun }}
     spec:
-      serviceAccountName: {{ .Name }}
+      serviceAccountName: {{ .NamespaceOperator.Name }}
       containers:
       - image: {{ $operatorImage }}
         imagePullPolicy: IfNotPresent
         name: manager
-        args: ["manager", "--namespace", "{{ .ManagedNamespace }}", "--operator-roles", "namespace"]
+        args: ["manager", "--namespaces", "{{ .NamespaceOperator.ManagedNamespaces | join "," }}", "--operator-roles", "namespace"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
@@ -227,4 +218,3 @@ spec:
             cpu: 100m
             memory: 20Mi
       terminationGracePeriodSeconds: 10
-{{- end }}

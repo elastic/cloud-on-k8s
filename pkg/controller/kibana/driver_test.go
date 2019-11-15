@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var customResourceLimits = corev1.ResourceRequirements{
@@ -34,11 +33,6 @@ var customResourceLimits = corev1.ResourceRequirements{
 }
 
 func TestDriverDeploymentParams(t *testing.T) {
-	s := scheme.Scheme
-	if err := kbtype.SchemeBuilder.AddToScheme(s); err != nil {
-		assert.Fail(t, "failed to build custom scheme")
-	}
-
 	type args struct {
 		kb             func() *kbtype.Kibana
 		initialObjects func() []runtime.Object
@@ -198,14 +192,14 @@ func TestDriverDeploymentParams(t *testing.T) {
 			kb := tt.args.kb()
 			initialObjects := tt.args.initialObjects()
 
-			client := k8s.WrapClient(fake.NewFakeClient(initialObjects...))
+			client := k8s.WrappedFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
 			err := w.Secrets.InjectScheme(scheme.Scheme)
 			assert.NoError(t, err)
 
 			kbVersion, err := version.Parse(kb.Spec.Version)
 			assert.NoError(t, err)
-			d, err := newDriver(client, s, *kbVersion, w, record.NewFakeRecorder(100))
+			d, err := newDriver(client, scheme.Scheme, *kbVersion, w, record.NewFakeRecorder(100))
 			assert.NoError(t, err)
 
 			got, err := d.deploymentParams(kb)
@@ -244,19 +238,19 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					{
-						Name: "elasticsearch-certs",
+						Name: "config",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName: "es-ca-secret",
+								SecretName: "test-kb-config",
 								Optional:   &false,
 							},
 						},
 					},
 					{
-						Name: "config",
+						Name: "elasticsearch-certs",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
-								SecretName: "test-kb-config",
+								SecretName: "es-ca-secret",
 								Optional:   &false,
 							},
 						},
@@ -279,14 +273,14 @@ func expectedDeploymentParams() deployment.Params {
 							MountPath: volume.DataVolumeMountPath,
 						},
 						{
-							Name:      "elasticsearch-certs",
-							ReadOnly:  true,
-							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
-						},
-						{
 							Name:      "config",
 							ReadOnly:  true,
 							MountPath: "/usr/share/kibana/config",
+						},
+						{
+							Name:      "elasticsearch-certs",
+							ReadOnly:  true,
+							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 						},
 						{
 							Name:      http.HTTPCertificatesSecretVolumeName,

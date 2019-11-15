@@ -31,7 +31,7 @@ func TestMutationHTTPToHTTPS(t *testing.T) {
 // then mutates it to a 3 node cluster running without TLS on the HTTP layer.
 func TestMutationHTTPSToHTTP(t *testing.T) {
 	// create a 3 md node cluster
-	b := elasticsearch.NewBuilder("test-mutation-http-to-https").
+	b := elasticsearch.NewBuilder("test-mutation-https-to-http").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	// mutate to http
@@ -160,6 +160,25 @@ func TestMutationSecondMasterSetDown(t *testing.T) {
 	RunESMutation(t, b, mutated)
 }
 
+// TestMutationRollingDownscaleCombination combines a rolling update with scale down operation.
+func TestMutationRollingDownscaleCombination(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-combined-upgrade-downscale").
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(1, "data-1", elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data-2", elasticsearch.DefaultResources)
+
+	mutated := b.WithNoESTopology().
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(1, "data-1", elasticsearch.DefaultResources).
+		WithNamedESDataNodes(1, "data-2", elasticsearch.DefaultResources). // scaling down data-2
+		WithAdditionalConfig(map[string]map[string]interface{}{
+			"data-1": {
+				"node.attr.important": "attribute", // triggers the rolling update on data-1
+			},
+		})
+	RunESMutation(t, b, mutated)
+}
+
 func TestMutationAndReversal(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-reverted-mutation").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
@@ -175,8 +194,8 @@ func TestMutationAndReversal(t *testing.T) {
 
 }
 
-func TestMutationWithChangeBudget(t *testing.T) {
-	b := elasticsearch.NewBuilder("test-change-budget").
+func TestMutationNodeSetReplacementWithChangeBudget(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-1-change-budget").
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(5, "data1", elasticsearch.DefaultResources)
 
@@ -185,6 +204,25 @@ func TestMutationWithChangeBudget(t *testing.T) {
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithNamedESDataNodes(5, "data2", elasticsearch.DefaultResources).
 		WithChangeBudget(1, 1)
+
+	RunESMutation(t, b, mutated)
+}
+
+func TestMutationWithLargerMaxUnavailable(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-2-change-budget").
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data1", elasticsearch.DefaultResources)
+
+	// trigger a mutation that will lead to a rolling upgrade
+	mutated := b.WithNoESTopology().
+		WithESMasterNodes(1, elasticsearch.DefaultResources).
+		WithNamedESDataNodes(2, "data1", elasticsearch.DefaultResources).
+		WithAdditionalConfig(map[string]map[string]interface{}{
+			"data1": {
+				"node.attr.value": "this-is-fine",
+			},
+		}).
+		WithChangeBudget(1, 2)
 
 	RunESMutation(t, b, mutated)
 }

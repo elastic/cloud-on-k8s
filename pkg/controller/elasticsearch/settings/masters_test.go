@@ -9,17 +9,14 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // newPodWithIP creates a new Pod potentially labeled as master with a given podIP
@@ -41,7 +38,6 @@ func newPodWithIP(name, ip string, master bool) corev1.Pod {
 }
 
 func TestUpdateSeedHostsConfigMap(t *testing.T) {
-	require.NoError(t, v1beta1.AddToScheme(scheme.Scheme))
 	es := v1beta1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es1",
@@ -70,7 +66,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:      k8s.WrapClient(fake.NewFakeClient()),
+				c:      k8s.WrappedFakeClient(),
 				es:     es,
 				scheme: scheme.Scheme,
 			},
@@ -84,7 +80,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:      k8s.WrapClient(fake.NewFakeClient()),
+				c:      k8s.WrappedFakeClient(),
 				es:     es,
 				scheme: scheme.Scheme,
 			},
@@ -101,7 +97,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "10.0.9.3", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:      k8s.WrapClient(fake.NewFakeClient()),
+				c:      k8s.WrappedFakeClient(),
 				es:     es,
 				scheme: scheme.Scheme,
 			},
@@ -118,7 +114,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:      k8s.WrapClient(fake.NewFakeClient()),
+				c:      k8s.WrappedFakeClient(),
 				es:     es,
 				scheme: scheme.Scheme,
 			},
@@ -139,7 +135,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 			if err := tt.args.c.Get(
 				types.NamespacedName{
 					Namespace: "ns1",
-					Name:      name.UnicastHostsConfigMap(es.Name),
+					Name:      v1beta1.UnicastHostsConfigMap(es.Name),
 				}, file); err != nil {
 				t.Errorf("Error while getting the seed hosts configmap: %v", err)
 			}

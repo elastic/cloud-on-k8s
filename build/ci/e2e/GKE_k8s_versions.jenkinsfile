@@ -1,3 +1,6 @@
+def failedTests = []
+def testScript
+
 pipeline {
 
     agent {
@@ -16,6 +19,13 @@ pipeline {
     }
 
     stages {
+        stage('Load common scripts') {
+            steps {
+                script {
+                    testScript = load "build/ci/common/tests.groovy"
+                }
+            }
+        }
         stage('Run tests for different k8s versions in GKE') {
             parallel {
                 stage("1.12") {
@@ -24,7 +34,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.12', "${BUILD_TAG}-12")
+                        script {
+                            runWith(failedTests, '1.12', "eck-gke12-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
                 stage("1.13") {
@@ -33,7 +45,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.13', "${BUILD_TAG}-13")
+                        script {
+                            runWith(failedTests, '1.13', "eck-gke13-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
                 stage("1.14") {
@@ -42,7 +56,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.14', "${BUILD_TAG}-14")
+                        script {
+                            runWith(failedTests, '1.14', "eck-gke14-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
             }
@@ -53,18 +69,26 @@ pipeline {
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    def msg = "E2E tests for different k8s versions in GKE failed!\r\n" + env.RUN_DISPLAY_URL
+                    Set<String> filter = new HashSet<>()
+                    filter.addAll(failedTests)
+                    def msg = testScript.generateSlackMessage("E2E tests for different k8s versions in GKE failed!", env.BUILD_URL, filter)
+
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
                         color: 'danger',
                         message: msg,
                         tokenCredentialId: 'cloud-ci-slack-integration-token'
                 }
+                googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
+                    credentialsId: "devops-ci-gcs-plugin",
+                    pattern: "*.tgz",
+                    sharedPublicly: true,
+                    showInline: true
             }
         }
         cleanup {
             script {
-                clusters = ["${BUILD_TAG}-12", "${BUILD_TAG}-13", "${BUILD_TAG}-14"]
+                clusters = ["eck-gke12-${BUILD_NUMBER}-e2e", "eck-gke13-${BUILD_NUMBER}-e2e", "eck-gke14-${BUILD_NUMBER}-e2e"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
@@ -76,7 +100,7 @@ pipeline {
     }
 }
 
-void runWith(clusterVersion, clusterName) {
+def runWith(failedTests, clusterVersion, clusterName) {
     sh """#!/bin/bash
 
         cat >.env <<EOF
@@ -86,6 +110,7 @@ OPERATOR_IMAGE = "$IMAGE"
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 SKIP_DOCKER_COMMAND = true
+E2E_JSON = true
 EOF
         if [[ "${clusterVersion}" < "1.14" ]]; then
             echo "Setting CRD_FLAVOR to trivial-versions to support K8s < 1.14"
@@ -104,6 +129,17 @@ overrides:
   gke:
     gCloudProject: $GCLOUD_PROJECT
 EOF
-        make -C build/ci TARGET=ci-e2e ci
     """
+    script {
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+
+        sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+        junit "e2e-tests.xml"
+
+        if (env.SHELL_EXIT_CODE != 0) {
+            failedTests.addAll(testScript.getListOfFailedTests())
+        }
+
+        sh 'exit $SHELL_EXIT_CODE'
+    }
 }

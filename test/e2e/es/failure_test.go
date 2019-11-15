@@ -7,8 +7,8 @@ package es
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	esname "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
@@ -68,7 +68,7 @@ func TestDeleteServices(t *testing.T) {
 			{
 				Name: "Delete external service",
 				Test: func(t *testing.T) {
-					s, err := k.GetService(b.Elasticsearch.Namespace, esname.HTTPService(b.Elasticsearch.Name))
+					s, err := k.GetService(b.Elasticsearch.Namespace, v1beta1.HTTPService(b.Elasticsearch.Name))
 					require.NoError(t, err)
 					err = k.Client.Delete(s)
 					require.NoError(t, err)

@@ -6,9 +6,9 @@ package validation
 
 // Result contains validation results.
 type Result struct {
-	Error   error
+	Error   error `json:"error,omitempty"`
 	Allowed bool
-	Reason  string
+	Reason  string `json:"reason,omitempty"`
 }
 
 // OK is a successful validation result.

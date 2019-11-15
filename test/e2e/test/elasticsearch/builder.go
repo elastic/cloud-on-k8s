@@ -7,14 +7,20 @@ package elasticsearch
 import (
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+)
+
+const (
+	// we setup our own storageClass with "volumeBindingMode: waitForFirstConsumer" that we
+	// reference in the VolumeClaimTemplates section of the Elasticsearch spec
+	defaultStorageClass = "e2e-default"
 )
 
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
@@ -38,10 +44,6 @@ type Builder struct {
 }
 
 var _ test.Builder = Builder{}
-
-// nodeStoreAllowMMap is the configuration key to disable mmap.
-// We disable mmap to avoid having to set the vm.max_map_count sysctl on test nodes.
-const nodeStoreAllowMMap = "node.store.allow_mmap"
 
 func NewBuilder(name string) Builder {
 	return newBuilder(name, rand.String(4))
@@ -129,13 +131,12 @@ func (b Builder) WithNoESTopology() Builder {
 }
 
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSet{
+	return b.WithNodeSet(estype.NodeSet{
 		Name:  "master",
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				estype.NodeData:    "false",
-				nodeStoreAllowMMap: false,
+				estype.NodeData: "false",
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -143,13 +144,12 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 }
 
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSet{
+	return b.WithNodeSet(estype.NodeSet{
 		Name:  "data",
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				estype.NodeMaster:  "false",
-				nodeStoreAllowMMap: false,
+				estype.NodeMaster: "false",
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -157,13 +157,12 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 }
 
 func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSet{
+	return b.WithNodeSet(estype.NodeSet{
 		Name:  name,
 		Count: int32(count),
 		Config: &commonv1beta1.Config{
 			Data: map[string]interface{}{
-				estype.NodeMaster:  "false",
-				nodeStoreAllowMMap: false,
+				estype.NodeMaster: "false",
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -171,21 +170,22 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 }
 
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSpec(estype.NodeSet{
-		Name:  "masterdata",
-		Count: int32(count),
-		Config: &commonv1beta1.Config{
-			Data: map[string]interface{}{
-				nodeStoreAllowMMap: false,
-			},
-		},
+	return b.WithNodeSet(estype.NodeSet{
+		Name:        "masterdata",
+		Count:       int32(count),
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
-func (b Builder) WithNodeSpec(nodeSpec estype.NodeSet) Builder {
-	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSpec)
-	return b
+func (b Builder) WithNodeSet(nodeSet estype.NodeSet) Builder {
+	// Make sure the config specifies "node.store.allow_mmap: false".
+	// We disable mmap to avoid having to set the vm.max_map_count sysctl on test k8s nodes.
+	if nodeSet.Config == nil {
+		nodeSet.Config = &commonv1beta1.Config{Data: map[string]interface{}{}}
+	}
+	nodeSet.Config.Data["node.store.allow_mmap"] = false
+	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSet)
+	return b.WithDefaultPersistentVolumes()
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
@@ -199,6 +199,9 @@ func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
 
 func (b Builder) WithEmptyDirVolumes() Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
+		// remove any default claim
+		b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates = nil
+		// setup an EmptyDir for the data volume
 		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
 			{
 				Name: volume.ElasticsearchDataVolumeName,
@@ -211,13 +214,21 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 	return b
 }
 
-func (b Builder) WithPersistentVolumes(volumeName string) Builder {
+func (b Builder) WithDefaultPersistentVolumes() Builder {
+	storageClass := defaultStorageClass
 	for i := range b.Elasticsearch.Spec.NodeSets {
-		name := volumeName
+		for _, existing := range b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates {
+			if existing.Name == volume.ElasticsearchDataVolumeName {
+				// already defined, don't set our defaults
+				goto next
+			}
+		}
+
+		// setup default claim with the custom storage class
 		b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.NodeSets[i].VolumeClaimTemplates,
 			corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: name,
+					Name: volume.ElasticsearchDataVolumeName,
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -228,19 +239,11 @@ func (b Builder) WithPersistentVolumes(volumeName string) Builder {
 							corev1.ResourceStorage: resource.MustParse("1Gi"),
 						},
 					},
+					StorageClassName: &storageClass,
 				},
 			})
-		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Volumes = []corev1.Volume{
-			{
-				Name: name,
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: name,
-						ReadOnly:  false,
-					},
-				},
-			},
-		}
+
+	next:
 	}
 	return b
 }
@@ -272,8 +275,8 @@ func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface
 
 func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
 	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = estype.ChangeBudget{
-		MaxSurge:       common.Int32(maxSurge),
-		MaxUnavailable: common.Int32(maxUnavailable),
+		MaxSurge:       pointer.Int32(maxSurge),
+		MaxUnavailable: pointer.Int32(maxUnavailable),
 	}
 	return b
 }

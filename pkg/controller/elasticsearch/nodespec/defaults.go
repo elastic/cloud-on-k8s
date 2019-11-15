@@ -57,7 +57,7 @@ func DefaultEnvVars(httpCfg v1beta1.HTTPConfig) []corev1.EnvVar {
 		[]corev1.EnvVar{
 			{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.InternalProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.InternalProbeUserName},
-			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Scheme()},
+			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
 
 			// Disable curl/libnss use of sqlite caching to avoid triggering an issue in linux/kubernetes
 			// where the kernel's dentry cache grows by 5mb every time curl is invoked. This cache usage

@@ -13,8 +13,9 @@ import (
 // CfgOptions are config options for YAML config. Currently contains only support for dotted keys.
 var CfgOptions = []ucfg.Option{ucfg.PathSep(".")}
 
-// Config represents untyped YAML configuration inside a spec.
+// Config represents untyped YAML configuration.
 type Config struct {
+	// Data holds the configuration keys and values.
 	// This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/issues/528
 	Data map[string]interface{} `json:"-"`
 }

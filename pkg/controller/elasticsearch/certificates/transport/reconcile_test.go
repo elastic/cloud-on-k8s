@@ -7,8 +7,6 @@ package transport
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -18,13 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	defaultSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.TransportCertificatesSecret(testES.Name),
+			Name:      v1beta1.TransportCertificatesSecret(testES.Name),
 			Namespace: testES.Namespace,
 			Labels: map[string]string{
 				label.ClusterNameLabelName: testES.Name,
@@ -53,7 +50,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 		{
 			name: "should create a secret if it does not already exist",
 			args: args{
-				c:     k8s.WrapClient(fake.NewFakeClient()),
+				c:     k8s.WrappedFakeClient(),
 				owner: testES,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
@@ -67,9 +64,9 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 		{
 			name: "should update an existing secret",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(defaultSecretWith(func(secret *corev1.Secret) {
+				c: k8s.WrappedFakeClient(defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.UID = types.UID("42")
-				}))),
+				})),
 				owner: testES,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
@@ -82,9 +79,9 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 		{
 			name: "should allow additional labels in the secret",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(defaultSecretWith(func(secret *corev1.Secret) {
+				c: k8s.WrappedFakeClient(defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.Labels["foo"] = "bar"
-				}))),
+				})),
 				owner: testES,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {

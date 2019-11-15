@@ -5,7 +5,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 150, unit: 'MINUTES')
+        timeout(time: 180, unit: 'MINUTES')
     }
 
     environment {
@@ -33,6 +33,8 @@ REGISTRY = cloudonk8s.azurecr.io
 REPOSITORY = operators
 IMG_SUFFIX = -ci
 CRD_FLAVOR = trivial-versions
+E2E_JSON = true
+TEST_TIMEOUT = 10m
 EOF
                     cat >deployer-config.yml <<EOF
 id: aks-ci
@@ -43,8 +45,15 @@ overrides:
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
 EOF
-                    make -C build/ci TARGET=ci-e2e ci
                 """
+                script {
+                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+
+                    sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+                    junit "e2e-tests.xml"
+
+                    sh 'exit $SHELL_EXIT_CODE'
+                }
             }
         }
     }
@@ -57,7 +66,6 @@ EOF
 id: aks-ci
 overrides:
   operation: delete
-  kubernetesVersion: "1.12.8"
   clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR

@@ -54,7 +54,6 @@ func newDownscaleContext(
 }
 
 // ssetDownscale helps with the downscale of a single StatefulSet.
-// A StatefulSet removal (going from 0 to 0 replicas) is also considered as a Downscale here.
 type ssetDownscale struct {
 	statefulSet     appsv1.StatefulSet
 	initialReplicas int32
@@ -73,17 +72,6 @@ func (d ssetDownscale) leavingNodeNames() []string {
 		leavingNodes = append(leavingNodes, sset.PodName(d.statefulSet.Name, i))
 	}
 	return leavingNodes
-}
-
-// isRemoval returns true if this downscale is a StatefulSet removal.
-func (d ssetDownscale) isRemoval() bool {
-	// StatefulSet does not have any replica, and should not have one
-	return d.initialReplicas == 0 && d.targetReplicas == 0
-}
-
-// isReplicaDecrease returns true if this downscale corresponds to decreasing replicas.
-func (d ssetDownscale) isReplicaDecrease() bool {
-	return d.targetReplicas < d.initialReplicas
 }
 
 // leavingNodeNames returns the names of all nodes that should leave the cluster (across StatefulSets).

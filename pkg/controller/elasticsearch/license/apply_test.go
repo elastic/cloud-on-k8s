@@ -9,22 +9,17 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_updateLicense(t *testing.T) {
@@ -121,11 +116,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						license.FileName: []byte(fixtures.LicenseSample),
+						"anything": []byte(fixtures.LicenseSample),
 					},
 				},
 			},
@@ -140,7 +135,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 				},
@@ -152,11 +147,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      name.LicenseSecretName("test"),
+						Name:      v1beta1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						license.FileName: {},
+						"anything2": {},
 					},
 				},
 			},
@@ -167,7 +162,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			errors: map[client.ObjectKey]error{
 				types.NamespacedName{
 					Namespace: clusterName.Namespace,
-					Name:      name.LicenseSecretName("test"),
+					Name:      v1beta1.LicenseSecretName("test"),
 				}: errors.New("boom"),
 			},
 		},
@@ -175,7 +170,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &fakeClient{
-				Client: k8s.WrapClient(fake.NewFakeClientWithScheme(registerScheme(t), tt.initialObjs...)),
+				Client: k8s.WrappedFakeClient(tt.initialObjs...),
 				errors: tt.errors,
 			}
 			if err := applyLinkedLicense(
@@ -206,11 +201,3 @@ func (f *fakeClient) Get(key client.ObjectKey, obj runtime.Object) error {
 }
 
 var _ k8s.Client = &fakeClient{}
-
-func registerScheme(t *testing.T) *runtime.Scheme {
-	sc := scheme.Scheme
-	if err := v1beta1.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "failed to build custom scheme")
-	}
-	return sc
-}

@@ -2,18 +2,24 @@
 [id="{{ anchorIDForType . | safeIdentifier }}"]
 [float]
 ==== {{ .Name.Name }} {{- if eq .Kind "Alias" -}}(`{{.Underlying}}` alias){{ end }}
-{{- with (typeReferences .) }}
-(*Appears on:*
+
+{{ safe (renderComments .CommentLines) }}
+
+
+{{ with (typeReferences .) -}}
+{{ if . -}}
+.Appears in:
+****
 {{- $prev := "" }}
 {{- range . }}
 {{- if $prev }}, {{ end -}}
 {{- $prev = . }}
-link:{{ linkForType . }}[{{ typeDisplayName . }}]
+- {{ template "link_template" . }}
 {{- end }}
-)
+****
+{{- end }}
 {{- end }}
 
-{{ safe (renderComments .CommentLines) }}
 
 {{- if .Members }}
 [cols="20a,80a", options="header"]

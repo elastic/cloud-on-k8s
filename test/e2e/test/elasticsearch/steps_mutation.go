@@ -46,6 +46,12 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var masterChangeBudgetCheck *MasterChangeBudgetCheck
 	var changeBudgetCheck *ChangeBudgetCheck
 
+	mutatedFrom := b.MutatedFrom
+	if mutatedFrom == nil {
+		// cluster mutates to itself (same spec)
+		mutatedFrom = &b
+	}
+
 	return test.StepList{
 		test.Step{
 			Name: "Add some data to the cluster before starting the mutation",
@@ -85,6 +91,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		},
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
 	}.
+		WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
 		WithSteps(b.UpgradeTestSteps(k)).
 		WithSteps(b.CheckK8sTestSteps(k)).
 		WithSteps(b.CheckStackTestSteps(k)).
@@ -101,9 +108,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				Name: "Pod count must not violate change budget",
 				Test: func(t *testing.T) {
 					changeBudgetCheck.Stop()
-					if b.MutatedFrom != nil {
-						require.NoError(t, changeBudgetCheck.Verify(b.MutatedFrom.Elasticsearch.Spec, b.Elasticsearch.Spec))
-					}
+					require.NoError(t, changeBudgetCheck.Verify(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch.Spec))
 				},
 			},
 			test.Step{
@@ -152,24 +157,22 @@ type ContinuousHealthCheckFailure struct {
 // ContinuousHealthCheck continuously runs health checks against Elasticsearch
 // during the whole mutation process
 type ContinuousHealthCheck struct {
-	b            Builder
-	SuccessCount int
-	FailureCount int
-	Failures     []ContinuousHealthCheckFailure
-	stopChan     chan struct{}
-	esClient     esclient.Client
+	b               Builder
+	SuccessCount    int
+	FailureCount    int
+	Failures        []ContinuousHealthCheckFailure
+	stopChan        chan struct{}
+	esClientFactory func() (esclient.Client, error)
 }
 
 // NewContinuousHealthCheck sets up a ContinuousHealthCheck struct
 func NewContinuousHealthCheck(b Builder, k *test.K8sClient) (*ContinuousHealthCheck, error) {
-	esClient, err := NewElasticsearchClient(b.Elasticsearch, k)
-	if err != nil {
-		return nil, err
-	}
 	return &ContinuousHealthCheck{
 		b:        b,
 		stopChan: make(chan struct{}),
-		esClient: esClient,
+		esClientFactory: func() (esclient.Client, error) {
+			return NewElasticsearchClient(b.Elasticsearch, k)
+		},
 	}, nil
 }
 
@@ -193,8 +196,14 @@ func (hc *ContinuousHealthCheck) Start() {
 				return
 			case <-ticker.C:
 				ctx, cancel := context.WithTimeout(context.Background(), continuousHealthCheckTimeout)
+				// recreate the Elasticsearch client at each iteration, since we may have switched protocol from http to https during the mutation
+				client, err := hc.esClientFactory()
+				if err != nil {
+					// treat client creation failure same as unavailable cluster
+					hc.AppendErr(err)
+				}
 				defer cancel()
-				health, err := hc.esClient.GetClusterHealth(ctx)
+				health, err := client.GetClusterHealth(ctx)
 				if err != nil {
 					// Could not retrieve cluster health, can happen when the master node is killed
 					// during a rolling upgrade. We allow it, unless it lasts for too long.

@@ -54,7 +54,6 @@ endif
 # on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
-	REPOSITORY ?= $(GCLOUD_PROJECT)
 else
 	# default to local registry
 	REGISTRY ?= localhost:5000
@@ -81,8 +80,8 @@ SKIP_DOCKER_COMMAND ?= false
 GLOBAL_OPERATOR_NAMESPACE ?= elastic-system
 # namespace in which the namespace operator is deployed (see config/namespace-operator)
 NAMESPACE_OPERATOR_NAMESPACE ?= elastic-namespace-operators
-# namespace in which the namespace operator should watch resources
-MANAGED_NAMESPACE ?= default
+# comma separated list of namespaces in which the namespace operator should watch resources
+MANAGED_NAMESPACES ?=
 
 ## -- Security
 
@@ -105,7 +104,7 @@ dependencies:
 generate: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
-	$(CONTROLLER_GEN) object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
+	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/..." output:crd:artifacts:config=config/crds
 	# verify that the available crd flavors still can generate cleanly
@@ -113,8 +112,7 @@ generate: controller-gen
 		kubectl kustomize config/crds-flavor-$$crd_flavor > /dev/null; \
 	done
 	$(MAKE) --no-print-directory generate-all-in-one
-	# TODO (sabo): reenable when new tag is cut and can work with the new repo path
-	# $(MAKE) --no-print-directory generate-api-docs
+	$(MAKE) --no-print-directory generate-api-docs
 	$(MAKE) --no-print-directory generate-notice-file
 
 generate-api-docs:
@@ -169,7 +167,8 @@ go-run:
 				--development --operator-roles=global,namespace \
 				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
-				--operator-namespace=default --namespace= \
+				--operator-namespace=default \
+				--namespaces=$(MANAGED_NAMESPACES) \
 				--auto-install-webhooks=false
 
 go-debug:
@@ -183,7 +182,7 @@ go-debug:
 		--ca-cert-validity=10h \
 		--ca-cert-rotate-before=1h \
 		--operator-namespace=default \
-		--namespace= \
+		--namespaces=$(MANAGED_NAMESPACES) \
 		--auto-install-webhooks=false)
 
 build-operator-image:
@@ -346,12 +345,14 @@ purge-gcr-images:
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 STACK_VERSION ?= 7.4.0
+E2E_JSON ?= false
+TEST_TIMEOUT ?= 5m
 
 # Run e2e tests as a k8s batch job
 e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
 
 e2e-docker-build:
-	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
+	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
 	docker push $(E2E_IMG)
@@ -363,7 +364,12 @@ e2e-run:
 		--test-regex=$(TESTS_MATCH) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
-		--crd-flavor=$(CRD_FLAVOR)
+		--crd-flavor=$(CRD_FLAVOR) \
+		--log-to-file=$(E2E_JSON) \
+		--test-timeout=$(TEST_TIMEOUT)
+
+e2e-generate-xml:
+	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
@@ -381,8 +387,9 @@ e2e-local:
 		--auto-port-forwarding \
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \
-		--crd-flavor=$(CRD_FLAVOR)
-	@test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
+		--crd-flavor=$(CRD_FLAVOR) \
+		--test-timeout=$(TEST_TIMEOUT)
+	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 
 ##########################################
 ##  --    Continuous integration    --  ##
@@ -415,11 +422,15 @@ check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
 
+# Runs small Go tool to validate syntax correctness of Jenkins pipelines
+validate-jenkins-pipelines:
+	@ go run ./hack/pipeline-validator/main.go
+
 #########################
 # Kind specific targets #
 #########################
 KIND_NODES ?= 0
-KIND_NODE_IMAGE ?= kindest/node:v1.15.0
+KIND_NODE_IMAGE ?= kindest/node:v1.15.3
 KIND_CLUSTER_NAME ?= eck
 
 kind-node-variable-check:
@@ -460,6 +471,7 @@ ifneq ($(ECK_IMAGE),)
 else
 	$(MAKE) docker-build
 endif
+
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build

@@ -56,14 +56,13 @@ func SetupMinimumMasterNodesConfig(
 			masters += int(sset.GetReplicas(resource.StatefulSet))
 		} else {
 			// Second situation: not a sset of masters, but we check if there are some of them waiting for a rolling upgrade
-			actualPods, err := sset.GetActualPodsForStatefulSet(c, resource.StatefulSet)
+			actualPods, err := sset.GetActualPodsForStatefulSet(c, k8s.ExtractNamespacedName(&resource.StatefulSet))
 			if err != nil {
 				return err
 			}
 			actualMasters := len(label.FilterMasterNodePods(actualPods))
 			masters += actualMasters
 		}
-
 	}
 
 	quorum := settings.Quorum(masters)
@@ -72,7 +71,7 @@ func SetupMinimumMasterNodesConfig(
 		// patch config with the expected minimum master nodes
 		if err := nodeSpecResources[i].Config.MergeWith(
 			common.MustNewSingleValue(
-				settings.DiscoveryZenMinimumMasterNodes,
+				v1beta1.DiscoveryZenMinimumMasterNodes,
 				strconv.Itoa(quorum),
 			),
 		); err != nil {

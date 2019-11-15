@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -69,7 +68,7 @@ func BuildPodTemplateSpec(
 
 func transportCertificatesVolume(esName string) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		name.TransportCertificatesSecret(esName),
+		v1beta1.TransportCertificatesSecret(esName),
 		esvolume.TransportCertificatesSecretVolumeName,
 		esvolume.TransportCertificatesSecretVolumeMountPath,
 	)
@@ -97,8 +96,8 @@ func buildLabels(
 
 	podLabels, err := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
-		name.StatefulSet(es.Name, nodeSet.Name),
-		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Scheme(),
+		v1beta1.StatefulSet(es.Name, nodeSet.Name),
+		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Protocol(),
 	)
 	if err != nil {
 		return nil, err
@@ -109,7 +108,7 @@ func buildLabels(
 		// TODO: use hash.HashObject instead && fix the config checksum label name?
 		configChecksum := sha256.New224()
 		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
-		podLabels[label.ConfigChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+		podLabels[label.SecureSettingsHashLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	}
 
 	return podLabels, nil

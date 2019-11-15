@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
@@ -18,9 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 type failingClient struct {
@@ -32,8 +29,6 @@ func (failingClient) Create(o runtime.Object, opts ...client.CreateOption) error
 }
 
 func TestInitTrial(t *testing.T) {
-	require.NoError(t, estype.AddToScheme(scheme.Scheme))
-
 	licenseFixture := EnterpriseLicense{
 		License: LicenseSpec{
 			Type: LicenseTypeEnterpriseTrial,
@@ -52,7 +47,7 @@ func TestInitTrial(t *testing.T) {
 		{
 			name: "nil license",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient()),
+				c: k8s.WrappedFakeClient(),
 				l: nil,
 			},
 			wantErr: true,
@@ -75,7 +70,7 @@ func TestInitTrial(t *testing.T) {
 		{
 			name: "not a trial license",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient()),
+				c: k8s.WrappedFakeClient(),
 				l: &EnterpriseLicense{},
 			},
 			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {
@@ -87,12 +82,12 @@ func TestInitTrial(t *testing.T) {
 		{
 			name: "successful trial start",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+				c: k8s.WrappedFakeClient(&corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{
 						Namespace: "elastic-system",
 						Name:      string(LicenseTypeEnterpriseTrial),
 					},
-				})),
+				}),
 				l: &licenseFixture,
 			},
 			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {

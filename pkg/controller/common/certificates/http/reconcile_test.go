@@ -19,14 +19,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -67,10 +65,6 @@ var (
 )
 
 func init() {
-	if err := v1beta1.AddToScheme(scheme.Scheme); err != nil {
-		panic(err)
-	}
-
 	var err error
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
@@ -91,7 +85,7 @@ func init() {
 	testCSR, _ := x509.ParseCertificateRequest(testCSRBytes)
 
 	validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
-		k8s.ExtractNamespacedName(&testES), name.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+		k8s.ExtractNamespacedName(&testES), v1beta1.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
 	)
 
 	certData, err := testCA.CreateCertificate(*validatedCertificateTemplate)
@@ -121,7 +115,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 		{
 			name: "should generate new certificates if none exists",
 			args: args{
-				c:  k8s.WrapClient(fake.NewFakeClient()),
+				c:  k8s.WrappedFakeClient(),
 				es: testES,
 				ca: testCA,
 			},
@@ -133,13 +127,13 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 		{
 			name: "should use custom certificates if provided",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+				c: k8s.WrappedFakeClient(&corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
 					Data: map[string][]byte{
 						certificates.CertFileName: tls,
 						certificates.KeyFileName:  key,
 					},
-				})),
+				}),
 				es: v1beta1.Elasticsearch{
 					ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: v1beta1.ElasticsearchSpec{
@@ -171,7 +165,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 			}
 
 			got, err := ReconcileHTTPCertificates(
-				testDriver, &tt.args.es, name.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
+				testDriver, &tt.args.es, v1beta1.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
 				certificates.RotationParams{
 					Validity:     certificates.DefaultCertValidity,
 					RotateBefore: certificates.DefaultRotateBefore,
@@ -258,7 +252,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := createValidatedHTTPCertificateTemplate(
 				k8s.ExtractNamespacedName(&tt.args.es),
-				name.ESNamer,
+				v1beta1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
 				tt.args.svcs,
 				&x509.CertificateRequest{},
@@ -360,7 +354,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := shouldIssueNewHTTPCertificate(
 				k8s.ExtractNamespacedName(&tt.args.es),
-				name.ESNamer,
+				v1beta1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
 				&tt.args.secret,
 				[]corev1.Service{testSvc},

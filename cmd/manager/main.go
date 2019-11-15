@@ -39,16 +39,17 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 const (
 	MetricsPortFlag   = "metrics-port"
-	DefaultMetricPort = 8080
+	DefaultMetricPort = 0 // disabled
 
 	AutoPortForwardFlagName = "auto-port-forward"
-	NamespaceFlagName       = "namespace"
+	NamespacesFlag          = "namespaces"
 
 	CACertValidityFlag     = "ca-cert-validity"
 	CACertRotateBeforeFlag = "ca-cert-rotate-before"
@@ -80,10 +81,10 @@ var (
 
 func init() {
 
-	Cmd.Flags().String(
-		NamespaceFlagName,
-		"",
-		"namespace in which this operator should manage resources (defaults to all namespaces)",
+	Cmd.Flags().StringSlice(
+		NamespacesFlag,
+		nil,
+		"comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
 	)
 	Cmd.Flags().Bool(
 		AutoPortForwardFlagName,
@@ -213,19 +214,27 @@ func execute() {
 	log.Info("Setting up manager")
 	opts := ctrl.Options{
 		Scheme: clientgoscheme.Scheme,
-		// restrict the operator to watch resources within a single namespace, unless empty
-		Namespace: viper.GetString(NamespaceFlagName),
 	}
 
-	// only expose prometheus metrics if provided a specific port
+	// configure the manager cache based on the number of managed namespaces
+	managedNamespaces := viper.GetStringSlice(NamespacesFlag)
+	switch len(managedNamespaces) {
+	case 0:
+		log.Info("Operator configured to manage all namespaces")
+	case 1:
+		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0])
+		opts.Namespace = managedNamespaces[0]
+	default:
+		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces)
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
+	}
+
+	// only expose prometheus metrics if provided a non-zero port
 	metricsPort := viper.GetInt(MetricsPortFlag)
 	if metricsPort != 0 {
 		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
-		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
-	} else {
-		// disable metrics
-		opts.MetricsBindAddress = "0"
 	}
+	opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort) // 0 to disable
 
 	mgr, err := ctrl.NewManager(cfg, opts)
 	if err != nil {

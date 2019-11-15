@@ -47,9 +47,14 @@ integration-tests.json
 integration-tests.xml
 unit-tests.json
 unit-tests.xml
+e2e-tests.json
+e2e-tests.xml
 
 # ignore files fo release job
 eck_image.txt
 
 # ignore generated public key file
 pkg/controller/common/license/zz_generated.pubkey.go
+
+# ignores validator for Jenkins pipelines
+hack/pipeline-validator/validator

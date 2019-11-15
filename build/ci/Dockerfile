@@ -5,8 +5,9 @@ ENV KUBEBUILDER_VERSION=2.0.0
 ENV GCLOUD_VERSION=232.0.0
 ENV KUBECTL_VERSION=1.14.7
 ENV DOCKER_VERSION=18.03.1-ce
-ENV GOLANGCILINT_VERSION=1.18.0
+ENV GOLANGCILINT_VERSION=1.21.0
 ENV GOTESTSUM_VERSION=0.3.5
+ENV KIND_VERSION=0.5.1
 
 # Install golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
@@ -53,6 +54,10 @@ RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v$
     tar xzf gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \
     mv gotestsum /usr/local/bin/gotestsum && chmod +x /usr/local/bin/gotestsum && \
     rm gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz
+
+# Install Kind to run k8s cluster locally in Docker
+RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64 && \
+    mv kind-linux-amd64 /usr/local/bin/kind && chmod +x /usr/local/bin/kind
 
 # Add Go dependencies to Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s

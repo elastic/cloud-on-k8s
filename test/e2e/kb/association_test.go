@@ -22,12 +22,6 @@ import (
 
 // TestCrossNSAssociation tests associating Elasticsearch and Kibana running in different namespaces.
 func TestCrossNSAssociation(t *testing.T) {
-	// This test currently does not work in the E2E environment because each namespace has a dedicated
-	// controller (see https://github.com/elastic/cloud-on-k8s/issues/1438)
-	if !test.Ctx().Local {
-		t.SkipNow()
-	}
-
 	esNamespace := test.Ctx().ManagedNamespace(0)
 	kbNamespace := test.Ctx().ManagedNamespace(1)
 	name := "test-cross-ns-assoc"
@@ -42,13 +36,13 @@ func TestCrossNSAssociation(t *testing.T) {
 		WithNodeCount(1).
 		WithRestrictedSecurityContext()
 
-	builders := []test.Builder{esBuilder, kbBuilder}
-	test.RunMutations(t, builders, builders)
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder).RunSequential(t)
 }
 
 func TestKibanaAssociationWithNonExistentES(t *testing.T) {
 	name := "test-kb-assoc-non-existent-es"
 	kbBuilder := kibana.NewBuilder(name).
+		WithElasticsearchRef(commonv1beta1.ObjectSelector{Name: "some-es"}).
 		WithNodeCount(1)
 
 	k := test.NewK8sClientOrFatal()

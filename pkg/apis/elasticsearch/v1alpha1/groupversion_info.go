@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// Package v1 contains API Schema definitions for the batch v1 API group
+// Package v1 contains API schema definitions for the elasticsearch v1alpha1 API group
 // +kubebuilder:object:generate=true
 // +groupName=elasticsearch.k8s.elastic.co
 package v1alpha1

@@ -5,12 +5,13 @@
 package es
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	corev1 "k8s.io/api/core/v1"
@@ -33,7 +34,7 @@ func TestForceUpgradePendingPods(t *testing.T) {
 		k,
 		initial,
 		// wait for all initial Pods to be Pending
-		elasticsearch.CheckESPodsPending(initial, k),
+		[]test.Step{elasticsearch.CheckESPodsPending(initial, k)},
 		fixed,
 	).RunSequential(t)
 }
@@ -42,13 +43,23 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 	// create a cluster in which one StatefulSet is OK,
 	// and the second one will have Pods that stay Pending forever
 	initial := elasticsearch.NewBuilder("force-upgrade-pending-sset").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithESDataNodes(2, elasticsearch.DefaultResources)
+		WithNodeSet(estype.NodeSet{
+			Name:        "ok",
+			Count:       1,
+			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
+		}).
+		WithNodeSet(estype.NodeSet{
+			Name:        "pending",
+			Count:       1,
+			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
+		})
 
+	// make Pods of the 2nds NodeSet pending
 	initial.Elasticsearch.Spec.NodeSets[1].PodTemplate.Spec.NodeSelector = map[string]string{
 		"cannot": "be-scheduled",
 	}
-	// fix that cluster to remove the wrong NodeSelector
+
+	// eventually fix that cluster to remove the wrong NodeSelector
 	fixed := elasticsearch.Builder{}
 	fixed.Elasticsearch = *initial.Elasticsearch.DeepCopy()
 	fixed.Elasticsearch.Spec.NodeSets[1].PodTemplate.Spec.NodeSelector = nil
@@ -57,28 +68,43 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 	elasticsearch.ForcedUpgradeTestSteps(
 		k,
 		initial,
-		test.Step{
-			Name: "Wait for Pods of the first StatefulSet to be running, and second StatefulSet to be Pending",
-			Test: test.Eventually(func() error {
-				pendingSset := name.StatefulSet(initial.Elasticsearch.Name, initial.Elasticsearch.Spec.NodeSets[1].Name)
-				pods, err := k.GetPods(test.ESPodListOptions(initial.Elasticsearch.Namespace, initial.Elasticsearch.Name)...)
-				if err != nil {
-					return err
-				}
-				if int32(len(pods)) != initial.Elasticsearch.Spec.NodeCount() {
-					return fmt.Errorf("expected %d pods, got %d", len(pods), initial.Elasticsearch.Spec.NodeCount())
-				}
-				for _, p := range pods {
-					expectedPhase := corev1.PodRunning
-					if p.Labels[label.StatefulSetNameLabelName] == pendingSset {
-						expectedPhase = corev1.PodPending
+		[]test.Step{
+			{
+				Name: "Wait for Pods of the first StatefulSet to be running, and second StatefulSet to be Pending",
+				Test: test.Eventually(func() error {
+					pendingSset := estype.StatefulSet(initial.Elasticsearch.Name, initial.Elasticsearch.Spec.NodeSets[1].Name)
+					pods, err := k.GetPods(test.ESPodListOptions(initial.Elasticsearch.Namespace, initial.Elasticsearch.Name)...)
+					if err != nil {
+						return err
 					}
-					if p.Status.Phase != expectedPhase {
-						return fmt.Errorf("pod %s not %s", p.Name, expectedPhase)
+					if int32(len(pods)) != initial.Elasticsearch.Spec.NodeCount() {
+						return fmt.Errorf("expected %d pods, got %d", len(pods), initial.Elasticsearch.Spec.NodeCount())
 					}
-				}
-				return nil
-			}),
+					for _, p := range pods {
+						expectedPhase := corev1.PodRunning
+						if p.Labels[label.StatefulSetNameLabelName] == pendingSset {
+							expectedPhase = corev1.PodPending
+						}
+						if p.Status.Phase != expectedPhase {
+							return fmt.Errorf("pod %s not %s", p.Name, expectedPhase)
+						}
+					}
+					return nil
+				}),
+			},
+			{
+				Name: "Wait for the ES service to have endpoints and become technically reachable",
+				Test: test.Eventually(func() error {
+					endpoints, err := k.GetEndpoints(initial.Elasticsearch.Namespace, estype.HTTPService(initial.Elasticsearch.Name))
+					if err != nil {
+						return err
+					}
+					if len(endpoints.Subsets) == 0 || len(endpoints.Subsets[0].Addresses) == 0 {
+						return errors.New("elasticsearch HTTP service does not have endpoint")
+					}
+					return nil
+				}),
+			},
 		},
 		fixed,
 	).RunSequential(t)
@@ -95,32 +121,32 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 		})
 
 	// fix that cluster to remove the wrong configuration
-	fixed := elasticsearch.Builder{}
-	fixed.Elasticsearch = *initial.Elasticsearch.DeepCopy()
-	fixed.Elasticsearch.Spec.NodeSets[0].Config = nil
+	fixed := initial.WithNoESTopology().WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	k := test.NewK8sClientOrFatal()
 	elasticsearch.ForcedUpgradeTestSteps(
 		k,
 		initial,
 		// wait for Pods to restart due to wrong config
-		elasticsearch.CheckPodsCondition(
-			initial,
-			k,
-			"Pods should have restarted at least once due to wrong ES config",
-			func(p corev1.Pod) error {
-				for _, containerStatus := range p.Status.ContainerStatuses {
-					if containerStatus.Name != v1alpha1.ElasticsearchContainerName {
-						continue
+		[]test.Step{
+			elasticsearch.CheckPodsCondition(
+				initial,
+				k,
+				"Pods should have restarted at least once due to wrong ES config",
+				func(p corev1.Pod) error {
+					for _, containerStatus := range p.Status.ContainerStatuses {
+						if containerStatus.Name != estype.ElasticsearchContainerName {
+							continue
+						}
+						if containerStatus.RestartCount < 1 {
+							return fmt.Errorf("container not restarted yet")
+						}
+						return nil
 					}
-					if containerStatus.RestartCount < 1 {
-						return fmt.Errorf("container not restarted yet")
-					}
-					return nil
-				}
-				return fmt.Errorf("container %s not found in pod %s", v1alpha1.ElasticsearchContainerName, p.Name)
-			},
-		),
+					return fmt.Errorf("container %s not found in pod %s", estype.ElasticsearchContainerName, p.Name)
+				},
+			),
+		},
 		fixed,
 	).RunSequential(t)
 }

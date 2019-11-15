@@ -49,18 +49,6 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - batch
-  resources:
-  - cronjobs
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
   - elasticsearch.k8s.elastic.co
   resources:
   - elasticsearches

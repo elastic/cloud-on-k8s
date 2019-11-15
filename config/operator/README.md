@@ -4,7 +4,7 @@ The Elastic Operator can be deployed in 2 different modes using the following ar
 
 * `--operator-roles`: namespace, global, webhook or all
 * `--operator-namespace`: namespace the operator runs in
-* `--namespace`: namespace in which resources should be watched (defaults to all namespaces)
+* `--namespaces`: comma-separated list of namespaces in which resources should be watched (defaults to all namespaces)
 
 ## Deployment mode
 
@@ -34,7 +34,7 @@ OPERATOR_IMAGE=<?> NAMESPACE=<?> make generate-global | kubectl apply -f -
 A namespace operator that manages resources in a given namespace.
 
 ```bash
-OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACE=<?> make generate-namespace | kubectl apply -f -
+OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACES=<?> make generate-namespace | kubectl apply -f -
 ```
 
 ## Role of each YAML file
@@ -59,4 +59,4 @@ Describes permissions for several api calls the operator needs to perform.
 
 ### role_bindings.yaml or cluster_role_bindings.yaml
 
-Allows the operator to perform calls described in `cluster_role.yaml` in the operator namespace. 
+Allows the operator to perform calls described in `cluster_role.yaml` in the operator namespace.
