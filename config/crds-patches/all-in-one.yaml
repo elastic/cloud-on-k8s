@@ -374,7 +374,6 @@ spec:
                 connect to.
               type: string
           type: object
-      type: object
   version: v1beta1
   versions:
   - name: v1beta1
@@ -1080,7 +1079,6 @@ spec:
                 is in from the controller point of view.
               type: string
           type: object
-      type: object
   version: v1beta1
   versions:
   - name: v1beta1
@@ -1458,7 +1456,6 @@ spec:
               description: KibanaHealth expresses the status of the Kibana instances.
               type: string
           type: object
-      type: object
   version: v1beta1
   versions:
   - name: v1beta1
