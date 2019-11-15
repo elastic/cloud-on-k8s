@@ -28,7 +28,7 @@ func NewState(request reconcile.Request, kb *v1beta1.Kibana) State {
 
 // UpdateKibanaState updates the Kibana status based on the given deployment.
 func (s State) UpdateKibanaState(deployment v1.Deployment) {
-	s.Kibana.Status.AvailableNodes = int32(deployment.Status.AvailableReplicas)
+	s.Kibana.Status.AvailableNodes = deployment.Status.AvailableReplicas
 	s.Kibana.Status.Health = v1beta1.KibanaRed
 	for _, c := range deployment.Status.Conditions {
 		if c.Type == v1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
