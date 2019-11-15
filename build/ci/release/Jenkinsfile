@@ -14,7 +14,7 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
         REPOSITORY = "eck"
         IMG_NAME = "eck-operator"
-        REGISTRY = "push.docker.elastic.co"
+        REGISTRY = "docker.elastic.co"
     }
 
     stages {
@@ -37,7 +37,6 @@ OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
 SNAPSHOT = false
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
-USE_ELASTIC_DOCKER_REGISTRY = true
 ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
                             make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci

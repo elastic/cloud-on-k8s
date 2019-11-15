@@ -13,7 +13,7 @@ pipeline {
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-        REGISTRY = "push.docker.elastic.co"
+        REGISTRY = "docker.elastic.co"
         REPOSITORY = "eck-snapshots"
         IMG_NAME = "eck-operator"
     }
@@ -29,13 +29,12 @@ pipeline {
                 sh """
                     cat > .env <<EOF
 GCLOUD_PROJECT = $GCLOUD_PROJECT
-REGISTRY = "push.docker.elastic.co"
+REGISTRY = "docker.elastic.co"
 REPOSITORY = "eck-snapshots"
 IMG_NAME = "eck-operator"
 SNAPSHOT = "true"
 LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
 IMG_SUFFIX = -ci
-USE_ELASTIC_DOCKER_REGISTRY = true
 ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
                     make -C build/ci TARGET=ci ci

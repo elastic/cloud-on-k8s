@@ -316,7 +316,7 @@ docker-build:
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-ifeq ($(USE_ELASTIC_DOCKER_REGISTRY), true)
+ifeq ($(REGISTRY), docker.elastic.co)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
@@ -325,7 +325,11 @@ ifeq ($(KUBECTL_CLUSTER), minikube)
 	docker push $(OPERATOR_IMAGE)
 	@ hack/registry.sh port-forward stop
 else
-	docker push $(OPERATOR_IMAGE)
+ifeq ($(REGISTRY), docker.elastic.co)
+	@ docker push push.$(OPERATOR_IMAGE)
+else
+	@ docker push $(OPERATOR_IMAGE)
+endif
 endif
 
 purge-gcr-images:
