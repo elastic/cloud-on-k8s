@@ -36,7 +36,6 @@ type runFlags struct {
 	local               bool
 	logToFile           bool
 	logVerbosity        int
-	crdFlavor           string
 	testTimeout         time.Duration
 }
 
@@ -77,7 +76,6 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.scratchDirRoot, "scratch-dir", "/tmp/eck-e2e", "Path under which temporary files should be created")
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
-	cmd.Flags().StringVar(&flags.crdFlavor, "crd-flavor", "default", "CRD flavor to install")
 	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 5*time.Minute, "Timeout before failing a test")
 	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if should log test output to file. Disabled by default.")
 	logutil.BindFlags(cmd.PersistentFlags())

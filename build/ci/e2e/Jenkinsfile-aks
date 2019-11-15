@@ -32,7 +32,6 @@ pipeline {
 REGISTRY = cloudonk8s.azurecr.io
 REPOSITORY = operators
 IMG_SUFFIX = -ci
-CRD_FLAVOR = trivial-versions
 E2E_JSON = true
 TEST_TIMEOUT = 10m
 EOF

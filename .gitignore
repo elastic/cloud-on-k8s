@@ -29,7 +29,7 @@ vendor/
 license.key
 
 # generated from merging multiple files in the Makefile
-config/all-in-one-flavor-*.yaml
+config/all-in-one.yaml
 
 # ignore all generated docs HTML
 docs/html/*

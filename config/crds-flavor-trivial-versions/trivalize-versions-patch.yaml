@@ -1,3 +1,0 @@
-# remove the schema from v1beta1
-- op: remove
-  path: /spec/versions/0/schema

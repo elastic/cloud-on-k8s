@@ -1,3 +1,0 @@
-# remove spec.podTemplate for v1beta1
-- op: remove
-  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/podTemplate

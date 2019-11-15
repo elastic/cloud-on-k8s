@@ -42,7 +42,6 @@ REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
 IMG_SUFFIX = -ci
 SKIP_DOCKER_COMMAND = true
-CRD_FLAVOR = trivial-versions
 E2E_JSON = true
 EOF
                     cat >deployer-config.yml <<EOF
