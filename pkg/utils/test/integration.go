@@ -5,15 +5,23 @@
 package test
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+
 	"github.com/stretchr/testify/require"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -23,17 +31,21 @@ const (
 	// ControlPlaneStartTimeout is the time to wait for control plane startup
 	// in kubebuilder integration tests.
 	// It is set at a relatively high value due to low resources in continuous integration.
-	ControlPlaneStartTimeout = 2 * time.Minute
-	BootstrapTestEnvRetries  = 3
+	ControlPlaneStartTimeout = 1 * time.Minute
+	BootstrapTestEnvRetries  = 1
+
+	CRDsRelativePath = "../../../config/crds-patches/all-in-one.yaml"
 )
 
 var Config *rest.Config
 
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
-func RunWithK8s(m *testing.M, crdPath string) {
+func RunWithK8s(m *testing.M) {
+	// add CRDs scheme to the client
 	_ = controllerscheme.SetupScheme()
+
 	t := &envtest.Environment{
-		CRDDirectoryPaths:        []string{crdPath},
+		CRDs:                     parseCRDs(),
 		ControlPlaneStartTimeout: ControlPlaneStartTimeout,
 	}
 
@@ -60,6 +72,41 @@ func RunWithK8s(m *testing.M, crdPath string) {
 		fmt.Println("failed to stop test environment:", err.Error())
 	}
 	os.Exit(code)
+}
+
+// parseCRDs parses the content of CRDsRelativePath into a list of CustomResourceDefinitions.
+func parseCRDs() []*v1beta1.CustomResourceDefinition {
+	// read CRDsRelativePath relatively to the current file path
+	_, currentFilePath, _, ok := runtime.Caller(1)
+	if !ok {
+		panic("Cannot retrieve path to the current file")
+	}
+	crdsFile := filepath.Join(filepath.Dir(currentFilePath), CRDsRelativePath)
+
+	// parse the yaml file into multiple CRDs
+	yamlFile, err := os.Open(crdsFile)
+	if err != nil {
+		panic("Cannot read file " + crdsFile + ": " + err.Error())
+	}
+	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
+	var crds []*v1beta1.CustomResourceDefinition
+	for {
+		var crd v1beta1.CustomResourceDefinition
+		err := decoder.Decode(&crd)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			panic("Cannot parse CRD" + err.Error())
+		}
+		crd.Spec.Validation.OpenAPIV3Schema.Type = ""
+		crds = append(crds, &crd)
+	}
+	if len(crds) == 0 {
+		panic("No CRD parsed in " + crdsFile)
+	}
+	fmt.Println("parsed ", len(crds))
+	return crds
 }
 
 // StartManager sets up a manager and controller to perform reconciliations in background.

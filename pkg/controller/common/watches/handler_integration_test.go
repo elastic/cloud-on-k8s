@@ -7,7 +7,6 @@
 package watches
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +24,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds-patches"))
+	test.RunWithK8s(m)
 }
 
 // TestDynamicEnqueueRequest tests the integration between a DynamicEnqueueRequest watch and
