@@ -146,7 +146,7 @@ lint:
 #############################
 
 install-crds: generate
-	kubectl apply -f config/crds-patches/all-in-one.yaml
+	kubectl apply -f $(ALL_IN_ONE_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
