@@ -206,7 +206,7 @@ apply-psp:
 
 ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 generate-all-in-one:
-	kubectl kustomize config/crds > $(ALL_IN_ONE_OUTPUT_FILE)
+	kubectl kustomize config/crds-patches > $(ALL_IN_ONE_OUTPUT_FILE)
 	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
 		NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $(ALL_IN_ONE_OUTPUT_FILE)

@@ -1,0 +1,7 @@
+# Using `kubectl apply` stores the complete CRD file as an annotation,
+# which may be too big for the annotations size limit.
+# One way to mitigate this problem is to remove the (huge) podTemplate properties from the CRD.
+# It also avoids the problem of having any k8s-version specific field in the Pod schema,
+# that would maybe not match the user's k8s version.
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/podTemplate/properties
