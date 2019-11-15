@@ -174,7 +174,7 @@ func (h *helper) createE2ENamespaceAndRoleBindings() error {
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	return h.kubectl("apply", "-k", "config/crds")
+	return h.kubectl("apply", "-f", "config/crds-patches/all-in-one.yaml")
 }
 
 func (h *helper) createOperatorNamespaces() error {

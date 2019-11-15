@@ -92,7 +92,8 @@ all: dependencies lint check-license-header unit integration e2e-compile elastic
 dependencies:
 	go mod tidy -v && go mod download
 
-# Generate code
+# Generate code, CRDs and documentation
+ALL_IN_ONE_CRDS=config/crds-patches/all-in-one.yaml
 generate: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
@@ -102,6 +103,9 @@ generate: controller-gen
 	# include validation for the latest version **only**. Older versions are still mentioned, but will be validated
 	# against the latest version schema.
 	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds
+	# build a patched merged version of the CRDs
+	kubectl kustomize config/crds-patches > $(ALL_IN_ONE_CRDS)
+	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
 	$(MAKE) --no-print-directory generate-api-docs
 	$(MAKE) --no-print-directory generate-notice-file
@@ -142,7 +146,7 @@ lint:
 #############################
 
 install-crds: generate
-	kubectl apply -k config/crds
+	kubectl apply -f config/crds-patches/all-in-one.yaml
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
@@ -205,8 +209,10 @@ apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
 
 ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
+
+# merge all-in-one crds with operator manifests
 generate-all-in-one:
-	kubectl kustomize config/crds-patches > $(ALL_IN_ONE_OUTPUT_FILE)
+	cp -f $(ALL_IN_ONE_CRDS) $(ALL_IN_ONE_OUTPUT_FILE)
 	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
 		NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $(ALL_IN_ONE_OUTPUT_FILE)
