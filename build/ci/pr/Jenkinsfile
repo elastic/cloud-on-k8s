@@ -127,7 +127,7 @@ void createConfig() {
         cat >.env <<EOF
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
-TESTS_MATCH = TestSmoke
+TESTS_MATCH = TestEnterprise
 SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
 E2E_JSON = true
