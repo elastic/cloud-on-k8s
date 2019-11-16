@@ -88,13 +88,9 @@ type helper struct {
 	eventLog       string
 	kubectlWrapper *command.Kubectl
 	testContext    test.Context
-	testSecrets    testSecrets
+	testSecrets    map[string]string
 	scratchDir     string
 	cleanupFuncs   []func()
-}
-
-type testSecrets struct {
-	Data map[string]string
 }
 
 func (h *helper) createScratchDir() error {
@@ -175,14 +171,14 @@ func (h *helper) initTestContext() error {
 }
 
 func (h *helper) initTestSecrets() error {
-	h.testSecrets = testSecrets{Data: map[string]string{}}
+	h.testSecrets = map[string]string{}
 	if h.testLicence != "" {
 		bytes, err := ioutil.ReadFile(h.testLicence)
 		if err != nil {
 			return err
 		}
-		h.testSecrets.Data["test-license.json"] = string(bytes)
-		h.testContext.TestLicence = "/etc/e2e-secrets/test-license.json"
+		h.testSecrets["test-license.json"] = string(bytes)
+		h.testContext.TestLicence = "/var/run/secrets/e2e/test-license.json"
 	}
 	return nil
 }
@@ -227,7 +223,7 @@ func (h *helper) deployTestJob() error {
 	log.Info("Deploying e2e test job")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml",
 		struct {
-			Secrets testSecrets
+			Secrets map[string]string
 			Context test.Context
 		}{
 			Secrets: h.testSecrets,
