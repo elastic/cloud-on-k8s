@@ -9272,6 +9272,7 @@ spec:
                 description: AssociationStatus is the status of an association resource.
                 type: string
               availableNodes:
+                format: int32
                 type: integer
               health:
                 description: KibanaHealth expresses the status of the Kibana instances.
