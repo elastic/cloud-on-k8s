@@ -2,7 +2,7 @@
 == Managing licenses in ECK
 
 When you install the default distribution of ECK, you receive a basic license. Any Elastic stack application you manage through
-ECK will also be basic licensed. For the full list of free features that are included in the basic license, see: https://www.elastic.co/subscriptions
+ECK will also be basic licensed. For the full list of free features that are included in the basic license, see: https://www.elastic.co/subscriptions.
 
 [float]
 === Starting a trial
@@ -15,20 +15,20 @@ cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Secret
 metadata:
-  name: any-name-you-like
+  name: eck-trial-license
   namespace: elastic-system
   labels:
-    licencse.k8s.elastic.co/type: enterprise-trial
+    license.k8s.elastic.co/type: enterprise-trial
   annotations:
     elastic.co/eula: accepted <1>
 EOF
 ----
 
-<1> By setting this annotation to `accepted` you are expressing that you have accepted the Elastic EULA which can be found at https://www.elastic.co/eula
+<1> By setting this annotation to `accepted` you are expressing that you have accepted the Elastic EULA which can be found at https://www.elastic.co/eula.
 
 NOTE: You can initiate a trial only if a trial has not previously been activated.
 
-At the end of the trial period, the platinum and enterprise features operate in a link:https://www.elastic.co/guide/en/elastic-stack-overview/7.3/license-expiration.html[degraded mode]. You can revert to a basic license, extend the trial, or purchase an enterprise subscription.
+At the end of the trial period, the platinum and enterprise features operate in a link:https://www.elastic.co/guide/en/elastic-stack-overview/current/license-expiration.html[degraded mode]. You can revert to a basic license, extend the trial, or purchase an enterprise subscription.
 
 [float]
 === Adding a license
@@ -42,10 +42,10 @@ kind: Secret
 metadata:
   labels:
     license.k8s.elastic.co/type: enterprise <1>
-  name: your-choice
+  name: eck-license
 type: Opaque
 data:
-  license: "your license JSON goes here"  <2>
+  license: "JSON license in base64 format"  <2>
 ----
 
 <1> this label is required for ECK to identify your license secret
