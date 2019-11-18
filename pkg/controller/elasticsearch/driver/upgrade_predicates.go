@@ -13,7 +13,7 @@ import (
 )
 
 type PredicateContext struct {
-	ES                     v1beta1.Elasticsearch
+	es                     v1beta1.Elasticsearch
 	masterNodesNames       []string
 	actualMasters          []corev1.Pod
 	healthyPods            map[string]corev1.Pod
@@ -55,7 +55,7 @@ func groupByPredicates(fp failedPredicates) map[string][]string {
 }
 
 func NewPredicateContext(
-	ES v1beta1.Elasticsearch,
+	es v1beta1.Elasticsearch,
 	state ESState,
 	shardLister client.ShardLister,
 	healthyPods map[string]corev1.Pod,
@@ -64,7 +64,7 @@ func NewPredicateContext(
 	actualMasters []corev1.Pod,
 ) PredicateContext {
 	return PredicateContext{
-		ES:               ES,
+		es:               es,
 		masterNodesNames: masterNodesNames,
 		actualMasters:    actualMasters,
 		healthyPods:      healthyPods,
@@ -76,10 +76,16 @@ func NewPredicateContext(
 
 func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailableReached bool, allowedDeletions int) (deletedPods []corev1.Pod, err error) {
 	var failedPredicates failedPredicates
+
+Loop:
 	for _, candidate := range candidates {
-		if predicateErr, err := runPredicates(ctx, candidate, deletedPods, maxUnavailableReached); err != nil {
+		switch predicateErr, err := runPredicates(ctx, candidate, deletedPods, maxUnavailableReached); {
+		case err != nil:
 			return deletedPods, err
-		} else if predicateErr == nil {
+		case predicateErr != nil:
+			// A predicate has failed on this Pod
+			failedPredicates = append(failedPredicates, *predicateErr)
+		default:
 			candidate := candidate
 			if label.IsMasterNode(candidate) || willBecomeMasterNode(candidate.Name, ctx.masterNodesNames) {
 				// It is a mutation on an already existing or future master.
@@ -91,20 +97,18 @@ func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailab
 			deletedPods = append(deletedPods, candidate)
 			allowedDeletions--
 			if allowedDeletions <= 0 {
-				break
+				break Loop
 			}
-		} else {
-			// A predicate has failed on this Pod
-			failedPredicates = append(failedPredicates, *predicateErr)
 		}
 	}
+
 	// If some predicates have failed print a summary of the failures to help
 	// the user to understand why.
 	if len(failedPredicates) > 0 {
 		log.Info(
 			"Nodes can't be upgraded",
-			"namespace", ctx.ES.Namespace,
-			"es_name", ctx.ES.Name,
+			"namespace", ctx.es.Namespace,
+			"es_name", ctx.es.Name,
 			"failedPredicates", groupByPredicates(failedPredicates))
 	}
 	return deletedPods, nil
