@@ -1,5 +1,5 @@
 def failedTests = []
-def testScript
+def lib
 
 pipeline {
 
@@ -22,7 +22,7 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    testScript = load "build/ci/common/tests.groovy"
+                    lib = load "build/ci/common/tests.groovy"
                 }
             }
         }
@@ -31,7 +31,9 @@ pipeline {
                 stage("6.8.4") {
                     steps {
                         checkout scm
-                        runWith("eck-68-${BUILD_NUMBER}-e2e", "6.8.4")
+                        script {
+                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.4")
+                        }
                     }
                 }
                 stage("7.1.1") {
@@ -40,7 +42,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
+                        script {
+                            runWith(lib, failedTests, "eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
+                        }
                     }
                 }
                 stage("7.2.1") {
@@ -49,7 +53,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-72-${BUILD_NUMBER}-e2e", "7.2.1")
+                        script {
+                            runWith(lib, failedTests, "eck-72-${BUILD_NUMBER}-e2e", "7.2.1")
+                        }
                     }
                 }
                 stage("7.3.2") {
@@ -58,7 +64,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-73-${BUILD_NUMBER}-e2e", "7.3.2")
+                        script {
+                            runWith(lib, failedTests, "eck-73-${BUILD_NUMBER}-e2e", "7.3.2")
+                        }
                     }
                 }
                 stage("7.4.1") {
@@ -67,7 +75,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith("eck-74-${BUILD_NUMBER}-e2e", "7.4.1")
+                        script {
+                            runWith(lib, failedTests, "eck-74-${BUILD_NUMBER}-e2e", "7.4.1")
+                        }
                     }
                 }
             }
@@ -80,7 +90,7 @@ pipeline {
                 if (params.SEND_NOTIFICATIONS) {
                     Set<String> filter = new HashSet<>()
                     filter.addAll(failedTests)
-                    def msg = testScript.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter)
+                    def msg = lib.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter)
 
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
@@ -110,11 +120,10 @@ pipeline {
 
 }
 
-def runWith(clusterName, stackVersion) {
+def runWith(lib, failedTests, clusterName, stackVersion) {
     sh """
         cat >.env <<EOF
 OPERATOR_IMAGE = "${IMAGE}"
-LATEST_RELEASED_IMG = "${IMAGE}"
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
 STACK_VERSION = "${stackVersion}"
 SKIP_DOCKER_COMMAND = true
@@ -142,7 +151,7 @@ EOF
         junit "e2e-tests.xml"
 
         if (env.SHELL_EXIT_CODE != 0) {
-            failedTests.addAll(testScript.getListOfFailedTests())
+            failedTests.addAll(lib.getListOfFailedTests())
         }
 
         sh 'exit $SHELL_EXIT_CODE'

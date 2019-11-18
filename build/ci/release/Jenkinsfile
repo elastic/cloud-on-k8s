@@ -14,8 +14,7 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
         REPOSITORY = "eck"
         IMG_NAME = "eck-operator"
-        REGISTRY = "push.docker.elastic.co"
-        LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
+        REGISTRY = "docker.elastic.co"
     }
 
     stages {
@@ -35,11 +34,9 @@ REGISTRY = "${REGISTRY}"
 REPOSITORY = "${REPOSITORY}"
 IMG_NAME = "${IMG_NAME}"
 OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
-LATEST_RELEASED_IMG = "${LATEST_RELEASED_IMG}"
 SNAPSHOT = false
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
-USE_ELASTIC_DOCKER_REGISTRY = true
 ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
                             make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
@@ -54,7 +51,7 @@ EOF
                 stage('Send message to Slack') {
                     steps {
                         script {
-                            def msg = "${LATEST_RELEASED_IMG} was pushed \r\n" +
+                            def msg = "${OPERATOR_IMAGE} was pushed \r\n" +
                                 "https://download.elastic.co/downloads/eck/${TAG_NAME}/all-in-one.yaml was uploaded \r\n" +
                                 "Congratulations!"
                             slackSend botUser: true,
@@ -72,15 +69,15 @@ EOF
     post {
         success {
             build job: 'cloud-on-k8s-e2e-tests-custom',
-                parameters: [string(name: 'IMAGE', value: "${LATEST_RELEASED_IMG}")],
+                parameters: [string(name: 'IMAGE', value: "${OPERATOR_IMAGE}")],
                 wait: false
 
             build job: 'cloud-on-k8s-stack',
-                parameters: [string(name: 'IMAGE', value: "${LATEST_RELEASED_IMG}")],
+                parameters: [string(name: 'IMAGE', value: "${OPERATOR_IMAGE}")],
                 wait: false
                 
             build job: 'cloud-on-k8s-versions-gke',
-                parameters: [string(name: 'IMAGE', value: "${LATEST_RELEASED_IMG}")],
+                parameters: [string(name: 'IMAGE', value: "${OPERATOR_IMAGE}")],
                 wait: false
         }
         unsuccessful {
@@ -103,7 +100,7 @@ EOF
 
 def releaseImageNotExist() {
     return sh (
-        script: "docker pull $LATEST_RELEASED_IMG",
+        script: "docker pull $OPERATOR_IMAGE",
         returnStatus: true
     ) == 1
 }

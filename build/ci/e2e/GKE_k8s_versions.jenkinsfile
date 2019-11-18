@@ -1,5 +1,5 @@
 def failedTests = []
-def testScript
+def lib
 
 pipeline {
 
@@ -22,7 +22,7 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    testScript = load "build/ci/common/tests.groovy"
+                    lib = load "build/ci/common/tests.groovy"
                 }
             }
         }
@@ -34,7 +34,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.12', "eck-gke12-${BUILD_NUMBER}-e2e")
+                        script {
+                            runWith(lib, failedTests, '1.12', "eck-gke12-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
                 stage("1.13") {
@@ -43,7 +45,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.13', "eck-gke13-${BUILD_NUMBER}-e2e")
+                        script {
+                            runWith(lib, failedTests, '1.13', "eck-gke13-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
                 stage("1.14") {
@@ -52,7 +56,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runWith('1.14', "eck-gke14-${BUILD_NUMBER}-e2e")
+                        script {
+                            runWith(lib, failedTests, '1.14', "eck-gke14-${BUILD_NUMBER}-e2e")
+                        }
                     }
                 }
             }
@@ -65,7 +71,7 @@ pipeline {
                 if (params.SEND_NOTIFICATIONS) {
                     Set<String> filter = new HashSet<>()
                     filter.addAll(failedTests)
-                    def msg = testScript.generateSlackMessage("E2E tests for different k8s versions in GKE failed!", env.BUILD_URL, filter)
+                    def msg = lib.generateSlackMessage("E2E tests for different k8s versions in GKE failed!", env.BUILD_URL, filter)
 
                     slackSend botUser: true,
                         channel: '#cloud-k8s',
@@ -94,12 +100,11 @@ pipeline {
     }
 }
 
-void runWith(clusterVersion, clusterName) {
+def runWith(lib, failedTests, clusterVersion, clusterName) {
     sh """#!/bin/bash
 
         cat >.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
-LATEST_RELEASED_IMG = "$IMAGE"
 OPERATOR_IMAGE = "$IMAGE"
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
@@ -126,7 +131,7 @@ EOF
         junit "e2e-tests.xml"
 
         if (env.SHELL_EXIT_CODE != 0) {
-            failedTests.addAll(testScript.getListOfFailedTests())
+            failedTests.addAll(lib.getListOfFailedTests())
         }
 
         sh 'exit $SHELL_EXIT_CODE'

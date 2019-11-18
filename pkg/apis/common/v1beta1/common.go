@@ -16,7 +16,7 @@ import (
 
 // ReconcilerStatus represents status information about desired/available nodes.
 type ReconcilerStatus struct {
-	AvailableNodes int `json:"availableNodes,omitempty"`
+	AvailableNodes int32 `json:"availableNodes,omitempty"`
 }
 
 // SecretRef is a reference to a secret that exists in the same namespace.
