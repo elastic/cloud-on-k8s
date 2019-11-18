@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
-
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
@@ -29,6 +27,7 @@ import (
 	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
