@@ -24,9 +24,9 @@ const (
 func TestParams_ReconcileResources(t *testing.T) {
 
 	w := Params{
-		Namespace:  "elastic-system",
-		SecretName: "elastic-webhook-server-cert",
-		//ServerDomainName:              sampleServiceName,
+		Namespace:                "elastic-system",
+		SecretName:               "elastic-webhook-server-cert",
+		ServerDomainName:         sampleServiceName,
 		WebhookConfigurationName: "elastic-webhook.k8s.elastic.co",
 		Rotation: certificates.RotationParams{
 			Validity:     certificates.DefaultCertValidity,
@@ -108,7 +108,7 @@ func verifyCertificates(t *testing.T, rootCert []byte, serverCert []byte) {
 	cert, err := x509.ParseCertificate(block.Bytes)
 	assert.NoError(t, err)
 	opts := x509.VerifyOptions{
-		DNSName: ServerCertCommonName,
+		DNSName: "elastic-webhook-server.elastic-system.svc",
 		Roots:   ca,
 	}
 	_, err = cert.Verify(opts)
