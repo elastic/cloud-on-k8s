@@ -1,0 +1,63 @@
+[id="{p}-licensing"]
+== Managing licenses in ECK
+
+When you install the default distribution of ECK, you receive a basic license. Any Elastic stack application you manage through
+ECK will also be basic licensed. For the full list of free features that are included in the basic license, see: https://www.elastic.co/subscriptions.
+
+[float]
+=== Starting a trial
+If you want to try the features included in the Enterprise subscription, you can start a 30-day trial. To start a trial create
+a Kubernetes secret as shown below:
+
+[source,yaml]
+----
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: eck-trial-license
+  namespace: elastic-system
+  labels:
+    license.k8s.elastic.co/type: enterprise-trial
+  annotations:
+    elastic.co/eula: accepted <1>
+EOF
+----
+
+<1> By setting this annotation to `accepted` you are expressing that you have accepted the Elastic EULA which can be found at https://www.elastic.co/eula.
+
+NOTE: You can initiate a trial only if a trial has not previously been activated.
+
+At the end of the trial period, the platinum and enterprise features operate in a link:https://www.elastic.co/guide/en/elastic-stack-overview/current/license-expiration.html[degraded mode]. You can revert to a basic license, extend the trial, or purchase an enterprise subscription.
+
+[float]
+=== Adding a license
+If you have a valid enterprise subscription you will receive a license as a JSON file.
+To add the license to your ECK installation, create a Kubernetes secret of the following form:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    license.k8s.elastic.co/type: enterprise <1>
+  name: eck-license
+type: Opaque
+data:
+  license: "JSON license in base64 format"  <2>
+----
+
+<1> this label is required for ECK to identify your license secret
+<2> the license file can have any name
+
+An easy way to create this secret is to rely on `kubectl` 's built-in support for secrets:
+
+[source,shell script]
+----
+kubectl create secret generic eck-license --from-file=my-license-file.json -n elastic-system
+kubectl label secret eck-license "license.k8s.elastic.co/type"=enterprise -n elastic-system
+----
+
+NOTE: Once you have installed a license into ECK new Elastic stack applications you manage with ECK will have all platinum and enterprise features enabled.
+Applications that were created before you installed the license will be upgraded to platinum or enterprise features without interruption of service after a short delay.
