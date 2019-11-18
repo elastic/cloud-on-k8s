@@ -19,8 +19,6 @@ NAME       	?= eck-operator
 VERSION    	?= $(shell cat VERSION)
 SNAPSHOT   	?= true
 
-LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
-
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
@@ -219,8 +217,8 @@ generate-all-in-one:
 	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
 	    ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-flavor-$$crd_flavor.yaml; \
         kubectl kustomize config/crds-flavor-$$crd_flavor > $${ALL_IN_ONE_OUTPUT_FILE}; \
-        OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
-            NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+        OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+        NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
             $(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $${ALL_IN_ONE_OUTPUT_FILE}; \
 	done
 
@@ -318,7 +316,7 @@ docker-build:
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-ifeq ($(USE_ELASTIC_DOCKER_REGISTRY), true)
+ifeq ($(REGISTRY), docker.elastic.co)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
@@ -327,7 +325,11 @@ ifeq ($(KUBECTL_CLUSTER), minikube)
 	docker push $(OPERATOR_IMAGE)
 	@ hack/registry.sh port-forward stop
 else
-	docker push $(OPERATOR_IMAGE)
+ifeq ($(REGISTRY), docker.elastic.co)
+	@ docker push push.$(OPERATOR_IMAGE)
+else
+	@ docker push $(OPERATOR_IMAGE)
+endif
 endif
 
 purge-gcr-images:

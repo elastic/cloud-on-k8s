@@ -105,7 +105,6 @@ def runWith(failedTests, clusterVersion, clusterName) {
 
         cat >.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
-LATEST_RELEASED_IMG = "$IMAGE"
 OPERATOR_IMAGE = "$IMAGE"
 REGISTRY = eu.gcr.io
 REPOSITORY = "$GCLOUD_PROJECT"
