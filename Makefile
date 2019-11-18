@@ -348,6 +348,7 @@ E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
 
 # Run e2e tests as a k8s batch job
+# clean between operator build and e2e build to remove irrelevant/build-breaking generated public keys
 e2e: build-operator-image clean e2e-docker-build e2e-docker-push e2e-run
 
 e2e-docker-build:
