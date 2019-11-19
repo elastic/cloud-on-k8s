@@ -48,11 +48,11 @@ type ReconcileWebhookResources struct {
 
 func (r *ReconcileWebhookResources) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
-	res := r.reconcileInternal(request)
+	res := r.reconcileInternal()
 	return res.Aggregate()
 }
 
-func (r *ReconcileWebhookResources) reconcileInternal(request reconcile.Request) *reconciler.Results {
+func (r *ReconcileWebhookResources) reconcileInternal() *reconciler.Results {
 	res := &reconciler.Results{}
 	if err := r.webhookParams.ReconcileResources(r.clientset); err != nil {
 		return res.WithError(err)
