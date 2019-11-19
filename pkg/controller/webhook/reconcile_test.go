@@ -17,16 +17,11 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-const (
-	sampleServiceName = "elastic-webhook-server"
-)
-
 func TestParams_ReconcileResources(t *testing.T) {
 
 	w := Params{
 		Namespace:                "elastic-system",
 		SecretName:               "elastic-webhook-server-cert",
-		ServerDomainName:         sampleServiceName,
 		WebhookConfigurationName: "elastic-webhook.k8s.elastic.co",
 		Rotation: certificates.RotationParams{
 			Validity:     certificates.DefaultCertValidity,

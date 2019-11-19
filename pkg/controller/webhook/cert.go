@@ -18,6 +18,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const WebhookServiceName = "elastic-webhook-server"
+
 // WebhookCertificates holds the artifacts used by the webhook server and the webhook configuration.
 type WebhookCertificates struct {
 	caCert []byte
@@ -59,6 +61,11 @@ func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webh
 	return false
 }
 
+// newCertificates creates a new certificate authority and uses it to sign a new key/cert pair for the webhook server.
+// The certificate of the CA is used in the webhook configuration so it can be used by the API server to verify the
+// certificate of the webhook server.
+// The private key is not retained or persisted, all the artifacts are regenerated and updated if needed when the
+// certificate is about to expire or is missing.
 func (w *Params) newCertificates() (WebhookCertificates, error) {
 	webhookCertificates := WebhookCertificates{}
 
@@ -100,7 +107,7 @@ func (w *Params) newCertificates() (WebhookCertificates, error) {
 		DNSNames: k8s.GetServiceDNSName(corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: w.Namespace,
-				Name:      w.ServerDomainName,
+				Name:      WebhookServiceName,
 			},
 		}),
 

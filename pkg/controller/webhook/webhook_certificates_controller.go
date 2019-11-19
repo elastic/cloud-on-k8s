@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/api/admissionregistration/v1beta1"
@@ -47,23 +48,32 @@ type ReconcileWebhookResources struct {
 
 func (r *ReconcileWebhookResources) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	res := r.reconcileInternal(request)
+	return res.Aggregate()
+}
+
+func (r *ReconcileWebhookResources) reconcileInternal(request reconcile.Request) *reconciler.Results {
+	res := &reconciler.Results{}
 	if err := r.webhookParams.ReconcileResources(r.clientset); err != nil {
-		return reconcile.Result{}, err
+		return res.WithError(err)
 	}
 
 	// Get the latest content of the webhook CA
 	webhookServerSecret, err := r.clientset.CoreV1().Secrets(r.webhookParams.Namespace).Get(r.webhookParams.SecretName, metav1.GetOptions{})
 	if err != nil {
-		return reconcile.Result{}, err
+		return res.WithError(err)
 	}
 	serverCA := certificates.BuildCAFromSecret(*webhookServerSecret)
 	if serverCA == nil {
-		return reconcile.Result{}, fmt.Errorf("cannot find CA in webhook secret %s/%s", r.webhookParams.Namespace, r.webhookParams.SecretName)
+		return res.WithError(
+			fmt.Errorf("cannot find CA in webhook secret %s/%s", r.webhookParams.Namespace, r.webhookParams.SecretName),
+		)
 	}
 
-	return reconcile.Result{
+	res.WithResult(reconcile.Result{
 		RequeueAfter: certificates.ShouldRotateIn(time.Now(), serverCA.Cert.NotAfter, r.webhookParams.Rotation.RotateBefore),
-	}, nil
+	})
+	return res
 }
 
 // newReconciler returns a new reconcile.Reconciler

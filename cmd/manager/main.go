@@ -38,13 +38,13 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 const (
 	MetricsPortFlag   = "metrics-port"
 	DefaultMetricPort = 0 // disabled
-	WebhookPort       = 9443
 
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespacesFlag          = "namespaces"
@@ -54,11 +54,12 @@ const (
 	CertValidityFlag       = "cert-validity"
 	CertRotateBeforeFlag   = "cert-rotate-before"
 
-	AutoCertificatesWebhookFlag = "webhook-certificates-management"
-	OperatorNamespaceFlag       = "operator-namespace"
-	WebhookSecretFlag           = "webhook-secret"
-	WebhookDomainNameFlag       = "webhook-domain-name"
-	DefaultWebhookServiceFlag   = "elastic-webhook-server"
+	OperatorNamespaceFlag = "operator-namespace"
+
+	SetupWebhookCertsFlag    = "setup-webhook-certs"
+	WebhookSecretFlag        = "webhook-secret"
+	WebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
+	WebhookPort              = 9443
 
 	DebugHTTPServerListenAddressFlag = "debug-http-listen"
 )
@@ -122,14 +123,9 @@ func init() {
 		"Duration representing how long before expiration TLS certificates should be reissued",
 	)
 	Cmd.Flags().Bool(
-		AutoCertificatesWebhookFlag,
+		SetupWebhookCertsFlag,
 		true,
 		"enables automatic certificates management for the webhook, the Secret and the ValidatingWebhookConfiguration must be created before running the operator",
-	)
-	Cmd.Flags().String(
-		WebhookDomainNameFlag,
-		DefaultWebhookServiceFlag,
-		"k8s service name used to automatically the webhook certificate",
 	)
 	Cmd.Flags().String(
 		OperatorNamespaceFlag,
@@ -282,34 +278,7 @@ func execute() {
 	}
 
 	if operator.HasRole(operator.WebhookServer, roles) {
-		autoWebhookCertificatesMngt := viper.GetBool(AutoCertificatesWebhookFlag)
-		if autoWebhookCertificatesMngt {
-			log.Info("Automatic management of the webhook certificates enabled")
-			// Ensure that all the certificates needed by the webhook server are already created
-			webhookParams := webhook.Params{
-				Namespace:                viper.GetString(OperatorNamespaceFlag),
-				SecretName:               viper.GetString(WebhookSecretFlag),
-				ServerDomainName:         viper.GetString(WebhookDomainNameFlag),
-				WebhookConfigurationName: "elastic-webhook.k8s.elastic.co",
-				Rotation:                 params.CertRotation,
-			}
-
-			// Force a first reconciliation to create the resources before the server is started
-			if err := webhookParams.ReconcileResources(clientset); err != nil {
-				log.Error(err, "unable to setup and fill the webhook certificates")
-				os.Exit(1)
-			}
-
-			if err = webhook.Add(mgr, webhookParams, clientset); err != nil {
-				log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
-				os.Exit(1)
-			}
-		}
-
-		if err = (&estype.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
-			log.Error(err, "unable to create webhook", "webhook", "Elasticsearch")
-			os.Exit(1)
-		}
+		setupWebhook(mgr, params.CertRotation, clientset)
 	}
 
 	if operator.HasRole(operator.NamespaceOperator, roles) {
@@ -363,4 +332,34 @@ func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 		os.Exit(1)
 	}
 	return certValidity, certRotateBefore
+}
+
+func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
+	setupWebhookCerts := viper.GetBool(SetupWebhookCertsFlag)
+	if setupWebhookCerts {
+		log.Info("Automatic management of the webhook certificates enabled")
+		// Ensure that all the certificates needed by the webhook server are already created
+		webhookParams := webhook.Params{
+			Namespace:                viper.GetString(OperatorNamespaceFlag),
+			SecretName:               viper.GetString(WebhookSecretFlag),
+			WebhookConfigurationName: WebhookConfigurationName,
+			Rotation:                 certRotation,
+		}
+
+		// Force a first reconciliation to create the resources before the server is started
+		if err := webhookParams.ReconcileResources(clientset); err != nil {
+			log.Error(err, "unable to setup and fill the webhook certificates")
+			os.Exit(1)
+		}
+
+		if err := webhook.Add(mgr, webhookParams, clientset); err != nil {
+			log.Error(err, "unable to create controller", "controller", webhook.ControllerName)
+			os.Exit(1)
+		}
+	}
+
+	if err := (&estype.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
+		log.Error(err, "unable to create webhook", "webhook", "Elasticsearch")
+		os.Exit(1)
+	}
 }

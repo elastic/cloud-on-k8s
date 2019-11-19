@@ -14,7 +14,6 @@ import (
 type Params struct {
 	Namespace                string
 	SecretName               string
-	ServerDomainName         string
 	WebhookConfigurationName string
 
 	// Certificate options
@@ -40,6 +39,12 @@ func (w *Params) ReconcileResources(clientset kubernetes.Interface) error {
 
 	// check if we need to renew the certificates used in the resources
 	if w.shouldRenewCertificates(webhookServerSecret, webhookConfiguration) {
+		log.Info(
+			"Creating new webhook certificates",
+			"webhook", webhookConfiguration.Name,
+			"secret_namespace", webhookServerSecret.Namespace,
+			"secret_name", webhookServerSecret.Name,
+		)
 		newCertificates, err := w.newCertificates()
 		if err != nil {
 			return err
