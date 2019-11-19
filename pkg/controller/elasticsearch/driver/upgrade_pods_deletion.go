@@ -187,7 +187,10 @@ func runPredicates(
 		}
 		if !canDelete {
 			// Skip this Pod, it can't be deleted for the moment
-			return newFailedPredicate(candidate.Name, predicate.name), nil
+			return &failedPredicate{
+				pod:       candidate.Name,
+				predicate: predicate.name,
+			}, nil
 		}
 	}
 	// All predicates passed!

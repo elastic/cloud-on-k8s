@@ -34,13 +34,6 @@ type failedPredicate struct {
 	predicate string
 }
 
-func newFailedPredicate(pod, predicate string) *failedPredicate {
-	return &failedPredicate{
-		pod:       pod,
-		predicate: predicate,
-	}
-}
-
 type failedPredicates []failedPredicate
 
 // groupByPredicates groups by predicates the pods that can't be upgraded.
@@ -106,10 +99,10 @@ Loop:
 	// the user to understand why.
 	if len(failedPredicates) > 0 {
 		log.Info(
-			"Nodes can't be upgraded",
+			"Cannot restart some nodes for upgrade at this time",
 			"namespace", ctx.es.Namespace,
 			"es_name", ctx.es.Name,
-			"failedPredicates", groupByPredicates(failedPredicates))
+			"failed_predicates", groupByPredicates(failedPredicates))
 	}
 	return deletedPods, nil
 }
