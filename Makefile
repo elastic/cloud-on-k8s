@@ -350,7 +350,8 @@ E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
 
 # Run e2e tests as a k8s batch job
-e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
+# clean between operator build and e2e build to remove irrelevant/build-breaking generated public keys
+e2e: build-operator-image clean e2e-docker-build e2e-docker-push e2e-run
 
 e2e-docker-build:
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
@@ -363,6 +364,7 @@ e2e-run:
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
+		--test-license=$(TEST_LICENSE) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--crd-flavor=$(CRD_FLAVOR) \
@@ -384,6 +386,7 @@ e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
 		--test-context-out=$(LOCAL_E2E_CTX) \
+		--test-license=$(TEST_LICENSE) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
 		--local \

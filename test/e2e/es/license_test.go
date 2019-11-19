@@ -16,21 +16,21 @@ import (
 
 func TestEnterpriseLicenseSingle(t *testing.T) {
 	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicence == "" {
+	if test.Ctx().TestLicense == "" {
 		t.SkipNow()
 	}
 	k := test.NewK8sClientOrFatal()
 
-	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicence)
+	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
 
 	// create a single node cluster
 	esBuilder := elasticsearch.NewBuilder("test-es-license-provisioning").
-		WithESMasterNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutatedEsBuilder := esBuilder.
 		WithNoESTopology().
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
 

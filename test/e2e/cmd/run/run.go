@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -59,6 +60,7 @@ func doRun(flags runFlags) error {
 		steps = []stepFunc{
 			helper.createScratchDir,
 			helper.initTestContext,
+			helper.initTestSecrets,
 			helper.createE2ENamespaceAndRoleBindings,
 			helper.installCRDs,
 			helper.createOperatorNamespaces,
@@ -86,6 +88,7 @@ type helper struct {
 	eventLog       string
 	kubectlWrapper *command.Kubectl
 	testContext    test.Context
+	testSecrets    map[string]string
 	scratchDir     string
 	cleanupFuncs   []func()
 }
@@ -139,7 +142,7 @@ func (h *helper) initTestContext() error {
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 		},
 		OperatorImage: h.operatorImage,
-		TestLicence:   h.testLicence,
+		TestLicense:   h.testLicense,
 		TestRegex:     h.testRegex,
 		TestRun:       h.testRunName,
 		TestTimeout:   h.testTimeout,
@@ -164,6 +167,19 @@ func (h *helper) initTestContext() error {
 		}
 	}
 
+	return nil
+}
+
+func (h *helper) initTestSecrets() error {
+	h.testSecrets = map[string]string{}
+	if h.testLicense != "" {
+		bytes, err := ioutil.ReadFile(h.testLicense)
+		if err != nil {
+			return err
+		}
+		h.testSecrets["test-license.json"] = string(bytes)
+		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
+	}
 	return nil
 }
 
@@ -205,7 +221,15 @@ func (h *helper) deployNamespaceOperator() error {
 
 func (h *helper) deployTestJob() error {
 	log.Info("Deploying e2e test job")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml", h.testContext)
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml",
+		struct {
+			Secrets map[string]string
+			Context test.Context
+		}{
+			Secrets: h.testSecrets,
+			Context: h.testContext,
+		},
+	)
 }
 
 func (h *helper) runTestJob() error {
