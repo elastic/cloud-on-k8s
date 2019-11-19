@@ -142,7 +142,7 @@ func (h *helper) initTestContext() error {
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 		},
 		OperatorImage: h.operatorImage,
-		TestLicence:   h.testLicence,
+		TestLicense:   h.testLicense,
 		TestRegex:     h.testRegex,
 		TestRun:       h.testRunName,
 		TestTimeout:   h.testTimeout,
@@ -172,13 +172,13 @@ func (h *helper) initTestContext() error {
 
 func (h *helper) initTestSecrets() error {
 	h.testSecrets = map[string]string{}
-	if h.testLicence != "" {
-		bytes, err := ioutil.ReadFile(h.testLicence)
+	if h.testLicense != "" {
+		bytes, err := ioutil.ReadFile(h.testLicense)
 		if err != nil {
 			return err
 		}
 		h.testSecrets["test-license.json"] = string(bytes)
-		h.testContext.TestLicence = "/var/run/secrets/e2e/test-license.json"
+		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
 	}
 	return nil
 }

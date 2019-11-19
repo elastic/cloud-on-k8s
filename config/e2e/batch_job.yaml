@@ -53,7 +53,7 @@ spec:
             - name: test-config
               mountPath: /etc/e2e
             - name: test-secrets
-              mountPath: {{ .Context.TestLicence | dir }}
+              mountPath: {{ .Context.TestLicense | dir }}
           securityContext:
             allowPrivilegeEscalation: false
       volumes:
