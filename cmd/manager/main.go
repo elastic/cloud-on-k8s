@@ -125,7 +125,7 @@ func init() {
 	Cmd.Flags().Bool(
 		ManageWebhookCertsFlag,
 		true,
-		"enables automatic certificates management for the webhook, the Secret and the ValidatingWebhookConfiguration must be created before running the operator",
+		"enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
 	)
 	Cmd.Flags().String(
 		OperatorNamespaceFlag,
