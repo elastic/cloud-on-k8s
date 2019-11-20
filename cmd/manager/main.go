@@ -56,7 +56,7 @@ const (
 
 	OperatorNamespaceFlag = "operator-namespace"
 
-	SetupWebhookCertsFlag    = "setup-webhook-certs"
+	ManageWebhookCertsFlag   = "manage-webhook-certs"
 	WebhookSecretFlag        = "webhook-secret"
 	WebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort              = 9443
@@ -123,7 +123,7 @@ func init() {
 		"Duration representing how long before expiration TLS certificates should be reissued",
 	)
 	Cmd.Flags().Bool(
-		SetupWebhookCertsFlag,
+		ManageWebhookCertsFlag,
 		true,
 		"enables automatic certificates management for the webhook, the Secret and the ValidatingWebhookConfiguration must be created before running the operator",
 	)
@@ -335,8 +335,8 @@ func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 }
 
 func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
-	setupWebhookCerts := viper.GetBool(SetupWebhookCertsFlag)
-	if setupWebhookCerts {
+	manageWebhookCerts := viper.GetBool(ManageWebhookCertsFlag)
+	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
 		// Ensure that all the certificates needed by the webhook server are already created
 		webhookParams := webhook.Params{
