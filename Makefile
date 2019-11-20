@@ -326,6 +326,7 @@ ifeq ($(KUBECTL_CLUSTER), minikube)
 	@ hack/registry.sh port-forward stop
 else
 ifeq ($(REGISTRY), docker.elastic.co)
+	@ docker tag $(OPERATOR_IMAGE) push.$(OPERATOR_IMAGE)
 	@ docker push push.$(OPERATOR_IMAGE)
 else
 	@ docker push $(OPERATOR_IMAGE)
