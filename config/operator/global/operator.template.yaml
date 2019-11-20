@@ -28,7 +28,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: WEBHOOK_SECRET
-            value: webhook-server-secret
+            value: elastic-webhook-server-cert
           - name: WEBHOOK_PODS_LABEL
             value: elastic-global-operator
           - name: OPERATOR_IMAGE
@@ -41,8 +41,17 @@ spec:
             cpu: 100m
             memory: 20Mi
         ports:
-        - containerPort: 9876
+        - containerPort: 9443
           name: webhook-server
           protocol: TCP
+        volumeMounts:
+          - mountPath: /tmp/k8s-webhook-server/serving-certs
+            name: cert
+            readOnly: true
       terminationGracePeriodSeconds: 10
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: elastic-webhook-server-cert
 
