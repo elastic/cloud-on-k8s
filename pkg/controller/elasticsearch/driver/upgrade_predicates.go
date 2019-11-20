@@ -5,6 +5,7 @@
 package driver
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -12,6 +13,7 @@ import (
 )
 
 type PredicateContext struct {
+	es                     v1beta1.Elasticsearch
 	masterNodesNames       []string
 	actualMasters          []corev1.Pod
 	healthyPods            map[string]corev1.Pod
@@ -27,7 +29,26 @@ type Predicate struct {
 	fn   func(context PredicateContext, candidate corev1.Pod, deletedPods []corev1.Pod, maxUnavailableReached bool) (bool, error)
 }
 
+type failedPredicate struct {
+	pod       string
+	predicate string
+}
+
+type failedPredicates []failedPredicate
+
+// groupByPredicates groups by predicates the pods that can't be upgraded.
+func groupByPredicates(fp failedPredicates) map[string][]string {
+	podsByPredicates := make(map[string][]string)
+	for _, failedPredicate := range fp {
+		pods := podsByPredicates[failedPredicate.predicate]
+		pods = append(pods, failedPredicate.pod)
+		podsByPredicates[failedPredicate.predicate] = pods
+	}
+	return podsByPredicates
+}
+
 func NewPredicateContext(
+	es v1beta1.Elasticsearch,
 	state ESState,
 	shardLister client.ShardLister,
 	healthyPods map[string]corev1.Pod,
@@ -36,6 +57,7 @@ func NewPredicateContext(
 	actualMasters []corev1.Pod,
 ) PredicateContext {
 	return PredicateContext{
+		es:               es,
 		masterNodesNames: masterNodesNames,
 		actualMasters:    actualMasters,
 		healthyPods:      healthyPods,
@@ -46,10 +68,17 @@ func NewPredicateContext(
 }
 
 func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailableReached bool, allowedDeletions int) (deletedPods []corev1.Pod, err error) {
+	var failedPredicates failedPredicates
+
+Loop:
 	for _, candidate := range candidates {
-		if ok, err := runPredicates(ctx, candidate, deletedPods, maxUnavailableReached); err != nil {
+		switch predicateErr, err := runPredicates(ctx, candidate, deletedPods, maxUnavailableReached); {
+		case err != nil:
 			return deletedPods, err
-		} else if ok {
+		case predicateErr != nil:
+			// A predicate has failed on this Pod
+			failedPredicates = append(failedPredicates, *predicateErr)
+		default:
 			candidate := candidate
 			if label.IsMasterNode(candidate) || willBecomeMasterNode(candidate.Name, ctx.masterNodesNames) {
 				// It is a mutation on an already existing or future master.
@@ -61,9 +90,19 @@ func applyPredicates(ctx PredicateContext, candidates []corev1.Pod, maxUnavailab
 			deletedPods = append(deletedPods, candidate)
 			allowedDeletions--
 			if allowedDeletions <= 0 {
-				break
+				break Loop
 			}
 		}
+	}
+
+	// If some predicates have failed print a summary of the failures to help
+	// the user to understand why.
+	if len(failedPredicates) > 0 {
+		log.Info(
+			"Cannot restart some nodes for upgrade at this time",
+			"namespace", ctx.es.Namespace,
+			"es_name", ctx.es.Name,
+			"failed_predicates", groupByPredicates(failedPredicates))
 	}
 	return deletedPods, nil
 }

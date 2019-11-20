@@ -34,6 +34,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 
 	// Step 2: Apply predicates
 	predicateContext := NewPredicateContext(
+		ctx.ES,
 		ctx.esState,
 		ctx.shardLister,
 		ctx.healthyPods,
@@ -171,23 +172,27 @@ func deletePod(k8sClient k8s.Client, es v1beta1.Elasticsearch, pod corev1.Pod, e
 	return nil
 }
 
+// runPredicates runs all the predicates on a given Pod. Result is non nil if a predicate has failed.
+// The second error is non nil if one of the predicate encountered an internal error.
 func runPredicates(
 	ctx PredicateContext,
 	candidate corev1.Pod,
 	deletedPods []corev1.Pod,
 	maxUnavailableReached bool,
-) (bool, error) {
+) (*failedPredicate, error) {
 	for _, predicate := range predicates {
 		canDelete, err := predicate.fn(ctx, candidate, deletedPods, maxUnavailableReached)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		if !canDelete {
-			log.Info("Predicate failed", "pod_name", candidate.Name, "predicate_name", predicate.name)
 			// Skip this Pod, it can't be deleted for the moment
-			return false, nil
+			return &failedPredicate{
+				pod:       candidate.Name,
+				predicate: predicate.name,
+			}, nil
 		}
 	}
 	// All predicates passed!
-	return true, nil
+	return nil, nil
 }
