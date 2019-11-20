@@ -7,6 +7,7 @@ package kibana
 import (
 	"crypto/sha256"
 	"fmt"
+	"time"
 
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -292,7 +293,7 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	} else if requeue {
-		return results.WithResult(reconcile.Result{Requeue: true})
+		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second})
 	}
 
 	expectedDp := deployment.New(deploymentParams)
