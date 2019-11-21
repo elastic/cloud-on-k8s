@@ -23,6 +23,9 @@ import (
 const (
 	TrialStatusSecretKey = "trial-status"
 	TrialPubkeyKey       = "pubkey"
+
+	TrialLicenseSecretName      = "trial.k8s.elastic.co/secret-name" // nolint
+	TrialLicenseSecretNamespace = "trial.k8s.elastic.co/secret-namespace" // nolint
 )
 
 func InitTrial(c k8s.Client, operatorNamespace string, secret corev1.Secret, l *EnterpriseLicense) (*rsa.PublicKey, error) {
@@ -55,6 +58,10 @@ func InitTrial(c k8s.Client, operatorNamespace string, secret corev1.Secret, l *
 			Name:      TrialStatusSecretKey,
 			Labels: map[string]string{
 				LicenseLabelName: l.License.UID,
+			},
+			Annotations: map[string]string{
+				TrialLicenseSecretName:      secret.Name,
+				TrialLicenseSecretNamespace: secret.Namespace,
 			},
 		},
 		Data: map[string][]byte{

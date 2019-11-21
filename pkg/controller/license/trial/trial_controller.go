@@ -173,8 +173,8 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 			return []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
-						Namespace: obj.Meta.GetNamespace(),
-						Name:      string(licensing.LicenseTypeEnterpriseTrial),
+						Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
+						Name:      secret.Annotations[licensing.TrialLicenseSecretName],
 					},
 				},
 			}
