@@ -8,10 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,7 +33,6 @@ func Test_listAffectedLicenses(t *testing.T) {
 	true := true
 
 	type args struct {
-		license        string
 		initialObjects []runtime.Object
 	}
 	tests := []struct {
@@ -47,33 +45,41 @@ func Test_listAffectedLicenses(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				license: "enterprise-license",
 				initialObjects: []runtime.Object{
-					&corev1.Secret{
+					&v1beta1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo-cluster",
 							Namespace: "default",
 							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
-							Labels: map[string]string{
-								license.LicenseLabelName: "enterprise-license",
-							},
+						},
+					},
+					&v1beta1.Elasticsearch{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "bar-cluster",
+							Namespace: "default",
+							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
 						},
 					},
 				},
 			},
-			want: []reconcile.Request{{
-				NamespacedName: types.NamespacedName{
-					Namespace: "default",
-					Name:      "foo-cluster",
+			want: []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Namespace: "default",
+						Name:      "foo-cluster",
+					},
 				},
-			}},
+				{
+					NamespacedName: types.NamespacedName{
+						Namespace: "default",
+						Name:      "bar-cluster",
+					},
+				}},
 			wantErr: false,
 		},
 		{
-			name: "list error",
-			args: args{
-				license: "bar",
-			},
+			name:          "list error",
+			args:          args{},
 			injectedError: errors.New("listing failed"),
 			wantErr:       true,
 		},
@@ -85,13 +91,13 @@ func Test_listAffectedLicenses(t *testing.T) {
 				client = &failingClient{Client: client, Error: tt.injectedError}
 			}
 
-			got, err := listAffectedLicenses(client, tt.args.license)
+			got, err := reconcileRequestsForAllClusters(client)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("listAffectedLicenses() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("reconcileRequestsForAllClusters() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("listAffectedLicenses() = %v, want %v", got, tt.want)
+				t.Errorf("reconcileRequestsForAllClusters() = %v, want %v", got, tt.want)
 			}
 		})
 	}
