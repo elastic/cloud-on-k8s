@@ -19,6 +19,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// isTrial returns true if an Elasticsearch license is of the trial type
+func isTrial(l *esclient.License) bool {
+	return l != nil && l.Type == string(common_license.LicenseTypeEnterpriseTrial)
+}
+
 func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
@@ -73,6 +78,18 @@ func updateLicense(
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
+
+	if isTrial(&desired) {
+		response, err := c.StartTrial(ctx)
+		if err != nil {
+			return err
+		}
+		if !response.IsSuccess() {
+			return fmt.Errorf("failed to start trial license: %s", response.ErrorMessage)
+		}
+		return nil
+	}
+
 	response, err := c.UpdateLicense(ctx, request)
 	if err != nil {
 		return err

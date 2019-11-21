@@ -85,6 +85,8 @@ type Client interface {
 	GetNodesStats(ctx context.Context) (NodesStats, error)
 	// GetLicense returns the currently applied license. Can be empty.
 	GetLicense(ctx context.Context) (License, error)
+	// StartTrial starts a 30-day trial license.
+	StartTrial(ctx context.Context) (StartTrialResponse, error)
 	// UpdateLicense attempts to update cluster license with the given licenses.
 	UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error)
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
