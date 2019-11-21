@@ -25,7 +25,7 @@ const (
 	TrialPubkeyKey       = "pubkey"
 )
 
-func InitTrial(c k8s.Client, secret corev1.Secret, l *EnterpriseLicense) (*rsa.PublicKey, error) {
+func InitTrial(c k8s.Client, operatorNamespace string, secret corev1.Secret, l *EnterpriseLicense) (*rsa.PublicKey, error) {
 	if l == nil {
 		return nil, errors.New("license is nil")
 	}
@@ -51,7 +51,7 @@ func InitTrial(c k8s.Client, secret corev1.Secret, l *EnterpriseLicense) (*rsa.P
 	}
 	trialStatus := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: secret.Namespace,
+			Namespace: operatorNamespace,
 			Name:      TrialStatusSecretKey,
 			Labels: map[string]string{
 				LicenseLabelName: l.License.UID,

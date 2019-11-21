@@ -44,8 +44,9 @@ type ReconcileTrials struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 	// iteration is the number of times this controller has run its Reconcile method.
-	iteration   int64
-	trialPubKey *rsa.PublicKey
+	iteration         int64
+	trialPubKey       *rsa.PublicKey
+	operatorNamespace string
 }
 
 // Reconcile watches a trial status secret. If it finds a trial license it checks whether a trial has been started.
@@ -78,7 +79,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// 1. fetch trial status secret
 	var trialStatus corev1.Secret
-	err = r.Get(types.NamespacedName{Namespace: request.Namespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
+	err = r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		// 2. if not present create one + finalizer
 		err := r.initTrial(secret, license)
@@ -107,7 +108,7 @@ func (r *ReconcileTrials) initTrial(secret corev1.Secret, l licensing.Enterprise
 		return nil
 	}
 
-	trialPubKey, err := licensing.InitTrial(r, secret, &l)
+	trialPubKey, err := licensing.InitTrial(r, r.operatorNamespace, secret, &l)
 	if err != nil {
 		return err
 	}
@@ -132,11 +133,12 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 
 }
 
-func newReconciler(mgr manager.Manager, _ operator.Parameters) *ReconcileTrials {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTrials {
 	return &ReconcileTrials{
-		Client:   k8s.WrapClient(mgr.GetClient()),
-		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetEventRecorderFor(name),
+		Client:            k8s.WrapClient(mgr.GetClient()),
+		scheme:            mgr.GetScheme(),
+		recorder:          mgr.GetEventRecorderFor(name),
+		operatorNamespace: params.OperatorNamespace,
 	}
 }
 
