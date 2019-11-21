@@ -49,6 +49,12 @@ func applyLinkedLicense(
 		return err
 	}
 
+	// Shortcut if a trial license has already been started
+	if _, ok := license.Annotations[common_license.TrialLicenseStartedAnnotation]; ok {
+		log.V(1).Info("Trial license already started")
+		return nil
+	}
+
 	bytes, err := common_license.FetchLicenseData(license.Data)
 	if err != nil {
 		return err
@@ -59,7 +65,27 @@ func applyLinkedLicense(
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updater(lic)
+
+	err = updater(lic)
+	if err != nil {
+		return err
+	}
+
+	// Store that the trial license has been started in an annotation
+	if isTrial(&lic) {
+		if license.Annotations == nil {
+			license.Annotations = map[string]string{}
+		}
+		license.Annotations[common_license.TrialLicenseStartedAnnotation] = "true"
+
+		err = c.Update(&license)
+		if err != nil {
+			log.Info("Error when updating the license secret", "err", err.Error())
+			return err
+		}
+	}
+
+	return nil
 }
 
 // updateLicense make the call to Elasticsearch to set the license. This function exists mainly to facilitate testing.

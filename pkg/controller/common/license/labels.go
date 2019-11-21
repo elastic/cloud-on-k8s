@@ -11,12 +11,12 @@ import (
 
 const (
 	// LicenseLabelName is a label pointing to the name of the source enterprise license.
-	LicenseLabelName         = "license.k8s.elastic.co/name"
-	LicenseLabelType         = "license.k8s.elastic.co/type"
-	Type                     = "license"
-	EULAAnnotation           = "elastic.co/eula"
-	EULAAcceptedValue        = "accepted"
-	LicenseInvalidAnnotation = "license.k8s.elastic.co/invalid"
+	LicenseLabelName              = "license.k8s.elastic.co/name"
+	LicenseLabelType              = "license.k8s.elastic.co/type"
+	Type                          = "license"
+	EULAAnnotation                = "elastic.co/eula"
+	EULAAcceptedValue             = "accepted"
+	TrialLicenseStartedAnnotation = "license.k8s.elastic.co/trial-started"
 )
 
 // LicenseType is the type of license a resource is describing.
