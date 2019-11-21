@@ -213,7 +213,7 @@ webhooks:
         namespace: {{ .GlobalOperator.Namespace }}
         # this is the path controller-runtime automatically generates
         path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
-    failurePolicy: Ignore
+    failurePolicy: Fail
     name: elastic-es-validation.k8s.elastic.co
     rules:
       - apiGroups:
