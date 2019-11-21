@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	licenseSecretName = "e2e-enterprise-license"
+	licenseSecretName      = "e2e-enterprise-license"
+	trialLicenseSecretName = "e2e-enterprise-trial-license"
 )
 
 type LicenseTestContext struct {
@@ -99,6 +100,42 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret() test.Step {
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
 					Name:      licenseSecretName,
+				},
+			}
+			_ = ltctx.k.Client.Delete(&sec)
+		},
+	}
+}
+
+func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret() test.Step {
+	return test.Step{
+		Name: "Creating enterprise trial license secret",
+		Test: func(t *testing.T) {
+			sec := corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: test.Ctx().ManagedNamespace(0),
+					Name:      trialLicenseSecretName,
+					Labels: map[string]string{
+						license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
+					},
+					Annotations: map[string]string{
+						license.EULAAnnotation: license.EULAAcceptedValue,
+					},
+				},
+			}
+			require.NoError(t, ltctx.k.Client.Create(&sec))
+		},
+	}
+}
+
+func (ltctx *LicenseTestContext) DeleteEnterpriseTrialLicenseSecret() test.Step {
+	return test.Step{
+		Name: "Removing any test enterprise licenses",
+		Test: func(t *testing.T) {
+			sec := corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: test.Ctx().ManagedNamespace(0),
+					Name:      trialLicenseSecretName,
 				},
 			}
 			_ = ltctx.k.Client.Delete(&sec)

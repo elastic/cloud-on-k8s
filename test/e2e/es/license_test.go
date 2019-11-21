@@ -55,3 +55,32 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		WithSteps(mutatedEsBuilder.DeletionTestSteps(k)).
 		RunSequential(t)
 }
+
+func TestEnterpriseTrialLicense(t *testing.T) {
+	esBuilder := elasticsearch.NewBuilder("test-es-trial-license").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	var licenseTestContext elasticsearch.LicenseTestContext
+
+	initStepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			{
+				Name: "Create license test context",
+				Test: func(t *testing.T) {
+					licenseTestContext = elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
+				},
+			},
+			licenseTestContext.DeleteEnterpriseTrialLicenseSecret(),
+			licenseTestContext.CreateEnterpriseTrialLicenseSecret(),
+		}
+	}
+
+	stepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			licenseTestContext.Init(),
+			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeTrial),
+		}
+	}
+
+	test.Sequence(initStepsFn, stepsFn, esBuilder).RunSequential(t)
+}
