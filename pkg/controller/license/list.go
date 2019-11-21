@@ -19,7 +19,7 @@ func reconcileRequestsForAllClusters(c k8s.Client) ([]reconcile.Request, error) 
 		return nil, err
 	}
 
-	// enqueue a reconcile request for each cluster
+	// create a reconcile request for each cluster
 	requests := make([]reconcile.Request, len(clusters.Items))
 	for i, cl := range clusters.Items {
 		requests[i] = reconcile.Request{NamespacedName: types.NamespacedName{
