@@ -169,7 +169,7 @@ go-run:
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default \
 				--namespaces=$(MANAGED_NAMESPACES) \
-				--auto-install-webhooks=false
+				--manage-webhook-certs=false
 
 go-debug:
 	@(cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
@@ -183,7 +183,7 @@ go-debug:
 		--ca-cert-rotate-before=1h \
 		--operator-namespace=default \
 		--namespaces=$(MANAGED_NAMESPACES) \
-		--auto-install-webhooks=false)
+		--manage-webhook-certs=false)
 
 build-operator-image:
 ifeq ($(SKIP_DOCKER_COMMAND), false)
