@@ -7,7 +7,6 @@ package kibana
 import (
 	"crypto/sha256"
 	"fmt"
-	"time"
 
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -40,7 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // initContainersParameters is used to generate the init container that will load the secure settings into a keystore
@@ -91,45 +89,29 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 	}
 }
 
-func (d *driver) getStrategyType(kb *kbtype.Kibana) (appsv1.DeploymentStrategyType, bool, error) {
+// getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
+// upgrade is in progress.
+func (d *driver) getStrategyType(kb *kbtype.Kibana) (appsv1.DeploymentStrategyType, error) {
 	var pods corev1.PodList
 	var labels client.MatchingLabels = map[string]string{label.KibanaNameLabelName: kb.Name}
 	if err := d.client.List(&pods, client.InNamespace(kb.Namespace), labels); err != nil {
-		return "", false, err
+		return "", err
 	}
 
-	baselineVersion := kb.Spec.Version
-	differentVersionsDetected := false
-	owners := make(map[string]struct{})
 	for _, pod := range pods.Items {
-		if len(pod.OwnerReferences) != 1 {
-			return "", false, fmt.Errorf("pod %s has %d owners while expecting 1", pod.Name, len(pod.OwnerReferences))
-		}
-		owners[pod.OwnerReferences[0].Name] = struct{}{}
-
 		ver, ok := pod.Labels[label.KibanaVersionLabelName]
-		// if label is missing, we assume this is first pass of reconciliation that will populate
-		// the label. To be safe, assume the Kibana version has changed when operator was offline and use Recreate,
+		// if label is missing we assume that the last reconciliation was done by previous version of the operator
+		// to be safe, we assume the Kibana version has changed when operator was offline and use Recreate,
 		// otherwise we may run into data corruption/data loss.
-		if !ok || ver != baselineVersion {
-			differentVersionsDetected = true
+		if !ok || ver != kb.Spec.Version {
+			return appsv1.RecreateDeploymentStrategyType, nil
 		}
 	}
 
-	if differentVersionsDetected {
-		if len(owners) != 1 {
-			// if there are multiple owners (multiple replicasets with active pods) and multiple versions
-			// we keep requeuing until deployment is rolled out, ie. only a single replicaset has pods
-			return "", true, nil
-		}
-
-		return appsv1.RecreateDeploymentStrategyType, false, nil
-	}
-
-	return appsv1.RollingUpdateDeploymentStrategyType, false, nil
+	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, bool, error) {
+func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d,
@@ -139,7 +121,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, bool, e
 		initContainersParameters,
 	)
 	if err != nil {
-		return deployment.Params{}, false, err
+		return deployment.Params{}, err
 	}
 
 	kibanaPodSpec := pod.NewPodTemplateSpec(*kb, keystoreResources)
@@ -160,11 +142,11 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, bool, e
 			Watched: []types.NamespacedName{esAuthSecret},
 			Watcher: k8s.ExtractNamespacedName(kb),
 		}); err != nil {
-			return deployment.Params{}, false, err
+			return deployment.Params{}, err
 		}
 		sec := corev1.Secret{}
 		if err := d.client.Get(esAuthSecret, &sec); err != nil {
-			return deployment.Params{}, false, err
+			return deployment.Params{}, err
 		}
 		_, _ = configChecksum.Write(sec.Data[kb.AssociationConf().GetAuthSecretKey()])
 	} else {
@@ -182,11 +164,11 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, bool, e
 			Watched: []types.NamespacedName{key},
 			Watcher: k8s.ExtractNamespacedName(kb),
 		}); err != nil {
-			return deployment.Params{}, false, err
+			return deployment.Params{}, err
 		}
 
 		if err := d.client.Get(key, &esPublicCASecret); err != nil {
-			return deployment.Params{}, false, err
+			return deployment.Params{}, err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(certPem)
@@ -209,7 +191,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, bool, e
 			Name:      certificates.HTTPCertsInternalSecretName(kbname.KBNamer, kb.Name),
 		}, &httpCerts)
 		if err != nil {
-			return deployment.Params{}, false, err
+			return deployment.Params{}, err
 		}
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
@@ -230,7 +212,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, bool, e
 	configSecret := corev1.Secret{}
 	err = d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
 	if err != nil {
-		return deployment.Params{}, false, err
+		return deployment.Params{}, err
 	}
 	_, _ = configChecksum.Write(configSecret.Data[config.SettingsFilename])
 
@@ -239,9 +221,9 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, bool, e
 	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
 	// decide the strategy type
-	strategyType, requeue, err := d.getStrategyType(kb)
-	if err != nil || requeue {
-		return deployment.Params{}, requeue, err
+	strategyType, err := d.getStrategyType(kb)
+	if err != nil {
+		return deployment.Params{}, err
 	}
 
 	return deployment.Params{
@@ -252,7 +234,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, bool, e
 		Labels:          label.NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
 		Type:            strategyType,
-	}, false, nil
+	}, nil
 }
 
 func (d *driver) Reconcile(
@@ -289,11 +271,9 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	deploymentParams, requeue, err := d.deploymentParams(kb)
+	deploymentParams, err := d.deploymentParams(kb)
 	if err != nil {
 		return results.WithError(err)
-	} else if requeue {
-		return results.WithResult(reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second})
 	}
 
 	expectedDp := deployment.New(deploymentParams)

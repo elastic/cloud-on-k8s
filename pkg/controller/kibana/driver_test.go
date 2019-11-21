@@ -87,7 +87,6 @@ func Test_getStrategyType(t *testing.T) {
 		initialObjects  []runtime.Object
 		clientError     bool
 		wantErr         bool
-		wantRequeue     bool
 		wantStrategy    appsv1.DeploymentStrategyType
 	}{
 		{
@@ -97,7 +96,6 @@ func Test_getStrategyType(t *testing.T) {
 			initialObjects:  []runtime.Object{},
 			clientError:     false,
 			wantErr:         false,
-			wantRequeue:     false,
 			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
 		},
 		{
@@ -107,7 +105,6 @@ func Test_getStrategyType(t *testing.T) {
 			initialObjects:  getPods("test", 3, "7.4.0"),
 			clientError:     false,
 			wantErr:         false,
-			wantRequeue:     false,
 			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
 		},
 		{
@@ -117,7 +114,6 @@ func Test_getStrategyType(t *testing.T) {
 			initialObjects:  append(getPods("test", 3, "7.4.0"), getPods("test2", 3, "7.5.0")...),
 			clientError:     false,
 			wantErr:         false,
-			wantRequeue:     false,
 			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
 		},
 		{
@@ -127,7 +123,6 @@ func Test_getStrategyType(t *testing.T) {
 			initialObjects:  getPods("test", 3, "7.4.0"),
 			clientError:     false,
 			wantErr:         false,
-			wantRequeue:     false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
@@ -137,8 +132,7 @@ func Test_getStrategyType(t *testing.T) {
 			initialObjects:  append(getPods("test", 2, "7.5.0"), getPods("test", 1, "7.4.0")...),
 			clientError:     false,
 			wantErr:         false,
-			wantRequeue:     true,
-			wantStrategy:    "",
+			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version mismatch - multiple kibana deployments",
@@ -147,7 +141,6 @@ func Test_getStrategyType(t *testing.T) {
 			initialObjects:  append(getPods("test", 3, "7.5.0"), getPods("test2", 3, "7.4.0")...),
 			clientError:     false,
 			wantErr:         false,
-			wantRequeue:     false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
@@ -161,8 +154,7 @@ func Test_getStrategyType(t *testing.T) {
 					getPods("test", 1, "7.3.0")...)...),
 			clientError:  false,
 			wantErr:      false,
-			wantRequeue:  true,
-			wantStrategy: "",
+			wantStrategy: appsv1.RecreateDeploymentStrategyType,
 		},
 		{
 			name:            "Version label missing (operator upgrade case), should assume spec changed",
@@ -171,7 +163,6 @@ func Test_getStrategyType(t *testing.T) {
 			initialObjects:  clearVersionLabels(getPods("test", 3, "7.5.0")),
 			clientError:     false,
 			wantErr:         false,
-			wantRequeue:     false,
 			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
 		},
 		{
@@ -181,21 +172,7 @@ func Test_getStrategyType(t *testing.T) {
 			initialObjects:  getPods("test", 2, "7.4.0"),
 			clientError:     true,
 			wantErr:         true,
-			wantRequeue:     false,
 			wantStrategy:    "",
-		},
-		{
-			name:            "Owner reference missing",
-			expectedVersion: "7.4.0",
-			expectedKbName:  "test",
-			initialObjects: []runtime.Object{&corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-				Namespace: "default",
-				Labels:    map[string]string{label.KibanaNameLabelName: "test"},
-			}}},
-			clientError:  false,
-			wantErr:      true,
-			wantRequeue:  false,
-			wantStrategy: "",
 		},
 	}
 
@@ -219,12 +196,11 @@ func Test_getStrategyType(t *testing.T) {
 			d, err := newDriver(client, scheme.Scheme, *kbVersion, w, record.NewFakeRecorder(100))
 			assert.NoError(t, err)
 
-			strategy, requeue, err := d.getStrategyType(kb)
+			strategy, err := d.getStrategyType(kb)
 			if tt.wantErr {
 				assert.Empty(t, strategy)
 				assert.Error(t, err)
 			} else {
-				assert.Equal(t, tt.wantRequeue, requeue)
 				assert.Equal(t, tt.wantStrategy, strategy)
 			}
 		})
@@ -402,14 +378,13 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, scheme.Scheme, *kbVersion, w, record.NewFakeRecorder(100))
 			assert.NoError(t, err)
 
-			got, requeue, err := d.deploymentParams(kb)
+			got, err := d.deploymentParams(kb)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
 			}
 
 			require.Equal(t, tt.want, got)
-			require.False(t, requeue)
 		})
 	}
 }
