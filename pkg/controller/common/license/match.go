@@ -56,6 +56,21 @@ func bestMatchAt(
 	return best.license, best.parentUID, true, nil
 }
 
+func toTrial(el EnterpriseLicense) client.License {
+	return client.License{
+		Type:               string(el.License.Type),
+		IssueDate:          el.License.IssueDate,
+		IssueDateInMillis:  el.License.IssueDateInMillis,
+		ExpiryDate:         el.License.ExpiryDate,
+		ExpiryDateInMillis: el.License.ExpiryDateInMillis,
+		MaxNodes:           el.License.MaxInstances,
+		IssuedTo:           el.License.IssuedTo,
+		Issuer:             el.License.Issuer,
+		StartDateInMillis:  el.License.StartDateInMillis,
+		Signature:          el.License.Signature,
+	}
+}
+
 func filterValid(now time.Time, licenses []EnterpriseLicense, filter func(EnterpriseLicense) (bool, error)) []licenseWithTimeLeft {
 	filtered := make([]licenseWithTimeLeft, 0)
 	for _, el := range licenses {
@@ -68,6 +83,16 @@ func filterValid(now time.Time, licenses []EnterpriseLicense, filter func(Enterp
 			if !ok {
 				continue
 			}
+
+			// Shortcut if it's a trial license
+			if el.IsTrial() {
+				return []licenseWithTimeLeft{{
+					license:   toTrial(el),
+					parentUID: el.License.UID,
+					remaining: el.ExpiryTime().Sub(now),
+				}}
+			}
+
 			for _, l := range el.License.ClusterLicenses {
 				if l.License.IsValid(now) {
 					filtered = append(filtered, licenseWithTimeLeft{
