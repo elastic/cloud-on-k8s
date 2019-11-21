@@ -186,11 +186,11 @@ spec:
             cpu: 100m
             memory: 20Mi
         ports:
-        - containerPort: 9876
+        - containerPort: 9443
           name: webhook-server
           protocol: TCP
         volumeMounts:
-        - mountPath: /tmp/cert
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
       terminationGracePeriodSeconds: 10
@@ -199,3 +199,41 @@ spec:
         secret:
           defaultMode: 420
           secretName: webhook-server-secret
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: elastic-webhook.k8s.elastic.co
+  namespace: {{ .GlobalOperator.Namespace }}
+webhooks:
+  - clientConfig:
+      caBundle: Cg==
+      service:
+        name: elastic-webhook-server
+        namespace: {{ .GlobalOperator.Namespace }}
+        # this is the path controller-runtime automatically generates
+        path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
+    failurePolicy: Ignore
+    name: elastic-es-validation.k8s.elastic.co
+    rules:
+      - apiGroups:
+          - elasticsearch.k8s.elastic.co
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - elasticsearches
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-webhook-server
+  namespace: {{ .GlobalOperator.Namespace }}
+spec:
+  ports:
+    - port: 443
+      targetPort: 9443
+  selector:
+    control-plane: elastic-operator
