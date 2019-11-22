@@ -9,7 +9,6 @@ import (
 	"net"
 	"reflect"
 
-	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -42,10 +41,6 @@ var validations = []validation{
 	validSanIP,
 }
 
-var warnings = []validation{
-	noUnsupportedSettings,
-}
-
 type updateValidation func(*Elasticsearch, *Elasticsearch) field.ErrorList
 
 // updateValidations are the validation funcs that only apply to updates
@@ -53,6 +48,16 @@ var updateValidations = []updateValidation{
 	noDowngrades,
 	validUpgradePath,
 	pvcModification,
+}
+
+func (r *Elasticsearch) check(validations []validation) field.ErrorList {
+	var errs field.ErrorList
+	for _, val := range validations {
+		if err := val(r); err != nil {
+			errs = append(errs, err...)
+		}
+	}
+	return errs
 }
 
 // validName checks whether the name is valid.
@@ -90,25 +95,6 @@ func hasMaster(es *Elasticsearch) field.ErrorList {
 	}
 	if !hasMaster {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, masterRequiredMsg))
-	}
-	return errs
-}
-
-func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
-	for i, nodeSet := range es.Spec.NodeSets {
-		if nodeSet.Config == nil {
-			continue
-		}
-		config, err := common.NewCanonicalConfigFrom(nodeSet.Config.Data)
-		if err != nil {
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
-			continue
-		}
-		unsupported := config.HasKeys(UnsupportedSettings)
-		for _, setting := range unsupported {
-			errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(i).Child("config").Child(setting), unsupportedConfigErrMsg))
-		}
 	}
 	return errs
 }
