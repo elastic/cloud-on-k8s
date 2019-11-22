@@ -22,10 +22,3 @@ Then, you can uninstall the operator:
 ----
 kubectl delete -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
 ----
-
-And remove the webhook configuration:
-
-[source,shell]
-----
-kubectl delete validatingwebhookconfigurations elastic-es-validation.k8s.elastic.co
-----
