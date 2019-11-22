@@ -184,6 +184,7 @@ EOF
 
 NOTE: This example assumes that you have installed the operator in the `elastic-system` namespace.
 
+[float]
 === Troubleshooting
 
 Webhooks rely on a good connectivity between the Kubernetes API server and the operator.
