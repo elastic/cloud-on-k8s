@@ -5,28 +5,18 @@ A validating webhook provides additional validation of Elasticsearch resources b
 This allows advanced validation to help prevent Elasticsearch resources that are invalid and will not function correctly
 from being admitted by the Kubernetes API server, which can aid troubleshooting.
 
-[float]
 === Architecture
-
 The webhook is composed of 4 main components, here is a brief description of each of them to understand how they interact,
 their naming and how they are managed.
 
-==== ValidatingWebhookConfiguration
-It is the resource that defines the validating webhook. In ECK it is named `elastic-es-validation.k8s.elastic.co`.
-It must be created before to start the operator, the `caBundle` field can be automatically managed as part of the
+. A `ValidatingWebhookConfiguration` object that defines the validating webhook. In ECK it is named `elastic-es-validation.k8s.elastic.co`. It must be created before to start the operator, the `caBundle` field can be automatically managed as part of the
 automatic certificate management _(see below)_.
-
-==== Webhook Service
-A Kubernetes Service is used to expose the validating server, in ECK its name is fixed to `elastic-webhook-server`.
+. A Kubernetes Service is used to expose the validating server, in ECK its name is fixed to `elastic-webhook-server`.
 It lives in the same Namespace that the webhook server.
-
-=== Webhook Server
-It is the component that actually validates the submitted resources. In ECK it is the operator itself when it
+. A webhook server that actually validates the submitted resources. In ECK it is the operator itself when it
 is configured to act the `webhook` role. See <<{p}-operator-config,Configuring ECK>> if want to learn more about the
 `operator-roles` flag.
-
-=== The Certificates
-A Secret contains the required certificates to secure the connection between the API server and the webhook.
+. A Secret which contains the required certificates to secure the connection between the API server and the webhook.
 Like the ValidatingWebhookConfiguration it must be created before to start the operator, even if it is empty.
 If ECK has been installed with the provided manifest its name is `elastic-webhook-server-cert`.
 The content of this Secret and the lifecycle of the certificates are automatically handled for you. You can disable
