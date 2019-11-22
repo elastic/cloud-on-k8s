@@ -91,7 +91,7 @@ dependencies:
 	go mod tidy -v && go mod download
 
 # Generate code, CRDs and documentation
-ALL_IN_ONE_CRDS=config/crds-patches/all-in-one.yaml
+ALL_CRDS=config/crds/all-crds.yaml
 generate: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
@@ -100,9 +100,9 @@ generate: controller-gen
 	# We generate CRDs with trivialVersions=true, to support pre-1.13 Kubernetes versions. This means the CRDs
 	# include validation for the latest version **only**. Older versions are still mentioned, but will be validated
 	# against the latest version schema.
-	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds
+	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
 	# build a patched merged version of the CRDs
-	kubectl kustomize config/crds-patches > $(ALL_IN_ONE_CRDS)
+	kubectl kustomize config/crds/patches > $(ALL_CRDS)
 	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
 	$(MAKE) --no-print-directory generate-api-docs
@@ -144,7 +144,7 @@ lint:
 #############################
 
 install-crds: generate
-	kubectl apply -f $(ALL_IN_ONE_CRDS)
+	kubectl apply -f $(ALL_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
@@ -210,7 +210,7 @@ ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 
 # merge all-in-one crds with operator manifests
 generate-all-in-one:
-	cp -f $(ALL_IN_ONE_CRDS) $(ALL_IN_ONE_OUTPUT_FILE)
+	cp -f $(ALL_CRDS) $(ALL_IN_ONE_OUTPUT_FILE)
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
 		NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $(ALL_IN_ONE_OUTPUT_FILE)

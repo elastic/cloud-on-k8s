@@ -88,7 +88,7 @@ func Command() *cobra.Command {
 
 func checkWantedDirectories() error {
 	wantedDirs := []string{
-		filepath.Join("config", "crds-patches"),
+		filepath.Join("config", "crds"),
 		filepath.Join("config", "e2e"),
 	}
 	for _, wantedDir := range wantedDirs {

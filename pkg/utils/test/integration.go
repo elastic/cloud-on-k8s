@@ -34,7 +34,7 @@ const (
 	ControlPlaneStartTimeout = 1 * time.Minute
 	BootstrapTestEnvRetries  = 1
 
-	CRDsRelativePath = "../../../config/crds-patches/all-in-one.yaml"
+	CRDsRelativePath = "../../../config/crds/all-crds.yaml"
 )
 
 var Config *rest.Config
