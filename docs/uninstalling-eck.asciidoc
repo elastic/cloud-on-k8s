@@ -27,5 +27,5 @@ And remove the webhook configuration:
 
 [source,shell]
 ----
-kubectl delete validatingwebhookconfigurations validating-webhook-configuration
+kubectl delete validatingwebhookconfigurations elastic-es-validation.k8s.elastic.co
 ----

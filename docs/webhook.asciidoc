@@ -1,0 +1,199 @@
+[id="{p}-webhook"]
+== Validating webhook
+
+A validating webhook provides additional validation of Elasticsearch resources beyond what can be specified in OpenAPI specs.
+This allows advanced validation to help prevent Elasticsearch resources that are invalid and will not function correctly
+from being admitted by the Kubernetes API server, which can aid troubleshooting.
+
+[float]
+=== Architecture
+
+The webhook is composed of 4 main components, here is a brief description of each of them to understand how they interact,
+their naming and how they are managed.
+
+==== ValidatingWebhookConfiguration
+It is the resource that defines the validating webhook. In ECK it is named `elastic-es-validation.k8s.elastic.co`.
+It must be created before to start the operator, the `caBundle` field can be automatically managed as part of the
+automatic certificate management _(see below)_.
+
+==== Webhook Service
+A Kubernetes Service is used to expose the validating server, in ECK its name is fixed to `elastic-webhook-server`.
+It lives in the same Namespace that the webhook server.
+
+=== Webhook Server
+It is the component that actually validates the submitted resources. In ECK it is the operator itself when it
+is configured to act the `webhook` role. See <<{p}-operator-config,Configuring ECK>> if want to learn more about the
+`operator-roles` flag.
+
+=== The Certificates
+A Secret contains the required certificates to secure the connection between the API server and the webhook.
+Like the ValidatingWebhookConfiguration it must be created before to start the operator, even if it is empty.
+If ECK has been installed with the provided manifest its name is `elastic-webhook-server-cert`.
+The content of this Secret and the lifecycle of the certificates are automatically handled for you. You can disable
+this feature if you want to manage the certificates by yourself or with the cert-manager, see an example below.
+
+[float]
+=== Managing webhook certificate with cert-manager
+
+If the operator is currently running you first need to ensure that the automatic certificate management is disabled.
+This can be done by updating the operator deployment manifest and adding the `--manage-webhook-certs=false` flag.
+
+Then if it is not already done you have to install cert-manager v0.11+ as described in their https://docs.cert-manager.io/en/latest/getting-started/install/[documentation].
+
+Below is a complete example to create all of the resources necessary for the validating webhook to function.
+
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+---
+# this configures
+# - a self signed cert-manager issuer
+# - a service to point to the webhook
+# - a self signed certificate for the webhook service
+# - a validating webhook configuration
+# - updates the ECK operator statefulset to enable the webhook
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: elastic-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: elastic-webhook
+  namespace: elastic-system
+spec:
+  commonName: elastic-webhook.elastic-system.svc
+  dnsNames:
+  - elastic-webhook.elastic-system.svc.cluster.local
+  - elastic-webhook.elastic-system.svc
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: elastic-webhook-server-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-webhook-server
+  namespace: elastic-system
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
+  selector:
+    control-plane: elastic-operator
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: elastic-es-validation.k8s.elastic.co
+  annotations:
+    cert-manager.io/inject-ca-from: elastic-system/elastic-webhook
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: elastic-webhook
+      namespace: elastic-system
+      # this is the path controller-runtime automatically generates
+      path: /validate-elasticsearch-k8s-elastic-co-{eck_crd_version}-elasticsearch
+  failurePolicy: Ignore
+  name: elastic-es-validation.k8s.elastic.co
+  sideEffects: None
+  rules:
+  - apiGroups:
+    - elasticsearch.k8s.elastic.co
+    apiVersions:
+    - {eck_crd_version}
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearches
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    control-plane: elastic-operator
+  name: elastic-operator
+  namespace: elastic-system
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      control-plane: elastic-operator
+  serviceName: elastic-operator
+  template:
+      labels:
+        control-plane: elastic-operator
+    spec:
+      containers:
+      - args:
+        - manager
+        - --operator-roles
+        - all
+        - --enable-debug-logs=false
+        env:
+        - name: WEBHOOK_SECRET
+          value: elastic-webhook-server-cert
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: OPERATOR_IMAGE
+          value: docker.elastic.co/eck/eck-operator:{eck_version}
+        image: docker.elastic.co/eck/eck-operator:{eck_version}
+        imagePullPolicy: Always
+        name: manager
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        volumeMounts:
+        # this is the path controller-runtime looks for certs and should not be changed
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+        resources:
+          limits:
+            cpu: "1"
+            memory: 150Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: elastic-webhook-server-cert
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: elastic-operator
+      serviceAccountName: elastic-operator
+      terminationGracePeriodSeconds: 10
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+EOF
+----
+
+NOTE: This example assumes that you have installed the operator in the `elastic-system` namespace.
+
+=== Troubleshooting
+
+Webhooks rely on a good connectivity between the Kubernetes API server and the operator.
+See <<{p}-troubleshooting,Webhook troubleshooting>> for more information about some known problems with some Kubernetes providers.
