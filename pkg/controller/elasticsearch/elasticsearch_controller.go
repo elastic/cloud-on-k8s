@@ -257,6 +257,16 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
+	err = es.CheckForWarnings()
+	if err != nil {
+		log.Info(
+			"Elasticsearch manifest has warnings. Proceed at your own risk. "+err.Error(),
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+		)
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
+	}
+
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
 		return results.WithError(err)

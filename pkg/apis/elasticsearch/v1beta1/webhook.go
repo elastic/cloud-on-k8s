@@ -30,7 +30,7 @@ var _ webhook.Validator = &Elasticsearch{}
 
 func (r *Elasticsearch) ValidateCreate() error {
 	eslog.V(1).Info("validate create", "name", r.Name)
-	return r.validateElasticsearch()
+	return r.validateElasticsearch(validations)
 }
 
 // ValidateDelete is required to implement webhook.Validator, but we do not actually validate deletes
@@ -56,10 +56,14 @@ func (r *Elasticsearch) ValidateUpdate(old runtime.Object) error {
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
 			r.Name, errs)
 	}
-	return r.validateElasticsearch()
+	return r.validateElasticsearch(validations)
 }
 
-func (r *Elasticsearch) validateElasticsearch() error {
+func (r *Elasticsearch) CheckForWarnings() error {
+	return r.validateElasticsearch(warnings)
+}
+
+func (r *Elasticsearch) validateElasticsearch(validations []validation) error {
 	var errs field.ErrorList
 	for _, val := range validations {
 		if err := val(r); err != nil {

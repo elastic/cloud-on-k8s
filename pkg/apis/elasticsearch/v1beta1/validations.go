@@ -25,7 +25,7 @@ const (
 	pvcImmutableMsg          = "Volume claim templates cannot be modified"
 	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
 	unsupportedVersionErrMsg = "Unsupported version"
-	blacklistedConfigErrMsg  = "Configuration setting is not user-configurable"
+	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	duplicateNodeSets        = "NodeSet names must be unique"
 	noDowngradesMsg          = "Downgrades are not supported"
 	unsupportedVersionMsg    = "Unsupported version"
@@ -39,8 +39,11 @@ var validations = []validation{
 	validName,
 	hasMaster,
 	supportedVersion,
-	noBlacklistedSettings,
 	validSanIP,
+}
+
+var warnings = []validation{
+	noUnsupportedSettings,
 }
 
 type updateValidation func(*Elasticsearch, *Elasticsearch) field.ErrorList
@@ -91,7 +94,7 @@ func hasMaster(es *Elasticsearch) field.ErrorList {
 	return errs
 }
 
-func noBlacklistedSettings(es *Elasticsearch) field.ErrorList {
+func noUnsupportedSettings(es *Elasticsearch) field.ErrorList {
 	var errs field.ErrorList
 	for i, nodeSet := range es.Spec.NodeSets {
 		if nodeSet.Config == nil {
@@ -102,9 +105,9 @@ func noBlacklistedSettings(es *Elasticsearch) field.ErrorList {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
 			continue
 		}
-		forbidden := config.HasKeys(SettingsBlacklist)
-		for _, setting := range forbidden {
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), setting, blacklistedConfigErrMsg))
+		unsupported := config.HasKeys(UnsupportedSettings)
+		for _, setting := range unsupported {
+			errs = append(errs, field.Forbidden(field.NewPath("spec").Child("nodeSets").Index(i).Child("config").Child(setting), unsupportedConfigErrMsg))
 		}
 	}
 	return errs

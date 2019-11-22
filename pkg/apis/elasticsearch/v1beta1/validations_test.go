@@ -328,10 +328,10 @@ func Test_noBlacklistedSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual := noBlacklistedSettings(tt.es)
+			actual := noUnsupportedSettings(tt.es)
 			actualErrors := len(actual) > 0
 			if tt.expectErrors != actualErrors {
-				t.Errorf("failed noBlacklistedSettings(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
+				t.Errorf("failed noUnsupportedSettings(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.es.Spec.Version)
 			}
 		})
 	}
