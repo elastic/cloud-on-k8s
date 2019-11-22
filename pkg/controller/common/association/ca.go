@@ -79,6 +79,6 @@ func ReconcileCASecret(
 		return CASecret{}, err
 	}
 
-	_, caCertProvided := expectedSecret.Data[certificates.CAFileName]
+	caCertProvided := len(expectedSecret.Data[certificates.CAFileName]) > 0
 	return CASecret{Name: expectedSecret.Name, CACertProvided: caCertProvided}, nil
 }

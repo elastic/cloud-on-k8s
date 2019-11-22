@@ -75,37 +75,71 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			certificates.CAFileName:   []byte("updated-fake-ca-cert"),
 		},
 	}
+	esEmptyCA := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      certificates.PublicSecretName(estype.ESNamer, es.Name, certificates.HTTPCAType),
+		},
+		Data: map[string][]byte{
+			certificates.CertFileName: []byte("fake-cert"),
+			certificates.CAFileName:   {},
+		},
+	}
+	kibanaEmptyEsCA := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
+		},
+		Data: map[string][]byte{
+			certificates.CertFileName: []byte("fake-cert"),
+			certificates.CAFileName:   {},
+		},
+	}
 	tests := []struct {
-		name   string
-		client k8s.Client
-		kibana kbtype.Kibana
-		es     estype.Elasticsearch
-		want   string
-		wantCA *corev1.Secret
+		name               string
+		client             k8s.Client
+		kibana             kbtype.Kibana
+		es                 estype.Elasticsearch
+		want               string
+		wantCA             *corev1.Secret
+		wantCACertProvided bool
 	}{
 		{
-			name:   "create new CA in kibana namespace",
-			client: k8s.WrappedFakeClient(&es, &esCA),
-			kibana: kibanaFixture,
-			es:     esFixture,
-			want:   ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
-			wantCA: &kibanaEsCA,
+			name:               "create new CA in kibana namespace",
+			client:             k8s.WrappedFakeClient(&es, &esCA),
+			kibana:             kibanaFixture,
+			es:                 esFixture,
+			want:               ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
+			wantCA:             &kibanaEsCA,
+			wantCACertProvided: true,
 		},
 		{
-			name:   "update existing CA in kibana namespace",
-			client: k8s.WrappedFakeClient(&es, &updatedEsCA, &kibanaEsCA),
-			kibana: kibanaFixture,
-			es:     esFixture,
-			want:   ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
-			wantCA: &updatedKibanaEsCA,
+			name:               "update existing CA in kibana namespace",
+			client:             k8s.WrappedFakeClient(&es, &updatedEsCA, &kibanaEsCA),
+			kibana:             kibanaFixture,
+			es:                 esFixture,
+			want:               ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
+			wantCA:             &updatedKibanaEsCA,
+			wantCACertProvided: true,
 		},
 		{
-			name:   "ES CA secret does not exist (yet)",
-			client: k8s.WrappedFakeClient(&es),
-			kibana: kibanaFixture,
-			es:     esFixture,
-			want:   "",
-			wantCA: nil,
+			name:               "ES CA secret does not exist (yet)",
+			client:             k8s.WrappedFakeClient(&es),
+			kibana:             kibanaFixture,
+			es:                 esFixture,
+			want:               "",
+			wantCA:             nil,
+			wantCACertProvided: false,
+		},
+		{
+			// See the use case described in https://github.com/elastic/cloud-on-k8s/issues/2136
+			name:               "ES CA secret exists but is empty",
+			client:             k8s.WrappedFakeClient(&es, &esEmptyCA),
+			kibana:             kibanaFixture,
+			es:                 esFixture,
+			want:               ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
+			wantCA:             &kibanaEmptyEsCA,
+			wantCACertProvided: false,
 		},
 	}
 	for _, tt := range tests {
@@ -121,6 +155,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tt.want, got.Name)
+			require.Equal(t, tt.wantCACertProvided, got.CACertProvided)
 
 			if tt.wantCA != nil {
 				var updatedKibanaCA corev1.Secret

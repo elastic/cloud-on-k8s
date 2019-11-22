@@ -16,20 +16,16 @@ import (
 
 func TestEnterpriseLicenseSingle(t *testing.T) {
 	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicence == "" {
+	if test.Ctx().TestLicense == "" {
 		t.SkipNow()
 	}
 	k := test.NewK8sClientOrFatal()
 
-	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicence)
+	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
 
 	// create a single node cluster
 	esBuilder := elasticsearch.NewBuilder("test-es-license-provisioning").
-		WithESMasterNodes(1, elasticsearch.DefaultResources)
-
-	mutatedEsBuilder := esBuilder.
-		WithNoESTopology().
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
@@ -44,14 +40,12 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		WithSteps(test.StepList{
 			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
 			licenseTestContext.CreateEnterpriseLicenseSecret(licenseBytes),
+			// enterprise license can contain all kinds of cluster licenses so we are a bit lenient here and expect either gold or platinum
+			licenseTestContext.CheckElasticsearchLicense(
+				license.ElasticsearchLicenseTypeGold,
+				license.ElasticsearchLicenseTypePlatinum,
+			),
 		}).
-		// Mutation shortcuts the license provisioning check...
-		WithSteps(mutatedEsBuilder.MutationTestSteps(k)).
-		// enterprise license can contain all kinds of cluster licenses so we are a bit lenient here and expect either gold or platinum
-		WithStep(licenseTestContext.CheckElasticsearchLicense(
-			license.ElasticsearchLicenseTypeGold,
-			license.ElasticsearchLicenseTypePlatinum,
-		)).
-		WithSteps(mutatedEsBuilder.DeletionTestSteps(k)).
+		WithSteps(esBuilder.DeletionTestSteps(k)).
 		RunSequential(t)
 }

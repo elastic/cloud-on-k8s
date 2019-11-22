@@ -22,7 +22,7 @@ You can use several options to configure ECK. Unless otherwise noted, these opti
 |`ca-cert-rotate-before` |duration (string) |1d |Duration representing how long before expiration CA certificates should be reissued
 |`cert-validity` |duration (string) |1y |Duration representing how long before a newly created TLS certificate expires
 |`cert-rotate-before` |duration (string) |1d |Duration representing how long before expiration TLS certificates should be reissued
-|`auto-install-webhooks` |bool |true |Enables automatic webhook installation
+|`manage-webhook-certs` |bool |true |Enables automatic webhook certificate management
 |`operator-namespace` |string |`""` |K8s namespace the operator runs in
 |`webhook-secret` |string |`""` |K8s secret name mounted into /tmp/cert to be used for webhook certificates
 |`webhook-pods-label` |string |`""` |K8s label to select pods running the operator

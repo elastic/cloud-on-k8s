@@ -120,7 +120,7 @@ func Reconcile(
 		return nil, results.WithError(err)
 	}
 
-	_, httpCACertProvided := httpCertificates.Data[certificates.CAFileName]
+	httpCACertProvided := len(httpCertificates.Data[certificates.CAFileName]) > 0
 	return &CertificateResources{
 		TrustedHTTPCertificates: trustedHTTPCertificates,
 		TransportCA:             transportCA,

@@ -29,11 +29,11 @@ pipeline {
                 sh """
                     cat > .env <<EOF
 GCLOUD_PROJECT = $GCLOUD_PROJECT
-REGISTRY = "docker.elastic.co"
-REPOSITORY = "eck-snapshots"
-IMG_NAME = "eck-operator"
-SNAPSHOT = "true"
-LICENSE_PUBKEY = "/go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key"
+REGISTRY = docker.elastic.co
+REPOSITORY = eck-snapshots
+IMG_NAME = eck-operator
+SNAPSHOT = true
+LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
 IMG_SUFFIX = -ci
 ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
@@ -45,6 +45,7 @@ EOF
             steps {
                 sh """
                     export VERSION=\$(cat $WORKSPACE/VERSION)-\$(date +%F)-\$(git rev-parse --short --verify HEAD)
+                    export REGISTRY=${REGISTRY}
                     export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     echo \$OPERATOR_IMAGE > eck_image.txt
                     cat >> .env <<EOF
