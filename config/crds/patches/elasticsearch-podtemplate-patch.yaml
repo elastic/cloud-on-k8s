@@ -8,5 +8,6 @@
 # Remove validation.Type that causes failures on k8s 1.11.
 # This should have been fixed with https://github.com/kubernetes-sigs/controller-tools/pull/72, but it looks like
 # this commit has been lost in history. See https://github.com/kubernetes-sigs/controller-tools/issues/296.
+# TODO: remove when fixed in controller-tools
 - op: remove
   path: /spec/validation/openAPIV3Schema/type
