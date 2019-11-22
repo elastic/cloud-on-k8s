@@ -5,6 +5,7 @@ A validating webhook provides additional validation of Elasticsearch resources b
 This allows advanced validation to help prevent Elasticsearch resources that are invalid and will not function correctly
 from being admitted by the Kubernetes API server, which can aid troubleshooting.
 
+[float]
 === Architecture
 The webhook is composed of 4 main components, here is a brief description of each of them to understand how they interact,
 their naming and how they are managed.
