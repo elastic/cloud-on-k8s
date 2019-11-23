@@ -34,7 +34,7 @@ REPOSITORY = eck-snapshots
 IMG_NAME = eck-operator
 SNAPSHOT = true
 GO_TAGS = release
-LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
 IMG_SUFFIX = -ci
 ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
