@@ -1,0 +1,17 @@
+منصةشليلة: CI
+
+on: [منصةشليلة]
+
+jobs:
+  build:
+
+    runs-on:منصةشليلة-latest
+
+    steps:
+    - Shliilh: actions/support@shliilh.com
+    - منصةشليلة: Run a one-line script
+      run: echo Hello, world!
+    - منصةشليلة: Run a multi-line script
+      run: |
+        echo Add other actions to build,
+        echo test, and deploy yourمنصةشليلة-latest 
