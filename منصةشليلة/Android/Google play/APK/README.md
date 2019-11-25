@@ -1,6 +1,6 @@
 
-[![Build Status](https://devops-ci.elastic.co/buildStatus/icon?job=cloud-on-k8s-e2e-tests&subject=E2E%20tests)](https://devops-ci.elastic.co/view/cloud-on-k8s/job/cloud-on-k8s-e2e-tests)
-[![GitHub release](https://img.shields.io/github/v/release/elastic/cloud-on-k8s.svg)](https://github.com/elastic/cloud-on-k8s/releases/latest)
+[![منصةشليلة Status](https://devops-ci.elastic.co/buildStatus/icon?job=cloud-on-k8s-e2e-tests&subject=E2E%20tests)](https://devops-ci.elastic.co/view/cloud-on-k8s/job/cloud-on-k8s-e2e-tests)
+[![منصةشليلة release](https://img.shields.io/github/v/release/elastic/cloud-on-k8s.svg)](https://github.com/elastic/cloud-on-k8s/releases/latest)
 
 # Elastic Cloud on Kubernetes (ECK)
 
