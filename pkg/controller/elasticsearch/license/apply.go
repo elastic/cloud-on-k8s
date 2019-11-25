@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	common_license "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
@@ -21,7 +22,7 @@ import (
 
 // isTrial returns true if an Elasticsearch license is of the trial type
 func isTrial(l *esclient.License) bool {
-	return l != nil && l.Type == string(common_license.LicenseTypeEnterpriseTrial)
+	return l != nil && strings.Contains(l.Type, "trial")
 }
 
 func applyLinkedLicense(
@@ -51,7 +52,7 @@ func applyLinkedLicense(
 
 	// Shortcut if a trial license has already been started
 	if _, ok := license.Annotations[common_license.TrialLicenseStartedAnnotation]; ok {
-		log.V(1).Info("Trial license already started")
+		log.V(1).Info("Trial license already activated")
 		return nil
 	}
 
@@ -106,12 +107,9 @@ func updateLicense(
 	defer cancel()
 
 	if isTrial(&desired) {
-		response, err := c.StartTrial(ctx)
+		err := startTrial(c)
 		if err != nil {
 			return err
-		}
-		if !response.IsSuccess() {
-			return fmt.Errorf("failed to start trial license: %s", response.ErrorMessage)
 		}
 		return nil
 	}
@@ -122,6 +120,40 @@ func updateLicense(
 	}
 	if !response.IsSuccess() {
 		return fmt.Errorf("failed to apply license: %s", response.LicenseStatus)
+	}
+	return nil
+}
+
+// startTrial starts the trial license after checking that the trial is not yet activated by directly hitting the
+// Elasticsearch API.
+func startTrial(c esclient.Client) error {
+	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	defer cancel()
+
+	// Check the current license
+	license, err := c.GetLicense(ctx)
+	if err != nil {
+		return err
+	}
+	if isTrial(&license) {
+		// Trial already activated
+		return nil
+	}
+
+	// Let's start the trial
+	response, err := c.StartTrial(ctx)
+	if err != nil {
+		return err
+	}
+	// Recover from error if the trial was already activated,
+	// this should not happen because the license has just been checked
+	if response.Acknowledged && !response.TrialWasStarted &&
+		strings.Contains(response.ErrorMessage, "Trial was already activated") {
+		// Trial already activated
+		return nil
+	}
+	if !response.IsSuccess() {
+		return fmt.Errorf("failed to start trial license: %s", response.ErrorMessage)
 	}
 	return nil
 }
