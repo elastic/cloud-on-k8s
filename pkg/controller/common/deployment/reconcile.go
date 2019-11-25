@@ -28,7 +28,7 @@ type Params struct {
 	Labels          map[string]string
 	PodTemplateSpec corev1.PodTemplateSpec
 	Replicas        int32
-	Type            appsv1.DeploymentStrategyType
+	Strategy        appsv1.DeploymentStrategyType
 }
 
 // New creates a Deployment from the given params.
@@ -47,7 +47,7 @@ func New(params Params) appsv1.Deployment {
 			Template: params.PodTemplateSpec,
 			Replicas: &params.Replicas,
 			Strategy: appsv1.DeploymentStrategy{
-				Type: params.Type,
+				Type: params.Strategy,
 			},
 		},
 	}

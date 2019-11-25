@@ -397,7 +397,7 @@ func expectedDeploymentParams() deployment.Params {
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
 		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
 		Replicas:  1,
-		Type:      appsv1.RollingUpdateDeploymentStrategyType,
+		Strategy:  appsv1.RollingUpdateDeploymentStrategyType,
 		PodTemplateSpec: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{

@@ -185,6 +185,8 @@ In this case all the instances must share the same encryption key.
 
 This can be done by setting the `xpack.security.encryptionKey` property using a secure setting as described in the next section.
 
+Note that while most reconfigurations of your Kibana instances will be carried out in rolling upgrade fashion, all version upgrades will cause Kibana downtime. This is due to the link:https://www.elastic.co/guide/en/kibana/current/upgrade.html[requirement] to run only a single version of Kibana at any given time.
+
 [float]
 [id="{p}-kibana-secure-settings"]
 === Secure Settings

@@ -90,7 +90,8 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 }
 
 // getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
-// upgrade is in progress.
+// upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
+// running multiple versions simultaneously may lead to concurrency bugs and data corruption.
 func (d *driver) getStrategyType(kb *kbtype.Kibana) (appsv1.DeploymentStrategyType, error) {
 	var pods corev1.PodList
 	var labels client.MatchingLabels = map[string]string{label.KibanaNameLabelName: kb.Name}
@@ -233,7 +234,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 		Selector:        label.NewLabels(kb.Name),
 		Labels:          label.NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
-		Type:            strategyType,
+		Strategy:        strategyType,
 	}, nil
 }
 
