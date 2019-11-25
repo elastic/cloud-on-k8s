@@ -20,6 +20,7 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 
 - <<{p}-virtual-memory>>
 - <<{p}-custom-http-certificate>>
+- <<{p}-reserved-settings>>
 - <<{p}-es-secure-settings>>
 - <<{p}-bundles-plugins>>
 - <<{p}-init-containers-plugin-downloads>>
@@ -263,6 +264,32 @@ This is an example on how to create a Kubernetes TLS secret with a self-signed c
 $ openssl req -x509 -sha256 -nodes -newkey rsa:4096 -days 365 -subj "/CN=quickstart-es-http" -addext "subjectAltName=DNS:quickstart-es-http.default.svc" -keyout tls.key -out tls.crt
 $ kubectl create secret generic my-cert --from-file=ca.crt=tls.crt --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
 ----
+
+
+[id="{p}-reserved-settings"]
+=== Settings managed by ECK
+
+The following Elasticsearch settings are managed by ECK:
+
+* `cluster.name`
+* `discovery.zen.minimum_master_nodes` deprecated[7.0]
+* `cluster.initial_master_nodes` added[7.0]
+* `network.host`
+* `network.publish_host`
+* `path.data`
+* `path.logs`
+* `xpack.security.authc.reserved_realm.enabled`
+* `xpack.security.enabled`
+* `xpack.security.http.ssl.certificate`
+* `xpack.security.http.ssl.enabled`
+* `xpack.security.http.ssl.key`
+* `xpack.security.transport.ssl.certificate`
+* `xpack.security.transport.ssl.enabled`
+* `xpack.security.transport.ssl.key`
+* `xpack.security.transport.ssl.verification_mode`
+
+CAUTION: While ECK does not prevent you from setting any of these settings yourself, you are strongly discouraged from doing so and any user provided Elasticsearch configuration that does use one of these settings is unsupported.
+
 
 [id="{p}-es-secure-settings"]
 === Secure settings
