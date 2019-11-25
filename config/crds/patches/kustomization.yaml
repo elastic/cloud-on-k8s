@@ -1,5 +1,5 @@
 bases:
-  - ../crds
+  - ../bases
 
 patchesJson6902:
   - target:
@@ -7,16 +7,16 @@ patchesJson6902:
       version: v1beta1
       kind: CustomResourceDefinition
       name: apmservers.apm.k8s.elastic.co
-    path: trivalize-versions-patch.yaml
+    path: apm-and-kibana-podtemplate-patch.yaml
   - target:
       group: apiextensions.k8s.io
       version: v1beta1
       kind: CustomResourceDefinition
       name: elasticsearches.elasticsearch.k8s.elastic.co
-    path: trivalize-versions-patch.yaml
+    path: elasticsearch-podtemplate-patch.yaml
   - target:
       group: apiextensions.k8s.io
       version: v1beta1
       kind: CustomResourceDefinition
       name: kibanas.kibana.k8s.elastic.co
-    path: trivalize-versions-patch.yaml
+    path: apm-and-kibana-podtemplate-patch.yaml

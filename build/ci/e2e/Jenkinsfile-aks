@@ -32,7 +32,6 @@ pipeline {
 REGISTRY = cloudonk8s.azurecr.io
 REPOSITORY = operators
 IMG_SUFFIX = -ci
-CRD_FLAVOR = trivial-versions
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.json
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key

@@ -39,16 +39,6 @@ else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
 
-CRD_OPTIONS ?= "crd"
-
-# CRD_FLAVOR can be used to select specific flavors of CRDs
-CRD_FLAVOR ?= default
-CRD_AVAILABLE_FLAVORS := default trivial-versions
-# verify that the CRD_FLAVOR is valid:
-ifeq ($(filter $(CRD_FLAVOR),$(CRD_AVAILABLE_FLAVORS)),)
-$(error $(CRD_FLAVOR) is not a valid CRD_FLAVOR. Possible values are: $(CRD_AVAILABLE_FLAVORS));
-endif
-
 ## -- Docker image
 
 # on GKE, use GCR and GCLOUD_PROJECT
@@ -100,17 +90,20 @@ all: dependencies lint check-license-header unit integration e2e-compile elastic
 dependencies:
 	go mod tidy -v && go mod download
 
-# Generate code
+# Generate code, CRDs and documentation
+ALL_CRDS=config/crds/all-crds.yaml
 generate: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/..." output:crd:artifacts:config=config/crds
-	# verify that the available crd flavors still can generate cleanly
-	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
-		kubectl kustomize config/crds-flavor-$$crd_flavor > /dev/null; \
-	done
+	# We generate CRDs with trivialVersions=true, to support pre-1.13 Kubernetes versions. This means the CRDs
+	# include validation for the latest version **only**. Older versions are still mentioned, but will be validated
+	# against the latest version schema.
+	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
+	# build a patched merged version of the CRDs
+	kubectl kustomize config/crds/patches > $(ALL_CRDS)
+	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
 	$(MAKE) --no-print-directory generate-api-docs
 	$(MAKE) --no-print-directory generate-notice-file
@@ -151,7 +144,7 @@ lint:
 #############################
 
 install-crds: generate
-	kubectl apply -k config/crds-flavor-$(CRD_FLAVOR)
+	kubectl apply -f $(ALL_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
@@ -213,19 +206,19 @@ apply-operators:
 apply-psp:
 	kubectl apply -f config/dev/elastic-psp.yaml
 
+ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
+
+# merge all-in-one crds with operator manifests
 generate-all-in-one:
-	@for crd_flavor in $(CRD_AVAILABLE_FLAVORS); do \
-	    ALL_IN_ONE_OUTPUT_FILE=config/all-in-one-flavor-$$crd_flavor.yaml; \
-        kubectl kustomize config/crds-flavor-$$crd_flavor > $${ALL_IN_ONE_OUTPUT_FILE}; \
-        OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-        NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-            $(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $${ALL_IN_ONE_OUTPUT_FILE}; \
-	done
+	cp -f $(ALL_CRDS) $(ALL_IN_ONE_OUTPUT_FILE)
+	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+		NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $(ALL_IN_ONE_OUTPUT_FILE)
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: docker-build docker-push
-	kubectl apply -f config/all-in-one-flavor-$(CRD_FLAVOR).yaml
+	kubectl apply -f $(ALL_IN_ONE_OUTPUT_FILE)
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
@@ -368,7 +361,6 @@ e2e-run:
 		--test-license=$(TEST_LICENSE) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
-		--crd-flavor=$(CRD_FLAVOR) \
 		--log-to-file=$(E2E_JSON) \
 		--test-timeout=$(TEST_TIMEOUT)
 
@@ -392,7 +384,6 @@ e2e-local:
 		--auto-port-forwarding \
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \
-		--crd-flavor=$(CRD_FLAVOR) \
 		--test-timeout=$(TEST_TIMEOUT)
 	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 

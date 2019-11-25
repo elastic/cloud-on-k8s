@@ -109,11 +109,6 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.jso
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
 EOF
-        if [[ "${clusterVersion}" < "1.14" ]]; then
-            echo "Setting CRD_FLAVOR to trivial-versions to support K8s < 1.14"
-            echo "CRD_FLAVOR = trivial-versions" >> .env
-        fi
-        cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: create
