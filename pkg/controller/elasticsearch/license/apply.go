@@ -22,7 +22,9 @@ import (
 
 // isTrial returns true if an Elasticsearch license is of the trial type
 func isTrial(l *esclient.License) bool {
-	return l != nil && strings.Contains(l.Type, "trial")
+	return l != nil &&
+		(l.Type == string(common_license.LicenseTypeEnterpriseTrial) ||
+			l.Type == string(common_license.ElasticsearchLicenseTypeTrial))
 }
 
 func applyLinkedLicense(
