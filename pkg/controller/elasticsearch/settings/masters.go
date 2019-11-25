@@ -7,6 +7,7 @@ package settings
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
@@ -59,6 +60,8 @@ func UpdateSeedHostsConfigMap(
 
 	var hosts string
 	if seedHosts != nil {
+		// avoid unnecessary pod cycles due to changing order of seed hosts
+		sort.Strings(seedHosts)
 		hosts = strings.Join(seedHosts, "\n")
 	}
 	expected := corev1.ConfigMap{
