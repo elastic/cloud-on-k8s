@@ -47,7 +47,6 @@ func (b Builder) AnnotatePodsWithBuilderHash(k *test.K8sClient) test.StepList {
 						// which is why we retry with `test.Eventually`
 						return err
 					}
-					fmt.Printf("pod %s has builder hash set to %s\n", pod.Name, pod.Annotations[BuilderHashAnnotation])
 				}
 				return nil
 			}),

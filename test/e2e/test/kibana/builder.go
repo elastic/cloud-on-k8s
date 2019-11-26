@@ -112,6 +112,16 @@ func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
 	return b
 }
 
+func (b Builder) WithLabel(key, value string) Builder {
+	labels := b.Kibana.Spec.PodTemplate.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[key] = value
+	b.Kibana.Spec.PodTemplate.Labels = labels
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {
