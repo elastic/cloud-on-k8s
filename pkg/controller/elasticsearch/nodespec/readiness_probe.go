@@ -33,8 +33,8 @@ const ReadinessProbeScript string = `
 CURL_TIMEOUT=3
 
 # setup basic auth if credentials are available
-if [ -n "${PROBE_USERNAME}" ] && [ -f "${PROBE_PASSWORD_FILE}" ]; then
-  PROBE_PASSWORD=$(<$PROBE_PASSWORD_FILE)
+if [ -n "${PROBE_USERNAME}" ] && [ -f "${PROBE_PASSWORD_PATH}" ]; then
+  PROBE_PASSWORD=$(<$PROBE_PASSWORD_PATH)
   BASIC_AUTH="-u ${PROBE_USERNAME}:${PROBE_PASSWORD}"
 else
   BASIC_AUTH=''
