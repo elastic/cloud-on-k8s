@@ -28,7 +28,6 @@ func isTrial(l *esclient.License) bool {
 func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
-	current *esclient.License,
 	updater func(license esclient.License) error,
 ) error {
 	var license corev1.Secret
@@ -50,12 +49,6 @@ func applyLinkedLicense(
 		}
 		return err
 	}
-
-	// Shortcut if a trial license has already been started by checking the current license cached in memory by the observer
-	/*if isTrial(current) {
-		log.V(1).Info("Trial license already activated")
-		return nil
-	}*/
 
 	bytes, err := commonlicense.FetchLicenseData(license.Data)
 	if err != nil {

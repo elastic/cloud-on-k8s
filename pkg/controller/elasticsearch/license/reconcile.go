@@ -8,10 +8,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-var log = logf.Log.WithName("elasticsearch-license")
 
 // Reconcile reconciles the current Elasticsearch license with the desired one.
 func Reconcile(
@@ -21,7 +18,7 @@ func Reconcile(
 	current *esclient.License,
 ) error {
 	clusterName := k8s.ExtractNamespacedName(&esCluster)
-	return applyLinkedLicense(c, clusterName, current, func(desired esclient.License) error {
+	return applyLinkedLicense(c, clusterName, func(desired esclient.License) error {
 		return updateLicense(clusterClient, current, desired)
 	})
 }
