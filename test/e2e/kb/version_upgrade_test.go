@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -29,40 +30,23 @@ func TestVersionUpgrade(t *testing.T) {
 		WithNodeCount(3).
 		WithVersion("7.4.0")
 
-	ns := client.InNamespace(kbBuilder.Kibana.Namespace)
-	matchLabels := client.MatchingLabels(map[string]string{
-		common.TypeLabelName:      label.Type,
-		label.KibanaNameLabelName: kbBuilder.Kibana.Name,
-	})
-
-	var observations []int
-	w := test.NewWatcher("watch pods readiness", 1*time.Second,
-		func(k *test.K8sClient, t *testing.T) {
-			if pods, err := k.GetPods(ns, matchLabels); err != nil {
-				t.Logf("got error: %v", err)
-			} else {
-				ready := 0
-				for _, pod := range pods {
-					if k8s.IsPodReady(pod) {
-						ready++
-					}
-				}
-				observations = append(observations, ready)
-			}
-		},
-		func(k *test.K8sClient, t *testing.T) {
-			assert.Contains(t, observations, 0)
-		})
+	opts := []client.ListOption{
+		client.InNamespace(kbBuilder.Kibana.Namespace),
+		client.MatchingLabels(map[string]string{
+			common.TypeLabelName:      label.Type,
+			label.KibanaNameLabelName: kbBuilder.Kibana.Name,
+		}),
+	}
 
 	test.RunMutationsWhileWatching(
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
 		[]test.Builder{esBuilder, kbBuilder.WithVersion("7.4.1").WithMutatedFrom(&kbBuilder)},
-		[]test.Watcher{w},
+		[]test.Watcher{NewReadinessWatcher(opts...), NewVersionWatcher(opts...)},
 	)
 }
 
-func TestRespecAndVersionUpgrade(t *testing.T) {
+func TestVersionUpgradeAndRespec(t *testing.T) {
 	name := "test-upgrade-and-respec"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
@@ -73,31 +57,30 @@ func TestRespecAndVersionUpgrade(t *testing.T) {
 		WithNodeCount(3).
 		WithVersion("7.4.0")
 
+	// Perform a Kibana version upgrade immediately followed by a Kibana configuration change.
+	// We want to make sure that the second upgrade will be done in rolling upgrade fashion instead of terminating
+	// and recreating all the pods at once.
 	kbBuilder2 := kbBuilder1.WithMutatedFrom(&kbBuilder1).WithVersion("7.4.1")
 	kbBuilder3 := kbBuilder2.WithMutatedFrom(&kbBuilder2).WithLabel("some", "label")
 
-	ns := client.InNamespace(kbBuilder1.Kibana.Namespace)
-	matchLabels := client.MatchingLabels(map[string]string{
-		common.TypeLabelName:      label.Type,
-		label.KibanaNameLabelName: kbBuilder1.Kibana.Name,
-	})
+	opts := []client.ListOption{
+		client.InNamespace(kbBuilder1.Kibana.Namespace),
+		client.MatchingLabels(map[string]string{
+			common.TypeLabelName:      label.Type,
+			label.KibanaNameLabelName: kbBuilder1.Kibana.Name,
+		}),
+	}
 
 	// checks whether after temporary downtime kibana will be available the rest of the time
 	var hadZero, shouldHaveNonZero, failed bool
 	w := test.NewWatcher("watch pods readiness", 1*time.Second,
 		func(k *test.K8sClient, t *testing.T) {
-			pods, err := k.GetPods(ns, matchLabels)
+			pods, err := k.GetPods(opts...)
 			if err != nil {
 				t.Logf("got error: %v", err)
 			}
 
-			ready := 0
-			for _, pod := range pods {
-				if k8s.IsPodReady(pod) {
-					ready++
-				}
-			}
-
+			ready := k8s.ReadyPodsCount(pods)
 			hadZero = hadZero || ready == 0
 			if hadZero && ready > 0 {
 				shouldHaveNonZero = true
@@ -115,6 +98,40 @@ func TestRespecAndVersionUpgrade(t *testing.T) {
 		t,
 		[]test.Builder{esBuilder, kbBuilder1},
 		[]test.Builder{esBuilder, kbBuilder2, kbBuilder3},
-		[]test.Watcher{w},
+		[]test.Watcher{w, NewVersionWatcher(opts...)},
 	)
+}
+
+func NewReadinessWatcher(opts ...client.ListOption) test.Watcher {
+	var readinessObservations []int
+	return test.NewWatcher("watch pods versions", 1*time.Second,
+		func(k *test.K8sClient, t *testing.T) {
+			if pods, err := k.GetPods(opts...); err != nil {
+				t.Logf("got error: %v", err)
+			} else {
+				readinessObservations = append(readinessObservations, k8s.ReadyPodsCount(pods))
+			}
+		},
+		func(k *test.K8sClient, t *testing.T) {
+			assert.Contains(t, readinessObservations, 0)
+		})
+}
+
+func NewVersionWatcher(opts ...client.ListOption) test.Watcher {
+	var podObservations [][]v1.Pod
+	return test.NewWatcher("watch pods versions", 1*time.Second,
+		func(k *test.K8sClient, t *testing.T) {
+			if pods, err := k.GetPods(opts...); err != nil {
+				t.Logf("got error: %v", err)
+			} else {
+				podObservations = append(podObservations, pods)
+			}
+		},
+		func(k *test.K8sClient, t *testing.T) {
+			for _, pods := range podObservations {
+				for i := 1; i < len(pods); i++ {
+					assert.Equal(t, pods[i-1].Labels[label.KibanaVersionLabelName], pods[i].Labels[label.KibanaVersionLabelName])
+				}
+			}
+		})
 }

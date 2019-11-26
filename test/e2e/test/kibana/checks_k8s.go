@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -18,22 +17,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// BuilderHashAnnotation is the name of an annotation set by the E2E tests on Kibana resources
-// containing the hash of their Builder, for comparison purposes (pre/post rolling upgrade).
-const BuilderHashAnnotation = "kibana.k8s.elastic.co/e2e-builder-hash"
-
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		CheckKibanaDeployment(b, k),
-		CheckKibanaPodsRunning(b, k),
-		CheckKibanaPodsReady(b, k),
+		CheckKibanaPods(b, k),
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
 	}
 }
 
-// CheckKibanaDeployment checks Kibana deployment spec, existing pod count and pods config hashes
-func CheckKibanaDeployment(b Builder, k *test.K8sClient) test.Step {
+// CheckKibanaPods checks Kibana pods for correct builder hash, pod count, whether pods are running and ready
+func CheckKibanaPods(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Kibana deployment be rolled out",
 		Test: test.Eventually(func() error {
@@ -48,9 +41,6 @@ func CheckKibanaDeployment(b Builder, k *test.K8sClient) test.Step {
 			if err != nil {
 				return err
 			}
-			if *dep.Spec.Replicas != b.Kibana.Spec.Count {
-				return fmt.Errorf("invalid Kibana replicas count: expected %d, got %d", b.Kibana.Spec.Count, *dep.Spec.Replicas)
-			}
 
 			var pods corev1.PodList
 			if err := k.Client.List(&pods, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...); err != nil {
@@ -60,12 +50,8 @@ func CheckKibanaDeployment(b Builder, k *test.K8sClient) test.Step {
 			// builder hash matches
 			goodBuilderHash := hash.HashObject(b.Kibana.Spec)
 			for _, pod := range pods.Items {
-				podBuilderHash := pod.Annotations[BuilderHashAnnotation]
-				if podBuilderHash != "" && podBuilderHash != goodBuilderHash {
-					// pods were annotated before the upgrade, so after upgrade they should either have no annotation
-					// or the annotation with current spec hash (this is for scaling scenario were pods might not go
-					// away, but still they are the expected ones)
-					return fmt.Errorf("builder hash doesn't match: expected %s, got %s", goodBuilderHash, podBuilderHash)
+				if err := test.ValidateBuilderHashAnnotation(pod, goodBuilderHash); err != nil {
+					return err
 				}
 			}
 
@@ -74,59 +60,20 @@ func CheckKibanaDeployment(b Builder, k *test.K8sClient) test.Step {
 				return fmt.Errorf("invalid Kibana pod count: expected %d, got %d", b.Kibana.Spec.Count, len(pods.Items))
 			}
 
-			// config hash matches
-			goodConfigHash := dep.Labels[label.ConfigHashLabelName]
-			for _, pod := range pods.Items {
-				podConfigHash := pod.Labels[label.ConfigHashLabelName]
-				if podConfigHash != goodConfigHash {
-					return fmt.Errorf("invalid config-hash in pod %s: expected %s, got %s", pod.Name, goodConfigHash, podConfigHash)
-				}
-			}
-
+			// pods are running
 			for _, pod := range pods.Items {
 				if pod.Status.Phase != corev1.PodRunning {
 					return fmt.Errorf("pod not running yet")
 				}
 			}
 
-			return nil
-		}),
-	}
-}
-
-// CheckKibanaPodsRunning checks that all Kibana pods for the given Kibana are running
-func CheckKibanaPodsRunning(b Builder, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "Kibana pods should eventually be running",
-		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
-			if err != nil {
-				return err
-			}
-			for _, p := range pods {
-				if p.Status.Phase != corev1.PodRunning {
-					return fmt.Errorf("pod not running yet")
-				}
-			}
-			return nil
-		}),
-	}
-}
-
-// CheckKibanaPodsReady checks that all Kibana pods for the given Kibana are ready
-func CheckKibanaPodsReady(b Builder, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "Kibana pods should eventually be ready",
-		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
-			if err != nil {
-				return err
-			}
-			for _, pod := range pods {
+			// pods are ready
+			for _, pod := range pods.Items {
 				if !k8s.IsPodReady(pod) {
 					return fmt.Errorf("pod not ready yet")
 				}
 			}
+
 			return nil
 		}),
 	}

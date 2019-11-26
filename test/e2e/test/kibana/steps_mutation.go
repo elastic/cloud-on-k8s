@@ -5,7 +5,6 @@
 package kibana
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
@@ -28,41 +27,15 @@ func (b Builder) AnnotatePodsWithBuilderHash(k *test.K8sClient) test.StepList {
 		{
 			Name: "Annotate Pods with a hash of their Builder spec",
 			Test: test.Eventually(func() error {
-				if b.MutatedFrom == nil {
-					panic("builder has to have MutatedFrom set if it's a mutation builder")
-				}
-
 				var pods corev1.PodList
 				if err := k.Client.List(&pods, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...); err != nil {
 					return err
 				}
 
+				expectedHash := hash.HashObject(b.MutatedFrom.Kibana.Spec)
 				for _, pod := range pods.Items {
-					if pod.Annotations == nil {
-						pod.Annotations = make(map[string]string)
-					}
-					pod.Annotations[BuilderHashAnnotation] = hash.HashObject(b.MutatedFrom.Kibana.Spec)
-					if err := k.Client.Update(&pod); err != nil {
-						// may error out with a conflict if concurrently updated by the operator,
-						// which is why we retry with `test.Eventually`
+					if err := test.AnnotatePodWithBuilderHash(k, pod, expectedHash); err != nil {
 						return err
-					}
-				}
-				return nil
-			}),
-		},
-		// make sure this is propagated to the local cache so next test steps can expect annotated pods
-		{
-			Name: "Wait for annotated Pods to appear in the cache",
-			Test: test.Eventually(func() error {
-				var pods corev1.PodList
-				if err := k.Client.List(&pods, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...); err != nil {
-					return err
-				}
-
-				for _, pod := range pods.Items {
-					if pod.Annotations[BuilderHashAnnotation] == "" {
-						return fmt.Errorf("pod %s is not annotated with %s yet", pod.Name, BuilderHashAnnotation)
 					}
 				}
 				return nil

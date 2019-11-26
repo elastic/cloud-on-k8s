@@ -85,3 +85,33 @@ func Eventually(f func() error) func(*testing.T) {
 func BoolPtr(b bool) *bool {
 	return &b
 }
+
+// AnnotatePodWithBuilderHash annotates pod with a hash to facilitate detection of newly created pods
+func AnnotatePodWithBuilderHash(k *K8sClient, pod corev1.Pod, hash string) error {
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
+	pod.Annotations[BuilderHashAnnotation] = hash
+	if err := k.Client.Update(&pod); err != nil {
+		// may error out with a conflict if concurrently updated by the operator,
+		// which is why we retry with `test.Eventually`
+		return err
+	}
+
+	return nil
+}
+
+// ValidateBuilderHashAnnotation validates builder hash. Pod should either:
+// - be annotated with the hash of the current spec from previous E2E steps
+// - not be annotated at all (if recreated/upgraded, or not a mutation)
+// But **not** be annotated with the hash of a different ES spec, meaning
+// it probably still matches the spec of the pre-mutation builder (rolling upgrade not over).
+//
+// Important: this does not catch rolling upgrades due to a keystore change, where the Builder hash
+// would stay the same.
+func ValidateBuilderHashAnnotation(pod corev1.Pod, hash string) error {
+	if pod.Annotations[BuilderHashAnnotation] != "" && pod.Annotations[BuilderHashAnnotation] != hash {
+		return fmt.Errorf("pod %s was not upgraded (yet?) to match the expected specification", pod.Name)
+	}
+	return nil
+}
