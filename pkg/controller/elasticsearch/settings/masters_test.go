@@ -102,7 +102,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				scheme: scheme.Scheme,
 			},
 			wantErr:         false,
-			expectedContent: "10.0.9.2:9300\n10.0.3.3:9300",
+			expectedContent: "10.0.3.3:9300\n10.0.9.2:9300",
 		},
 		{
 			name: "All masters have IPs, some nodes don't",
@@ -119,7 +119,22 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				scheme: scheme.Scheme,
 			},
 			wantErr:         false,
-			expectedContent: "10.0.9.2:9300\n10.0.6.5:9300\n10.0.3.3:9300",
+			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
+		},
+		{
+			name: "Ordering of pods should not matter",
+			args: args{
+				pods: []corev1.Pod{ //
+					newPodWithIP("master2", "10.0.6.5", true),
+					newPodWithIP("master3", "10.0.3.3", true),
+					newPodWithIP("master1", "10.0.9.2", true),
+				},
+				c:      k8s.WrappedFakeClient(),
+				es:     es,
+				scheme: scheme.Scheme,
+			},
+			wantErr:         false,
+			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
 		},
 	}
 	for _, tt := range tests {
