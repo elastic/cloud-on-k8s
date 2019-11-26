@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	common_license "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
@@ -22,14 +22,13 @@ import (
 
 // isTrial returns true if an Elasticsearch license is of the trial type
 func isTrial(l *esclient.License) bool {
-	return l != nil &&
-		(l.Type == string(common_license.LicenseTypeEnterpriseTrial) ||
-			l.Type == string(common_license.ElasticsearchLicenseTypeTrial))
+	return l != nil && l.Type == string(commonlicense.ElasticsearchLicenseTypeTrial)
 }
 
 func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
+	current *esclient.License,
 	updater func(license esclient.License) error,
 ) error {
 	var license corev1.Secret
@@ -52,40 +51,26 @@ func applyLinkedLicense(
 		return err
 	}
 
-	// Shortcut if a trial license has already been started
-	if _, ok := license.Annotations[common_license.TrialLicenseStartedAnnotation]; ok {
+	// Shortcut if a trial license has already been started by checking the current license cached in memory by the observer
+	/*if isTrial(current) {
 		log.V(1).Info("Trial license already activated")
 		return nil
-	}
+	}*/
 
-	bytes, err := common_license.FetchLicenseData(license.Data)
+	bytes, err := commonlicense.FetchLicenseData(license.Data)
 	if err != nil {
 		return err
 	}
 
-	var lic esclient.License
-	err = json.Unmarshal(bytes, &lic)
+	var desired esclient.License
+	err = json.Unmarshal(bytes, &desired)
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
 
-	err = updater(lic)
+	err = updater(desired)
 	if err != nil {
 		return err
-	}
-
-	// Store that the trial license has been started in an annotation
-	if isTrial(&lic) {
-		if license.Annotations == nil {
-			license.Annotations = map[string]string{}
-		}
-		license.Annotations[common_license.TrialLicenseStartedAnnotation] = "true"
-
-		err = c.Update(&license)
-		if err != nil {
-			log.Info("Error when updating the license secret", "err", err.Error())
-			return err
-		}
 	}
 
 	return nil
@@ -97,7 +82,7 @@ func updateLicense(
 	current *esclient.License,
 	desired esclient.License,
 ) error {
-	if current != nil && current.UID == desired.UID {
+	if current != nil && (current.UID == desired.UID || (isTrial(current) && current.Type == desired.Type)) {
 		return nil // we are done already applied
 	}
 	request := esclient.LicenseUpdateRequest{
