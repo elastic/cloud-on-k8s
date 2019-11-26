@@ -60,7 +60,7 @@ func UpdateSeedHostsConfigMap(
 
 	var hosts string
 	if seedHosts != nil {
-		// avoid unnecessary pod cycles due to changing order of seed hosts
+		// avoid unnecessary secret updates due to changing order of seed hosts
 		sort.Strings(seedHosts)
 		hosts = strings.Join(seedHosts, "\n")
 	}
