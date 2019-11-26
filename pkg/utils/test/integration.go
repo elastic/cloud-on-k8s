@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -23,17 +24,21 @@ const (
 	// ControlPlaneStartTimeout is the time to wait for control plane startup
 	// in kubebuilder integration tests.
 	// It is set at a relatively high value due to low resources in continuous integration.
-	ControlPlaneStartTimeout = 2 * time.Minute
-	BootstrapTestEnvRetries  = 3
+	ControlPlaneStartTimeout = 1 * time.Minute
+	BootstrapTestEnvRetries  = 1
+
+	CRDsRelativePath = "../../../config/crds"
 )
 
 var Config *rest.Config
 
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
-func RunWithK8s(m *testing.M, crdPath string) {
+func RunWithK8s(m *testing.M) {
+	// add CRDs scheme to the client
 	_ = controllerscheme.SetupScheme()
+
 	t := &envtest.Environment{
-		CRDDirectoryPaths:        []string{crdPath},
+		CRDDirectoryPaths:        []string{CRDsRelativePath},
 		ControlPlaneStartTimeout: ControlPlaneStartTimeout,
 	}
 

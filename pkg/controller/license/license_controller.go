@@ -115,16 +115,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			if !license.IsEnterpriseLicense(*secret) {
 				return nil
 			}
-			// TODO reconcile license secrets and augment license secret metadata with license UID to minimize parsing
-			license, err := license.ParseEnterpriseLicense(secret.Data)
-			if err != nil {
-				log.Error(err, "ignoring invalid or unparseable license in watch handler")
-				return nil
-			}
-
-			rs, err := listAffectedLicenses(
-				k8s.WrapClient(mgr.GetClient()), license.License.UID,
-			)
+			// if a license is added/modified we want to update for potentially all clusters managed by this instance
+			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
+			rs, err := reconcileRequestsForAllClusters(k8s.WrapClient(mgr.GetClient()))
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")

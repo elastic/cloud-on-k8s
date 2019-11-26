@@ -60,18 +60,13 @@ func (r *Elasticsearch) ValidateUpdate(old runtime.Object) error {
 }
 
 func (r *Elasticsearch) validateElasticsearch() error {
-	var errs field.ErrorList
-	for _, val := range validations {
-		if err := val(r); err != nil {
-			errs = append(errs, err...)
-		}
+	errs := r.check(validations)
+	if len(errs) > 0 {
+		return apierrors.NewInvalid(
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
+			r.Name,
+			errs,
+		)
 	}
-
-	if len(errs) == 0 {
-		return nil
-	}
-
-	return apierrors.NewInvalid(
-		schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
-		r.Name, errs)
+	return nil
 }

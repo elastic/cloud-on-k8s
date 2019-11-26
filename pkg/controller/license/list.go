@@ -5,26 +5,23 @@
 package license
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func listAffectedLicenses(c k8s.Client, licenseName string) ([]reconcile.Request, error) {
-	var list = corev1.SecretList{}
-	// list all cluster licenses referencing the given enterprise license
-	matchLabels := license.NewLicenseByNameSelector(licenseName)
-	err := c.List(&list, matchLabels)
+func reconcileRequestsForAllClusters(c k8s.Client) ([]reconcile.Request, error) {
+	var clusters v1beta1.ElasticsearchList
+	// list all clusters
+	err := c.List(&clusters)
 	if err != nil {
 		return nil, err
 	}
 
-	// enqueue a reconcile request for each cluster license found leveraging the fact that cluster and license
-	// share the same name
-	requests := make([]reconcile.Request, len(list.Items))
-	for i, cl := range list.Items {
+	// create a reconcile request for each cluster
+	requests := make([]reconcile.Request, len(clusters.Items))
+	for i, cl := range clusters.Items {
 		requests[i] = reconcile.Request{NamespacedName: types.NamespacedName{
 			Namespace: cl.Namespace,
 			Name:      cl.Name,

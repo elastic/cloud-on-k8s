@@ -41,7 +41,7 @@ const (
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
 )
 
-var SettingsBlacklist = []string{
+var UnsupportedSettings = []string{
 	ClusterName,
 	DiscoveryZenMinimumMasterNodes,
 	ClusterInitialMasterNodes,
@@ -53,7 +53,6 @@ var SettingsBlacklist = []string{
 	XPackSecurityAuthcReservedRealmEnabled,
 	XPackSecurityEnabled,
 	XPackSecurityHttpSslCertificate,
-	XPackSecurityHttpSslCertificateAuthorities,
 	XPackSecurityHttpSslEnabled,
 	XPackSecurityHttpSslKey,
 	XPackSecurityTransportSslCertificate,
