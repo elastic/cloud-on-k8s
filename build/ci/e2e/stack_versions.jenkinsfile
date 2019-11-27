@@ -80,6 +80,17 @@ pipeline {
                         }
                     }
                 }
+                stage("7.5.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+                        script {
+                            runWith(lib, failedTests, "eck-75-${BUILD_NUMBER}-e2e", "7.5.0")
+                        }
+                    }
+                }
             }
         }
     }
@@ -107,7 +118,14 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["eck-68-${BUILD_NUMBER}-e2e", "eck-71-${BUILD_NUMBER}-e2e", "eck-72-${BUILD_NUMBER}-e2e", "eck-73-${BUILD_NUMBER}-e2e", "eck-74-${BUILD_NUMBER}-e2e"]
+                clusters = [
+                    "eck-68-${BUILD_NUMBER}-e2e",
+                    "eck-71-${BUILD_NUMBER}-e2e",
+                    "eck-72-${BUILD_NUMBER}-e2e",
+                    "eck-73-${BUILD_NUMBER}-e2e",
+                    "eck-74-${BUILD_NUMBER}-e2e",
+                    "eck-75-${BUILD_NUMBER}-e2e"
+                ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
