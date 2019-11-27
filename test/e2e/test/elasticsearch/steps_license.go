@@ -21,7 +21,6 @@ import (
 
 const (
 	licenseSecretName      = "e2e-enterprise-license"
-	trialLicenseSecretName = "e2e-enterprise-trial-license"
 )
 
 type LicenseTestContext struct {
@@ -114,7 +113,7 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret() test.Step 
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
-					Name:      trialLicenseSecretName,
+					Name:      licenseSecretName,
 					Labels: map[string]string{
 						license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
 					},
