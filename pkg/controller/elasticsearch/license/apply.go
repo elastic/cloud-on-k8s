@@ -17,7 +17,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var log = logf.Log.WithName("elasticsearch-license")
 
 // isTrial returns true if an Elasticsearch license is of the trial type
 func isTrial(l *esclient.License) bool {
@@ -127,5 +130,7 @@ func startTrial(c esclient.Client) error {
 	if !response.IsSuccess() {
 		return fmt.Errorf("failed to start trial license: %s", response.ErrorMessage)
 	}
+
+	log.Info("Trial license started")
 	return nil
 }
