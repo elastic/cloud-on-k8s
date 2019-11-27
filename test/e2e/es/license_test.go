@@ -47,6 +47,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 			),
 		}).
 		WithSteps(esBuilder.DeletionTestSteps(k)).
+		WithStep(licenseTestContext.DeleteEnterpriseLicenseSecret()).
 		RunSequential(t)
 }
 
@@ -64,7 +65,7 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 					licenseTestContext = elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
 				},
 			},
-			licenseTestContext.DeleteEnterpriseTrialLicenseSecret(),
+			licenseTestContext.DeleteEnterpriseLicenseSecret(),
 			licenseTestContext.CreateEnterpriseTrialLicenseSecret(),
 		}
 	}

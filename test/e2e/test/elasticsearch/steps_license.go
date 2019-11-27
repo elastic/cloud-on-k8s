@@ -91,21 +91,6 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(licenseBytes []by
 	}
 }
 
-func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret() test.Step {
-	return test.Step{
-		Name: "Removing any test enterprise licenses",
-		Test: func(t *testing.T) {
-			sec := corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: test.Ctx().ManagedNamespace(0),
-					Name:      licenseSecretName,
-				},
-			}
-			_ = ltctx.k.Client.Delete(&sec)
-		},
-	}
-}
-
 func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret() test.Step {
 	return test.Step{
 		Name: "Creating enterprise trial license secret",
@@ -127,14 +112,23 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret() test.Step 
 	}
 }
 
-func (ltctx *LicenseTestContext) DeleteEnterpriseTrialLicenseSecret() test.Step {
+func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret() test.Step {
 	return test.Step{
-		Name: "Removing any test enterprise licenses",
+		Name: "Removing any test enterprise license secrets",
 		Test: func(t *testing.T) {
+			// Delete operator license secret
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
-					Name:      trialLicenseSecretName,
+					Name:      licenseSecretName,
+				},
+			}
+			_ = ltctx.k.Client.Delete(&sec)
+			// Delete operator trial status secret
+			sec = corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: test.Ctx().GlobalOperator.Namespace,
+					Name:      license.TrialStatusSecretKey,
 				},
 			}
 			_ = ltctx.k.Client.Delete(&sec)
