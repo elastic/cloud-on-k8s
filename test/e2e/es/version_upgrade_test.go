@@ -10,8 +10,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
-func TestVersionUpgrade680To720(t *testing.T) {
-	initial := elasticsearch.NewBuilder("test-version-up-3-680-to-720").
+func TestVersionUpgrade680To730(t *testing.T) {
+	initial := elasticsearch.NewBuilder("test-version-up-3-680-to-730").
 		WithVersion("6.8.0").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
@@ -22,8 +22,8 @@ func TestVersionUpgrade680To720(t *testing.T) {
 	RunESMutation(t, initial, mutated)
 }
 
-func TestVersionUpgradeSingle680To720(t *testing.T) {
-	initial := elasticsearch.NewBuilder("test-version-up-1-680-to-720").
+func TestVersionUpgradeSingle680To730(t *testing.T) {
+	initial := elasticsearch.NewBuilder("test-version-up-1-680-to-730").
 		WithVersion("6.8.0").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
@@ -34,8 +34,8 @@ func TestVersionUpgradeSingle680To720(t *testing.T) {
 	RunESMutation(t, initial, mutated)
 }
 
-func TestVersionUpgradeSingle710To720(t *testing.T) {
-	initial := elasticsearch.NewBuilder("test-version-up-1-710-to-720").
+func TestVersionUpgradeSingle710To730(t *testing.T) {
+	initial := elasticsearch.NewBuilder("test-version-up-1-710-to-730").
 		WithVersion("7.1.0").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
