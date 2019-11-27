@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
@@ -124,13 +123,6 @@ func startTrial(c esclient.Client) error {
 	response, err := c.StartTrial(ctx)
 	if err != nil {
 		return err
-	}
-	// Recover from error if the trial was already activated,
-	// this should not happen because the license has just been checked
-	if response.Acknowledged && !response.TrialWasStarted &&
-		strings.Contains(response.ErrorMessage, "Trial was already activated") {
-		// Trial already activated
-		return nil
 	}
 	if !response.IsSuccess() {
 		return fmt.Errorf("failed to start trial license: %s", response.ErrorMessage)
