@@ -7,7 +7,9 @@ package kibana
 import (
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -17,18 +19,16 @@ import (
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
-		CheckKibanaDeployment(b, k),
-		CheckKibanaPodsCount(b, k),
-		CheckKibanaPodsRunning(b, k),
+		CheckKibanaPods(b, k),
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
 	}
 }
 
-// CheckKibanaDeployment checks that Kibana deployment exists
-func CheckKibanaDeployment(b Builder, k *test.K8sClient) test.Step {
+// CheckKibanaPods checks Kibana pods for correct builder hash, pod count, whether pods are running and ready
+func CheckKibanaPods(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
-		Name: "Kibana deployment should be set",
+		Name: "Kibana deployment be rolled out",
 		Test: test.Eventually(func() error {
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
@@ -41,38 +41,39 @@ func CheckKibanaDeployment(b Builder, k *test.K8sClient) test.Step {
 			if err != nil {
 				return err
 			}
-			if *dep.Spec.Replicas != b.Kibana.Spec.Count {
-				return fmt.Errorf("invalid Kibana replicas count: expected %d, got %d", b.Kibana.Spec.Count, *dep.Spec.Replicas)
-			}
-			return nil
-		}),
-	}
-}
 
-// CheckKibanaPodsCount checks that Kibana pods count matches the expected one
-func CheckKibanaPodsCount(b Builder, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "Kibana pods count should match the expected one",
-		Test: test.Eventually(func() error {
-			return k.CheckPodCount(int(b.Kibana.Spec.Count), test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
-		}),
-	}
-}
-
-// CheckKibanaPodsRunning checks that all Kibana pods for the given Kibana are running
-func CheckKibanaPodsRunning(b Builder, k *test.K8sClient) test.Step {
-	return test.Step{
-		Name: "Kibana pods should eventually be running",
-		Test: test.Eventually(func() error {
-			pods, err := k.GetPods(test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
-			if err != nil {
+			var pods corev1.PodList
+			if err := k.Client.List(&pods, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...); err != nil {
 				return err
 			}
-			for _, p := range pods {
-				if p.Status.Phase != corev1.PodRunning {
+
+			// builder hash matches
+			goodBuilderHash := hash.HashObject(b.Kibana.Spec)
+			for _, pod := range pods.Items {
+				if err := test.ValidateBuilderHashAnnotation(pod, goodBuilderHash); err != nil {
+					return err
+				}
+			}
+
+			// pod count matches
+			if len(pods.Items) != int(b.Kibana.Spec.Count) {
+				return fmt.Errorf("invalid Kibana pod count: expected %d, got %d", b.Kibana.Spec.Count, len(pods.Items))
+			}
+
+			// pods are running
+			for _, pod := range pods.Items {
+				if pod.Status.Phase != corev1.PodRunning {
 					return fmt.Errorf("pod not running yet")
 				}
 			}
+
+			// pods are ready
+			for _, pod := range pods.Items {
+				if !k8s.IsPodReady(pod) {
+					return fmt.Errorf("pod not ready yet")
+				}
+			}
+
 			return nil
 		}),
 	}

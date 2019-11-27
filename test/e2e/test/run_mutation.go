@@ -37,6 +37,42 @@ func RunMutations(t *testing.T, creationBuilders []Builder, mutationBuilders []B
 	steps.RunSequential(t)
 }
 
+func RunMutationsWhileWatching(t *testing.T, creationBuilders []Builder, mutationBuilders []Builder, watchers []Watcher) {
+	k := NewK8sClientOrFatal()
+	steps := StepList{}
+
+	for _, toCreate := range creationBuilders {
+		steps = steps.WithSteps(toCreate.InitTestSteps(k))
+	}
+	for _, toCreate := range creationBuilders {
+		steps = steps.WithSteps(toCreate.CreationTestSteps(k))
+	}
+	for _, toCreate := range creationBuilders {
+		steps = steps.WithSteps(CheckTestSteps(toCreate, k))
+	}
+
+	// Start watchers
+	for _, watcher := range watchers {
+		steps = steps.WithStep(watcher.StartStep(k))
+	}
+
+	// Trigger some mutations
+	for _, mutateTo := range mutationBuilders {
+		steps = steps.WithSteps(mutateTo.MutationTestSteps(k))
+	}
+
+	for _, watcher := range watchers {
+		steps = steps.WithStep(watcher.StopStep(k))
+	}
+
+	// Delete using the original builder (so that we can use it as a mutation builder as well)
+	for _, toCreate := range creationBuilders {
+		steps = steps.WithSteps(toCreate.DeletionTestSteps(k))
+	}
+
+	steps.RunSequential(t)
+}
+
 // RunMutations tests one resource change on a given resource.
 func RunMutation(t *testing.T, toCreate Builder, mutateTo Builder) {
 	RunMutations(t, []Builder{toCreate}, []Builder{mutateTo})

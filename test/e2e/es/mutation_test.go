@@ -188,8 +188,8 @@ func TestMutationAndReversal(t *testing.T) {
 			"masterdata": {
 				"node.attr.box_type": "mixed",
 			},
-		})
-	mutation.MutatedFrom = &b
+		}).
+		WithMutatedFrom(&b)
 	test.RunMutations(t, []test.Builder{b}, []test.Builder{mutation, b})
 
 }
@@ -228,6 +228,5 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 }
 
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
-	mutateTo.MutatedFrom = &toCreate
-	test.RunMutation(t, toCreate, mutateTo)
+	test.RunMutation(t, toCreate, mutateTo.WithMutatedFrom(&toCreate))
 }

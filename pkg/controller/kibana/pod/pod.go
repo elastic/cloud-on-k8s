@@ -66,9 +66,12 @@ func imageWithVersion(image string, version string) string {
 }
 
 func NewPodTemplateSpec(kb v1beta1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
+	labels := label.NewLabels(kb.Name)
+	labels[label.KibanaVersionLabelName] = kb.Spec.Version
+
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, v1beta1.KibanaContainerName).
 		WithResources(DefaultResources).
-		WithLabels(label.NewLabels(kb.Name)).
+		WithLabels(labels).
 		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
