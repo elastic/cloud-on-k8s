@@ -4,8 +4,8 @@
 
 package test
 
-// BuilderHashAnnotation is the name of an annotation set by the E2E tests on Kibana resources
-// containing the hash of their Builder, for comparison purposes (pre/post rolling upgrade).
+// BuilderHashAnnotation is the name of an annotation set by the E2E tests on resources containing the hash of their
+// Builder for comparison purposes (pre/post rolling upgrade).
 const BuilderHashAnnotation = "k8s.elastic.co/e2e-builder-hash"
 
 type Builder interface {

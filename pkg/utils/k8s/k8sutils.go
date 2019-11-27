@@ -42,16 +42,6 @@ func IsPodReady(pod corev1.Pod) bool {
 	return conditionsTrue == 2
 }
 
-func ReadyPodsCount(pods []corev1.Pod) int {
-	ready := 0
-	for _, pod := range pods {
-		if IsPodReady(pod) {
-			ready++
-		}
-	}
-	return ready
-}
-
 // PodsByName returns a map of pod names to pods
 func PodsByName(pods []corev1.Pod) map[string]corev1.Pod {
 	podMap := make(map[string]corev1.Pod, len(pods))
