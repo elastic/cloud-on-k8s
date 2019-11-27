@@ -85,7 +85,7 @@ type Client interface {
 	GetNodesStats(ctx context.Context) (NodesStats, error)
 	// GetLicense returns the currently applied license. Can be empty.
 	GetLicense(ctx context.Context) (License, error)
-	// StartTrial starts a 30-day trial license.
+	// StartTrial starts a 30-day trial period (which gives an access to platinum features).
 	StartTrial(ctx context.Context) (StartTrialResponse, error)
 	// UpdateLicense attempts to update cluster license with the given licenses.
 	UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error)
