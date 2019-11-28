@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	licenseSecretName      = "e2e-enterprise-license"
+	licenseSecretName = "e2e-enterprise-license"
 )
 
 type LicenseTestContext struct {
