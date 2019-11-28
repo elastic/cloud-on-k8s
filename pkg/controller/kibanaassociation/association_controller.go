@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -126,7 +125,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	// register or execute watch finalizers
-	h := finalizer.NewHandler(r)
+	/*h := finalizer.NewHandler(r)
 	kbName := k8s.ExtractNamespacedName(&kibana)
 	err := h.Handle(
 		&kibana,
@@ -141,7 +140,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		}
 		// failed to prepare or run finalizer: retry
 		return defaultRequeue, err
-	}
+	}*/
 
 	// Kibana is being deleted: short-circuit reconciliation
 	if !kibana.DeletionTimestamp.IsZero() {

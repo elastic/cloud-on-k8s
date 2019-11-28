@@ -149,14 +149,14 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	// run finalizers
-	if err := r.finalizers.Handle(&kb, r.finalizersFor(&kb)...); err != nil {
+	/*if err := r.finalizers.Handle(&kb, r.finalizersFor(&kb)...); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and should be resolved on next loop
 			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "kibana_name", kb.Name)
 			return reconcile.Result{Requeue: true}, nil
 		}
 		return reconcile.Result{}, err
-	}
+	}*/
 
 	// Kibana will be deleted nothing to do other than run finalizers
 	if kb.IsMarkedForDeletion() {

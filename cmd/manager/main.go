@@ -12,6 +12,10 @@ import (
 	"strings"
 	"time"
 
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	kibanav1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
@@ -277,6 +281,11 @@ func execute() {
 		},
 	}
 
+	ugc, err := association.NewUsersGarbageCollector(clientset, cfg, mgr.GetScheme())
+	if err != nil {
+		log.Error(err, "unable to setup user garbage collector")
+		os.Exit(1)
+	}
 	if operator.HasRole(operator.WebhookServer, roles) {
 		setupWebhook(mgr, params.CertRotation, clientset)
 	}
@@ -298,10 +307,12 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
 			os.Exit(1)
 		}
+		ugc.RegisterForUserGC(&apmv1.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName)
 		if err = kbassn.Add(mgr, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
 			os.Exit(1)
 		}
+		ugc.RegisterForUserGC(&kibanav1.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName)
 	}
 	if operator.HasRole(operator.GlobalOperator, roles) {
 		if err = license.Add(mgr, params); err != nil {
@@ -312,6 +323,12 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "LicenseTrial")
 			os.Exit(1)
 		}
+	}
+
+	err = ugc.GC()
+	if err != nil {
+		log.Error(err, "user garbage collector failed")
+		os.Exit(1)
 	}
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,

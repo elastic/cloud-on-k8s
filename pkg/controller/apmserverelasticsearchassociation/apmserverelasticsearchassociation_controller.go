@@ -19,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -138,7 +137,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		return common.PauseRequeue, nil
 	}
 
-	handler := finalizer.NewHandler(r)
+	/*handler := finalizer.NewHandler(r)
 	apmName := k8s.ExtractNamespacedName(&apmServer)
 	err := handler.Handle(
 		&apmServer,
@@ -148,7 +147,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
 		return defaultRequeue, err
-	}
+	}*/
 
 	// ApmServer is being deleted short-circuit reconciliation
 	if !apmServer.DeletionTimestamp.IsZero() {

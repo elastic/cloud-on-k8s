@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deletion"
+
 	elasticsearchv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -166,6 +168,8 @@ type ReconcileElasticsearch struct {
 
 	dynamicWatches watches.DynamicWatches
 
+	deletionObservers []deletion.Observer
+
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
 	expectations *expectations.ClustersExpectation
@@ -186,7 +190,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// Stop tracking that cluster in expectations - without the finalizer overhead.
-			r.expectations.RemoveCluster(request.NamespacedName)
+			r.expectations.OnDelete(request.NamespacedName)
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
