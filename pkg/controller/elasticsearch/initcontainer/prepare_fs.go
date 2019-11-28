@@ -15,6 +15,7 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -77,6 +78,17 @@ var (
 			},
 		},
 	}
+	//defaultResources are the default request and limits for the init container.
+	defaultResources = corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("500Mi"),
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("1Gi"),
+			corev1.ResourceCPU:    resource.MustParse("1"),
+		},
+	}
 )
 
 // NewPrepareFSInitContainer creates an init container to handle things such as:
@@ -117,6 +129,7 @@ func NewPrepareFSInitContainer(
 			esvolume.DefaultDataVolumeMount,
 			esvolume.DefaultLogsVolumeMount,
 		),
+		Resources: defaultResources,
 	}
 
 	return container, nil
