@@ -237,7 +237,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 			return noResult, true, nil
 		}
 		when := r.licenseDeletion.When()
-		log.Info("no license waiting to delete cluster licenses requeing", "when", when)
+		log.Info("No enterprise license.  Waiting to delete cluster licenses. Requeueing", "when", when)
 		return when, true, nil
 	}
 	// make sure the signature secret is created in the cluster's namespace
@@ -272,6 +272,7 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconc
 	}
 	margin := defaultSafetyMargin
 	if noLicense {
+		// don't apply safety margin if we don't have a license but use requested requeue time as specified in newExpiry
 		margin = 0
 	}
 	return res.WithResult(nextReconcile(newExpiry, margin))
