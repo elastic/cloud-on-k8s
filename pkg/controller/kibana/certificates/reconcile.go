@@ -7,7 +7,7 @@ package certificates
 import (
 	"time"
 
-	coverv1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -22,7 +22,7 @@ import (
 func Reconcile(
 	d driver.Interface,
 	kb kbv1.Kibana,
-	services []coverv1.Service,
+	services []corev1.Service,
 	rotation certificates.RotationParams,
 ) *reconciler.Results {
 	selfSignedCert := kb.Spec.HTTP.TLS.SelfSignedCertificate
