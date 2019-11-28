@@ -51,7 +51,9 @@ var log = logf.Log.WithName(name)
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 	results := r.reconcileInternal(request)
-	return results.Aggregate()
+	current, err := results.Aggregate()
+	log.Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
+	return current, err
 }
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -135,6 +137,7 @@ func add(mgr manager.Manager, r *ReconcileLicenses) error {
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
 				return nil
 			}
+			log.Info("Requeueing a request for all clusters")
 			return rs
 		}),
 	}); err != nil {
@@ -232,12 +235,10 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 				log.Error(err, "failed to delete cluster license secret", "secret_name", secretName, "namespace", cluster.Namespace, "es_name", cluster.Name)
 			}
 			return noResult, true, nil
-		} else {
-
-			when := r.licenseDeletion.When()
-			log.Info("no license waiting to delete cluster licenses requeing", "when", when)
-			return when, true, nil
 		}
+		when := r.licenseDeletion.When()
+		log.Info("no license waiting to delete cluster licenses requeing", "when", when)
+		return when, true, nil
 	}
 	// make sure the signature secret is created in the cluster's namespace
 	if err = reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
