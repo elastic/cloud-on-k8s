@@ -5,10 +5,10 @@
 .Packages
 * xref:{p}-apm-k8s-elastic-co-v1[apm.k8s.elastic.co/v1]
 * xref:{p}-common-k8s-elastic-co-v1[common.k8s.elastic.co/v1]
-* xref:{p}-elasticsearch-k8s-elastic-co-v1[elasticsearch.k8s.elastic.co/v1]
-* xref:{p}-kibana-k8s-elastic-co-v1[kibana.k8s.elastic.co/v1]
 * xref:{p}-apm-k8s-elastic-co-v1beta1[apm.k8s.elastic.co/v1beta1]
 * xref:{p}-common-k8s-elastic-co-v1beta1[common.k8s.elastic.co/v1beta1]
+* xref:{p}-elasticsearch-k8s-elastic-co-v1[elasticsearch.k8s.elastic.co/v1]
+* xref:{p}-kibana-k8s-elastic-co-v1[kibana.k8s.elastic.co/v1]
 * xref:{p}-elasticsearch-k8s-elastic-co-v1beta1[elasticsearch.k8s.elastic.co/v1beta1]
 * xref:{p}-kibana-k8s-elastic-co-v1beta1[kibana.k8s.elastic.co/v1beta1]
 
@@ -530,308 +530,6 @@ The referenced secret should contain the following:
 - `tls.crt`: The certificate (or a chain).
 - `tls.key`: The private key to the first certificate in the certificate chain.
 |===
-[id="{p}-elasticsearch-k8s-elastic-co-v1"]
-=== elasticsearch.k8s.elastic.co/v1
-Package v1 contains API schema definitions for managing Elasticsearch resources.
-
-.Resource Types
---
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearch[$$Elasticsearch$$]
---
-
-[id="elasticsearch-k8s-elastic-co-v1-elasticsearch"]
-[float]
-==== Elasticsearch
-
-Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
-
-
-
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `elasticsearch.k8s.elastic.co/v1`
-
-| *`kind`*  +
-_string_
-| `Elasticsearch`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version of Elasticsearch.
-*`image`*  _string_::
-Image is the Elasticsearch Docker image to deploy.
-*`http`* _xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds HTTP layer settings for Elasticsearch.
-*`nodeSets`* _xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$[]NodeSet$$]_::
-NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
-*`updateStrategy`* _xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]_::
-UpdateStrategy specifies how updates to the cluster should be performed.
-*`podDisruptionBudget`* _xref:common-k8s-elastic-co-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
-PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
-to the empty value (`{}` in YAML).
-*`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1-changebudget"]
-[float]
-==== ChangeBudget
-
-ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
-
-
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]
-****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`maxUnavailable`* +
-_int32_
-|
-MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to
-circumstances under the control of the operator. Setting a negative value will disable this restriction.
-Defaults to 1 if not specified.
-| *`maxSurge`* +
-_int32_
-|
-MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in
-the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will
-disable the restriction. Defaults to unbounded if not specified.
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1-elasticsearchspec"]
-[float]
-==== ElasticsearchSpec
-
-ElasticsearchSpec holds the specification of an Elasticsearch cluster.
-
-
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearch[$$Elasticsearch$$]
-****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`version`* +
-_string_
-|
-Version of Elasticsearch.
-| *`image`* +
-_string_
-|
-Image is the Elasticsearch Docker image to deploy.
-| *`http`* +
-_xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP holds HTTP layer settings for Elasticsearch.
-| *`nodeSets`* +
-_xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$[]NodeSet$$]_
-|
-NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
-| *`updateStrategy`* +
-_xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]_
-|
-UpdateStrategy specifies how updates to the cluster should be performed.
-| *`podDisruptionBudget`* +
-_xref:common-k8s-elastic-co-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_
-|
-PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
-to the empty value (`{}` in YAML).
-| *`secureSettings`* +
-_xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1-nodeset"]
-[float]
-==== NodeSet
-
-NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
-
-
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]
-****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`name`* +
-_string_
-|
-Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
-| *`config`* +
-_xref:common-k8s-elastic-co-v1-config[$$Config$$]_
-|
-Config holds the Elasticsearch configuration.
-| *`count`* +
-_int32_
-|
-Count of Elasticsearch nodes to deploy.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
-| *`volumeClaimTemplates`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaim-v1-core[$$[]Kubernetes core/v1.PersistentVolumeClaim$$]_
-|
-VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
-Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
-Items defined here take precedence over any default claims added by the operator with the same name.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1-updatestrategy"]
-[float]
-==== UpdateStrategy
-
-UpdateStrategy specifies how updates to the cluster should be performed.
-
-
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]
-****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`changeBudget`* +
-_xref:elasticsearch-k8s-elastic-co-v1-changebudget[$$ChangeBudget$$]_
-|
-ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
-|===
-[id="{p}-kibana-k8s-elastic-co-v1"]
-=== kibana.k8s.elastic.co/v1
-Package v1 contains API schema definitions for managing Kibana resources.
-
-.Resource Types
---
-- xref:kibana-k8s-elastic-co-v1-kibana[$$Kibana$$]
---
-
-[id="kibana-k8s-elastic-co-v1-kibana"]
-[float]
-==== Kibana
-
-Kibana represents a Kibana resource in a Kubernetes cluster.
-
-
-
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `kibana.k8s.elastic.co/v1`
-
-| *`kind`*  +
-_string_
-| `Kibana`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_xref:kibana-k8s-elastic-co-v1-kibanaspec[$$KibanaSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version of Kibana.
-*`image`*  _string_::
-Image is the Kibana Docker image to deploy.
-*`count`*  _int32_::
-Count of Kibana instances to deploy.
-*`elasticsearchRef`* _xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_::
-ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-*`config`* _xref:common-k8s-elastic-co-v1-config[$$Config$$]_::
-Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
-*`http`* _xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds the HTTP layer configuration for Kibana.
-*`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
-*`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
-|===
-
-[id="kibana-k8s-elastic-co-v1-kibanaspec"]
-[float]
-==== KibanaSpec
-
-KibanaSpec holds the specification of a Kibana instance.
-
-
-.Appears in:
-****
-- xref:kibana-k8s-elastic-co-v1-kibana[$$Kibana$$]
-****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`version`* +
-_string_
-|
-Version of Kibana.
-| *`image`* +
-_string_
-|
-Image is the Kibana Docker image to deploy.
-| *`count`* +
-_int32_
-|
-Count of Kibana instances to deploy.
-| *`elasticsearchRef`* +
-_xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_
-|
-ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-| *`config`* +
-_xref:common-k8s-elastic-co-v1-config[$$Config$$]_
-|
-Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
-| *`http`* +
-_xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP holds the HTTP layer configuration for Kibana.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
-| *`secureSettings`* +
-_xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
-|===
 [id="{p}-apm-k8s-elastic-co-v1beta1"]
 === apm.k8s.elastic.co/v1beta1
 Package v1beta1 contains API schema definitions for managing APM Server resources.
@@ -1346,6 +1044,308 @@ The referenced secret should contain the following:
 - `ca.crt`: The certificate authority (optional).
 - `tls.crt`: The certificate (or a chain).
 - `tls.key`: The private key to the first certificate in the certificate chain.
+|===
+[id="{p}-elasticsearch-k8s-elastic-co-v1"]
+=== elasticsearch.k8s.elastic.co/v1
+Package v1 contains API schema definitions for managing Elasticsearch resources.
+
+.Resource Types
+--
+- xref:elasticsearch-k8s-elastic-co-v1-elasticsearch[$$Elasticsearch$$]
+--
+
+[id="elasticsearch-k8s-elastic-co-v1-elasticsearch"]
+[float]
+==== Elasticsearch
+
+Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
+
+
+
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+| *`apiVersion`*  +
+_string_
+| `elasticsearch.k8s.elastic.co/v1`
+
+| *`kind`*  +
+_string_
+| `Elasticsearch`
+
+| *`metadata`* +
+_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
+|
+---
+Refer to the Kubernetes API documentation for the fields of the `metadata` field.
+| *`spec`* +
+_xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]_
+|
+---
+
+*`version`*  _string_::
+Version of Elasticsearch.
+*`image`*  _string_::
+Image is the Elasticsearch Docker image to deploy.
+*`http`* _xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_::
+HTTP holds HTTP layer settings for Elasticsearch.
+*`nodeSets`* _xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$[]NodeSet$$]_::
+NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
+*`updateStrategy`* _xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]_::
+UpdateStrategy specifies how updates to the cluster should be performed.
+*`podDisruptionBudget`* _xref:common-k8s-elastic-co-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
+PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
+The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
+to the empty value (`{}` in YAML).
+*`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+|===
+
+[id="elasticsearch-k8s-elastic-co-v1-changebudget"]
+[float]
+==== ChangeBudget
+
+ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]
+****
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`maxUnavailable`* +
+_int32_
+|
+MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to
+circumstances under the control of the operator. Setting a negative value will disable this restriction.
+Defaults to 1 if not specified.
+| *`maxSurge`* +
+_int32_
+|
+MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in
+the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will
+disable the restriction. Defaults to unbounded if not specified.
+|===
+
+[id="elasticsearch-k8s-elastic-co-v1-elasticsearchspec"]
+[float]
+==== ElasticsearchSpec
+
+ElasticsearchSpec holds the specification of an Elasticsearch cluster.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1-elasticsearch[$$Elasticsearch$$]
+****
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`version`* +
+_string_
+|
+Version of Elasticsearch.
+| *`image`* +
+_string_
+|
+Image is the Elasticsearch Docker image to deploy.
+| *`http`* +
+_xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_
+|
+HTTP holds HTTP layer settings for Elasticsearch.
+| *`nodeSets`* +
+_xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$[]NodeSet$$]_
+|
+NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
+| *`updateStrategy`* +
+_xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]_
+|
+UpdateStrategy specifies how updates to the cluster should be performed.
+| *`podDisruptionBudget`* +
+_xref:common-k8s-elastic-co-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_
+|
+PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
+The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
+to the empty value (`{}` in YAML).
+| *`secureSettings`* +
+_xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
+|
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+|===
+
+[id="elasticsearch-k8s-elastic-co-v1-nodeset"]
+[float]
+==== NodeSet
+
+NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`name`* +
+_string_
+|
+Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
+| *`config`* +
+_xref:common-k8s-elastic-co-v1-config[$$Config$$]_
+|
+Config holds the Elasticsearch configuration.
+| *`count`* +
+_int32_
+|
+Count of Elasticsearch nodes to deploy.
+| *`podTemplate`* +
+_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
+|
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+| *`volumeClaimTemplates`* +
+_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaim-v1-core[$$[]Kubernetes core/v1.PersistentVolumeClaim$$]_
+|
+VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
+Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
+Items defined here take precedence over any default claims added by the operator with the same name.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
+|===
+
+[id="elasticsearch-k8s-elastic-co-v1-updatestrategy"]
+[float]
+==== UpdateStrategy
+
+UpdateStrategy specifies how updates to the cluster should be performed.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`changeBudget`* +
+_xref:elasticsearch-k8s-elastic-co-v1-changebudget[$$ChangeBudget$$]_
+|
+ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+|===
+[id="{p}-kibana-k8s-elastic-co-v1"]
+=== kibana.k8s.elastic.co/v1
+Package v1 contains API schema definitions for managing Kibana resources.
+
+.Resource Types
+--
+- xref:kibana-k8s-elastic-co-v1-kibana[$$Kibana$$]
+--
+
+[id="kibana-k8s-elastic-co-v1-kibana"]
+[float]
+==== Kibana
+
+Kibana represents a Kibana resource in a Kubernetes cluster.
+
+
+
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+| *`apiVersion`*  +
+_string_
+| `kibana.k8s.elastic.co/v1`
+
+| *`kind`*  +
+_string_
+| `Kibana`
+
+| *`metadata`* +
+_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
+|
+---
+Refer to the Kubernetes API documentation for the fields of the `metadata` field.
+| *`spec`* +
+_xref:kibana-k8s-elastic-co-v1-kibanaspec[$$KibanaSpec$$]_
+|
+---
+
+*`version`*  _string_::
+Version of Kibana.
+*`image`*  _string_::
+Image is the Kibana Docker image to deploy.
+*`count`*  _int32_::
+Count of Kibana instances to deploy.
+*`elasticsearchRef`* _xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_::
+ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+*`config`* _xref:common-k8s-elastic-co-v1-config[$$Config$$]_::
+Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+*`http`* _xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_::
+HTTP holds the HTTP layer configuration for Kibana.
+*`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+*`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
+|===
+
+[id="kibana-k8s-elastic-co-v1-kibanaspec"]
+[float]
+==== KibanaSpec
+
+KibanaSpec holds the specification of a Kibana instance.
+
+
+.Appears in:
+****
+- xref:kibana-k8s-elastic-co-v1-kibana[$$Kibana$$]
+****
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`version`* +
+_string_
+|
+Version of Kibana.
+| *`image`* +
+_string_
+|
+Image is the Kibana Docker image to deploy.
+| *`count`* +
+_int32_
+|
+Count of Kibana instances to deploy.
+| *`elasticsearchRef`* +
+_xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_
+|
+ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+| *`config`* +
+_xref:common-k8s-elastic-co-v1-config[$$Config$$]_
+|
+Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+| *`http`* +
+_xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_
+|
+HTTP holds the HTTP layer configuration for Kibana.
+| *`podTemplate`* +
+_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
+|
+PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+| *`secureSettings`* +
+_xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
+|
+SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
+See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 |===
 [id="{p}-elasticsearch-k8s-elastic-co-v1beta1"]
 === elasticsearch.k8s.elastic.co/v1beta1

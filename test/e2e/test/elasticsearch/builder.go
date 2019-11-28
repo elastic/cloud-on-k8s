@@ -282,6 +282,11 @@ func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
 	return b
 }
 
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {

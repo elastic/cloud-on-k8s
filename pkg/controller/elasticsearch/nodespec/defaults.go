@@ -55,7 +55,7 @@ func DefaultEnvVars(httpCfg commonv1.HTTPConfig) []corev1.EnvVar {
 	return append(
 		defaults.PodDownwardEnvVars,
 		[]corev1.EnvVar{
-			{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.InternalProbeUserName)},
+			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.InternalProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.InternalProbeUserName},
 			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
 

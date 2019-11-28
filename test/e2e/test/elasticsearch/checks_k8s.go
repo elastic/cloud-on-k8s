@@ -22,10 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// BuilderHashAnnotation is the name of an annotation set by the E2E tests on Elasticsearch resources
-// containing the hash of their Builder, for comparison purposes (pre/post rolling upgrade).
-const BuilderHashAnnotation = "elasticsearch.k8s.elastic.co/e2e-builder-hash"
-
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		CheckCertificateAuthority(b, k),
@@ -271,6 +267,7 @@ func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
 			return fmt.Errorf("invalid Pods for StatefulSet %s: expected %v, got %v", statefulSet.Name, expectedPodNames, actualPodNames)
 		}
 
+		expectedHash := nodeSetHash(b.Elasticsearch, nodeSet)
 		// all Pods should be running and ready
 		for _, p := range actualPods {
 			if !k8s.IsPodReady(p) {
@@ -281,17 +278,9 @@ func checkExpectedPodsReady(b Builder, k *test.K8sClient) error {
 				}
 				return fmt.Errorf("pod %s is not Ready.\nStatus:%s", p.Name, statusJSON)
 			}
-			// Pod should either:
-			// - be annotated with the hash of the current ES spec from previous E2E steps
-			// - not be annotated at all (if recreated/upgraded, or not a mutation)
-			// But **not** be annotated with the hash of a different ES spec, meaning
-			// it probably still matches the spec of the pre-mutation builder (rolling upgrade not over).
-			//
-			// Important: this does not catch rolling upgrades due to a keystore change, where the Builder hash
-			// would stay the same.
-			expectedHash := nodeSetHash(b.Elasticsearch, nodeSet)
-			if p.Annotations[BuilderHashAnnotation] != "" && p.Annotations[BuilderHashAnnotation] != expectedHash {
-				return fmt.Errorf("pod %s was not upgraded (yet?) to match the expected Elasticsearch specification", p.Name)
+
+			if err := test.ValidateBuilderHashAnnotation(p, expectedHash); err != nil {
+				return err
 			}
 		}
 	}
@@ -333,29 +322,10 @@ func AnnotatePodsWithBuilderHash(b Builder, k *test.K8sClient) []test.Step {
 					if err != nil {
 						return err
 					}
-					for i := range pods {
-						pods[i].Annotations[BuilderHashAnnotation] = nodeSetHash(es, nodeSet)
-						if err := k.Client.Update(&pods[i]); err != nil {
-							// may error out with a conflict if concurrently updated by the operator,
-							// which is why we retry with `test.Eventually`
+					for _, pod := range pods {
+						if err := test.AnnotatePodWithBuilderHash(k, pod, nodeSetHash(es, nodeSet)); err != nil {
 							return err
 						}
-					}
-				}
-				return nil
-			}),
-		},
-		// make sure this is propagated to the local cache so next test steps can expect annotated pods
-		{
-			Name: "Wait for annotated Pods to appear in the cache",
-			Test: test.Eventually(func() error {
-				pods, err := sset.GetActualPodsForCluster(k.Client, b.Elasticsearch)
-				if err != nil {
-					return err
-				}
-				for _, p := range pods {
-					if p.Annotations[BuilderHashAnnotation] == "" {
-						return fmt.Errorf("pod %s is not annotated with %s yet", p.Name, BuilderHashAnnotation)
 					}
 				}
 				return nil
