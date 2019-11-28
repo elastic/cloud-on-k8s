@@ -1,4 +1,4 @@
-apiVersion: apm.k8s.elastic.co/v1beta1
+apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer
 metadata:
   name: apmserver-sample
