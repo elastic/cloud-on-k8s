@@ -5,6 +5,7 @@
 package license
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -105,10 +106,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 		Namespace: "default",
 	}
 	tests := []struct {
-		name        string
-		initialObjs []runtime.Object
-		errors      map[client.ObjectKey]error
-		wantErr     bool
+		name             string
+		initialObjs      []runtime.Object
+		errors           map[client.ObjectKey]error
+		wantErr          bool
+		clientAssertions func(updater fakeLicenseUpdater)
 	}{
 		{
 			name:    "happy path",
@@ -128,6 +130,9 @@ func Test_applyLinkedLicense(t *testing.T) {
 		{
 			name:    "no error: no license found",
 			wantErr: false,
+			clientAssertions: func(updater fakeLicenseUpdater) {
+				require.True(t, updater.startBasicCalled, "should call start_basic")
+			},
 		},
 		{
 			name:    "error: empty license",
@@ -173,19 +178,44 @@ func Test_applyLinkedLicense(t *testing.T) {
 				Client: k8s.WrappedFakeClient(tt.initialObjs...),
 				errors: tt.errors,
 			}
+			updater := fakeLicenseUpdater{}
 			if err := applyLinkedLicense(
 				c,
 				clusterName,
-				func(license esclient.License) error {
-					require.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", license.UID) // test UID from fixture
-					return nil
-				},
+				nil,
+				&updater,
 			); (err != nil) != tt.wantErr {
 				t.Errorf("applyLinkedLicense() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.clientAssertions != nil {
+				tt.clientAssertions(updater)
 			}
 		})
 	}
 }
+
+type fakeLicenseUpdater struct {
+	license          esclient.License
+	startBasicCalled bool
+}
+
+func (f *fakeLicenseUpdater) GetLicense(ctx context.Context) (esclient.License, error) {
+	return f.license, nil
+}
+
+func (f *fakeLicenseUpdater) UpdateLicense(ctx context.Context, licenses esclient.LicenseUpdateRequest) (esclient.LicenseUpdateResponse, error) {
+	return esclient.LicenseUpdateResponse{
+		Acknowledged:  true,
+		LicenseStatus: "valid",
+	}, nil
+}
+
+func (f *fakeLicenseUpdater) StartBasic(ctx context.Context) (esclient.StartBasicResponse, error) {
+	f.startBasicCalled = true
+	return esclient.StartBasicResponse{}, nil
+}
+
+var _ esclient.LicenseUpdater = &fakeLicenseUpdater{}
 
 type fakeClient struct {
 	k8s.Client

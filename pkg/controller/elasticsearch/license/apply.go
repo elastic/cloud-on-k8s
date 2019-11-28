@@ -22,7 +22,8 @@ import (
 func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
-	updater func(license esclient.License) error,
+	current *esclient.License,
+	updater esclient.LicenseUpdater,
 ) error {
 	var license corev1.Secret
 	// the underlying assumption here is that either a user or a
@@ -38,8 +39,8 @@ func applyLinkedLicense(
 	)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			// no license linked to this cluster. Expected for clusters running on basic or trial.
-			return nil
+			// no license linked to this cluster. Revert to basic.
+			return startBasic(updater)
 		}
 		return err
 	}
@@ -54,12 +55,23 @@ func applyLinkedLicense(
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updater(lic)
+	return updateLicense(updater, current, lic)
+}
+
+func startBasic(updater esclient.LicenseUpdater) error {
+	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	defer cancel()
+	_, err := updater.StartBasic(ctx)
+	if err != nil && esclient.IsForbidden(err) {
+		// ES returns 403 + acknowledged: true (which we don't parse in case of error) if we are already in basic mode
+		return nil
+	}
+	return pkgerrors.Wrap(err, "failed to revert to basic")
 }
 
 // updateLicense make the call to Elasticsearch to set the license. This function exists mainly to facilitate testing.
 func updateLicense(
-	c esclient.Client,
+	updater esclient.LicenseUpdater,
 	current *esclient.License,
 	desired esclient.License,
 ) error {
@@ -73,7 +85,7 @@ func updateLicense(
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
-	response, err := c.UpdateLicense(ctx, request)
+	response, err := updater.UpdateLicense(ctx, request)
 	if err != nil {
 		return err
 	}

@@ -285,6 +285,13 @@ type LicenseResponse struct {
 	License License `json:"license"`
 }
 
+// StartTrialResponse is the response to the start trial API call.
+type StartBasicResponse struct {
+	Acknowledged    bool   `json:"acknowledged"`
+	BasicWasStarted bool   `json:"basic_was_started"`
+	ErrorMessage    string `json:"error_message"`
+}
+
 // Settings is the root element of settings.
 type Settings struct {
 	PersistentSettings *SettingsGroup `json:"persistent,omitempty"`

@@ -16,11 +16,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -36,6 +38,7 @@ const (
 	// defaultSafetyMargin is the duration used by this controller to ensure licenses are updated well before expiry
 	// In case of any operational issues affecting this controller clusters will have enough runway on their current license.
 	defaultSafetyMargin  = 30 * 24 * time.Hour
+	defaultDeletionDelay = 2 * time.Minute
 	minimumRetryInterval = 1 * time.Hour
 )
 
@@ -61,9 +64,10 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{
-		Client:  c,
-		scheme:  mgr.GetScheme(),
-		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
+		Client:          c,
+		scheme:          mgr.GetScheme(),
+		checker:         license.NewLicenseChecker(c, params.OperatorNamespace),
+		licenseDeletion: chrono.SharedTime{},
 	}
 }
 
@@ -89,7 +93,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *ReconcileLicenses) error {
 	// Create a new controller
 	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -115,9 +119,17 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			if !license.IsEnterpriseLicense(*secret) {
 				return nil
 			}
+
+			client := k8s.WrapClient(mgr.GetClient())
+			var deleted corev1.Secret
+			err := client.Get(k8s.ExtractNamespacedName(secret), &deleted)
+			if err != nil && errors.IsNotFound(err) {
+				log.Info("Delete event in watch delaying deletion", "namespace", secret.Namespace, "secret_name", secret.Name)
+				r.licenseDeletion.Delay(defaultDeletionDelay)
+			}
 			// if a license is added/modified we want to update for potentially all clusters managed by this instance
 			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-			rs, err := reconcileRequestsForAllClusters(k8s.WrapClient(mgr.GetClient()))
+			rs, err := reconcileRequestsForAllClusters(client)
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
@@ -138,8 +150,9 @@ type ReconcileLicenses struct {
 	k8s.Client
 	scheme *runtime.Scheme
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration uint64
-	checker   license.Checker
+	iteration       uint64
+	checker         license.Checker
+	licenseDeletion chrono.SharedTime
 }
 
 // findLicense tries to find the best license available.
@@ -198,21 +211,39 @@ func reconcileSecret(
 }
 
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
-func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearch) (time.Time, error) {
+func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearch) (time.Time, bool, error) {
 	var noResult time.Time
 	matchingSpec, parent, found, err := findLicense(r, r.checker)
 	if err != nil {
-		return noResult, err
+		return noResult, true, err
 	}
 	if !found {
-		// no license, nothing to do
-		return noResult, nil
+		// no license, delete after delay
+		if r.licenseDeletion.Ready() {
+			log.Info("No enterprise license found. Removing cluster license secret", "es", k8s.ExtractNamespacedName(&cluster))
+			secretName := v1beta1.LicenseSecretName(cluster.Name)
+			err := r.Client.Delete(&corev1.Secret{
+				ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
+					Namespace: cluster.Namespace,
+					Name:      secretName,
+				}),
+			})
+			if err != nil && !errors.IsNotFound(err) {
+				log.Error(err, "failed to delete cluster license secret", "secret_name", secretName, "namespace", cluster.Namespace, "es_name", cluster.Name)
+			}
+			return noResult, true, nil
+		} else {
+
+			when := r.licenseDeletion.When()
+			log.Info("no license waiting to delete cluster licenses requeing", "when", when)
+			return when, true, nil
+		}
 	}
 	// make sure the signature secret is created in the cluster's namespace
 	if err = reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
-		return noResult, err
+		return noResult, false, err
 	}
-	return matchingSpec.ExpiryTime(), err
+	return matchingSpec.ExpiryTime(), false, err
 }
 
 func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconciler.Results {
@@ -234,10 +265,13 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconc
 		return res
 	}
 
-	newExpiry, err := r.reconcileClusterLicense(cluster)
+	newExpiry, noLicense, err := r.reconcileClusterLicense(cluster)
 	if err != nil {
 		return res.WithError(err)
 	}
-
-	return res.WithResult(nextReconcile(newExpiry, defaultSafetyMargin))
+	margin := defaultSafetyMargin
+	if noLicense {
+		margin = 0
+	}
+	return res.WithResult(nextReconcile(newExpiry, margin))
 }
