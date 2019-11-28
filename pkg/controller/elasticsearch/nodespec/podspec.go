@@ -10,7 +10,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -26,8 +26,8 @@ import (
 
 // BuildPodTemplateSpec builds a new PodTemplateSpec for an Elasticsearch node.
 func BuildPodTemplateSpec(
-	es v1beta1.Elasticsearch,
-	nodeSet v1beta1.NodeSet,
+	es esv1.Elasticsearch,
+	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 ) (corev1.PodTemplateSpec, error) {
@@ -37,7 +37,7 @@ func BuildPodTemplateSpec(
 		return corev1.PodTemplateSpec{}, err
 	}
 
-	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, v1beta1.ElasticsearchContainerName).
+	builder := defaults.NewPodTemplateBuilder(nodeSet.PodTemplate, esv1.ElasticsearchContainerName).
 		WithDockerImage(es.Spec.Image, stringsutil.Concat(DefaultImageRepository, ":", es.Spec.Version))
 
 	initContainers, err := initcontainer.NewInitContainers(
@@ -68,16 +68,16 @@ func BuildPodTemplateSpec(
 
 func transportCertificatesVolume(esName string) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		v1beta1.TransportCertificatesSecret(esName),
+		esv1.TransportCertificatesSecret(esName),
 		esvolume.TransportCertificatesSecretVolumeName,
 		esvolume.TransportCertificatesSecretVolumeMountPath,
 	)
 }
 
 func buildLabels(
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	cfg settings.CanonicalConfig,
-	nodeSet v1beta1.NodeSet,
+	nodeSet esv1.NodeSet,
 	keystoreResources *keystore.Resources,
 ) (map[string]string, error) {
 	// label with a hash of the config to rotate the pod on config changes
@@ -96,7 +96,7 @@ func buildLabels(
 
 	podLabels, err := label.NewPodLabels(
 		k8s.ExtractNamespacedName(&es),
-		v1beta1.StatefulSet(es.Name, nodeSet.Name),
+		esv1.StatefulSet(es.Name, nodeSet.Name),
 		*ver, nodeRoles, cfgHash, es.Spec.HTTP.Protocol(),
 	)
 	if err != nil {

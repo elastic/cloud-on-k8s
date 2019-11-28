@@ -7,8 +7,8 @@ package settings
 import (
 	"path"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -21,8 +21,8 @@ import (
 func NewMergedESConfig(
 	clusterName string,
 	ver version.Version,
-	httpConfig commonv1beta1.HTTPConfig,
-	userConfig commonv1beta1.Config,
+	httpConfig commonv1.HTTPConfig,
+	userConfig commonv1.Config,
 	certResources *escerts.CertificateResources,
 ) (CanonicalConfig, error) {
 	config, err := common.NewCanonicalConfigFrom(userConfig.Data)
@@ -43,74 +43,74 @@ func NewMergedESConfig(
 func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
-		estype.NodeName:    "${" + EnvPodName + "}",
-		estype.ClusterName: clusterName,
+		esv1.NodeName:    "${" + EnvPodName + "}",
+		esv1.ClusterName: clusterName,
 
 		// derive IP dynamically from the pod IP, injected as env var
-		estype.NetworkPublishHost: "${" + EnvPodIP + "}",
-		estype.NetworkHost:        "0.0.0.0",
+		esv1.NetworkPublishHost: "${" + EnvPodIP + "}",
+		esv1.NetworkHost:        "0.0.0.0",
 
-		estype.PathData: volume.ElasticsearchDataMountPath,
-		estype.PathLogs: volume.ElasticsearchLogsMountPath,
+		esv1.PathData: volume.ElasticsearchDataMountPath,
+		esv1.PathLogs: volume.ElasticsearchLogsMountPath,
 	}
 
 	// seed hosts setting name changed starting ES 7.X
 	fileProvider := "file"
 	if ver.Major < 7 {
-		cfg[estype.DiscoveryZenHostsProvider] = fileProvider
+		cfg[esv1.DiscoveryZenHostsProvider] = fileProvider
 	} else {
-		cfg[estype.DiscoverySeedProviders] = fileProvider
+		cfg[esv1.DiscoverySeedProviders] = fileProvider
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg commonv1beta1.HTTPConfig, certResources *escerts.CertificateResources) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, certResources *escerts.CertificateResources) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
-		estype.XPackSecurityEnabled:                      "true",
-		estype.XPackSecurityAuthcReservedRealmEnabled:    "false",
-		estype.XPackSecurityTransportSslVerificationMode: "certificate",
+		esv1.XPackSecurityEnabled:                      "true",
+		esv1.XPackSecurityAuthcReservedRealmEnabled:    "false",
+		esv1.XPackSecurityTransportSslVerificationMode: "certificate",
 
 		// x-pack security http settings
-		estype.XPackSecurityHttpSslEnabled:     httpCfg.TLS.Enabled(),
-		estype.XPackSecurityHttpSslKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
-		estype.XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		esv1.XPackSecurityHttpSslEnabled:     httpCfg.TLS.Enabled(),
+		esv1.XPackSecurityHttpSslKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
+		esv1.XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 
 		// x-pack security transport settings
-		estype.XPackSecurityTransportSslEnabled: "true",
-		estype.XPackSecurityTransportSslKey: path.Join(
+		esv1.XPackSecurityTransportSslEnabled: "true",
+		esv1.XPackSecurityTransportSslKey: path.Join(
 			volume.ConfigVolumeMountPath,
 			volume.NodeTransportCertificatePathSegment,
 			volume.NodeTransportCertificateKeyFile,
 		),
-		estype.XPackSecurityTransportSslCertificate: path.Join(
+		esv1.XPackSecurityTransportSslCertificate: path.Join(
 			volume.ConfigVolumeMountPath,
 			volume.NodeTransportCertificatePathSegment,
 			volume.NodeTransportCertificateCertFile,
 		),
-		estype.XPackSecurityTransportSslCertificateAuthorities: []string{
+		esv1.XPackSecurityTransportSslCertificateAuthorities: []string{
 			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
 		},
 	}
 
 	if certResources.HTTPCACertProvided {
-		cfg[estype.XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
+		cfg[esv1.XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
 	}
 
 	// always enable the built-in file and native internal realms for user auth, ordered as first
 	if ver.Major < 7 {
 		// 6.x syntax
-		cfg[estype.XPackSecurityAuthcRealmsFile1Type] = "file"
-		cfg[estype.XPackSecurityAuthcRealmsFile1Order] = -100
-		cfg[estype.XPackSecurityAuthcRealmsNative1Type] = "native"
-		cfg[estype.XPackSecurityAuthcRealmsNative1Order] = -99
+		cfg[esv1.XPackSecurityAuthcRealmsFile1Type] = "file"
+		cfg[esv1.XPackSecurityAuthcRealmsFile1Order] = -100
+		cfg[esv1.XPackSecurityAuthcRealmsNative1Type] = "native"
+		cfg[esv1.XPackSecurityAuthcRealmsNative1Order] = -99
 	} else {
 		// 7.x syntax
-		cfg[estype.XPackSecurityAuthcRealmsFileFile1Order] = -100
-		cfg[estype.XPackSecurityAuthcRealmsNativeNative1Order] = -99
+		cfg[esv1.XPackSecurityAuthcRealmsFileFile1Order] = -100
+		cfg[esv1.XPackSecurityAuthcRealmsNativeNative1Order] = -99
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}

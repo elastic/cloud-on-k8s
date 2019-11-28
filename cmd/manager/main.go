@@ -15,8 +15,18 @@ import (
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -31,15 +41,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"k8s.io/client-go/kubernetes"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 const (
@@ -358,7 +359,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		}
 	}
 
-	if err := (&estype.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&esv1.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
 		log.Error(err, "unable to create webhook", "webhook", "Elasticsearch")
 		os.Exit(1)
 	}

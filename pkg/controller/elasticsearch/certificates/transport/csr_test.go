@@ -9,7 +9,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,7 +73,7 @@ func Test_buildGeneralNames(t *testing.T) {
 	require.NoError(t, err)
 
 	type args struct {
-		cluster v1beta1.Elasticsearch
+		cluster esv1.Elasticsearch
 		pod     corev1.Pod
 	}
 	tests := []struct {

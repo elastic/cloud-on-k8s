@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -27,7 +27,7 @@ import (
 )
 
 func TestReconcileTransportCertsPublicSecret(t *testing.T) {
-	owner := &v1beta1.Elasticsearch{
+	owner := &esv1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 	}
 

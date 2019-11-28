@@ -8,11 +8,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +15,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func Test_updateLicense(t *testing.T) {
@@ -116,7 +117,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      v1beta1.LicenseSecretName("test"),
+						Name:      esv1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
@@ -135,7 +136,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      v1beta1.LicenseSecretName("test"),
+						Name:      esv1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 				},
@@ -147,7 +148,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      v1beta1.LicenseSecretName("test"),
+						Name:      esv1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
@@ -162,7 +163,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			errors: map[client.ObjectKey]error{
 				types.NamespacedName{
 					Namespace: clusterName.Namespace,
-					Name:      v1beta1.LicenseSecretName("test"),
+					Name:      esv1.LicenseSecretName("test"),
 				}: errors.New("boom"),
 			},
 		},

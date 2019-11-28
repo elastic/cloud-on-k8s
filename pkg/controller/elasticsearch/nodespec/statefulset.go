@@ -7,7 +7,13 @@ package nodespec
 import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -15,11 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -49,13 +50,13 @@ func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
 }
 
 func BuildStatefulSet(
-	es v1beta1.Elasticsearch,
-	nodeSet v1beta1.NodeSet,
+	es esv1.Elasticsearch,
+	nodeSet esv1.NodeSet,
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	scheme *runtime.Scheme,
 ) (appsv1.StatefulSet, error) {
-	statefulSetName := v1beta1.StatefulSet(es.Name, nodeSet.Name)
+	statefulSetName := esv1.StatefulSet(es.Name, nodeSet.Name)
 
 	// ssetSelector is used to match the sset pods
 	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)
@@ -117,7 +118,7 @@ func BuildStatefulSet(
 
 func setVolumeClaimsControllerReference(
 	persistentVolumeClaims []corev1.PersistentVolumeClaim,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	scheme *runtime.Scheme,
 ) ([]corev1.PersistentVolumeClaim, error) {
 	// set the owner reference of all volume claims to the ES resource,

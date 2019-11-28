@@ -14,12 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +21,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
 var (
@@ -39,7 +40,7 @@ func ReconcileHTTPCertificates(
 	owner metav1.Object,
 	namer name.Namer,
 	ca *certificates.CA,
-	tls v1beta1.TLSOptions,
+	tls commonv1.TLSOptions,
 	labels map[string]string,
 	services []corev1.Service,
 	rotationParams certificates.RotationParams,
@@ -70,7 +71,7 @@ func reconcileHTTPInternalCertificatesSecret(
 	scheme *runtime.Scheme,
 	owner metav1.Object,
 	namer name.Namer,
-	tls v1beta1.TLSOptions,
+	tls commonv1.TLSOptions,
 	labels map[string]string,
 	svcs []corev1.Service,
 	customCertificates *CertificatesSecret,
@@ -166,7 +167,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	secret *corev1.Secret,
 	owner types.NamespacedName,
 	namer name.Namer,
-	tls v1beta1.TLSOptions,
+	tls commonv1.TLSOptions,
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	rotationParam certificates.RotationParams,
@@ -249,7 +250,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 func shouldIssueNewHTTPCertificate(
 	owner types.NamespacedName,
 	namer name.Namer,
-	tls v1beta1.TLSOptions,
+	tls commonv1.TLSOptions,
 	secret *corev1.Secret,
 	svcs []corev1.Service,
 	ca *certificates.CA,
@@ -328,7 +329,7 @@ func shouldIssueNewHTTPCertificate(
 func createValidatedHTTPCertificateTemplate(
 	owner types.NamespacedName,
 	namer name.Namer,
-	tls v1beta1.TLSOptions,
+	tls commonv1.TLSOptions,
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,

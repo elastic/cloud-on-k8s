@@ -8,7 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -50,7 +50,7 @@ var initContainersParameters = keystore.InitContainerParameters{
 type driver struct {
 	client          k8s.Client
 	scheme          *runtime.Scheme
-	settingsFactory func(kb kbtype.Kibana) map[string]interface{}
+	settingsFactory func(kb kbv1.Kibana) map[string]interface{}
 	dynamicWatches  watches.DynamicWatches
 	recorder        record.EventRecorder
 }
@@ -73,11 +73,11 @@ func (d *driver) Scheme() *runtime.Scheme {
 
 var _ driver2.Interface = &driver{}
 
-func secretWatchKey(kibana kbtype.Kibana) string {
+func secretWatchKey(kibana kbv1.Kibana) string {
 	return fmt.Sprintf("%s-%s-es-auth-secret", kibana.Namespace, kibana.Name)
 }
 
-func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) finalizer.Finalizer {
+func secretWatchFinalizer(kibana kbv1.Kibana, watches watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: "finalizer.kibana.k8s.elastic.co/es-auth-secret",
 		Execute: func() error {
@@ -87,7 +87,7 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 	}
 }
 
-func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) {
+func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d,
@@ -209,7 +209,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 
 func (d *driver) Reconcile(
 	state *State,
-	kb *kbtype.Kibana,
+	kb *kbv1.Kibana,
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.Results{}

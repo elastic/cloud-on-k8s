@@ -5,13 +5,6 @@
 package pdb
 
 import (
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,12 +12,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
 // The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
 // If the spec has disabled the default PDB, it will ensure none exist.
-func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es esv1beta1.Elasticsearch, statefulSets sset.StatefulSetList) error {
+func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es esv1.Elasticsearch, statefulSets sset.StatefulSetList) error {
 	expected, err := expectedPDB(es, statefulSets, scheme)
 	if err != nil {
 		return err
@@ -58,13 +59,13 @@ func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es esv1beta1.Elasti
 }
 
 // deleteDefaultPDB deletes the default pdb if it exists.
-func deleteDefaultPDB(k8sClient k8s.Client, es esv1beta1.Elasticsearch) error {
+func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	// we do this by getting first because that is a local cache read,
 	// versus a Delete call, which would hit the API.
 	pdb := v1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      esv1beta1.DefaultPodDisruptionBudget(es.Name),
+			Name:      esv1.DefaultPodDisruptionBudget(es.Name),
 		},
 	}
 	if err := k8sClient.Get(k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !errors.IsNotFound(err) {
@@ -81,13 +82,13 @@ func deleteDefaultPDB(k8sClient k8s.Client, es esv1beta1.Elasticsearch) error {
 
 // expectedPDB returns a PDB according to the given ES spec.
 // It may return nil if the PDB has been explicitly disabled in the ES spec.
-func expectedPDB(es esv1beta1.Elasticsearch, statefulSets sset.StatefulSetList, scheme *runtime.Scheme) (*v1beta1.PodDisruptionBudget, error) {
+func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList, scheme *runtime.Scheme) (*v1beta1.PodDisruptionBudget, error) {
 	template := es.Spec.PodDisruptionBudget.DeepCopy()
 	if template.IsDisabled() {
 		return nil, nil
 	}
 	if template == nil {
-		template = &commonv1beta1.PodDisruptionBudgetTemplate{}
+		template = &commonv1.PodDisruptionBudgetTemplate{}
 	}
 
 	expected := v1beta1.PodDisruptionBudget{
@@ -95,7 +96,7 @@ func expectedPDB(es esv1beta1.Elasticsearch, statefulSets sset.StatefulSetList, 
 	}
 
 	// inherit user-provided ObjectMeta, but set our own name & namespace
-	expected.Name = esv1beta1.DefaultPodDisruptionBudget(es.Name)
+	expected.Name = esv1.DefaultPodDisruptionBudget(es.Name)
 	expected.Namespace = es.Namespace
 	// and append our labels
 	expected.Labels = defaults.SetDefaultLabels(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
@@ -117,7 +118,7 @@ func expectedPDB(es esv1beta1.Elasticsearch, statefulSets sset.StatefulSetList, 
 
 // buildPDBSpec returns a PDBSpec computed from the current StatefulSets,
 // considering the cluster health and topology.
-func buildPDBSpec(es esv1beta1.Elasticsearch, statefulSets sset.StatefulSetList) v1beta1.PodDisruptionBudgetSpec {
+func buildPDBSpec(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) v1beta1.PodDisruptionBudgetSpec {
 	// compute MinAvailable based on the maximum number of Pods we're supposed to have
 	nodeCount := statefulSets.ExpectedNodeCount()
 	// maybe allow some Pods to be disrupted
@@ -140,8 +141,8 @@ func buildPDBSpec(es esv1beta1.Elasticsearch, statefulSets sset.StatefulSetList)
 }
 
 // allowedDisruptions returns the number of Pods that we allow to be disrupted while keeping the cluster healthy.
-func allowedDisruptions(es esv1beta1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
-	if es.Status.Health != esv1beta1.ElasticsearchGreenHealth {
+func allowedDisruptions(es esv1.Elasticsearch, actualSsets sset.StatefulSetList) int32 {
+	if es.Status.Health != esv1.ElasticsearchGreenHealth {
 		// A non-green cluster may become red if we disrupt one node, don't allow it.
 		// The health information we're using here may be out-of-date, that's best effort.
 		return 0

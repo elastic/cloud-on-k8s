@@ -22,7 +22,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -87,14 +87,14 @@ func TestReconcile(t *testing.T) {
 		return nil
 	})
 
-	cluster := &v1beta1.Elasticsearch{
+	cluster := &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: v1beta1.ElasticsearchSpec{
+		Spec: esv1.ElasticsearchSpec{
 			Version: "7.0.0",
-			NodeSets: []v1beta1.NodeSet{
+			NodeSets: []esv1.NodeSet{
 				{
 					Name:  "all",
 					Count: 3,
@@ -107,7 +107,7 @@ func TestReconcile(t *testing.T) {
 	// test license assignment and ownership being triggered on cluster create
 	test.RetryUntilSuccess(t, func() error {
 		var clusterLicense corev1.Secret
-		if err := c.Get(types.NamespacedName{Namespace: "default", Name: v1beta1.LicenseSecretName("foo")}, &clusterLicense); err != nil {
+		if err := c.Get(types.NamespacedName{Namespace: "default", Name: esv1.LicenseSecretName("foo")}, &clusterLicense); err != nil {
 			return err
 		}
 		return validateOwnerRef(&clusterLicense, cluster.ObjectMeta)

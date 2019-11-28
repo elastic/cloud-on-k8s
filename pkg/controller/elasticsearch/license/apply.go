@@ -9,14 +9,15 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	common_license "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	common_license "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func applyLinkedLicense(
@@ -32,7 +33,7 @@ func applyLinkedLicense(
 	err := c.Get(
 		types.NamespacedName{
 			Namespace: esCluster.Namespace,
-			Name:      v1beta1.LicenseSecretName(esCluster.Name),
+			Name:      esv1.LicenseSecretName(esCluster.Name),
 		},
 		&license,
 	)

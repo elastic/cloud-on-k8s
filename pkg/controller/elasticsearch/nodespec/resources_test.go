@@ -8,13 +8,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestResourcesList_MasterNodesNames(t *testing.T) {
@@ -51,7 +52,7 @@ func TestResourcesList_MasterNodesNames(t *testing.T) {
 }
 
 func TestSetVolumeClaimsControllerReference(t *testing.T) {
-	es := v1beta1.Elasticsearch{
+	es := esv1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "es1",
 			Namespace: "default",

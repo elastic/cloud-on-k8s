@@ -7,30 +7,30 @@ package association
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestGetCredentials(t *testing.T) {
-	apmServer := &v1beta1.ApmServer{
+	apmServer := &apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apm-server-sample",
 			Namespace: "default",
 		},
-		Spec: v1beta1.ApmServerSpec{},
+		Spec: apmv1.ApmServerSpec{},
 	}
 
-	apmServer.SetAssociationConf(&commonv1beta1.AssociationConf{
+	apmServer.SetAssociationConf(&commonv1.AssociationConf{
 		URL: "https://elasticsearch-sample-es-http.default.svc:9200",
 	})
 
 	tests := []struct {
 		name         string
 		client       k8s.Client
-		assocConf    commonv1beta1.AssociationConf
+		assocConf    commonv1.AssociationConf
 		wantUsername string
 		wantPassword string
 		wantErr      bool
@@ -44,7 +44,7 @@ func TestGetCredentials(t *testing.T) {
 				},
 				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
 			}),
-			assocConf: commonv1beta1.AssociationConf{
+			assocConf: commonv1.AssociationConf{
 				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
 				AuthSecretKey:  "elastic-internal-apm",
 				CASecretName:   "ca-secret",
@@ -62,7 +62,7 @@ func TestGetCredentials(t *testing.T) {
 				},
 				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
 			}),
-			assocConf: commonv1beta1.AssociationConf{
+			assocConf: commonv1.AssociationConf{
 				CASecretName: "ca-secret",
 				URL:          "https://elasticsearch-sample-es-http.default.svc:9200",
 			},
@@ -76,7 +76,7 @@ func TestGetCredentials(t *testing.T) {
 				},
 				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
 			}),
-			assocConf: commonv1beta1.AssociationConf{
+			assocConf: commonv1.AssociationConf{
 				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
 				AuthSecretKey:  "elastic-internal-apm",
 				CASecretName:   "ca-secret",

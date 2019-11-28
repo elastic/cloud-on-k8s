@@ -10,13 +10,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +21,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -98,7 +99,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		&source.Kind{Type: &v1beta1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
@@ -154,11 +155,11 @@ func findLicense(c k8s.Client, checker license.Checker) (esclient.License, strin
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
 func reconcileSecret(
 	c k8s.Client,
-	cluster v1beta1.Elasticsearch,
+	cluster esv1.Elasticsearch,
 	parent string,
 	esLicense esclient.License,
 ) error {
-	secretName := v1beta1.LicenseSecretName(cluster.Name)
+	secretName := esv1.LicenseSecretName(cluster.Name)
 
 	licenseBytes, err := json.Marshal(esLicense)
 	if err != nil {
@@ -198,7 +199,7 @@ func reconcileSecret(
 }
 
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
-func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearch) (time.Time, error) {
+func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) (time.Time, error) {
 	var noResult time.Time
 	matchingSpec, parent, found, err := findLicense(r, r.checker)
 	if err != nil {
@@ -219,7 +220,7 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconc
 	res := &reconciler.Results{}
 
 	// Fetch the cluster to ensure it still exists
-	cluster := v1beta1.Elasticsearch{}
+	cluster := esv1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &cluster)
 	if err != nil {
 		if errors.IsNotFound(err) {

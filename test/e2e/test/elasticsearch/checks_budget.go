@@ -9,7 +9,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -19,12 +19,12 @@ type MasterChangeBudgetCheck struct {
 	Observations []int
 	Errors       []error
 	stopChan     chan struct{}
-	es           v1beta1.Elasticsearch
+	es           esv1.Elasticsearch
 	interval     time.Duration
 	client       k8s.Client
 }
 
-func NewMasterChangeBudgetCheck(es v1beta1.Elasticsearch, interval time.Duration, client k8s.Client) *MasterChangeBudgetCheck {
+func NewMasterChangeBudgetCheck(es esv1.Elasticsearch, interval time.Duration, client k8s.Client) *MasterChangeBudgetCheck {
 	return &MasterChangeBudgetCheck{
 		es:       es,
 		interval: interval,
@@ -78,11 +78,11 @@ type ChangeBudgetCheck struct {
 	ReadyPodCounts []int32
 	Errors         []error
 	stopChan       chan struct{}
-	es             v1beta1.Elasticsearch
+	es             esv1.Elasticsearch
 	client         k8s.Client
 }
 
-func NewChangeBudgetCheck(es v1beta1.Elasticsearch, client k8s.Client) *ChangeBudgetCheck {
+func NewChangeBudgetCheck(es esv1.Elasticsearch, client k8s.Client) *ChangeBudgetCheck {
 	return &ChangeBudgetCheck{
 		es:       es,
 		client:   client,
@@ -116,7 +116,7 @@ func (c *ChangeBudgetCheck) Stop() {
 	c.stopChan <- struct{}{}
 }
 
-func (c *ChangeBudgetCheck) Verify(from v1beta1.ElasticsearchSpec, to v1beta1.ElasticsearchSpec) error {
+func (c *ChangeBudgetCheck) Verify(from esv1.ElasticsearchSpec, to esv1.ElasticsearchSpec) error {
 	desired := to.NodeCount()
 	budget := to.UpdateStrategy.ChangeBudget
 

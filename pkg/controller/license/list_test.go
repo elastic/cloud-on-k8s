@@ -8,14 +8,15 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 type failingClient struct {
@@ -46,14 +47,14 @@ func Test_listAffectedLicenses(t *testing.T) {
 			name: "happy path",
 			args: args{
 				initialObjects: []runtime.Object{
-					&v1beta1.Elasticsearch{
+					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo-cluster",
 							Namespace: "default",
 							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
 						},
 					},
-					&v1beta1.Elasticsearch{
+					&esv1.Elasticsearch{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "bar-cluster",
 							Namespace: "default",

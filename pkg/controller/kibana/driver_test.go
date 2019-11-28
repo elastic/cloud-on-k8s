@@ -7,16 +7,6 @@ package kibana
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -26,6 +16,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var customResourceLimits = corev1.ResourceRequirements{
@@ -34,7 +35,7 @@ var customResourceLimits = corev1.ResourceRequirements{
 
 func TestDriverDeploymentParams(t *testing.T) {
 	type args struct {
-		kb             func() *kbtype.Kibana
+		kb             func() *kbv1.Kibana
 		initialObjects func() []runtime.Object
 	}
 
@@ -65,9 +66,9 @@ func TestDriverDeploymentParams(t *testing.T) {
 		{
 			name: "with TLS disabled",
 			args: args{
-				kb: func() *kbtype.Kibana {
+				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.HTTP.TLS.SelfSignedCertificate = &v1beta1.SelfSignedCertificate{
+					kb.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{
 						Disabled: true,
 					}
 					return kb
@@ -93,7 +94,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels["mylabel"] = "value"
 				for i, c := range p.PodTemplateSpec.Spec.Containers {
-					if c.Name == kbtype.KibanaContainerName {
+					if c.Name == kbv1.KibanaContainerName {
 						p.PodTemplateSpec.Spec.Containers[i].Resources = customResourceLimits
 					}
 				}
@@ -160,7 +161,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 		{
 			name: "6.x is supported",
 			args: args{
-				kb: func() *kbtype.Kibana {
+				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
 					kb.Spec.Version = "6.5.0"
 					return kb
@@ -176,7 +177,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 		{
 			name: "6.6 docker container already defaults elasticsearch.hosts",
 			args: args{
-				kb: func() *kbtype.Kibana {
+				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
 					kb.Spec.Version = "6.6.0"
 					return kb
@@ -289,7 +290,7 @@ func expectedDeploymentParams() deployment.Params {
 						},
 					},
 					Image: "my-image",
-					Name:  kbtype.KibanaContainerName,
+					Name:  kbv1.KibanaContainerName,
 					Ports: []corev1.ContainerPort{
 						{Name: "http", ContainerPort: int32(5601), Protocol: corev1.ProtocolTCP},
 					},
@@ -315,20 +316,20 @@ func expectedDeploymentParams() deployment.Params {
 	}
 }
 
-func kibanaFixture() *kbtype.Kibana {
-	kbFixture := &kbtype.Kibana{
+func kibanaFixture() *kbv1.Kibana {
+	kbFixture := &kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "default",
 		},
-		Spec: kbtype.KibanaSpec{
+		Spec: kbv1.KibanaSpec{
 			Version: "7.0.0",
 			Image:   "my-image",
 			Count:   1,
 		},
 	}
 
-	kbFixture.SetAssociationConf(&v1beta1.AssociationConf{
+	kbFixture.SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "test-auth",
 		AuthSecretKey:  "kibana-user",
 		CASecretName:   "es-ca-secret",
@@ -338,7 +339,7 @@ func kibanaFixture() *kbtype.Kibana {
 	return kbFixture
 }
 
-func kibanaFixtureWithPodTemplate() *kbtype.Kibana {
+func kibanaFixtureWithPodTemplate() *kbv1.Kibana {
 	kbFixture := kibanaFixture()
 	kbFixture.Spec.PodTemplate = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -349,7 +350,7 @@ func kibanaFixtureWithPodTemplate() *kbtype.Kibana {
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:      kbtype.KibanaContainerName,
+					Name:      kbv1.KibanaContainerName,
 					Resources: customResourceLimits,
 				},
 			},

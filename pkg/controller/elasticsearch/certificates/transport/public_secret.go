@@ -7,7 +7,7 @@ package transport
 import (
 	"reflect"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -23,7 +23,7 @@ import (
 func ReconcileTransportCertsPublicSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	ca *certificates.CA,
 ) error {
 	esNSN := k8s.ExtractNamespacedName(&es)
@@ -67,7 +67,7 @@ func ReconcileTransportCertsPublicSecret(
 // PublicCertsSecretRef returns the NamespacedName for the Secret containing the publicly available transport CA.
 func PublicCertsSecretRef(es types.NamespacedName) types.NamespacedName {
 	return types.NamespacedName{
-		Name:      certificates.PublicSecretName(v1beta1.ESNamer, es.Name, certificates.TransportCAType),
+		Name:      certificates.PublicSecretName(esv1.ESNamer, es.Name, certificates.TransportCAType),
 		Namespace: es.Namespace,
 	}
 }

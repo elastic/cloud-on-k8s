@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -26,10 +26,10 @@ const (
 type LicenseTestContext struct {
 	esClient client.Client
 	k        *test.K8sClient
-	es       estype.Elasticsearch
+	es       esv1.Elasticsearch
 }
 
-func NewLicenseTestContext(k *test.K8sClient, es estype.Elasticsearch) LicenseTestContext {
+func NewLicenseTestContext(k *test.K8sClient, es esv1.Elasticsearch) LicenseTestContext {
 	return LicenseTestContext{
 		k:  k,
 		es: es,

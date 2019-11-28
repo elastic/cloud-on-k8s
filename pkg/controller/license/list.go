@@ -5,14 +5,15 @@
 package license
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func reconcileRequestsForAllClusters(c k8s.Client) ([]reconcile.Request, error) {
-	var clusters v1beta1.ElasticsearchList
+	var clusters esv1.ElasticsearchList
 	// list all clusters
 	err := c.List(&clusters)
 	if err != nil {
