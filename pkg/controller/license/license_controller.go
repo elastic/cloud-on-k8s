@@ -212,7 +212,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 	}
 	if !found {
 		// no license, delete cluster level licenses to revert to basic
-		log.Info("No enterprise license found. Removing cluster license secret", "es", k8s.ExtractNamespacedName(&cluster))
+		log.Info("No enterprise license found. Attempting to remove cluster license secret", "es", k8s.ExtractNamespacedName(&cluster))
 		secretName := v1beta1.LicenseSecretName(cluster.Name)
 		err := r.Client.Delete(&corev1.Secret{
 			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{

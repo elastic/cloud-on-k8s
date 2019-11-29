@@ -20,7 +20,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var log = logf.Log.WithName("elasticsearch-license")
+var log = logf.Log.WithName("elasticsearch-controller")
 
 // isTrial returns true if an Elasticsearch license is of the trial type
 func isTrial(l *esclient.License) bool {
@@ -63,7 +63,7 @@ func applyLinkedLicense(
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updateLicense(updater, current, desired)
+	return updateLicense(esCluster, updater, current, desired)
 }
 
 func startBasic(updater esclient.LicenseClient) error {
@@ -79,6 +79,7 @@ func startBasic(updater esclient.LicenseClient) error {
 
 // updateLicense make the call to Elasticsearch to set the license. This function exists mainly to facilitate testing.
 func updateLicense(
+	esCluster types.NamespacedName,
 	updater esclient.LicenseClient,
 	current *esclient.License,
 	desired esclient.License,
@@ -95,16 +96,12 @@ func updateLicense(
 	defer cancel()
 
 	if isTrial(&desired) {
-		err := startTrial(updater)
-		if err != nil {
-			return err
-		}
-		return nil
+		return pkgerrors.Wrap(startTrial(updater, esCluster), "failed to start trial")
 	}
 
 	response, err := updater.UpdateLicense(ctx, request)
 	if err != nil {
-		return err
+		return pkgerrors.Wrap(err, fmt.Sprintf("failed to update license to %s", desired.Type))
 	}
 	if !response.IsSuccess() {
 		return fmt.Errorf("failed to apply license: %s", response.LicenseStatus)
@@ -114,29 +111,26 @@ func updateLicense(
 
 // startTrial starts the trial license after checking that the trial is not yet activated by directly hitting the
 // Elasticsearch API.
-func startTrial(c esclient.LicenseClient) error {
+func startTrial(c esclient.LicenseClient, esCluster types.NamespacedName) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
 
-	// Check the current license
-	license, err := c.GetLicense(ctx)
-	if err != nil {
-		return err
-	}
-	if isTrial(&license) {
-		// Trial already activated
-		return nil
-	}
-
 	// Let's start the trial
 	response, err := c.StartTrial(ctx)
-	if err != nil {
-		return err
+	if err != nil && esclient.IsForbidden(err) {
+		log.Info("failed to start trial most likely because trial was activated previously",
+			"err", err.Error(),
+			"namespace", esCluster.Namespace,
+			"name", esCluster.Name,
+		)
+		return nil
 	}
-	if !response.IsSuccess() {
-		return fmt.Errorf("failed to start trial license: %s", response.ErrorMessage)
+	if response.IsSuccess() {
+		log.Info(
+			"Elasticsearch trial license activated",
+			"namespace", esCluster.Namespace,
+			"name", esCluster.Name,
+		)
 	}
-
-	log.Info("Trial license started")
-	return nil
+	return err
 }

@@ -93,7 +93,7 @@ func Test_updateLicense(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			c := esclient.NewMockClient(version.MustParse("6.8.0"), tt.reqFn)
-			if err := updateLicense(c, tt.args.current, tt.args.desired); (err != nil) != tt.wantErr {
+			if err := updateLicense(types.NamespacedName{}, c, tt.args.current, tt.args.desired); (err != nil) != tt.wantErr {
 				t.Errorf("updateLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

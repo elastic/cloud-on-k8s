@@ -62,6 +62,10 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	}()
 
 	secret, license, err := licensing.TrialLicense(r, request.NamespacedName)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Trial license secret has been deleted by user, but trial had been started previously.")
+		return reconcile.Result{}, nil
+	}
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "while fetching trial license")
 	}
@@ -95,7 +99,19 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	if err := r.reconcileTrialStatus(trialStatus); err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "failed to reconcile trial status")
 	}
-	return reconcile.Result{}, nil
+	// 4. update trial secret if invalid to give user feedback
+	if r.isTrialRunning() && license.IsMissingFields() == nil {
+		verifier := licensing.Verifier{
+			PublicKey: r.trialPubKey,
+		}
+		status := verifier.Valid(license, time.Now())
+		if status != licensing.LicenseStatusValid {
+			secret.Annotations[licensing.LicenseInvalidAnnotation] = string(status)
+		}
+	} else {
+		secret.Annotations[licensing.LicenseInvalidAnnotation] = "trial can be started only once"
+	}
+	return reconcile.Result{}, r.Update(&secret)
 }
 
 func (r *ReconcileTrials) isTrialRunning() bool {
