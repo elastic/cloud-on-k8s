@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package association
 
 import (
@@ -24,6 +28,8 @@ import (
 var (
 	log = logf.Log.WithName("association")
 )
+
+const ApiBasePath = "/apis"
 
 // UsersGarbageCollector allows to remove unused Users. Users should be deleted as part of the association controllers
 // reconciliation loop. But without a Finalizer nothing prevent the associated resource to be removed while the
@@ -183,7 +189,7 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 func (ugc *UsersGarbageCollector) newClientFor(gv schema.GroupVersion) (*rest.RESTClient, error) {
 	cfg := rest.CopyConfig(ugc.baseConfig)
 	cfg.ContentConfig.GroupVersion = &gv
-	cfg.APIPath = "/apis"
+	cfg.APIPath = ApiBasePath
 	cfg.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
 	cfg.UserAgent = rest.DefaultKubernetesUserAgent()
 	return rest.RESTClientFor(cfg)

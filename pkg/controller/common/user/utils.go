@@ -9,13 +9,11 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // GetSecret gets the first secret in a list that matches the namespace and the name.
@@ -42,7 +40,7 @@ func ChecksUser(t *testing.T, secret *corev1.Secret, expectedUsername string, ex
 	assert.ElementsMatch(t, expectedRoles, strings.Split(string(currentRoles), ","))
 }
 
-// DeleteUser deletes the user using the .
+// DeleteUser deletes the user Secret using the provided label selector.
 func DeleteUser(c k8s.Client, opts ...client.ListOption) error {
 	var secrets corev1.SecretList
 	if err := c.List(&secrets, opts...); err != nil {
