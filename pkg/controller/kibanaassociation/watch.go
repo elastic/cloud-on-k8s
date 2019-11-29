@@ -7,8 +7,6 @@ package kibanaassociation
 import (
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -52,17 +50,4 @@ func elasticsearchWatchName(kibanaKey types.NamespacedName) string {
 // esCAWatchName returns the name of the watch setup on Elasticsearch CA secret
 func esCAWatchName(kibana types.NamespacedName) string {
 	return kibana.Namespace + "-" + kibana.Name + "-ca-watch"
-}
-
-// watchFinalizer ensure that we remove watches for Elasticsearch clusters that we are no longer interested in
-// because not referenced by any Kibana resource.
-func watchFinalizer(kibanaKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
-	return finalizer.Finalizer{
-		Name: "finalizer.association.kibana.k8s.elastic.co/elasticsearch",
-		Execute: func() error {
-			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
-			w.Secrets.RemoveHandlerForKey(esCAWatchName(kibanaKey))
-			return nil
-		},
-	}
 }

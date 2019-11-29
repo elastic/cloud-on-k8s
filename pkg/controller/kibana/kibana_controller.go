@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -60,7 +59,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
-		finalizers:     finalizer.NewHandler(client),
 		params:         params,
 	}
 }
@@ -117,7 +115,6 @@ type ReconcileKibana struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
-	finalizers     finalizer.Handler
 	dynamicWatches watches.DynamicWatches
 
 	params operator.Parameters

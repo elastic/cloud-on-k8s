@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deletion"
-
 	elasticsearchv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -164,8 +162,6 @@ type ReconcileElasticsearch struct {
 
 	dynamicWatches watches.DynamicWatches
 
-	deletionObservers []deletion.Observer
-
 	// expectations help dealing with inconsistencies in our client cache,
 	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
 	expectations *expectations.ClustersExpectation
@@ -310,8 +306,8 @@ func (r *ReconcileElasticsearch) onDelete(
 	es types.NamespacedName,
 ) {
 	// Stop tracking that cluster in expectations.
-	r.expectations.OnDelete(es)
+	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(http.HttpCertificateWatchKey(elasticsearchv1beta1.ESNamer, es.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(http.CertificateWatchKey(elasticsearchv1beta1.ESNamer, es.Name))
 }

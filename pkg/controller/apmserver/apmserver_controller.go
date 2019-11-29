@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
@@ -91,7 +90,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
-		finalizers:     finalizer.NewHandler(client),
 		Parameters:     params,
 	}
 }
@@ -149,7 +147,6 @@ type ReconcileApmServer struct {
 	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
-	finalizers     finalizer.Handler
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
