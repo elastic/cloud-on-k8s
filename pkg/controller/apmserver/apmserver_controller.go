@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
+
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	apmcerts "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
@@ -192,14 +194,19 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return common.PauseRequeue, nil
 	}
 
+	if compatible, err := r.isCompatible(&as); err != nil || !compatible {
+		return reconcile.Result{}, err
+	}
+
+	// Remove any previous Finalizers
+	if err := finalizer.RemoveAll(r.Client, &as); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if as.IsMarkedForDeletion() {
 		// APM server will be deleted, remove the watch on the secure secret
 		r.onDelete(k8s.ExtractNamespacedName(&as))
 		return reconcile.Result{}, nil
-	}
-
-	if compatible, err := r.isCompatible(&as); err != nil || !compatible {
-		return reconcile.Result{}, err
 	}
 
 	if err := annotation.UpdateControllerVersion(r.Client, &as, r.OperatorInfo.BuildInfo.Version); err != nil {

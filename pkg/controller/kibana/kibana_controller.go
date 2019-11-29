@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
+
 	kibanav1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -150,6 +152,11 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// check for compatibility with the operator version
 	compatible, err := r.isCompatible(&kb)
 	if err != nil || !compatible {
+		return reconcile.Result{}, err
+	}
+
+	// Remove any previous Finalizers
+	if err := finalizer.RemoveAll(r.Client, &kb); err != nil {
 		return reconcile.Result{}, err
 	}
 

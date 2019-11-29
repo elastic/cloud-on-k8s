@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
+
 	elasticsearchv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -206,6 +208,11 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	if !compat {
 		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
 		return reconcile.Result{}, nil
+	}
+
+	// Remove any previous Finalizers
+	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
