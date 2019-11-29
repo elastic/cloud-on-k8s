@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
@@ -17,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
@@ -122,6 +123,14 @@ type ReconcileApmServerElasticsearchAssociation struct {
 	iteration uint64
 }
 
+func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.NamespacedName) error {
+	// Clean up memory
+	r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(obj))
+	r.watches.Secrets.RemoveHandlerForKey(esCAWatchName(obj))
+	// Delete user
+	return user.DeleteUser(r.Client, NewUserLabelSelector(obj))
+}
+
 // Reconcile reads that state of the cluster for a ApmServerElasticsearchAssociation object and makes changes based on the state read
 // and what is in the ApmServerElasticsearchAssociation.Spec
 func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -129,7 +138,14 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 
 	var apmServer apmtype.ApmServer
 	if ok, err := association.FetchWithAssociation(r.Client, request, &apmServer); !ok {
-		return reconcile.Result{}, err
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		// APM Server has been deleted, remove artifacts related to the association.
+		return reconcile.Result{}, r.onDelete(types.NamespacedName{
+			Namespace: request.Namespace,
+			Name:      request.Name,
+		})
 	}
 
 	if common.IsPaused(apmServer.ObjectMeta) {
@@ -137,21 +153,10 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		return common.PauseRequeue, nil
 	}
 
-	/*handler := finalizer.NewHandler(r)
-	apmName := k8s.ExtractNamespacedName(&apmServer)
-	err := handler.Handle(
-		&apmServer,
-		watchFinalizer(apmName, r.watches),
-		user.UserFinalizer(r.Client, apmServer.Kind, NewUserLabelSelector(apmName)),
-	)
-	if err != nil {
-		// failed to prepare finalizer or run finalizer: retry
-		return defaultRequeue, err
-	}*/
-
-	// ApmServer is being deleted short-circuit reconciliation
+	// ApmServer is being deleted, short-circuit reconciliation and remove artifacts related to the association.
 	if !apmServer.DeletionTimestamp.IsZero() {
-		return reconcile.Result{}, nil
+		apmName := k8s.ExtractNamespacedName(&apmServer)
+		return reconcile.Result{}, r.onDelete(apmName)
 	}
 
 	if compatible, err := r.isCompatible(&apmServer); err != nil || !compatible {
@@ -187,19 +192,6 @@ func elasticsearchWatchName(assocKey types.NamespacedName) string {
 // contains the HTTP certificate chain of Elasticsearch.
 func esCAWatchName(apm types.NamespacedName) string {
 	return apm.Namespace + "-" + apm.Name + "-ca-watch"
-}
-
-// watchFinalizer ensure that we remove watches for Elasticsearch clusters that we are no longer interested in
-// because the association to the APM server has been deleted.
-func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
-	return finalizer.Finalizer{
-		Name: "finalizer.association.apmserver.k8s.elastic.co/elasticsearch",
-		Execute: func() error {
-			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocKey))
-			w.Secrets.RemoveHandlerForKey(esCAWatchName(assocKey))
-			return nil
-		},
-	}
 }
 
 func resultFromStatus(status commonv1beta1.AssociationStatus) reconcile.Result {

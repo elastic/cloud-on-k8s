@@ -114,6 +114,14 @@ type ReconcileAssociation struct {
 	iteration uint64
 }
 
+func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
+	// Clean up memory
+	r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(obj))
+	r.watches.Secrets.RemoveHandlerForKey(esCAWatchName(obj))
+	// Delete user
+	return user.DeleteUser(r.Client, NewUserLabelSelector(obj))
+}
+
 // Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
 // the Association.Spec
 func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -121,30 +129,20 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 
 	var kibana kbtype.Kibana
 	if ok, err := association.FetchWithAssociation(r.Client, request, &kibana); !ok {
-		return reconcile.Result{}, err
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		// Kibana has been deleted, remove artifacts related to the association.
+		return reconcile.Result{}, r.onDelete(types.NamespacedName{
+			Namespace: request.Namespace,
+			Name:      request.Name,
+		})
 	}
 
-	// register or execute watch finalizers
-	/*h := finalizer.NewHandler(r)
-	kbName := k8s.ExtractNamespacedName(&kibana)
-	err := h.Handle(
-		&kibana,
-		watchFinalizer(kbName, r.watches),
-		user.UserFinalizer(r.Client, kibana.Kind, NewUserLabelSelector(kbName)),
-	)
-	if err != nil {
-		if apierrors.IsConflict(err) {
-			// Conflicts are expected here and should be resolved on next loop
-			log.V(1).Info("Conflict while handling finalizer")
-			return reconcile.Result{Requeue: true}, nil
-		}
-		// failed to prepare or run finalizer: retry
-		return defaultRequeue, err
-	}*/
-
-	// Kibana is being deleted: short-circuit reconciliation
+	// Kibana is being deleted, short-circuit reconciliation and remove artifacts related to the association.
 	if !kibana.DeletionTimestamp.IsZero() {
-		return reconcile.Result{}, nil
+		kbName := k8s.ExtractNamespacedName(&kibana)
+		return reconcile.Result{}, r.onDelete(kbName)
 	}
 
 	if common.IsPaused(kibana.ObjectMeta) {

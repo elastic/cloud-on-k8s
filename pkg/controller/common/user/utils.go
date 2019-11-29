@@ -8,6 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/stretchr/testify/assert"
@@ -36,4 +40,18 @@ func ChecksUser(t *testing.T, secret *corev1.Secret, expectedUsername string, ex
 	currentRoles, ok := secret.Data["userRoles"]
 	assert.True(t, ok)
 	assert.ElementsMatch(t, expectedRoles, strings.Split(string(currentRoles), ","))
+}
+
+// DeleteUser deletes the user using the .
+func DeleteUser(c k8s.Client, opts ...client.ListOption) error {
+	var secrets corev1.SecretList
+	if err := c.List(&secrets, opts...); err != nil {
+		return err
+	}
+	for _, s := range secrets.Items {
+		if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
 }
