@@ -222,7 +222,7 @@ func (f *fakeLicenseUpdater) StartBasic(ctx context.Context) (esclient.StartBasi
 	return esclient.StartBasicResponse{}, nil
 }
 
-var _ esclient.LicenseUpdater = &fakeLicenseUpdater{}
+var _ esclient.LicenseClient = &fakeLicenseUpdater{}
 
 type fakeClient struct {
 	k8s.Client

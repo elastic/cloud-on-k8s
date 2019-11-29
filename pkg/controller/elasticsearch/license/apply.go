@@ -31,7 +31,7 @@ func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
 	current *esclient.License,
-	updater esclient.LicenseUpdater,
+	updater esclient.LicenseClient,
 ) error {
 	var license corev1.Secret
 	// the underlying assumption here is that either a user or a
@@ -66,7 +66,7 @@ func applyLinkedLicense(
 	return updateLicense(updater, current, desired)
 }
 
-func startBasic(updater esclient.LicenseUpdater) error {
+func startBasic(updater esclient.LicenseClient) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
 	_, err := updater.StartBasic(ctx)
@@ -79,7 +79,7 @@ func startBasic(updater esclient.LicenseUpdater) error {
 
 // updateLicense make the call to Elasticsearch to set the license. This function exists mainly to facilitate testing.
 func updateLicense(
-	updater esclient.LicenseUpdater,
+	updater esclient.LicenseClient,
 	current *esclient.License,
 	desired esclient.License,
 ) error {
@@ -114,7 +114,7 @@ func updateLicense(
 
 // startTrial starts the trial license after checking that the trial is not yet activated by directly hitting the
 // Elasticsearch API.
-func startTrial(c esclient.LicenseUpdater) error {
+func startTrial(c esclient.LicenseClient) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
 

@@ -57,7 +57,7 @@ type Role struct {
 type Client interface {
 	AllocationSetter
 	ShardLister
-	LicenseUpdater
+	LicenseClient
 	// Close idle connections in the underlying http client.
 	Close()
 	// Equal returns true if other can be considered as the same client.

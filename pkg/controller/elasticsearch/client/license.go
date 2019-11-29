@@ -6,7 +6,7 @@ package client
 
 import "context"
 
-type LicenseUpdater interface {
+type LicenseClient interface {
 	// GetLicense returns the currently applied license. Can be empty.
 	GetLicense(ctx context.Context) (License, error)
 	// UpdateLicense attempts to update cluster license with the given licenses.
