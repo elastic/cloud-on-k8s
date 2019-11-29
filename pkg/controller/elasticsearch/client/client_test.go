@@ -628,41 +628,62 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 	}
 }
 
-func TestIsConflict(t *testing.T) {
+func TestAPIError_Types(t *testing.T) {
 	type args struct {
 		err error
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name          string
+		args          args
+		wantConflict  bool
+		wantForbidden bool
+		wantNotFound  bool
 	}{
 		{
-			name: "200 is not a conflict",
+			name: "500 is not any of the explicitly supported error types",
 			args: args{
-				err: &APIError{response: NewMockResponse(200, nil, "")}, // nolint
+				err: &APIError{response: NewMockResponse(500, nil, "")}, // nolint
 			},
-			want: false,
 		},
 		{
 			name: "409 is a conflict",
 			args: args{
 				err: &APIError{response: NewMockResponse(409, nil, "")}, // nolint
 			},
-			want: true,
+			wantConflict: true,
+		},
+		{
+			name: "403 is a forbidden",
+			args: args{
+				err: &APIError{response: NewMockResponse(403, nil, "")}, // nolint
+			},
+			wantForbidden: true,
+		},
+		{
+			name: "404 is not found",
+			args: args{
+				err: &APIError{response: NewMockResponse(404, nil, "")}, // nolint
+			},
+			wantNotFound: true,
 		},
 		{
 			name: "no api error",
 			args: args{
 				err: errors.New("not an api error"),
 			},
-			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsConflict(tt.args.err); got != tt.want {
-				t.Errorf("IsConflict() = %v, want %v", got, tt.want)
+			if got := IsNotFound(tt.args.err); got != tt.wantNotFound {
+				t.Errorf("IsNotFound() = %v, want %v", got, tt.wantNotFound)
+			}
+
+			if got := IsForbidden(tt.args.err); got != tt.wantForbidden {
+				t.Errorf("IsForbidden() = %v, want %v", got, tt.wantForbidden)
+			}
+			if got := IsConflict(tt.args.err); got != tt.wantConflict {
+				t.Errorf("IsConflict() = %v, want %v", got, tt.wantConflict)
 			}
 		})
 	}
