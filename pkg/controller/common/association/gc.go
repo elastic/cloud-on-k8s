@@ -29,7 +29,7 @@ var (
 	log = logf.Log.WithName("association")
 )
 
-const ApiBasePath = "/apis"
+const APIBasePath = "/apis"
 
 // UsersGarbageCollector allows to remove unused Users. Users should be deleted as part of the association controllers
 // reconciliation loop. But without a Finalizer nothing prevent the associated resource to be removed while the
@@ -189,7 +189,7 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 func (ugc *UsersGarbageCollector) newClientFor(gv schema.GroupVersion) (*rest.RESTClient, error) {
 	cfg := rest.CopyConfig(ugc.baseConfig)
 	cfg.ContentConfig.GroupVersion = &gv
-	cfg.APIPath = ApiBasePath
+	cfg.APIPath = APIBasePath
 	cfg.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
 	cfg.UserAgent = rest.DefaultKubernetesUserAgent()
 	return rest.RESTClientFor(cfg)
