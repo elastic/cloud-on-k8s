@@ -77,6 +77,9 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 		return test.StepList{
 			licenseTestContext.Init(),
 			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeTrial),
+			// revert to basic from trial
+			licenseTestContext.DeleteEnterpriseLicenseSecret(),
+			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
 		}
 	}
 
