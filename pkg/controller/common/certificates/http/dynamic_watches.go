@@ -14,8 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// httpCertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates
-func httpCertificateWatchKey(namer name.Namer, ownerName string) string {
+// HttpCertificateWatchKey returns the key used by the dynamic watch registration for custom http certificates
+func HttpCertificateWatchKey(namer name.Namer, ownerName string) string {
 	return namer.Suffix(ownerName, "http-certificate")
 }
 
@@ -24,7 +24,7 @@ func reconcileDynamicWatches(dynamicWatches watches.DynamicWatches, owner types.
 	// watch the Secret specified in es.Spec.HTTP.TLS.Certificate because if it changes we should reconcile the new
 	// user provided certificates.
 	httpCertificateWatch := watches.NamedWatch{
-		Name: httpCertificateWatchKey(namer, owner.Name),
+		Name: HttpCertificateWatchKey(namer, owner.Name),
 		Watched: []types.NamespacedName{{
 			Namespace: owner.Namespace,
 			Name:      tls.Certificate.SecretName,
@@ -50,7 +50,7 @@ func DynamicWatchesFinalizer(dynamicWatches watches.DynamicWatches, kind string,
 		Name: "finalizer." + strings.ToLower(kind) + ".k8s.elastic.co/http-certificates-secret",
 		Execute: func() error {
 			// es resource is being finalized, so we no longer need the dynamic watch
-			dynamicWatches.Secrets.RemoveHandlerForKey(httpCertificateWatchKey(namer, ownerName))
+			dynamicWatches.Secrets.RemoveHandlerForKey(HttpCertificateWatchKey(namer, ownerName))
 			return nil
 		},
 	}
