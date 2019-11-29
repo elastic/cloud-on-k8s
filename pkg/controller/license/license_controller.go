@@ -203,6 +203,7 @@ func reconcileSecret(
 }
 
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
+// Returns time to next reconciliation, bool whether a license is configured at all and optional error.
 func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearch) (time.Time, bool, error) {
 	var noResult time.Time
 	matchingSpec, parent, found, err := findLicense(r, r.checker)
