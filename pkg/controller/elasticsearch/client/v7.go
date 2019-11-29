@@ -32,6 +32,11 @@ func (c *clientV7) StartBasic(ctx context.Context) (StartBasicResponse, error) {
 	return response, c.post(ctx, "/_license/start_basic?acknowledge=true", nil, &response)
 }
 
+func (c *clientV7) StartTrial(ctx context.Context) (StartTrialResponse, error) {
+	var response StartTrialResponse
+	return response, c.post(ctx, "/_license/start_trial?acknowledge=true", nil, &response)
+}
+
 func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
 	if timeout == "" {
 		timeout = DefaultVotingConfigExclusionsTimeout

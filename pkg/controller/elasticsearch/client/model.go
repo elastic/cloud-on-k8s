@@ -280,6 +280,17 @@ func (lr LicenseUpdateResponse) IsSuccess() bool {
 	return lr.LicenseStatus == "valid"
 }
 
+// StartTrialResponse is the response to the start trial API call.
+type StartTrialResponse struct {
+	Acknowledged    bool   `json:"acknowledged"`
+	TrialWasStarted bool   `json:"trial_was_started"`
+	ErrorMessage    string `json:"error_message"`
+}
+
+func (sr StartTrialResponse) IsSuccess() bool {
+	return sr.Acknowledged && sr.TrialWasStarted
+}
+
 // LicenseResponse is the response to GET _xpack/license. Licenses won't contain signature.
 type LicenseResponse struct {
 	License License `json:"license"`

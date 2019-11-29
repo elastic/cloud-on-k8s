@@ -13,4 +13,6 @@ type LicenseUpdater interface {
 	UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error)
 	// StartBasic creates or reverts to a basic license.
 	StartBasic(ctx context.Context) (StartBasicResponse, error)
+	// StartTrial starts a 30-day trial period (which gives access to platinum features).
+	StartTrial(ctx context.Context) (StartTrialResponse, error)
 }

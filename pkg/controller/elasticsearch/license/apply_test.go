@@ -199,6 +199,13 @@ type fakeLicenseUpdater struct {
 	startBasicCalled bool
 }
 
+func (f *fakeLicenseUpdater) StartTrial(ctx context.Context) (esclient.StartTrialResponse, error) {
+	return esclient.StartTrialResponse{
+		Acknowledged:    true,
+		TrialWasStarted: true,
+	}, nil
+}
+
 func (f *fakeLicenseUpdater) GetLicense(ctx context.Context) (esclient.License, error) {
 	return f.license, nil
 }
