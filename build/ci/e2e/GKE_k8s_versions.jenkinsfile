@@ -109,6 +109,7 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.jso
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
 EOF
+    cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
   operation: create

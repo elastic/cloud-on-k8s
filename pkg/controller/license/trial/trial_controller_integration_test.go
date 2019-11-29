@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestReconcile(t *testing.T) {
-	c, stop := test.StartManager(t, Add, operator.Parameters{})
+	c, stop := test.StartManager(t, Add, operator.Parameters{OperatorNamespace: operatorNs})
 	defer stop()
 
 	now := time.Now()

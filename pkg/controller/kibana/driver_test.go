@@ -5,6 +5,8 @@
 package kibana
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
@@ -14,11 +16,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,10 +30,181 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var customResourceLimits = corev1.ResourceRequirements{
 	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+}
+
+type failingClient struct {
+	k8s.Client
+}
+
+func (f *failingClient) List(list runtime.Object, opts ...client.ListOption) error {
+	return errors.New("client error")
+}
+
+func Test_getStrategyType(t *testing.T) {
+	// creates `count` of pods belonging to `kbName` Kibana and to `rs-kbName-version` ReplicaSet
+	getPods := func(kbName string, podCount int, version string) []runtime.Object {
+		var result []runtime.Object
+		for i := 0; i < podCount; i++ {
+			result = append(result, &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					OwnerReferences: []metav1.OwnerReference{
+						{Name: fmt.Sprintf("rs-%v-%v", kbName, version)},
+					},
+					Name:      fmt.Sprintf("pod-%v-%v-%v", kbName, version, i),
+					Namespace: "default",
+					Labels: map[string]string{
+						label.KibanaNameLabelName:    kbName,
+						label.KibanaVersionLabelName: version,
+					},
+				},
+			})
+		}
+		return result
+	}
+
+	clearVersionLabels := func(objects []runtime.Object) []runtime.Object {
+		for _, object := range objects {
+			pod, ok := object.(*corev1.Pod)
+			if !ok {
+				t.FailNow()
+			}
+
+			delete(pod.Labels, label.KibanaVersionLabelName)
+		}
+
+		return objects
+	}
+
+	tests := []struct {
+		name            string
+		expectedKbName  string
+		expectedVersion string
+		initialObjects  []runtime.Object
+		clientError     bool
+		wantErr         bool
+		wantStrategy    appsv1.DeploymentStrategyType
+	}{
+		{
+			name:            "Pods not created yet",
+			expectedVersion: "7.4.0",
+			expectedKbName:  "test",
+			initialObjects:  []runtime.Object{},
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Versions match",
+			expectedVersion: "7.4.0",
+			expectedKbName:  "test",
+			initialObjects:  getPods("test", 3, "7.4.0"),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Versions match - multiple kibana deployments",
+			expectedVersion: "7.5.0",
+			expectedKbName:  "test2",
+			initialObjects:  append(getPods("test", 3, "7.4.0"), getPods("test2", 3, "7.5.0")...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch - single kibana deployment",
+			expectedVersion: "7.5.0",
+			expectedKbName:  "test",
+			initialObjects:  getPods("test", 3, "7.4.0"),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch - pods partially behind",
+			expectedVersion: "7.5.0",
+			expectedKbName:  "test",
+			initialObjects:  append(getPods("test", 2, "7.5.0"), getPods("test", 1, "7.4.0")...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch - multiple kibana deployments",
+			expectedVersion: "7.5.0",
+			expectedKbName:  "test2",
+			initialObjects:  append(getPods("test", 3, "7.5.0"), getPods("test2", 3, "7.4.0")...),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
+		},
+		{
+			name:            "Version mismatch - multiple versions in flight",
+			expectedVersion: "7.5.0",
+			expectedKbName:  "test",
+			initialObjects: append(
+				getPods("test", 1, "7.5.0"),
+				append(
+					getPods("test", 1, "7.4.0"),
+					getPods("test", 1, "7.3.0")...)...),
+			clientError:  false,
+			wantErr:      false,
+			wantStrategy: appsv1.RecreateDeploymentStrategyType,
+		},
+		{
+			name:            "Version label missing (operator upgrade case), should assume spec changed",
+			expectedVersion: "7.5.0",
+			expectedKbName:  "test",
+			initialObjects:  clearVersionLabels(getPods("test", 3, "7.5.0")),
+			clientError:     false,
+			wantErr:         false,
+			wantStrategy:    appsv1.RecreateDeploymentStrategyType,
+		},
+		{
+			name:            "Client error",
+			expectedVersion: "7.4.0",
+			expectedKbName:  "test",
+			initialObjects:  getPods("test", 2, "7.4.0"),
+			clientError:     true,
+			wantErr:         true,
+			wantStrategy:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := watches.NewDynamicWatches()
+			err := w.Secrets.InjectScheme(scheme.Scheme)
+			assert.NoError(t, err)
+
+			kb := kibanaFixture()
+			kb.Name = tt.expectedKbName
+			kb.Spec.Version = tt.expectedVersion
+			kbVersion, err := version.Parse(kb.Spec.Version)
+			assert.NoError(t, err)
+
+			client := k8s.WrappedFakeClient(tt.initialObjects...)
+			if tt.clientError {
+				client = &failingClient{}
+			}
+
+			d, err := newDriver(client, scheme.Scheme, *kbVersion, w, record.NewFakeRecorder(100))
+			assert.NoError(t, err)
+
+			strategy, err := d.getStrategyType(kb)
+			if tt.wantErr {
+				assert.Empty(t, strategy)
+				assert.Error(t, err)
+			} else {
+				assert.Equal(t, tt.wantStrategy, strategy)
+			}
+		})
+	}
 }
 
 func TestDriverDeploymentParams(t *testing.T) {
@@ -148,11 +323,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Labels = map[string]string{
-					"common.k8s.elastic.co/type":            "kibana",
-					"kibana.k8s.elastic.co/name":            "test",
-					"kibana.k8s.elastic.co/config-checksum": "c5496152d789682387b90ea9b94efcd82a2c6f572f40c016fb86c0d7",
-				}
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/config-checksum"] = "c5496152d789682387b90ea9b94efcd82a2c6f572f40c016fb86c0d7"
 				return p
 			}(),
 			wantErr: false,
@@ -169,6 +340,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.5.0"
 				return p
 			}(),
 			wantErr: false,
@@ -183,7 +355,11 @@ func TestDriverDeploymentParams(t *testing.T) {
 				},
 				initialObjects: defaultInitialObjects,
 			},
-			want:    expectedDeploymentParams(),
+			want: func() deployment.Params {
+				p := expectedDeploymentParams()
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.6.0"
+				return p
+			}(),
 			wantErr: false,
 		},
 	}
@@ -221,12 +397,14 @@ func expectedDeploymentParams() deployment.Params {
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
 		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
 		Replicas:  1,
+		Strategy:  appsv1.RollingUpdateDeploymentStrategyType,
 		PodTemplateSpec: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
 					"kibana.k8s.elastic.co/name":            "test",
 					"kibana.k8s.elastic.co/config-checksum": "c530a02188193a560326ce91e34fc62dcbd5722b45534a3f60957663",
+					"kibana.k8s.elastic.co/version":         "7.0.0",
 				},
 			},
 			Spec: corev1.PodSpec{

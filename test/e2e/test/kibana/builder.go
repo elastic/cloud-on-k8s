@@ -16,7 +16,8 @@ import (
 
 // Builder to create Kibana instances
 type Builder struct {
-	Kibana kbtype.Kibana
+	Kibana      kbtype.Kibana
+	MutatedFrom *Builder
 }
 
 var _ test.Builder = Builder{}
@@ -103,6 +104,21 @@ func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
 			b.Kibana.Spec.PodTemplate.Spec.Containers[i] = c
 		}
 	}
+	return b
+}
+
+func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
+	b.MutatedFrom = mutatedFrom
+	return b
+}
+
+func (b Builder) WithLabel(key, value string) Builder {
+	labels := b.Kibana.Spec.PodTemplate.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[key] = value
+	b.Kibana.Spec.PodTemplate.Labels = labels
 	return b
 }
 

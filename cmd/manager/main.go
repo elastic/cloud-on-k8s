@@ -12,17 +12,16 @@ import (
 	"strings"
 	"time"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	kibanav1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	kibanatype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
@@ -307,12 +306,12 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
 			os.Exit(1)
 		}
-		ugc.RegisterForUserGC(&apmv1.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName)
+		ugc.RegisterForUserGC(&apmtype.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName)
 		if err = kbassn.Add(mgr, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
 			os.Exit(1)
 		}
-		ugc.RegisterForUserGC(&kibanav1.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName)
+		ugc.RegisterForUserGC(&kibanatype.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName)
 	}
 	if operator.HasRole(operator.GlobalOperator, roles) {
 		if err = license.Add(mgr, params); err != nil {

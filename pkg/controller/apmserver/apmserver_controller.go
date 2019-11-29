@@ -11,8 +11,6 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	apmcerts "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
@@ -27,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
@@ -406,6 +405,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		Selector:        labels.NewLabels(as.Name),
 		Labels:          labels.NewLabels(as.Name),
 		PodTemplateSpec: podSpec,
+		Strategy:        appsv1.RollingUpdateDeploymentStrategyType,
 	}, nil
 }
 

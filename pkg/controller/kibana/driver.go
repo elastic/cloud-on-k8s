@@ -32,10 +32,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/version/version7"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // initContainersParameters is used to generate the init container that will load the secure settings into a keystore
@@ -74,6 +76,29 @@ var _ driver2.Interface = &driver{}
 
 func secretWatchKey(kibana types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-es-auth-secret", kibana.Namespace, kibana.Name)
+}
+
+// getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
+// upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
+// running multiple versions simultaneously may lead to concurrency bugs and data corruption.
+func (d *driver) getStrategyType(kb *kbtype.Kibana) (appsv1.DeploymentStrategyType, error) {
+	var pods corev1.PodList
+	var labels client.MatchingLabels = map[string]string{label.KibanaNameLabelName: kb.Name}
+	if err := d.client.List(&pods, client.InNamespace(kb.Namespace), labels); err != nil {
+		return "", err
+	}
+
+	for _, pod := range pods.Items {
+		ver, ok := pod.Labels[label.KibanaVersionLabelName]
+		// if label is missing we assume that the last reconciliation was done by previous version of the operator
+		// to be safe, we assume the Kibana version has changed when operator was offline and use Recreate,
+		// otherwise we may run into data corruption/data loss.
+		if !ok || ver != kb.Spec.Version {
+			return appsv1.RecreateDeploymentStrategyType, nil
+		}
+	}
+
+	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) {
@@ -146,7 +171,6 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(kibanaPodSpec.Spec.InitContainers[i].VolumeMounts,
 				esCertsVolume.VolumeMount())
 		}
-
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
@@ -186,6 +210,12 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 	// changes, which will trigger a rolling update)
 	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
+	// decide the strategy type
+	strategyType, err := d.getStrategyType(kb)
+	if err != nil {
+		return deployment.Params{}, err
+	}
+
 	return deployment.Params{
 		Name:            kbname.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
@@ -193,6 +223,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 		Selector:        label.NewLabels(kb.Name),
 		Labels:          label.NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
+		Strategy:        strategyType,
 	}, nil
 }
 
@@ -234,6 +265,7 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
+
 	expectedDp := deployment.New(deploymentParams)
 	reconciledDp, err := deployment.Reconcile(d.client, d.scheme, expectedDp, kb)
 	if err != nil {

@@ -8,7 +8,7 @@ package settings
 const (
 	EnvEsJavaOpts = "ES_JAVA_OPTS"
 
-	EnvProbePasswordFile      = "PROBE_PASSWORD_FILE"
+	EnvProbePasswordPath      = "PROBE_PASSWORD_PATH"
 	EnvProbeUsername          = "PROBE_USERNAME"
 	EnvReadinessProbeProtocol = "READINESS_PROBE_PROTOCOL"
 

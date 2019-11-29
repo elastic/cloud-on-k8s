@@ -172,9 +172,11 @@ func TestNewPodTemplateSpec(t *testing.T) {
 							},
 						},
 					},
+					Version: "7.4.0",
 				}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				labels := label.NewLabels("kibana-name")
+				labels[label.KibanaVersionLabelName] = "7.4.0"
 				labels["label1"] = "value1"
 				labels["label2"] = "value2"
 				labels[label.KibanaNameLabelName] = "overridden-kibana-name"

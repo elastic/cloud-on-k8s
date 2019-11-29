@@ -10,14 +10,22 @@ import (
 	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	common_license "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var log = logf.Log.WithName("elasticsearch-license")
+
+// isTrial returns true if an Elasticsearch license is of the trial type
+func isTrial(l *esclient.License) bool {
+	return l != nil && l.Type == string(commonlicense.ElasticsearchLicenseTypeTrial)
+}
 
 func applyLinkedLicense(
 	c k8s.Client,
@@ -44,17 +52,23 @@ func applyLinkedLicense(
 		return err
 	}
 
-	bytes, err := common_license.FetchLicenseData(license.Data)
+	bytes, err := commonlicense.FetchLicenseData(license.Data)
 	if err != nil {
 		return err
 	}
 
-	var lic esclient.License
-	err = json.Unmarshal(bytes, &lic)
+	var desired esclient.License
+	err = json.Unmarshal(bytes, &desired)
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updater(lic)
+
+	err = updater(desired)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // updateLicense make the call to Elasticsearch to set the license. This function exists mainly to facilitate testing.
@@ -63,7 +77,7 @@ func updateLicense(
 	current *esclient.License,
 	desired esclient.License,
 ) error {
-	if current != nil && current.UID == desired.UID {
+	if current != nil && (current.UID == desired.UID || (isTrial(current) && current.Type == desired.Type)) {
 		return nil // we are done already applied
 	}
 	request := esclient.LicenseUpdateRequest{
@@ -73,6 +87,15 @@ func updateLicense(
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
+
+	if isTrial(&desired) {
+		err := startTrial(c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	response, err := c.UpdateLicense(ctx, request)
 	if err != nil {
 		return err
@@ -80,5 +103,34 @@ func updateLicense(
 	if !response.IsSuccess() {
 		return fmt.Errorf("failed to apply license: %s", response.LicenseStatus)
 	}
+	return nil
+}
+
+// startTrial starts the trial license after checking that the trial is not yet activated by directly hitting the
+// Elasticsearch API.
+func startTrial(c esclient.Client) error {
+	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	defer cancel()
+
+	// Check the current license
+	license, err := c.GetLicense(ctx)
+	if err != nil {
+		return err
+	}
+	if isTrial(&license) {
+		// Trial already activated
+		return nil
+	}
+
+	// Let's start the trial
+	response, err := c.StartTrial(ctx)
+	if err != nil {
+		return err
+	}
+	if !response.IsSuccess() {
+		return fmt.Errorf("failed to start trial license: %s", response.ErrorMessage)
+	}
+
+	log.Info("Trial license started")
 	return nil
 }
