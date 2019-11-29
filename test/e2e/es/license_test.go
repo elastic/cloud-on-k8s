@@ -45,6 +45,9 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 				license.ElasticsearchLicenseTypeGold,
 				license.ElasticsearchLicenseTypePlatinum,
 			),
+			// and revert back to basic
+			licenseTestContext.DeleteEnterpriseLicenseSecret(),
+			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
 		}).
 		WithSteps(esBuilder.DeletionTestSteps(k)).
 		RunSequential(t)
