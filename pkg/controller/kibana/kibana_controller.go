@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -133,7 +134,14 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// retrieve the kibana object
 	var kb kibanav1beta1.Kibana
 	if ok, err := association.FetchWithAssociation(r.Client, request, &kb); !ok {
-		return reconcile.Result{}, err
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		r.onDelete(types.NamespacedName{
+			Namespace: request.Namespace,
+			Name:      request.Name,
+		})
+		return reconcile.Result{}, nil
 	}
 
 	// skip reconciliation if paused
@@ -148,18 +156,9 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	// run finalizers
-	/*if err := r.finalizers.Handle(&kb, r.finalizersFor(&kb)...); err != nil {
-		if errors.IsConflict(err) {
-			// Conflicts are expected and should be resolved on next loop
-			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "kibana_name", kb.Name)
-			return reconcile.Result{Requeue: true}, nil
-		}
-		return reconcile.Result{}, err
-	}*/
-
-	// Kibana will be deleted nothing to do other than run finalizers
+	// Kibana will be deleted nothing to do other than remove the watches
 	if kb.IsMarkedForDeletion() {
+		r.onDelete(k8s.ExtractNamespacedName(&kb))
 		return reconcile.Result{}, nil
 	}
 
@@ -222,10 +221,8 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 	return r.Status().Update(state.Kibana)
 }
 
-// finalizersFor returns the list of finalizers applying to a given Kibana deployment
-func (r *ReconcileKibana) finalizersFor(kb *kibanav1beta1.Kibana) []finalizer.Finalizer {
-	return []finalizer.Finalizer{
-		secretWatchFinalizer(*kb, r.dynamicWatches),
-		keystore.Finalizer(k8s.ExtractNamespacedName(kb), r.dynamicWatches, kb.Kind),
-	}
+func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {
+	// Clean up watches
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(obj))
 }

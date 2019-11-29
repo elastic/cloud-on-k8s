@@ -195,9 +195,9 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 	return namer.Suffix(hasKeystore.GetName(), secureSettingsSecretSuffix)
 }
 
-// secureSettingsWatchName returns the watch name according to the deployment name.
+// SecureSettingsWatchName returns the watch name according to the deployment name.
 // It is unique per APM or Kibana deployment.
-func secureSettingsWatchName(namespacedName types.NamespacedName) string {
+func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
 }
 
@@ -207,7 +207,7 @@ func secureSettingsWatchName(namespacedName types.NamespacedName) string {
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
 func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1beta1.SecretSource, nn types.NamespacedName) error {
-	watchName := secureSettingsWatchName(nn)
+	watchName := SecureSettingsWatchName(nn)
 	if secureSettingsRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)
 		return nil
@@ -231,7 +231,7 @@ func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatch
 	return finalizer.Finalizer{
 		Name: "finalizer." + strings.ToLower(kind) + ".k8s.elastic.co/secure-settings-secret",
 		Execute: func() error {
-			watched.Secrets.RemoveHandlerForKey(secureSettingsWatchName(namespacedName))
+			watched.Secrets.RemoveHandlerForKey(SecureSettingsWatchName(namespacedName))
 			return nil
 		},
 	}

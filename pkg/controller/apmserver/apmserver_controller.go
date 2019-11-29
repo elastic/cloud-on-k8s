@@ -180,7 +180,14 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 
 	var as apmv1beta1.ApmServer
 	if ok, err := association.FetchWithAssociation(r.Client, request, &as); !ok {
-		return reconcile.Result{}, err
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		r.onDelete(types.NamespacedName{
+			Namespace: request.Namespace,
+			Name:      request.Name,
+		})
+		return reconcile.Result{}, nil
 	}
 
 	if common.IsPaused(as.ObjectMeta) {
@@ -188,16 +195,9 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return common.PauseRequeue, nil
 	}
 
-	if err := r.finalizers.Handle(&as, r.finalizersFor(as)...); err != nil {
-		if errors.IsConflict(err) {
-			log.V(1).Info("Conflict while handling secret watch finalizer")
-			return reconcile.Result{Requeue: true}, nil
-		}
-		return reconcile.Result{}, err
-	}
-
 	if as.IsMarkedForDeletion() {
-		// APM server will be deleted nothing to do other than run finalizers
+		// APM server will be deleted, remove the watch on the secure secret
+		r.onDelete(k8s.ExtractNamespacedName(&as))
 		return reconcile.Result{}, nil
 	}
 
@@ -255,6 +255,11 @@ func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1bet
 	res, err := results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
 	return res, err
+}
+
+func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
+	// Clean up watches
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 }
 
 func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1beta1.ApmServer) (*corev1.Secret, error) {
@@ -459,11 +464,4 @@ func (r *ReconcileApmServer) updateStatus(state State) error {
 	}
 	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "as_name", state.ApmServer.Name, "iteration", atomic.LoadUint64(&r.iteration))
 	return r.Status().Update(state.ApmServer)
-}
-
-// finalizersFor returns the list of finalizers applying to a given APM deployment
-func (r *ReconcileApmServer) finalizersFor(as apmv1beta1.ApmServer) []finalizer.Finalizer {
-	return []finalizer.Finalizer{
-		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, as.Kind),
-	}
 }

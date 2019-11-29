@@ -26,7 +26,7 @@ import (
 )
 
 func Test_secureSettingsWatchName(t *testing.T) {
-	require.Equal(t, "ns-name-secure-settings", secureSettingsWatchName(types.NamespacedName{Namespace: "ns", Name: "name"}))
+	require.Equal(t, "ns-name-secure-settings", SecureSettingsWatchName(types.NamespacedName{Namespace: "ns", Name: "name"}))
 }
 
 func Test_secureSettingsVolume(t *testing.T) {
@@ -71,22 +71,22 @@ func Test_secureSettingsVolume(t *testing.T) {
 			kb:          testKibanaWithSecureSettings,
 			wantVolume:  &expectedSecretVolume,
 			wantVersion: testSecureSettingsSecret.ResourceVersion,
-			wantWatches: []string{secureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))},
+			wantWatches: []string{SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))},
 		},
 		{
 			name:        "secure setting specified but no secret exists: should return nothing but watch the secret, and emit an event",
 			c:           k8s.WrappedFakeClient(),
-			w:           createWatches(secureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))),
+			w:           createWatches(SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))),
 			kb:          testKibanaWithSecureSettings,
 			wantVolume:  nil,
 			wantVersion: "",
-			wantWatches: []string{secureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))},
+			wantWatches: []string{SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))},
 			wantEvent:   "Warning Unexpected Secure settings secret not found: secure-settings-secret",
 		},
 		{
 			name:        "secure settings removed (was set before): should remove watch",
 			c:           k8s.WrappedFakeClient(&testSecureSettingsSecret),
-			w:           createWatches(secureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))),
+			w:           createWatches(SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))),
 			kb:          testKibana,
 			wantVolume:  nil,
 			wantVersion: "",
