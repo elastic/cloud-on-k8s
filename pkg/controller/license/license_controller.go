@@ -128,7 +128,6 @@ func add(mgr manager.Manager, r *ReconcileLicenses) error {
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
 				return nil
 			}
-			log.Info("Requeueing a request for all clusters")
 			return rs
 		}),
 	}); err != nil {
