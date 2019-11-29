@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -38,7 +37,6 @@ const (
 	// defaultSafetyMargin is the duration used by this controller to ensure licenses are updated well before expiry
 	// In case of any operational issues affecting this controller clusters will have enough runway on their current license.
 	defaultSafetyMargin  = 30 * 24 * time.Hour
-	defaultDeletionDelay = 2 * time.Minute
 	minimumRetryInterval = 1 * time.Hour
 )
 
@@ -66,10 +64,9 @@ func Add(mgr manager.Manager, p operator.Parameters) error {
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLicenses {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{
-		Client:          c,
-		scheme:          mgr.GetScheme(),
-		checker:         license.NewLicenseChecker(c, params.OperatorNamespace),
-		licenseDeletion: chrono.SharedTime{},
+		Client:  c,
+		scheme:  mgr.GetScheme(),
+		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
 }
 
@@ -123,12 +120,6 @@ func add(mgr manager.Manager, r *ReconcileLicenses) error {
 			}
 
 			client := k8s.WrapClient(mgr.GetClient())
-			var deleted corev1.Secret
-			err := client.Get(k8s.ExtractNamespacedName(secret), &deleted)
-			if err != nil && errors.IsNotFound(err) {
-				log.Info("Delete event in watch delaying deletion", "namespace", secret.Namespace, "secret_name", secret.Name)
-				r.licenseDeletion.Delay(defaultDeletionDelay)
-			}
 			// if a license is added/modified we want to update for potentially all clusters managed by this instance
 			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
 			rs, err := reconcileRequestsForAllClusters(client)
@@ -153,9 +144,8 @@ type ReconcileLicenses struct {
 	k8s.Client
 	scheme *runtime.Scheme
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration       uint64
-	checker         license.Checker
-	licenseDeletion chrono.SharedTime
+	iteration uint64
+	checker   license.Checker
 }
 
 // findLicense tries to find the best license available.
@@ -221,24 +211,20 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 		return noResult, true, err
 	}
 	if !found {
-		// no license, delete after delay
-		if r.licenseDeletion.Ready() {
-			log.Info("No enterprise license found. Removing cluster license secret", "es", k8s.ExtractNamespacedName(&cluster))
-			secretName := v1beta1.LicenseSecretName(cluster.Name)
-			err := r.Client.Delete(&corev1.Secret{
-				ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
-					Namespace: cluster.Namespace,
-					Name:      secretName,
-				}),
-			})
-			if err != nil && !errors.IsNotFound(err) {
-				log.Error(err, "failed to delete cluster license secret", "secret_name", secretName, "namespace", cluster.Namespace, "es_name", cluster.Name)
-			}
-			return noResult, true, nil
+		// no license, delete cluster level licenses to revert to basic
+		log.Info("No enterprise license found. Removing cluster license secret", "es", k8s.ExtractNamespacedName(&cluster))
+		secretName := v1beta1.LicenseSecretName(cluster.Name)
+		err := r.Client.Delete(&corev1.Secret{
+			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
+				Namespace: cluster.Namespace,
+				Name:      secretName,
+			}),
+		})
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "failed to delete cluster license secret", "secret_name", secretName, "namespace", cluster.Namespace, "es_name", cluster.Name)
 		}
-		when := r.licenseDeletion.When()
-		log.Info("No enterprise license.  Waiting to delete cluster licenses. Requeueing", "when", when)
-		return when, true, nil
+		return noResult, true, nil
+
 	}
 	// make sure the signature secret is created in the cluster's namespace
 	if err = reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
