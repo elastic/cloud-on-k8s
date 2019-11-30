@@ -55,7 +55,7 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...li
 	if err != nil {
 		return err
 	}
-	var expectedStrings []string
+	expectedStrings := make([]string, len(expectedTypes))
 	for i := range expectedTypes {
 		expectedStrings = append(expectedStrings, string(expectedTypes[i]))
 	}

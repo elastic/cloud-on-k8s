@@ -30,8 +30,8 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
-	licenseSecretName := "eck-e2e-test-license"
-	updatedLicenseSecretName := "eck-e2e-test-license2"
+	licenseSecretName := "eck-e2e-test-license"         // nolint
+	updatedLicenseSecretName := "eck-e2e-test-license2" //nolint
 
 	licenseLevelWatch := test.NewWatcher(
 		"watch license level never drops to basic",
