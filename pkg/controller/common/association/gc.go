@@ -5,6 +5,7 @@
 package association
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -112,7 +113,7 @@ func (ugc *UsersGarbageCollector) GC() error {
 			}
 			_, found := nns[expectedResource]
 			if !found {
-				log.Info("Found orphaned secret", "secret_namespace", secret.Namespace, "secret_name", secret.Name)
+				log.Info("Found orphaned user secret", "secret_namespace", secret.Namespace, "secret_name", secret.Name)
 				err = ugc.clientset.CoreV1().Secrets(secret.Namespace).Delete(secret.Name, &metav1.DeleteOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
@@ -156,9 +157,10 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 		if err != nil {
 			return result, err
 		}
-		if strings.HasSuffix(gvk.Kind, "List") {
-			gvk.Kind = gvk.Kind[:len(gvk.Kind)-4]
+		if !strings.HasSuffix(gvk.Kind, "List") && !meta.IsListType(resource.apiType) {
+			return result, fmt.Errorf("non-list type %T (kind %q) passed as input", resource.apiType, gvk)
 		}
+		gvk.Kind = gvk.Kind[:len(gvk.Kind)-4]
 
 		client, err := ugc.newClientFor(gvk.GroupVersion())
 		if err != nil {
