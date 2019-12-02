@@ -50,7 +50,7 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 	results := r.reconcileInternal(request)
 	current, err := results.Aggregate()
-	log.Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
+	log.V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
 	return current, err
 }
 
@@ -119,10 +119,9 @@ func add(mgr manager.Manager, r *ReconcileLicenses) error {
 				return nil
 			}
 
-			client := k8s.WrapClient(mgr.GetClient())
 			// if a license is added/modified we want to update for potentially all clusters managed by this instance
 			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-			rs, err := reconcileRequestsForAllClusters(client)
+			rs, err := reconcileRequestsForAllClusters(r)
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
@@ -212,7 +211,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 	}
 	if !found {
 		// no license, delete cluster level licenses to revert to basic
-		log.Info("No enterprise license found. Attempting to remove cluster license secret", "es", k8s.ExtractNamespacedName(&cluster))
+		log.Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
 		secretName := v1beta1.LicenseSecretName(cluster.Name)
 		err := r.Client.Delete(&corev1.Secret{
 			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{

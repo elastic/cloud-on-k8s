@@ -186,7 +186,7 @@ func IsConflict(err error) bool {
 	}
 }
 
-// IsForbidden checks whehter the error was an HTTP 403 error.
+// IsForbidden checks whether the error was an HTTP 403 error.
 func IsForbidden(err error) bool {
 	switch err := err.(type) {
 	case *APIError:

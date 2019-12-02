@@ -100,7 +100,8 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, pkgerrors.Wrap(err, "failed to reconcile trial status")
 	}
 	// 4. update trial secret if invalid to give user feedback
-	if r.isTrialRunning() && license.IsMissingFields() == nil {
+	trialSecretPopulated := license.IsMissingFields() == nil
+	if r.isTrialRunning() && trialSecretPopulated {
 		verifier := licensing.Verifier{
 			PublicKey: r.trialPubKey,
 		}
@@ -109,6 +110,8 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 			secret.Annotations[licensing.LicenseInvalidAnnotation] = string(status)
 		}
 	} else {
+		// if the trial secret fields are not populated at this point a user is trying to start a trial a second time
+		// with an empty trial secret, which is not a supported use case.
 		secret.Annotations[licensing.LicenseInvalidAnnotation] = "trial can be started only once"
 	}
 	return reconcile.Result{}, r.Update(&secret)
