@@ -32,6 +32,8 @@ var (
 
 const APIBasePath = "/apis"
 
+type clientFactory func(baseConfig *rest.Config, gv schema.GroupVersion) (rest.Interface, error)
+
 // UsersGarbageCollector allows to remove unused Users. Users should be deleted as part of the association controllers
 // reconciliation loop. But without a Finalizer nothing prevent the associated resource to be removed while the
 // operator is not running.
@@ -40,6 +42,9 @@ const APIBasePath = "/apis"
 type UsersGarbageCollector struct {
 	// clientset is used to list potential orphaned secrets
 	clientset kubernetes.Interface
+
+	// clientFactory provides a REST client for a given resource
+	clientFactory clientFactory
 
 	baseConfig *rest.Config
 
@@ -64,10 +69,11 @@ func NewUsersGarbageCollector(clientset kubernetes.Interface, cfg *rest.Config, 
 	}
 
 	return &UsersGarbageCollector{
-		clientset:  clientset,
-		baseConfig: cfg,
-		mapper:     mapper,
-		scheme:     scheme,
+		clientset:     clientset,
+		clientFactory: newClientFor,
+		baseConfig:    cfg,
+		mapper:        mapper,
+		scheme:        scheme,
 	}, nil
 }
 
@@ -113,7 +119,7 @@ func (ugc *UsersGarbageCollector) GC() error {
 			}
 			_, found := nns[expectedResource]
 			if !found {
-				log.Info("Found orphaned user secret", "secret_namespace", secret.Namespace, "secret_name", secret.Name)
+				log.Info("Found orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
 				err = ugc.clientset.CoreV1().Secrets(secret.Namespace).Delete(secret.Name, &metav1.DeleteOptions{})
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
@@ -157,12 +163,12 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 		if err != nil {
 			return result, err
 		}
-		if !strings.HasSuffix(gvk.Kind, "List") && !meta.IsListType(resource.apiType) {
+		if !(strings.HasSuffix(gvk.Kind, "List") && meta.IsListType(resource.apiType)) {
 			return result, fmt.Errorf("non-list type %T (kind %q) passed as input", resource.apiType, gvk)
 		}
 		gvk.Kind = gvk.Kind[:len(gvk.Kind)-4]
 
-		client, err := ugc.newClientFor(gvk.GroupVersion())
+		client, err := ugc.clientFactory(ugc.baseConfig, gvk.GroupVersion())
 		if err != nil {
 			return result, err
 		}
@@ -188,8 +194,8 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 }
 
 // newClientFor returns a rest client to access a given resource
-func (ugc *UsersGarbageCollector) newClientFor(gv schema.GroupVersion) (*rest.RESTClient, error) {
-	cfg := rest.CopyConfig(ugc.baseConfig)
+func newClientFor(baseConfig *rest.Config, gv schema.GroupVersion) (rest.Interface, error) {
+	cfg := rest.CopyConfig(baseConfig)
 	cfg.ContentConfig.GroupVersion = &gv
 	cfg.APIPath = APIBasePath
 	cfg.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
