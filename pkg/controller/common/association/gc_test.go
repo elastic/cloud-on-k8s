@@ -42,7 +42,7 @@ const (
 func fakeClientFactory(baseConfig *rest.Config, gv schema.GroupVersion) (rest.Interface, error) {
 	codecs := serializer.NewCodecFactory(k8s.Scheme())
 	return &fakerest.RESTClient{
-		Client:               fakerest.CreateHTTPClient(newFakeRoundTripper()),
+		Client:               fakerest.CreateHTTPClient(newFakeRoundTripper()), // nolint
 		NegotiatedSerializer: codecs.WithoutConversion(),
 		GroupVersion:         gv,
 		// not strictly necessary here, but let's try to have something similar to the reality
