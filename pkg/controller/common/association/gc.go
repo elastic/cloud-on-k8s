@@ -103,7 +103,7 @@ func (ugc *UsersGarbageCollector) RegisterForUserGC(
 }
 
 func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
-	var userSecrets []v1.Secret
+	var userSecrets []v1.Secret // nolint
 	for _, namespace := range ugc.managedNamespaces {
 		userSecretsInNamespace, err := getUserSecretsInNamespace(ugc.clientset, namespace)
 		if err != nil {
@@ -233,7 +233,7 @@ func (ugc *UsersGarbageCollector) getResourcesInNamespace(
 	client rest.Interface,
 	gvk schema.GroupVersionKind,
 ) ([]metav1.PartialObjectMetadata, error) {
-	var objects []metav1.PartialObjectMetadata
+	var objects []metav1.PartialObjectMetadata // nolint
 	mapping, err := ugc.mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return objects, err
