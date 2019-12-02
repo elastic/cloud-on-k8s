@@ -6,10 +6,12 @@ package elasticsearch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -17,10 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	licenseSecretName = "e2e-enterprise-license"
+	"k8s.io/apimachinery/pkg/types"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type LicenseTestContext struct {
@@ -47,38 +47,43 @@ func (ltctx *LicenseTestContext) Init() test.Step {
 	}
 }
 
+func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...license.ElasticsearchLicenseType) error {
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	defer cancel()
+
+	l, err := ltctx.esClient.GetLicense(ctx)
+	if err != nil {
+		return err
+	}
+	expectedStrings := make([]string, len(expectedTypes))
+	for i := range expectedTypes {
+		expectedStrings = append(expectedStrings, string(expectedTypes[i]))
+	}
+	if !stringsutil.StringInSlice(l.Type, expectedStrings) {
+		return fmt.Errorf("expectedTypes license type %v got %s", expectedStrings, l.Type)
+	}
+	return nil
+}
+
 func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...license.ElasticsearchLicenseType) test.Step {
 	return test.Step{
 		Name: fmt.Sprintf("Elasticsearch license should be %v", expectedTypes),
 		Test: test.Eventually(func() error {
-			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-			defer cancel()
-
-			l, err := ltctx.esClient.GetLicense(ctx)
-			if err != nil {
-				return err
-			}
-			var expectedStrings []string
-			for i := range expectedTypes {
-				expectedStrings = append(expectedStrings, string(expectedTypes[i]))
-			}
-			if !stringsutil.StringInSlice(l.Type, expectedStrings) {
-				return fmt.Errorf("expectedTypes license type %v got %s", expectedStrings, l.Type)
-			}
-			return nil
+			return ltctx.CheckElasticsearchLicenseFn(expectedTypes...)
 		}),
 	}
 }
 
-func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(licenseBytes []byte) test.Step {
+func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string, licenseBytes []byte) test.Step {
 	return test.Step{
 		Name: "Creating enterprise license secret",
 		Test: func(t *testing.T) {
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
-					Name:      licenseSecretName,
+					Name:      secretName,
 					Labels: map[string]string{
+						common.TypeLabelName:     license.Type,
 						license.LicenseLabelType: string(license.LicenseTypeEnterprise),
 					},
 				},
@@ -91,16 +96,17 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(licenseBytes []by
 	}
 }
 
-func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret() test.Step {
+func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName string) test.Step {
 	return test.Step{
 		Name: "Creating enterprise trial license secret",
 		Test: func(t *testing.T) {
 			sec := corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: test.Ctx().ManagedNamespace(0),
-					Name:      licenseSecretName,
+					Name:      secretName,
 					Labels: map[string]string{
 						license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
+						common.TypeLabelName:     license.Type,
 					},
 					Annotations: map[string]string{
 						license.EULAAnnotation: license.EULAAcceptedValue,
@@ -112,7 +118,28 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret() test.Step 
 	}
 }
 
-func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret() test.Step {
+func (ltctx *LicenseTestContext) CheckEnterpriseTrialLicenseInvalid(secretName string) test.Step {
+	return test.Step{
+		Name: "Check enterprise trial license is annotated as invalid",
+		Test: test.Eventually(func() error {
+			var licenseSecret corev1.Secret
+			err := ltctx.k.Client.Get(types.NamespacedName{
+				Namespace: test.Ctx().ManagedNamespace(0),
+				Name:      secretName,
+			}, &licenseSecret)
+			if err != nil {
+				return err
+			}
+			_, exists := licenseSecret.Annotations[license.LicenseInvalidAnnotation]
+			if !exists {
+				return errors.New("license should be marked as invalid, but was not")
+			}
+			return nil
+		}),
+	}
+}
+
+func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName string) test.Step {
 	return test.Step{
 		Name: "Removing any test enterprise license secrets",
 		Test: func(t *testing.T) {
@@ -124,14 +151,23 @@ func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret() test.Step {
 				},
 			}
 			_ = ltctx.k.Client.Delete(&sec)
-			// Delete operator trial status secret
-			sec = corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: test.Ctx().GlobalOperator.Namespace,
-					Name:      license.TrialStatusSecretKey,
-				},
+		},
+	}
+}
+
+func (ltctx *LicenseTestContext) DeleteAllEnterpriseLicenseSecrets() test.Step {
+	return test.Step{
+		Name: "Removing any test enterprise license secrets",
+		Test: func(t *testing.T) {
+			// Delete operator license secret
+			var licenseSecrets corev1.SecretList
+			err := ltctx.k.Client.List(&licenseSecrets, k8sclient.MatchingLabels(map[string]string{common.TypeLabelName: license.Type}))
+			if err != nil {
+				t.Log(err)
 			}
-			_ = ltctx.k.Client.Delete(&sec)
+			for _, s := range licenseSecrets.Items {
+				_ = ltctx.k.Client.Delete(&s)
+			}
 		},
 	}
 }

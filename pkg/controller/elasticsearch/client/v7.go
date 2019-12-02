@@ -27,6 +27,11 @@ func (c *clientV7) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequ
 	return response, c.post(ctx, "/_license", licenses, &response)
 }
 
+func (c *clientV7) StartBasic(ctx context.Context) (StartBasicResponse, error) {
+	var response StartBasicResponse
+	return response, c.post(ctx, "/_license/start_basic?acknowledge=true", nil, &response)
+}
+
 func (c *clientV7) StartTrial(ctx context.Context) (StartTrialResponse, error) {
 	var response StartTrialResponse
 	return response, c.post(ctx, "/_license/start_trial?acknowledge=true", nil, &response)

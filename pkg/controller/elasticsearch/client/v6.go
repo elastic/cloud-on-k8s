@@ -99,6 +99,11 @@ func (c *clientV6) StartTrial(ctx context.Context) (StartTrialResponse, error) {
 	return response, c.post(ctx, "/_xpack/license/start_trial?acknowledge=true", nil, &response)
 }
 
+func (c *clientV6) StartBasic(ctx context.Context) (StartBasicResponse, error) {
+	var response StartBasicResponse
+	return response, c.post(ctx, "/_xpack/license/start_basic?acknowledge=true", nil, &response)
+}
+
 func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
 	return errors.New("Not supported in Elasticsearch 6.x")
 }
