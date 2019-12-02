@@ -280,7 +280,7 @@ func execute() {
 		},
 	}
 
-	ugc, err := association.NewUsersGarbageCollector(clientset, cfg, mgr.GetScheme())
+	ugc, err := association.NewUsersGarbageCollector(clientset, managedNamespaces, cfg, mgr.GetScheme())
 	if err != nil {
 		log.Error(err, "unable to setup user garbage collector")
 		os.Exit(1)
