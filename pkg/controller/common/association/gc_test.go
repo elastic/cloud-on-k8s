@@ -129,11 +129,12 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 
 	restMapper := &fakeRESTMapper{}
 	ugc := &UsersGarbageCollector{
-		clientset:     clientset,
-		baseConfig:    &rest.Config{},
-		mapper:        restMapper,
-		scheme:        k8s.Scheme(),
-		clientFactory: fakeClientFactory,
+		clientset:         clientset,
+		baseConfig:        &rest.Config{},
+		mapper:            restMapper,
+		scheme:            k8s.Scheme(),
+		clientFactory:     fakeClientFactory,
+		managedNamespaces: []string{""},
 	}
 
 	// register some resources

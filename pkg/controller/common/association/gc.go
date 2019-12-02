@@ -30,7 +30,10 @@ var (
 	log = logf.Log.WithName("association")
 )
 
-const APIBasePath = "/apis"
+const (
+	APIBasePath   = "/apis"
+	AllNamespaces = ""
+)
 
 type clientFactory func(baseConfig *rest.Config, gv schema.GroupVersion) (rest.Interface, error)
 
@@ -54,6 +57,9 @@ type UsersGarbageCollector struct {
 	// registeredResources are resources that will be garbage collect of they are
 	// detected as orphaned.
 	registeredResources []registeredResource
+
+	// managed namespaces
+	managedNamespaces []string
 }
 
 type registeredResource struct {
@@ -62,18 +68,23 @@ type registeredResource struct {
 }
 
 // NewUsersGarbageCollector creates a new UsersGarbageCollector instance.
-func NewUsersGarbageCollector(clientset kubernetes.Interface, cfg *rest.Config, scheme *runtime.Scheme) (*UsersGarbageCollector, error) {
+func NewUsersGarbageCollector(clientset kubernetes.Interface, managedNamespaces []string, cfg *rest.Config, scheme *runtime.Scheme) (*UsersGarbageCollector, error) {
 	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(managedNamespaces) == 0 {
+		managedNamespaces = []string{AllNamespaces}
+	}
+
 	return &UsersGarbageCollector{
-		clientset:     clientset,
-		clientFactory: newClientFor,
-		baseConfig:    cfg,
-		mapper:        mapper,
-		scheme:        scheme,
+		clientset:         clientset,
+		clientFactory:     newClientFor,
+		baseConfig:        cfg,
+		mapper:            mapper,
+		scheme:            scheme,
+		managedNamespaces: managedNamespaces,
 	}, nil
 }
 
@@ -91,6 +102,31 @@ func (ugc *UsersGarbageCollector) RegisterForUserGC(
 	)
 }
 
+func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
+	var userSecrets []v1.Secret
+	for _, namespace := range ugc.managedNamespaces {
+		userSecretsInNamespace, err := getUserSecretsInNamespace(ugc.clientset, namespace)
+		if err != nil {
+			return userSecrets, err
+		}
+		userSecrets = append(userSecrets, userSecretsInNamespace...)
+	}
+	return userSecrets, nil
+}
+
+func getUserSecretsInNamespace(clientset kubernetes.Interface, namespace string) ([]v1.Secret, error) {
+	labelSelector := metav1.LabelSelector{
+		MatchLabels: map[string]string{common.TypeLabelName: user.UserType},
+	}
+	secrets, err := clientset.CoreV1().Secrets(namespace).List(metav1.ListOptions{
+		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return secrets.Items, nil
+}
+
 // GC runs the User garbage collector.
 func (ugc *UsersGarbageCollector) GC() error {
 
@@ -100,14 +136,12 @@ func (ugc *UsersGarbageCollector) GC() error {
 	}
 
 	// 1. List all secrets of type "user"
-	labelSelector := metav1.LabelSelector{
-		MatchLabels: map[string]string{common.TypeLabelName: user.UserType},
-	}
-	secrets, err := ugc.clientset.CoreV1().Secrets("").List(metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
-	})
+	secrets, err := ugc.getUserSecrets()
 	if err != nil {
 		return err
+	}
+	if len(secrets) == 0 {
+		return nil
 	}
 
 	// 2. List all parent resources. We retrieve *all* the registered resources in order to reduce the amount of
@@ -117,7 +151,7 @@ func (ugc *UsersGarbageCollector) GC() error {
 		return err
 	}
 
-	for _, secret := range secrets.Items {
+	for _, secret := range secrets {
 		if apiType, expectedResource, match := ugc.matchRegisteredResource(secret); match {
 			nns, ok := registeredResources[*apiType]
 			if !ok {
@@ -179,16 +213,11 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 			return result, err
 		}
 
-		mapping, err := ugc.mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		allResources, err := ugc.getResourcesInNamespace(client, gvk)
 		if err != nil {
 			return result, err
 		}
-		r := &metav1.PartialObjectMetadataList{}
-		err = client.Get().Resource(mapping.Resource.Resource).Do().Into(r)
-		if err != nil {
-			return result, err
-		}
-		for _, metadata := range r.Items {
+		for _, metadata := range allResources {
 			resources[types.NamespacedName{
 				Namespace: metadata.Namespace,
 				Name:      metadata.Name,
@@ -197,6 +226,27 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 	}
 
 	return result, nil
+}
+
+// getResourcesInNamespace returns all resources of the given GroupVersionKind in the managed namespaces
+func (ugc *UsersGarbageCollector) getResourcesInNamespace(
+	client rest.Interface,
+	gvk schema.GroupVersionKind,
+) ([]metav1.PartialObjectMetadata, error) {
+	var objects []metav1.PartialObjectMetadata
+	mapping, err := ugc.mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return objects, err
+	}
+	for _, namespace := range ugc.managedNamespaces {
+		r := &metav1.PartialObjectMetadataList{}
+		err = client.Get().Namespace(namespace).Resource(mapping.Resource.Resource).Do().Into(r)
+		if err != nil {
+			return objects, err
+		}
+		objects = append(objects, r.Items...)
+	}
+	return objects, nil
 }
 
 // newClientFor returns a rest client to access a given resource
