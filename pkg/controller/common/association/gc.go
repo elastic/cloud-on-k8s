@@ -93,6 +93,12 @@ func (ugc *UsersGarbageCollector) RegisterForUserGC(
 
 // GC runs the User garbage collector.
 func (ugc *UsersGarbageCollector) GC() error {
+
+	// Shortcut execution if there's no resources to garbage collect
+	if len(ugc.registeredResources) == 0 {
+		return nil
+	}
+
 	// 1. List all secrets of type "user"
 	labelSelector := metav1.LabelSelector{
 		MatchLabels: map[string]string{common.TypeLabelName: user.UserType},
