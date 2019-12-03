@@ -40,7 +40,7 @@ func ChecksUser(t *testing.T, secret *corev1.Secret, expectedUsername string, ex
 	assert.ElementsMatch(t, expectedRoles, strings.Split(string(currentRoles), ","))
 }
 
-// DeleteUser deletes the user Secret using the provided label selector.
+// DeleteUser deletes the user Secrets using the provided label selector.
 func DeleteUser(c k8s.Client, opts ...client.ListOption) error {
 	var secrets corev1.SecretList
 	if err := c.List(&secrets, opts...); err != nil {

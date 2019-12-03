@@ -38,7 +38,7 @@ const (
 type clientFactory func(baseConfig *rest.Config, gv schema.GroupVersion) (rest.Interface, error)
 
 // UsersGarbageCollector allows to remove unused Users. Users should be deleted as part of the association controllers
-// reconciliation loop. But without a Finalizer nothing prevent the associated resource to be removed while the
+// reconciliation loop. But without a Finalizer nothing prevents the associated resource to be removed while the
 // operator is not running.
 // This code is intended to be run during startup, before the controllers are started, to detect and delete such
 // orphaned resources.
@@ -53,11 +53,10 @@ type UsersGarbageCollector struct {
 
 	scheme *runtime.Scheme
 
-	// registeredResources are resources that will be garbage collect of they are
+	// registeredResources are resources that will be garbage collected if they are
 	// detected as orphaned.
 	registeredResources []registeredResource
 
-	// managed namespaces
 	managedNamespaces []string
 }
 

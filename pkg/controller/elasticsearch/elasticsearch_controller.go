@@ -308,10 +308,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 }
 
 // onDelete garbage collect resources when a Elasticsearch cluster is deleted
-func (r *ReconcileElasticsearch) onDelete(
-	es types.NamespacedName,
-) {
-	// Stop tracking that cluster in expectations.
+func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))

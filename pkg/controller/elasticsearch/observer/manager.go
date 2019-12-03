@@ -65,7 +65,7 @@ func (m *Manager) createObserver(cluster types.NamespacedName, esClient client.C
 }
 
 // StopObserving stops and deletes the observer for the given cluster
-// aimed to be called automatically when an Elasticsearch resource is deleted.
+// aimed to be called when an Elasticsearch resource is deleted.
 func (m *Manager) StopObserving(cluster types.NamespacedName) {
 	m.lock.RLock()
 	observer, exists := m.observers[cluster]
