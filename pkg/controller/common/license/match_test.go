@@ -49,15 +49,13 @@ func Test_bestMatchAt(t *testing.T) {
 		args      args
 		want      client.License
 		wantFound bool
-		wantErr   bool
 	}{
 		{
-			name:      "error: no licenses",
+			name:      "no result: no licenses",
 			wantFound: false,
-			wantErr:   false,
 		},
 		{
-			name: "error: only expired enterprise license",
+			name: "no result: only expired enterprise license",
 			args: args{
 				licenses: []EnterpriseLicense{{
 					License: LicenseSpec{
@@ -68,10 +66,9 @@ func Test_bestMatchAt(t *testing.T) {
 				}},
 			},
 			wantFound: false,
-			wantErr:   true,
 		},
 		{
-			name: "error: only expired nested licenses",
+			name: "no result: only expired nested licenses",
 			args: args{
 				licenses: []EnterpriseLicense{
 					{
@@ -92,7 +89,6 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      client.License{},
 			wantFound: false,
-			wantErr:   true,
 		},
 		{
 			name: "success: longest valid platinum",
@@ -113,7 +109,6 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      license(twelveMonth, platinum),
 			wantFound: true,
-			wantErr:   false,
 		},
 		{
 			name: "success: longest valid from multiple enterprise licenses",
@@ -142,7 +137,6 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      license(twelveMonth, platinum),
 			wantFound: true,
-			wantErr:   false,
 		},
 		{
 			name: "success: best license",
@@ -172,17 +166,12 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      license(twoMonth, platinum),
 			wantFound: true,
-			wantErr:   false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			got, _, found, err := bestMatchAt(now, tt.args.licenses, noopFilter)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("bestMatchAt() error = %v, wantErr %v, got %v", err, tt.wantErr, got)
-				return
-			}
+			got, _, found := bestMatchAt(now, tt.args.licenses, noopFilter)
 			if tt.wantFound != found {
 				t.Errorf("bestMatchAt() found = %v, want %v", found, tt.wantFound)
 			}

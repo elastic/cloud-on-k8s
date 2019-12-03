@@ -147,7 +147,7 @@ type ReconcileLicenses struct {
 }
 
 // findLicense tries to find the best license available.
-func findLicense(c k8s.Client, checker license.Checker) (esclient.License, string, bool, error) {
+func findLicense(c k8s.Client, checker license.Checker) (esclient.License, string, bool) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
 		log.Info("Ignoring invalid license objects", "errors", errs)
@@ -205,10 +205,7 @@ func reconcileSecret(
 // Returns time to next reconciliation, bool whether a license is configured at all and optional error.
 func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearch) (time.Time, bool, error) {
 	var noResult time.Time
-	matchingSpec, parent, found, err := findLicense(r, r.checker)
-	if err != nil {
-		return noResult, true, err
-	}
+	matchingSpec, parent, found := findLicense(r, r.checker)
 	if !found {
 		// no license, delete cluster level licenses to revert to basic
 		log.Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
@@ -225,11 +222,12 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 		return noResult, true, nil
 
 	}
+	log.V(1).Info("Found license for cluster", "license", parent, "license_type", matchingSpec.Type, "namespace", cluster.Namespace, "es_name", cluster.Name)
 	// make sure the signature secret is created in the cluster's namespace
-	if err = reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
+	if err := reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
 		return noResult, false, err
 	}
-	return matchingSpec.ExpiryTime(), false, err
+	return matchingSpec.ExpiryTime(), false, nil
 }
 
 func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconciler.Results {
