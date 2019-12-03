@@ -23,7 +23,7 @@ func TestVersionUpgrade(t *testing.T) {
 	name := "test-version-upgrade"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithVersion("7.4.1")
+		WithVersion("7.4.2")
 
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
@@ -45,7 +45,7 @@ func TestVersionUpgrade(t *testing.T) {
 	test.RunMutationsWhileWatching(
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
-		[]test.Builder{esBuilder, kbBuilder.WithVersion("7.4.1").WithMutatedFrom(&kbBuilder)},
+		[]test.Builder{esBuilder, kbBuilder.WithVersion("7.4.2").WithMutatedFrom(&kbBuilder)},
 		[]test.Watcher{NewReadinessWatcher(opts...), NewVersionWatcher(opts...)},
 	)
 }
@@ -54,7 +54,7 @@ func TestVersionUpgradeAndRespec(t *testing.T) {
 	name := "test-upgrade-and-respec"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithVersion("7.4.1")
+		WithVersion("7.4.2")
 
 	kbBuilder1 := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
@@ -64,7 +64,7 @@ func TestVersionUpgradeAndRespec(t *testing.T) {
 	// perform a Kibana version upgrade immediately followed by a Kibana configuration change.
 	// we want to make sure that the second upgrade will be done in rolling upgrade fashion instead of terminating
 	// and recreating all the pods at once.
-	kbBuilder2 := kbBuilder1.WithMutatedFrom(&kbBuilder1).WithVersion("7.4.1")
+	kbBuilder2 := kbBuilder1.WithMutatedFrom(&kbBuilder1).WithVersion("7.4.2")
 	kbBuilder3 := kbBuilder2.WithMutatedFrom(&kbBuilder2).WithLabel("some", "label")
 
 	opts := []client.ListOption{
