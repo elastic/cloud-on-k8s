@@ -51,7 +51,6 @@ type UsersGarbageCollector struct {
 
 	baseConfig *rest.Config
 
-	mapper meta.RESTMapper
 	scheme *runtime.Scheme
 
 	// registeredResources are resources that will be garbage collect of they are
@@ -68,12 +67,7 @@ type registeredResource struct {
 }
 
 // NewUsersGarbageCollector creates a new UsersGarbageCollector instance.
-func NewUsersGarbageCollector(clientset kubernetes.Interface, managedNamespaces []string, cfg *rest.Config, scheme *runtime.Scheme) (*UsersGarbageCollector, error) {
-	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
-	if err != nil {
-		return nil, err
-	}
-
+func NewUsersGarbageCollector(clientset kubernetes.Interface, managedNamespaces []string, cfg *rest.Config, scheme *runtime.Scheme) *UsersGarbageCollector {
 	if len(managedNamespaces) == 0 {
 		managedNamespaces = []string{AllNamespaces}
 	}
@@ -82,24 +76,24 @@ func NewUsersGarbageCollector(clientset kubernetes.Interface, managedNamespaces 
 		clientset:         clientset,
 		clientFactory:     newClientFor,
 		baseConfig:        cfg,
-		mapper:            mapper,
 		scheme:            scheme,
 		managedNamespaces: managedNamespaces,
-	}, nil
+	}
 }
 
-// RegisterForUserGC is used to register the associated resources and the annotation names needed to resolve the name
+// For is used to register the associated resources and the annotation names needed to resolve the name
 // of the associated resource.
-func (ugc *UsersGarbageCollector) RegisterForUserGC(
+func (ugc *UsersGarbageCollector) For(
 	apiType runtime.Object,
 	associationNamespaceLabel, associationNameLabel string,
-) {
+) *UsersGarbageCollector {
 	ugc.registeredResources = append(ugc.registeredResources,
 		registeredResource{
 			apiType:                   apiType,
 			associationNameLabel:      associationNameLabel,
 			associationNamespaceLabel: associationNamespaceLabel},
 	)
+	return ugc
 }
 
 func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
@@ -127,8 +121,8 @@ func getUserSecretsInNamespace(clientset kubernetes.Interface, namespace string)
 	return secrets.Items, nil
 }
 
-// GC runs the User garbage collector.
-func (ugc *UsersGarbageCollector) GC() error {
+// DoGarbageCollection runs the User garbage collector.
+func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 
 	// Shortcut execution if there's no resources to garbage collect
 	if len(ugc.registeredResources) == 0 {
@@ -234,7 +228,11 @@ func (ugc *UsersGarbageCollector) getResourcesInNamespace(
 	gvk schema.GroupVersionKind,
 ) ([]metav1.PartialObjectMetadata, error) {
 	var objects []metav1.PartialObjectMetadata // nolint
-	mapping, err := ugc.mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+	mapper, err := apiutil.NewDiscoveryRESTMapper(ugc.baseConfig)
+	if err != nil {
+		return objects, err
+	}
+	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return objects, err
 	}

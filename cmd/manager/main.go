@@ -280,11 +280,6 @@ func execute() {
 		},
 	}
 
-	ugc, err := association.NewUsersGarbageCollector(clientset, managedNamespaces, cfg, mgr.GetScheme())
-	if err != nil {
-		log.Error(err, "unable to setup user garbage collector")
-		os.Exit(1)
-	}
 	if operator.HasRole(operator.WebhookServer, roles) {
 		setupWebhook(mgr, params.CertRotation, clientset)
 	}
@@ -306,12 +301,20 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
 			os.Exit(1)
 		}
-		ugc.RegisterForUserGC(&apmtype.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName)
 		if err = kbassn.Add(mgr, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
 			os.Exit(1)
 		}
-		ugc.RegisterForUserGC(&kibanatype.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName)
+
+		// With the removal of Finalizers we must check for any orphaned user Secrets, and garbage collect them if any.
+		err = association.NewUsersGarbageCollector(clientset, managedNamespaces, cfg, mgr.GetScheme()).
+			For(&apmtype.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName).
+			For(&kibanatype.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName).
+			DoGarbageCollection()
+		if err != nil {
+			log.Error(err, "user garbage collector failed")
+			os.Exit(1)
+		}
 	}
 	if operator.HasRole(operator.GlobalOperator, roles) {
 		if err = license.Add(mgr, params); err != nil {
@@ -322,12 +325,6 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "LicenseTrial")
 			os.Exit(1)
 		}
-	}
-
-	err = ugc.GC()
-	if err != nil {
-		log.Error(err, "user garbage collector failed")
-		os.Exit(1)
 	}
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,

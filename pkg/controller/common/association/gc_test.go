@@ -138,12 +138,12 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 	}
 
 	// register some resources
-	ugc.RegisterForUserGC(&apmtype.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
-	ugc.RegisterForUserGC(&kibanatype.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
+	ugc.For(&apmtype.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
+	ugc.For(&kibanatype.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
 
-	err := ugc.GC()
+	err := ugc.DoGarbageCollection()
 	if err != nil {
-		t.Errorf("UsersGarbageCollector.GC() error = %v", err)
+		t.Errorf("UsersGarbageCollector.DoGarbageCollection() error = %v", err)
 		return
 	}
 
