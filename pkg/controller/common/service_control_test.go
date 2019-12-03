@@ -5,10 +5,11 @@
 package common
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -159,13 +160,50 @@ func TestNeedsUpdate(t *testing.T) {
 				Ports:                 []corev1.ServicePort{{Port: int32(9200), NodePort: int32(33433)}},
 			}},
 		},
+		{
+			name: "Annotations and labels are preserved",
+			args: args{
+				expected: corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "kibana-service",
+						Labels:      map[string]string{"label1": "label1val"},
+						Annotations: map[string]string{"annotation1": "annotation1val"},
+					},
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: "1.2.3.4",
+					},
+				},
+				reconciled: corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "kibana-service",
+						Labels:      map[string]string{"label1": "label1val", "label2": "label2val"},
+						Annotations: map[string]string{"annotation1": "annotation1val", "annotation2": "annotation2val"},
+					},
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: "1.2.3.4",
+					},
+				},
+			},
+			want: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "kibana-service",
+					Labels:      map[string]string{"label1": "label1val", "label2": "label2val"},
+					Annotations: map[string]string{"annotation1": "annotation1val", "annotation2": "annotation2val"},
+				},
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "1.2.3.4",
+				},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_ = needsUpdate(&tt.args.expected, &tt.args.reconciled)
-			if !reflect.DeepEqual(tt.args.expected, tt.want) {
-				t.Errorf("needsUpdate(expected, reconcilied); expected is %v, want %v", tt.args.expected, tt.want)
-			}
+			compare.JSONEqual(t, tt.want, tt.args.expected)
 		})
 	}
 }

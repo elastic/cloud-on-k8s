@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -76,6 +77,9 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 	if expected.Spec.HealthCheckNodePort == 0 {
 		expected.Spec.HealthCheckNodePort = reconciled.Spec.HealthCheckNodePort
 	}
+
+	expected.Annotations = maps.MergePreservingExistingKeys(expected.Annotations, reconciled.Annotations)
+	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, reconciled.Labels)
 
 	return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
 }

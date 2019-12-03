@@ -156,3 +156,76 @@ func TestMerge(t *testing.T) {
 		})
 	}
 }
+
+func TestMergePreservingExistingKeys(t *testing.T) {
+	tests := []struct {
+		name string
+		dest map[string]string
+		src  map[string]string
+		want map[string]string
+	}{
+		{
+			name: "when dest is nil",
+			src:  map[string]string{"x": "y"},
+			want: map[string]string{"x": "y"},
+		},
+		{
+			name: "when src is nil",
+			dest: map[string]string{"x": "y"},
+			want: map[string]string{"x": "y"},
+		},
+		{
+			name: "when both maps are nil",
+		},
+		{
+			name: "when dest is empty",
+			dest: map[string]string{},
+			src:  map[string]string{"x": "y"},
+			want: map[string]string{"x": "y"},
+		},
+		{
+			name: "when src is empty",
+			dest: map[string]string{"x": "y"},
+			src:  map[string]string{},
+			want: map[string]string{"x": "y"},
+		},
+		{
+			name: "when both maps are empty",
+			dest: map[string]string{},
+			src:  map[string]string{},
+			want: map[string]string{},
+		},
+		{
+			name: "when both maps contain the same items",
+			dest: map[string]string{"x": "y", "a": "b"},
+			src:  map[string]string{"x": "y", "a": "b"},
+			want: map[string]string{"x": "y", "a": "b"},
+		},
+		{
+			name: "when keys are the same but value are different",
+			dest: map[string]string{"x": "p", "a": "q"},
+			src:  map[string]string{"x": "y", "a": "b"},
+			want: map[string]string{"x": "p", "a": "q"},
+		},
+
+		{
+			name: "when dest has fewer items than src",
+			dest: map[string]string{"x": "y"},
+			src:  map[string]string{"x": "z", "a": "b"},
+			want: map[string]string{"x": "y", "a": "b"},
+		},
+		{
+			name: "when dest has more items than src",
+			dest: map[string]string{"x": "y", "a": "b"},
+			src:  map[string]string{"x": "z"},
+			want: map[string]string{"x": "y", "a": "b"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			have := MergePreservingExistingKeys(tt.dest, tt.src)
+			require.Equal(t, tt.want, have)
+		})
+	}
+}
