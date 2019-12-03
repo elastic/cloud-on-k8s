@@ -181,6 +181,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		// APM Server has been deleted, remove related artifacts.
 		r.onDelete(types.NamespacedName{
 			Namespace: request.Namespace,
 			Name:      request.Name,
@@ -197,7 +198,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
-	// Remove any previous Finalizers
+	// Remove any previous finalizer used in ECK v1.0.0-beta1 that we don't need anymore
 	if err := finalizer.RemoveAll(r.Client, &as); err != nil {
 		return reconcile.Result{}, err
 	}

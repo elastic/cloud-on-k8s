@@ -49,6 +49,9 @@ type UsersGarbageCollector struct {
 	// clientFactory provides a REST client for a given resource
 	clientFactory clientFactory
 
+	// an optional mapper can be provided to be used in unit test
+	mapper meta.RESTMapper
+
 	baseConfig *rest.Config
 
 	scheme *runtime.Scheme
@@ -227,10 +230,18 @@ func (ugc *UsersGarbageCollector) getResourcesInNamespace(
 	gvk schema.GroupVersionKind,
 ) ([]metav1.PartialObjectMetadata, error) {
 	var objects []metav1.PartialObjectMetadata // nolint
-	mapper, err := apiutil.NewDiscoveryRESTMapper(ugc.baseConfig)
-	if err != nil {
-		return objects, err
+
+	var mapper meta.RESTMapper
+	if ugc.mapper == nil {
+		newMapper, err := apiutil.NewDiscoveryRESTMapper(ugc.baseConfig)
+		if err != nil {
+			return objects, err
+		}
+		mapper = newMapper
+	} else {
+		mapper = ugc.mapper
 	}
+
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
 		return objects, err
