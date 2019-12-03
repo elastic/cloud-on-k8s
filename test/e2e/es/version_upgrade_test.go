@@ -11,8 +11,8 @@ import (
 )
 
 func TestVersionUpgrade680To730(t *testing.T) {
-	initial := elasticsearch.NewBuilder("test-version-up-3-680-to-730").
-		WithVersion("6.8.0").
+	initial := elasticsearch.NewBuilder("test-version-up-3-685-to-730").
+		WithVersion("6.8.5").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
@@ -23,31 +23,31 @@ func TestVersionUpgrade680To730(t *testing.T) {
 }
 
 func TestVersionUpgradeSingle680To730(t *testing.T) {
-	initial := elasticsearch.NewBuilder("test-version-up-1-680-to-730").
-		WithVersion("6.8.0").
+	initial := elasticsearch.NewBuilder("test-version-up-1-685-to-732").
+		WithVersion("6.8.5").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion("7.3.0").
+		WithVersion("7.3.2").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
 
 func TestVersionUpgradeSingle710To730(t *testing.T) {
-	initial := elasticsearch.NewBuilder("test-version-up-1-710-to-730").
+	initial := elasticsearch.NewBuilder("test-version-up-1-710-to-732").
 		WithVersion("7.1.0").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion("7.3.0").
+		WithVersion("7.3.2").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
 
 func TestVersionUpgradeSingle740To750(t *testing.T) {
-	initial := elasticsearch.NewBuilder("test-version-up-1-740-to-750").
+	initial := elasticsearch.NewBuilder("test-version-up-1-742-to-750").
 		WithVersion("7.4.2").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
