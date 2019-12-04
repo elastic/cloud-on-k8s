@@ -75,8 +75,9 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 	)
 
 	ugc := &UsersGarbageCollector{
-		client: client,
-		scheme: k8s.Scheme(),
+		client:            client,
+		scheme:            k8s.Scheme(),
+		managedNamespaces: []string{AllNamespaces},
 	}
 
 	// register some resources
