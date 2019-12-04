@@ -189,13 +189,17 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	results.Apply(
 		"reconcile-cluster-license",
 		func() (controller.Result, error) {
+			if !esReachable {
+				return defaultRequeue, nil
+			}
+
 			err := license.Reconcile(
 				d.Client,
 				d.ES,
 				esClient,
 				observedState.ClusterLicense,
 			)
-			if err != nil && esReachable {
+			if err != nil {
 				d.ReconcileState.AddEvent(
 					corev1.EventTypeWarning,
 					events.EventReasonUnexpected,

@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -75,18 +74,8 @@ func (d *driver) Scheme() *runtime.Scheme {
 
 var _ driver2.Interface = &driver{}
 
-func secretWatchKey(kibana kbv1.Kibana) string {
+func secretWatchKey(kibana types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-es-auth-secret", kibana.Namespace, kibana.Name)
-}
-
-func secretWatchFinalizer(kibana kbv1.Kibana, watches watches.DynamicWatches) finalizer.Finalizer {
-	return finalizer.Finalizer{
-		Name: "finalizer.kibana.k8s.elastic.co/es-auth-secret",
-		Execute: func() error {
-			watches.Secrets.RemoveHandlerForKey(secretWatchKey(kibana))
-			return nil
-		},
-	}
 }
 
 // getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
@@ -134,14 +123,14 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	if keystoreResources != nil {
 		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
 	}
-
+	kbNamespacedName := k8s.ExtractNamespacedName(kb)
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if kb.AssociationConf().AuthIsConfigured() {
 		esAuthSecret := types.NamespacedName{Name: kb.AssociationConf().GetAuthSecretName(), Namespace: kb.Namespace}
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
-			Name:    secretWatchKey(*kb),
+			Name:    secretWatchKey(kbNamespacedName),
 			Watched: []types.NamespacedName{esAuthSecret},
-			Watcher: k8s.ExtractNamespacedName(kb),
+			Watcher: kbNamespacedName,
 		}); err != nil {
 			return deployment.Params{}, err
 		}
@@ -151,7 +140,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		}
 		_, _ = configChecksum.Write(sec.Data[kb.AssociationConf().GetAuthSecretKey()])
 	} else {
-		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(*kb))
+		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(kbNamespacedName))
 	}
 
 	volumes := []commonvolume.SecretVolume{config.SecretVolume(*kb)}
@@ -161,9 +150,9 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
 		// watch for changes in the CA secret
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
-			Name:    secretWatchKey(*kb),
+			Name:    secretWatchKey(kbNamespacedName),
 			Watched: []types.NamespacedName{key},
-			Watcher: k8s.ExtractNamespacedName(kb),
+			Watcher: kbNamespacedName,
 		}); err != nil {
 			return deployment.Params{}, err
 		}

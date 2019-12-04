@@ -18,7 +18,5 @@ func Reconcile(
 	current *esclient.License,
 ) error {
 	clusterName := k8s.ExtractNamespacedName(&esCluster)
-	return applyLinkedLicense(c, clusterName, func(license esclient.License) error {
-		return updateLicense(clusterClient, current, license)
-	})
+	return applyLinkedLicense(c, clusterName, current, clusterClient)
 }

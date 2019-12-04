@@ -44,8 +44,9 @@ type ReconcileTrials struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 	// iteration is the number of times this controller has run its Reconcile method.
-	iteration   int64
-	trialPubKey *rsa.PublicKey
+	iteration         int64
+	trialPubKey       *rsa.PublicKey
+	operatorNamespace string
 }
 
 // Reconcile watches a trial status secret. If it finds a trial license it checks whether a trial has been started.
@@ -61,6 +62,10 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	}()
 
 	secret, license, err := licensing.TrialLicense(r, request.NamespacedName)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Trial license secret has been deleted by user, but trial had been started previously.")
+		return reconcile.Result{}, nil
+	}
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "while fetching trial license")
 	}
@@ -78,7 +83,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// 1. fetch trial status secret
 	var trialStatus corev1.Secret
-	err = r.Get(types.NamespacedName{Namespace: request.Namespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
+	err = r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		// 2. if not present create one + finalizer
 		err := r.initTrial(secret, license)
@@ -94,7 +99,22 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	if err := r.reconcileTrialStatus(trialStatus); err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "failed to reconcile trial status")
 	}
-	return reconcile.Result{}, nil
+	// 4. update trial secret if invalid to give user feedback
+	trialSecretPopulated := license.IsMissingFields() == nil
+	if r.isTrialRunning() && trialSecretPopulated {
+		verifier := licensing.Verifier{
+			PublicKey: r.trialPubKey,
+		}
+		status := verifier.Valid(license, time.Now())
+		if status != licensing.LicenseStatusValid {
+			secret.Annotations[licensing.LicenseInvalidAnnotation] = string(status)
+		}
+	} else {
+		// if the trial secret fields are not populated at this point a user is trying to start a trial a second time
+		// with an empty trial secret, which is not a supported use case.
+		secret.Annotations[licensing.LicenseInvalidAnnotation] = "trial can be started only once"
+	}
+	return reconcile.Result{}, r.Update(&secret)
 }
 
 func (r *ReconcileTrials) isTrialRunning() bool {
@@ -107,7 +127,7 @@ func (r *ReconcileTrials) initTrial(secret corev1.Secret, l licensing.Enterprise
 		return nil
 	}
 
-	trialPubKey, err := licensing.InitTrial(r, secret, &l)
+	trialPubKey, err := licensing.InitTrial(r, r.operatorNamespace, secret, &l)
 	if err != nil {
 		return err
 	}
@@ -132,11 +152,12 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 
 }
 
-func newReconciler(mgr manager.Manager, _ operator.Parameters) *ReconcileTrials {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTrials {
 	return &ReconcileTrials{
-		Client:   k8s.WrapClient(mgr.GetClient()),
-		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetEventRecorderFor(name),
+		Client:            k8s.WrapClient(mgr.GetClient()),
+		scheme:            mgr.GetScheme(),
+		recorder:          mgr.GetEventRecorderFor(name),
+		operatorNamespace: params.OperatorNamespace,
 	}
 }
 
@@ -171,8 +192,8 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 			return []reconcile.Request{
 				{
 					NamespacedName: types.NamespacedName{
-						Namespace: obj.Meta.GetNamespace(),
-						Name:      string(licensing.LicenseTypeEnterpriseTrial),
+						Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
+						Name:      secret.Annotations[licensing.TrialLicenseSecretName],
 					},
 				},
 			}

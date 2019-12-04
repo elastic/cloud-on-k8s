@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+var NOOPCheck func(k *K8sClient, t *testing.T) = nil
+
 type Watcher struct {
 	name     string
 	interval time.Duration
@@ -53,7 +55,9 @@ func (w *Watcher) StopStep(k *K8sClient) Step {
 		Name: fmt.Sprintf("Stopping to %s", w.name),
 		Test: func(t *testing.T) {
 			w.stop()
-			w.checkFn(k, t)
+			if w.checkFn != nil {
+				w.checkFn(k, t)
+			}
 		},
 	}
 }

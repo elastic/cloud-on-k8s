@@ -101,6 +101,7 @@ func TestInitTrial(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := InitTrial(
 				tt.args.c,
+				"elastic-system",
 				corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{
 						Namespace: "elastic-system",

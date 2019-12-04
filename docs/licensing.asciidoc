@@ -61,3 +61,14 @@ kubectl label secret eck-license "license.k8s.elastic.co/type"=enterprise -n ela
 
 NOTE: Once you have installed a license into ECK new Elastic stack applications you manage with ECK will have all platinum and enterprise features enabled.
 Applications that were created before you installed the license will be upgraded to platinum or enterprise features without interruption of service after a short delay.
+
+[float]
+=== Updating your license
+Once your current enterprise license expires you will receive a new enterprise license from Elastic as long as you  have
+a valid enterprise subscription.
+
+To avoid any unintended downgrade of individual Elasticsearch clusters to a basic license while installing the new license
+we recommend you install the new enterprise license as a new Kubernetes secret next to your existing enterprise license.
+Just replace `eck-license` with a different name in the examples above. ECK will pick the right license automatically.
+
+As soon as you have installed the new license you can safely delete the old license if you want.

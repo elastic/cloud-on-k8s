@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -49,7 +50,9 @@ var log = logf.Log.WithName(name)
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 	results := r.reconcileInternal(request)
-	return results.Aggregate()
+	current, err := results.Aggregate()
+	log.V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
+	return current, err
 }
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -90,7 +93,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *ReconcileLicenses) error {
 	// Create a new controller
 	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -116,9 +119,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			if !license.IsEnterpriseLicense(*secret) {
 				return nil
 			}
+
 			// if a license is added/modified we want to update for potentially all clusters managed by this instance
 			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-			rs, err := reconcileRequestsForAllClusters(k8s.WrapClient(mgr.GetClient()))
+			rs, err := reconcileRequestsForAllClusters(r)
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
@@ -199,21 +203,34 @@ func reconcileSecret(
 }
 
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
-func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) (time.Time, error) {
+// Returns time to next reconciliation, bool whether a license is configured at all and optional error.
+func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) (time.Time, bool, error) {
 	var noResult time.Time
 	matchingSpec, parent, found, err := findLicense(r, r.checker)
 	if err != nil {
-		return noResult, err
+		return noResult, true, err
 	}
 	if !found {
-		// no license, nothing to do
-		return noResult, nil
+		// no license, delete cluster level licenses to revert to basic
+		log.Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
+		secretName := esv1.LicenseSecretName(cluster.Name)
+		err := r.Client.Delete(&corev1.Secret{
+			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
+				Namespace: cluster.Namespace,
+				Name:      secretName,
+			}),
+		})
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "failed to delete cluster license secret", "secret_name", secretName, "namespace", cluster.Namespace, "es_name", cluster.Name)
+		}
+		return noResult, true, nil
+
 	}
 	// make sure the signature secret is created in the cluster's namespace
 	if err = reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
-		return noResult, err
+		return noResult, false, err
 	}
-	return matchingSpec.ExpiryTime(), err
+	return matchingSpec.ExpiryTime(), false, err
 }
 
 func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconciler.Results {
@@ -235,10 +252,14 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconc
 		return res
 	}
 
-	newExpiry, err := r.reconcileClusterLicense(cluster)
+	newExpiry, noLicense, err := r.reconcileClusterLicense(cluster)
 	if err != nil {
 		return res.WithError(err)
 	}
-
-	return res.WithResult(nextReconcile(newExpiry, defaultSafetyMargin))
+	margin := defaultSafetyMargin
+	if noLicense {
+		// don't apply safety margin if we don't have a license but use requested requeue time as specified in newExpiry
+		margin = 0
+	}
+	return res.WithResult(nextReconcile(newExpiry, margin))
 }

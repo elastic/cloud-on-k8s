@@ -38,7 +38,7 @@ func (c *ClustersExpectation) ForCluster(cluster types.NamespacedName) *Expectat
 	return expectations
 }
 
-// ForCluster removes existing expectations for the given cluster.
+// RemoveCluster removes existing expectations for the given cluster.
 func (c *ClustersExpectation) RemoveCluster(cluster types.NamespacedName) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
