@@ -7,100 +7,70 @@ package defaults
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestSetServiceDefaults(t *testing.T) {
-	sampleSvc := v1.Service{
-		ObjectMeta: v12.ObjectMeta{
-			Labels: map[string]string{
-				"foo": "bar",
-			},
-		},
-		Spec: v1.ServiceSpec{
-			Selector: map[string]string{
-				"foo": "bar",
-			},
-			Ports: []v1.ServicePort{
-				{Name: "foo"},
-			},
-		},
-	}
-
-	sampleSvcWith := func(setter func(svc *v1.Service)) *v1.Service {
-		svc := sampleSvc.DeepCopy()
-		setter(svc)
-		return svc
-	}
-
-	type args struct {
-		svc             *v1.Service
+	testCases := []struct {
+		name            string
+		inSvc           func() *corev1.Service
 		defaultLabels   map[string]string
 		defaultSelector map[string]string
-		defaultPorts    []v1.ServicePort
-	}
-	tests := []struct {
-		name string
-		args args
-		want *v1.Service
+		defaultPorts    []corev1.ServicePort
+		wantSvc         func() *corev1.Service
 	}{
 		{
-			name: "with empty defaults",
-			args: args{
-				svc: sampleSvc.DeepCopy(),
-			},
-			want: &sampleSvc,
-		},
-		{
-			name: "should not overwrite, but add labels",
-			args: args{
-				svc: sampleSvc.DeepCopy(),
-				defaultLabels: map[string]string{
-					// this should be ignored
-					"foo": "foo",
-					// this should be added
-					"bar": "baz",
-				},
-			},
-			want: sampleSvcWith(func(svc *v1.Service) {
-				svc.Labels["bar"] = "baz"
-			}),
-		},
-		{
-			name: "should use default selector",
-			args: args{
-				svc:             &v1.Service{},
-				defaultSelector: map[string]string{"foo": "foo"},
-			},
-			want: &v1.Service{
-				Spec: v1.ServiceSpec{
-					Selector: map[string]string{"foo": "foo"},
-				},
-			},
-		},
-		{
-			name: "should use default ports",
-			args: args{
-				svc: &v1.Service{},
-				defaultPorts: []v1.ServicePort{
-					{Name: "bar"},
-				},
-			},
-			want: &v1.Service{
-				Spec: v1.ServiceSpec{
-					Ports: []v1.ServicePort{
-						{Name: "bar"},
+			name: "defaults are applied to empty service",
+			inSvc: func() *corev1.Service {
+				return &corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"bar": "baz"},
 					},
-				},
+				}
+			},
+			defaultLabels:   map[string]string{"foo": "bar"},
+			defaultSelector: map[string]string{"foo": "bar"},
+			defaultPorts:    []corev1.ServicePort{{Name: "https", Port: 443}},
+			wantSvc:         mkService,
+		},
+		{
+			name:  "existing values take precedence over defaults",
+			inSvc: mkService,
+			defaultLabels: map[string]string{
+				"foo": "foo", // should be ignored
+				"bar": "baz", // should be added
+			},
+			defaultSelector: map[string]string{"foo": "foo", "bar": "bar"},     // should be completely ignored
+			defaultPorts:    []corev1.ServicePort{{Name: "https", Port: 8443}}, // should be completely ignored
+			wantSvc: func() *corev1.Service {
+				svc := mkService()
+				svc.Labels["bar"] = "baz"
+				return svc
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := SetServiceDefaults(tt.args.svc, tt.args.defaultLabels, tt.args.defaultSelector, tt.args.defaultPorts)
-			assert.Equal(t, tt.want, got)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			haveSvc := SetServiceDefaults(tc.inSvc(), tc.defaultLabels, tc.defaultSelector, tc.defaultPorts)
+			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
+	}
+}
+
+func mkService() *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:      map[string]string{"foo": "bar"},
+			Annotations: map[string]string{"bar": "baz"},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports: []corev1.ServicePort{
+				{Name: "https", Port: 443},
+			},
+		},
 	}
 }

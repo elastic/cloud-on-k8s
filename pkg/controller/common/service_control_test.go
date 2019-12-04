@@ -7,11 +7,58 @@ package common
 import (
 	"testing"
 
+	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+func TestReconcileService(t *testing.T) {
+	owner := &kbtype.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "owner-obj",
+			Namespace: "test",
+		},
+	}
+
+	existingSvc := mkService()
+	scheme := k8s.Scheme()
+	client := k8s.WrappedFakeClient(owner, existingSvc)
+
+	expectedSvc := mkService()
+	delete(expectedSvc.Labels, "lbl2")
+	delete(expectedSvc.Annotations, "ann2")
+	expectedSvc.Labels["lbl3"] = "lblval3"
+	expectedSvc.Annotations["ann3"] = "annval3"
+
+	wantSvc := mkService()
+	wantSvc.Labels["lbl3"] = "lblval3"
+	wantSvc.Annotations["ann3"] = "annval3"
+
+	haveSvc, err := ReconcileService(client, scheme, expectedSvc, owner)
+	require.NoError(t, err)
+	compare.JSONEqual(t, wantSvc, haveSvc)
+}
+
+func mkService() *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "owner-svc",
+			Namespace:   "test",
+			Labels:      map[string]string{"lbl1": "lblval1", "lbl2": "lbl2val"},
+			Annotations: map[string]string{"ann1": "annval1", "ann2": "annval2"},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports: []corev1.ServicePort{
+				{Name: "https", Port: 443},
+			},
+		},
+	}
+}
 
 func TestNeedsUpdate(t *testing.T) {
 	type args struct {
