@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -16,8 +15,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var (
@@ -85,7 +85,7 @@ func ReconcileResource(params Params) error {
 	kind := gvk.Kind
 
 	if params.Owner != nil {
-		if err := controllerutil.SetControllerReference(params.Owner, metaObj, params.Scheme); err != nil {
+		if err := SetControllerReference(params.Owner, metaObj, params.Scheme); err != nil {
 			return err
 		}
 	}

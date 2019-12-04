@@ -5,12 +5,11 @@
 package nodespec
 
 import (
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
@@ -124,7 +123,12 @@ func setVolumeClaimsControllerReference(
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
 	for _, claim := range persistentVolumeClaims {
-		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
+		// Set the claim namespace to match the ES namespace.
+		// This is technically not required, but `SetControllerReference` does a safety check on
+		// object vs. owner namespace mismatch. We know the PVC will end up in ES namespace anyway,
+		// so it's safe to include it.
+		claim.Namespace = es.Namespace
+		if err := reconciler.SetControllerReference(&es, &claim, scheme); err != nil {
 			return nil, err
 		}
 		// Set block owner deletion to false as the statefulset controller might not be able to do that if it cannot
