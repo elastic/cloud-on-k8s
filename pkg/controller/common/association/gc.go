@@ -108,12 +108,12 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 	}
 
 	for _, secret := range secrets {
-		if apiType, expectedResource, match := ugc.matchRegisteredResource(secret); match {
-			nns, ok := allParents[*apiType]
+		if apiType, expectedObject, match := ugc.matchRegisteredResource(secret); match {
+			objects, ok := allParents[*apiType] // get all the objects of a given type
 			if !ok {
 				continue
 			}
-			_, found := nns[expectedResource]
+			_, found := objects[expectedObject]
 			if !found {
 				log.Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
 				err = ugc.client.Delete(&secret)

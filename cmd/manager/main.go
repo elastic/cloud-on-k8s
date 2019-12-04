@@ -343,8 +343,8 @@ func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 	return certValidity, certRotateBefore
 }
 
-func garbageCollectUsers(cfg *rest.Config, Scheme *runtime.Scheme) {
-	ugc, err := association.NewUsersGarbageCollector(cfg, Scheme)
+func garbageCollectUsers(cfg *rest.Config, scheme *runtime.Scheme) {
+	ugc, err := association.NewUsersGarbageCollector(cfg, scheme)
 	if err != nil {
 		log.Error(err, "user garbage collector creation failed")
 		os.Exit(1)
