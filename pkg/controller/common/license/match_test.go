@@ -17,6 +17,11 @@ var (
 	now      = time.Date(2019, 01, 31, 0, 0, 0, 0, time.UTC)
 	gold     = ElasticsearchLicenseTypeGold
 	platinum = ElasticsearchLicenseTypePlatinum
+	trial    = ElasticsearchLicenseTypeTrial
+	expired  = client.License{
+		ExpiryDateInMillis: chrono.MustMillis("2018-12-31"),
+		StartDateInMillis:  chrono.MustMillis("2018-01-01"),
+	}
 	oneMonth = client.License{
 		ExpiryDateInMillis: chrono.MustMillis("2019-02-28"),
 		StartDateInMillis:  chrono.MustMillis("2019-01-01"),
@@ -76,12 +81,7 @@ func Test_bestMatchAt(t *testing.T) {
 							ExpiryDateInMillis: chrono.MustMillis("2019-12-31"),
 							StartDateInMillis:  chrono.MustMillis("2018-01-01"),
 							ClusterLicenses: []ElasticsearchLicense{
-								{
-									License: client.License{
-										ExpiryDateInMillis: chrono.MustMillis("2018-12-31"),
-										StartDateInMillis:  chrono.MustMillis("2018-01-01"),
-									},
-								},
+								{License: license(expired, platinum)},
 							},
 						},
 					},
@@ -89,6 +89,46 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      client.License{},
 			wantFound: false,
+		},
+		{
+			name: "success: prefer trial over expired platinum",
+			args: args{
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(oneMonth, trial)},
+								{License: license(expired, platinum)},
+								{License: license(expired, platinum)},
+							},
+						},
+					},
+				},
+			},
+			want:      license(oneMonth, trial),
+			wantFound: true,
+		},
+		{
+			name: "success: prefer platinum over trial",
+			args: args{
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(oneMonth, trial)},
+								{License: license(twelveMonth, platinum)},
+								{License: license(twoMonth, gold)},
+							},
+						},
+					},
+				},
+			},
+			want:      license(twelveMonth, platinum),
+			wantFound: true,
 		},
 		{
 			name: "success: longest valid platinum",
