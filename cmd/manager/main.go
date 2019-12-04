@@ -310,7 +310,7 @@ func execute() {
 		}
 
 		// With the removal of Finalizers we must check for any orphaned user Secrets, and garbage collect them if any.
-		garbageCollectUsers(cfg, mgr.GetScheme())
+		garbageCollectUsers(cfg, mgr.GetScheme(), managedNamespaces)
 	}
 	if operator.HasRole(operator.GlobalOperator, roles) {
 		if err = license.Add(mgr, params); err != nil {
@@ -343,8 +343,8 @@ func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 	return certValidity, certRotateBefore
 }
 
-func garbageCollectUsers(cfg *rest.Config, scheme *runtime.Scheme) {
-	ugc, err := association.NewUsersGarbageCollector(cfg, scheme)
+func garbageCollectUsers(cfg *rest.Config, scheme *runtime.Scheme, managedNamespaces []string) {
+	ugc, err := association.NewUsersGarbageCollector(cfg, scheme, managedNamespaces)
 	if err != nil {
 		log.Error(err, "user garbage collector creation failed")
 		os.Exit(1)

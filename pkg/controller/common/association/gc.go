@@ -26,14 +26,19 @@ var (
 	log = logf.Log.WithName("association")
 )
 
+const (
+	AllNamespaces = ""
+)
+
 // UsersGarbageCollector allows to remove unused Users. Users should be deleted as part of the association controllers
 // reconciliation loop. But without a Finalizer nothing prevents the associated resource to be removed while the
 // operator is not running.
 // This code is intended to be run during startup, before the controllers are started, to detect and delete such
 // orphaned resources.
 type UsersGarbageCollector struct {
-	client k8s.Client
-	scheme *runtime.Scheme
+	client            k8s.Client
+	scheme            *runtime.Scheme
+	managedNamespaces []string
 
 	// registeredResources are resources that will be garbage collected if they are
 	// detected as orphaned.
@@ -46,14 +51,18 @@ type registeredResource struct {
 }
 
 // NewUsersGarbageCollector creates a new UsersGarbageCollector instance.
-func NewUsersGarbageCollector(cfg *rest.Config, scheme *runtime.Scheme) (*UsersGarbageCollector, error) {
+func NewUsersGarbageCollector(cfg *rest.Config, scheme *runtime.Scheme, managedNamespaces []string) (*UsersGarbageCollector, error) {
 	cl, err := client.New(cfg, client.Options{})
 	if err != nil {
 		return nil, err
 	}
+	if len(managedNamespaces) == 0 {
+		managedNamespaces = []string{AllNamespaces}
+	}
 	return &UsersGarbageCollector{
-		client: k8s.WrapClient(cl),
-		scheme: scheme,
+		client:            k8s.WrapClient(cl),
+		scheme:            scheme,
+		managedNamespaces: managedNamespaces,
 	}, nil
 }
 
@@ -73,11 +82,21 @@ func (ugc *UsersGarbageCollector) For(
 }
 
 func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
+	userSecrets := make([]v1.Secret, 0)
+	for _, namespace := range ugc.managedNamespaces {
+		userSecretsInNamespace, err := getUserSecretsInNamespace(ugc.client, namespace)
+		if err != nil {
+			return userSecrets, err
+		}
+		userSecrets = append(userSecrets, userSecretsInNamespace...)
+	}
+	return userSecrets, nil
+}
+
+func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, error) {
 	userSecrets := v1.SecretList{}
-	matchLabels := client.MatchingLabels(map[string]string{
-		common.TypeLabelName: user.UserType,
-	})
-	if err := ugc.client.List(&userSecrets, matchLabels); err != nil {
+	matchingLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: user.UserType})
+	if err := c.List(&userSecrets, client.InNamespace(namespace), matchingLabels); err != nil {
 		return nil, err
 	}
 	return userSecrets.Items, nil
@@ -108,12 +127,12 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 	}
 
 	for _, secret := range secrets {
-		if apiType, expectedObject, match := ugc.matchRegisteredResource(secret); match {
-			objects, ok := allParents[*apiType] // get all the objects of a given type
+		if apiType, expectedParent, hasParent := ugc.getAssociationParent(secret); hasParent {
+			parents, ok := allParents[*apiType] // get all the parents of a given type
 			if !ok {
 				continue
 			}
-			_, found := objects[expectedObject]
+			_, found := parents[expectedParent]
 			if !found {
 				log.Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
 				err = ugc.client.Delete(&secret)
@@ -128,9 +147,9 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 
 type resourcesByAPIType map[runtime.Object]map[types.NamespacedName]struct{}
 
-// matchRegisteredResource checks if a User secret belongs to an associated resource using the Secret's annotations.
+// getAssociationParent checks if a User secret belongs to an associated resource using the Secret's annotations.
 // If it matches then it returns the type (e.g. APM Server or Kibana) and the name of the associated resource.
-func (ugc *UsersGarbageCollector) matchRegisteredResource(secret v1.Secret) (*runtime.Object, types.NamespacedName, bool) {
+func (ugc *UsersGarbageCollector) getAssociationParent(secret v1.Secret) (*runtime.Object, types.NamespacedName, bool) {
 	for _, resource := range ugc.registeredResources {
 		namespace, ok := secret.Labels[resource.associationNamespaceLabel]
 		if !ok {
@@ -163,16 +182,7 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 			return nil, fmt.Errorf("non-list type %T (kind %q) passed as input", resource.apiType, gvk)
 		}
 
-		list := resource.apiType.DeepCopyObject()
-		err = ugc.client.List(list)
-		if err != nil {
-			return nil, err
-		}
-		objects, err := meta.ExtractList(list)
-		if err != nil {
-			return nil, err
-		}
-
+		objects, err := ugc.getResourcesInNamespaces(resource.apiType)
 		for _, obj := range objects {
 			accessor, err := meta.Accessor(obj)
 			if err != nil {
@@ -187,4 +197,21 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 	}
 
 	return result, nil
+}
+
+func (ugc *UsersGarbageCollector) getResourcesInNamespaces(apiType runtime.Object) ([]runtime.Object, error) {
+	objects := make([]runtime.Object, 0)
+	for _, namespace := range ugc.managedNamespaces {
+		list := apiType.DeepCopyObject()
+		err := ugc.client.List(list, client.InNamespace(namespace))
+		if err != nil {
+			return nil, err
+		}
+		objectsInNamespace, err := meta.ExtractList(list)
+		if err != nil {
+			return nil, err
+		}
+		objects = append(objects, objectsInNamespace...)
+	}
+	return objects, nil
 }
