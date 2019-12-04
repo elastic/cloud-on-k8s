@@ -23,7 +23,7 @@ func RemoveAll(c k8s.Client, obj runtime.Object) error {
 	if len(accessor.GetFinalizers()) == 0 {
 		return nil
 	}
-	filterFinalizers, err := filterFinalizers(accessor.GetFinalizers())
+	filterFinalizers := filterFinalizers(accessor.GetFinalizers())
 	if err != nil {
 		return err
 	}
@@ -32,12 +32,12 @@ func RemoveAll(c k8s.Client, obj runtime.Object) error {
 }
 
 // filterFinalizers removes Elastic finalizers
-func filterFinalizers(finalizers []string) ([]string, error) {
+func filterFinalizers(finalizers []string) []string {
 	filteredFinalizers := make([]string, 0)
 	for _, finalizer := range finalizers {
 		if !finalizersRegExp.MatchString(finalizer) {
 			filteredFinalizers = append(filteredFinalizers, finalizer)
 		}
 	}
-	return filteredFinalizers, nil
+	return filteredFinalizers
 }

@@ -183,6 +183,9 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 		}
 
 		objects, err := ugc.getResourcesInNamespaces(resource.apiType)
+		if err != nil {
+			return nil, err
+		}
 		for _, obj := range objects {
 			accessor, err := meta.Accessor(obj)
 			if err != nil {
