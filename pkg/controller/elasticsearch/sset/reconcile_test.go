@@ -14,11 +14,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -41,7 +41,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 	}
 	metaObj, err := meta.Accessor(&ssetSample)
 	require.NoError(t, err)
-	err = controllerutil.SetControllerReference(&es, metaObj, scheme.Scheme)
+	err = reconciler.SetControllerReference(&es, metaObj, scheme.Scheme)
 	require.NoError(t, err)
 
 	updatedSset := *ssetSample.DeepCopy()
@@ -81,7 +81,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 			// expect owner ref to be set to the es resource
 			metaObj, err := meta.Accessor(&tt.expected)
 			require.NoError(t, err)
-			err = controllerutil.SetControllerReference(&es, metaObj, scheme.Scheme)
+			err = reconciler.SetControllerReference(&es, metaObj, scheme.Scheme)
 			require.NoError(t, err)
 
 			// check expectations were updated
