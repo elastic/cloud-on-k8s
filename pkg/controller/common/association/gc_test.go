@@ -5,7 +5,6 @@
 package association
 
 import (
-	"strings"
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
@@ -16,10 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -124,19 +121,4 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 	}, s)
 	assert.NotNil(t, err)
 	assert.True(t, errors.IsNotFound(err))
-}
-
-type fakeRESTMapper struct {
-	meta.DefaultRESTMapper
-}
-
-// RESTMapping is a fake implementation that returns the plural of a Kind
-func (f *fakeRESTMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
-	return &meta.RESTMapping{
-		Resource: schema.GroupVersionResource{
-			Group:    gk.Group,
-			Resource: strings.ToLower(gk.Kind) + "s",
-		},
-		GroupVersionKind: schema.GroupVersionKind{},
-	}, nil
 }

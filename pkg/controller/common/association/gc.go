@@ -46,14 +46,14 @@ type registeredResource struct {
 }
 
 // NewUsersGarbageCollector creates a new UsersGarbageCollector instance.
-func NewUsersGarbageCollector(cfg *rest.Config, Scheme *runtime.Scheme) (*UsersGarbageCollector, error) {
+func NewUsersGarbageCollector(cfg *rest.Config, scheme *runtime.Scheme) (*UsersGarbageCollector, error) {
 	cl, err := client.New(cfg, client.Options{})
 	if err != nil {
 		return nil, err
 	}
 	return &UsersGarbageCollector{
 		client: k8s.WrapClient(cl),
-		scheme: Scheme,
+		scheme: scheme,
 	}, nil
 }
 
