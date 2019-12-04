@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 
 	// allow gcp authentication
@@ -310,7 +309,7 @@ func execute() {
 		}
 
 		// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
-		garbageCollectUsers(cfg, mgr.GetScheme(), managedNamespaces)
+		garbageCollectUsers(cfg, managedNamespaces)
 	}
 	if operator.HasRole(operator.GlobalOperator, roles) {
 		if err = license.Add(mgr, params); err != nil {
@@ -343,8 +342,8 @@ func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 	return certValidity, certRotateBefore
 }
 
-func garbageCollectUsers(cfg *rest.Config, scheme *runtime.Scheme, managedNamespaces []string) {
-	ugc, err := association.NewUsersGarbageCollector(cfg, scheme, managedNamespaces)
+func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
+	ugc, err := association.NewUsersGarbageCollector(cfg, managedNamespaces)
 	if err != nil {
 		log.Error(err, "user garbage collector creation failed")
 		os.Exit(1)

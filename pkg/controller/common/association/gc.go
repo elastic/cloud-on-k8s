@@ -5,9 +5,6 @@
 package association
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -18,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -37,7 +33,6 @@ const (
 // orphaned resources.
 type UsersGarbageCollector struct {
 	client            k8s.Client
-	scheme            *runtime.Scheme
 	managedNamespaces []string
 
 	// registeredResources are resources that will be garbage collected if they are
@@ -51,7 +46,8 @@ type registeredResource struct {
 }
 
 // NewUsersGarbageCollector creates a new UsersGarbageCollector instance.
-func NewUsersGarbageCollector(cfg *rest.Config, scheme *runtime.Scheme, managedNamespaces []string) (*UsersGarbageCollector, error) {
+func NewUsersGarbageCollector(cfg *rest.Config, managedNamespaces []string) (*UsersGarbageCollector, error) {
+	// Use a sync client here in order not to depend on any cache initialization
 	cl, err := client.New(cfg, client.Options{})
 	if err != nil {
 		return nil, err
@@ -61,7 +57,6 @@ func NewUsersGarbageCollector(cfg *rest.Config, scheme *runtime.Scheme, managedN
 	}
 	return &UsersGarbageCollector{
 		client:            k8s.WrapClient(cl),
-		scheme:            scheme,
 		managedNamespaces: managedNamespaces,
 	}, nil
 }
@@ -86,7 +81,7 @@ func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
 	for _, namespace := range ugc.managedNamespaces {
 		userSecretsInNamespace, err := getUserSecretsInNamespace(ugc.client, namespace)
 		if err != nil {
-			return userSecrets, err
+			return nil, err
 		}
 		userSecrets = append(userSecrets, userSecretsInNamespace...)
 	}
@@ -174,14 +169,6 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 	for _, resource := range ugc.registeredResources {
 		resources := make(map[types.NamespacedName]struct{})
 		result[resource.apiType] = resources
-		gvk, err := apiutil.GVKForObject(resource.apiType, ugc.scheme)
-		if err != nil {
-			return nil, err
-		}
-		if !(strings.HasSuffix(gvk.Kind, "List") && meta.IsListType(resource.apiType)) {
-			return nil, fmt.Errorf("non-list type %T (kind %q) passed as input", resource.apiType, gvk)
-		}
-
 		objects, err := ugc.getResourcesInNamespaces(resource.apiType)
 		if err != nil {
 			return nil, err
