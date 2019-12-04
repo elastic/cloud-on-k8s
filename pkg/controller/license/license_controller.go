@@ -208,7 +208,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 	matchingSpec, parent, found := findLicense(r, r.checker)
 	if !found {
 		// no license, delete cluster level licenses to revert to basic
-		log.Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
+		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
 		secretName := v1beta1.LicenseSecretName(cluster.Name)
 		err := r.Client.Delete(&corev1.Secret{
 			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
@@ -222,7 +222,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearc
 		return noResult, true, nil
 
 	}
-	log.V(1).Info("Found license for cluster", "license", parent, "license_type", matchingSpec.Type, "namespace", cluster.Namespace, "es_name", cluster.Name)
+	log.V(1).Info("Found license for cluster", "eck_license", parent, "es_license", matchingSpec.UID, "license_type", matchingSpec.Type, "namespace", cluster.Namespace, "es_name", cluster.Name)
 	// make sure the signature secret is created in the cluster's namespace
 	if err := reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
 		return noResult, false, err
