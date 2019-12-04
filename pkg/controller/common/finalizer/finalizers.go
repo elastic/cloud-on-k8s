@@ -12,9 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const finalizersRegExp = `^finalizer\.(.*)\.k8s.elastic.co\/(.*)$`
+var finalizersRegExp = regexp.MustCompile(`^finalizer\.(.*)\.k8s.elastic.co\/(.*)$`)
 
-// RemoveAll removes all existing Finalizers on an Object
+// RemoveAll removes all existing Elastic Finalizers on an Object
 func RemoveAll(c k8s.Client, obj runtime.Object) error {
 	accessor, err := meta.Accessor(obj)
 	if err != nil {
@@ -34,12 +34,8 @@ func RemoveAll(c k8s.Client, obj runtime.Object) error {
 // filterFinalizers removes Elastic finalizers
 func filterFinalizers(finalizers []string) ([]string, error) {
 	filteredFinalizers := make([]string, 0)
-	r, err := regexp.Compile(finalizersRegExp)
-	if err != nil {
-		return filteredFinalizers, err
-	}
 	for _, finalizer := range finalizers {
-		if !r.MatchString(finalizer) {
+		if !finalizersRegExp.MatchString(finalizer) {
 			filteredFinalizers = append(filteredFinalizers, finalizer)
 		}
 	}
