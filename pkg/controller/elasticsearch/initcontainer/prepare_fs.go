@@ -86,7 +86,7 @@ var (
 		},
 		Limits: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: resource.MustParse("10Mi"),
-			corev1.ResourceCPU:    resource.MustParse("1"),
+			corev1.ResourceCPU:    resource.MustParse("0.1"),
 		},
 	}
 )
