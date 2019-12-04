@@ -10,18 +10,14 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -30,37 +26,18 @@ var (
 	log = logf.Log.WithName("association")
 )
 
-const (
-	APIBasePath   = "/apis"
-	AllNamespaces = ""
-)
-
-type clientFactory func(baseConfig *rest.Config, gv schema.GroupVersion) (rest.Interface, error)
-
 // UsersGarbageCollector allows to remove unused Users. Users should be deleted as part of the association controllers
 // reconciliation loop. But without a Finalizer nothing prevents the associated resource to be removed while the
 // operator is not running.
 // This code is intended to be run during startup, before the controllers are started, to detect and delete such
 // orphaned resources.
 type UsersGarbageCollector struct {
-	// clientset is used to list potential orphaned secrets
-	clientset kubernetes.Interface
-
-	// clientFactory provides a REST client for a given resource
-	clientFactory clientFactory
-
-	// an optional mapper can be provided to be used in unit test
-	mapper meta.RESTMapper
-
-	baseConfig *rest.Config
-
+	client k8s.Client
 	scheme *runtime.Scheme
 
 	// registeredResources are resources that will be garbage collected if they are
 	// detected as orphaned.
 	registeredResources []registeredResource
-
-	managedNamespaces []string
 }
 
 type registeredResource struct {
@@ -69,18 +46,15 @@ type registeredResource struct {
 }
 
 // NewUsersGarbageCollector creates a new UsersGarbageCollector instance.
-func NewUsersGarbageCollector(clientset kubernetes.Interface, managedNamespaces []string, cfg *rest.Config, scheme *runtime.Scheme) *UsersGarbageCollector {
-	if len(managedNamespaces) == 0 {
-		managedNamespaces = []string{AllNamespaces}
+func NewUsersGarbageCollector(cfg *rest.Config, Scheme *runtime.Scheme) (*UsersGarbageCollector, error) {
+	cl, err := client.New(cfg, client.Options{})
+	if err != nil {
+		return nil, err
 	}
-
 	return &UsersGarbageCollector{
-		clientset:         clientset,
-		clientFactory:     newClientFor,
-		baseConfig:        cfg,
-		scheme:            scheme,
-		managedNamespaces: managedNamespaces,
-	}
+		client: k8s.WrapClient(cl),
+		scheme: Scheme,
+	}, nil
 }
 
 // For is used to register the associated resources and the annotation names needed to resolve the name
@@ -99,28 +73,14 @@ func (ugc *UsersGarbageCollector) For(
 }
 
 func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
-	var userSecrets []v1.Secret // nolint
-	for _, namespace := range ugc.managedNamespaces {
-		userSecretsInNamespace, err := getUserSecretsInNamespace(ugc.clientset, namespace)
-		if err != nil {
-			return userSecrets, err
-		}
-		userSecrets = append(userSecrets, userSecretsInNamespace...)
-	}
-	return userSecrets, nil
-}
-
-func getUserSecretsInNamespace(clientset kubernetes.Interface, namespace string) ([]v1.Secret, error) {
-	labelSelector := metav1.LabelSelector{
-		MatchLabels: map[string]string{common.TypeLabelName: user.UserType},
-	}
-	secrets, err := clientset.CoreV1().Secrets(namespace).List(metav1.ListOptions{
-		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+	userSecrets := v1.SecretList{}
+	matchLabels := client.MatchingLabels(map[string]string{
+		common.TypeLabelName: user.UserType,
 	})
-	if err != nil {
+	if err := ugc.client.List(&userSecrets, matchLabels); err != nil {
 		return nil, err
 	}
-	return secrets.Items, nil
+	return userSecrets.Items, nil
 }
 
 // DoGarbageCollection runs the User garbage collector.
@@ -142,21 +102,21 @@ func (ugc *UsersGarbageCollector) DoGarbageCollection() error {
 
 	// 2. List all parent resources. We retrieve *all* the registered resources in order to reduce the amount of
 	// API calls. The tradeoff here is the memory that is temporarily consumed during the garbage collection phase.
-	registeredResources, err := ugc.listAssociatedResources()
+	allParents, err := ugc.listAssociatedResources()
 	if err != nil {
 		return err
 	}
 
 	for _, secret := range secrets {
 		if apiType, expectedResource, match := ugc.matchRegisteredResource(secret); match {
-			nns, ok := registeredResources[*apiType]
+			nns, ok := allParents[*apiType]
 			if !ok {
 				continue
 			}
 			_, found := nns[expectedResource]
 			if !found {
-				log.Info("Found orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-				err = ugc.clientset.CoreV1().Secrets(secret.Namespace).Delete(secret.Name, &metav1.DeleteOptions{})
+				log.Info("Deleting orphaned user secret", "namespace", secret.Namespace, "secret_name", secret.Name)
+				err = ugc.client.Delete(&secret)
 				if err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
@@ -197,72 +157,34 @@ func (ugc *UsersGarbageCollector) listAssociatedResources() (resourcesByAPIType,
 		result[resource.apiType] = resources
 		gvk, err := apiutil.GVKForObject(resource.apiType, ugc.scheme)
 		if err != nil {
-			return result, err
+			return nil, err
 		}
 		if !(strings.HasSuffix(gvk.Kind, "List") && meta.IsListType(resource.apiType)) {
-			return result, fmt.Errorf("non-list type %T (kind %q) passed as input", resource.apiType, gvk)
-		}
-		gvk.Kind = gvk.Kind[:len(gvk.Kind)-4]
-
-		client, err := ugc.clientFactory(ugc.baseConfig, gvk.GroupVersion())
-		if err != nil {
-			return result, err
+			return nil, fmt.Errorf("non-list type %T (kind %q) passed as input", resource.apiType, gvk)
 		}
 
-		allResources, err := ugc.getResourcesInNamespace(client, gvk)
+		list := resource.apiType.DeepCopyObject()
+		err = ugc.client.List(list)
 		if err != nil {
-			return result, err
+			return nil, err
 		}
-		for _, metadata := range allResources {
+		objects, err := meta.ExtractList(list)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, obj := range objects {
+			accessor, err := meta.Accessor(obj)
+			if err != nil {
+				return nil, err
+			}
 			resources[types.NamespacedName{
-				Namespace: metadata.Namespace,
-				Name:      metadata.Name,
+				Namespace: accessor.GetNamespace(),
+				Name:      accessor.GetName(),
 			}] = struct{}{}
 		}
+
 	}
 
 	return result, nil
-}
-
-// getResourcesInNamespace returns all resources of the given GroupVersionKind in the managed namespaces
-func (ugc *UsersGarbageCollector) getResourcesInNamespace(
-	client rest.Interface,
-	gvk schema.GroupVersionKind,
-) ([]metav1.PartialObjectMetadata, error) {
-	var objects []metav1.PartialObjectMetadata // nolint
-
-	var mapper meta.RESTMapper
-	if ugc.mapper == nil {
-		newMapper, err := apiutil.NewDiscoveryRESTMapper(ugc.baseConfig)
-		if err != nil {
-			return objects, err
-		}
-		mapper = newMapper
-	} else {
-		mapper = ugc.mapper
-	}
-
-	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-	if err != nil {
-		return objects, err
-	}
-	for _, namespace := range ugc.managedNamespaces {
-		r := &metav1.PartialObjectMetadataList{}
-		err = client.Get().Namespace(namespace).Resource(mapping.Resource.Resource).Do().Into(r)
-		if err != nil {
-			return objects, err
-		}
-		objects = append(objects, r.Items...)
-	}
-	return objects, nil
-}
-
-// newClientFor returns a rest client to access a given resource
-func newClientFor(baseConfig *rest.Config, gv schema.GroupVersion) (rest.Interface, error) {
-	cfg := rest.CopyConfig(baseConfig)
-	cfg.ContentConfig.GroupVersion = &gv
-	cfg.APIPath = APIBasePath
-	cfg.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
-	cfg.UserAgent = rest.DefaultKubernetesUserAgent()
-	return rest.RESTClientFor(cfg)
 }

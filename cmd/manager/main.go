@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
@@ -307,14 +310,7 @@ func execute() {
 		}
 
 		// With the removal of Finalizers we must check for any orphaned user Secrets, and garbage collect them if any.
-		err = association.NewUsersGarbageCollector(clientset, managedNamespaces, cfg, mgr.GetScheme()).
-			For(&apmtype.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName).
-			For(&kibanatype.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName).
-			DoGarbageCollection()
-		if err != nil {
-			log.Error(err, "user garbage collector failed")
-			os.Exit(1)
-		}
+		garbageCollectUsers(cfg, mgr.GetScheme())
 	}
 	if operator.HasRole(operator.GlobalOperator, roles) {
 		if err = license.Add(mgr, params); err != nil {
@@ -345,6 +341,22 @@ func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 		os.Exit(1)
 	}
 	return certValidity, certRotateBefore
+}
+
+func garbageCollectUsers(cfg *rest.Config, Scheme *runtime.Scheme) {
+	ugc, err := association.NewUsersGarbageCollector(cfg, Scheme)
+	if err != nil {
+		log.Error(err, "user garbage collector creation failed")
+		os.Exit(1)
+	}
+	err = ugc.
+		For(&apmtype.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName).
+		For(&kibanatype.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName).
+		DoGarbageCollection()
+	if err != nil {
+		log.Error(err, "user garbage collector failed")
+		os.Exit(1)
+	}
 }
 
 func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
