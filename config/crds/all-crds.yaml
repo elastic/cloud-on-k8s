@@ -380,6 +380,9 @@ spec:
   - name: v1beta1
     served: true
     storage: true
+  - name: v1alpha1
+    served: false
+    storage: false
 status:
   acceptedNames:
     kind: ""
@@ -1086,6 +1089,9 @@ spec:
   - name: v1beta1
     served: true
     storage: true
+  - name: v1alpha1
+    served: false
+    storage: false
 status:
   acceptedNames:
     kind: ""
@@ -1464,6 +1470,9 @@ spec:
   - name: v1beta1
     served: true
     storage: true
+  - name: v1alpha1
+    served: false
+    storage: false
 status:
   acceptedNames:
     kind: ""
