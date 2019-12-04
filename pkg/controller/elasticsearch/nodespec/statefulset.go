@@ -123,6 +123,11 @@ func setVolumeClaimsControllerReference(
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
 	claims := make([]corev1.PersistentVolumeClaim, 0, len(persistentVolumeClaims))
 	for _, claim := range persistentVolumeClaims {
+		// Set the claim namespace to match the ES namespace.
+		// This is technically not required, but `SetControllerReference` does a safety check on
+		// object vs. owner namespace mismatch. We know the PVC will end up in ES namespace anyway,
+		// so it's safe to include it.
+		claim.Namespace = es.Namespace
 		if err := reconciler.SetControllerReference(&es, &claim, scheme); err != nil {
 			return nil, err
 		}
