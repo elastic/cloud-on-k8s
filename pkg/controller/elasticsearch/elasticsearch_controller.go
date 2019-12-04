@@ -67,7 +67,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
-		finalizers:     finalizer.NewHandler(client),
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
 
@@ -162,8 +161,6 @@ type ReconcileElasticsearch struct {
 
 	esObservers *observer.Manager
 
-	finalizers finalizer.Handler
-
 	dynamicWatches watches.DynamicWatches
 
 	// expectations help dealing with inconsistencies in our client cache,
@@ -185,9 +182,11 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
-			// Stop tracking that cluster in expectations - without the finalizer overhead.
-			r.expectations.RemoveCluster(request.NamespacedName)
-			// For additional cleanup logic use finalizers.
+			// Additional cleanup is done by the onDelete function.
+			r.onDelete(types.NamespacedName{
+				Namespace: request.Namespace,
+				Name:      request.Name,
+			})
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -208,6 +207,11 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	if !compat {
 		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
 		return reconcile.Result{}, nil
+	}
+
+	// Remove any previous Finalizers
+	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
@@ -234,13 +238,9 @@ func (r *ReconcileElasticsearch) internalReconcile(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	if err := r.finalizers.Handle(&es, r.finalizersFor(es)...); err != nil {
-		return results.WithError(err)
-	}
-
 	if es.IsMarkedForDeletion() {
 		// resource will be deleted, nothing to reconcile
-		// pre-delete operations are handled by finalizers
+		r.onDelete(k8s.ExtractNamespacedName(&es))
 		return results
 	}
 
@@ -307,14 +307,10 @@ func (r *ReconcileElasticsearch) updateStatus(
 	return r.Status().Update(cluster)
 }
 
-// finalizersFor returns the list of finalizers applying to a given es cluster
-func (r *ReconcileElasticsearch) finalizersFor(
-	es elasticsearchv1beta1.Elasticsearch,
-) []finalizer.Finalizer {
-	clusterName := k8s.ExtractNamespacedName(&es)
-	return []finalizer.Finalizer{
-		r.esObservers.Finalizer(clusterName),
-		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind),
-		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Kind, es.Name, elasticsearchv1beta1.ESNamer),
-	}
+// onDelete garbage collect resources when a Elasticsearch cluster is deleted
+func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
+	r.expectations.RemoveCluster(es)
+	r.esObservers.StopObserving(es)
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(http.CertificateWatchKey(elasticsearchv1beta1.ESNamer, es.Name))
 }

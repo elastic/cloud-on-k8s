@@ -12,13 +12,18 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/client-go/rest"
+
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	kibanatype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
@@ -302,6 +307,9 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
 			os.Exit(1)
 		}
+
+		// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
+		garbageCollectUsers(cfg, managedNamespaces)
 	}
 	if operator.HasRole(operator.GlobalOperator, roles) {
 		if err = license.Add(mgr, params); err != nil {
@@ -332,6 +340,22 @@ func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (
 		os.Exit(1)
 	}
 	return certValidity, certRotateBefore
+}
+
+func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
+	ugc, err := association.NewUsersGarbageCollector(cfg, managedNamespaces)
+	if err != nil {
+		log.Error(err, "user garbage collector creation failed")
+		os.Exit(1)
+	}
+	err = ugc.
+		For(&apmtype.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName).
+		For(&kibanatype.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName).
+		DoGarbageCollection()
+	if err != nil {
+		log.Error(err, "user garbage collector failed")
+		os.Exit(1)
+	}
 }
 
 func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
