@@ -78,14 +78,14 @@ var (
 			},
 		},
 	}
-	//defaultResources are the default request and limits for the init container.
+	// defaultResources are the default request and limits for the init container.
 	defaultResources = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("500Mi"),
-			corev1.ResourceCPU:    resource.MustParse("500m"),
+			corev1.ResourceMemory: resource.MustParse("10Mi"),
+			corev1.ResourceCPU:    resource.MustParse("0.1"),
 		},
 		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("1Gi"),
+			corev1.ResourceMemory: resource.MustParse("10Mi"),
 			corev1.ResourceCPU:    resource.MustParse("1"),
 		},
 	}
