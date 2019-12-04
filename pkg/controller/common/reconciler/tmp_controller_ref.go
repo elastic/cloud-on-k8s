@@ -30,10 +30,10 @@ func (e *AlreadyOwnedError) Error() string {
 	return fmt.Sprintf("Object %s/%s is already owned by another %s controller %s", e.Object.GetNamespace(), e.Object.GetName(), e.Owner.Kind, e.Owner.Name)
 }
 
-func newAlreadyOwnedError(Object metav1.Object, Owner metav1.OwnerReference) *AlreadyOwnedError {
+func newAlreadyOwnedError(object metav1.Object, owner metav1.OwnerReference) *AlreadyOwnedError {
 	return &AlreadyOwnedError{
-		Object: Object,
-		Owner:  Owner,
+		Object: object,
+		Owner:  owner,
 	}
 }
 
