@@ -309,7 +309,7 @@ func execute() {
 			os.Exit(1)
 		}
 
-		// With the removal of Finalizers we must check for any orphaned user Secrets, and garbage collect them if any.
+		// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
 		garbageCollectUsers(cfg, mgr.GetScheme(), managedNamespaces)
 	}
 	if operator.HasRole(operator.GlobalOperator, roles) {
