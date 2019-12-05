@@ -42,6 +42,7 @@ func BuildExpectedResources(
 	keystoreResources *keystore.Resources,
 	scheme *runtime.Scheme,
 	certResources *certificates.CertificateResources,
+	existingStatefulSets sset.StatefulSetList,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
@@ -62,7 +63,7 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources, scheme)
+		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources, existingStatefulSets, scheme)
 		if err != nil {
 			return nil, err
 		}
