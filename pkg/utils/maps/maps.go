@@ -34,3 +34,21 @@ func Merge(dest, src map[string]string) map[string]string {
 
 	return dest
 }
+
+// MergePreservingExistingKeys merges source into destination while skipping any keys that exist in the destination.
+func MergePreservingExistingKeys(dest, src map[string]string) map[string]string {
+	if dest == nil {
+		if src == nil {
+			return nil
+		}
+		dest = make(map[string]string, len(src))
+	}
+
+	for k, v := range src {
+		if _, exists := dest[k]; !exists {
+			dest[k] = v
+		}
+	}
+
+	return dest
+}

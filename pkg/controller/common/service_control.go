@@ -8,7 +8,9 @@ import (
 	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,7 +38,9 @@ func ReconcileService(
 			return needsUpdate(expected, reconciled)
 		},
 		UpdateReconciled: func() {
-			reconciled.Spec = expected.Spec // only update spec, keep the rest
+			reconciled.Annotations = expected.Annotations
+			reconciled.Labels = expected.Labels
+			reconciled.Spec = expected.Spec
 		},
 	})
 	return reconciled, err
@@ -77,7 +81,12 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 		expected.Spec.HealthCheckNodePort = reconciled.Spec.HealthCheckNodePort
 	}
 
-	return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
+	expected.Annotations = maps.MergePreservingExistingKeys(expected.Annotations, reconciled.Annotations)
+	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, reconciled.Labels)
+
+	// if the specs, labels, or annotations differ, the object should be updated
+	return !(reflect.DeepEqual(expected.Spec, reconciled.Spec) &&
+		compare.LabelsAndAnnotationsAreEqual(expected.ObjectMeta, reconciled.ObjectMeta))
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.
