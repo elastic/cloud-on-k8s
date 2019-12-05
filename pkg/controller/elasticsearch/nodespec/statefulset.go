@@ -79,11 +79,11 @@ func BuildStatefulSet(
 	}
 
 	// maybe inherit volumeClaimTemplates ownerRefs from the existing StatefulSet
-	var inheritedClaims []corev1.PersistentVolumeClaim
+	var existingClaims []corev1.PersistentVolumeClaim
 	if existingSset, exists := existingStatefulSets.GetByName(statefulSetName); exists {
-		inheritedClaims = existingSset.Spec.VolumeClaimTemplates
+		existingClaims = existingSset.Spec.VolumeClaimTemplates
 	}
-	claims, err := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, inheritedClaims, es, scheme)
+	claims, err := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, existingClaims, es, scheme)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}
@@ -140,7 +140,7 @@ func setVolumeClaimsControllerReference(
 			// built with a prior version of the operator. If the Elasticsearch apiVersion has changed,
 			// from eg. `v1beta1` to `v1`, we want to keep the existing ownerRef (pointing to eg. a `v1beta1` owner).
 			// Having ownerReferences with a "deprecated" apiVersion is fine, and does not prevent resources
-			// to be garbage collected as expected.
+			// from being garbage collected as expected.
 			claim.OwnerReferences = existingClaim.OwnerReferences
 
 			claims = append(claims, claim)
