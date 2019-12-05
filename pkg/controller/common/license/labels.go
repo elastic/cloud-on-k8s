@@ -13,37 +13,31 @@ const (
 	// LicenseLabelName is a label pointing to the name of the source enterprise license.
 	LicenseLabelName         = "license.k8s.elastic.co/name"
 	LicenseLabelType         = "license.k8s.elastic.co/type"
+	LicenseLabelScope        = "license.k8s.elastic.co/scope"
 	Type                     = "license"
 	EULAAnnotation           = "elastic.co/eula"
 	EULAAcceptedValue        = "accepted"
 	LicenseInvalidAnnotation = "license.k8s.elastic.co/invalid"
 )
 
-// LicenseType is the type of license a resource is describing.
-type LicenseType string
+type LicenseScope string
 
 const (
-	LicenseLabelEnterprise    LicenseType = "enterprise"
-	LicenseLabelElasticsearch LicenseType = "elasticsearch"
+	LicenseScopeOperator      LicenseScope = "operator"
+	LicenseScopeElasticsearch LicenseScope = "elasticsearch"
 )
 
-// LabelsForType creates a map of labels for the given type of either enterprise or Elasticsearch license.
-func LabelsForType(licenseType LicenseType) map[string]string {
+// LabelsForOperatorScope creates a map of labels for the given scope of either operator or Elasticsearch scope.
+func LabelsForOperatorScope(t OperatorLicenseType) map[string]string {
 	return map[string]string{
 		common.TypeLabelName: Type,
-		LicenseLabelType:     string(licenseType),
+		LicenseLabelScope:    string(LicenseScopeOperator),
+		LicenseLabelType:     string(t),
 	}
 }
 
-// NewLicenseByNameSelector is a list selector to filter by a label containing the license name.
-func NewLicenseByNameSelector(licenseName string) client.MatchingLabels {
-	return client.MatchingLabels(map[string]string{
-		LicenseLabelName: licenseName,
-	})
-}
-
-func NewLicenseByTypeSelector(licenseType string) client.MatchingLabels {
-	return client.MatchingLabels(map[string]string{
-		LicenseLabelType: licenseType,
-	})
+func NewLicenseByScopeSelector(scope LicenseScope) client.MatchingLabels {
+	return map[string]string{
+		LicenseLabelScope: string(scope),
+	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +21,7 @@ import (
 // EnterpriseLicensesOrErrors lists all Enterprise licenses and all errors encountered during retrieval.
 func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 	licenseList := corev1.SecretList{}
-	matchingLabels := NewLicenseByTypeSelector(string(LicenseTypeEnterprise))
+	matchingLabels := NewLicenseByScopeSelector(LicenseScopeOperator)
 	err := c.List(&licenseList, matchingLabels)
 	if err != nil {
 		return nil, []error{err}
@@ -87,24 +88,6 @@ func CreateTrialLicense(c k8s.Client, namespace string) error {
 	})
 }
 
-// CreateEnterpriseLicense creates an Enterprise license wrapped in a secret.
-func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l EnterpriseLicense) error {
-	bytes, err := json.Marshal(l)
-	if err != nil {
-		return pkgerrors.Wrap(err, "failed to marshal license")
-	}
-	return c.Create(&corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace: key.Namespace,
-			Name:      key.Name,
-			Labels:    LabelsForType(LicenseLabelEnterprise),
-		},
-		Data: map[string][]byte{
-			FileName: bytes,
-		},
-	})
-}
-
 // UpdateEnterpriseLicense updates an Enterprise license wrapped in a secret.
 func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLicense) error {
 	bytes, err := json.Marshal(l)
@@ -114,6 +97,6 @@ func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLic
 	secret.Data = map[string][]byte{
 		FileName: bytes,
 	}
-	secret.Labels = LabelsForType(LicenseLabelEnterprise)
+	secret.Labels = maps.Merge(secret.Labels, LabelsForOperatorScope(l.License.Type))
 	return c.Update(&secret)
 }

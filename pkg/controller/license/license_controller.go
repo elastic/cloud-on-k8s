@@ -16,7 +16,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -115,7 +117,7 @@ func add(mgr manager.Manager, r *ReconcileLicenses) error {
 					"dropping watch event due to error in handler")
 				return nil
 			}
-			if !license.IsEnterpriseLicense(*secret) {
+			if !license.IsOperatorLicense(*secret) {
 				return nil
 			}
 
@@ -174,9 +176,10 @@ func reconcileSecret(
 			Name:      secretName,
 			Namespace: cluster.Namespace,
 			Labels: map[string]string{
-				common.TypeLabelName:     license.Type,
-				license.LicenseLabelName: parent,
-				license.LicenseLabelType: string(license.LicenseLabelElasticsearch),
+				common.TypeLabelName:      license.Type,
+				license.LicenseLabelName:  parent,
+				license.LicenseLabelScope: string(license.LicenseScopeElasticsearch),
+				license.LicenseLabelType:  esLicense.Type,
 			},
 		},
 		Data: map[string][]byte{
@@ -192,9 +195,11 @@ func reconcileSecret(
 		Expected:   &expected,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(reconciled.Data, expected.Data)
+			return !(reflect.DeepEqual(reconciled.Data, expected.Data) &&
+				compare.LabelsAndAnnotationsAreEqual(reconciled.ObjectMeta, expected.ObjectMeta))
 		},
 		UpdateReconciled: func() {
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
 			reconciled.Data = expected.Data
 		},
 	})
