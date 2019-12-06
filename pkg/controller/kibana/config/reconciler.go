@@ -5,16 +5,18 @@
 package config
 
 import (
-	"reflect"
-
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"reflect"
 )
 
 // ReconcileConfigSecret reconciles the expected Kibana config secret for the given Kibana resource.
@@ -63,4 +65,27 @@ func ReconcileConfigSecret(
 		return err
 	}
 	return nil
+}
+
+// GetConfig retrieves the canonical config for a given Kibana, if one exists
+func GetConfig(client k8s.Client, kb v1beta1.Kibana) (*settings.CanonicalConfig, error) {
+	var secret corev1.Secret
+	var cfg *settings.CanonicalConfig
+	err := client.Get(types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
+	// how do we want to indicate that nothing is found?
+	if err != nil && apierrors.IsNotFound(err) {
+		return cfg, nil
+	}
+	rawCfg, exists := secret.Data[SettingsFilename]
+	if !exists {
+		// TODO make this an error
+		return cfg, nil
+	}
+	// dict := make(map(string[interface{}]))
+	// _ = yaml.Unmarshal(rawCfg, dict)
+	// if err != nil{
+
+	// }
+	cfg, _ = settings.ParseConfig(rawCfg)
+	return cfg, nil
 }

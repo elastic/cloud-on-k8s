@@ -250,9 +250,10 @@ func (d *driver) Reconcile(
 		return &results
 	}
 	// TODO sabo get current secret here?
+	currentCfg, err := config.GetConfig(d.client, *kb)
 
 	versionSpecificCfg := settings.MustCanonicalConfig(d.settingsFactory(*kb))
-	kbSettings, err := config.NewConfigSettings(d.client, *kb, versionSpecificCfg)
+	kbSettings, err := config.NewConfigSettings(d.client, *kb, versionSpecificCfg, currentCfg)
 	if err != nil {
 		return results.WithError(err)
 	}

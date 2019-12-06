@@ -29,7 +29,7 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(client k8s.Client, kb v1beta1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
+func NewConfigSettings(client k8s.Client, kb v1beta1.Kibana, versionSpecificCfg, currentConfig *settings.CanonicalConfig) (CanonicalConfig, error) {
 	specConfig := kb.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1beta1.Config{}
