@@ -339,7 +339,7 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-STACK_VERSION ?= 7.4.0
+STACK_VERSION ?= 7.5.0
 E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
 
