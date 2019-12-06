@@ -213,6 +213,10 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
+	if !association.SetAndConfigured(&as, r.recorder) {
+		return reconcile.Result{}, nil
+	}
+
 	return r.doReconcile(request, &as)
 }
 
@@ -227,10 +231,6 @@ func (r *ReconcileApmServer) isCompatible(as *apmv1beta1.ApmServer) (bool, error
 
 func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1beta1.ApmServer) (reconcile.Result, error) {
 	state := NewState(request, as)
-
-	if !association.SetAndConfigured(as, r.recorder) {
-		return state.Result, nil
-	}
 
 	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(*as), as)
 	if err != nil {
