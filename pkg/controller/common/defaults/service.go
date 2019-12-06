@@ -5,6 +5,7 @@
 package defaults
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -15,16 +16,7 @@ func SetServiceDefaults(
 	defaultSelector map[string]string,
 	defaultPorts []v1.ServicePort,
 ) *v1.Service {
-	if svc.ObjectMeta.Labels == nil {
-		svc.ObjectMeta.Labels = defaultLabels
-	} else {
-		// add our labels, but don't overwrite user labels
-		for k, v := range defaultLabels {
-			if _, ok := svc.ObjectMeta.Labels[k]; !ok {
-				svc.ObjectMeta.Labels[k] = v
-			}
-		}
-	}
+	svc.Labels = maps.MergePreservingExistingKeys(svc.Labels, defaultLabels)
 
 	if svc.Spec.Selector == nil {
 		svc.Spec.Selector = defaultSelector

@@ -8,14 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestResourcesList_MasterNodesNames(t *testing.T) {
@@ -46,71 +39,6 @@ func TestResourcesList_MasterNodesNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.l.MasterNodesNames(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ResourcesList.MasterNodesNames() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestSetVolumeClaimsControllerReference(t *testing.T) {
-	es := esv1.Elasticsearch{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "es1",
-			Namespace: "default",
-			UID:       "ABCDEF",
-		},
-	}
-	type args struct {
-		volumeClaims []corev1.PersistentVolumeClaim
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []string
-		wantErr bool
-	}{
-		{
-			name: "Simple test case",
-			args: args{
-				volumeClaims: []corev1.PersistentVolumeClaim{
-					{ObjectMeta: v1.ObjectMeta{Name: "elasticsearch-data"}},
-				},
-			},
-			want: []string{"elasticsearch-data"},
-		},
-		{
-			name: "With a user volume",
-			args: args{
-				volumeClaims: []corev1.PersistentVolumeClaim{
-					{ObjectMeta: v1.ObjectMeta{Name: "elasticsearch-data"}},
-					{ObjectMeta: v1.ObjectMeta{Name: "user-volume"}},
-				},
-			},
-			want: []string{"elasticsearch-data", "user-volume"},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := setVolumeClaimsControllerReference(tt.args.volumeClaims, es, k8s.Scheme())
-			if (err != nil) != tt.wantErr {
-				t.Errorf("BuildExpectedResources() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			assert.Equal(t, len(tt.want), len(got))
-
-			// Extract PVC names
-			actualPVCs := make([]string, len(got))
-			for i := range got {
-				actualPVCs[i] = got[i].Name
-			}
-			// Check the number of PVCs we got
-			assert.ElementsMatch(t, tt.want, actualPVCs)
-
-			// Check that VolumeClaimTemplates have an owner with the right settings
-			for _, pvc := range got {
-				assert.Equal(t, 1, len(pvc.OwnerReferences))
-				ownerRef := pvc.OwnerReferences[0]
-				require.False(t, *ownerRef.BlockOwnerDeletion)
-				assert.Equal(t, es.UID, ownerRef.UID)
 			}
 		})
 	}

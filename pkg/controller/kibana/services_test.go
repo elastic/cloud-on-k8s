@@ -69,6 +69,24 @@ func TestNewService(t *testing.T) {
 				return svc
 			},
 		},
+		{
+			name: "service template",
+			httpConf: commonv1.HTTPConfig{
+				Service: commonv1.ServiceTemplate{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels:      map[string]string{"foo": "bar"},
+						Annotations: map[string]string{"bar": "baz"},
+					},
+				},
+			},
+			wantSvc: func() corev1.Service {
+				svc := mkService()
+				svc.Labels["foo"] = "bar"
+				svc.Annotations = map[string]string{"bar": "baz"}
+				svc.Spec.Ports[0].Name = "https"
+				return svc
+			},
+		},
 	}
 
 	for _, tc := range testCases {
