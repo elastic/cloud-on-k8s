@@ -17,6 +17,11 @@ var (
 	now      = time.Date(2019, 01, 31, 0, 0, 0, 0, time.UTC)
 	gold     = ElasticsearchLicenseTypeGold
 	platinum = ElasticsearchLicenseTypePlatinum
+	trial    = ElasticsearchLicenseTypeTrial
+	expired  = client.License{
+		ExpiryDateInMillis: chrono.MustMillis("2018-12-31"),
+		StartDateInMillis:  chrono.MustMillis("2018-01-01"),
+	}
 	oneMonth = client.License{
 		ExpiryDateInMillis: chrono.MustMillis("2019-02-28"),
 		StartDateInMillis:  chrono.MustMillis("2019-01-01"),
@@ -49,15 +54,13 @@ func Test_bestMatchAt(t *testing.T) {
 		args      args
 		want      client.License
 		wantFound bool
-		wantErr   bool
 	}{
 		{
-			name:      "error: no licenses",
+			name:      "no result: no licenses",
 			wantFound: false,
-			wantErr:   false,
 		},
 		{
-			name: "error: only expired enterprise license",
+			name: "no result: only expired enterprise license",
 			args: args{
 				licenses: []EnterpriseLicense{{
 					License: LicenseSpec{
@@ -68,10 +71,9 @@ func Test_bestMatchAt(t *testing.T) {
 				}},
 			},
 			wantFound: false,
-			wantErr:   true,
 		},
 		{
-			name: "error: only expired nested licenses",
+			name: "no result: only expired nested licenses",
 			args: args{
 				licenses: []EnterpriseLicense{
 					{
@@ -79,12 +81,7 @@ func Test_bestMatchAt(t *testing.T) {
 							ExpiryDateInMillis: chrono.MustMillis("2019-12-31"),
 							StartDateInMillis:  chrono.MustMillis("2018-01-01"),
 							ClusterLicenses: []ElasticsearchLicense{
-								{
-									License: client.License{
-										ExpiryDateInMillis: chrono.MustMillis("2018-12-31"),
-										StartDateInMillis:  chrono.MustMillis("2018-01-01"),
-									},
-								},
+								{License: license(expired, platinum)},
 							},
 						},
 					},
@@ -92,7 +89,46 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      client.License{},
 			wantFound: false,
-			wantErr:   true,
+		},
+		{
+			name: "success: prefer trial over expired platinum",
+			args: args{
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(oneMonth, trial)},
+								{License: license(expired, platinum)},
+								{License: license(expired, platinum)},
+							},
+						},
+					},
+				},
+			},
+			want:      license(oneMonth, trial),
+			wantFound: true,
+		},
+		{
+			name: "success: prefer platinum over trial",
+			args: args{
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(oneMonth, trial)},
+								{License: license(twelveMonth, platinum)},
+								{License: license(twoMonth, gold)},
+							},
+						},
+					},
+				},
+			},
+			want:      license(twelveMonth, platinum),
+			wantFound: true,
 		},
 		{
 			name: "success: longest valid platinum",
@@ -113,7 +149,6 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      license(twelveMonth, platinum),
 			wantFound: true,
-			wantErr:   false,
 		},
 		{
 			name: "success: longest valid from multiple enterprise licenses",
@@ -142,7 +177,6 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      license(twelveMonth, platinum),
 			wantFound: true,
-			wantErr:   false,
 		},
 		{
 			name: "success: best license",
@@ -172,17 +206,12 @@ func Test_bestMatchAt(t *testing.T) {
 			},
 			want:      license(twoMonth, platinum),
 			wantFound: true,
-			wantErr:   false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			got, _, found, err := bestMatchAt(now, tt.args.licenses, noopFilter)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("bestMatchAt() error = %v, wantErr %v, got %v", err, tt.wantErr, got)
-				return
-			}
+			got, _, found := bestMatchAt(now, tt.args.licenses, noopFilter)
 			if tt.wantFound != found {
 				t.Errorf("bestMatchAt() found = %v, want %v", found, tt.wantFound)
 			}
