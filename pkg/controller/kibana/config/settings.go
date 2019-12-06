@@ -15,6 +15,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // Kibana configuration settings file
@@ -104,4 +106,11 @@ func elasticsearchTLSSettings(kb v1beta1.Kibana) map[string]interface{} {
 	}
 
 	return cfg
+}
+
+// ensureEncryptionKey ensures a given config contains an encryption key
+func ensureEncryptionKey(cfg map[string]interface{}) {
+	if _, ok := cfg[XpackSecurityEncryptionKey]; !ok {
+		cfg[XpackSecurityEncryptionKey] = rand.String(64)
+	}
 }
