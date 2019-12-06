@@ -19,7 +19,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+
+	"github.com/go-test/deep"
 )
 
 func TestReconcileStatefulSet(t *testing.T) {
@@ -41,6 +44,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 	}
 	metaObj, err := meta.Accessor(&ssetSample)
 	require.NoError(t, err)
+	commonscheme.SetupScheme()
 	err = reconciler.SetControllerReference(&es, metaObj, scheme.Scheme)
 	require.NoError(t, err)
 
@@ -88,7 +92,9 @@ func TestReconcileStatefulSet(t *testing.T) {
 			require.Equal(t, tt.wantExpectationsUpdated, len(exp.GetGenerations()) != 0)
 
 			// returned sset should match the expected one
-			require.Equal(t, tt.expected, returned)
+			diff := deep.Equal(tt.expected, returned)
+			require.Nil(t, diff)
+			// require.Equal(t, tt.expected, returned)
 			// and be stored in the apiserver
 			var retrieved appsv1.StatefulSet
 			err = tt.c.Get(k8s.ExtractNamespacedName(&tt.expected), &retrieved)
