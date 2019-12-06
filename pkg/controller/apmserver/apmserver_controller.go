@@ -213,7 +213,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
-	if !association.SetAndConfigured(&as, r.recorder) {
+	if !association.IsConfiguredIfSet(&as, r.recorder) {
 		return reconcile.Result{}, nil
 	}
 

@@ -32,9 +32,9 @@ func ElasticsearchAuthSettings(
 	return assocConf.AuthSecretKey, string(secret.Data[assocConf.AuthSecretKey]), nil
 }
 
-// SetAndConfigured checks if an association is set in the spec and if it has been configured by an association controller.
+// IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
 // This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
-func SetAndConfigured(associated commonv1beta1.Associated, r record.EventRecorder) bool {
+func IsConfiguredIfSet(associated commonv1beta1.Associated, r record.EventRecorder) bool {
 	esRef := associated.ElasticsearchRef()
 	if (&esRef).IsDefined() && !associated.AssociationConf().IsConfigured() {
 		r.Event(associated, v1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")

@@ -233,7 +233,7 @@ func (d *driver) Reconcile(
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.Results{}
-	if !association.SetAndConfigured(kb, d.recorder) {
+	if !association.IsConfiguredIfSet(kb, d.recorder) {
 		return &results
 	}
 
