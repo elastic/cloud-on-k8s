@@ -244,6 +244,13 @@ spec:
         - ip: 35.198.131.115
 ----
 
+Or alternatively, if you only use curl, you can use the service name and specify the resolve information through an additional argument:
+
+[source,sh]
+----
+curl --cacert tls.crt -u elastic:$PW https://$NAME-es-http:9200/ --resolve $NAME-es-http:9200:$IP
+----
+
 You can now reach Elasticsearch:
 
 [source,sh]
