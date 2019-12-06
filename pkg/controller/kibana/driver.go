@@ -10,11 +10,11 @@ import (
 
 	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -233,9 +233,7 @@ func (d *driver) Reconcile(
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.Results{}
-	if kb.RequiresAssociation() && !kb.AssociationConf().IsConfigured() {
-		d.recorder.Event(kb, corev1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
-		log.Info("Elasticsearch association not established: skipping Kibana deployment reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
+	if !association.IsConfigured(kb, d.recorder) {
 		return &results
 	}
 
