@@ -162,7 +162,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				enterpriseLicense(t, commonlicense.ElasticsearchLicenseTypePlatinum, 1, true),
 				cluster,
 			},
-			wantErr:          "no matching license found",
+			wantErr:          "",
 			wantNewLicense:   false,
 			wantRequeue:      false,
 			wantRequeueAfter: false,
