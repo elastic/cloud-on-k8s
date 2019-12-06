@@ -40,7 +40,7 @@ func bestMatchAt(
 	}
 	valid := filterValid(now, licenses, filter)
 	if len(valid) == 0 {
-		log.Info("no matching license found", "no_licenses", len(licenses))
+		log.Info("No matching license found", "num_licenses", len(licenses))
 		return license, parentMeta, false
 	}
 	sort.Slice(valid, func(i, j int) bool {
