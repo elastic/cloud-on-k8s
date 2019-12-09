@@ -15,8 +15,8 @@ data:
   useNodeNameOnly: "true"
   storageClassMap: |     
     e2e-default:
-       hostDir: /mnt/disks
-       mountDir:  /mnt/disks  
+       hostDir: /mnt/disks/ssd0
+       mountDir:  /mnt/disks/ssd0  
 ---
 apiVersion: extensions/v1beta1
 kind: DaemonSet
@@ -35,6 +35,13 @@ spec:
         app: local-volume-provisioner
     spec:
       serviceAccountName: local-storage-admin
+	  initContainers:
+	  - name: install
+		image: busybox
+		command: ['sh', '-c', 'for i in $(seq 1 10); do mkdir -p "/mnt/disks/ssd0/disk-$i"; done']
+		volumeMounts:
+		  - mountPath:  /mnt/disks 
+		    name: e2e-default
       containers:
         - image: "quay.io/external_storage/local-volume-provisioner:v2.2.0"
           imagePullPolicy: "Always"
