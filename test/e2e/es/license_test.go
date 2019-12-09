@@ -76,12 +76,21 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 
 // TestEnterpriseTrialLicense this test can be run exactly once per installation!
 func TestEnterpriseTrialLicense(t *testing.T) {
+	// only execute this test if we have a test license to work with
+	if test.Ctx().TestLicense == "" {
+		t.SkipNow()
+	}
+
+	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
+	require.NoError(t, err)
+
 	esBuilder := elasticsearch.NewBuilder("test-es-trial-license").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	var licenseTestContext elasticsearch.LicenseTestContext
 
 	trialSecretName := "eck-trial"
+	licenseSecretName := "eck-license"
 	initStepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
@@ -99,8 +108,15 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 		return test.StepList{
 			licenseTestContext.Init(),
 			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeTrial),
-			// revert to basic from trial
+			// upgrade from trial to a paid-for license
+			licenseTestContext.CreateEnterpriseLicenseSecret(licenseSecretName, licenseBytes),
+			licenseTestContext.CheckElasticsearchLicense(
+				license.ElasticsearchLicenseTypeGold,
+				license.ElasticsearchLicenseTypePlatinum,
+			),
+			// revert to basic again
 			licenseTestContext.DeleteEnterpriseLicenseSecret(trialSecretName),
+			licenseTestContext.DeleteEnterpriseLicenseSecret(licenseSecretName),
 			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
 			// repeatedly creating a trial is not allowed
 			licenseTestContext.CreateEnterpriseTrialLicenseSecret(trialSecretName),

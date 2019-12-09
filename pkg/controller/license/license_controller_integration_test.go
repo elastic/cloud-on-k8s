@@ -7,6 +7,7 @@
 package license
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -69,7 +71,7 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// Create the EnterpriseLicense object
-	require.NoError(t, license.CreateEnterpriseLicense(
+	require.NoError(t, CreateEnterpriseLicense(
 		c,
 		types.NamespacedName{Name: "foo", Namespace: "elastic-system"},
 		enterpriseLicense,
@@ -217,4 +219,22 @@ func TestDelayingQueueInvariants(t *testing.T) {
 			assert.Equal(t, tt.expectedObservations, seen)
 		})
 	}
+}
+
+// CreateEnterpriseLicense creates an Enterprise license wrapped in a secret.
+func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l license.EnterpriseLicense) error {
+	bytes, err := json.Marshal(l)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal license")
+	}
+	return c.Create(&corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      key.Name,
+			Labels:    license.LabelsForOperatorScope(l.License.Type),
+		},
+		Data: map[string][]byte{
+			"license": bytes,
+		},
+	})
 }

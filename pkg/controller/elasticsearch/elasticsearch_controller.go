@@ -304,7 +304,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	if cluster == nil {
 		return nil
 	}
-	return r.Status().Update(cluster)
+	return common.UpdateStatus(r.Client, cluster)
 }
 
 // onDelete garbage collect resources when a Elasticsearch cluster is deleted

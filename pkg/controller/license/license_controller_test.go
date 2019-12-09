@@ -104,7 +104,7 @@ func enterpriseLicense(t *testing.T, licenseType commonlicense.ElasticsearchLice
 	require.NoError(t, err)
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: commonlicense.LabelsForType(commonlicense.LicenseLabelEnterprise),
+			Labels: commonlicense.LabelsForOperatorScope(license.License.Type),
 		},
 		Data: map[string][]byte{
 			commonlicense.FileName: bytes,
@@ -162,7 +162,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				enterpriseLicense(t, commonlicense.ElasticsearchLicenseTypePlatinum, 1, true),
 				cluster,
 			},
-			wantErr:          "no matching license found",
+			wantErr:          "",
 			wantNewLicense:   false,
 			wantRequeue:      false,
 			wantRequeueAfter: false,
