@@ -27,7 +27,7 @@ const (
 	LicenseScopeElasticsearch LicenseScope = "elasticsearch"
 )
 
-// LabelsForOperatorScope creates a map of labels for the given scope of either operator or Elasticsearch scope.
+// LabelsForOperatorScope creates a map of labels for operator scope with licence type set to the given value.
 func LabelsForOperatorScope(t OperatorLicenseType) map[string]string {
 	return map[string]string{
 		common.TypeLabelName: Type,
