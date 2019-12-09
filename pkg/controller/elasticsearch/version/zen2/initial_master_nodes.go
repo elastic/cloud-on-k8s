@@ -5,7 +5,7 @@
 package zen2
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 )
@@ -28,7 +28,7 @@ func SetupInitialMasterNodes(
 			continue
 		}
 		// patch config with the expected initial master nodes
-		if err := nodeSpecResources[i].Config.SetStrings(v1beta1.ClusterInitialMasterNodes, masters...); err != nil {
+		if err := nodeSpecResources[i].Config.SetStrings(esv1.ClusterInitialMasterNodes, masters...); err != nil {
 			return err
 		}
 	}

@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -31,7 +31,7 @@ func ReconcileTransportCertificatesSecrets(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	ca *certificates.CA,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	var pods corev1.PodList
@@ -110,12 +110,12 @@ func ReconcileTransportCertificatesSecrets(
 func ensureTransportCertificatesSecretExists(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 ) (*corev1.Secret, error) {
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      v1beta1.TransportCertificatesSecret(es.Name),
+			Name:      esv1.TransportCertificatesSecret(es.Name),
 
 			Labels: map[string]string{
 				// a label showing which es these certificates belongs to

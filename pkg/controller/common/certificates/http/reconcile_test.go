@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -52,7 +52,7 @@ var (
 	testCA            *certificates.CA
 	testRSAPrivateKey *rsa.PrivateKey
 	pemCert           []byte
-	testES            = v1beta1.Elasticsearch{ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
+	testES            = esv1.Elasticsearch{ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
 	testSvc           = corev1.Service{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "test-service",
@@ -85,7 +85,7 @@ func init() {
 	testCSR, _ := x509.ParseCertificateRequest(testCSRBytes)
 
 	validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
-		k8s.ExtractNamespacedName(&testES), v1beta1.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+		k8s.ExtractNamespacedName(&testES), esv1.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
 	)
 
 	certData, err := testCA.CreateCertificate(*validatedCertificateTemplate)
@@ -102,7 +102,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 
 	type args struct {
 		c        k8s.Client
-		es       v1beta1.Elasticsearch
+		es       esv1.Elasticsearch
 		ca       *certificates.CA
 		services []corev1.Service
 	}
@@ -134,12 +134,12 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 						certificates.KeyFileName:  key,
 					},
 				}),
-				es: v1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
-					Spec: v1beta1.ElasticsearchSpec{
-						HTTP: commonv1beta1.HTTPConfig{
-							TLS: commonv1beta1.TLSOptions{
-								Certificate: commonv1beta1.SecretRef{
+					Spec: esv1.ElasticsearchSpec{
+						HTTP: commonv1.HTTPConfig{
+							TLS: commonv1.TLSOptions{
+								Certificate: commonv1.SecretRef{
 									SecretName: "my-cert",
 								},
 							},
@@ -165,7 +165,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 			}
 
 			got, err := ReconcileHTTPCertificates(
-				testDriver, &tt.args.es, v1beta1.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
+				testDriver, &tt.args.es, esv1.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
 				certificates.RotationParams{
 					Validity:     certificates.DefaultCertValidity,
 					RotateBefore: certificates.DefaultRotateBefore,
@@ -187,7 +187,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	sanIPv6 := "2001:db8:0:85a3:0:0:ac1f:8001"
 
 	type args struct {
-		es           v1beta1.Elasticsearch
+		es           esv1.Elasticsearch
 		svcs         []corev1.Service
 		certValidity time.Duration
 	}
@@ -199,13 +199,13 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 		{
 			name: "with svcs and user-provided SANs",
 			args: args{
-				es: v1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: v1.ObjectMeta{Namespace: "test", Name: "test"},
-					Spec: v1beta1.ElasticsearchSpec{
-						HTTP: commonv1beta1.HTTPConfig{
-							TLS: commonv1beta1.TLSOptions{
-								SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
-									SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{
+					Spec: esv1.ElasticsearchSpec{
+						HTTP: commonv1.HTTPConfig{
+							TLS: commonv1.TLSOptions{
+								SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+									SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
 										{
 											DNS: sanDNS1,
 										},
@@ -252,7 +252,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := createValidatedHTTPCertificateTemplate(
 				k8s.ExtractNamespacedName(&tt.args.es),
-				v1beta1.ESNamer,
+				esv1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
 				tt.args.svcs,
 				&x509.CertificateRequest{},
@@ -267,10 +267,10 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 
 func Test_shouldIssueNewCertificate(t *testing.T) {
 	esWithSAN := testES.DeepCopy()
-	esWithSAN.Spec.HTTP = commonv1beta1.HTTPConfig{
-		TLS: commonv1beta1.TLSOptions{
-			SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
-				SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{
+	esWithSAN.Spec.HTTP = commonv1.HTTPConfig{
+		TLS: commonv1.TLSOptions{
+			SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+				SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
 					{
 						DNS: "search.example.com",
 					},
@@ -279,7 +279,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 		},
 	}
 	type args struct {
-		es           v1beta1.Elasticsearch
+		es           esv1.Elasticsearch
 		secret       corev1.Secret
 		rotateBefore time.Duration
 	}
@@ -354,7 +354,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := shouldIssueNewHTTPCertificate(
 				k8s.ExtractNamespacedName(&tt.args.es),
-				v1beta1.ESNamer,
+				esv1.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
 				&tt.args.secret,
 				[]corev1.Service{testSvc},

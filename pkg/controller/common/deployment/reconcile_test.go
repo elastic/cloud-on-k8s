@@ -7,7 +7,7 @@ package deployment
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -61,7 +61,7 @@ func TestReconcile(t *testing.T) {
 			Replicas: pointer.Int32(2),
 		},
 	}
-	owner := v1beta1.Elasticsearch{} // can be any type
+	owner := esv1.Elasticsearch{} // can be any type
 
 	// should create a new deployment
 	reconciled, err := Reconcile(k8sClient, scheme.Scheme, expected, &owner)

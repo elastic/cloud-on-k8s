@@ -9,9 +9,9 @@ import (
 
 	"k8s.io/client-go/kubernetes/scheme"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -34,7 +34,7 @@ const (
 	associationLabelNamespace = "association.k8s.elastic.co/namespace"
 )
 
-var esFixture = estype.Elasticsearch{
+var esFixture = esv1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "es-foo",
 		Namespace: "default",
@@ -50,10 +50,10 @@ var kibanaFixtureObjectMeta = metav1.ObjectMeta{
 	UID:       kibanaFixtureUID,
 }
 
-var kibanaFixture = kbtype.Kibana{
+var kibanaFixture = kbv1.Kibana{
 	ObjectMeta: kibanaFixtureObjectMeta,
-	Spec: kbtype.KibanaSpec{
-		ElasticsearchRef: commonv1beta1.ObjectSelector{
+	Spec: kbv1.KibanaSpec{
+		ElasticsearchRef: commonv1.ObjectSelector{
 			Name:      esFixture.Name,
 			Namespace: esFixture.Namespace,
 		},
@@ -63,8 +63,8 @@ var kibanaFixture = kbtype.Kibana{
 func Test_reconcileEsUser(t *testing.T) {
 	type args struct {
 		initialObjects []runtime.Object
-		kibana         kbtype.Kibana
-		es             estype.Elasticsearch
+		kibana         kbv1.Kibana
+		es             esv1.Elasticsearch
 	}
 	tests := []struct {
 		name          string
@@ -219,13 +219,13 @@ func Test_reconcileEsUser(t *testing.T) {
 		{
 			name: "Reconcile is namespace aware",
 			args: args{
-				kibana: kbtype.Kibana{
+				kibana: kbv1.Kibana{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "kibana-foo",
 						Namespace: "ns-2",
 					},
-					Spec: kbtype.KibanaSpec{
-						ElasticsearchRef: commonv1beta1.ObjectSelector{
+					Spec: kbv1.KibanaSpec{
+						ElasticsearchRef: commonv1.ObjectSelector{
 							Name:      esFixture.Name,
 							Namespace: esFixture.Namespace,
 						},

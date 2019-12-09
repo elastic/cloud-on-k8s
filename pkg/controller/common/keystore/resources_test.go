@@ -7,8 +7,8 @@ package keystore
 import (
 	"testing"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	watches2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
@@ -39,22 +39,22 @@ var (
 			"key1": []byte("value1"),
 		},
 	}
-	testSecureSettingsSecretRef = commonv1beta1.SecretSource{
+	testSecureSettingsSecretRef = commonv1.SecretSource{
 		SecretName: testSecureSettingsSecretName,
 	}
-	testKibana = v1beta1.Kibana{
+	testKibana = kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "namespace",
 			Name:      "kibana",
 		},
 	}
-	testKibanaWithSecureSettings = v1beta1.Kibana{
+	testKibanaWithSecureSettings = kbv1.Kibana{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "kibana",
 		},
 		ObjectMeta: testKibana.ObjectMeta,
-		Spec: v1beta1.KibanaSpec{
-			SecureSettings: []commonv1beta1.SecretSource{testSecureSettingsSecretRef},
+		Spec: kbv1.KibanaSpec{
+			SecureSettings: []commonv1.SecretSource{testSecureSettingsSecretRef},
 		},
 	}
 )
@@ -64,7 +64,7 @@ func TestResources(t *testing.T) {
 	tests := []struct {
 		name           string
 		client         k8s.Client
-		kb             v1beta1.Kibana
+		kb             kbv1.Kibana
 		wantNil        bool
 		wantContainers *corev1.Container
 		wantVersion    string

@@ -7,8 +7,8 @@ package apmserver
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
@@ -19,14 +19,14 @@ import (
 func TestNewService(t *testing.T) {
 	testCases := []struct {
 		name     string
-		httpConf commonv1beta1.HTTPConfig
+		httpConf commonv1.HTTPConfig
 		wantSvc  func() corev1.Service
 	}{
 		{
 			name: "no TLS",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
 						Disabled: true,
 					},
 				},
@@ -35,10 +35,10 @@ func TestNewService(t *testing.T) {
 		},
 		{
 			name: "self-signed certificate",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
-						SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
 							{
 								DNS: "apm-test.local",
 							},
@@ -54,9 +54,9 @@ func TestNewService(t *testing.T) {
 		},
 		{
 			name: "user-provided certificate",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					Certificate: commonv1beta1.SecretRef{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					Certificate: commonv1.SecretRef{
 						SecretName: "my-cert",
 					},
 				},
@@ -104,13 +104,13 @@ func mkService() corev1.Service {
 	}
 }
 
-func mkAPMServer(httpConf commonv1beta1.HTTPConfig) v1beta1.ApmServer {
-	return v1beta1.ApmServer{
+func mkAPMServer(httpConf commonv1.HTTPConfig) apmv1.ApmServer {
+	return apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apm-test",
 			Namespace: "test",
 		},
-		Spec: v1beta1.ApmServerSpec{
+		Spec: apmv1.ApmServerSpec{
 			HTTP: httpConf,
 		},
 	}

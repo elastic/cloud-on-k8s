@@ -9,7 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -105,7 +105,7 @@ func allPodsBootlooping(pods []corev1.Pod) bool {
 			return false
 		}
 		for _, containerStatus := range p.Status.ContainerStatuses {
-			if containerStatus.Name == v1beta1.ElasticsearchContainerName &&
+			if containerStatus.Name == esv1.ElasticsearchContainerName &&
 				containerStatus.RestartCount == 0 {
 				// the Pod may not be healthy, but it has not restarted (yet)
 				return false

@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
@@ -20,9 +20,9 @@ import (
 )
 
 func Test_newDownscaleState(t *testing.T) {
-	es := v1beta1.Elasticsearch{
+	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "name"},
-		Spec:       v1beta1.ElasticsearchSpec{NodeSets: []v1beta1.NodeSet{{Count: 4}}},
+		Spec:       esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 4}}},
 	}
 
 	tests := []struct {

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -46,7 +46,7 @@ func TestCrossNSAssociation(t *testing.T) {
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
 	name := "test-apm-assoc-non-existent-es"
 	apmBuilder := apmserver.NewBuilder(name).
-		WithElasticsearchRef(commonv1beta1.ObjectSelector{
+		WithElasticsearchRef(commonv1.ObjectSelector{
 			Name: "non-existent-es",
 		}).
 		WithNodeCount(1)
@@ -90,7 +90,7 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 			test.Step{
 				Name: "Updating to invalid Elasticsearch reference should succeed",
 				Test: func(t *testing.T) {
-					var apm v1beta1.ApmServer
+					var apm apmv1.ApmServer
 					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&apmBuilder.ApmServer), &apm))
 					apm.Spec.ElasticsearchRef.Namespace = "xxxx"
 					require.NoError(t, k.Client.Update(&apm))
@@ -112,11 +112,11 @@ func TestAPMAssociationWhenReferencedESDisappears(t *testing.T) {
 						switch {
 						case evt.Type == corev1.EventTypeNormal && evt.Reason == events.EventAssociationStatusChange:
 							prevStatus, currStatus := annotation.ExtractAssociationStatus(evt.ObjectMeta)
-							if prevStatus == commonv1beta1.AssociationEstablished && currStatus != prevStatus {
+							if prevStatus == commonv1.AssociationEstablished && currStatus != prevStatus {
 								assocLostEventSeen = true
 							}
 
-							if currStatus == commonv1beta1.AssociationEstablished {
+							if currStatus == commonv1.AssociationEstablished {
 								assocEstablishedEventSeen = true
 							}
 						case evt.Type == corev1.EventTypeWarning && evt.Reason == events.EventAssociationError:

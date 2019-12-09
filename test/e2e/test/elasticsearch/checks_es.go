@@ -10,15 +10,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type esClusterChecks struct {
-	es estype.Elasticsearch
+	es esv1.Elasticsearch
 	k  *test.K8sClient
 }
 
@@ -39,7 +38,7 @@ func (e *esClusterChecks) newESClient() (client.Client, error) {
 	return NewElasticsearchClient(e.es, e.k)
 }
 
-func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) test.Step {
+func (e *esClusterChecks) CheckESVersion(es esv1.Elasticsearch) test.Step {
 	return test.Step{
 		Name: "ES version should be the expected one",
 		Test: test.Eventually(func() error {
@@ -75,8 +74,8 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 			if err != nil {
 				return err
 			}
-			actualHealth := estype.ElasticsearchHealth(health.Status)
-			expectedHealth := estype.ElasticsearchGreenHealth
+			actualHealth := esv1.ElasticsearchHealth(health.Status)
+			expectedHealth := esv1.ElasticsearchGreenHealth
 			if actualHealth != expectedHealth {
 				return fmt.Errorf("cluster health is not green, but %s", actualHealth)
 			}
@@ -85,7 +84,7 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 	}
 }
 
-func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Step {
+func (e *esClusterChecks) CheckESNodesTopology(es esv1.Elasticsearch) test.Step {
 	return test.Step{
 		Name: "ES nodes topology should eventually be the expected one",
 		Test: test.Eventually(func() error {
@@ -115,7 +114,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 			}
 
 			// flatten the topology
-			var expectedTopology []estype.NodeSet
+			var expectedTopology []esv1.NodeSet
 			for _, node := range es.Spec.NodeSets {
 				for i := 0; i < int(node.Count); i++ {
 					expectedTopology = append(expectedTopology, node)
@@ -148,7 +147,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 				nodeRoles := rolesToConfig(node.Roles)
 				nodeStats := nodesStats.Nodes[nodeID]
 				for i, topoElem := range expectedTopology {
-					cfg, err := v1beta1.UnpackConfig(topoElem.Config)
+					cfg, err := esv1.UnpackConfig(topoElem.Config)
 					if err != nil {
 						return err
 					}
@@ -178,8 +177,8 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 	}
 }
 
-func rolesToConfig(roles []string) estype.Node {
-	node := estype.Node{
+func rolesToConfig(roles []string) esv1.Node {
+	node := esv1.Node{
 		ML: true, // ML is not reported in roles array, we assume true
 	}
 	for _, r := range roles {
@@ -195,10 +194,10 @@ func rolesToConfig(roles []string) estype.Node {
 	return node
 }
 
-func compareMemoryLimit(topologyElement estype.NodeSet, cgroupMemoryLimitsInBytes int64) bool {
+func compareMemoryLimit(topologyElement esv1.NodeSet, cgroupMemoryLimitsInBytes int64) bool {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
-		if c.Name == v1beta1.ElasticsearchContainerName {
+		if c.Name == esv1.ElasticsearchContainerName {
 			memoryLimit = c.Resources.Limits.Memory()
 		}
 	}

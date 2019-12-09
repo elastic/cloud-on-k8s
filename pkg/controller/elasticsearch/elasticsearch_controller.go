@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	elasticsearchv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -83,7 +83,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		&source.Kind{Type: &elasticsearchv1beta1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	if err := c.Watch(
 		&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &elasticsearchv1beta1.Elasticsearch{},
+			OwnerType:    &esv1.Elasticsearch{},
 		},
 	); err != nil {
 		return err
@@ -124,7 +124,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &elasticsearchv1beta1.Elasticsearch{},
+		OwnerType:    &esv1.Elasticsearch{},
 	}); err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
 		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &elasticsearchv1beta1.Elasticsearch{},
+			OwnerType:    &esv1.Elasticsearch{},
 		},
 	}); err != nil {
 		return err
@@ -177,7 +177,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// Fetch the Elasticsearch instance
-	es := elasticsearchv1beta1.Elasticsearch{}
+	es := esv1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -233,7 +233,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 }
 
 func (r *ReconcileElasticsearch) internalReconcile(
-	es elasticsearchv1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
@@ -292,7 +292,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
-	es elasticsearchv1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
 	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", es.Namespace, "es_name", es.Name)
@@ -312,5 +312,5 @@ func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(http.CertificateWatchKey(elasticsearchv1beta1.ESNamer, es.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(http.CertificateWatchKey(esv1.ESNamer, es.Name))
 }

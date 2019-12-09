@@ -1,5 +1,5 @@
 ---
-apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: test-kibana-standalone-es-{{ .Suffix }}
@@ -13,7 +13,7 @@ spec:
       node.data: true
       node.store.allow_mmap: false
 ---
-apiVersion: kibana.k8s.elastic.co/v1beta1
+apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: test-kibana-standalone-{{ .Suffix }}

@@ -13,9 +13,10 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	corev1 "k8s.io/api/core/v1"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
 // PodKeyFileName returns the name of the private key entry for a specific pod in a transport certificates secret.
@@ -31,7 +32,7 @@ func PodCertFileName(podName string) string {
 // ensureTransportCertificatesSecretContentsForPod ensures that the transport certificates secret has the correct
 // content for a specific pod
 func ensureTransportCertificatesSecretContentsForPod(
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	secret *corev1.Secret,
 	pod corev1.Pod,
 	ca *certificates.CA,
@@ -107,7 +108,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 // - certificate has no SAN extra extension
 // - certificate SAN and IP does not match pod SAN and IP
 func shouldIssueNewCertificate(
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	secret corev1.Secret,
 	pod corev1.Pod,
 	privateKey *rsa.PrivateKey,
