@@ -231,7 +231,6 @@ func (r *ReconcileApmServer) isCompatible(as *apmv1beta1.ApmServer) (bool, error
 
 func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1beta1.ApmServer) (reconcile.Result, error) {
 	state := NewState(request, as)
-
 	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(*as), as)
 	if err != nil {
 		return reconcile.Result{}, err
