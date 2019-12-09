@@ -26,7 +26,9 @@ import (
 )
 
 func TestReconcileStatefulSet(t *testing.T) {
+	commonscheme.SetupScheme()
 	es := v1beta1.Elasticsearch{
+
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "es",
@@ -34,20 +36,25 @@ func TestReconcileStatefulSet(t *testing.T) {
 		},
 	}
 	ssetSample := appsv1.StatefulSet{
+		// TODO sabo why is this needed now?
+		// TypeMeta: metav1.TypeMeta{
+		// 	Kind:       "StatefulSet",
+		// 	APIVersion: "apps/v1",
+		// },
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      "sset",
 			Labels: map[string]string{
 				hash.TemplateHashLabelName: "hash-value",
 			},
+			// TODO sabo why is this required
+			ResourceVersion: "1",
 		},
 	}
 	metaObj, err := meta.Accessor(&ssetSample)
 	require.NoError(t, err)
-	commonscheme.SetupScheme()
 	err = reconciler.SetControllerReference(&es, metaObj, scheme.Scheme)
 	require.NoError(t, err)
-
 	updatedSset := *ssetSample.DeepCopy()
 	updatedSset.Labels[hash.TemplateHashLabelName] = "updated"
 
@@ -97,9 +104,13 @@ func TestReconcileStatefulSet(t *testing.T) {
 			// require.Equal(t, tt.expected, returned)
 			// and be stored in the apiserver
 			var retrieved appsv1.StatefulSet
+			// todo sabo the returned one has TypeMeta.Kind and TypeMeta.APIVersion, but the original one doesnt
+			// []string{"TypeMeta.Kind:  != StatefulSet", "TypeMeta.APIVersion:  != apps/v1"}
 			err = tt.c.Get(k8s.ExtractNamespacedName(&tt.expected), &retrieved)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, retrieved)
+			diffSset := deep.Equal(tt.expected, retrieved)
+			require.Nil(t, diffSset)
+			// require.Equal(t, tt.expected, retrieved)
 		})
 	}
 }
