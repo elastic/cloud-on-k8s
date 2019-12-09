@@ -10,6 +10,7 @@ import (
 
 	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -312,7 +313,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				t.Errorf("reconcileSecureSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			require.Nil(t, deep.Equal(got, tt.want))
+			require.Empty(t, comparison.Diff(got, tt.want))
 		})
 	}
 }
