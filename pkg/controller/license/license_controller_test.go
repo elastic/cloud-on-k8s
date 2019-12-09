@@ -78,7 +78,7 @@ var cluster = &esv1.Elasticsearch{
 	},
 }
 
-func enterpriseLicense(t *testing.T, licenseType commonlicense.ElasticsearchLicenseType, maxNodes int, expired bool) *corev1.Secret {
+func enterpriseLicense(t *testing.T, licenseType client.ElasticsearchLicenseType, maxNodes int, expired bool) *corev1.Secret {
 	expiry := time.Now().Add(31 * 24 * time.Hour)
 	if expired {
 		expiry = time.Now().Add(-24 * time.Hour)
@@ -135,7 +135,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			name:    "existing gold matching license",
 			cluster: cluster,
 			k8sResources: []runtime.Object{
-				enterpriseLicense(t, commonlicense.ElasticsearchLicenseTypeGold, 1, false),
+				enterpriseLicense(t, client.ElasticsearchLicenseTypeGold, 1, false),
 				cluster,
 			},
 			wantErr:          "",
@@ -147,7 +147,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			name:    "existing platinum matching license",
 			cluster: cluster,
 			k8sResources: []runtime.Object{
-				enterpriseLicense(t, commonlicense.ElasticsearchLicenseTypePlatinum, 1, false),
+				enterpriseLicense(t, client.ElasticsearchLicenseTypePlatinum, 1, false),
 				cluster,
 			},
 			wantErr:          "",
@@ -159,7 +159,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			name:    "existing license expired",
 			cluster: cluster,
 			k8sResources: []runtime.Object{
-				enterpriseLicense(t, commonlicense.ElasticsearchLicenseTypePlatinum, 1, true),
+				enterpriseLicense(t, client.ElasticsearchLicenseTypePlatinum, 1, true),
 				cluster,
 			},
 			wantErr:          "",

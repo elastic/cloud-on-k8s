@@ -22,7 +22,7 @@ plans:
   serviceAccount: false
   psp: false
   gke:
-    region: europe-west1
+    region: us-east1
     adminUsername: admin
     localSsdCount: 1
     nodeCountPerZone: 1
