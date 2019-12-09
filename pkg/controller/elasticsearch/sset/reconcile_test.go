@@ -16,13 +16,12 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
-	"github.com/go-test/deep"
 )
 
 func TestReconcileStatefulSet(t *testing.T) {
@@ -36,19 +35,13 @@ func TestReconcileStatefulSet(t *testing.T) {
 		},
 	}
 	ssetSample := appsv1.StatefulSet{
-		// TODO sabo why is this needed now?
-		// TypeMeta: metav1.TypeMeta{
-		// 	Kind:       "StatefulSet",
-		// 	APIVersion: "apps/v1",
-		// },
+
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      "sset",
 			Labels: map[string]string{
 				hash.TemplateHashLabelName: "hash-value",
 			},
-			// TODO sabo why is this required
-			ResourceVersion: "1",
 		},
 	}
 	metaObj, err := meta.Accessor(&ssetSample)
@@ -99,18 +92,14 @@ func TestReconcileStatefulSet(t *testing.T) {
 			require.Equal(t, tt.wantExpectationsUpdated, len(exp.GetGenerations()) != 0)
 
 			// returned sset should match the expected one
-			diff := deep.Equal(tt.expected, returned)
-			require.Nil(t, diff)
-			// require.Equal(t, tt.expected, returned)
+			diff := comparison.Diff(&tt.expected, &returned)
+			require.Empty(t, diff)
 			// and be stored in the apiserver
 			var retrieved appsv1.StatefulSet
-			// todo sabo the returned one has TypeMeta.Kind and TypeMeta.APIVersion, but the original one doesnt
-			// []string{"TypeMeta.Kind:  != StatefulSet", "TypeMeta.APIVersion:  != apps/v1"}
 			err = tt.c.Get(k8s.ExtractNamespacedName(&tt.expected), &retrieved)
 			require.NoError(t, err)
-			diffSset := deep.Equal(tt.expected, retrieved)
-			require.Nil(t, diffSset)
-			// require.Equal(t, tt.expected, retrieved)
+			diffSset := comparison.Diff(&tt.expected, &retrieved)
+			require.Empty(t, diffSset)
 		})
 	}
 }
