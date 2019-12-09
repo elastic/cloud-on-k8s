@@ -221,7 +221,7 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", state.Kibana.Namespace, "kibana_name", state.Kibana.Name)
-	return r.Status().Update(state.Kibana)
+	return common.UpdateStatus(r.Client, state.Kibana)
 }
 
 func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {

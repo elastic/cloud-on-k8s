@@ -468,5 +468,5 @@ func (r *ReconcileApmServer) updateStatus(state State) error {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
 	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "as_name", state.ApmServer.Name, "iteration", atomic.LoadUint64(&r.iteration))
-	return r.Status().Update(state.ApmServer)
+	return common.UpdateStatus(r.Client, state.ApmServer)
 }
