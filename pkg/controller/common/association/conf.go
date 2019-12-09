@@ -9,18 +9,19 @@ import (
 	"reflect"
 	"unsafe"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // FetchWithAssociation retrieves an object and extracts its association configuration.
-func FetchWithAssociation(client k8s.Client, request reconcile.Request, obj commonv1beta1.Associator) (bool, error) {
+func FetchWithAssociation(client k8s.Client, request reconcile.Request, obj commonv1.Associator) (bool, error) {
 	if err := client.Get(request.NamespacedName, obj); err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
@@ -38,7 +39,7 @@ func FetchWithAssociation(client k8s.Client, request reconcile.Request, obj comm
 }
 
 // GetAssociationConf extracts the association configuration from the given object by reading the annotations.
-func GetAssociationConf(obj runtime.Object) (*commonv1beta1.AssociationConf, error) {
+func GetAssociationConf(obj runtime.Object) (*commonv1.AssociationConf, error) {
 	accessor := meta.NewAccessor()
 	annotations, err := accessor.Annotations(obj)
 	if err != nil {
@@ -48,12 +49,12 @@ func GetAssociationConf(obj runtime.Object) (*commonv1beta1.AssociationConf, err
 	return extractAssociationConf(annotations)
 }
 
-func extractAssociationConf(annotations map[string]string) (*commonv1beta1.AssociationConf, error) {
+func extractAssociationConf(annotations map[string]string) (*commonv1.AssociationConf, error) {
 	if len(annotations) == 0 {
 		return nil, nil
 	}
 
-	var assocConf commonv1beta1.AssociationConf
+	var assocConf commonv1.AssociationConf
 	serializedConf, exists := annotations[annotation.AssociationConfAnnotation]
 	if !exists || serializedConf == "" {
 		return nil, nil
@@ -91,7 +92,7 @@ func RemoveAssociationConf(client k8s.Client, obj runtime.Object) error {
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
-func UpdateAssociationConf(client k8s.Client, obj runtime.Object, wantConf *commonv1beta1.AssociationConf) error {
+func UpdateAssociationConf(client k8s.Client, obj runtime.Object, wantConf *commonv1.AssociationConf) error {
 	accessor := meta.NewAccessor()
 	annotations, err := accessor.Annotations(obj)
 	if err != nil {

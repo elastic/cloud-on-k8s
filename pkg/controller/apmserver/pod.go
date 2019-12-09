@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -90,7 +90,7 @@ func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-func newPodSpec(as *v1beta1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
+func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 	configSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ConfigSecret.Name,
 		"config",
@@ -108,7 +108,7 @@ func newPodSpec(as *v1beta1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 	})
 
 	builder := defaults.NewPodTemplateBuilder(
-		p.PodTemplate, v1beta1.APMServerContainerName).
+		p.PodTemplate, apmv1.ApmServerContainerName).
 		WithResources(DefaultResources).
 		WithDockerImage(p.CustomImageName, imageWithVersion(defaultImageRepositoryAndName, p.Version)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).

@@ -7,7 +7,7 @@ package transport
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +21,7 @@ import (
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	defaultSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      v1beta1.TransportCertificatesSecret(testES.Name),
+			Name:      esv1.TransportCertificatesSecret(testES.Name),
 			Namespace: testES.Namespace,
 			Labels: map[string]string{
 				label.ClusterNameLabelName: testES.Name,
@@ -39,7 +39,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	type args struct {
 		c      k8s.Client
 		scheme *runtime.Scheme
-		owner  v1beta1.Elasticsearch
+		owner  esv1.Elasticsearch
 	}
 	tests := []struct {
 		name    string

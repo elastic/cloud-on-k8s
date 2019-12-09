@@ -225,6 +225,25 @@ webhooks:
           - UPDATE
         resources:
           - elasticsearches
+  - clientConfig:
+      caBundle: Cg==
+      service:
+        name: elastic-webhook-server
+        namespace: {{ .GlobalOperator.Namespace }}
+        # this is the path controller-runtime automatically generates
+        path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
+    failurePolicy: Ignore
+    name: elastic-es-validation.k8s.elastic.co
+    rules:
+      - apiGroups:
+          - elasticsearch.k8s.elastic.co
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - elasticsearches
 ---
 apiVersion: v1
 kind: Service

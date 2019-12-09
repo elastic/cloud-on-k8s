@@ -8,24 +8,22 @@ import (
 	"reflect"
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func Test_setVolumeClaimsControllerReference(t *testing.T) {
 	varTrue := true
 	varFalse := false
-	es := v1beta1.Elasticsearch{
-		TypeMeta: v1.TypeMeta{
+	es := esv1.Elasticsearch{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "Elasticsearch",
-			APIVersion: "elasticsearch.k8s.elastic.co/v1beta1",
+			APIVersion: "elasticsearch.k8s.elastic.co/v1",
 		},
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es1",
 			Namespace: "default",
 			UID:       "ABCDEF",
@@ -40,14 +38,14 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 		{
 			name: "should set the ownerRef when building a new StatefulSet",
 			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: v1.ObjectMeta{Name: "elasticsearch-data"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
 			},
 			existingClaims: nil,
 			wantClaims: []corev1.PersistentVolumeClaim{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "elasticsearch-data",
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion:         es.APIVersion,
 								Kind:               es.Kind,
@@ -64,15 +62,15 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 		{
 			name: "should set the ownerRef on user-provided claims when building a new StatefulSet",
 			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: v1.ObjectMeta{Name: "elasticsearch-data"}},
-				{ObjectMeta: v1.ObjectMeta{Name: "user-provided"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "user-provided"}},
 			},
 			existingClaims: nil,
 			wantClaims: []corev1.PersistentVolumeClaim{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "elasticsearch-data",
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion:         es.APIVersion,
 								Kind:               es.Kind,
@@ -85,9 +83,9 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "user-provided",
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion:         es.APIVersion,
 								Kind:               es.Kind,
@@ -104,14 +102,14 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 		{
 			name: "should inherit existing claim ownerRefs that may have a different apiVersion",
 			persistentVolumeClaims: []corev1.PersistentVolumeClaim{
-				{ObjectMeta: v1.ObjectMeta{Name: "elasticsearch-data"}},
-				{ObjectMeta: v1.ObjectMeta{Name: "user-provided"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-data"}},
+				{ObjectMeta: metav1.ObjectMeta{Name: "user-provided"}},
 			},
 			existingClaims: []corev1.PersistentVolumeClaim{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "elasticsearch-data",
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								// claim already exists, with a different apiVersion
 								APIVersion:         "elasticsearch.k8s.elastic.co/v1alpha1",
@@ -125,9 +123,9 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "user-provided",
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								// claim already exists, with a different apiVersion
 								APIVersion:         "elasticsearch.k8s.elastic.co/v1alpha1",
@@ -144,9 +142,9 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 			// existing claims should be preserved
 			wantClaims: []corev1.PersistentVolumeClaim{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "elasticsearch-data",
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion:         "elasticsearch.k8s.elastic.co/v1alpha1",
 								Kind:               es.Kind,
@@ -159,9 +157,9 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "user-provided",
-						OwnerReferences: []v1.OwnerReference{
+						OwnerReferences: []metav1.OwnerReference{
 							{
 								APIVersion:         "elasticsearch.k8s.elastic.co/v1alpha1",
 								Kind:               es.Kind,

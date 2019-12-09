@@ -7,23 +7,24 @@ package reconcile
 import (
 	"reflect"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
 type State struct {
 	*events.Recorder
-	cluster v1beta1.Elasticsearch
-	status  v1beta1.ElasticsearchStatus
+	cluster esv1.Elasticsearch
+	status  esv1.ElasticsearchStatus
 }
 
 // NewState creates a new reconcile state based on the given cluster
-func NewState(c v1beta1.Elasticsearch) *State {
+func NewState(c esv1.Elasticsearch) *State {
 	return &State{Recorder: events.NewRecorder(), cluster: c, status: *c.Status.DeepCopy()}
 }
 
@@ -39,16 +40,16 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 }
 
 func (s *State) updateWithPhase(
-	phase v1beta1.ElasticsearchOrchestrationPhase,
+	phase esv1.ElasticsearchOrchestrationPhase,
 	resourcesState ResourcesState,
 	observedState observer.State,
 ) *State {
 	s.status.AvailableNodes = int32(len(AvailableElasticsearchNodes(resourcesState.CurrentPods)))
 	s.status.Phase = phase
 
-	s.status.Health = v1beta1.ElasticsearchUnknownHealth
+	s.status.Health = esv1.ElasticsearchUnknownHealth
 	if observedState.ClusterHealth != nil && observedState.ClusterHealth.Status != "" {
-		s.status.Health = v1beta1.ElasticsearchHealth(observedState.ClusterHealth.Status)
+		s.status.Health = esv1.ElasticsearchHealth(observedState.ClusterHealth.Status)
 	}
 	return s
 }
@@ -66,19 +67,19 @@ func (s *State) UpdateElasticsearchReady(
 	resourcesState ResourcesState,
 	observedState observer.State,
 ) *State {
-	return s.updateWithPhase(v1beta1.ElasticsearchReadyPhase, resourcesState, observedState)
+	return s.updateWithPhase(esv1.ElasticsearchReadyPhase, resourcesState, observedState)
 }
 
 // IsElasticsearchReady reports if Elasticsearch is ready.
 func (s *State) IsElasticsearchReady(observedState observer.State) bool {
-	return s.status.Phase == v1beta1.ElasticsearchReadyPhase
+	return s.status.Phase == esv1.ElasticsearchReadyPhase
 }
 
 // UpdateElasticsearchApplyingChanges marks Elasticsearch as being the applying changes phase in the resource status.
 func (s *State) UpdateElasticsearchApplyingChanges(pods []corev1.Pod) *State {
 	s.status.AvailableNodes = int32(len(AvailableElasticsearchNodes(pods)))
-	s.status.Phase = v1beta1.ElasticsearchApplyingChangesPhase
-	s.status.Health = v1beta1.ElasticsearchRedHealth
+	s.status.Phase = esv1.ElasticsearchApplyingChangesPhase
+	s.status.Health = esv1.ElasticsearchRedHealth
 	return s
 }
 
@@ -92,13 +93,13 @@ func (s *State) UpdateElasticsearchMigrating(
 		events.EventReasonDelayed,
 		"Requested topology change delayed by data migration",
 	)
-	return s.updateWithPhase(v1beta1.ElasticsearchMigratingDataPhase, resourcesState, observedState)
+	return s.updateWithPhase(esv1.ElasticsearchMigratingDataPhase, resourcesState, observedState)
 }
 
 // Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.
 // It returns the events to emit and an updated version of the Elasticsearch cluster resource with
 // the current status applied to its status sub-resource.
-func (s *State) Apply() ([]events.Event, *v1beta1.Elasticsearch) {
+func (s *State) Apply() ([]events.Event, *esv1.Elasticsearch) {
 	previous := s.cluster.Status
 	current := s.status
 	if reflect.DeepEqual(previous, current) {
@@ -112,6 +113,6 @@ func (s *State) Apply() ([]events.Event, *v1beta1.Elasticsearch) {
 }
 
 func (s *State) UpdateElasticsearchInvalid(err error) {
-	s.status.Phase = v1beta1.ElasticsearchResourceInvalid
+	s.status.Phase = esv1.ElasticsearchResourceInvalid
 	s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, err.Error())
 }

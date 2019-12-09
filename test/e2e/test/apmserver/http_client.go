@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
@@ -35,7 +35,7 @@ type ApmClient struct {
 	authorizationHeaderValue string
 }
 
-func NewApmServerClient(as apmtype.ApmServer, k *test.K8sClient) (*ApmClient, error) {
+func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, error) {
 	var secretTokenSecret v1.Secret
 	secretTokenNamespacedName := types.NamespacedName{Namespace: as.Namespace, Name: as.Status.SecretTokenSecretName}
 	if err := k.Client.Get(secretTokenNamespacedName, &secretTokenSecret); err != nil {

@@ -7,7 +7,7 @@ package settings
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -38,7 +38,7 @@ func newPodWithIP(name, ip string, master bool) corev1.Pod {
 }
 
 func TestUpdateSeedHostsConfigMap(t *testing.T) {
-	es := v1beta1.Elasticsearch{
+	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es1",
 			Namespace: "ns1",
@@ -47,7 +47,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 	type args struct {
 		c      k8s.Client
 		scheme *runtime.Scheme
-		es     v1beta1.Elasticsearch
+		es     esv1.Elasticsearch
 		pods   []corev1.Pod
 	}
 	tests := []struct {
@@ -150,7 +150,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 			if err := tt.args.c.Get(
 				types.NamespacedName{
 					Namespace: "ns1",
-					Name:      v1beta1.UnicastHostsConfigMap(es.Name),
+					Name:      esv1.UnicastHostsConfigMap(es.Name),
 				}, file); err != nil {
 				t.Errorf("Error while getting the seed hosts configmap: %v", err)
 			}

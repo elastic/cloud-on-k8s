@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
@@ -21,7 +21,7 @@ import (
 func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
-		ES              v1beta1.Elasticsearch
+		ES              esv1.Elasticsearch
 		green           bool
 		mutation        mutation
 		maxUnavailable  int
@@ -140,7 +140,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 			shardLister:     migration.NewFakeShardLister(client.Shards{}),
 			esState:         esState,
 			expectations:    expectations.NewExpectations(k8sClient),
-			reconcileState:  reconcile.NewState(v1beta1.Elasticsearch{}),
+			reconcileState:  reconcile.NewState(esv1.Elasticsearch{}),
 			expectedMasters: tt.fields.upgradeTestPods.toMasters(tt.fields.mutation),
 			actualMasters:   tt.fields.upgradeTestPods.toMasterPods(),
 			podsToUpgrade:   tt.fields.upgradeTestPods.toUpgrade(),
@@ -167,7 +167,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 	type fields struct {
 		upgradeTestPods upgradeTestPods
 		shardLister     client.ShardLister
-		ES              v1beta1.Elasticsearch
+		ES              esv1.Elasticsearch
 		green           bool
 		maxUnavailable  int
 		podFilter       filter

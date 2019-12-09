@@ -7,10 +7,9 @@ package kibanaassociation
 import (
 	"testing"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
@@ -27,7 +26,7 @@ const (
 	userSecretName = "kibana-foo-kibana-user" // nolint
 )
 
-var esFixture = estype.Elasticsearch{
+var esFixture = esv1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "es-foo",
 		Namespace: "default",
@@ -36,7 +35,7 @@ var esFixture = estype.Elasticsearch{
 }
 
 var esRefFixture = metav1.OwnerReference{
-	APIVersion:         "elasticsearch.k8s.elastic.co/v1beta1",
+	APIVersion:         "elasticsearch.k8s.elastic.co/v1",
 	Kind:               "Elasticsearch",
 	Name:               "es-foo",
 	UID:                "f8d564d9-885e-11e9-896d-08002703f062",
@@ -52,10 +51,10 @@ var kibanaFixtureObjectMeta = metav1.ObjectMeta{
 	UID:       kibanaFixtureUID,
 }
 
-var kibanaFixture = kbtype.Kibana{
+var kibanaFixture = kbv1.Kibana{
 	ObjectMeta: kibanaFixtureObjectMeta,
-	Spec: kbtype.KibanaSpec{
-		ElasticsearchRef: commonv1beta1.ObjectSelector{
+	Spec: kbv1.KibanaSpec{
+		ElasticsearchRef: commonv1.ObjectSelector{
 			Name:      esFixture.Name,
 			Namespace: esFixture.Namespace,
 		},
@@ -64,7 +63,7 @@ var kibanaFixture = kbtype.Kibana{
 
 var t = true
 var ownerRefFixture = metav1.OwnerReference{
-	APIVersion:         "kibana.k8s.elastic.co/v1beta1",
+	APIVersion:         "kibana.k8s.elastic.co/v1",
 	Kind:               "Kibana",
 	Name:               "foo",
 	UID:                kibanaFixtureUID,
@@ -75,18 +74,18 @@ var ownerRefFixture = metav1.OwnerReference{
 func Test_deleteOrphanedResources(t *testing.T) {
 	tests := []struct {
 		name           string
-		kibana         kbtype.Kibana
-		es             v1beta1.Elasticsearch
+		kibana         kbv1.Kibana
+		es             esv1.Elasticsearch
 		initialObjects []runtime.Object
 		postCondition  func(c k8s.Client)
 		wantErr        bool
 	}{
 		{
 			name: "Do not delete if there's no namespace in the ref",
-			kibana: kbtype.Kibana{
+			kibana: kbv1.Kibana{
 				ObjectMeta: kibanaFixtureObjectMeta,
-				Spec: kbtype.KibanaSpec{
-					ElasticsearchRef: commonv1beta1.ObjectSelector{ // ElasticsearchRef without a namespace
+				Spec: kbv1.KibanaSpec{
+					ElasticsearchRef: commonv1.ObjectSelector{ // ElasticsearchRef without a namespace
 						Name: esFixture.Name,
 						//Namespace: esFixture.Namespace, No namespace on purpose
 					},
@@ -132,10 +131,10 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		},
 		{
 			name: "ES namespace has changed ",
-			kibana: kbtype.Kibana{
+			kibana: kbv1.Kibana{
 				ObjectMeta: kibanaFixtureObjectMeta,
-				Spec: kbtype.KibanaSpec{
-					ElasticsearchRef: commonv1beta1.ObjectSelector{
+				Spec: kbv1.KibanaSpec{
+					ElasticsearchRef: commonv1.ObjectSelector{
 						Name:      esFixture.Name,
 						Namespace: "ns2", // Kibana does not reference the default namespace anymore
 					},
@@ -187,7 +186,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		},
 		{
 			name:    "nothing to delete",
-			kibana:  kbtype.Kibana{},
+			kibana:  kbv1.Kibana{},
 			wantErr: false,
 		},
 		{
@@ -230,7 +229,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		},
 		{
 			name: "No more es ref in Kibana, orphan user & CA for previous es ref exist",
-			kibana: kbtype.Kibana{
+			kibana: kbv1.Kibana{
 				ObjectMeta: kibanaFixtureObjectMeta,
 			},
 			es: esFixture,

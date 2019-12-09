@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -70,7 +70,7 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 	now := time.Now()
 	whileAgo := time.Now().Add(-DeleteAfter).Add(-1 * time.Minute)
 
-	es := v1beta1.Elasticsearch{
+	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns1",
 			Name:      "es1",
@@ -89,7 +89,7 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 	tests := []struct {
 		name                string
 		client              k8s.Client
-		es                  v1beta1.Elasticsearch
+		es                  esv1.Elasticsearch
 		secretsAfterCleanup []*corev1.Secret
 	}{
 		{

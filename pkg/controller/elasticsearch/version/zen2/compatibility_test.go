@@ -7,7 +7,7 @@ package zen2
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -60,7 +60,7 @@ func TestIsCompatibleWithZen2(t *testing.T) {
 }
 
 func TestAllMastersCompatibleWithZen2(t *testing.T) {
-	es := v1beta1.Elasticsearch{
+	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "cluster",
@@ -117,7 +117,7 @@ func TestAllMastersCompatibleWithZen2(t *testing.T) {
 func TestIsInitialZen2Upgrade(t *testing.T) {
 	type args struct {
 		c  k8s.Client
-		es v1beta1.Elasticsearch
+		es esv1.Elasticsearch
 	}
 	tests := []struct {
 		name    string
@@ -129,7 +129,7 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 			name: "new 7.x",
 			args: args{
 				c:  k8s.WrappedFakeClient(),
-				es: v1beta1.Elasticsearch{Spec: v1beta1.ElasticsearchSpec{Version: "7.3.0"}},
+				es: esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{Version: "7.3.0"}},
 			},
 			want:    true,
 			wantErr: false,
@@ -145,8 +145,8 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 					Version:         "6.8.0",
 					Master:          true,
 				}.BuildPtr()),
-				es: v1beta1.Elasticsearch{
-					Spec: v1beta1.ElasticsearchSpec{Version: "7.3.0"},
+				es: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
 				},
 			},
 			want:    true,
@@ -163,12 +163,12 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 					Version:         "7.1.0",
 					Master:          true,
 				}.BuildPtr()),
-				es: v1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "es",
 						Namespace: "default",
 					},
-					Spec: v1beta1.ElasticsearchSpec{Version: "7.3.0"},
+					Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
 				},
 			},
 			want:    false,
@@ -185,8 +185,8 @@ func TestIsInitialZen2Upgrade(t *testing.T) {
 					Version:         "6.8.0",
 					Master:          true,
 				}.BuildPtr()),
-				es: v1beta1.Elasticsearch{
-					Spec: v1beta1.ElasticsearchSpec{Version: "6.8.1"},
+				es: esv1.Elasticsearch{
+					Spec: esv1.ElasticsearchSpec{Version: "6.8.1"},
 				},
 			},
 			want:    false,

@@ -66,6 +66,8 @@ issues:
       text: 'ifElseChain: rewrite if\-else to switch statement'
     - path: pkg/apis/elasticsearch/v1beta1/fields\.go
       text: 'const .* should be'
+    - path: pkg/apis/elasticsearch/v1/fields\.go
+      text: 'const .* should be'
     - path: pkg/controller/elasticsearch/user/reconciler\.go
       text: 'Consider preallocating `allUsers`'
     - path: pkg/controller/elasticsearch/user/user\.go
@@ -91,6 +93,8 @@ issues:
     - path: test/e2e/test/elasticsearch/steps_license\.go
       text: 'G101: Potential hardcoded credentials'
     - path: pkg/apis/elasticsearch/v1beta1/name\.go
+      text: 'G101: Potential hardcoded credentials'
+    - path: pkg/apis/elasticsearch/v1/name\.go
       text: 'G101: Potential hardcoded credentials'
     - path: pkg/controller/elasticsearch/driver/version\.go
       text: 'Consider preallocating `vs`'

@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -16,7 +16,7 @@ import (
 var eSCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 
 // CaCertSecretVolume returns a SecretVolume to hold the Elasticsearch CA certs for the given Kibana resource.
-func CaCertSecretVolume(kb v1beta1.Kibana) volume.SecretVolume {
+func CaCertSecretVolume(kb kbv1.Kibana) volume.SecretVolume {
 	// TODO: this is a little ugly as it reaches into the ES controller bits
 	return volume.NewSecretVolumeWithMountPath(
 		kb.AssociationConf().GetCASecretName(),
@@ -26,7 +26,7 @@ func CaCertSecretVolume(kb v1beta1.Kibana) volume.SecretVolume {
 }
 
 // GetAuthSecret returns the Elasticsearch auth secret for the given Kibana resource.
-func GetAuthSecret(client k8s.Client, kb v1beta1.Kibana) (*corev1.Secret, error) {
+func GetAuthSecret(client k8s.Client, kb kbv1.Kibana) (*corev1.Secret, error) {
 	esAuthSecret := types.NamespacedName{
 		Name:      kb.AssociationConf().GetAuthSecretName(),
 		Namespace: kb.Namespace,

@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -34,7 +34,7 @@ type CertificateResources struct {
 // reconcileGenericResources reconciles the expected generic resources of a cluster.
 func Reconcile(
 	driver driver.Interface,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	services []corev1.Service,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
@@ -46,7 +46,7 @@ func Reconcile(
 	httpCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
 		driver.Scheme(),
-		v1beta1.ESNamer,
+		esv1.ESNamer,
 		&es,
 		labels,
 		certificates.HTTPCAType,
@@ -65,7 +65,7 @@ func Reconcile(
 	httpCertificates, err := http.ReconcileHTTPCertificates(
 		driver,
 		&es,
-		v1beta1.ESNamer,
+		esv1.ESNamer,
 		httpCA,
 		es.Spec.HTTP.TLS,
 		labels,
@@ -77,14 +77,14 @@ func Reconcile(
 	}
 
 	// reconcile http public certs secret:
-	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &es, v1beta1.ESNamer, httpCertificates); err != nil {
+	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &es, esv1.ESNamer, httpCertificates); err != nil {
 		return nil, results.WithError(err)
 	}
 
 	transportCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
 		driver.Scheme(),
-		v1beta1.ESNamer,
+		esv1.ESNamer,
 		&es,
 		labels,
 		certificates.TransportCAType,

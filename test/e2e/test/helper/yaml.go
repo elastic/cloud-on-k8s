@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"io"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -30,9 +30,9 @@ type YAMLDecoder struct {
 
 func NewYAMLDecoder() *YAMLDecoder {
 	scheme := runtime.NewScheme()
-	scheme.AddKnownTypes(estype.GroupVersion, &estype.Elasticsearch{}, &estype.ElasticsearchList{})
-	scheme.AddKnownTypes(kbtype.GroupVersion, &kbtype.Kibana{}, &kbtype.KibanaList{})
-	scheme.AddKnownTypes(apmtype.GroupVersion, &apmtype.ApmServer{}, &apmtype.ApmServerList{})
+	scheme.AddKnownTypes(esv1.GroupVersion, &esv1.Elasticsearch{}, &esv1.ElasticsearchList{})
+	scheme.AddKnownTypes(kbv1.GroupVersion, &kbv1.Kibana{}, &kbv1.KibanaList{})
+	scheme.AddKnownTypes(apmv1.GroupVersion, &apmv1.ApmServer{}, &apmv1.ApmServerList{})
 	decoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 	return &YAMLDecoder{decoder: decoder}
@@ -58,15 +58,15 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		var builder test.Builder
 
 		switch decodedObj := obj.(type) {
-		case *estype.Elasticsearch:
+		case *esv1.Elasticsearch:
 			b := elasticsearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Elasticsearch = *decodedObj
 			builder = transform(b)
-		case *kbtype.Kibana:
+		case *kbv1.Kibana:
 			b := kibana.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Kibana = *decodedObj
 			builder = transform(b)
-		case *apmtype.ApmServer:
+		case *apmv1.ApmServer:
 			b := apmserver.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.ApmServer = *decodedObj
 			builder = transform(b)

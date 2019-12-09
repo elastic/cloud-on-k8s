@@ -7,8 +7,8 @@ package association
 import (
 	"testing"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -27,7 +27,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	require.NoError(t, w.Secrets.InjectScheme(scheme.Scheme))
 
 	// mock existing ES resource
-	es := estype.Elasticsearch{
+	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: esFixture.Namespace,
 			Name:      esFixture.Name,
@@ -37,7 +37,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	esCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      certificates.PublicSecretName(estype.ESNamer, es.Name, certificates.HTTPCAType),
+			Name:      certificates.PublicSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
@@ -47,7 +47,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	updatedEsCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      certificates.PublicSecretName(estype.ESNamer, es.Name, certificates.HTTPCAType),
+			Name:      certificates.PublicSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("updated-fake-cert"),
@@ -78,7 +78,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	esEmptyCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      certificates.PublicSecretName(estype.ESNamer, es.Name, certificates.HTTPCAType),
+			Name:      certificates.PublicSecretName(esv1.ESNamer, es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
@@ -98,8 +98,8 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	tests := []struct {
 		name               string
 		client             k8s.Client
-		kibana             kbtype.Kibana
-		es                 estype.Elasticsearch
+		kibana             kbv1.Kibana
+		es                 esv1.Elasticsearch
 		want               string
 		wantCA             *corev1.Secret
 		wantCACertProvided bool

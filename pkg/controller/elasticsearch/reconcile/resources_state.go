@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -30,7 +30,7 @@ type ResourcesState struct {
 }
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
-func NewResourcesStateFromAPI(c k8s.Client, es v1beta1.Elasticsearch) (*ResourcesState, error) {
+func NewResourcesStateFromAPI(c k8s.Client, es esv1.Elasticsearch) (*ResourcesState, error) {
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 
 	allPods, err := getPods(c, es, labelSelector)
@@ -78,7 +78,7 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1beta1.Elasticsearch) (*Resource
 // getPods returns list of pods in the current namespace with a specific set of selectors.
 func getPods(
 	c k8s.Client,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	labelSelector client.MatchingLabels,
 ) ([]corev1.Pod, error) {
 	var podList corev1.PodList

@@ -9,7 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func isLicenseType(secret corev1.Secret, licenseType EnterpriseLicenseType) bool {
+func isLicenseType(secret corev1.Secret, licenseType OperatorLicenseType) bool {
 	// is it a license at all (but be lenient if user omitted label)?
 	baseType, hasLabel := secret.Labels[common.TypeLabelName]
 	if hasLabel && baseType != Type {
@@ -26,4 +26,9 @@ func IsEnterpriseTrial(secret corev1.Secret) bool {
 
 func IsEnterpriseLicense(secret corev1.Secret) bool {
 	return isLicenseType(secret, LicenseTypeEnterprise)
+}
+
+func IsOperatorLicense(secret corev1.Secret) bool {
+	scope, hasLabel := secret.Labels[LicenseLabelScope]
+	return hasLabel && scope == string(LicenseScopeOperator)
 }

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -40,7 +40,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-func (c *apmClusterChecks) BuildApmServerClient(apm apmtype.ApmServer, k *test.K8sClient,
+func (c *apmClusterChecks) BuildApmServerClient(apm apmv1.ApmServer, k *test.K8sClient,
 ) test.Step {
 	return test.Step{
 		Name: "Every secret should be set so that we can build an APM client",
@@ -48,7 +48,7 @@ func (c *apmClusterChecks) BuildApmServerClient(apm apmtype.ApmServer, k *test.K
 			test.Eventually(func() error {
 				// fetch the latest APM Server resource from the API because we need to get resources that are provided
 				// by the controller apm part of the status section
-				var updatedApmServer apmtype.ApmServer
+				var updatedApmServer apmv1.ApmServer
 				if err := k.Client.Get(k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
 					return err
 				}
@@ -65,7 +65,7 @@ func (c *apmClusterChecks) BuildApmServerClient(apm apmtype.ApmServer, k *test.K
 				}
 
 				// We assume here that the Elasticsearch object has been created before the APM Server.
-				var es v1beta1.Elasticsearch
+				var es esv1.Elasticsearch
 				namespace := apm.Spec.ElasticsearchRef.Namespace
 				if len(namespace) == 0 {
 					namespace = apm.Namespace
@@ -98,7 +98,7 @@ func (c *apmClusterChecks) CheckApmServerReachable() test.Step {
 	}
 }
 
-func (c *apmClusterChecks) CheckApmServerVersion(apm apmtype.ApmServer) test.Step {
+func (c *apmClusterChecks) CheckApmServerVersion(apm apmv1.ApmServer) test.Step {
 	return test.Step{
 		Name: "ApmServer version should be the expected one",
 		Test: func(t *testing.T) {
@@ -149,12 +149,12 @@ type CountResult struct {
 
 // CheckEventsInElasticsearch checks that the events sent in the previous step have been stored.
 // We only count document to not rely on the internal schema of the APM Server.
-func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmtype.ApmServer, k *test.K8sClient) test.Step {
+func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Events should eventually show up in Elasticsearch",
 		Test: test.Eventually(func() error {
 			// Fetch the last version of the APM Server
-			var updatedApmServer apmtype.ApmServer
+			var updatedApmServer apmv1.ApmServer
 			if err := k.Client.Get(k8s.ExtractNamespacedName(&apm), &updatedApmServer); err != nil {
 				return err
 			}

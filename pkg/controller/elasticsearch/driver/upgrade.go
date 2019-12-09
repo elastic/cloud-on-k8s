@@ -7,7 +7,7 @@ package driver
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -89,7 +89,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 
 type rollingUpgradeCtx struct {
 	client          k8s.Client
-	ES              v1beta1.Elasticsearch
+	ES              esv1.Elasticsearch
 	statefulSets    sset.StatefulSetList
 	esClient        esclient.Client
 	shardLister     esclient.ShardLister
@@ -218,7 +218,7 @@ func disableShardsAllocation(esClient esclient.Client) error {
 	return esClient.DisableReplicaShardsAllocation(ctx)
 }
 
-func doSyncFlush(es v1beta1.Elasticsearch, esClient esclient.Client) error {
+func doSyncFlush(es esv1.Elasticsearch, esClient esclient.Client) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
 	err := esClient.SyncedFlush(ctx)

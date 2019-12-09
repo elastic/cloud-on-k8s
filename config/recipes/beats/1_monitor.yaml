@@ -1,5 +1,5 @@
 # This sample sets up an Elasticsearch cluster and a Kibana instance preconfigured for that cluster
-apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: monitor
@@ -24,7 +24,7 @@ spec:
           requests:
             storage: 50Gi
 ---
-apiVersion: kibana.k8s.elastic.co/v1beta1
+apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: monitor

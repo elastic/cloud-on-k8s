@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/validation"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -51,7 +51,7 @@ func testLongestPossibleName(t *testing.T) {
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithNodeSet(estype.NodeSet{
+		WithNodeSet(esv1.NodeSet{
 			Name:  nodeSpecName,
 			Count: 1,
 		}).
@@ -88,7 +88,7 @@ func testRejectionOfLongName(t *testing.T) {
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
 		WithNamespace(test.Ctx().ManagedNamespace(0)).
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithNodeSet(estype.NodeSet{
+		WithNodeSet(esv1.NodeSet{
 			Name:  "default",
 			Count: 1,
 		}).
@@ -111,13 +111,13 @@ func testRejectionOfLongName(t *testing.T) {
 					// if the validating webhook is not active, operator's own validation check should set the object phase to "Invalid"
 					objectCreated = true
 					test.Eventually(func() error {
-						var createdES estype.Elasticsearch
+						var createdES esv1.Elasticsearch
 						if err := k.Client.Get(k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES); err != nil {
 							return err
 						}
 
-						if createdES.Status.Phase != estype.ElasticsearchResourceInvalid {
-							return fmt.Errorf("expected phase=[%s], actual phase=[%s]", estype.ElasticsearchResourceInvalid, createdES.Status.Phase)
+						if createdES.Status.Phase != esv1.ElasticsearchResourceInvalid {
+							return fmt.Errorf("expected phase=[%s], actual phase=[%s]", esv1.ElasticsearchResourceInvalid, createdES.Status.Phase)
 						}
 						return nil
 					})
@@ -138,7 +138,7 @@ func testRejectionOfLongName(t *testing.T) {
 				}
 
 				test.Eventually(func() error {
-					var createdES estype.Elasticsearch
+					var createdES esv1.Elasticsearch
 					err := k.Client.Get(k8s.ExtractNamespacedName(&esBuilder.Elasticsearch), &createdES)
 					if apierrors.IsNotFound(err) {
 						return nil
