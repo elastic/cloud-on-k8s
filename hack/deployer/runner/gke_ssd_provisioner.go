@@ -85,14 +85,14 @@ metadata:
   name: local-storage-provisioner-node-clusterrole
   namespace: default
 rules:
-  - apiGroups:
-      - extensions
-    resources:
-      - podsecuritypolicies
-    resourceNames:
-      - gce.privileged
-    verbs:
-      - use
+- apiGroups:
+  - extensions
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - gce.privileged
+  verbs:
+  - use
 - apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get"]
