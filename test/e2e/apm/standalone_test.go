@@ -7,7 +7,7 @@ package apm
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 )
@@ -32,9 +32,9 @@ func TestApmStandaloneNoTLS(t *testing.T) {
 				"pretty": true,
 			},
 		}).
-		WithHTTPCfg(v1beta1.HTTPConfig{
-			TLS: v1beta1.TLSOptions{
-				SelfSignedCertificate: &v1beta1.SelfSignedCertificate{
+		WithHTTPCfg(commonv1.HTTPConfig{
+			TLS: commonv1.TLSOptions{
+				SelfSignedCertificate: &commonv1.SelfSignedCertificate{
 					Disabled: true,
 				},
 			},

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -30,7 +30,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 		test.Step{
 			Name: "Applying the Elasticsearch mutation should succeed",
 			Test: func(t *testing.T) {
-				var curEs estype.Elasticsearch
+				var curEs esv1.Elasticsearch
 				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
 				curEs.Spec = b.Elasticsearch.Spec
 				require.NoError(t, k.Client.Update(&curEs))
@@ -191,7 +191,7 @@ func (hc *ContinuousHealthCheck) Start() {
 					continue
 				}
 				clusterUnavailability.markAvailable()
-				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {
+				if esv1.ElasticsearchHealth(health.Status) == esv1.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
 					continue
 				}

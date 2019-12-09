@@ -7,14 +7,15 @@ package driver
 import (
 	"sort"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Delete runs through a list of potential candidates and select the ones that can be deleted.
@@ -153,7 +154,7 @@ func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	return nil
 }
 
-func deletePod(k8sClient k8s.Client, es v1beta1.Elasticsearch, pod corev1.Pod, expectations *expectations.Expectations) error {
+func deletePod(k8sClient k8s.Client, es esv1.Elasticsearch, pod corev1.Pod, expectations *expectations.Expectations) error {
 	log.Info("Deleting pod for rolling upgrade", "es_name", es.Name, "namespace", es.Namespace, "pod_name", pod.Name, "pod_uid", pod.UID)
 	// The name of the Pod we want to delete is not enough as it may have been already deleted/recreated.
 	// The uid of the Pod we want to delete is used as a precondition to check that we actually delete the right one.

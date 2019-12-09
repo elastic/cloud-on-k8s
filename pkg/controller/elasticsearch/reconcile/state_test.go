@@ -9,14 +9,15 @@ import (
 	"testing"
 	"time"
 
-	v1beta12 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 )
 
 func TestNodesAvailable(t *testing.T) {
@@ -133,37 +134,37 @@ func TestNodesAvailable(t *testing.T) {
 func TestState_Apply(t *testing.T) {
 	tests := []struct {
 		name       string
-		cluster    v1beta1.Elasticsearch
+		cluster    esv1.Elasticsearch
 		effects    func(s *State)
 		wantEvents []events.Event
-		wantStatus *v1beta1.ElasticsearchStatus
+		wantStatus *esv1.ElasticsearchStatus
 	}{
 		{
 			name:       "defaults",
-			cluster:    v1beta1.Elasticsearch{},
+			cluster:    esv1.Elasticsearch{},
 			wantEvents: []events.Event{},
 			wantStatus: nil,
 		},
 		{
 			name:    "no degraded health event on cluster formation",
-			cluster: v1beta1.Elasticsearch{},
+			cluster: esv1.Elasticsearch{},
 			effects: func(s *State) {
 				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
 			},
 			wantEvents: []events.Event{},
-			wantStatus: &v1beta1.ElasticsearchStatus{
-				ReconcilerStatus: v1beta12.ReconcilerStatus{
+			wantStatus: &esv1.ElasticsearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
 					AvailableNodes: 0,
 				},
-				Health: v1beta1.ElasticsearchRedHealth,
-				Phase:  v1beta1.ElasticsearchApplyingChangesPhase,
+				Health: esv1.ElasticsearchRedHealth,
+				Phase:  esv1.ElasticsearchApplyingChangesPhase,
 			},
 		},
 		{
 			name: "no degraded health event when cluster info is unknown",
-			cluster: v1beta1.Elasticsearch{
-				Status: v1beta1.ElasticsearchStatus{
-					Health: v1beta1.ElasticsearchGreenHealth,
+			cluster: esv1.Elasticsearch{
+				Status: esv1.ElasticsearchStatus{
+					Health: esv1.ElasticsearchGreenHealth,
 				},
 			},
 			effects: func(s *State) {
@@ -173,31 +174,31 @@ func TestState_Apply(t *testing.T) {
 				})
 			},
 			wantEvents: []events.Event{},
-			wantStatus: &v1beta1.ElasticsearchStatus{
-				ReconcilerStatus: v1beta12.ReconcilerStatus{
+			wantStatus: &esv1.ElasticsearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
 					AvailableNodes: 0,
 				},
-				Health: v1beta1.ElasticsearchUnknownHealth,
+				Health: esv1.ElasticsearchUnknownHealth,
 				Phase:  "",
 			},
 		},
 		{
 			name: "health degraded",
-			cluster: v1beta1.Elasticsearch{
-				Status: v1beta1.ElasticsearchStatus{
-					Health: v1beta1.ElasticsearchGreenHealth,
+			cluster: esv1.Elasticsearch{
+				Status: esv1.ElasticsearchStatus{
+					Health: esv1.ElasticsearchGreenHealth,
 				},
 			},
 			effects: func(s *State) {
 				s.UpdateElasticsearchApplyingChanges([]corev1.Pod{})
 			},
 			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnhealthy, Message: "Elasticsearch cluster health degraded"}},
-			wantStatus: &v1beta1.ElasticsearchStatus{
-				ReconcilerStatus: v1beta12.ReconcilerStatus{
+			wantStatus: &esv1.ElasticsearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
 					AvailableNodes: 0,
 				},
-				Health: v1beta1.ElasticsearchRedHealth,
-				Phase:  v1beta1.ElasticsearchApplyingChangesPhase,
+				Health: esv1.ElasticsearchRedHealth,
+				Phase:  esv1.ElasticsearchApplyingChangesPhase,
 			},
 		},
 	}
@@ -211,7 +212,7 @@ func TestState_Apply(t *testing.T) {
 			if !reflect.DeepEqual(events, tt.wantEvents) {
 				t.Errorf("State.Apply() events = %v, wantEvents %v", events, tt.wantEvents)
 			}
-			var actual *v1beta1.ElasticsearchStatus
+			var actual *esv1.ElasticsearchStatus
 			if cluster != nil {
 				actual = &cluster.Status
 			}
@@ -229,31 +230,31 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		cluster         v1beta1.Elasticsearch
+		cluster         esv1.Elasticsearch
 		args            args
 		stateAssertions func(s *State)
 	}{
 		{
 			name: "phase is not changed by default",
-			cluster: v1beta1.Elasticsearch{
-				Status: v1beta1.ElasticsearchStatus{
-					Phase: v1beta1.ElasticsearchApplyingChangesPhase,
+			cluster: esv1.Elasticsearch{
+				Status: esv1.ElasticsearchStatus{
+					Phase: esv1.ElasticsearchApplyingChangesPhase,
 				},
 			},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, v1beta1.ElasticsearchApplyingChangesPhase, s.status.Phase)
+				assert.EqualValues(t, esv1.ElasticsearchApplyingChangesPhase, s.status.Phase)
 			},
 		},
 		{
 			name:    "health is unknown by default",
-			cluster: v1beta1.Elasticsearch{},
+			cluster: esv1.Elasticsearch{},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, v1beta1.ElasticsearchUnknownHealth, s.status.Health)
+				assert.EqualValues(t, esv1.ElasticsearchUnknownHealth, s.status.Health)
 			},
 		},
 		{
 			name:    "health is set if returned by Elasticsearch",
-			cluster: v1beta1.Elasticsearch{},
+			cluster: esv1.Elasticsearch{},
 			args: args{
 				observedState: observer.State{
 					ClusterHealth: &client.Health{Status: "green"},
@@ -284,18 +285,18 @@ func TestState_UpdateElasticsearchMigrating(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		cluster         v1beta1.Elasticsearch
+		cluster         esv1.Elasticsearch
 		args            args
 		stateAssertions func(s *State)
 	}{
 		{
 			name:    "base case",
-			cluster: v1beta1.Elasticsearch{},
+			cluster: esv1.Elasticsearch{},
 			args: args{
 				result: reconcile.Result{RequeueAfter: 10 * time.Minute},
 			},
 			stateAssertions: func(s *State) {
-				assert.EqualValues(t, v1beta1.ElasticsearchMigratingDataPhase, s.status.Phase)
+				assert.EqualValues(t, esv1.ElasticsearchMigratingDataPhase, s.status.Phase)
 				assert.Equal(t, []events.Event{{EventType: corev1.EventTypeNormal, Reason: events.EventReasonDelayed, Message: "Requested topology change delayed by data migration"}}, s.Recorder.Events())
 			},
 		},

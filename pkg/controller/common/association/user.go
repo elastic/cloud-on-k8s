@@ -7,20 +7,21 @@ package association
 import (
 	"bytes"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	commonuser "github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	commonuser "github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // elasticsearchUserName identifies the associated user in Elasticsearch namespace.
-func elasticsearchUserName(associated commonv1beta1.Associated, userSuffix string) string {
+func elasticsearchUserName(associated commonv1.Associated, userSuffix string) string {
 	// must be namespace-aware since we might have several associated instances running in
 	// different namespaces with the same name: we need one user for each
 	// in the Elasticsearch namespace
@@ -28,13 +29,13 @@ func elasticsearchUserName(associated commonv1beta1.Associated, userSuffix strin
 }
 
 // userSecretObjectName identifies the associated secret object.
-func userSecretObjectName(associated commonv1beta1.Associated, userSuffix string) string {
+func userSecretObjectName(associated commonv1.Associated, userSuffix string) string {
 	// does not need to be namespace aware, since it lives in associated object namespace.
 	return associated.GetName() + "-" + userSuffix
 }
 
 // UserKey is the namespaced name to identify the user resource created by the controller.
-func UserKey(associated commonv1beta1.Associated, userSuffix string) types.NamespacedName {
+func UserKey(associated commonv1.Associated, userSuffix string) types.NamespacedName {
 	esNamespace := associated.ElasticsearchRef().Namespace
 	if esNamespace == "" {
 		// no namespace given, default to the associated object's one
@@ -49,7 +50,7 @@ func UserKey(associated commonv1beta1.Associated, userSuffix string) types.Names
 
 // secretKey is the namespaced name to identify the secret containing the password for the user.
 // It uses the same resource name as the associated user.
-func secretKey(associated commonv1beta1.Associated, userSuffix string) types.NamespacedName {
+func secretKey(associated commonv1.Associated, userSuffix string) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: associated.GetNamespace(),
 		Name:      userSecretObjectName(associated, userSuffix),
@@ -57,7 +58,7 @@ func secretKey(associated commonv1beta1.Associated, userSuffix string) types.Nam
 }
 
 // ClearTextSecretKeySelector creates a SecretKeySelector for the associated user secret
-func ClearTextSecretKeySelector(associated commonv1beta1.Associated, userSuffix string) *corev1.SecretKeySelector {
+func ClearTextSecretKeySelector(associated commonv1.Associated, userSuffix string) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: userSecretObjectName(associated, userSuffix),
@@ -70,11 +71,11 @@ func ClearTextSecretKeySelector(associated commonv1beta1.Associated, userSuffix 
 func ReconcileEsUser(
 	c k8s.Client,
 	s *runtime.Scheme,
-	associated commonv1beta1.Associated,
+	associated commonv1.Associated,
 	labels map[string]string,
 	userRoles string,
 	userObjectSuffix string,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 ) error {
 	pw := commonuser.RandomPasswordBytes()
 

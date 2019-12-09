@@ -7,14 +7,15 @@ package association
 import (
 	"testing"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	kibanatype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -54,20 +55,20 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 		newUserSecret("es", "ns1-kb-kibana2-fy8i-kibana-user", KibanaAssociationLabelNamespace, KibanaAssociationLabelName, "ns2", "kibana2"),
 		newUserSecret("es", "ns1-kb-orphaned-xxxx-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "orphaned-apm"),
 		newUserSecret("es", "ns1-kb-apm1-yrfa-apm-user", ApmAssociationLabelNamespace, ApmAssociationLabelName, "ns1", "apm1"),
-		&kibanatype.Kibana{
-			ObjectMeta: v1.ObjectMeta{
+		&kbv1.Kibana{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "kibana1",
 				Namespace: "ns1",
 			},
 		},
-		&kibanatype.Kibana{
-			ObjectMeta: v1.ObjectMeta{
+		&kbv1.Kibana{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "kibana2",
 				Namespace: "ns2",
 			},
 		},
-		&apmtype.ApmServer{
-			ObjectMeta: v1.ObjectMeta{
+		&apmv1.ApmServer{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "apm1",
 				Namespace: "ns1",
 			},
@@ -80,8 +81,8 @@ func TestUsersGarbageCollector_GC(t *testing.T) {
 	}
 
 	// register some resources
-	ugc.For(&apmtype.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
-	ugc.For(&kibanatype.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
+	ugc.For(&apmv1.ApmServerList{}, ApmAssociationLabelNamespace, ApmAssociationLabelName)
+	ugc.For(&kbv1.KibanaList{}, KibanaAssociationLabelNamespace, KibanaAssociationLabelName)
 
 	err := ugc.DoGarbageCollection()
 	if err != nil {

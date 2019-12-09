@@ -7,13 +7,13 @@ package elasticsearch
 import (
 	"testing"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 )
 
-func usesEmptyDir(es estype.Elasticsearch) bool {
+func usesEmptyDir(es esv1.Elasticsearch) bool {
 	var emptyDirUsed bool
 	for _, n := range es.Spec.NodeSets {
 		for _, v := range n.PodTemplate.Spec.Volumes {
@@ -25,7 +25,7 @@ func usesEmptyDir(es estype.Elasticsearch) bool {
 	return emptyDirUsed
 }
 
-func CheckESDataVolumeType(es estype.Elasticsearch, k *test.K8sClient) test.Step {
+func CheckESDataVolumeType(es esv1.Elasticsearch, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Elasticsearch data volumes should be of the specified type",
 		Test: func(t *testing.T) {

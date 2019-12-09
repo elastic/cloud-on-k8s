@@ -5,7 +5,7 @@
 package zen2
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -26,7 +26,7 @@ func IsCompatibleWithZen2(statefulSet appsv1.StatefulSet) bool {
 // AllMastersCompatibleWithZen2 returns true if all master nodes in the given cluster can use zen2 APIs.
 // During a v6 -> v7 rolling upgrade, we can only call zen2 APIs once the current master is using v7,
 // which would happen only if there is no more v6 master-eligible nodes in the cluster.
-func AllMastersCompatibleWithZen2(c k8s.Client, es v1beta1.Elasticsearch) (bool, error) {
+func AllMastersCompatibleWithZen2(c k8s.Client, es esv1.Elasticsearch) (bool, error) {
 	masters, err := sset.GetActualMastersForCluster(c, es)
 	if err != nil {
 		return false, err
@@ -47,7 +47,7 @@ func AllMastersCompatibleWithZen2(c k8s.Client, es v1beta1.Elasticsearch) (bool,
 }
 
 // IsInitialZen2Upgrade detects whether this is an initial upgrade of a non zen2 cluster (6.x) to a zen2 compatible version (7.x +)
-func IsInitialZen2Upgrade(c k8s.Client, es v1beta1.Elasticsearch) (bool, error) {
+func IsInitialZen2Upgrade(c k8s.Client, es esv1.Elasticsearch) (bool, error) {
 	newVersion, err := version.Parse(es.Spec.Version)
 	if err != nil || !versionCompatibleWithZen2(*newVersion) {
 		return false, err

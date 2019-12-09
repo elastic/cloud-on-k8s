@@ -5,12 +5,13 @@
 package kibanaassociation
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 )
 
 const (
@@ -27,7 +28,7 @@ func NewResourceSelector(name string) client.MatchingLabels {
 	})
 }
 
-func hasBeenCreatedBy(object metav1.Object, kibana *v1beta1.Kibana) bool {
+func hasBeenCreatedBy(object metav1.Object, kibana *kbv1.Kibana) bool {
 	labels := object.GetLabels()
 	if name, ok := labels[AssociationLabelName]; !ok || name != kibana.Name {
 		return false

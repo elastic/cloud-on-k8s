@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +33,7 @@ var testNamer = name.Namer{
 var (
 	testNamespace = "test-namespace"
 	testName      = "test-name"
-	testCluster   = v1beta1.Elasticsearch{
+	testCluster   = esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
 			Name:      testName,
@@ -144,7 +144,7 @@ func Test_canReuseCA(t *testing.T) {
 func checkCASecrets(
 	t *testing.T,
 	client k8s.Client,
-	cluster v1beta1.Elasticsearch,
+	cluster esv1.Elasticsearch,
 	caType CAType,
 	ca *CA,
 	expectedCa *CA,

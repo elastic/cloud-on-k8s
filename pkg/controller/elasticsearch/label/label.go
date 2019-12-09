@@ -7,7 +7,7 @@ package label
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/pkg/errors"
@@ -111,7 +111,7 @@ func NewPodLabels(
 	es types.NamespacedName,
 	ssetName string,
 	version version.Version,
-	nodeRoles v1beta1.Node,
+	nodeRoles esv1.Node,
 	configHash string,
 	scheme string,
 ) (map[string]string, error) {
@@ -151,7 +151,7 @@ func NewStatefulSetLabels(es types.NamespacedName, ssetName string) map[string]s
 }
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels
-func NewLabelSelectorForElasticsearch(es v1beta1.Elasticsearch) client.MatchingLabels {
+func NewLabelSelectorForElasticsearch(es esv1.Elasticsearch) client.MatchingLabels {
 	return NewLabelSelectorForElasticsearchClusterName(es.Name)
 }
 

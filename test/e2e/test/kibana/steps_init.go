@@ -7,7 +7,7 @@ package kibana
 import (
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -29,7 +29,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Kibana CRDs should exist",
 			Test: func(t *testing.T) {
 				crds := []runtime.Object{
-					&kbtype.KibanaList{},
+					&kbv1.KibanaList{},
 				}
 				for _, crd := range crds {
 					err := k.Client.List(crd)
