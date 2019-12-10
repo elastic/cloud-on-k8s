@@ -5,18 +5,20 @@
 package kibana
 
 import (
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
 // Builder to create Kibana instances
 type Builder struct {
-	Kibana kbtype.Kibana
+	Kibana      kbv1.Kibana
+	MutatedFrom *Builder
 }
 
 var _ test.Builder = Builder{}
@@ -35,9 +37,9 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 	return Builder{
-		Kibana: kbtype.Kibana{
+		Kibana: kbv1.Kibana{
 			ObjectMeta: meta,
-			Spec: kbtype.KibanaSpec{
+			Spec: kbv1.KibanaSpec{
 				Version: test.Ctx().ElasticStackVersion,
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
@@ -56,7 +58,7 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	return b
 }
 
-func (b Builder) WithElasticsearchRef(ref commonv1beta1.ObjectSelector) Builder {
+func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	b.Kibana.Spec.ElasticsearchRef = ref
 	return b
 }
@@ -83,9 +85,9 @@ func (b Builder) WithNodeCount(count int) Builder {
 }
 
 func (b Builder) WithKibanaSecureSettings(secretNames ...string) Builder {
-	refs := make([]commonv1beta1.SecretSource, 0, len(secretNames))
+	refs := make([]commonv1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
-		refs = append(refs, commonv1beta1.SecretSource{SecretName: secretNames[i]})
+		refs = append(refs, commonv1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Kibana.Spec.SecureSettings = refs
 	return b
@@ -94,15 +96,30 @@ func (b Builder) WithKibanaSecureSettings(secretNames ...string) Builder {
 func (b Builder) WithResources(resources corev1.ResourceRequirements) Builder {
 	if len(b.Kibana.Spec.PodTemplate.Spec.Containers) == 0 {
 		b.Kibana.Spec.PodTemplate.Spec.Containers = []corev1.Container{
-			{Name: kbtype.KibanaContainerName},
+			{Name: kbv1.KibanaContainerName},
 		}
 	}
 	for i, c := range b.Kibana.Spec.PodTemplate.Spec.Containers {
-		if c.Name == kbtype.KibanaContainerName {
+		if c.Name == kbv1.KibanaContainerName {
 			c.Resources = resources
 			b.Kibana.Spec.PodTemplate.Spec.Containers[i] = c
 		}
 	}
+	return b
+}
+
+func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
+	b.MutatedFrom = mutatedFrom
+	return b
+}
+
+func (b Builder) WithLabel(key, value string) Builder {
+	labels := b.Kibana.Spec.PodTemplate.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels[key] = value
+	b.Kibana.Spec.PodTemplate.Labels = labels
 	return b
 }
 

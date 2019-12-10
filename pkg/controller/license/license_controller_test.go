@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
@@ -71,7 +71,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 	}
 }
 
-var cluster = &v1beta1.Elasticsearch{
+var cluster = &esv1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "cluster",
 		Namespace: "namespace",
@@ -104,7 +104,7 @@ func enterpriseLicense(t *testing.T, licenseType commonlicense.ElasticsearchLice
 	require.NoError(t, err)
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: commonlicense.LabelsForType(commonlicense.LicenseLabelEnterprise),
+			Labels: commonlicense.LabelsForOperatorScope(license.License.Type),
 		},
 		Data: map[string][]byte{
 			commonlicense.FileName: bytes,
@@ -115,7 +115,7 @@ func enterpriseLicense(t *testing.T, licenseType commonlicense.ElasticsearchLice
 func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	tests := []struct {
 		name             string
-		cluster          *v1beta1.Elasticsearch
+		cluster          *esv1.Elasticsearch
 		k8sResources     []runtime.Object
 		wantErr          string
 		wantNewLicense   bool
@@ -162,7 +162,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				enterpriseLicense(t, commonlicense.ElasticsearchLicenseTypePlatinum, 1, true),
 				cluster,
 			},
-			wantErr:          "no matching license found",
+			wantErr:          "",
 			wantNewLicense:   false,
 			wantRequeue:      false,
 			wantRequeueAfter: false,
@@ -194,7 +194,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			// verify that a cluster license was created
 			// following the es naming convention
 			licenseNsn := nsn
-			licenseNsn.Name = v1beta1.LicenseSecretName(licenseNsn.Name)
+			licenseNsn.Name = esv1.LicenseSecretName(licenseNsn.Name)
 			var license corev1.Secret
 			err = client.Get(licenseNsn, &license)
 			if !tt.wantNewLicense {

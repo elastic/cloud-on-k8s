@@ -7,7 +7,7 @@ package settings
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -38,7 +38,7 @@ func newPodWithIP(name, ip string, master bool) corev1.Pod {
 }
 
 func TestUpdateSeedHostsConfigMap(t *testing.T) {
-	es := v1beta1.Elasticsearch{
+	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es1",
 			Namespace: "ns1",
@@ -47,7 +47,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 	type args struct {
 		c      k8s.Client
 		scheme *runtime.Scheme
-		es     v1beta1.Elasticsearch
+		es     esv1.Elasticsearch
 		pods   []corev1.Pod
 	}
 	tests := []struct {
@@ -102,7 +102,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				scheme: scheme.Scheme,
 			},
 			wantErr:         false,
-			expectedContent: "10.0.9.2:9300\n10.0.3.3:9300",
+			expectedContent: "10.0.3.3:9300\n10.0.9.2:9300",
 		},
 		{
 			name: "All masters have IPs, some nodes don't",
@@ -119,7 +119,22 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				scheme: scheme.Scheme,
 			},
 			wantErr:         false,
-			expectedContent: "10.0.9.2:9300\n10.0.6.5:9300\n10.0.3.3:9300",
+			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
+		},
+		{
+			name: "Ordering of pods should not matter",
+			args: args{
+				pods: []corev1.Pod{ //
+					newPodWithIP("master2", "10.0.6.5", true),
+					newPodWithIP("master3", "10.0.3.3", true),
+					newPodWithIP("master1", "10.0.9.2", true),
+				},
+				c:      k8s.WrappedFakeClient(),
+				es:     es,
+				scheme: scheme.Scheme,
+			},
+			wantErr:         false,
+			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
 		},
 	}
 	for _, tt := range tests {
@@ -135,7 +150,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 			if err := tt.args.c.Get(
 				types.NamespacedName{
 					Namespace: "ns1",
-					Name:      v1beta1.UnicastHostsConfigMap(es.Name),
+					Name:      esv1.UnicastHostsConfigMap(es.Name),
 				}, file); err != nil {
 				t.Errorf("Error while getting the seed hosts configmap: %v", err)
 			}

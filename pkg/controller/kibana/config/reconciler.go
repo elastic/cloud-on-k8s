@@ -8,7 +8,7 @@ import (
 	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -21,7 +21,7 @@ import (
 // This managed secret is mounted into each pod of the Kibana deployment.
 func ReconcileConfigSecret(
 	client k8s.Client,
-	kb v1beta1.Kibana,
+	kb kbv1.Kibana,
 	kbSettings CanonicalConfig,
 	operatorInfo about.OperatorInfo,
 ) error {

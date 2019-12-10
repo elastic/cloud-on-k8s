@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
@@ -36,7 +36,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-func (check *kbChecks) CreateKbClient(kb kbtype.Kibana) test.Step {
+func (check *kbChecks) CreateKbClient(kb kbv1.Kibana) test.Step {
 	return test.Step{
 		Name: "Create Kibana client",
 		Test: func(t *testing.T) {
@@ -49,7 +49,7 @@ func (check *kbChecks) CreateKbClient(kb kbtype.Kibana) test.Step {
 }
 
 // CheckKbLoginHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its login page.
-func (check *kbChecks) CheckKbLoginHealthy(kb kbtype.Kibana) test.Step {
+func (check *kbChecks) CheckKbLoginHealthy(kb kbv1.Kibana) test.Step {
 	return test.Step{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: test.Eventually(func() error {

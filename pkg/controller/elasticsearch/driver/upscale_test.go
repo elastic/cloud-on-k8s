@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
@@ -34,7 +34,7 @@ func init() {
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	k8sClient := k8s.WrappedFakeClient()
-	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
@@ -113,8 +113,8 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset2")}, &corev1.Service{}))
 	// config should be created for both
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: v1beta1.ConfigSecret("sset1")}, &corev1.Secret{}))
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: v1beta1.ConfigSecret("sset2")}, &corev1.Secret{}))
+	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset1")}, &corev1.Secret{}))
+	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset2")}, &corev1.Secret{}))
 
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
@@ -261,18 +261,18 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 }
 
 func Test_adjustZenConfig(t *testing.T) {
-	bootstrappedES := v1beta1.Elasticsearch{
+	bootstrappedES := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        TestEsName,
 			Namespace:   TestEsNamespace,
 			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
 		},
 	}
-	notBootstrappedES := v1beta1.Elasticsearch{}
+	notBootstrappedES := esv1.Elasticsearch{}
 
 	tests := []struct {
 		name                      string
-		es                        v1beta1.Elasticsearch
+		es                        esv1.Elasticsearch
 		statefulSet               sset.TestSset
 		pods                      []runtime.Object
 		wantMinimumMasterNodesSet bool
@@ -328,9 +328,9 @@ func Test_adjustZenConfig(t *testing.T) {
 			err := adjustZenConfig(client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {
-				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{v1beta1.DiscoveryZenMinimumMasterNodes})) > 0
+				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{esv1.DiscoveryZenMinimumMasterNodes})) > 0
 				require.Equal(t, tt.wantMinimumMasterNodesSet, hasMinimumMasterNodes)
-				hasInitialMasterNodes := len(res.Config.HasKeys([]string{v1beta1.ClusterInitialMasterNodes})) > 0
+				hasInitialMasterNodes := len(res.Config.HasKeys([]string{esv1.ClusterInitialMasterNodes})) > 0
 				require.Equal(t, tt.wantInitialMasterNodesSet, hasInitialMasterNodes)
 			}
 		})

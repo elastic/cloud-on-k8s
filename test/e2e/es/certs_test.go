@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -60,7 +60,7 @@ func TestUpdateHTTPCertSAN(t *testing.T) {
 			{
 				Name: "Add load balancer IP to the SAN",
 				Test: func(t *testing.T) {
-					var currentEs v1beta1.Elasticsearch
+					var currentEs esv1.Elasticsearch
 					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
 					require.NoError(t, err)
 
@@ -93,7 +93,7 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ns,
-		Name:      certificates.PublicSecretName(v1beta1.ESNamer, esName, certificates.HTTPCAType),
+		Name:      certificates.PublicSecretName(esv1.ESNamer, esName, certificates.HTTPCAType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err

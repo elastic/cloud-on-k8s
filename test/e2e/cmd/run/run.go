@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	jobTimeout       = 120 * time.Minute // time to wait for the test job to finish
+	jobTimeout       = 200 * time.Minute // time to wait for the test job to finish
 	kubePollInterval = 10 * time.Second  // Kube API polling interval
 	logBufferSize    = 1024              // Size of the log buffer (1KiB)
 	testRunLabel     = "test-run"        // name of the label applied to resources
@@ -190,7 +190,7 @@ func (h *helper) createE2ENamespaceAndRoleBindings() error {
 
 func (h *helper) installCRDs() error {
 	log.Info("Installing CRDs")
-	return h.kubectl("apply", "-k", "config/crds-flavor-"+h.crdFlavor)
+	return h.kubectl("apply", "-f", "config/crds/all-crds.yaml")
 }
 
 func (h *helper) createOperatorNamespaces() error {

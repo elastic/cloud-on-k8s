@@ -7,7 +7,7 @@ package apmserver
 import (
 	"testing"
 
-	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -88,6 +89,7 @@ func expectedDeploymentParams() testParams {
 			Namespace: "",
 			Selector:  map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
 			Labels:    map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
+			Strategy:  appsv1.RollingUpdateDeploymentStrategyType,
 			PodTemplateSpec: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -141,7 +143,7 @@ func expectedDeploymentParams() testParams {
 								MountPath: "/mnt/elastic-internal/http-certs",
 							},
 						},
-						Name:  apmv1beta1.APMServerContainerName,
+						Name:  apmv1.ApmServerContainerName,
 						Image: "docker.elastic.co/apm/apm-server:1.0",
 						Command: []string{
 							"apm-server",
@@ -189,7 +191,7 @@ func expectedDeploymentParams() testParams {
 }
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
-	apmFixture := &apmv1beta1.ApmServer{
+	apmFixture := &apmv1.ApmServer{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "test-apm-server",
 		},
@@ -213,7 +215,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	}
 
 	type args struct {
-		as             *apmv1beta1.ApmServer
+		as             *apmv1.ApmServer
 		podSpecParams  PodSpecParams
 		initialObjects []runtime.Object
 	}
@@ -363,7 +365,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 	}
 	tests := []struct {
 		name        string
-		as          apmv1beta1.ApmServer
+		as          apmv1.ApmServer
 		fields      fields
 		args        args
 		wantRequeue bool
@@ -371,7 +373,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 	}{
 		{
 			name: "If no error ensure a requeue is scheduled for CA",
-			as: apmv1beta1.ApmServer{
+			as: apmv1.ApmServer{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "apmserver",
 					Namespace: "default",

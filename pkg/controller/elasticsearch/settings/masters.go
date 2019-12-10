@@ -7,9 +7,10 @@ package settings
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -35,7 +36,7 @@ func Quorum(nMasters int) int {
 func UpdateSeedHostsConfigMap(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	pods []corev1.Pod,
 ) error {
 	// Get the masters from the pods
@@ -59,11 +60,13 @@ func UpdateSeedHostsConfigMap(
 
 	var hosts string
 	if seedHosts != nil {
+		// avoid unnecessary config map updates due to changing order of seed hosts
+		sort.Strings(seedHosts)
 		hosts = strings.Join(seedHosts, "\n")
 	}
 	expected := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      v1beta1.UnicastHostsConfigMap(es.Name),
+			Name:      esv1.UnicastHostsConfigMap(es.Name),
 			Namespace: es.Namespace,
 			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
 		},

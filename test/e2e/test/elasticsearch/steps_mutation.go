@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -30,7 +30,7 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 		test.Step{
 			Name: "Applying the Elasticsearch mutation should succeed",
 			Test: func(t *testing.T) {
-				var curEs estype.Elasticsearch
+				var curEs esv1.Elasticsearch
 				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
 				curEs.Spec = b.Elasticsearch.Spec
 				require.NoError(t, k.Client.Update(&curEs))
@@ -43,14 +43,14 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 	var clusterIDBeforeMutation string
 	var continuousHealthChecks *ContinuousHealthCheck
 	var dataIntegrityCheck *DataIntegrityCheck
-	var masterChangeBudgetCheck *MasterChangeBudgetCheck
-	var changeBudgetCheck *ChangeBudgetCheck
-
 	mutatedFrom := b.MutatedFrom
 	if mutatedFrom == nil {
 		// cluster mutates to itself (same spec)
 		mutatedFrom = &b
 	}
+
+	masterChangeBudgetWatcher := NewMasterChangeBudgetWatcher(b.Elasticsearch)
+	changeBudgetWatcher := NewChangeBudgetWatcher(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch)
 
 	return test.StepList{
 		test.Step{
@@ -75,20 +75,8 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				continuousHealthChecks.Start()
 			},
 		},
-		test.Step{
-			Name: "Start tracking master additions and removals",
-			Test: func(t *testing.T) {
-				masterChangeBudgetCheck = NewMasterChangeBudgetCheck(b.Elasticsearch, 1*time.Second, k.Client)
-				masterChangeBudgetCheck.Start()
-			},
-		},
-		test.Step{
-			Name: "Start tracking pod count",
-			Test: func(t *testing.T) {
-				changeBudgetCheck = NewChangeBudgetCheck(b.Elasticsearch, k.Client)
-				changeBudgetCheck.Start()
-			},
-		},
+		masterChangeBudgetWatcher.StartStep(k),
+		changeBudgetWatcher.StartStep(k),
 		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
 	}.
 		WithSteps(AnnotatePodsWithBuilderHash(*mutatedFrom, k)).
@@ -97,20 +85,8 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		WithSteps(b.CheckStackTestSteps(k)).
 		WithSteps(test.StepList{
 			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
-			test.Step{
-				Name: "Master change budget must not have been exceeded",
-				Test: func(t *testing.T) {
-					masterChangeBudgetCheck.Stop()
-					require.NoError(t, masterChangeBudgetCheck.Verify(1)) // fixed budget of 1 master node added/removed at a time
-				},
-			},
-			test.Step{
-				Name: "Pod count must not violate change budget",
-				Test: func(t *testing.T) {
-					changeBudgetCheck.Stop()
-					require.NoError(t, changeBudgetCheck.Verify(mutatedFrom.Elasticsearch.Spec, b.Elasticsearch.Spec))
-				},
-			},
+			masterChangeBudgetWatcher.StopStep(k),
+			changeBudgetWatcher.StopStep(k),
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
 				Skip: func() bool {
@@ -215,7 +191,7 @@ func (hc *ContinuousHealthCheck) Start() {
 					continue
 				}
 				clusterUnavailability.markAvailable()
-				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {
+				if esv1.ElasticsearchHealth(health.Status) == esv1.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
 					continue
 				}

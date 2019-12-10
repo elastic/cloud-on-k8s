@@ -9,7 +9,6 @@ package trial
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -27,11 +26,11 @@ import (
 const operatorNs = "elastic-system"
 
 func TestMain(m *testing.M) {
-	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds"))
+	test.RunWithK8s(m)
 }
 
 func TestReconcile(t *testing.T) {
-	c, stop := test.StartManager(t, Add, operator.Parameters{})
+	c, stop := test.StartManager(t, Add, operator.Parameters{OperatorNamespace: operatorNs})
 	defer stop()
 
 	now := time.Now()

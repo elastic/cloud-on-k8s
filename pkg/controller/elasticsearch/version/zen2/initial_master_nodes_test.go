@@ -7,7 +7,7 @@ package zen2
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	settings2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -37,10 +37,10 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string][]string{
-					v1beta1.ClusterInitialMasterNodes: {"master-0", "master-1", "master-2", "masterdata-0", "masterdata-1", "masterdata-2"},
+					esv1.ClusterInitialMasterNodes: {"master-0", "master-1", "master-2", "masterdata-0", "masterdata-1", "masterdata-2"},
 				})},
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string][]string{
-					v1beta1.ClusterInitialMasterNodes: {"master-0", "master-1", "master-2", "masterdata-0", "masterdata-1", "masterdata-2"},
+					esv1.ClusterInitialMasterNodes: {"master-0", "master-1", "master-2", "masterdata-0", "masterdata-1", "masterdata-2"},
 				})},
 				// no config set on non-master nodes
 				{CanonicalConfig: settings2.NewCanonicalConfig()},
@@ -62,7 +62,7 @@ func TestSetupInitialMasterNodes(t *testing.T) {
 			expected: []settings.CanonicalConfig{
 				settings.NewCanonicalConfig(),
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string][]string{
-					v1beta1.ClusterInitialMasterNodes: {"masterv6-0", "masterv6-1", "masterv6-2", "masterv7-0", "masterv7-1", "masterv7-2"},
+					esv1.ClusterInitialMasterNodes: {"masterv6-0", "masterv6-1", "masterv6-2", "masterv7-0", "masterv7-1", "masterv7-2"},
 				})},
 			},
 		},

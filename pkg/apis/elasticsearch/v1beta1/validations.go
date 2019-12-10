@@ -9,7 +9,6 @@ import (
 	"net"
 	"reflect"
 
-	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -25,7 +24,7 @@ const (
 	pvcImmutableMsg          = "Volume claim templates cannot be modified"
 	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
 	unsupportedVersionErrMsg = "Unsupported version"
-	blacklistedConfigErrMsg  = "Configuration setting is not user-configurable"
+	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
 	duplicateNodeSets        = "NodeSet names must be unique"
 	noDowngradesMsg          = "Downgrades are not supported"
 	unsupportedVersionMsg    = "Unsupported version"
@@ -39,7 +38,6 @@ var validations = []validation{
 	validName,
 	hasMaster,
 	supportedVersion,
-	noBlacklistedSettings,
 	validSanIP,
 }
 
@@ -50,6 +48,16 @@ var updateValidations = []updateValidation{
 	noDowngrades,
 	validUpgradePath,
 	pvcModification,
+}
+
+func (r *Elasticsearch) check(validations []validation) field.ErrorList {
+	var errs field.ErrorList
+	for _, val := range validations {
+		if err := val(r); err != nil {
+			errs = append(errs, err...)
+		}
+	}
+	return errs
 }
 
 // validName checks whether the name is valid.
@@ -87,25 +95,6 @@ func hasMaster(es *Elasticsearch) field.ErrorList {
 	}
 	if !hasMaster {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets"), es.Spec.NodeSets, masterRequiredMsg))
-	}
-	return errs
-}
-
-func noBlacklistedSettings(es *Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
-	for i, nodeSet := range es.Spec.NodeSets {
-		if nodeSet.Config == nil {
-			continue
-		}
-		config, err := common.NewCanonicalConfigFrom(nodeSet.Config.Data)
-		if err != nil {
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), es.Spec.NodeSets[i].Config, cfgInvalidMsg))
-			continue
-		}
-		forbidden := config.HasKeys(SettingsBlacklist)
-		for _, setting := range forbidden {
-			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSets").Index(i).Child("config"), setting, blacklistedConfigErrMsg))
-		}
 	}
 	return errs
 }

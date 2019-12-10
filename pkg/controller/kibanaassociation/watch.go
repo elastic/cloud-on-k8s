@@ -5,10 +5,8 @@
 package kibanaassociation
 
 import (
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -18,12 +16,12 @@ import (
 
 func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 	// Watch for changes to Kibana resources
-	if err := c.Watch(&source.Kind{Type: &kbtype.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Dynamically watch related Elasticsearch resources (not all ES resources)
-	if err := c.Watch(&source.Kind{Type: &estype.Elasticsearch{}}, r.watches.ElasticsearchClusters); err != nil {
+	if err := c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, r.watches.ElasticsearchClusters); err != nil {
 		return err
 	}
 
@@ -34,7 +32,7 @@ func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 
 	// Watch Secrets owned by a Kibana resource
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		OwnerType:    &kbtype.Kibana{},
+		OwnerType:    &kbv1.Kibana{},
 		IsController: true,
 	}); err != nil {
 		return err
@@ -52,17 +50,4 @@ func elasticsearchWatchName(kibanaKey types.NamespacedName) string {
 // esCAWatchName returns the name of the watch setup on Elasticsearch CA secret
 func esCAWatchName(kibana types.NamespacedName) string {
 	return kibana.Namespace + "-" + kibana.Name + "-ca-watch"
-}
-
-// watchFinalizer ensure that we remove watches for Elasticsearch clusters that we are no longer interested in
-// because not referenced by any Kibana resource.
-func watchFinalizer(kibanaKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
-	return finalizer.Finalizer{
-		Name: "finalizer.association.kibana.k8s.elastic.co/elasticsearch",
-		Execute: func() error {
-			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
-			w.Secrets.RemoveHandlerForKey(esCAWatchName(kibanaKey))
-			return nil
-		},
-	}
 }

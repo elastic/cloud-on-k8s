@@ -5,12 +5,60 @@
 package common
 
 import (
-	"reflect"
 	"testing"
 
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+func TestReconcileService(t *testing.T) {
+	owner := &kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "owner-obj",
+			Namespace: "test",
+		},
+	}
+
+	existingSvc := mkService()
+	scheme := k8s.Scheme()
+	client := k8s.WrappedFakeClient(owner, existingSvc)
+
+	expectedSvc := mkService()
+	delete(expectedSvc.Labels, "lbl2")
+	delete(expectedSvc.Annotations, "ann2")
+	expectedSvc.Labels["lbl3"] = "lblval3"
+	expectedSvc.Annotations["ann3"] = "annval3"
+
+	wantSvc := mkService()
+	wantSvc.Labels["lbl3"] = "lblval3"
+	wantSvc.Annotations["ann3"] = "annval3"
+
+	haveSvc, err := ReconcileService(client, scheme, expectedSvc, owner)
+	require.NoError(t, err)
+	compare.JSONEqual(t, wantSvc, haveSvc)
+}
+
+func mkService() *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "owner-svc",
+			Namespace:   "test",
+			Labels:      map[string]string{"lbl1": "lblval1", "lbl2": "lbl2val"},
+			Annotations: map[string]string{"ann1": "annval1", "ann2": "annval2"},
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: map[string]string{"foo": "bar"},
+			Ports: []corev1.ServicePort{
+				{Name: "https", Port: 443},
+			},
+		},
+	}
+}
 
 func TestNeedsUpdate(t *testing.T) {
 	type args struct {
@@ -159,13 +207,50 @@ func TestNeedsUpdate(t *testing.T) {
 				Ports:                 []corev1.ServicePort{{Port: int32(9200), NodePort: int32(33433)}},
 			}},
 		},
+		{
+			name: "Annotations and labels are preserved",
+			args: args{
+				expected: corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "kibana-service",
+						Labels:      map[string]string{"label1": "label1val"},
+						Annotations: map[string]string{"annotation1": "annotation1val"},
+					},
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: "1.2.3.4",
+					},
+				},
+				reconciled: corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "kibana-service",
+						Labels:      map[string]string{"label1": "label1val", "label2": "label2val"},
+						Annotations: map[string]string{"annotation1": "annotation1val", "annotation2": "annotation2val"},
+					},
+					Spec: corev1.ServiceSpec{
+						Type:      corev1.ServiceTypeClusterIP,
+						ClusterIP: "1.2.3.4",
+					},
+				},
+			},
+			want: corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "kibana-service",
+					Labels:      map[string]string{"label1": "label1val", "label2": "label2val"},
+					Annotations: map[string]string{"annotation1": "annotation1val", "annotation2": "annotation2val"},
+				},
+				Spec: corev1.ServiceSpec{
+					Type:      corev1.ServiceTypeClusterIP,
+					ClusterIP: "1.2.3.4",
+				},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_ = needsUpdate(&tt.args.expected, &tt.args.reconciled)
-			if !reflect.DeepEqual(tt.args.expected, tt.want) {
-				t.Errorf("needsUpdate(expected, reconcilied); expected is %v, want %v", tt.args.expected, tt.want)
-			}
+			compare.JSONEqual(t, tt.want, tt.args.expected)
 		})
 	}
 }

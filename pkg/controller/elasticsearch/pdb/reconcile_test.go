@@ -8,10 +8,11 @@ import (
 	"reflect"
 	"testing"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -22,14 +23,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func TestReconcile(t *testing.T) {
 	defaultPDB := func() *v1beta1.PodDisruptionBudget {
 		return &v1beta1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
+				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 				Namespace: "ns",
 				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 			},
@@ -44,10 +44,10 @@ func TestReconcile(t *testing.T) {
 			},
 		}
 	}
-	defaultEs := esv1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}}
+	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}}
 	type args struct {
 		k8sClient    k8s.Client
-		es           esv1beta1.Elasticsearch
+		es           esv1.Elasticsearch
 		statefulSets sset.StatefulSetList
 	}
 	tests := []struct {
@@ -82,7 +82,7 @@ func TestReconcile(t *testing.T) {
 			},
 			wantPDB: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -101,9 +101,9 @@ func TestReconcile(t *testing.T) {
 			name: "pdb disabled in the ES spec: should delete the existing one",
 			args: args{
 				k8sClient: k8s.WrappedFakeClient(defaultPDB()),
-				es: esv1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
-					Spec:       esv1beta1.ElasticsearchSpec{PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{}},
+					Spec:       esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}},
 				},
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
@@ -114,7 +114,7 @@ func TestReconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := Reconcile(tt.args.k8sClient, scheme.Scheme, tt.args.es, tt.args.statefulSets)
 			require.NoError(t, err)
-			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1beta1.DefaultPodDisruptionBudget(tt.args.es.Name)}
+			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved v1beta1.PodDisruptionBudget
 			err = tt.args.k8sClient.Get(pdbNsn, &retrieved)
 			if tt.wantPDB == nil {
@@ -134,8 +134,8 @@ func withHashLabel(pdb *v1beta1.PodDisruptionBudget) *v1beta1.PodDisruptionBudge
 	return pdb
 }
 
-func withOwnerRef(pdb *v1beta1.PodDisruptionBudget, es esv1beta1.Elasticsearch) *v1beta1.PodDisruptionBudget {
-	if err := controllerutil.SetControllerReference(&es, pdb, scheme.Scheme); err != nil {
+func withOwnerRef(pdb *v1beta1.PodDisruptionBudget, es esv1.Elasticsearch) *v1beta1.PodDisruptionBudget {
+	if err := reconciler.SetControllerReference(&es, pdb, scheme.Scheme); err != nil {
 		panic(err)
 	}
 	return pdb
@@ -147,7 +147,7 @@ func intStrPtr(intStr intstr.IntOrString) *intstr.IntOrString {
 
 func Test_expectedPDB(t *testing.T) {
 	type args struct {
-		es           esv1beta1.Elasticsearch
+		es           esv1.Elasticsearch
 		statefulSets sset.StatefulSetList
 	}
 	tests := []struct {
@@ -158,7 +158,7 @@ func Test_expectedPDB(t *testing.T) {
 		{
 			name: "PDB disabled in the spec",
 			args: args{
-				es:           esv1beta1.Elasticsearch{Spec: esv1beta1.ElasticsearchSpec{PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{}}},
+				es:           esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{}}},
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
 			want: nil,
@@ -166,12 +166,12 @@ func Test_expectedPDB(t *testing.T) {
 		{
 			name: "Build default PDB",
 			args: args{
-				es:           esv1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}},
+				es:           esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}},
 				statefulSets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -189,10 +189,10 @@ func Test_expectedPDB(t *testing.T) {
 		{
 			name: "Inherit user-provided labels",
 			args: args{
-				es: esv1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
-					Spec: esv1beta1.ElasticsearchSpec{
-						PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{
+					Spec: esv1.ElasticsearchSpec{
+						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{
 							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{"a": "b", "c": "d"},
 							}},
@@ -202,7 +202,7 @@ func Test_expectedPDB(t *testing.T) {
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{"a": "b", "c": "d", label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -220,10 +220,10 @@ func Test_expectedPDB(t *testing.T) {
 		{
 			name: "Use user-provided PDB spec",
 			args: args{
-				es: esv1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"},
-					Spec: esv1beta1.ElasticsearchSpec{
-						PodDisruptionBudget: &commonv1beta1.PodDisruptionBudgetTemplate{
+					Spec: esv1.ElasticsearchSpec{
+						PodDisruptionBudget: &commonv1.PodDisruptionBudgetTemplate{
 							Spec: v1beta1.PodDisruptionBudgetSpec{MinAvailable: intStrPtr(intstr.FromInt(42))}},
 					},
 				},
@@ -231,7 +231,7 @@ func Test_expectedPDB(t *testing.T) {
 			},
 			want: &v1beta1.PodDisruptionBudget{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      esv1beta1.DefaultPodDisruptionBudget("cluster"),
+					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
 					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
 				},
@@ -258,7 +258,7 @@ func Test_expectedPDB(t *testing.T) {
 
 func Test_allowedDisruptions(t *testing.T) {
 	type args struct {
-		es          esv1beta1.Elasticsearch
+		es          esv1.Elasticsearch
 		actualSsets sset.StatefulSetList
 	}
 	tests := []struct {
@@ -269,7 +269,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "no health reported: no disruption allowed",
 			args: args{
-				es:          esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{}},
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{}},
 				actualSsets: sset.StatefulSetList{sset.TestSset{Replicas: 3}.Build()},
 			},
 			want: 0,
@@ -277,7 +277,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "yellow health: no disruption allowed",
 			args: args{
-				es:          esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{Health: esv1beta1.ElasticsearchYellowHealth}},
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchYellowHealth}},
 				actualSsets: sset.StatefulSetList{sset.TestSset{Replicas: 3}.Build()},
 			},
 			want: 0,
@@ -285,7 +285,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "red health: no disruption allowed",
 			args: args{
-				es:          esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{Health: esv1beta1.ElasticsearchRedHealth}},
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchRedHealth}},
 				actualSsets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
 			want: 0,
@@ -293,7 +293,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "unknown health: no disruption allowed",
 			args: args{
-				es:          esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{Health: esv1beta1.ElasticsearchUnknownHealth}},
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchUnknownHealth}},
 				actualSsets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
 			want: 0,
@@ -301,7 +301,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "green health: 1 disruption allowed",
 			args: args{
-				es:          esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{Health: esv1beta1.ElasticsearchGreenHealth}},
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: sset.StatefulSetList{sset.TestSset{Replicas: 3, Master: true, Data: true}.Build()},
 			},
 			want: 1,
@@ -309,7 +309,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "green health but single-node cluster: 0 disruption allowed",
 			args: args{
-				es:          esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{Health: esv1beta1.ElasticsearchGreenHealth}},
+				es:          esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: sset.StatefulSetList{sset.TestSset{Replicas: 1, Master: true, Data: true}.Build()},
 			},
 			want: 0,
@@ -317,7 +317,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "green health but only 1 master: 0 disruption allowed",
 			args: args{
-				es: esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{Health: esv1beta1.ElasticsearchGreenHealth}},
+				es: esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: sset.StatefulSetList{
 					sset.TestSset{Replicas: 1, Master: true, Data: false}.Build(),
 					sset.TestSset{Replicas: 3, Master: false, Data: true}.Build(),
@@ -328,7 +328,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "green health but only 1 data node: 0 disruption allowed",
 			args: args{
-				es: esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{Health: esv1beta1.ElasticsearchGreenHealth}},
+				es: esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: sset.StatefulSetList{
 					sset.TestSset{Replicas: 3, Master: true, Data: false}.Build(),
 					sset.TestSset{Replicas: 1, Master: false, Data: true}.Build(),
@@ -339,7 +339,7 @@ func Test_allowedDisruptions(t *testing.T) {
 		{
 			name: "green health but only 1 ingest node: 0 disruption allowed",
 			args: args{
-				es: esv1beta1.Elasticsearch{Status: esv1beta1.ElasticsearchStatus{Health: esv1beta1.ElasticsearchGreenHealth}},
+				es: esv1.Elasticsearch{Status: esv1.ElasticsearchStatus{Health: esv1.ElasticsearchGreenHealth}},
 				actualSsets: sset.StatefulSetList{
 					sset.TestSset{Replicas: 3, Master: true, Data: true, Ingest: false}.Build(),
 					sset.TestSset{Replicas: 1, Ingest: true, Data: true}.Build(),

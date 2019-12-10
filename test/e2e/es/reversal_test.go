@@ -7,8 +7,8 @@ package es
 import (
 	"testing"
 
-	common "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
@@ -57,13 +57,13 @@ func TestReversalStatefulSetRename(t *testing.T) {
 func TestRiskyMasterReconfiguration(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-sset-reconfig-reversal").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithNodeSet(v1beta1.NodeSet{
+		WithNodeSet(esv1.NodeSet{
 			Name:  "other-master",
 			Count: 1,
-			Config: &common.Config{
+			Config: &commonv1.Config{
 				Data: map[string]interface{}{
-					v1beta1.NodeMaster: true,
-					v1beta1.NodeData:   true,
+					esv1.NodeMaster: true,
+					esv1.NodeData:   true,
 				},
 			},
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
@@ -71,13 +71,13 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 
 	// this currently breaks the cluster (something we might fix in the future at which point this just tests a temp downscale)
 	noMasterMaster := b.WithNoESTopology().WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithNodeSet(v1beta1.NodeSet{
+		WithNodeSet(esv1.NodeSet{
 			Name:  "other-master",
 			Count: 1,
-			Config: &common.Config{
+			Config: &commonv1.Config{
 				Data: map[string]interface{}{
-					v1beta1.NodeMaster: false,
-					v1beta1.NodeData:   true,
+					esv1.NodeMaster: false,
+					esv1.NodeData:   true,
 				},
 			},
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
@@ -87,7 +87,6 @@ func TestRiskyMasterReconfiguration(t *testing.T) {
 }
 
 func RunESMutationReversal(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {
-	mutateTo.MutatedFrom = &toCreate
-	test.RunMutationReversal(t, []test.Builder{toCreate}, []test.Builder{mutateTo})
+	test.RunMutationReversal(t, []test.Builder{toCreate}, []test.Builder{mutateTo.WithMutatedFrom(&toCreate)})
 
 }

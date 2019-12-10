@@ -8,14 +8,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -33,10 +32,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/version/version7"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // initContainersParameters is used to generate the init container that will load the secure settings into a keystore
@@ -50,7 +51,7 @@ var initContainersParameters = keystore.InitContainerParameters{
 type driver struct {
 	client          k8s.Client
 	scheme          *runtime.Scheme
-	settingsFactory func(kb kbtype.Kibana) map[string]interface{}
+	settingsFactory func(kb kbv1.Kibana) map[string]interface{}
 	dynamicWatches  watches.DynamicWatches
 	recorder        record.EventRecorder
 }
@@ -73,21 +74,34 @@ func (d *driver) Scheme() *runtime.Scheme {
 
 var _ driver2.Interface = &driver{}
 
-func secretWatchKey(kibana kbtype.Kibana) string {
+func secretWatchKey(kibana types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-es-auth-secret", kibana.Namespace, kibana.Name)
 }
 
-func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) finalizer.Finalizer {
-	return finalizer.Finalizer{
-		Name: "finalizer.kibana.k8s.elastic.co/es-auth-secret",
-		Execute: func() error {
-			watches.Secrets.RemoveHandlerForKey(secretWatchKey(kibana))
-			return nil
-		},
+// getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
+// upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
+// running multiple versions simultaneously may lead to concurrency bugs and data corruption.
+func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
+	var pods corev1.PodList
+	var labels client.MatchingLabels = map[string]string{label.KibanaNameLabelName: kb.Name}
+	if err := d.client.List(&pods, client.InNamespace(kb.Namespace), labels); err != nil {
+		return "", err
 	}
+
+	for _, pod := range pods.Items {
+		ver, ok := pod.Labels[label.KibanaVersionLabelName]
+		// if label is missing we assume that the last reconciliation was done by previous version of the operator
+		// to be safe, we assume the Kibana version has changed when operator was offline and use Recreate,
+		// otherwise we may run into data corruption/data loss.
+		if !ok || ver != kb.Spec.Version {
+			return appsv1.RecreateDeploymentStrategyType, nil
+		}
+	}
+
+	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) {
+func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d,
@@ -109,14 +123,14 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 	if keystoreResources != nil {
 		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
 	}
-
+	kbNamespacedName := k8s.ExtractNamespacedName(kb)
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if kb.AssociationConf().AuthIsConfigured() {
 		esAuthSecret := types.NamespacedName{Name: kb.AssociationConf().GetAuthSecretName(), Namespace: kb.Namespace}
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
-			Name:    secretWatchKey(*kb),
+			Name:    secretWatchKey(kbNamespacedName),
 			Watched: []types.NamespacedName{esAuthSecret},
-			Watcher: k8s.ExtractNamespacedName(kb),
+			Watcher: kbNamespacedName,
 		}); err != nil {
 			return deployment.Params{}, err
 		}
@@ -126,7 +140,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 		}
 		_, _ = configChecksum.Write(sec.Data[kb.AssociationConf().GetAuthSecretKey()])
 	} else {
-		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(*kb))
+		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(kbNamespacedName))
 	}
 
 	volumes := []commonvolume.SecretVolume{config.SecretVolume(*kb)}
@@ -136,9 +150,9 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
 		// watch for changes in the CA secret
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
-			Name:    secretWatchKey(*kb),
+			Name:    secretWatchKey(kbNamespacedName),
 			Watched: []types.NamespacedName{key},
-			Watcher: k8s.ExtractNamespacedName(kb),
+			Watcher: kbNamespacedName,
 		}); err != nil {
 			return deployment.Params{}, err
 		}
@@ -157,7 +171,6 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(kibanaPodSpec.Spec.InitContainers[i].VolumeMounts,
 				esCertsVolume.VolumeMount())
 		}
-
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
@@ -197,6 +210,12 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 	// changes, which will trigger a rolling update)
 	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
+	// decide the strategy type
+	strategyType, err := d.getStrategyType(kb)
+	if err != nil {
+		return deployment.Params{}, err
+	}
+
 	return deployment.Params{
 		Name:            kbname.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
@@ -204,18 +223,17 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 		Selector:        label.NewLabels(kb.Name),
 		Labels:          label.NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
+		Strategy:        strategyType,
 	}, nil
 }
 
 func (d *driver) Reconcile(
 	state *State,
-	kb *kbtype.Kibana,
+	kb *kbv1.Kibana,
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.Results{}
-	if kb.RequiresAssociation() && !kb.AssociationConf().IsConfigured() {
-		d.recorder.Event(kb, corev1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
-		log.Info("Elasticsearch association not established: skipping Kibana deployment reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
+	if !association.IsConfiguredIfSet(kb, d.recorder) {
 		return &results
 	}
 
@@ -245,6 +263,7 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
+
 	expectedDp := deployment.New(deploymentParams)
 	reconciledDp, err := deployment.Reconcile(d.client, d.scheme, expectedDp, kb)
 	if err != nil {

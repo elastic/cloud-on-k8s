@@ -7,7 +7,7 @@ package es
 import (
 	"testing"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -110,7 +110,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				Name: "Remove secure settings from the spec",
 				Test: func(t *testing.T) {
 					// retrieve current Elasticsearch resource
-					var currentEs estype.Elasticsearch
+					var currentEs esv1.Elasticsearch
 					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &currentEs)
 					require.NoError(t, err)
 					// set its secure settings to nil

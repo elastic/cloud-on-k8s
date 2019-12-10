@@ -57,6 +57,7 @@ type Role struct {
 type Client interface {
 	AllocationSetter
 	ShardLister
+	LicenseClient
 	// Close idle connections in the underlying http client.
 	Close()
 	// Equal returns true if other can be considered as the same client.
@@ -83,10 +84,6 @@ type Client interface {
 	GetNodes(ctx context.Context) (Nodes, error)
 	// GetNodesStats calls the _nodes/stats api to return a map(nodeName -> NodeStats)
 	GetNodesStats(ctx context.Context) (NodesStats, error)
-	// GetLicense returns the currently applied license. Can be empty.
-	GetLicense(ctx context.Context) (License, error)
-	// UpdateLicense attempts to update cluster license with the given licenses.
-	UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error)
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	//
 	// If timeout is the empty string, the default is used.
@@ -184,6 +181,16 @@ func IsConflict(err error) bool {
 	switch err := err.(type) {
 	case *APIError:
 		return err.response.StatusCode == http.StatusConflict
+	default:
+		return false
+	}
+}
+
+// IsForbidden checks whether the error was an HTTP 403 error.
+func IsForbidden(err error) bool {
+	switch err := err.(type) {
+	case *APIError:
+		return err.response.StatusCode == http.StatusForbidden
 	default:
 		return false
 	}

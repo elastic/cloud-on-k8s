@@ -34,18 +34,9 @@ NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is all
 
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
 +
-For Kubernetes clusters running version 1.13 or higher:
-+
 [source,sh,subs="attributes"]
 ----
 kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one.yaml
-----
-+
-For Kubernetes clusters running version 1.12 or lower:
-+
-[source,sh,subs="attributes"]
-----
-kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-one-no-validation.yaml
 ----
 
 . Monitor the operator logs:

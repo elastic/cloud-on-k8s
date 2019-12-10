@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
-// +kubebuilder:webhook:path=/validate-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1beta1,name=elastic-es-validation.k8s.elastic.co
+// +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1beta1,name=elastic-es-validation.k8s.elastic.co
 
 func (r *Elasticsearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
@@ -60,18 +60,13 @@ func (r *Elasticsearch) ValidateUpdate(old runtime.Object) error {
 }
 
 func (r *Elasticsearch) validateElasticsearch() error {
-	var errs field.ErrorList
-	for _, val := range validations {
-		if err := val(r); err != nil {
-			errs = append(errs, err...)
-		}
+	errs := r.check(validations)
+	if len(errs) > 0 {
+		return apierrors.NewInvalid(
+			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
+			r.Name,
+			errs,
+		)
 	}
-
-	if len(errs) == 0 {
-		return nil
-	}
-
-	return apierrors.NewInvalid(
-		schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
-		r.Name, errs)
+	return nil
 }

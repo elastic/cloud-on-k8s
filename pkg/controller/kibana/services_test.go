@@ -7,27 +7,28 @@ package kibana
 import (
 	"testing"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewService(t *testing.T) {
 	testCases := []struct {
 		name     string
-		httpConf commonv1beta1.HTTPConfig
+		httpConf commonv1.HTTPConfig
 		wantSvc  func() corev1.Service
 	}{
 		{
 			name: "no TLS",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
 						Disabled: true,
 					},
 				},
@@ -36,10 +37,10 @@ func TestNewService(t *testing.T) {
 		},
 		{
 			name: "self-signed certificate",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
-						SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
 							{
 								DNS: "kibana-test.local",
 							},
@@ -55,15 +56,33 @@ func TestNewService(t *testing.T) {
 		},
 		{
 			name: "user-provided certificate",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					Certificate: commonv1beta1.SecretRef{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					Certificate: commonv1.SecretRef{
 						SecretName: "my-cert",
 					},
 				},
 			},
 			wantSvc: func() corev1.Service {
 				svc := mkService()
+				svc.Spec.Ports[0].Name = "https"
+				return svc
+			},
+		},
+		{
+			name: "service template",
+			httpConf: commonv1.HTTPConfig{
+				Service: commonv1.ServiceTemplate{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels:      map[string]string{"foo": "bar"},
+						Annotations: map[string]string{"bar": "baz"},
+					},
+				},
+			},
+			wantSvc: func() corev1.Service {
+				svc := mkService()
+				svc.Labels["foo"] = "bar"
+				svc.Annotations = map[string]string{"bar": "baz"}
 				svc.Spec.Ports[0].Name = "https"
 				return svc
 			},
@@ -105,13 +124,13 @@ func mkService() corev1.Service {
 	}
 }
 
-func mkKibana(httpConf commonv1beta1.HTTPConfig) v1beta1.Kibana {
-	return v1beta1.Kibana{
+func mkKibana(httpConf commonv1.HTTPConfig) kbv1.Kibana {
+	return kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "kibana-test",
 			Namespace: "test",
 		},
-		Spec: v1beta1.KibanaSpec{
+		Spec: kbv1.KibanaSpec{
 			HTTP: httpConf,
 		},
 	}

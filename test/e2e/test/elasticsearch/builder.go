@@ -5,16 +5,17 @@
 package elasticsearch
 
 import (
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
 const (
@@ -29,7 +30,7 @@ func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec
 			SecurityContext: test.DefaultSecurityContext(),
 			Containers: []corev1.Container{
 				{
-					Name:      estype.ElasticsearchContainerName,
+					Name:      esv1.ElasticsearchContainerName,
 					Resources: resources,
 				},
 			},
@@ -39,7 +40,7 @@ func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec
 
 // Builder to create Elasticsearch clusters
 type Builder struct {
-	Elasticsearch estype.Elasticsearch
+	Elasticsearch esv1.Elasticsearch
 	MutatedFrom   *Builder
 }
 
@@ -59,9 +60,9 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 	return Builder{
-		Elasticsearch: estype.Elasticsearch{
+		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
-			Spec: estype.ElasticsearchSpec{
+			Spec: esv1.ElasticsearchSpec{
 				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
@@ -75,8 +76,8 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	return b
 }
 
-func (b Builder) Ref() commonv1beta1.ObjectSelector {
-	return commonv1beta1.ObjectSelector{
+func (b Builder) Ref() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
 		Name:      b.Elasticsearch.Name,
 		Namespace: b.Elasticsearch.Namespace,
 	}
@@ -108,7 +109,7 @@ func (b Builder) WithHTTPLoadBalancer() Builder {
 
 func (b Builder) WithTLSDisabled(disabled bool) Builder {
 	if b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate == nil {
-		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1beta1.SelfSignedCertificate{}
+		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{}
 	} else {
 		b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate.DeepCopy()
 	}
@@ -117,8 +118,8 @@ func (b Builder) WithTLSDisabled(disabled bool) Builder {
 }
 
 func (b Builder) WithHTTPSAN(ip string) Builder {
-	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1beta1.SelfSignedCertificate{
-		SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{{IP: ip}},
+	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1.SelfSignedCertificate{
+		SubjectAlternativeNames: []commonv1.SubjectAlternativeName{{IP: ip}},
 	}
 	return b
 }
@@ -126,17 +127,17 @@ func (b Builder) WithHTTPSAN(ip string) Builder {
 // -- ES Nodes
 
 func (b Builder) WithNoESTopology() Builder {
-	b.Elasticsearch.Spec.NodeSets = []estype.NodeSet{}
+	b.Elasticsearch.Spec.NodeSets = []esv1.NodeSet{}
 	return b
 }
 
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSet(estype.NodeSet{
+	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "master",
 		Count: int32(count),
-		Config: &commonv1beta1.Config{
+		Config: &commonv1.Config{
 			Data: map[string]interface{}{
-				estype.NodeData: "false",
+				esv1.NodeData: "false",
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -144,12 +145,12 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 }
 
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSet(estype.NodeSet{
+	return b.WithNodeSet(esv1.NodeSet{
 		Name:  "data",
 		Count: int32(count),
-		Config: &commonv1beta1.Config{
+		Config: &commonv1.Config{
 			Data: map[string]interface{}{
-				estype.NodeMaster: "false",
+				esv1.NodeMaster: "false",
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -157,12 +158,12 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 }
 
 func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSet(estype.NodeSet{
+	return b.WithNodeSet(esv1.NodeSet{
 		Name:  name,
 		Count: int32(count),
-		Config: &commonv1beta1.Config{
+		Config: &commonv1.Config{
 			Data: map[string]interface{}{
-				estype.NodeMaster: "false",
+				esv1.NodeMaster: "false",
 			},
 		},
 		PodTemplate: ESPodTemplate(resources),
@@ -170,18 +171,18 @@ func (b Builder) WithNamedESDataNodes(count int, name string, resources corev1.R
 }
 
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
-	return b.WithNodeSet(estype.NodeSet{
+	return b.WithNodeSet(esv1.NodeSet{
 		Name:        "masterdata",
 		Count:       int32(count),
 		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
-func (b Builder) WithNodeSet(nodeSet estype.NodeSet) Builder {
+func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 	// Make sure the config specifies "node.store.allow_mmap: false".
 	// We disable mmap to avoid having to set the vm.max_map_count sysctl on test k8s nodes.
 	if nodeSet.Config == nil {
-		nodeSet.Config = &commonv1beta1.Config{Data: map[string]interface{}{}}
+		nodeSet.Config = &commonv1.Config{Data: map[string]interface{}{}}
 	}
 	nodeSet.Config.Data["node.store.allow_mmap"] = false
 	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSet)
@@ -189,9 +190,9 @@ func (b Builder) WithNodeSet(nodeSet estype.NodeSet) Builder {
 }
 
 func (b Builder) WithESSecureSettings(secretNames ...string) Builder {
-	refs := make([]commonv1beta1.SecretSource, 0, len(secretNames))
+	refs := make([]commonv1.SecretSource, 0, len(secretNames))
 	for i := range secretNames {
-		refs = append(refs, commonv1beta1.SecretSource{SecretName: secretNames[i]})
+		refs = append(refs, commonv1.SecretSource{SecretName: secretNames[i]})
 	}
 	b.Elasticsearch.Spec.SecureSettings = refs
 	return b
@@ -256,7 +257,7 @@ func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 }
 
 func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface{}) Builder {
-	var newNodeSets []estype.NodeSet
+	var newNodeSets []esv1.NodeSet
 	for nodeSetName, cfg := range nodeSetCfg {
 		for _, n := range b.Elasticsearch.Spec.NodeSets {
 			if n.Name == nodeSetName {
@@ -274,10 +275,15 @@ func (b Builder) WithAdditionalConfig(nodeSetCfg map[string]map[string]interface
 }
 
 func (b Builder) WithChangeBudget(maxSurge, maxUnavailable int32) Builder {
-	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = estype.ChangeBudget{
+	b.Elasticsearch.Spec.UpdateStrategy.ChangeBudget = esv1.ChangeBudget{
 		MaxSurge:       pointer.Int32(maxSurge),
 		MaxUnavailable: pointer.Int32(maxUnavailable),
 	}
+	return b
+}
+
+func (b Builder) WithMutatedFrom(builder *Builder) Builder {
+	b.MutatedFrom = builder
 	return b
 }
 

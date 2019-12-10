@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -61,7 +61,7 @@ type DefaultDriverParameters struct {
 	OperatorParameters operator.Parameters
 
 	// ES is the Elasticsearch resource to reconcile
-	ES v1beta1.Elasticsearch
+	ES esv1.Elasticsearch
 	// SupportedVersions verifies whether we can support upgrading from the current pods.
 	SupportedVersions esversion.LowestHighestSupportedVersions
 
@@ -189,13 +189,17 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	results.Apply(
 		"reconcile-cluster-license",
 		func() (controller.Result, error) {
+			if !esReachable {
+				return defaultRequeue, nil
+			}
+
 			err := license.Reconcile(
 				d.Client,
 				d.ES,
 				esClient,
 				observedState.ClusterLicense,
 			)
-			if err != nil && esReachable {
+			if err != nil {
 				d.ReconcileState.AddEvent(
 					corev1.EventTypeWarning,
 					events.EventReasonUnexpected,
@@ -216,7 +220,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	keystoreResources, err := keystore.NewResources(
 		d,
 		&d.ES,
-		v1beta1.ESNamer,
+		esv1.ESNamer,
 		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
 		initcontainer.KeystoreParams,
 	)

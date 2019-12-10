@@ -105,7 +105,7 @@ func (d *AksDriver) Execute() error {
 			return err
 		}
 
-		if err := createStorageClass(); err != nil {
+		if err := createStorageClass(DefaultStorageClass); err != nil {
 			return err
 		}
 	default:

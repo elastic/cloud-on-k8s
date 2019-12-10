@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -80,7 +80,7 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile string
 	return builders
 }
 
-func tweakElasticsearchRef(ref commonv1beta1.ObjectSelector, suffix string) commonv1beta1.ObjectSelector {
+func tweakElasticsearchRef(ref commonv1.ObjectSelector, suffix string) commonv1.ObjectSelector {
 	// All the objects defined in the YAML file will have a random test suffix added to prevent clashes with previous runs.
 	// This necessitates changing the Elasticsearch reference to match the suffixed name.
 	if ref.Name != "" {

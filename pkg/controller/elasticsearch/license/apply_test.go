@@ -5,14 +5,10 @@
 package license
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func Test_updateLicense(t *testing.T) {
@@ -92,7 +94,7 @@ func Test_updateLicense(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			c := esclient.NewMockClient(version.MustParse("6.8.0"), tt.reqFn)
-			if err := updateLicense(c, tt.args.current, tt.args.desired); (err != nil) != tt.wantErr {
+			if err := updateLicense(types.NamespacedName{}, c, tt.args.current, tt.args.desired); (err != nil) != tt.wantErr {
 				t.Errorf("updateLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -105,10 +107,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 		Namespace: "default",
 	}
 	tests := []struct {
-		name        string
-		initialObjs []runtime.Object
-		errors      map[client.ObjectKey]error
-		wantErr     bool
+		name             string
+		initialObjs      []runtime.Object
+		errors           map[client.ObjectKey]error
+		wantErr          bool
+		clientAssertions func(updater fakeLicenseUpdater)
 	}{
 		{
 			name:    "happy path",
@@ -116,7 +119,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      v1beta1.LicenseSecretName("test"),
+						Name:      esv1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
@@ -128,6 +131,9 @@ func Test_applyLinkedLicense(t *testing.T) {
 		{
 			name:    "no error: no license found",
 			wantErr: false,
+			clientAssertions: func(updater fakeLicenseUpdater) {
+				require.True(t, updater.startBasicCalled, "should call start_basic")
+			},
 		},
 		{
 			name:    "error: empty license",
@@ -135,7 +141,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      v1beta1.LicenseSecretName("test"),
+						Name:      esv1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 				},
@@ -147,7 +153,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      v1beta1.LicenseSecretName("test"),
+						Name:      esv1.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
@@ -162,7 +168,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			errors: map[client.ObjectKey]error{
 				types.NamespacedName{
 					Namespace: clusterName.Namespace,
-					Name:      v1beta1.LicenseSecretName("test"),
+					Name:      esv1.LicenseSecretName("test"),
 				}: errors.New("boom"),
 			},
 		},
@@ -173,19 +179,51 @@ func Test_applyLinkedLicense(t *testing.T) {
 				Client: k8s.WrappedFakeClient(tt.initialObjs...),
 				errors: tt.errors,
 			}
+			updater := fakeLicenseUpdater{}
 			if err := applyLinkedLicense(
 				c,
 				clusterName,
-				func(license esclient.License) error {
-					require.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", license.UID) // test UID from fixture
-					return nil
-				},
+				nil,
+				&updater,
 			); (err != nil) != tt.wantErr {
 				t.Errorf("applyLinkedLicense() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.clientAssertions != nil {
+				tt.clientAssertions(updater)
 			}
 		})
 	}
 }
+
+type fakeLicenseUpdater struct {
+	license          esclient.License
+	startBasicCalled bool
+}
+
+func (f *fakeLicenseUpdater) StartTrial(ctx context.Context) (esclient.StartTrialResponse, error) {
+	return esclient.StartTrialResponse{
+		Acknowledged:    true,
+		TrialWasStarted: true,
+	}, nil
+}
+
+func (f *fakeLicenseUpdater) GetLicense(ctx context.Context) (esclient.License, error) {
+	return f.license, nil
+}
+
+func (f *fakeLicenseUpdater) UpdateLicense(ctx context.Context, licenses esclient.LicenseUpdateRequest) (esclient.LicenseUpdateResponse, error) {
+	return esclient.LicenseUpdateResponse{
+		Acknowledged:  true,
+		LicenseStatus: "valid",
+	}, nil
+}
+
+func (f *fakeLicenseUpdater) StartBasic(ctx context.Context) (esclient.StartBasicResponse, error) {
+	f.startBasicCalled = true
+	return esclient.StartBasicResponse{}, nil
+}
+
+var _ esclient.LicenseClient = &fakeLicenseUpdater{}
 
 type fakeClient struct {
 	k8s.Client

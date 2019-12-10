@@ -16,7 +16,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -441,91 +440,6 @@ func TestClient_Equal(t *testing.T) {
 	}
 }
 
-func TestClient_UpdateLicense(t *testing.T) {
-	tests := []struct {
-		expectedPath string
-		version      version.Version
-	}{
-		{
-			expectedPath: "/_xpack/license",
-			version:      version.MustParse("6.8.0"),
-		},
-		{
-			expectedPath: "/_license",
-			version:      version.MustParse("7.0.0"),
-		},
-	}
-	for _, tt := range tests {
-		testClient := NewMockClient(tt.version, func(req *http.Request) *http.Response {
-			require.Equal(t, tt.expectedPath, req.URL.Path)
-			return &http.Response{
-				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(fixtures.LicenseUpdateResponseSample)),
-				Header:     make(http.Header),
-				Request:    req,
-			}
-		})
-		in := LicenseUpdateRequest{
-			Licenses: []License{
-				{
-					UID:                "893361dc-9749-4997-93cb-802e3d7fa4xx",
-					Type:               "basic",
-					IssueDateInMillis:  0,
-					ExpiryDateInMillis: 0,
-					MaxNodes:           1,
-					IssuedTo:           "unit-test",
-					Issuer:             "test-issuer",
-					Signature:          "xx",
-				},
-			},
-		}
-		got, err := testClient.UpdateLicense(context.Background(), in)
-		assert.NoError(t, err)
-		assert.Equal(t, true, got.Acknowledged)
-		assert.Equal(t, "valid", got.LicenseStatus)
-	}
-
-}
-
-func TestClient_GetLicense(t *testing.T) {
-	tests := []struct {
-		expectedPath string
-		version      version.Version
-	}{
-		{
-			expectedPath: "/_xpack/license",
-			version:      version.MustParse("6.8.0"),
-		},
-		{
-			expectedPath: "/_license",
-			version:      version.MustParse("7.0.0"),
-		},
-	}
-
-	for _, tt := range tests {
-		testClient := NewMockClient(tt.version, func(req *http.Request) *http.Response {
-			require.Equal(t, tt.expectedPath, req.URL.Path)
-			return &http.Response{
-				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(fixtures.LicenseGetSample)),
-				Header:     make(http.Header),
-				Request:    req,
-			}
-		})
-		got, err := testClient.GetLicense(context.Background())
-		assert.NoError(t, err)
-		assert.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", got.UID)
-		assert.Equal(t, "platinum", got.Type)
-		assert.EqualValues(t, time.Unix(0, 1548115200000*int64(time.Millisecond)).UTC(), *got.IssueDate)
-		assert.Equal(t, int64(1548115200000), got.IssueDateInMillis)
-		assert.EqualValues(t, time.Unix(0, 1561247999999*int64(time.Millisecond)).UTC(), *got.ExpiryDate)
-		assert.Equal(t, int64(1561247999999), got.ExpiryDateInMillis)
-		assert.Equal(t, 100, got.MaxNodes)
-		assert.Equal(t, "issuer", got.Issuer)
-		assert.Equal(t, int64(1548115200000), got.StartDateInMillis)
-	}
-}
-
 func TestClient_AddVotingConfigExclusions(t *testing.T) {
 	tests := []struct {
 		expectedPath string
@@ -628,41 +542,62 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 	}
 }
 
-func TestIsConflict(t *testing.T) {
+func TestAPIError_Types(t *testing.T) {
 	type args struct {
 		err error
 	}
 	tests := []struct {
-		name string
-		args args
-		want bool
+		name          string
+		args          args
+		wantConflict  bool
+		wantForbidden bool
+		wantNotFound  bool
 	}{
 		{
-			name: "200 is not a conflict",
+			name: "500 is not any of the explicitly supported error types",
 			args: args{
-				err: &APIError{response: NewMockResponse(200, nil, "")}, // nolint
+				err: &APIError{response: NewMockResponse(500, nil, "")}, // nolint
 			},
-			want: false,
 		},
 		{
 			name: "409 is a conflict",
 			args: args{
 				err: &APIError{response: NewMockResponse(409, nil, "")}, // nolint
 			},
-			want: true,
+			wantConflict: true,
+		},
+		{
+			name: "403 is a forbidden",
+			args: args{
+				err: &APIError{response: NewMockResponse(403, nil, "")}, // nolint
+			},
+			wantForbidden: true,
+		},
+		{
+			name: "404 is not found",
+			args: args{
+				err: &APIError{response: NewMockResponse(404, nil, "")}, // nolint
+			},
+			wantNotFound: true,
 		},
 		{
 			name: "no api error",
 			args: args{
 				err: errors.New("not an api error"),
 			},
-			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := IsConflict(tt.args.err); got != tt.want {
-				t.Errorf("IsConflict() = %v, want %v", got, tt.want)
+			if got := IsNotFound(tt.args.err); got != tt.wantNotFound {
+				t.Errorf("IsNotFound() = %v, want %v", got, tt.wantNotFound)
+			}
+
+			if got := IsForbidden(tt.args.err); got != tt.wantForbidden {
+				t.Errorf("IsForbidden() = %v, want %v", got, tt.wantForbidden)
+			}
+			if got := IsConflict(tt.args.err); got != tt.wantConflict {
+				t.Errorf("IsConflict() = %v, want %v", got, tt.wantConflict)
 			}
 		})
 	}

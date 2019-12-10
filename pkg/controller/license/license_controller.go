@@ -10,17 +10,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -28,6 +22,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -48,7 +53,9 @@ var log = logf.Log.WithName(name)
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 	results := r.reconcileInternal(request)
-	return results.Aggregate()
+	current, err := results.Aggregate()
+	log.V(1).Info("Reconcile result", "requeue", current.Requeue, "requeueAfter", current.RequeueAfter)
+	return current, err
 }
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -89,7 +96,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r *ReconcileLicenses) error {
 	// Create a new controller
 	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -98,7 +105,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		&source.Kind{Type: &v1beta1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
+		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
@@ -112,12 +119,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 					"dropping watch event due to error in handler")
 				return nil
 			}
-			if !license.IsEnterpriseLicense(*secret) {
+			if !license.IsOperatorLicense(*secret) {
 				return nil
 			}
+
 			// if a license is added/modified we want to update for potentially all clusters managed by this instance
 			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-			rs, err := reconcileRequestsForAllClusters(k8s.WrapClient(mgr.GetClient()))
+			rs, err := reconcileRequestsForAllClusters(r)
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
@@ -143,7 +151,7 @@ type ReconcileLicenses struct {
 }
 
 // findLicense tries to find the best license available.
-func findLicense(c k8s.Client, checker license.Checker) (esclient.License, string, bool, error) {
+func findLicense(c k8s.Client, checker license.Checker) (esclient.License, string, bool) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
 		log.Info("Ignoring invalid license objects", "errors", errs)
@@ -154,11 +162,11 @@ func findLicense(c k8s.Client, checker license.Checker) (esclient.License, strin
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
 func reconcileSecret(
 	c k8s.Client,
-	cluster v1beta1.Elasticsearch,
+	cluster esv1.Elasticsearch,
 	parent string,
 	esLicense esclient.License,
 ) error {
-	secretName := v1beta1.LicenseSecretName(cluster.Name)
+	secretName := esv1.LicenseSecretName(cluster.Name)
 
 	licenseBytes, err := json.Marshal(esLicense)
 	if err != nil {
@@ -170,9 +178,10 @@ func reconcileSecret(
 			Name:      secretName,
 			Namespace: cluster.Namespace,
 			Labels: map[string]string{
-				common.TypeLabelName:     license.Type,
-				license.LicenseLabelName: parent,
-				license.LicenseLabelType: string(license.LicenseLabelElasticsearch),
+				common.TypeLabelName:      license.Type,
+				license.LicenseLabelName:  parent,
+				license.LicenseLabelScope: string(license.LicenseScopeElasticsearch),
+				license.LicenseLabelType:  esLicense.Type,
 			},
 		},
 		Data: map[string][]byte{
@@ -188,9 +197,11 @@ func reconcileSecret(
 		Expected:   &expected,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(reconciled.Data, expected.Data)
+			return !(reflect.DeepEqual(reconciled.Data, expected.Data) &&
+				compare.LabelsAndAnnotationsAreEqual(reconciled.ObjectMeta, expected.ObjectMeta))
 		},
 		UpdateReconciled: func() {
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
 			reconciled.Data = expected.Data
 		},
 	})
@@ -198,28 +209,39 @@ func reconcileSecret(
 }
 
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
-func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1beta1.Elasticsearch) (time.Time, error) {
+// Returns time to next reconciliation, bool whether a license is configured at all and optional error.
+func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) (time.Time, bool, error) {
 	var noResult time.Time
-	matchingSpec, parent, found, err := findLicense(r, r.checker)
-	if err != nil {
-		return noResult, err
-	}
+	matchingSpec, parent, found := findLicense(r, r.checker)
 	if !found {
-		// no license, nothing to do
-		return noResult, nil
+		// no license, delete cluster level licenses to revert to basic
+		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
+		secretName := esv1.LicenseSecretName(cluster.Name)
+		err := r.Client.Delete(&corev1.Secret{
+			ObjectMeta: k8s.ToObjectMeta(types.NamespacedName{
+				Namespace: cluster.Namespace,
+				Name:      secretName,
+			}),
+		})
+		if err != nil && !errors.IsNotFound(err) {
+			log.Error(err, "failed to delete cluster license secret", "secret_name", secretName, "namespace", cluster.Namespace, "es_name", cluster.Name)
+		}
+		return noResult, true, nil
+
 	}
+	log.V(1).Info("Found license for cluster", "eck_license", parent, "es_license", matchingSpec.UID, "license_type", matchingSpec.Type, "namespace", cluster.Namespace, "es_name", cluster.Name)
 	// make sure the signature secret is created in the cluster's namespace
-	if err = reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
-		return noResult, err
+	if err := reconcileSecret(r, cluster, parent, matchingSpec); err != nil {
+		return noResult, false, err
 	}
-	return matchingSpec.ExpiryTime(), err
+	return matchingSpec.ExpiryTime(), false, nil
 }
 
 func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconciler.Results {
 	res := &reconciler.Results{}
 
 	// Fetch the cluster to ensure it still exists
-	cluster := v1beta1.Elasticsearch{}
+	cluster := esv1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &cluster)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -234,10 +256,14 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconc
 		return res
 	}
 
-	newExpiry, err := r.reconcileClusterLicense(cluster)
+	newExpiry, noLicense, err := r.reconcileClusterLicense(cluster)
 	if err != nil {
 		return res.WithError(err)
 	}
-
-	return res.WithResult(nextReconcile(newExpiry, defaultSafetyMargin))
+	margin := defaultSafetyMargin
+	if noLicense {
+		// don't apply safety margin if we don't have a license but use requested requeue time as specified in newExpiry
+		margin = 0
+	}
+	return res.WithResult(nextReconcile(newExpiry, margin))
 }

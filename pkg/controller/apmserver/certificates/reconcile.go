@@ -7,21 +7,22 @@ package certificates
 import (
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	coverv1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func Reconcile(
 	driver driver.Interface,
-	apm *v1beta1.ApmServer,
-	services []coverv1.Service,
+	apm *apmv1.ApmServer,
+	services []corev1.Service,
 	rotation certificates.RotationParams,
 ) reconciler.Results {
 	results := reconciler.Results{}

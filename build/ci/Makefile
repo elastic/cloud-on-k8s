@@ -6,6 +6,7 @@
 
 ROOT_DIR = $(CURDIR)/../..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
+ALL_IN_ONE_OUTPUT_FILE ?= config/all-in-one.yaml
 
 # This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
 VAULT_CLIENT_TIMEOUT = 120
@@ -56,11 +57,7 @@ AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$
 yaml-upload:
 	@ $(MAKE) \
 		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
-		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one-flavor-trivial-versions.yaml \
-		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one-no-validation.yaml" ci-internal
-	@ $(MAKE) \
-		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
-		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/config/all-in-one-flavor-default.yaml \
+		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/$(ALL_IN_ONE_OUTPUT_FILE) \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml" ci-internal
 
 # reads Elastic public key from Vault into license.key

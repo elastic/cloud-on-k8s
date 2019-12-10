@@ -8,15 +8,15 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
@@ -24,7 +24,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
 
-	owner := &v1beta1.Elasticsearch{
+	owner := &esv1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 	}
 
@@ -36,7 +36,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		},
 	}
 
-	namespacedSecretName := PublicCertsSecretRef(v1beta1.ESNamer, k8s.ExtractNamespacedName(owner))
+	namespacedSecretName := PublicCertsSecretRef(esv1.ESNamer, k8s.ExtractNamespacedName(owner))
 
 	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
 		t.Helper()
@@ -53,7 +53,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 			},
 		}
 
-		if err := controllerutil.SetControllerReference(owner, wantSecret, scheme.Scheme); err != nil {
+		if err := reconciler.SetControllerReference(owner, wantSecret, scheme.Scheme); err != nil {
 			t.Fatal(err)
 		}
 
@@ -126,7 +126,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcileHTTPCertsPublicSecret(client, scheme.Scheme, owner, v1beta1.ESNamer, certificate)
+			err := ReconcileHTTPCertsPublicSecret(client, scheme.Scheme, owner, esv1.ESNamer, certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return

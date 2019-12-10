@@ -9,8 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -38,10 +38,11 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 }
 
 func BuildExpectedResources(
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	keystoreResources *keystore.Resources,
 	scheme *runtime.Scheme,
 	certResources *certificates.CertificateResources,
+	existingStatefulSets sset.StatefulSetList,
 ) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.NodeSets))
 
@@ -52,7 +53,7 @@ func BuildExpectedResources(
 
 	for _, nodeSpec := range es.Spec.NodeSets {
 		// build es config
-		userCfg := commonv1beta1.Config{}
+		userCfg := commonv1.Config{}
 		if nodeSpec.Config != nil {
 			userCfg = *nodeSpec.Config
 		}
@@ -62,7 +63,7 @@ func BuildExpectedResources(
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources, scheme)
+		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources, existingStatefulSets, scheme)
 		if err != nil {
 			return nil, err
 		}

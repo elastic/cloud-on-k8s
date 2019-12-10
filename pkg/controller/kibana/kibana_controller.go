@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	kibanav1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -59,7 +60,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
-		finalizers:     finalizer.NewHandler(client),
 		params:         params,
 	}
 }
@@ -72,14 +72,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch for changes to Kibana
-	if err := c.Watch(&source.Kind{Type: &kibanav1beta1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch deployments
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1beta1.Kibana{},
+		OwnerType:    &kbv1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1beta1.Kibana{},
+		OwnerType:    &kbv1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1beta1.Kibana{},
+		OwnerType:    &kbv1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -116,7 +116,6 @@ type ReconcileKibana struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
-	finalizers     finalizer.Handler
 	dynamicWatches watches.DynamicWatches
 
 	params operator.Parameters
@@ -131,9 +130,16 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// retrieve the kibana object
-	var kb kibanav1beta1.Kibana
+	var kb kbv1.Kibana
 	if ok, err := association.FetchWithAssociation(r.Client, request, &kb); !ok {
-		return reconcile.Result{}, err
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		r.onDelete(types.NamespacedName{
+			Namespace: request.Namespace,
+			Name:      request.Name,
+		})
+		return reconcile.Result{}, nil
 	}
 
 	// skip reconciliation if paused
@@ -148,18 +154,14 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	// run finalizers
-	if err := r.finalizers.Handle(&kb, r.finalizersFor(&kb)...); err != nil {
-		if errors.IsConflict(err) {
-			// Conflicts are expected and should be resolved on next loop
-			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "kibana_name", kb.Name)
-			return reconcile.Result{Requeue: true}, nil
-		}
+	// Remove any previous Finalizers
+	if err := finalizer.RemoveAll(r.Client, &kb); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// Kibana will be deleted nothing to do other than run finalizers
+	// Kibana will be deleted nothing to do other than remove the watches
 	if kb.IsMarkedForDeletion() {
+		r.onDelete(k8s.ExtractNamespacedName(&kb))
 		return reconcile.Result{}, nil
 	}
 
@@ -173,7 +175,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	return r.doReconcile(request, &kb)
 }
 
-func (r *ReconcileKibana) isCompatible(kb *kibanav1beta1.Kibana) (bool, error) {
+func (r *ReconcileKibana) isCompatible(kb *kbv1.Kibana) (bool, error) {
 	selector := map[string]string{label.KibanaNameLabelName: kb.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
@@ -183,7 +185,7 @@ func (r *ReconcileKibana) isCompatible(kb *kibanav1beta1.Kibana) (bool, error) {
 	return compat, err
 }
 
-func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kibanav1beta1.Kibana) (reconcile.Result, error) {
+func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
@@ -219,13 +221,11 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", state.Kibana.Namespace, "kibana_name", state.Kibana.Name)
-	return r.Status().Update(state.Kibana)
+	return common.UpdateStatus(r.Client, state.Kibana)
 }
 
-// finalizersFor returns the list of finalizers applying to a given Kibana deployment
-func (r *ReconcileKibana) finalizersFor(kb *kibanav1beta1.Kibana) []finalizer.Finalizer {
-	return []finalizer.Finalizer{
-		secretWatchFinalizer(*kb, r.dynamicWatches),
-		keystore.Finalizer(k8s.ExtractNamespacedName(kb), r.dynamicWatches, kb.Kind),
-	}
+func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {
+	// Clean up watches
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(obj))
 }
