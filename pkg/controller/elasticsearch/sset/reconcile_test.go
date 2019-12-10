@@ -35,7 +35,6 @@ func TestReconcileStatefulSet(t *testing.T) {
 		},
 	}
 	ssetSample := appsv1.StatefulSet{
-
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      "sset",
@@ -92,14 +91,12 @@ func TestReconcileStatefulSet(t *testing.T) {
 			require.Equal(t, tt.wantExpectationsUpdated, len(exp.GetGenerations()) != 0)
 
 			// returned sset should match the expected one
-			diff := comparison.Diff(&tt.expected, &returned)
-			require.Empty(t, diff)
+			comparison.AssertEqual(t, &tt.expected, &returned)
 			// and be stored in the apiserver
 			var retrieved appsv1.StatefulSet
 			err = tt.c.Get(k8s.ExtractNamespacedName(&tt.expected), &retrieved)
 			require.NoError(t, err)
-			diffSset := comparison.Diff(&tt.expected, &retrieved)
-			require.Empty(t, diffSset)
+			comparison.AssertEqual(t, &tt.expected, &retrieved)
 		})
 	}
 }
