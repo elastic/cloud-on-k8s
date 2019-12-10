@@ -17,7 +17,7 @@ var (
 )
 
 // createStorageClass based on default storageclass, creates new, non-default class with "volumeBindingMode: WaitForFirstConsumer"
-func createStorageClass(provisioner *string) error {
+func createStorageClass(provisioner string) error {
 	log.Println("Creating storage class...")
 
 	if exists, err := NewCommand("kubectl get sc").OutputContainsAny("e2e-default"); err != nil {
@@ -54,8 +54,8 @@ func createStorageClass(provisioner *string) error {
 
 	sc = strings.Replace(sc, fmt.Sprintf("name: %s", defaultName), "name: e2e-default", -1)
 	sc = strings.Replace(sc, "volumeBindingMode: Immediate", "volumeBindingMode: WaitForFirstConsumer", -1)
-	if provisioner != nil {
-		sc = StorageClassProvisionerRegExp.ReplaceAllString(sc, fmt.Sprintf("provisioner: %s\n", *provisioner))
+	if provisioner != "" {
+		sc = StorageClassProvisionerRegExp.ReplaceAllString(sc, fmt.Sprintf("provisioner: %s\n", provisioner))
 	}
 	// Some providers (AKS) don't allow changing the default. To avoid having two defaults, set newly created storage
 	// class to be non-default. Depending on k8s version, a different annotation is needed. To avoid parsing version
