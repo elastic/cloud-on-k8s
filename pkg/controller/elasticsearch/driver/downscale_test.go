@@ -744,7 +744,10 @@ func Test_attemptDownscale(t *testing.T) {
 			var ssets appsv1.StatefulSetList
 			err = k8sClient.List(&ssets)
 			require.NoError(t, err)
-			require.Equal(t, tt.expectedStatefulSets, ssets.Items)
+			require.Equal(t, len(tt.expectedStatefulSets), len(ssets.Items))
+			for i := range tt.expectedStatefulSets {
+				comparison.AssertEqual(t, &tt.expectedStatefulSets[i], &ssets.Items[i])
+			}
 		})
 	}
 }

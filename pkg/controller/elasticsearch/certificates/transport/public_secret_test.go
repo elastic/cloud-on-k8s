@@ -9,13 +9,13 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"math/big"
 	"testing"
 	"time"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -136,24 +136,9 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 			require.NoError(t, err, "Failed to get secret")
 
 			wantSecret := tt.wantSecret(t)
-			jsonEqual(t, wantSecret, gotSecret)
+			comparison.AssertEqual(t, wantSecret, &gotSecret)
 		})
 	}
-}
-
-func jsonEqual(t *testing.T, a, b interface{}) {
-	t.Helper()
-	obj1, err := json.Marshal(a)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	obj2, err := json.Marshal(b)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	require.Equal(t, string(obj1), string(obj2))
 }
 
 func genCA(t *testing.T) *certificates.CA {
