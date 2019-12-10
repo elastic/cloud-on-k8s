@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -57,7 +56,7 @@ func BuildPodTemplateSpec(
 		WithPorts(DefaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe()).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(es.Spec.HTTP, HeadlessServiceName(v1beta1.StatefulSet(es.Name, nodeSet.Name)))...).
+		WithEnv(DefaultEnvVars(es.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)))...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithLabels(labels).

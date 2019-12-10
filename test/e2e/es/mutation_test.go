@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/assert"
@@ -252,7 +252,7 @@ func TestMutationWhileLoadTesting(t *testing.T) {
 		func(k *test.K8sClient, t *testing.T) {
 			var ip string
 			for {
-				svc, err := k.GetService(b.Elasticsearch.Namespace, v1beta1.HTTPService(b.Elasticsearch.Name))
+				svc, err := k.GetService(b.Elasticsearch.Namespace, esv1.HTTPService(b.Elasticsearch.Name))
 				assert.NoError(t, err)
 				if len(svc.Status.LoadBalancer.Ingress) != 0 {
 					ip = svc.Status.LoadBalancer.Ingress[0].IP

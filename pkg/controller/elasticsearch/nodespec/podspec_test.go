@@ -10,7 +10,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -174,7 +173,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 						{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},
 					},
 					Env: append(
-						DefaultEnvVars(sampleES.Spec.HTTP, HeadlessServiceName(v1beta1.StatefulSet(sampleES.Name, nodeSet.Name))),
+						DefaultEnvVars(sampleES.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(sampleES.Name, nodeSet.Name))),
 						corev1.EnvVar{Name: "my-env", Value: "my-value"}),
 					Resources:      DefaultResources,
 					VolumeMounts:   volumeMounts,

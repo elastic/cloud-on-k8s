@@ -57,23 +57,3 @@ else
 	exit 1
 fi
 `
-
-const PreStopHookScriptConfigKey = "pre-stop-hook-script.sh"
-const PreStopHookScript = `#!/usr/bin/env bash
-
-# This script will wait for up to $MAX_WAIT_SECONDS for $POD_IP to disappear from DNS record,
-# then it will wait additional $ADDN_WAIT_SECONDS and exit. This slows down the process shutdown
-# and allows to make changes to the pool gracefully, without blackholing traffic when DNS
-# contains IP that is already inactive. Assumes $SERVICE_NAME and $POD_IP env variables are defined.
-
-MAX_WAIT_SECONDS=20 # max time to wait for pods IP to disappear from DNS
-ADDN_WAIT_SECONDS=1 # additional wait, allows queries to successfully use IP from old DNS entry
-
-for i in {1..$MAX_WAIT_SECONDS}
-do
-   getent hosts $SERVICE_NAME | grep $POD_IP || sleep $ADDN_WAIT_SECONDS && exit 0
-   sleep 1
-done
-
-exit 1
-`
