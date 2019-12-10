@@ -5,11 +5,12 @@
 package association
 
 import (
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"k8s.io/client-go/tools/record"
 )
 
 // ElasticsearchAuthSettings returns the user and the password to be used by an associated object to authenticate
@@ -29,4 +30,20 @@ func ElasticsearchAuthSettings(
 		return "", "", err
 	}
 	return assocConf.AuthSecretKey, string(secret.Data[assocConf.AuthSecretKey]), nil
+}
+
+// IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
+// This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
+func IsConfiguredIfSet(associated commonv1.Associated, r record.EventRecorder) bool {
+	esRef := associated.ElasticsearchRef()
+	if (&esRef).IsDefined() && !associated.AssociationConf().IsConfigured() {
+		r.Event(associated, v1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
+		log.Info("Elasticsearch association not established: skipping associated resource deployment reconciliation",
+			"kind", associated.GetObjectKind().GroupVersionKind().Kind,
+			"namespace", associated.GetNamespace(),
+			"name", associated.GetName(),
+		)
+		return false
+	}
+	return true
 }
