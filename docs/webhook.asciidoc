@@ -1,9 +1,7 @@
 [id="{p}-webhook"]
 == Validating webhook
 
-A validating webhook provides additional validation of Elasticsearch resources beyond what can be specified in OpenAPI specs.
-This allows advanced validation to help prevent Elasticsearch resources that are invalid and will not function correctly
-from being admitted by the Kubernetes API server, which can aid troubleshooting.
+A validating webhook provides additional validation of Elasticsearch resources, it gives you an immediate feedback on the Elasticsearch manifests you submit and allow you to catch errors right away before ECK even tries to fulfill your request.
 
 [float]
 === Architecture
@@ -13,15 +11,15 @@ their naming and how they are managed.
 . A `ValidatingWebhookConfiguration` object that defines the validating webhook. In ECK it is named `elastic-es-validation.k8s.elastic.co`. It must be created before to start the operator, the `caBundle` field can be automatically managed as part of the
 automatic certificate management _(see below)_.
 . A Kubernetes Service is used to expose the validating server, in ECK its name is fixed to `elastic-webhook-server`.
-It lives in the same Namespace that the webhook server.
+It lives in the same Namespace as the webhook server.
 . A webhook server that actually validates the submitted resources. In ECK it is the operator itself when it
-is configured to act the `webhook` role. See <<{p}-operator-config,Configuring ECK>> if want to learn more about the
+is configured to have the `webhook` role. See <<{p}-operator-config,Configuring ECK>> if you want to learn more about the
 `operator-roles` flag.
 . A Secret which contains the required certificates to secure the connection between the API server and the webhook.
-Like the ValidatingWebhookConfiguration it must be created before to start the operator, even if it is empty.
+Like the ValidatingWebhookConfiguration it must be created before starting the operator, even if it is empty.
 If ECK has been installed with the provided manifest its name is `elastic-webhook-server-cert`.
-The content of this Secret and the lifecycle of the certificates are automatically handled for you. You can disable
-this feature if you want to manage the certificates by yourself or with the cert-manager, see an example below.
+The content of this Secret and the lifecycle of the certificates are automatically managed for you. You can disable
+this feature if you want to setup the certificates by yourself or with the cert-manager, see an example for the latter below.
 
 [float]
 === Managing webhook certificate with cert-manager
@@ -29,7 +27,7 @@ this feature if you want to manage the certificates by yourself or with the cert
 If the operator is currently running you first need to ensure that the automatic certificate management is disabled.
 This can be done by updating the operator deployment manifest and adding the `--manage-webhook-certs=false` flag.
 
-Then if it is not already done you have to install cert-manager v0.11+ as described in their https://docs.cert-manager.io/en/latest/getting-started/install/[documentation].
+Then, if it is not already done you have to install cert-manager v0.11+ as described in the https://docs.cert-manager.io/en/latest/getting-started/install/[cert-manager documentation].
 
 Below is a complete example to create all of the resources necessary for the validating webhook to function.
 
@@ -187,5 +185,5 @@ NOTE: This example assumes that you have installed the operator in the `elastic-
 [float]
 === Troubleshooting
 
-Webhooks rely on a good connectivity between the Kubernetes API server and the operator.
+Webhooks require network connectivity between the Kubernetes API server and the operator.
 See <<{p}-troubleshooting,Webhook troubleshooting>> for more information about some known problems with some Kubernetes providers.
