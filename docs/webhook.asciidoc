@@ -186,4 +186,4 @@ NOTE: This example assumes that you have installed the operator in the `elastic-
 === Troubleshooting
 
 Webhooks require network connectivity between the Kubernetes API server and the operator.
-See <<{p}-troubleshooting,Webhook troubleshooting>> for more information about some known problems with some Kubernetes providers.
+See <<{p}-webhook-troubleshooting,Webhook troubleshooting>> for more information about some known problems with some Kubernetes providers.
