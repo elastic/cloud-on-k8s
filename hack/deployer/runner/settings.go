@@ -7,7 +7,7 @@ package runner
 import (
 	"io/ioutil"
 
-	"github.com/ghodss/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 // Plans encapsulates list of plans, expected to map to a file
@@ -45,8 +45,8 @@ type GkeSettings struct {
 	GCloudProject    string `yaml:"gCloudProject"`
 	Region           string `yaml:"region"`
 	AdminUsername    string `yaml:"adminUsername"`
-	LocalSsdCount    int64  `yaml:"localSsdCount"`
-	NodeCountPerZone int64  `yaml:"nodeCountPerZone"`
+	LocalSsdCount    int    `yaml:"localSsdCount"`
+	NodeCountPerZone int    `yaml:"nodeCountPerZone"`
 	GcpScopes        string `yaml:"gcpScopes"`
 }
 
@@ -54,7 +54,7 @@ type GkeSettings struct {
 type AksSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	AcrName       string `yaml:"acrName"`
-	NodeCount     int64  `yaml:"nodeCount"`
+	NodeCount     int    `yaml:"nodeCount"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
