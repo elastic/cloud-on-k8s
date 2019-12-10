@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"os"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -65,13 +65,13 @@ func CreateClient() (k8s.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := estype.AddToScheme(scheme.Scheme); err != nil {
+	if err := esv1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
-	if err := kbtype.AddToScheme(scheme.Scheme); err != nil {
+	if err := kbv1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
-	if err := apmtype.AddToScheme(scheme.Scheme); err != nil {
+	if err := apmv1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := k8sclient.New(cfg, k8sclient.Options{Scheme: scheme.Scheme})
@@ -216,7 +216,7 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ownerNamespace,
-		Name:      certificates.CAInternalSecretName(estype.ESNamer, ownerName, caType),
+		Name:      certificates.CAInternalSecretName(esv1.ESNamer, ownerName, caType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
@@ -252,7 +252,7 @@ func (k *K8sClient) GetTransportCert(esName, podName string) (caCert, transportC
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: Ctx().ManagedNamespace(0),
-		Name:      estype.TransportCertificatesSecret(esName),
+		Name:      esv1.TransportCertificatesSecret(esName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
 		return nil, nil, err

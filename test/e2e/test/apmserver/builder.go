@@ -5,8 +5,8 @@
 package apmserver
 
 import (
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +16,7 @@ import (
 
 // Builder to create APM Servers
 type Builder struct {
-	ApmServer apmtype.ApmServer
+	ApmServer apmv1.ApmServer
 }
 
 var _ test.Builder = Builder{}
@@ -35,12 +35,12 @@ func newBuilder(name, randSuffix string) Builder {
 		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 	return Builder{
-		ApmServer: apmtype.ApmServer{
+		ApmServer: apmv1.ApmServer{
 			ObjectMeta: meta,
-			Spec: apmtype.ApmServerSpec{
+			Spec: apmv1.ApmServerSpec{
 				Count:   1,
 				Version: test.Ctx().ElasticStackVersion,
-				Config: &commonv1beta1.Config{
+				Config: &commonv1.Config{
 					Data: map[string]interface{}{
 						"apm-server.ilm.enabled": false,
 					},
@@ -82,14 +82,14 @@ func (b Builder) WithNodeCount(count int) Builder {
 	return b
 }
 
-func (b Builder) WithElasticsearchRef(ref commonv1beta1.ObjectSelector) Builder {
+func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	b.ApmServer.Spec.ElasticsearchRef = ref
 	return b
 }
 
 func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	if b.ApmServer.Spec.Config == nil || b.ApmServer.Spec.Config.Data == nil {
-		b.ApmServer.Spec.Config = &commonv1beta1.Config{
+		b.ApmServer.Spec.Config = &commonv1.Config{
 			Data: cfg,
 		}
 		return b
@@ -101,7 +101,7 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	return b
 }
 
-func (b Builder) WithHTTPCfg(cfg commonv1beta1.HTTPConfig) Builder {
+func (b Builder) WithHTTPCfg(cfg commonv1.HTTPConfig) Builder {
 	b.ApmServer.Spec.HTTP = cfg
 	return b
 }

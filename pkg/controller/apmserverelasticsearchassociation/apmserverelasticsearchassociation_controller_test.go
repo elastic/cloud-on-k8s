@@ -7,8 +7,8 @@ package apmserverelasticsearchassociation
 import (
 	"testing"
 
-	apmtype "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +25,7 @@ const (
 
 var t = true
 var ownerRefFixture = metav1.OwnerReference{
-	APIVersion:         "apmserver.k8s.elastic.co/v1beta1",
+	APIVersion:         "apmserver.k8s.elastic.co/v1",
 	Kind:               "ApmServer",
 	Name:               "as",
 	UID:                "",
@@ -34,13 +34,13 @@ var ownerRefFixture = metav1.OwnerReference{
 }
 
 // apmFixture is a shared test fixture
-var apmFixture = apmtype.ApmServer{
+var apmFixture = apmv1.ApmServer{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "as",
 		Namespace: "default",
 	},
-	Spec: apmtype.ApmServerSpec{
-		ElasticsearchRef: commonv1beta1.ObjectSelector{
+	Spec: apmv1.ApmServerSpec{
+		ElasticsearchRef: commonv1.ObjectSelector{
 			Name:      "es",
 			Namespace: "default",
 		},
@@ -50,14 +50,14 @@ var apmFixture = apmtype.ApmServer{
 func Test_deleteOrphanedResources(t *testing.T) {
 	tests := []struct {
 		name           string
-		args           apmtype.ApmServer
+		args           apmv1.ApmServer
 		initialObjects []runtime.Object
 		postCondition  func(c k8s.Client)
 		wantErr        bool
 	}{
 		{
 			name:    "nothing to delete",
-			args:    apmtype.ApmServer{},
+			args:    apmv1.ApmServer{},
 			wantErr: false,
 		},
 		{
@@ -90,12 +90,12 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		},
 		{
 			name: "Orphaned objects exist",
-			args: apmtype.ApmServer{
+			args: apmv1.ApmServer{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "as",
 					Namespace: "default",
 				},
-				Spec: apmtype.ApmServerSpec{},
+				Spec: apmv1.ApmServerSpec{},
 			},
 			initialObjects: []runtime.Object{
 				&corev1.Secret{

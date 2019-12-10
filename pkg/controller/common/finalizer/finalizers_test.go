@@ -7,17 +7,17 @@ package finalizer
 import (
 	"testing"
 
-	kibanatype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestRemoveAll(t *testing.T) {
-	sampleObject := &kibanatype.Kibana{
-		ObjectMeta: v1.ObjectMeta{
+	sampleObject := &kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "bar",
 			Finalizers: []string{
@@ -46,14 +46,14 @@ func TestRemoveAll(t *testing.T) {
 		{
 			name: "No Finalizers",
 			args: args{
-				c: k8s.WrappedFakeClient(&kibanatype.Kibana{
-					ObjectMeta: v1.ObjectMeta{
+				c: k8s.WrappedFakeClient(&kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "bar",
 					},
 				}),
-				obj: &kibanatype.Kibana{
-					ObjectMeta: v1.ObjectMeta{
+				obj: &kbv1.Kibana{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "bar",
 					},
@@ -78,7 +78,7 @@ func TestRemoveAll(t *testing.T) {
 			if err := RemoveAll(tt.args.c, tt.args.obj); (err != nil) != tt.wantErr {
 				t.Errorf("RemoveAll() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			savedObject := &kibanatype.Kibana{}
+			savedObject := &kbv1.Kibana{}
 			err := tt.args.c.Get(types.NamespacedName{
 				Namespace: "bar",
 				Name:      "foo",

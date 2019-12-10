@@ -7,10 +7,10 @@ package transport
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,7 +21,7 @@ import (
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	defaultSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      v1beta1.TransportCertificatesSecret(testES.Name),
+			Name:      esv1.TransportCertificatesSecret(testES.Name),
 			Namespace: testES.Namespace,
 			Labels: map[string]string{
 				label.ClusterNameLabelName: testES.Name,
@@ -39,7 +39,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	type args struct {
 		c      k8s.Client
 		scheme *runtime.Scheme
-		owner  v1beta1.Elasticsearch
+		owner  esv1.Elasticsearch
 	}
 	tests := []struct {
 		name    string
@@ -58,7 +58,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				expected := defaultSecretWith(func(s *corev1.Secret) {
 					s.OwnerReferences = secret.OwnerReferences
 				})
-				assert.Equal(t, expected, secret)
+				comparison.AssertEqual(t, expected, secret)
 			},
 		},
 		{
@@ -71,7 +71,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
 				// UID should be kept the same
-				assert.Equal(t, defaultSecretWith(func(secret *corev1.Secret) {
+				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.UID = types.UID("42")
 				}), secret)
 			},
@@ -85,7 +85,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				owner: testES,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
-				assert.Equal(t, defaultSecretWith(func(secret *corev1.Secret) {
+				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.Labels["foo"] = "bar"
 				}), secret)
 			},

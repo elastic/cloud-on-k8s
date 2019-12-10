@@ -11,12 +11,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
-// EnterpriseLicenseType is the type of enterprise license a resource is describing.
-type EnterpriseLicenseType string
+// OperatorLicenseType is the type of operator level license a resource is describing.
+type OperatorLicenseType string
 
 const (
-	LicenseTypeEnterprise      EnterpriseLicenseType = "enterprise"
-	LicenseTypeEnterpriseTrial EnterpriseLicenseType = "enterprise-trial"
+	LicenseTypeEnterprise      OperatorLicenseType = "enterprise"
+	LicenseTypeEnterpriseTrial OperatorLicenseType = "enterprise-trial"
 )
 
 type ElasticsearchLicense struct {
@@ -30,7 +30,7 @@ type EnterpriseLicense struct {
 type LicenseSpec struct {
 	Status             string                 `json:"status,omitempty"`
 	UID                string                 `json:"uid"`
-	Type               EnterpriseLicenseType  `json:"type"`
+	Type               OperatorLicenseType    `json:"type"`
 	IssueDate          *time.Time             `json:"issue_date,omitempty"`
 	IssueDateInMillis  int64                  `json:"issue_date_in_millis"`
 	ExpiryDate         *time.Time             `json:"expiry_date,omitempty"`
@@ -106,16 +106,18 @@ type ElasticsearchLicenseType string
 
 // Supported ElasticsearchLicenseTypes.
 const (
-	ElasticsearchLicenseTypeBasic    ElasticsearchLicenseType = "basic"
-	ElasticsearchLicenseTypeTrial    ElasticsearchLicenseType = "trial"
-	ElasticsearchLicenseTypeGold     ElasticsearchLicenseType = "gold"
-	ElasticsearchLicenseTypePlatinum ElasticsearchLicenseType = "platinum"
+	ElasticsearchLicenseTypeBasic      ElasticsearchLicenseType = "basic"
+	ElasticsearchLicenseTypeTrial      ElasticsearchLicenseType = "trial"
+	ElasticsearchLicenseTypeGold       ElasticsearchLicenseType = "gold"
+	ElasticsearchLicenseTypePlatinum   ElasticsearchLicenseType = "platinum"
+	ElasticsearchLicenseTypeEnterprise ElasticsearchLicenseType = "enterprise"
 )
 
 // ElasticsearchLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
 var ElasticsearchLicenseTypeOrder = map[ElasticsearchLicenseType]int{
-	ElasticsearchLicenseTypeBasic:    1,
-	ElasticsearchLicenseTypeTrial:    2,
-	ElasticsearchLicenseTypeGold:     3,
-	ElasticsearchLicenseTypePlatinum: 4,
+	ElasticsearchLicenseTypeBasic:      1,
+	ElasticsearchLicenseTypeTrial:      2,
+	ElasticsearchLicenseTypeGold:       3,
+	ElasticsearchLicenseTypePlatinum:   4,
+	ElasticsearchLicenseTypeEnterprise: 5,
 }

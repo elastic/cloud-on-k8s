@@ -7,7 +7,8 @@ package deployment
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -61,7 +62,7 @@ func TestReconcile(t *testing.T) {
 			Replicas: pointer.Int32(2),
 		},
 	}
-	owner := v1beta1.Elasticsearch{} // can be any type
+	owner := esv1.Elasticsearch{} // can be any type
 
 	// should create a new deployment
 	reconciled, err := Reconcile(k8sClient, scheme.Scheme, expected, &owner)
@@ -74,12 +75,12 @@ func TestReconcile(t *testing.T) {
 	var retrieved appsv1.Deployment
 	err = k8sClient.Get(k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)
-	require.Equal(t, reconciled, retrieved)
+	comparison.RequireEqual(t, &reconciled, &retrieved)
 
 	// reconciling the same should be a no-op
 	reconciledAgain, err := Reconcile(k8sClient, scheme.Scheme, expected, &owner)
 	require.NoError(t, err)
-	require.Equal(t, reconciled, reconciledAgain)
+	comparison.RequireEqual(t, &reconciled, &reconciledAgain)
 
 	// update with a new spec
 	expected.Spec.Replicas = pointer.Int32(3)
@@ -90,5 +91,5 @@ func TestReconcile(t *testing.T) {
 	require.NotEqual(t, reconciled.Labels[hash.TemplateHashLabelName], reconciledAgain.Labels[hash.TemplateHashLabelName])
 	err = k8sClient.Get(k8s.ExtractNamespacedName(&expected), &retrieved)
 	require.NoError(t, err)
-	require.Equal(t, reconciled, retrieved)
+	comparison.RequireEqual(t, &reconciled, &retrieved)
 }

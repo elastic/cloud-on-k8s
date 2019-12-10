@@ -9,14 +9,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 // PodName returns the name of the pod with the given ordinal for this StatefulSet.
@@ -53,7 +54,7 @@ func GetActualPodsForStatefulSet(c k8s.Client, sset types.NamespacedName) ([]cor
 }
 
 // GetActualPodsForCluster return the existing pods associated to this cluster.
-func GetActualPodsForCluster(c k8s.Client, es v1beta1.Elasticsearch) ([]corev1.Pod, error) {
+func GetActualPodsForCluster(c k8s.Client, es esv1.Elasticsearch) ([]corev1.Pod, error) {
 	var pods corev1.PodList
 
 	ns := client.InNamespace(es.Namespace)
@@ -67,7 +68,7 @@ func GetActualPodsForCluster(c k8s.Client, es v1beta1.Elasticsearch) ([]corev1.P
 }
 
 // GetActualMastersForCluster returns the list of existing master-eligible pods for the cluster.
-func GetActualMastersForCluster(c k8s.Client, es v1beta1.Elasticsearch) ([]corev1.Pod, error) {
+func GetActualMastersForCluster(c k8s.Client, es esv1.Elasticsearch) ([]corev1.Pod, error) {
 	var pods corev1.PodList
 
 	ns := client.InNamespace(es.Namespace)

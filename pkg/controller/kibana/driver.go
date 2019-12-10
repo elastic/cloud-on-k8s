@@ -8,13 +8,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -51,7 +51,7 @@ var initContainersParameters = keystore.InitContainerParameters{
 type driver struct {
 	client          k8s.Client
 	scheme          *runtime.Scheme
-	settingsFactory func(kb kbtype.Kibana) map[string]interface{}
+	settingsFactory func(kb kbv1.Kibana) map[string]interface{}
 	dynamicWatches  watches.DynamicWatches
 	recorder        record.EventRecorder
 }
@@ -81,7 +81,7 @@ func secretWatchKey(kibana types.NamespacedName) string {
 // getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
 // upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
 // running multiple versions simultaneously may lead to concurrency bugs and data corruption.
-func (d *driver) getStrategyType(kb *kbtype.Kibana) (appsv1.DeploymentStrategyType, error) {
+func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
 	var pods corev1.PodList
 	var labels client.MatchingLabels = map[string]string{label.KibanaNameLabelName: kb.Name}
 	if err := d.client.List(&pods, client.InNamespace(kb.Namespace), labels); err != nil {
@@ -101,7 +101,7 @@ func (d *driver) getStrategyType(kb *kbtype.Kibana) (appsv1.DeploymentStrategyTy
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) {
+func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d,
@@ -229,13 +229,11 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (deployment.Params, error) 
 
 func (d *driver) Reconcile(
 	state *State,
-	kb *kbtype.Kibana,
+	kb *kbv1.Kibana,
 	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.Results{}
-	if kb.RequiresAssociation() && !kb.AssociationConf().IsConfigured() {
-		d.recorder.Event(kb, corev1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
-		log.Info("Elasticsearch association not established: skipping Kibana deployment reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
+	if !association.IsConfiguredIfSet(kb, d.recorder) {
 		return &results
 	}
 

@@ -48,6 +48,7 @@ func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
 				Name:      "test-license",
 				Labels: map[string]string{
 					common.TypeLabelName: Type,
+					LicenseLabelScope:    string(LicenseScopeOperator),
 					LicenseLabelType:     string(l.License.Type),
 				},
 			},

@@ -8,7 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
@@ -34,7 +35,7 @@ func init() {
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	k8sClient := k8s.WrappedFakeClient()
-	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
@@ -104,17 +105,17 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	var sset1 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset1"}, &sset1))
 	require.Equal(t, pointer.Int32(3), sset1.Spec.Replicas)
-	require.Equal(t, updatedStatefulSets[0], sset1)
+	comparison.RequireEqual(t, &updatedStatefulSets[0], &sset1)
 	var sset2 appsv1.StatefulSet
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, pointer.Int32(4), sset2.Spec.Replicas)
-	require.Equal(t, updatedStatefulSets[1], sset2)
+	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
 	// headless services should be created for both
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset1")}, &corev1.Service{}))
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: nodespec.HeadlessServiceName("sset2")}, &corev1.Service{}))
 	// config should be created for both
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: v1beta1.ConfigSecret("sset1")}, &corev1.Secret{}))
-	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: v1beta1.ConfigSecret("sset2")}, &corev1.Secret{}))
+	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset1")}, &corev1.Secret{}))
+	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: esv1.ConfigSecret("sset2")}, &corev1.Secret{}))
 
 	// upscale data nodes
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
@@ -123,7 +124,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
-	require.Equal(t, updatedStatefulSets[1], sset2)
+	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
 	// expectations should have been set
 	require.NotEmpty(t, ctx.expectations.GetGenerations())
 
@@ -134,7 +135,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns", Name: "sset2"}, &sset2))
 	require.Equal(t, "b", sset2.Spec.Template.Labels["a"])
-	require.Equal(t, updatedStatefulSets[1], sset2)
+	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
 
 	// apply a spec change and a downscale from 10 to 2
 	actualStatefulSets = sset.StatefulSetList{sset1, sset2}
@@ -147,7 +148,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	require.Equal(t, "c", sset2.Spec.Template.Labels["a"])
 	// but StatefulSet should not be downscaled
 	require.Equal(t, pointer.Int32(10), sset2.Spec.Replicas)
-	require.Equal(t, updatedStatefulSets[1], sset2)
+	comparison.RequireEqual(t, &updatedStatefulSets[1], &sset2)
 }
 
 func Test_isReplicaIncrease(t *testing.T) {
@@ -261,18 +262,18 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 }
 
 func Test_adjustZenConfig(t *testing.T) {
-	bootstrappedES := v1beta1.Elasticsearch{
+	bootstrappedES := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        TestEsName,
 			Namespace:   TestEsNamespace,
 			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
 		},
 	}
-	notBootstrappedES := v1beta1.Elasticsearch{}
+	notBootstrappedES := esv1.Elasticsearch{}
 
 	tests := []struct {
 		name                      string
-		es                        v1beta1.Elasticsearch
+		es                        esv1.Elasticsearch
 		statefulSet               sset.TestSset
 		pods                      []runtime.Object
 		wantMinimumMasterNodesSet bool
@@ -328,9 +329,9 @@ func Test_adjustZenConfig(t *testing.T) {
 			err := adjustZenConfig(client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {
-				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{v1beta1.DiscoveryZenMinimumMasterNodes})) > 0
+				hasMinimumMasterNodes := len(res.Config.HasKeys([]string{esv1.DiscoveryZenMinimumMasterNodes})) > 0
 				require.Equal(t, tt.wantMinimumMasterNodesSet, hasMinimumMasterNodes)
-				hasInitialMasterNodes := len(res.Config.HasKeys([]string{v1beta1.ClusterInitialMasterNodes})) > 0
+				hasInitialMasterNodes := len(res.Config.HasKeys([]string{esv1.ClusterInitialMasterNodes})) > 0
 				require.Equal(t, tt.wantInitialMasterNodesSet, hasInitialMasterNodes)
 			}
 		})

@@ -7,7 +7,8 @@ package common
 import (
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestReconcileService(t *testing.T) {
-	owner := &kbtype.Kibana{
+	owner := &kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "owner-obj",
 			Namespace: "test",
@@ -40,7 +41,7 @@ func TestReconcileService(t *testing.T) {
 
 	haveSvc, err := ReconcileService(client, scheme, expectedSvc, owner)
 	require.NoError(t, err)
-	compare.JSONEqual(t, wantSvc, haveSvc)
+	comparison.AssertEqual(t, wantSvc, haveSvc)
 }
 
 func mkService() *corev1.Service {

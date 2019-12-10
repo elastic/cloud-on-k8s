@@ -92,7 +92,9 @@ dependencies:
 
 # Generate code, CRDs and documentation
 ALL_CRDS=config/crds/all-crds.yaml
-generate: controller-gen
+generate: generate-crds generate-api-docs generate-notice-file
+
+generate-crds: controller-gen
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
@@ -105,8 +107,6 @@ generate: controller-gen
 	kubectl kustomize config/crds/patches > $(ALL_CRDS)
 	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
-	$(MAKE) --no-print-directory generate-api-docs
-	$(MAKE) --no-print-directory generate-notice-file
 
 generate-api-docs:
 	@hack/api-docs/build.sh
@@ -129,11 +129,11 @@ unit_xml: clean
 	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/...
 
 integration: GO_TAGS += integration
-integration: clean generate
+integration: clean generate-crds
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover
 
 integration_xml: GO_TAGS += integration
-integration_xml: clean generate
+integration_xml: clean generate-crds
 	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/...
 
 lint:
@@ -143,7 +143,7 @@ lint:
 ##  --       Run       --  ##
 #############################
 
-install-crds: generate
+install-crds: generate-crds
 	kubectl apply -f $(ALL_CRDS)
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
@@ -339,7 +339,7 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-STACK_VERSION ?= 7.4.0
+STACK_VERSION ?= 7.5.0
 E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
 

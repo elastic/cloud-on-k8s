@@ -1,10 +1,10 @@
 # This sample sets up an Elasticsearch cluster with 3 nodes.
-apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.4.0
+  version: 7.5.0
   nodeSets:
   - name: default
     config:

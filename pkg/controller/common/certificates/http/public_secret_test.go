@@ -5,11 +5,11 @@
 package http
 
 import (
-	"encoding/json"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
 
-	owner := &v1beta1.Elasticsearch{
+	owner := &esv1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 	}
 
@@ -36,7 +36,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		},
 	}
 
-	namespacedSecretName := PublicCertsSecretRef(v1beta1.ESNamer, k8s.ExtractNamespacedName(owner))
+	namespacedSecretName := PublicCertsSecretRef(esv1.ESNamer, k8s.ExtractNamespacedName(owner))
 
 	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
 		t.Helper()
@@ -126,7 +126,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcileHTTPCertsPublicSecret(client, scheme.Scheme, owner, v1beta1.ESNamer, certificate)
+			err := ReconcileHTTPCertsPublicSecret(client, scheme.Scheme, owner, esv1.ESNamer, certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return
@@ -137,22 +137,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 			require.NoError(t, err, "Failed to get secret")
 
 			wantSecret := tt.wantSecret(t)
-			jsonEqual(t, wantSecret, gotSecret)
+			comparison.AssertEqual(t, wantSecret, &gotSecret)
 		})
 	}
-}
-
-func jsonEqual(t *testing.T, a, b interface{}) {
-	t.Helper()
-	obj1, err := json.Marshal(a)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	obj2, err := json.Marshal(b)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	require.Equal(t, string(obj1), string(obj2))
 }

@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
@@ -145,11 +145,13 @@ func TestReconcileResource(t *testing.T) {
 			clientAssertion: func(c k8s.Client) {
 				var found corev1.Secret
 				assert.NoError(t, c.Get(objectKey, &found))
-				assert.Equal(t, obj, withoutControllerRef(&found))
+				diff := comparison.Diff(obj, withoutControllerRef(&found))
+				assert.Empty(t, diff)
 			},
 			argAssertion: func(args args) {
 				// reconciled should be updated to the expected
-				assert.Equal(t, args.Expected, args.Reconciled)
+				diff := comparison.Diff(args.Expected, args.Reconciled)
+				assert.Empty(t, diff)
 			},
 		},
 		{

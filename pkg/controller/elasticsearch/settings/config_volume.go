@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -30,7 +30,7 @@ const (
 
 // ConfigSecretName is the name of the secret that holds the ES config for the given StatefulSet.
 func ConfigSecretName(ssetName string) string {
-	return v1beta1.ConfigSecret(ssetName)
+	return esv1.ConfigSecret(ssetName)
 }
 
 // ConfigSecretVolume returns a SecretVolume to hold the config of nodes in the given stateful set..
@@ -76,7 +76,7 @@ func GetESConfigSecret(client k8s.Client, namespace string, ssetName string) (co
 	return secret, nil
 }
 
-func ConfigSecret(es v1beta1.Elasticsearch, ssetName string, configData []byte) corev1.Secret {
+func ConfigSecret(es esv1.Elasticsearch, ssetName string, configData []byte) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
@@ -90,7 +90,7 @@ func ConfigSecret(es v1beta1.Elasticsearch, ssetName string, configData []byte) 
 }
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
-func ReconcileConfig(client k8s.Client, es v1beta1.Elasticsearch, ssetName string, config CanonicalConfig) error {
+func ReconcileConfig(client k8s.Client, es esv1.Elasticsearch, ssetName string, config CanonicalConfig) error {
 	rendered, err := config.Render()
 	if err != nil {
 		return err

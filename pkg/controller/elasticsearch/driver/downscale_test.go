@@ -8,7 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
@@ -139,14 +140,14 @@ func TestHandleDownscale(t *testing.T) {
 	downscaleCtx := downscaleContext{
 		k8sClient:      k8sClient,
 		expectations:   expectations.NewExpectations(k8sClient),
-		reconcileState: reconcile.NewState(v1beta1.Elasticsearch{}),
+		reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
 		shardLister: migration.NewFakeShardLister(
 			esclient.Shards{
 				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 			},
 		),
 		esClient: esClient,
-		es: v1beta1.Elasticsearch{
+		es: esv1.Elasticsearch{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      clusterName,
 				Namespace: "ns",
@@ -193,7 +194,10 @@ func TestHandleDownscale(t *testing.T) {
 	var actual appsv1.StatefulSetList
 	err := k8sClient.List(&actual)
 	require.NoError(t, err)
-	require.Equal(t, expectedAfterDownscale, actual.Items)
+	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
+	for i := range expectedAfterDownscale {
+		comparison.RequireEqual(t, &expectedAfterDownscale[i], &actual.Items[i])
+	}
 
 	// simulate pods deletion that would be done by the StatefulSet controller
 	require.NoError(t, k8sClient.Delete(&podsSsetMaster3Replicas[2]))
@@ -210,7 +214,11 @@ func TestHandleDownscale(t *testing.T) {
 	expectedAfterDownscale = []appsv1.StatefulSet{ssetMaster3ReplicasExpectedAfterDownscale, ssetData4ReplicasExpectedAfterDownscale}
 	err = k8sClient.List(&actual)
 	require.NoError(t, err)
-	require.Equal(t, expectedAfterDownscale, actual.Items)
+	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
+	for i := range expectedAfterDownscale {
+		comparison.RequireEqual(t, &expectedAfterDownscale[i], &actual.Items[i])
+	}
+
 	// simulate master pod deletion
 	require.NoError(t, k8sClient.Delete(&podsSsetMaster3Replicas[1]))
 
@@ -226,7 +234,10 @@ func TestHandleDownscale(t *testing.T) {
 	require.Equal(t, emptyResults, results)
 	err = k8sClient.List(&actual)
 	require.NoError(t, err)
-	require.Equal(t, expectedAfterDownscale, actual.Items)
+	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
+	for i := range expectedAfterDownscale {
+		comparison.RequireEqual(t, &expectedAfterDownscale[i], &actual.Items[i])
+	}
 
 	// data migration should have been requested for the data node leaving the cluster
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
@@ -241,7 +252,10 @@ func TestHandleDownscale(t *testing.T) {
 	require.Equal(t, emptyResults, results)
 	err = k8sClient.List(&actual)
 	require.NoError(t, err)
-	require.Equal(t, expectedAfterDownscale, actual.Items)
+	require.Equal(t, len(expectedAfterDownscale), len(actual.Items))
+	for i := range expectedAfterDownscale {
+		comparison.RequireEqual(t, &expectedAfterDownscale[i], &actual.Items[i])
+	}
 
 	// data migration settings should have been cleared
 	require.True(t, esClient.ExcludeFromShardAllocationCalled)
@@ -719,7 +733,7 @@ func Test_attemptDownscale(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
-				reconcileState: reconcile.NewState(v1beta1.Elasticsearch{}),
+				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
 				shardLister:    migration.NewFakeShardLister(esclient.Shards{}),
 				esClient:       &fakeESClient{},
 			}
@@ -730,7 +744,10 @@ func Test_attemptDownscale(t *testing.T) {
 			var ssets appsv1.StatefulSetList
 			err = k8sClient.List(&ssets)
 			require.NoError(t, err)
-			require.Equal(t, tt.expectedStatefulSets, ssets.Items)
+			require.Equal(t, len(tt.expectedStatefulSets), len(ssets.Items))
+			for i := range tt.expectedStatefulSets {
+				comparison.AssertEqual(t, &tt.expectedStatefulSets[i], &ssets.Items[i])
+			}
 		})
 	}
 }
@@ -770,7 +787,11 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 	var ssets appsv1.StatefulSetList
 	err = k8sClient.List(&ssets)
 	require.NoError(t, err)
-	require.Equal(t, []appsv1.StatefulSet{expectedSset1, sset2}, ssets.Items)
+	expectedSsets := []appsv1.StatefulSet{expectedSset1, sset2}
+	require.Equal(t, len(expectedSsets), len(ssets.Items))
+	for i := range expectedSsets {
+		comparison.AssertEqual(t, &expectedSsets[i], &ssets.Items[i])
+	}
 
 	// expectations should have been be registered
 	require.Len(t, downscaleCtx.expectations.GetGenerations(), 1)
@@ -824,7 +845,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			es := v1beta1.Elasticsearch{
+			es := esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: ssetMasters.Namespace,
 					Name:      "es",
@@ -847,7 +868,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
-				reconcileState: reconcile.NewState(v1beta1.Elasticsearch{}),
+				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,
 			}
@@ -865,7 +886,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 
 func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 	require.NoError(t, commonscheme.SetupScheme())
-	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
 	ssetMasters := sset.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
 	masterPods := []corev1.Pod{
 		sset.TestPod{
@@ -945,7 +966,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
 				expectations:   expectations.NewExpectations(k8sClient),
-				reconcileState: reconcile.NewState(v1beta1.Elasticsearch{}),
+				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,
 			}
@@ -962,7 +983,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 }
 
 func Test_deleteStatefulSetResources(t *testing.T) {
-	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
 	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
 	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
 	svc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), sset.Name)
@@ -994,7 +1015,7 @@ func Test_deleteStatefulSetResources(t *testing.T) {
 }
 
 func Test_deleteStatefulSets(t *testing.T) {
-	es := v1beta1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
+	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
 	tests := []struct {
 		name          string
 		toDelete      sset.StatefulSetList

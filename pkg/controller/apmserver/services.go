@@ -5,14 +5,14 @@
 package apmserver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	corev1 "k8s.io/api/core/v1"
 )
 
-func NewService(as v1beta1.ApmServer) *corev1.Service {
+func NewService(as apmv1.ApmServer) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: as.Spec.HTTP.Service.ObjectMeta,
 		Spec:       as.Spec.HTTP.Service.Spec,

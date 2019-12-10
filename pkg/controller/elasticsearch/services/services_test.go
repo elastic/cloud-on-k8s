@@ -7,8 +7,8 @@ package services
 import (
 	"testing"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
@@ -20,7 +20,7 @@ import (
 
 func TestExternalServiceURL(t *testing.T) {
 	type args struct {
-		es v1beta1.Elasticsearch
+		es esv1.Elasticsearch
 	}
 	tests := []struct {
 		name string
@@ -29,7 +29,7 @@ func TestExternalServiceURL(t *testing.T) {
 	}{
 		{
 			name: "A service URL",
-			args: args{es: v1beta1.Elasticsearch{
+			args: args{es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "an-es-name",
 					Namespace: "default",
@@ -39,7 +39,7 @@ func TestExternalServiceURL(t *testing.T) {
 		},
 		{
 			name: "Another Service URL",
-			args: args{es: v1beta1.Elasticsearch{
+			args: args{es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "another-es-name",
 					Namespace: "default",
@@ -58,7 +58,7 @@ func TestExternalServiceURL(t *testing.T) {
 
 func TestElasticsearchURL(t *testing.T) {
 	type args struct {
-		es   v1beta1.Elasticsearch
+		es   esv1.Elasticsearch
 		pods []corev1.Pod
 	}
 	tests := []struct {
@@ -69,7 +69,7 @@ func TestElasticsearchURL(t *testing.T) {
 		{
 			name: "default: external service url",
 			args: args{
-				es: v1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "my-cluster",
 						Namespace: "my-ns",
@@ -90,7 +90,7 @@ func TestElasticsearchURL(t *testing.T) {
 		{
 			name: "scheme change in progress: random pod address",
 			args: args{
-				es: v1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "my-cluster",
 						Namespace: "my-ns",
@@ -114,7 +114,7 @@ func TestElasticsearchURL(t *testing.T) {
 		{
 			name: "unexpected: missing pod labels: fallback to service",
 			args: args{
-				es: v1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "my-cluster",
 						Namespace: "my-ns",
@@ -129,7 +129,7 @@ func TestElasticsearchURL(t *testing.T) {
 		{
 			name: "unexpected: partially missing pod labels: fallback to service",
 			args: args{
-				es: v1beta1.Elasticsearch{
+				es: esv1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "my-cluster",
 						Namespace: "my-ns",
@@ -160,14 +160,14 @@ func TestElasticsearchURL(t *testing.T) {
 func TestNewExternalService(t *testing.T) {
 	testCases := []struct {
 		name     string
-		httpConf commonv1beta1.HTTPConfig
+		httpConf commonv1.HTTPConfig
 		wantSvc  func() corev1.Service
 	}{
 		{
 			name: "no TLS",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
 						Disabled: true,
 					},
 				},
@@ -176,10 +176,10 @@ func TestNewExternalService(t *testing.T) {
 		},
 		{
 			name: "self-signed certificate",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					SelfSignedCertificate: &commonv1beta1.SelfSignedCertificate{
-						SubjectAlternativeNames: []commonv1beta1.SubjectAlternativeName{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
 							{
 								DNS: "elasticsearch-test.local",
 							},
@@ -195,9 +195,9 @@ func TestNewExternalService(t *testing.T) {
 		},
 		{
 			name: "user-provided certificate",
-			httpConf: commonv1beta1.HTTPConfig{
-				TLS: commonv1beta1.TLSOptions{
-					Certificate: commonv1beta1.SecretRef{
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					Certificate: commonv1.SecretRef{
 						SecretName: "my-cert",
 					},
 				},
@@ -245,13 +245,13 @@ func mkService() corev1.Service {
 	}
 }
 
-func mkElasticsearch(httpConf commonv1beta1.HTTPConfig) v1beta1.Elasticsearch {
-	return v1beta1.Elasticsearch{
+func mkElasticsearch(httpConf commonv1.HTTPConfig) esv1.Elasticsearch {
+	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "elasticsearch-test",
 			Namespace: "test",
 		},
-		Spec: v1beta1.ElasticsearchSpec{
+		Spec: esv1.ElasticsearchSpec{
 			HTTP: httpConf,
 		},
 	}
