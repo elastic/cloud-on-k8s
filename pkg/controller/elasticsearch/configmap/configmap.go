@@ -41,6 +41,7 @@ func ReconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es esv1.Ela
 		types.NamespacedName{Namespace: es.Namespace, Name: esv1.ScriptsConfigMap(es.Name)},
 		map[string]string{
 			nodespec.ReadinessProbeScriptConfigKey: nodespec.ReadinessProbeScript,
+			nodespec.PreStopHookScriptConfigKey:    nodespec.PreStopHookScript,
 			initcontainer.PrepareFsScriptConfigKey: fsScript,
 		},
 	)

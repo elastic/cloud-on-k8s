@@ -5,10 +5,15 @@
 package es
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/stretchr/testify/assert"
+	vegeta "github.com/tsenart/vegeta/lib"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -225,6 +230,57 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 		WithChangeBudget(1, 2)
 
 	RunESMutation(t, b, mutated)
+}
+
+func TestMutationWhileLoadTesting(t *testing.T) {
+	b := elasticsearch.NewBuilder("test-while-load-testing").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithHTTPLoadBalancer()
+
+	// force a rolling upgrade through label change
+	var pt corev1.PodTemplateSpec
+	pt.Labels = map[string]string{"some_label_name": "some_new_value"}
+	mutated := b.WithNoESTopology().
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
+		WithPodTemplate(pt)
+
+	// keep hitting ES endpoints at high rate during pod cycling to catch any downtime
+	attacker := vegeta.NewAttacker(vegeta.KeepAlive(false))
+	var metrics vegeta.Metrics
+	w := test.NewOnceWatcher(
+		"load test",
+		func(k *test.K8sClient, t *testing.T) {
+			var ip string
+			for {
+				svc, err := k.GetService(b.Elasticsearch.Namespace, v1beta1.HTTPService(b.Elasticsearch.Name))
+				assert.NoError(t, err)
+				if len(svc.Status.LoadBalancer.Ingress) != 0 {
+					ip = svc.Status.LoadBalancer.Ingress[0].IP
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+
+			rate := vegeta.Rate{Freq: 100, Per: time.Second}
+			targeter := vegeta.NewStaticTargeter(vegeta.Target{
+				Method: "GET",
+				URL:    fmt.Sprintf("https://%s:9200/", ip),
+			})
+
+			for res := range attacker.Attack(targeter, rate, 0, "ES load test while recycling pods") {
+				metrics.Add(res)
+			}
+		},
+		func(k *test.K8sClient, t *testing.T) {
+			attacker.Stop()
+			metrics.Close()
+			assert.Equal(t, 1, len(metrics.StatusCodes))
+			if _, ok := metrics.StatusCodes["401"]; !ok {
+				assert.Fail(t, "all status codes should be 401")
+			}
+		})
+
+	test.RunMutationsWhileWatching(t, []test.Builder{b}, []test.Builder{mutated.WithMutatedFrom(&b)}, []test.Watcher{w})
 }
 
 func RunESMutation(t *testing.T, toCreate elasticsearch.Builder, mutateTo elasticsearch.Builder) {

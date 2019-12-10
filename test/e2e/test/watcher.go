@@ -13,20 +13,33 @@ import (
 var NOOPCheck func(k *K8sClient, t *testing.T) = nil
 
 type Watcher struct {
-	name     string
-	interval time.Duration
-	watchFn  func(k *K8sClient, t *testing.T)
-	checkFn  func(k *K8sClient, t *testing.T)
-	stopChan chan struct{}
+	name      string
+	interval  time.Duration
+	watchFn   func(k *K8sClient, t *testing.T)
+	checkFn   func(k *K8sClient, t *testing.T)
+	stopChan  chan struct{}
+	watchOnce bool
 }
 
 func NewWatcher(name string, interval time.Duration, watchFn func(k *K8sClient, t *testing.T), checkFn func(k *K8sClient, t *testing.T)) Watcher {
 	return Watcher{
-		name:     name,
-		interval: interval,
-		watchFn:  watchFn,
-		checkFn:  checkFn,
-		stopChan: make(chan struct{}),
+		name:      name,
+		interval:  interval,
+		watchFn:   watchFn,
+		checkFn:   checkFn,
+		stopChan:  make(chan struct{}),
+		watchOnce: false,
+	}
+}
+
+func NewOnceWatcher(name string, watchFn func(k *K8sClient, t *testing.T), checkFn func(k *K8sClient, t *testing.T)) Watcher {
+	return Watcher{
+		name:      name,
+		interval:  1 * time.Second,
+		watchFn:   watchFn,
+		checkFn:   checkFn,
+		stopChan:  make(chan struct{}),
+		watchOnce: true,
 	}
 }
 
@@ -34,6 +47,11 @@ func (w *Watcher) StartStep(k *K8sClient) Step {
 	return Step{
 		Name: fmt.Sprintf("Starting to %s", w.name),
 		Test: func(t *testing.T) {
+			if w.watchOnce {
+				go w.watchFn(k, t)
+				return
+			}
+
 			go func() {
 				ticker := time.NewTicker(w.interval)
 				for {
@@ -63,5 +81,7 @@ func (w *Watcher) StopStep(k *K8sClient) Step {
 }
 
 func (w *Watcher) stop() {
-	w.stopChan <- struct{}{}
+	if !w.watchOnce {
+		w.stopChan <- struct{}{}
+	}
 }

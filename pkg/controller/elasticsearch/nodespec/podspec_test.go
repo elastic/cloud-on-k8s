@@ -172,10 +172,15 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 						{Name: "http", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
 						{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},
 					},
-					Env:            append(DefaultEnvVars(sampleES.Spec.HTTP), corev1.EnvVar{Name: "my-env", Value: "my-value"}),
+					Env: append(
+						DefaultEnvVars(sampleES.Spec.HTTP, HeadlessServiceName(v1beta1.StatefulSet(sampleES.Name, nodeSet.Name))),
+						corev1.EnvVar{Name: "my-env", Value: "my-value"}),
 					Resources:      DefaultResources,
 					VolumeMounts:   volumeMounts,
 					ReadinessProbe: NewReadinessProbe(),
+					Lifecycle: &corev1.Lifecycle{
+						PreStop: NewPreStopHook(),
+					},
 				},
 			},
 			TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,

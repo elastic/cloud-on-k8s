@@ -56,11 +56,12 @@ func BuildPodTemplateSpec(
 		WithPorts(DefaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe()).
 		WithAffinity(DefaultAffinity(es.Name)).
-		WithEnv(DefaultEnvVars(es.Spec.HTTP)...).
+		WithEnv(DefaultEnvVars(es.Spec.HTTP, HeadlessServiceName(v1beta1.StatefulSet(es.Name, nodeSet.Name)))...).
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithLabels(labels).
 		WithInitContainers(initContainers...).
+		WithPreStopHook(*NewPreStopHook()).
 		WithInitContainerDefaults()
 
 	return builder.PodTemplate, nil
