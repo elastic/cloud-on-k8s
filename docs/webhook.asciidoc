@@ -1,5 +1,5 @@
 [id="{p}-webhook"]
-== Validating webhook
+=== Validating webhook
 
 A validating webhook provides additional validation of Elasticsearch resources, it gives you an immediate feedback on the Elasticsearch manifests you submit and allow you to catch errors right away before ECK even tries to fulfill your request.
 

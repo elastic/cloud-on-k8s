@@ -17,6 +17,7 @@ When things don't work as expected, you can investigate by taking the following 
 - <<{p}-pause-controllers,Pause ECK controllers>>
 - <<{p}-get-k8s-events,Get Kubernetes events>>
 - <<{p}-exec-into-containers,Exec into containers>>
+- <<{p}-webhook-troubleshooting,Webhook troubleshooting>>
 - <<{p}-ask-for-help,Ask for help>>
 
 [float]
