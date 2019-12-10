@@ -11,7 +11,7 @@ const (
 	EnvProbePasswordPath      = "PROBE_PASSWORD_PATH"
 	EnvProbeUsername          = "PROBE_USERNAME"
 	EnvReadinessProbeProtocol = "READINESS_PROBE_PROTOCOL"
-	ServiceName               = "SERVICE_NAME"
+	HeadlessServiceName       = "HEADLESS_SERVICE_NAME"
 
 	// EnvPodName and EnvPodIP are injected as env var into the ES pod at runtime,
 	// to be referenced in ES configuration file

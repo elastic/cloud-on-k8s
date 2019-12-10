@@ -5,6 +5,7 @@
 package es
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -250,6 +251,7 @@ func TestMutationWhileLoadTesting(t *testing.T) {
 	w := test.NewOnceWatcher(
 		"load test",
 		func(k *test.K8sClient, t *testing.T) {
+			// wait for the LoadBalancer IP to be available
 			var ip string
 			for {
 				svc, err := k.GetService(b.Elasticsearch.Namespace, esv1.HTTPService(b.Elasticsearch.Name))
@@ -274,9 +276,11 @@ func TestMutationWhileLoadTesting(t *testing.T) {
 		func(k *test.K8sClient, t *testing.T) {
 			attacker.Stop()
 			metrics.Close()
-			assert.Equal(t, 1, len(metrics.StatusCodes))
+			bytes, _ := json.Marshal(metrics)
+			msgAndArgs := []interface{}{"metrics: %v", string(bytes)}
+			assert.Equal(t, 1, len(metrics.StatusCodes), msgAndArgs)
 			if _, ok := metrics.StatusCodes["401"]; !ok {
-				assert.Fail(t, "all status codes should be 401")
+				assert.Fail(t, "all status codes should be 401", msgAndArgs)
 			}
 		})
 
