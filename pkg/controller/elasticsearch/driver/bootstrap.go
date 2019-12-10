@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
@@ -19,12 +19,12 @@ const (
 )
 
 // AnnotatedForBootstrap returns true if the cluster has been annotated with the UUID already.
-func AnnotatedForBootstrap(cluster v1beta1.Elasticsearch) bool {
+func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 	_, bootstrapped := cluster.Annotations[ClusterUUIDAnnotationName]
 	return bootstrapped
 }
 
-func ReconcileClusterUUID(c k8s.Client, cluster *v1beta1.Elasticsearch, observedState observer.State) error {
+func ReconcileClusterUUID(c k8s.Client, cluster *esv1.Elasticsearch, observedState observer.State) error {
 	reBootstrap, err := clusterNeedsReBootstrap(c, cluster)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func ReconcileClusterUUID(c k8s.Client, cluster *v1beta1.Elasticsearch, observed
 	return nil
 }
 
-func removeUUIDAnnotation(client k8s.Client, es *v1beta1.Elasticsearch) error {
+func removeUUIDAnnotation(client k8s.Client, es *esv1.Elasticsearch) error {
 	annotations := es.Annotations
 	if annotations == nil {
 		return nil
@@ -62,7 +62,7 @@ func removeUUIDAnnotation(client k8s.Client, es *v1beta1.Elasticsearch) error {
 // clusterNeedsReBootstrap is true if we are updating a single master cluster from 6.x to 7.x
 // because we lose the 'cluster' when rolling the single master node.
 // Invariant: no grow and shrink
-func clusterNeedsReBootstrap(client k8s.Client, es *v1beta1.Elasticsearch) (bool, error) {
+func clusterNeedsReBootstrap(client k8s.Client, es *esv1.Elasticsearch) (bool, error) {
 	initialZen2Upgrade, err := zen2.IsInitialZen2Upgrade(client, *es)
 	if err != nil {
 		return false, err
@@ -82,7 +82,7 @@ func clusterIsBootstrapped(observedState observer.State) bool {
 }
 
 // annotateWithUUID annotates the cluster with its UUID, to mark it as "bootstrapped".
-func annotateWithUUID(cluster *v1beta1.Elasticsearch, observedState observer.State, c k8s.Client) error {
+func annotateWithUUID(cluster *esv1.Elasticsearch, observedState observer.State, c k8s.Client) error {
 	log.Info("Annotating bootstrapped cluster with its UUID", "namespace", cluster.Namespace, "es_name", cluster.Name)
 	if cluster.Annotations == nil {
 		cluster.Annotations = make(map[string]string)

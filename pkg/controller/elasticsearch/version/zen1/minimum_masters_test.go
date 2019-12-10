@@ -8,7 +8,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	settings2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -17,11 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestSetupMinimumMasterNodesConfig(t *testing.T) {
@@ -48,13 +49,13 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
-					v1beta1.DiscoveryZenMinimumMasterNodes: "4",
+					esv1.DiscoveryZenMinimumMasterNodes: "4",
 				})},
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
-					v1beta1.DiscoveryZenMinimumMasterNodes: "4",
+					esv1.DiscoveryZenMinimumMasterNodes: "4",
 				})},
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
-					v1beta1.DiscoveryZenMinimumMasterNodes: "4",
+					esv1.DiscoveryZenMinimumMasterNodes: "4",
 				})},
 			},
 			pods: []runtime.Object{},
@@ -66,7 +67,7 @@ func TestSetupMinimumMasterNodesConfig(t *testing.T) {
 			},
 			expected: []settings.CanonicalConfig{
 				{CanonicalConfig: settings2.MustCanonicalConfig(map[string]string{
-					v1beta1.DiscoveryZenMinimumMasterNodes: "2",
+					esv1.DiscoveryZenMinimumMasterNodes: "2",
 				})},
 				settings.NewCanonicalConfig(),
 			},
@@ -150,7 +151,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		wantRequeue        bool
 		wantCalledWith     int
 		c                  k8s.Client
-		es                 v1beta1.Elasticsearch
+		es                 esv1.Elasticsearch
 		name               string
 		actualStatefulSets sset.StatefulSetList
 	}{
@@ -164,7 +165,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 			name:               "correct mmn already set in ES annotation",
 			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
-			es: v1beta1.Elasticsearch{
+			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esName,
 					Namespace: ns,
@@ -179,7 +180,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 			name:               "mmn should be updated, it's different in the ES annotation",
 			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
-			es: v1beta1.Elasticsearch{
+			es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esName,
 					Namespace: ns,
@@ -195,7 +196,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 			name:               "mmn should be updated, it isn't set in the ES annotation",
 			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
-			es:                 v1beta1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
+			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         true,
 			wantCalledWith:     2,
 		},
@@ -203,7 +204,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 			name:               "cannot update since not enough masters available",
 			c:                  k8s.WrappedFakeClient(&podsReady1[0], &podsReady1[1], &podsReady1[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
-			es:                 v1beta1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
+			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
 			wantCalled:         false,
 			wantRequeue:        true,
 		},

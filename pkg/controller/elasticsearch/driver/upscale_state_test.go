@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -311,7 +311,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 		}
 	}
 	defaultTest := getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: nil, createsAllowed: nil, name: "5 nodes present, 5 nodes target, n/a maxSurge - unbounded creates allowed"})
-	defaultTest.ctx.es.Spec.UpdateStrategy = v1beta1.UpdateStrategy{}
+	defaultTest.ctx.es.Spec.UpdateStrategy = esv1.UpdateStrategy{}
 
 	tests := []test{
 		getTest(args{actual: []int{3}, expected: []int{3}, maxSurge: pointer.Int32(0), createsAllowed: pointer.Int32(0), name: "3 nodes present, 3 nodes target - no creates allowed"}),

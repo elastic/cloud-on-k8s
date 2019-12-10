@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
@@ -27,17 +27,17 @@ const (
 // ExternalServiceName returns the name for the external service
 // associated to this cluster
 func ExternalServiceName(esName string) string {
-	return v1beta1.HTTPService(esName)
+	return esv1.HTTPService(esName)
 }
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
-func ExternalServiceURL(es v1beta1.Elasticsearch) string {
+func ExternalServiceURL(es esv1.Elasticsearch) string {
 	return stringsutil.Concat(es.Spec.HTTP.Protocol(), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }
 
 // NewExternalService returns the external service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
-func NewExternalService(es v1beta1.Elasticsearch) *corev1.Service {
+func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 
 	svc := corev1.Service{
@@ -77,7 +77,7 @@ func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
 }
 
 // GetExternalService returns the external service associated to the given Elasticsearch cluster.
-func GetExternalService(c k8s.Client, es v1beta1.Elasticsearch) (corev1.Service, error) {
+func GetExternalService(c k8s.Client, es esv1.Elasticsearch) (corev1.Service, error) {
 	var svc corev1.Service
 
 	namespacedName := types.NamespacedName{
@@ -95,7 +95,7 @@ func GetExternalService(c k8s.Client, es v1beta1.Elasticsearch) (corev1.Service,
 // ElasticsearchURL calculates the base url for Elasticsearch, taking into account the currently running pods.
 // If there is an HTTP scheme mismatch between spec and pods we switch to requesting individual pods directly
 // otherwise this delegates to ExternalServiceURL.
-func ElasticsearchURL(es v1beta1.Elasticsearch, pods []corev1.Pod) string {
+func ElasticsearchURL(es esv1.Elasticsearch, pods []corev1.Pod) string {
 	var schemeChange bool
 	for _, p := range pods {
 		scheme, exists := p.Labels[label.HTTPSchemeLabelName]

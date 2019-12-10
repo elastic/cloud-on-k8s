@@ -41,7 +41,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   labels:
-    license.k8s.elastic.co/type: enterprise <1>
+    license.k8s.elastic.co/scope: operator <1>
   name: eck-license
 type: Opaque
 data:
@@ -56,7 +56,7 @@ An easy way to create this secret is to rely on `kubectl` 's built-in support fo
 [source,shell script]
 ----
 kubectl create secret generic eck-license --from-file=my-license-file.json -n elastic-system
-kubectl label secret eck-license "license.k8s.elastic.co/type"=enterprise -n elastic-system
+kubectl label secret eck-license "license.k8s.elastic.co/scope"=operator -n elastic-system
 ----
 
 NOTE: Once you have installed a license into ECK new Elastic stack applications you manage with ECK will have all platinum and enterprise features enabled.

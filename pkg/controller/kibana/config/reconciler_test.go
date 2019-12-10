@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var defaultKibana = v1beta1.Kibana{
+var defaultKibana = kbv1.Kibana{
 	ObjectMeta: metav1.ObjectMeta{
 		Namespace: "test-ns",
 		Name:      "test",
@@ -30,7 +30,7 @@ var defaultKibana = v1beta1.Kibana{
 func TestReconcileConfigSecret(t *testing.T) {
 	type args struct {
 		initialObjects []runtime.Object
-		kb             v1beta1.Kibana
+		kb             kbv1.Kibana
 	}
 	tests := []struct {
 		name       string
@@ -41,7 +41,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			name: "config secret should be created",
 			args: args{
 				kb: defaultKibana,
-				initialObjects: []runtime.Object{&v1beta1.Kibana{
+				initialObjects: []runtime.Object{&kbv1.Kibana{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-ns",

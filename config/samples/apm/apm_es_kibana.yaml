@@ -1,6 +1,6 @@
 # This sample sets up a an Elasticsearch cluster along with a Kibana instance
 # and an APM server, configured to be able to communicate with each other
-apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: es-apm-sample
@@ -14,7 +14,7 @@ spec:
       # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
       node.store.allow_mmap: false
 ---
-apiVersion: apm.k8s.elastic.co/v1beta1
+apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer
 metadata:
   name: apm-apm-sample
@@ -24,7 +24,7 @@ spec:
   elasticsearchRef:
     name: "es-apm-sample"
 ---
-apiVersion: kibana.k8s.elastic.co/v1beta1
+apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
 metadata:
   name: kb-apm-sample

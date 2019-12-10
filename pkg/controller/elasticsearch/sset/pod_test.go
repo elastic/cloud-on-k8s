@@ -7,7 +7,7 @@ package sset
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/stretchr/testify/assert"
@@ -108,7 +108,7 @@ func TestGetActualMastersForCluster(t *testing.T) {
 	}
 	c := k8s.WrappedFakeClient(objs...)
 
-	es := v1beta1.Elasticsearch{
+	es := esv1.Elasticsearch{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "clus0",
 		},

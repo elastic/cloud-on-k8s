@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	kibanav1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -72,14 +72,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch for changes to Kibana
-	if err := c.Watch(&source.Kind{Type: &kibanav1beta1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &kbv1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch deployments
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1beta1.Kibana{},
+		OwnerType:    &kbv1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1beta1.Kibana{},
+		OwnerType:    &kbv1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &kibanav1beta1.Kibana{},
+		OwnerType:    &kbv1.Kibana{},
 	}); err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// retrieve the kibana object
-	var kb kibanav1beta1.Kibana
+	var kb kbv1.Kibana
 	if ok, err := association.FetchWithAssociation(r.Client, request, &kb); !ok {
 		if err != nil {
 			return reconcile.Result{}, err
@@ -175,7 +175,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	return r.doReconcile(request, &kb)
 }
 
-func (r *ReconcileKibana) isCompatible(kb *kibanav1beta1.Kibana) (bool, error) {
+func (r *ReconcileKibana) isCompatible(kb *kbv1.Kibana) (bool, error) {
 	selector := map[string]string{label.KibanaNameLabelName: kb.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
@@ -185,7 +185,7 @@ func (r *ReconcileKibana) isCompatible(kb *kibanav1beta1.Kibana) (bool, error) {
 	return compat, err
 }
 
-func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kibanav1beta1.Kibana) (reconcile.Result, error) {
+func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
@@ -221,7 +221,7 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", state.Kibana.Namespace, "kibana_name", state.Kibana.Name)
-	return r.Status().Update(state.Kibana)
+	return common.UpdateStatus(r.Client, state.Kibana)
 }
 
 func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {

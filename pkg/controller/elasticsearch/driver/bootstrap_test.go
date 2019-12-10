@@ -7,7 +7,7 @@ package driver
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -18,20 +18,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func bootstrappedES() *v1beta1.Elasticsearch {
-	return &v1beta1.Elasticsearch{
+func bootstrappedES() *esv1.Elasticsearch {
+	return &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "cluster",
 			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
 		},
-		Spec: v1beta1.ElasticsearchSpec{Version: "7.3.0"},
+		Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
 	}
 }
 
-func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable *int32) *v1beta1.Elasticsearch {
+func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable *int32) *esv1.Elasticsearch {
 	es := bootstrappedES()
-	es.Spec.UpdateStrategy = v1beta1.UpdateStrategy{
-		ChangeBudget: v1beta1.ChangeBudget{
+	es.Spec.UpdateStrategy = esv1.UpdateStrategy{
+		ChangeBudget: esv1.ChangeBudget{
 			MaxSurge:       maxSurge,
 			MaxUnavailable: maxUnavailable,
 		},
@@ -40,20 +40,20 @@ func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable *int32) *v1beta1.El
 	return es
 }
 
-func notBootstrappedES() *v1beta1.Elasticsearch {
-	return &v1beta1.Elasticsearch{
+func notBootstrappedES() *esv1.Elasticsearch {
+	return &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
-		Spec:       v1beta1.ElasticsearchSpec{Version: "7.3.0"},
+		Spec:       esv1.ElasticsearchSpec{Version: "7.3.0"},
 	}
 }
 
-func reBootstrappingES() *v1beta1.Elasticsearch {
-	return &v1beta1.Elasticsearch{
+func reBootstrappingES() *esv1.Elasticsearch {
+	return &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "cluster",
 			Annotations: map[string]string{},
 		},
-		Spec: v1beta1.ElasticsearchSpec{Version: "7.3.0"},
+		Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
 	}
 }
 
@@ -71,7 +71,7 @@ func Test_annotateWithUUID(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, AnnotatedForBootstrap(*cluster))
 
-	var retrieved v1beta1.Elasticsearch
+	var retrieved esv1.Elasticsearch
 	err = k8sClient.Get(k8s.ExtractNamespacedName(cluster), &retrieved)
 	require.NoError(t, err)
 	require.True(t, AnnotatedForBootstrap(retrieved))
@@ -116,9 +116,9 @@ func TestReconcileClusterUUID(t *testing.T) {
 	tests := []struct {
 		name          string
 		c             k8s.Client
-		cluster       *v1beta1.Elasticsearch
+		cluster       *esv1.Elasticsearch
 		observedState observer.State
-		wantCluster   *v1beta1.Elasticsearch
+		wantCluster   *esv1.Elasticsearch
 	}{
 		{
 			name:        "already annotated",

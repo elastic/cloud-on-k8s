@@ -5,11 +5,12 @@
 package scheme
 
 import (
-	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 )
 
 // SetupScheme sets up a scheme with all of the relevant types. This is only needed once for the manager but is often used for tests
@@ -19,18 +20,18 @@ func SetupScheme() error {
 	if err != nil {
 		return err
 	}
-	err = apmv1beta1.AddToScheme(clientgoscheme.Scheme)
+	err = apmv1.AddToScheme(clientgoscheme.Scheme)
 	if err != nil {
 		return err
 	}
-	err = commonv1beta1.AddToScheme(clientgoscheme.Scheme)
+	err = commonv1.AddToScheme(clientgoscheme.Scheme)
 	if err != nil {
 		return err
 	}
-	err = esv1beta1.AddToScheme(clientgoscheme.Scheme)
+	err = esv1.AddToScheme(clientgoscheme.Scheme)
 	if err != nil {
 		return err
 	}
-	err = kbv1beta1.AddToScheme(clientgoscheme.Scheme)
+	err = kbv1.AddToScheme(clientgoscheme.Scheme)
 	return err
 }

@@ -7,11 +7,11 @@ package nodespec
 import (
 	"path"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
@@ -51,7 +51,7 @@ var (
 )
 
 // DefaultEnvVars are environment variables injected into Elasticsearch pods.
-func DefaultEnvVars(httpCfg v1beta1.HTTPConfig) []corev1.EnvVar {
+func DefaultEnvVars(httpCfg commonv1.HTTPConfig) []corev1.EnvVar {
 	return append(
 		defaults.PodDownwardEnvVars,
 		[]corev1.EnvVar{

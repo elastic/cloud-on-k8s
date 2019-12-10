@@ -7,9 +7,9 @@ package association
 import (
 	"testing"
 
-	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -26,18 +26,18 @@ func TestFetchWithAssociation(t *testing.T) {
 func testFetchAPMServer(t *testing.T) {
 	testCases := []struct {
 		name          string
-		apmServer     *apmv1beta1.ApmServer
+		apmServer     *apmv1.ApmServer
 		request       reconcile.Request
 		wantOK        bool
 		wantErr       bool
-		wantAssocConf *commonv1beta1.AssociationConf
+		wantAssocConf *commonv1.AssociationConf
 	}{
 		{
 			name:      "with association annotation",
 			apmServer: mkAPMServer(true),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "apm-server-test", Namespace: "apm-ns"}},
 			wantOK:    true,
-			wantAssocConf: &commonv1beta1.AssociationConf{
+			wantAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "apm-user",
 				CASecretName:   "ca-secret",
@@ -62,7 +62,7 @@ func testFetchAPMServer(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tc.apmServer)
 
-			var got apmv1beta1.ApmServer
+			var got apmv1.ApmServer
 			ok, err := FetchWithAssociation(client, tc.request, &got)
 
 			if tc.wantErr {
@@ -82,13 +82,13 @@ func testFetchAPMServer(t *testing.T) {
 	}
 }
 
-func mkAPMServer(withAnnotations bool) *apmv1beta1.ApmServer {
-	apmServer := &apmv1beta1.ApmServer{
+func mkAPMServer(withAnnotations bool) *apmv1.ApmServer {
+	apmServer := &apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apm-server-test",
 			Namespace: "apm-ns",
 		},
-		Spec: apmv1beta1.ApmServerSpec{
+		Spec: apmv1.ApmServerSpec{
 			Image: "test-image",
 			Count: 1,
 		},
@@ -106,18 +106,18 @@ func mkAPMServer(withAnnotations bool) *apmv1beta1.ApmServer {
 func testFetchKibana(t *testing.T) {
 	testCases := []struct {
 		name          string
-		kibana        *kbv1beta1.Kibana
+		kibana        *kbv1.Kibana
 		request       reconcile.Request
 		wantOK        bool
 		wantErr       bool
-		wantAssocConf *commonv1beta1.AssociationConf
+		wantAssocConf *commonv1.AssociationConf
 	}{
 		{
 			name:    "with association annotation",
 			kibana:  mkKibana(true),
 			request: reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}},
 			wantOK:  true,
-			wantAssocConf: &commonv1beta1.AssociationConf{
+			wantAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "kb-user",
 				CASecretName:   "ca-secret",
@@ -142,7 +142,7 @@ func testFetchKibana(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tc.kibana)
 
-			var got kbv1beta1.Kibana
+			var got kbv1.Kibana
 			ok, err := FetchWithAssociation(client, tc.request, &got)
 
 			if tc.wantErr {
@@ -162,13 +162,13 @@ func testFetchKibana(t *testing.T) {
 	}
 }
 
-func mkKibana(withAnnotations bool) *kbv1beta1.Kibana {
-	kb := &kbv1beta1.Kibana{
+func mkKibana(withAnnotations bool) *kbv1.Kibana {
+	kb := &kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "kb-test",
 			Namespace: "kb-ns",
 		},
-		Spec: kbv1beta1.KibanaSpec{
+		Spec: kbv1.KibanaSpec{
 			Image: "test-image",
 			Count: 1,
 		},
@@ -188,7 +188,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
 	client := k8s.WrappedFakeClient(kb)
 
-	assocConf := &commonv1beta1.AssociationConf{
+	assocConf := &commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "kb-user",
 		CASecretName:   "ca-secret",
@@ -196,7 +196,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	}
 
 	// check the existing values
-	var got kbv1beta1.Kibana
+	var got kbv1.Kibana
 	ok, _ := FetchWithAssociation(client, request, &got)
 	require.True(t, ok)
 	require.Equal(t, "kb-test", got.Name)
@@ -206,7 +206,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// update and check the new values
-	newAssocConf := &commonv1beta1.AssociationConf{
+	newAssocConf := &commonv1.AssociationConf{
 		AuthSecretName: "new-auth-secret",
 		AuthSecretKey:  "new-kb-user",
 		CASecretName:   "new-ca-secret",
@@ -230,7 +230,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}}
 	client := k8s.WrappedFakeClient(kb)
 
-	assocConf := &commonv1beta1.AssociationConf{
+	assocConf := &commonv1.AssociationConf{
 		AuthSecretName: "auth-secret",
 		AuthSecretKey:  "kb-user",
 		CASecretName:   "ca-secret",
@@ -238,7 +238,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	}
 
 	// check the existing values
-	var got kbv1beta1.Kibana
+	var got kbv1.Kibana
 	ok, _ := FetchWithAssociation(client, request, &got)
 	require.True(t, ok)
 	require.Equal(t, "kb-test", got.Name)

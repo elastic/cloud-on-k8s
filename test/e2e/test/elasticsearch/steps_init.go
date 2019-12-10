@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
@@ -34,7 +34,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 			Name: "Elasticsearch CRDs should exist",
 			Test: func(t *testing.T) {
 				crds := []runtime.Object{
-					&estype.ElasticsearchList{},
+					&esv1.ElasticsearchList{},
 				}
 				for _, crd := range crds {
 					err := k.Client.List(crd)
@@ -60,7 +60,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 
 				// it may take some extra time for Elasticsearch to be fully deleted
 				test.Eventually(func() error {
-					var es estype.Elasticsearch
+					var es esv1.Elasticsearch
 					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err

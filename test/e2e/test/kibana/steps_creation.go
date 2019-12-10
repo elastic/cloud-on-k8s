@@ -7,7 +7,7 @@ package kibana
 import (
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Kibana should be created",
 			Test: func(t *testing.T) {
-				var createdKb kbtype.Kibana
+				var createdKb kbv1.Kibana
 				err := k.Client.Get(k8s.ExtractNamespacedName(&b.Kibana), &createdKb)
 				require.NoError(t, err)
 				require.Equal(t, b.Kibana.Spec.Version, createdKb.Spec.Version)

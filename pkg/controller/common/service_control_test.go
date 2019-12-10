@@ -7,7 +7,7 @@ package common
 import (
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ import (
 )
 
 func TestReconcileService(t *testing.T) {
-	owner := &kbtype.Kibana{
+	owner := &kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "owner-obj",
 			Namespace: "test",

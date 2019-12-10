@@ -8,7 +8,14 @@ import (
 	"fmt"
 	"reflect"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -16,12 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 )
 
 const secureSettingsSecretSuffix = "secure-settings"
@@ -139,7 +140,7 @@ func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystor
 	return userSecrets, nil
 }
 
-func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1beta1.SecretSource) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore, secretSrc commonv1.SecretSource) (*corev1.Secret, bool, error) {
 	namespace := hasKeystore.GetNamespace()
 	secretName := secretSrc.SecretName
 
@@ -204,7 +205,7 @@ func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 // Only one watch per cluster is registered:
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
-func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1beta1.SecretSource, nn types.NamespacedName) error {
+func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1.SecretSource, nn types.NamespacedName) error {
 	watchName := SecureSettingsWatchName(nn)
 	if secureSettingsRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)

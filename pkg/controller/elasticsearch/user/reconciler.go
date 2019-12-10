@@ -5,20 +5,21 @@
 package user
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // ReconcileUserCredentialsSecret creates or updates the given credentials.
 func ReconcileUserCredentialsSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	creds UserCredentials,
 ) error {
 	expected := creds.Secret()
@@ -74,7 +75,7 @@ func aggregateAllUsers(customUsers corev1.SecretList, defaultUsers ...ClearTextC
 func ReconcileUsers(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 ) (*InternalUsers, error) {
 
 	nsn := k8s.ExtractNamespacedName(&es)

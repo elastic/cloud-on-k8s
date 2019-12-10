@@ -7,7 +7,7 @@ package kb
 import (
 	"testing"
 
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -88,7 +88,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 				Name: "Remove secure settings from the spec",
 				Test: func(t *testing.T) {
 					// retrieve current Kibana resource
-					var currentKb kbtype.Kibana
+					var currentKb kbv1.Kibana
 					err := k.Client.Get(k8s.ExtractNamespacedName(&kbBuilder.Kibana), &currentKb)
 					require.NoError(t, err)
 					// set its secure settings to nil

@@ -5,12 +5,12 @@
 package version7
 
 import (
-	kbtype "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
 )
 
 // SettingsFactory returns Kibana settings for a 7.x Kibana.
-func SettingsFactory(kb kbtype.Kibana) map[string]interface{} {
+func SettingsFactory(kb kbv1.Kibana) map[string]interface{} {
 	return map[string]interface{}{
 		config.ElasticsearchHosts: kb.AssociationConf().GetURL(),
 	}

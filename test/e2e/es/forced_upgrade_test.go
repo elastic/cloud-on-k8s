@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	estype "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -43,12 +43,12 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 	// create a cluster in which one StatefulSet is OK,
 	// and the second one will have Pods that stay Pending forever
 	initial := elasticsearch.NewBuilder("force-upgrade-pending-sset").
-		WithNodeSet(estype.NodeSet{
+		WithNodeSet(esv1.NodeSet{
 			Name:        "ok",
 			Count:       1,
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
 		}).
-		WithNodeSet(estype.NodeSet{
+		WithNodeSet(esv1.NodeSet{
 			Name:        "pending",
 			Count:       1,
 			PodTemplate: elasticsearch.ESPodTemplate(elasticsearch.DefaultResources),
@@ -72,7 +72,7 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 			{
 				Name: "Wait for Pods of the first StatefulSet to be running, and second StatefulSet to be Pending",
 				Test: test.Eventually(func() error {
-					pendingSset := estype.StatefulSet(initial.Elasticsearch.Name, initial.Elasticsearch.Spec.NodeSets[1].Name)
+					pendingSset := esv1.StatefulSet(initial.Elasticsearch.Name, initial.Elasticsearch.Spec.NodeSets[1].Name)
 					pods, err := k.GetPods(test.ESPodListOptions(initial.Elasticsearch.Namespace, initial.Elasticsearch.Name)...)
 					if err != nil {
 						return err
@@ -95,7 +95,7 @@ func TestForceUpgradePendingPodsInOneStatefulSet(t *testing.T) {
 			{
 				Name: "Wait for the ES service to have endpoints and become technically reachable",
 				Test: test.Eventually(func() error {
-					endpoints, err := k.GetEndpoints(initial.Elasticsearch.Namespace, estype.HTTPService(initial.Elasticsearch.Name))
+					endpoints, err := k.GetEndpoints(initial.Elasticsearch.Namespace, esv1.HTTPService(initial.Elasticsearch.Name))
 					if err != nil {
 						return err
 					}
@@ -135,7 +135,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 				"Pods should have restarted at least once due to wrong ES config",
 				func(p corev1.Pod) error {
 					for _, containerStatus := range p.Status.ContainerStatuses {
-						if containerStatus.Name != estype.ElasticsearchContainerName {
+						if containerStatus.Name != esv1.ElasticsearchContainerName {
 							continue
 						}
 						if containerStatus.RestartCount < 1 {
@@ -143,7 +143,7 @@ func TestForceUpgradeBootloopingPods(t *testing.T) {
 						}
 						return nil
 					}
-					return fmt.Errorf("container %s not found in pod %s", estype.ElasticsearchContainerName, p.Name)
+					return fmt.Errorf("container %s not found in pod %s", esv1.ElasticsearchContainerName, p.Name)
 				},
 			),
 		},

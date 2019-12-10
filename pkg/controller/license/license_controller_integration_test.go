@@ -7,6 +7,7 @@
 package license
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -17,12 +18,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -69,7 +71,7 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// Create the EnterpriseLicense object
-	require.NoError(t, license.CreateEnterpriseLicense(
+	require.NoError(t, CreateEnterpriseLicense(
 		c,
 		types.NamespacedName{Name: "foo", Namespace: "elastic-system"},
 		enterpriseLicense,
@@ -87,14 +89,14 @@ func TestReconcile(t *testing.T) {
 		return nil
 	})
 
-	cluster := &v1beta1.Elasticsearch{
+	cluster := &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: v1beta1.ElasticsearchSpec{
+		Spec: esv1.ElasticsearchSpec{
 			Version: "7.0.0",
-			NodeSets: []v1beta1.NodeSet{
+			NodeSets: []esv1.NodeSet{
 				{
 					Name:  "all",
 					Count: 3,
@@ -107,7 +109,7 @@ func TestReconcile(t *testing.T) {
 	// test license assignment and ownership being triggered on cluster create
 	test.RetryUntilSuccess(t, func() error {
 		var clusterLicense corev1.Secret
-		if err := c.Get(types.NamespacedName{Namespace: "default", Name: v1beta1.LicenseSecretName("foo")}, &clusterLicense); err != nil {
+		if err := c.Get(types.NamespacedName{Namespace: "default", Name: esv1.LicenseSecretName("foo")}, &clusterLicense); err != nil {
 			return err
 		}
 		return validateOwnerRef(&clusterLicense, cluster.ObjectMeta)
@@ -217,4 +219,22 @@ func TestDelayingQueueInvariants(t *testing.T) {
 			assert.Equal(t, tt.expectedObservations, seen)
 		})
 	}
+}
+
+// CreateEnterpriseLicense creates an Enterprise license wrapped in a secret.
+func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l license.EnterpriseLicense) error {
+	bytes, err := json.Marshal(l)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal license")
+	}
+	return c.Create(&corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace: key.Namespace,
+			Name:      key.Name,
+			Labels:    license.LabelsForOperatorScope(l.License.Type),
+		},
+		Data: map[string][]byte{
+			"license": bytes,
+		},
+	})
 }

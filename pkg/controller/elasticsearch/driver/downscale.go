@@ -5,7 +5,7 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -72,7 +72,7 @@ func HandleDownscale(
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.
-func deleteStatefulSets(toDelete sset.StatefulSetList, k8sClient k8s.Client, es v1beta1.Elasticsearch) error {
+func deleteStatefulSets(toDelete sset.StatefulSetList, k8sClient k8s.Client, es esv1.Elasticsearch) error {
 	for _, toDelete := range toDelete {
 		if err := deleteStatefulSetResources(k8sClient, es, toDelete); err != nil {
 			return err
@@ -153,7 +153,7 @@ func attemptDownscale(
 
 // deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
 // headless service and configuration secret.
-func deleteStatefulSetResources(k8sClient k8s.Client, es v1beta1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
+func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
 	headlessSvc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
 	err := k8sClient.Delete(&headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -240,7 +240,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 func updateZenSettingsForDownscale(
 	c k8s.Client,
 	esClient esclient.Client,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	reconcileState *reconcile.State,
 	actualStatefulSets sset.StatefulSetList,
 	excludeNodes ...string,
@@ -261,7 +261,7 @@ func updateZenSettingsForDownscale(
 func maybeUpdateZen1ForDownscale(
 	c k8s.Client,
 	esClient esclient.Client,
-	es v1beta1.Elasticsearch,
+	es esv1.Elasticsearch,
 	reconcileState *reconcile.State,
 	actualStatefulSets sset.StatefulSetList) error {
 	// Check if we have at least one Zen1 compatible pod or StatefulSet in flight.

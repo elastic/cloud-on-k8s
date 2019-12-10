@@ -7,13 +7,14 @@ package keystore
 import (
 	"strings"
 
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 )
 
 var log = logf.Log.WithName("keystore")
@@ -33,7 +34,7 @@ type Resources struct {
 type HasKeystore interface {
 	metav1.Object
 	runtime.Object
-	SecureSettings() []commonv1beta1.SecretSource
+	SecureSettings() []commonv1.SecretSource
 }
 
 // NewResources optionally returns a volume and init container to include in pods,

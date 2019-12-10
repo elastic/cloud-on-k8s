@@ -9,8 +9,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
-	commonv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1beta1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -33,10 +33,10 @@ const (
 	APMServerSSLCertificate = "apm-server.ssl.certificate"
 )
 
-func NewConfigFromSpec(c k8s.Client, as *v1beta1.ApmServer) (*settings.CanonicalConfig, error) {
+func NewConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {
 	specConfig := as.Spec.Config
 	if specConfig == nil {
-		specConfig = &commonv1beta1.Config{}
+		specConfig = &commonv1.Config{}
 	}
 
 	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
@@ -84,7 +84,7 @@ func NewConfigFromSpec(c k8s.Client, as *v1beta1.ApmServer) (*settings.Canonical
 	return cfg, nil
 }
 
-func tlsSettings(as *v1beta1.ApmServer) map[string]interface{} {
+func tlsSettings(as *apmv1.ApmServer) map[string]interface{} {
 	if !as.Spec.HTTP.TLS.Enabled() {
 		return nil
 	}

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -18,7 +18,7 @@ import (
 
 // NewMasterChangeBudgetWatcher returns a watcher that checks whether at most one master pod at a time is added/removed.
 // Relies on the assumption that resolution of 1 second is high enough to observe all change steps.
-func NewMasterChangeBudgetWatcher(es v1beta1.Elasticsearch) test.Watcher {
+func NewMasterChangeBudgetWatcher(es esv1.Elasticsearch) test.Watcher {
 	var observations []int
 
 	return test.NewWatcher(
@@ -48,7 +48,7 @@ func NewMasterChangeBudgetWatcher(es v1beta1.Elasticsearch) test.Watcher {
 
 // NewChangeBudgetWatcher returns a watcher that checks whether the pod count stays within the given change budget.
 // Assumes that observations resolution of 1 second is high enough to observe all changes steps.
-func NewChangeBudgetWatcher(from v1beta1.ElasticsearchSpec, to v1beta1.Elasticsearch) test.Watcher {
+func NewChangeBudgetWatcher(from esv1.ElasticsearchSpec, to esv1.Elasticsearch) test.Watcher {
 	var PodCounts []int32
 	var ReadyPodCounts []int32
 
