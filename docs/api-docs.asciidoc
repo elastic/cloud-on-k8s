@@ -580,6 +580,15 @@ of peer discovery.
 *`sessionAffinityConfig`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#sessionaffinityconfig-v1-core[$$Kubernetes core/v1.SessionAffinityConfig$$]_::
 _(Optional)_
 sessionAffinityConfig contains the configurations of session affinity.
+*`ipFamily`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#ipfamily-v1-core[$$Kubernetes core/v1.IPFamily$$]_::
+_(Optional)_
+ipFamily specifies whether this Service has a preference for a particular IP family (e.g. IPv4 vs.
+IPv6).  If a specific IP family is requested, the clusterIP field will be allocated from that family, if it is
+available in the cluster.  If no IP family is requested, the cluster's primary IP family will be used.
+Other IP fields (loadBalancerIP, loadBalancerSourceRanges, externalIPs) and controllers which
+allocate external load-balancers should use the same IP family.  Endpoints for this Service will be of
+this family.  This field is immutable after creation. Assigning a ServiceIPFamily not available in the
+cluster (e.g. IPv6 in IPv4 only cluster) is an error condition and will fail during clusterIP assignment.
 |===
 
 [id="common-k8s-elastic-co-v1-subjectalternativename"]
@@ -989,6 +998,15 @@ of peer discovery.
 *`sessionAffinityConfig`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#sessionaffinityconfig-v1-core[$$Kubernetes core/v1.SessionAffinityConfig$$]_::
 _(Optional)_
 sessionAffinityConfig contains the configurations of session affinity.
+*`ipFamily`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#ipfamily-v1-core[$$Kubernetes core/v1.IPFamily$$]_::
+_(Optional)_
+ipFamily specifies whether this Service has a preference for a particular IP family (e.g. IPv4 vs.
+IPv6).  If a specific IP family is requested, the clusterIP field will be allocated from that family, if it is
+available in the cluster.  If no IP family is requested, the cluster's primary IP family will be used.
+Other IP fields (loadBalancerIP, loadBalancerSourceRanges, externalIPs) and controllers which
+allocate external load-balancers should use the same IP family.  Endpoints for this Service will be of
+this family.  This field is immutable after creation. Assigning a ServiceIPFamily not available in the
+cluster (e.g. IPv6 in IPv4 only cluster) is an error condition and will fail during clusterIP assignment.
 |===
 
 [id="common-k8s-elastic-co-v1beta1-subjectalternativename"]
