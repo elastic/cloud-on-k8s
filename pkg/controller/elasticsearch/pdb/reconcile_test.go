@@ -11,6 +11,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -123,7 +124,7 @@ func TestReconcile(t *testing.T) {
 				// patch the PDB we want with ownerRef and hash label
 				tt.wantPDB = withHashLabel(withOwnerRef(tt.wantPDB, tt.args.es))
 				require.NoError(t, err)
-				require.Equal(t, tt.wantPDB, &retrieved)
+				comparison.RequireEqual(t, tt.wantPDB, &retrieved)
 			}
 		})
 	}

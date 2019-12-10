@@ -5,10 +5,9 @@
 package keystore
 
 import (
-	"reflect"
 	"testing"
 
-	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,6 +18,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -67,12 +67,13 @@ func Test_secureSettingsVolume(t *testing.T) {
 			wantWatches: []string{},
 		},
 		{
-			name:        "valid secure settings specified: should add watch and return volume with version",
-			c:           k8s.WrappedFakeClient(&testSecureSettingsSecret),
-			w:           createWatches(""),
-			kb:          testKibanaWithSecureSettings,
-			wantVolume:  &expectedSecretVolume,
-			wantVersion: testSecureSettingsSecret.ResourceVersion,
+			name:       "valid secure settings specified: should add watch and return volume with version",
+			c:          k8s.WrappedFakeClient(&testSecureSettingsSecret),
+			w:          createWatches(""),
+			kb:         testKibanaWithSecureSettings,
+			wantVolume: &expectedSecretVolume,
+			// since this is being created the RV will increment
+			wantVersion: "1",
 			wantWatches: []string{SecureSettingsWatchName(k8s.ExtractNamespacedName(&testKibanaWithSecureSettings))},
 		},
 		{
@@ -105,13 +106,8 @@ func Test_secureSettingsVolume(t *testing.T) {
 			}
 			vol, version, err := secureSettingsVolume(testDriver, &tt.kb, nil, kbname.KBNamer)
 			require.NoError(t, err)
-
-			if !reflect.DeepEqual(vol, tt.wantVolume) {
-				t.Errorf("secureSettingsVolume() got = %v, want %v", vol, tt.wantVolume)
-			}
-			if version != tt.wantVersion {
-				t.Errorf("secureSettingsVolume() got1 = %v, want %v", version, tt.wantVersion)
-			}
+			assert.Equal(t, tt.wantVolume, vol)
+			assert.Equal(t, tt.wantVersion, version)
 
 			require.Equal(t, tt.wantWatches, tt.w.Secrets.Registrations())
 
@@ -313,7 +309,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				t.Errorf("reconcileSecureSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			require.Nil(t, deep.Equal(got, tt.want))
+			require.Empty(t, comparison.Diff(got, tt.want))
 		})
 	}
 }
@@ -439,7 +435,10 @@ func Test_retrieveUserSecrets(t *testing.T) {
 				t.Errorf("retrieveUserSecrets() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			require.Nil(t, deep.Equal(got, tt.want))
+			require.Equal(t, len(tt.want), len(got))
+			for i := range tt.want {
+				comparison.AssertEqual(t, &tt.want[i], &got[i])
+			}
 		})
 	}
 }

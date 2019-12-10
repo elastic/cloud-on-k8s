@@ -122,7 +122,8 @@ echo "Keystore initialization successful."
 					Privileged: &varFalse,
 				},
 			},
-			wantVersion: testSecureSettingsSecret.ResourceVersion,
+			// since this will be created, it will be incremented
+			wantVersion: "1",
 			wantNil:     false,
 		},
 		{

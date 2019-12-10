@@ -17,13 +17,16 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestReconcileStatefulSet(t *testing.T) {
+	require.NoError(t, commonscheme.SetupScheme())
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -44,7 +47,6 @@ func TestReconcileStatefulSet(t *testing.T) {
 	require.NoError(t, err)
 	err = reconciler.SetControllerReference(&es, metaObj, scheme.Scheme)
 	require.NoError(t, err)
-
 	updatedSset := *ssetSample.DeepCopy()
 	updatedSset.Labels[hash.TemplateHashLabelName] = "updated"
 
@@ -89,12 +91,12 @@ func TestReconcileStatefulSet(t *testing.T) {
 			require.Equal(t, tt.wantExpectationsUpdated, len(exp.GetGenerations()) != 0)
 
 			// returned sset should match the expected one
-			require.Equal(t, tt.expected, returned)
+			comparison.AssertEqual(t, &tt.expected, &returned)
 			// and be stored in the apiserver
 			var retrieved appsv1.StatefulSet
 			err = tt.c.Get(k8s.ExtractNamespacedName(&tt.expected), &retrieved)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, retrieved)
+			comparison.AssertEqual(t, &tt.expected, &retrieved)
 		})
 	}
 }

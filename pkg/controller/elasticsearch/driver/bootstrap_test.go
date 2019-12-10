@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -179,7 +179,7 @@ func TestReconcileClusterUUID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ReconcileClusterUUID(tt.c, tt.cluster, tt.observedState)
 			require.NoError(t, err)
-			require.Nil(t, deep.Equal(tt.wantCluster, tt.cluster))
+			comparison.RequireEqual(t, tt.wantCluster, tt.cluster)
 		})
 	}
 }

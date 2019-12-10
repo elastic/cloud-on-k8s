@@ -571,6 +571,42 @@ SOFTWARE.
 
 
 --------------------------------------------------------------------------------
+Module  : github.com/google/go-cmp
+Version : v0.3.1
+Time    : 2019-08-05 20:51:40 +0000 UTC
+
+Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.3.1/LICENSE:
+
+Copyright (c) 2017 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-multierror
 Version : v1.0.0
 Time    : 2018-08-24 00:40:42 +0000 UTC
@@ -2021,10 +2057,10 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.0.0-20190918195907-bd6ac527cfd2
-Time    : 2019-09-18 19:59:07 +0000 UTC
+Version : v0.0.0-20191114100352-16d7abae0d2a
+Time    : 2019-11-14 10:03:52 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.0.0-20190918195907-bd6ac527cfd2/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.0.0-20191114100352-16d7abae0d2a/LICENSE:
 
 
                                  Apache License
@@ -2232,10 +2268,10 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.0.0-20190918195907-b
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.0.0-20190817020851-f2f3a405f61d
-Time    : 2019-08-17 02:08:51 +0000 UTC
+Version : v0.0.0-20191028221656-72ed19daf4bb
+Time    : 2019-10-28 22:16:56 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.0.0-20190817020851-f2f3a405f61d/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.0.0-20191028221656-72ed19daf4bb/LICENSE:
 
 
                                  Apache License
@@ -2443,10 +2479,10 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.0.0-2019081
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.0.0-20190918200256-06eb1244587a
-Time    : 2019-09-18 20:02:56 +0000 UTC
+Version : v0.0.0-20191114101535-6c5935290e33
+Time    : 2019-11-14 10:15:35 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.0.0-20190918200256-06eb1244587a/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.0.0-20191114101535-6c5935290e33/LICENSE:
 
 
                                  Apache License
@@ -2854,10 +2890,10 @@ third-party archives.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-runtime
-Version : v0.3.0
-Time    : 2019-10-10 22:53:20 +0000 UTC
+Version : v0.4.0
+Time    : 2019-11-15 20:40:32 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.4.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3064,10 +3100,10 @@ Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-tools
-Version : v0.2.1
-Time    : 2019-09-03 20:54:59 +0000 UTC
+Version : v0.2.4
+Time    : 2019-11-19 20:17:20 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.2.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.2.4/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
