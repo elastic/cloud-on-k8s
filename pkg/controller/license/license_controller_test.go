@@ -76,6 +76,9 @@ var cluster = &esv1.Elasticsearch{
 		Name:      "cluster",
 		Namespace: "namespace",
 	},
+	Spec: esv1.ElasticsearchSpec{
+		Version: "8.0.0",
+	},
 }
 
 func enterpriseLicense(t *testing.T, licenseType client.ElasticsearchLicenseType, maxNodes int, expired bool) *corev1.Secret {
