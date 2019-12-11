@@ -85,7 +85,7 @@ var (
 			corev1.ResourceCPU:    resource.MustParse("0.1"),
 		},
 		Limits: map[corev1.ResourceName]resource.Quantity{
-			// Memory limit should be at least 12582912 when running with CRI-o
+			// Memory limit should be at least 12582912 when running with CRI-O
 			corev1.ResourceMemory: resource.MustParse("20Mi"),
 			corev1.ResourceCPU:    resource.MustParse("0.1"),
 		},
