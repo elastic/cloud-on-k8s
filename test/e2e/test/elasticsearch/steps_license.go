@@ -48,7 +48,7 @@ func (ltctx *LicenseTestContext) Init() test.Step {
 	}
 }
 
-func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...license.ElasticsearchLicenseType) error {
+func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...client.ElasticsearchLicenseType) error {
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
 
@@ -66,7 +66,7 @@ func (ltctx *LicenseTestContext) CheckElasticsearchLicenseFn(expectedTypes ...li
 	return nil
 }
 
-func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...license.ElasticsearchLicenseType) test.Step {
+func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...client.ElasticsearchLicenseType) test.Step {
 	return test.Step{
 		Name: fmt.Sprintf("Elasticsearch license should be %v", expectedTypes),
 		Test: test.Eventually(func() error {

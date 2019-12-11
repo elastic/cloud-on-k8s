@@ -100,7 +100,7 @@ func ExtractVersion(labels map[string]string) (*version.Version, error) {
 
 // MinVersion extracts the currently running Elasticsearch versions from the running pods
 func MinVersion(pods []corev1.Pod) (*version.Version, error) {
-	var vs []version.Version
+	vs := make([]version.Version, 0, len(pods))
 	for _, pod := range pods {
 		v, err := ExtractVersion(pod.Labels)
 		if err != nil {

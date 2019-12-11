@@ -286,7 +286,7 @@ func (l License) IsValid(instant time.Time) bool {
 		l.ExpiryTime().After(instant)
 }
 
-// IsSupported return true if the current license type is supported by the given version of Elasticsearch.
+// IsSupported returns true if the current license type is supported by the given version of Elasticsearch.
 func (l License) IsSupported(v *version.Version) bool {
 	if l.Type == string(ElasticsearchLicenseTypeEnterprise) && !v.IsSameOrAfter(version.MustParse("7.6.0")) {
 		return false
