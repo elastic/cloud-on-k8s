@@ -9,24 +9,19 @@ The webhook is composed of 4 main components. Here is a brief description of eac
 
 . A `ValidatingWebhookConfiguration` object that defines the validating webhook, named `elastic-es-validation.k8s.elastic.co`. It must be created before starting the operator. The `caBundle` field can be automatically managed as part of the automatic certificate management _(see below)_.
 . A Kubernetes Service is used to expose the validating server, named `elastic-webhook-server`. It is in the same Namespace as the webhook server.
-. A webhook server that actually validates the submitted resources. In ECK it is the operator itself when it
-is configured with the `webhook` role. See <<{p}-operator-config,Configuring ECK>> for more information about the
-`operator-roles` flag.
+. A webhook server that actually validates the submitted resources. In ECK it is the operator itself when it is configured with the `webhook` role. See <<{p}-operator-config,Configuring ECK>> for more information about the `operator-roles` flag.
 . A Secret containing the required certificates to secure the connection between the API server and the webhook server.
-Like the ValidatingWebhookConfiguration, it must be created before starting the operator, even if it is empty.
-If ECK has been installed with the provided manifest its name is `elastic-webhook-server-cert`.
-The content of this Secret and the lifecycle of the certificates are automatically managed for you. You can disable
-this feature if you want to setup the certificates by yourself or with https://github.com/jetstack/cert-manager[cert-manager]. See an example of the latter below.
+Like the ValidatingWebhookConfiguration, it must be created before starting the operator, even if it is empty. By default its name is `elastic-webhook-server-cert`.
+The content of this Secret and the lifecycle of the certificates are automatically managed for you. You can disable this feature if you want to setup the certificates by yourself or with https://github.com/jetstack/cert-manager[cert-manager]. See an example of the latter below.
 
 [float]
 === Managing the webhook certificate with cert-manager
 
-If ECK is currently running you first need to ensure that the automatic certificate management feature is disabled.
-This can be done by updating the operator deployment manifest and adding the `--manage-webhook-certs=false` flag.
+If ECK is currently running you first need to ensure that the automatic certificate management feature is disabled. This can be done by updating the operator deployment manifest and adding the `--manage-webhook-certs=false` flag.
 
 Then, cert-manager v0.11+ must be installed as described in the https://docs.cert-manager.io/en/latest/getting-started/install/[cert-manager documentation].
 
-Below is a complete example to create all of the resources necessary for the validating webhook to function.
+The following example shows how to create all the resources that a webhook requires to function.
 
 [source,yaml,subs="attributes,+macros"]
 ----

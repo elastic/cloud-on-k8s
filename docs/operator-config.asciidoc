@@ -68,7 +68,7 @@ to:
 [id="{p}-ns-config"]
 === Namespace and role configuration
 
-The `operator-roles` and `namespaces` flags have some intricacies that are worth discussing. A fully functioning operator will *require* both `global` and `namespace` roles running in the cluster (though potentially in different operator deployments). That is to say, with `--operator-roles=global,namespace` (or `--operator-roles=all`). If you want to limit the operator to a specific set of namespaces, you must set the `namespaces` flag as well. For example `--operator-roles=global,namespace --namespaces=my-namespace1,mynamespace2`. To have it manage all namespaces, you can simply omit the `namespaces` flag.
+The `operator-roles` and `namespaces` flags have some intricacies that are worth discussing. A fully functioning operator will *require* both `global` and `namespace` roles running in the cluster (though potentially in different operator deployments). That is to say, with `--operator-roles=global,namespace` (or `--operator-roles=all`). To limit the operator to a specific set of namespaces, set the `namespaces` flag as well. For example `--operator-roles=global,namespace --namespaces=my-namespace1,mynamespace2`. To make the operator manage all namespaces, omit the `namespaces` flag.
 
 The global role acts across namespaces and is not related to a specific deployment of the Elastic stack. The global operator deployed cluster-wide is responsible for high-level cross-cluster features.
 
