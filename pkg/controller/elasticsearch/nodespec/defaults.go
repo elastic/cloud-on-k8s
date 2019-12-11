@@ -51,14 +51,14 @@ var (
 )
 
 // DefaultEnvVars are environment variables injected into Elasticsearch pods.
-func DefaultEnvVars(httpCfg commonv1.HTTPConfig, serviceName string) []corev1.EnvVar {
+func DefaultEnvVars(httpCfg commonv1.HTTPConfig, headlessServiceName string) []corev1.EnvVar {
 	return append(
 		defaults.PodDownwardEnvVars,
 		[]corev1.EnvVar{
 			{Name: settings.EnvProbePasswordPath, Value: path.Join(esvolume.ProbeUserSecretMountPath, user.InternalProbeUserName)},
 			{Name: settings.EnvProbeUsername, Value: user.InternalProbeUserName},
 			{Name: settings.EnvReadinessProbeProtocol, Value: httpCfg.Protocol()},
-			{Name: settings.HeadlessServiceName, Value: serviceName},
+			{Name: settings.HeadlessServiceName, Value: headlessServiceName},
 
 			// Disable curl/libnss use of sqlite caching to avoid triggering an issue in linux/kubernetes
 			// where the kernel's dentry cache grows by 5mb every time curl is invoked. This cache usage

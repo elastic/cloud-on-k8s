@@ -1047,3 +1047,88 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 		})
 	}
 }
+
+func TestPodTemplateBuilder_WithPreStopHook(t *testing.T) {
+	containerName := "mycontainer"
+	defaultHook := corev1.Handler{Exec: &corev1.ExecAction{Command: []string{"default", "command"}}}
+	userHook := &corev1.Handler{}
+	tests := []struct {
+		name          string
+		podTemplate   corev1.PodTemplateSpec
+		preStopHook   corev1.Handler
+		wantPreStop   corev1.Handler
+		wantPostStart *corev1.Handler
+	}{
+		{
+			name:          "no pre stop hook in pod template: use default one",
+			podTemplate:   corev1.PodTemplateSpec{},
+			preStopHook:   defaultHook,
+			wantPreStop:   defaultHook,
+			wantPostStart: nil,
+		},
+		{
+			name: "user provided post start hook, but no pre stop hook in pod template: use default one",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Lifecycle: &corev1.Lifecycle{
+								PostStart: userHook,
+							},
+						},
+					},
+				},
+			},
+			preStopHook:   defaultHook,
+			wantPreStop:   defaultHook,
+			wantPostStart: userHook,
+		},
+		{
+			name: "pre stop hook in pod template: use provided one",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Lifecycle: &corev1.Lifecycle{
+								PreStop: userHook,
+							},
+						},
+					},
+				}},
+			preStopHook:   *userHook,
+			wantPostStart: nil,
+		},
+		{
+			name: "user provided post start hook and pre stop hook in pod template: use provided one",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Lifecycle: &corev1.Lifecycle{
+								PostStart: &corev1.Handler{},
+								PreStop:   userHook,
+							},
+						},
+					},
+				},
+			},
+			preStopHook:   *userHook,
+			wantPostStart: userHook,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.podTemplate, "mycontainer")
+			got := b.WithPreStopHook(tt.preStopHook).Container.Lifecycle
+			if !reflect.DeepEqual(got.PreStop, &tt.wantPreStop) {
+				t.Errorf("PreStop after PodTemplateBuilder.WithPreStopHook() = %v, want %v", got.PreStop, tt.wantPreStop)
+			}
+			if !reflect.DeepEqual(got.PostStart, tt.wantPostStart) {
+				t.Errorf("PostStart after PodTemplateBuilder.WithPreStopHook() = %v, want %v", got.PostStart, tt.wantPostStart)
+			}
+		})
+	}
+}
