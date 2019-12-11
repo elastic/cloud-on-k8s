@@ -30,15 +30,29 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			name:    "valid license",
-			args:    licenseFixture,
+			name:    "valid v3 license",
+			args:    licenseFixtureV3,
 			wantErr: false,
 		},
 		{
-			name: "tampered license",
-			args: licenseFixture,
+			name:    "valid v4 license",
+			args:    licenseFixtureV3,
+			wantErr: false,
+		},
+		{
+			name: "tampered v3 license",
+			args: licenseFixtureV3,
 			verifyInput: func(l EnterpriseLicense) EnterpriseLicense {
 				l.License.MaxInstances = 1
+				return l
+			},
+			wantErr: true,
+		},
+		{
+			name: "tampered v4 license",
+			args: licenseFixtureV4,
+			verifyInput: func(l EnterpriseLicense) EnterpriseLicense {
+				l.License.MaxResourceUnits = 1
 				return l
 			},
 			wantErr: true,
@@ -76,13 +90,13 @@ func TestNewLicenseVerifier(t *testing.T) {
 		{
 			name: "Can create verifier from pub key bytes",
 			want: func(v *Verifier) {
-				require.NoError(t, v.ValidSignature(licenseFixture))
+				require.NoError(t, v.ValidSignature(licenseFixtureV3))
 			},
 		},
 		{
 			name: "Detects tampered license",
 			want: func(v *Verifier) {
-				l := licenseFixture
+				l := licenseFixtureV3
 				l.License.Issuer = "me"
 				require.Error(t, v.ValidSignature(l))
 			},
@@ -90,7 +104,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 		{
 			name: "Detects empty signature",
 			want: func(v *Verifier) {
-				l := licenseFixture
+				l := licenseFixtureV3
 				l.License.Signature = ""
 				require.Error(t, v.ValidSignature(l))
 			},
@@ -98,8 +112,8 @@ func TestNewLicenseVerifier(t *testing.T) {
 		{
 			name: "Detects malicious signature",
 			want: func(v *Verifier) {
-				malice := make([]byte, base64.StdEncoding.DecodedLen(len(signatureFixture)))
-				_, err := base64.StdEncoding.Decode(malice, signatureFixture)
+				malice := make([]byte, base64.StdEncoding.DecodedLen(len(signatureFixtureV3)))
+				_, err := base64.StdEncoding.Decode(malice, signatureFixtureV3)
 				require.NoError(t, err)
 				// inject max uint32 as the magic length
 				malice[5] = 255
@@ -108,7 +122,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 				malice[8] = 255
 				tampered := make([]byte, base64.StdEncoding.EncodedLen(len(malice)))
 				base64.StdEncoding.Encode(tampered, malice)
-				err = v.ValidSignature(withSignature(licenseFixture, tampered))
+				err = v.ValidSignature(withSignature(licenseFixtureV3, tampered))
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "magic")
 			},
@@ -117,9 +131,9 @@ func TestNewLicenseVerifier(t *testing.T) {
 			name: "Can recalculate signature",
 			want: func(v *Verifier) {
 				signer := NewSigner(privKey)
-				bytes, err := signer.Sign(licenseFixture)
+				bytes, err := signer.Sign(licenseFixtureV3)
 				require.NoError(t, err)
-				require.NoError(t, v.ValidSignature(withSignature(licenseFixture, bytes)))
+				require.NoError(t, v.ValidSignature(withSignature(licenseFixtureV3, bytes)))
 			},
 		},
 	}
@@ -157,7 +171,7 @@ func TestVerifier_Valid(t *testing.T) {
 				PublicKey: publicKeyFixture(t),
 			},
 			args: args{
-				l:   licenseFixture,
+				l:   licenseFixtureV3,
 				now: chrono.MustParseTime("2019-02-01"),
 			},
 			want: LicenseStatusValid,
@@ -168,7 +182,7 @@ func TestVerifier_Valid(t *testing.T) {
 				PublicKey: publicKeyFixture(t),
 			},
 			args: args{
-				l:   licenseFixture,
+				l:   licenseFixtureV3,
 				now: chrono.MustParseTime("2019-08-01"),
 			},
 			want: LicenseStatusExpired,
@@ -183,7 +197,7 @@ func TestVerifier_Valid(t *testing.T) {
 				}(),
 			},
 			args: args{
-				l:   licenseFixture,
+				l:   licenseFixtureV3,
 				now: chrono.MustParseTime("2019-03-01"),
 			},
 			want: LicenseStatusInvalid,
