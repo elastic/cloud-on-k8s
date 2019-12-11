@@ -159,7 +159,7 @@ func clusterHealthGreen(b Builder, k *test.K8sClient) error {
 	return nil
 }
 
-// CheckServices checks that all ES services are created
+// CheckServices checks that all ES services are created and external IP is provisioned for all LB services
 func CheckServices(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "ES services should be created",
@@ -167,8 +167,14 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 			for _, s := range []string{
 				esv1.HTTPService(b.Elasticsearch.Name),
 			} {
-				if _, err := k.GetService(b.Elasticsearch.Namespace, s); err != nil {
+				svc, err := k.GetService(b.Elasticsearch.Namespace, s)
+				if err != nil {
 					return err
+				}
+				if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+					if len(svc.Status.LoadBalancer.Ingress) == 0 {
+						return fmt.Errorf("load balancer for %s not ready yet", svc.Name)
+					}
 				}
 			}
 			return nil

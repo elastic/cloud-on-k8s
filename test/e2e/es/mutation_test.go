@@ -251,17 +251,9 @@ func TestMutationWhileLoadTesting(t *testing.T) {
 	w := test.NewOnceWatcher(
 		"load test",
 		func(k *test.K8sClient, t *testing.T) {
-			// wait for the LoadBalancer IP to be available
-			var ip string
-			for {
-				svc, err := k.GetService(b.Elasticsearch.Namespace, esv1.HTTPService(b.Elasticsearch.Name))
-				assert.NoError(t, err)
-				if len(svc.Status.LoadBalancer.Ingress) != 0 {
-					ip = svc.Status.LoadBalancer.Ingress[0].IP
-					break
-				}
-				time.Sleep(1 * time.Second)
-			}
+			svc, err := k.GetService(b.Elasticsearch.Namespace, esv1.HTTPService(b.Elasticsearch.Name))
+			assert.NoError(t, err)
+			ip := svc.Status.LoadBalancer.Ingress[0].IP
 
 			rate := vegeta.Rate{Freq: 100, Per: time.Second}
 			targeter := vegeta.NewStaticTargeter(vegeta.Target{
@@ -277,7 +269,7 @@ func TestMutationWhileLoadTesting(t *testing.T) {
 			attacker.Stop()
 			metrics.Close()
 			bytes, _ := json.Marshal(metrics)
-			msgAndArgs := []interface{}{"metrics: %v", string(bytes)}
+			msgAndArgs := []interface{}{"metrics: ", string(bytes)}
 			assert.Equal(t, 1, len(metrics.StatusCodes), msgAndArgs)
 			if _, ok := metrics.StatusCodes["401"]; !ok {
 				assert.Fail(t, "all status codes should be 401", msgAndArgs)
