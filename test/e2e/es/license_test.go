@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
@@ -38,8 +38,8 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		1*time.Second,
 		func(k *test.K8sClient, t *testing.T) {
 			require.NoError(t, licenseTestContext.CheckElasticsearchLicenseFn(
-				license.ElasticsearchLicenseTypeGold,
-				license.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeGold,
+				client.ElasticsearchLicenseTypePlatinum,
 			))
 		},
 		test.NOOPCheck,
@@ -52,12 +52,12 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 		WithSteps(test.CheckTestSteps(esBuilder, k)).
 		WithStep(licenseTestContext.Init()).
 		WithSteps(test.StepList{
-			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
+			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeBasic),
 			licenseTestContext.CreateEnterpriseLicenseSecret(licenseSecretName, licenseBytes),
 			// enterprise license can contain all kinds of cluster licenses so we are a bit lenient here and expect either gold or platinum
 			licenseTestContext.CheckElasticsearchLicense(
-				license.ElasticsearchLicenseTypeGold,
-				license.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeGold,
+				client.ElasticsearchLicenseTypePlatinum,
 			),
 			// but we don't expect to go below that level until we delete the last license secret
 			licenseLevelWatch.StartStep(k),
@@ -68,7 +68,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 			licenseLevelWatch.StopStep(k),
 			// and now revert back to basic
 			licenseTestContext.DeleteEnterpriseLicenseSecret(updatedLicenseSecretName),
-			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
+			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeBasic),
 		}).
 		WithSteps(esBuilder.DeletionTestSteps(k)).
 		RunSequential(t)
@@ -107,17 +107,17 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			licenseTestContext.Init(),
-			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeTrial),
+			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeTrial),
 			// upgrade from trial to a paid-for license
 			licenseTestContext.CreateEnterpriseLicenseSecret(licenseSecretName, licenseBytes),
 			licenseTestContext.CheckElasticsearchLicense(
-				license.ElasticsearchLicenseTypeGold,
-				license.ElasticsearchLicenseTypePlatinum,
+				client.ElasticsearchLicenseTypeGold,
+				client.ElasticsearchLicenseTypePlatinum,
 			),
 			// revert to basic again
 			licenseTestContext.DeleteEnterpriseLicenseSecret(trialSecretName),
 			licenseTestContext.DeleteEnterpriseLicenseSecret(licenseSecretName),
-			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
+			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeBasic),
 			// repeatedly creating a trial is not allowed
 			licenseTestContext.CreateEnterpriseTrialLicenseSecret(trialSecretName),
 			licenseTestContext.CheckEnterpriseTrialLicenseInvalid(trialSecretName),

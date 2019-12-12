@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
@@ -232,6 +233,27 @@ type ErrorResponse struct {
 	} `json:"error"`
 }
 
+// ElasticsearchLicenseType the type of a license.
+type ElasticsearchLicenseType string
+
+// Supported ElasticsearchLicenseTypes.
+const (
+	ElasticsearchLicenseTypeBasic      ElasticsearchLicenseType = "basic"
+	ElasticsearchLicenseTypeTrial      ElasticsearchLicenseType = "trial"
+	ElasticsearchLicenseTypeGold       ElasticsearchLicenseType = "gold"
+	ElasticsearchLicenseTypePlatinum   ElasticsearchLicenseType = "platinum"
+	ElasticsearchLicenseTypeEnterprise ElasticsearchLicenseType = "enterprise"
+)
+
+// ElasticsearchLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
+var ElasticsearchLicenseTypeOrder = map[ElasticsearchLicenseType]int{
+	ElasticsearchLicenseTypeBasic:      1,
+	ElasticsearchLicenseTypeTrial:      2,
+	ElasticsearchLicenseTypeGold:       3,
+	ElasticsearchLicenseTypePlatinum:   4,
+	ElasticsearchLicenseTypeEnterprise: 5,
+}
+
 // License models the Elasticsearch license applied to a cluster. Signature will be empty on reads. IssueDate,  ExpiryTime and Status can be empty on writes.
 type License struct {
 	Status             string     `json:"status,omitempty"`
@@ -262,6 +284,14 @@ func (l License) ExpiryTime() time.Time {
 func (l License) IsValid(instant time.Time) bool {
 	return (l.StartTime().Equal(instant) || l.StartTime().Before(instant)) &&
 		l.ExpiryTime().After(instant)
+}
+
+// IsSupported returns true if the current license type is supported by the given version of Elasticsearch.
+func (l License) IsSupported(v *version.Version) bool {
+	if l.Type == string(ElasticsearchLicenseTypeEnterprise) && !v.IsSameOrAfter(version.MustParse("7.6.0")) {
+		return false
+	}
+	return true
 }
 
 // LicenseUpdateRequest is the request to apply a license to a cluster. Licenses must contain signature.

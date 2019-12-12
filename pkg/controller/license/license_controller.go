@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
@@ -151,12 +154,12 @@ type ReconcileLicenses struct {
 }
 
 // findLicense tries to find the best license available.
-func findLicense(c k8s.Client, checker license.Checker) (esclient.License, string, bool) {
+func findLicense(c k8s.Client, checker license.Checker, minVersion *version.Version) (esclient.License, string, bool) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
 		log.Info("Ignoring invalid license objects", "errors", errs)
 	}
-	return license.BestMatch(licenseList, checker.Valid)
+	return license.BestMatch(minVersion, licenseList, checker.Valid)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
@@ -212,7 +215,14 @@ func reconcileSecret(
 // Returns time to next reconciliation, bool whether a license is configured at all and optional error.
 func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) (time.Time, bool, error) {
 	var noResult time.Time
-	matchingSpec, parent, found := findLicense(r, r.checker)
+	minVersion, err := r.minVersion(cluster)
+	if err != nil {
+		return noResult, true, err
+	}
+	matchingSpec, parent, found := findLicense(r, r.checker, minVersion)
+	if err != nil {
+		return noResult, true, err
+	}
 	if !found {
 		// no license, delete cluster level licenses to revert to basic
 		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)
@@ -235,6 +245,24 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) 
 		return noResult, false, err
 	}
 	return matchingSpec.ExpiryTime(), false, nil
+}
+
+func (r *ReconcileLicenses) minVersion(cluster esv1.Elasticsearch) (*version.Version, error) {
+	pods, err := sset.GetActualPodsForCluster(r, cluster)
+	if err != nil {
+		return nil, err
+	}
+	minVersion, err := label.MinVersion(pods)
+	if err != nil {
+		return nil, err
+	}
+	if minVersion == nil {
+		minVersion, err = version.Parse(cluster.Spec.Version)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return minVersion, nil
 }
 
 func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) *reconciler.Results {
