@@ -125,6 +125,14 @@ func TestNewMergedESConfig(t *testing.T) {
 				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.DiscoverySeedProviders})))
 			},
 		},
+		{
+			name:    "starting 7.6.0, we should set allowed license upload types",
+			version: "7.6.0",
+			cfgData: map[string]interface{}{},
+			assert: func(cfg CanonicalConfig) {
+				require.Equal(t, 1, len(cfg.HasKeys([]string{esv1.XPackLicenseUploadTypes})))
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
