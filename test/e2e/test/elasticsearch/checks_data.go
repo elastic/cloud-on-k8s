@@ -115,7 +115,7 @@ func (dc *DataIntegrityCheck) Verify() error {
 	}
 
 	// retrieve the previously indexed documents
-	r, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/_search", dc.indexName), nil)
+	r, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/%s/_search?size=%d", dc.indexName, dc.docCount), nil)
 	if err != nil {
 		return err
 	}
