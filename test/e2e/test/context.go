@@ -61,8 +61,9 @@ func initializeContext() {
 
 func defaultContext() Context {
 	return Context{
-		AutoPortForwarding:  false,
-		ElasticStackVersion: defaultElasticStackVersion,
+		AutoPortForwarding:    false,
+		ElasticStackVersion:   defaultElasticStackVersion,
+		IgnoreWebhookFailures: false,
 		GlobalOperator: ClusterResource{
 			Name:      "elastic-global-operator",
 			Namespace: "elastic-system",
@@ -80,20 +81,21 @@ func defaultContext() Context {
 
 // Context encapsulates data about a specific test run
 type Context struct {
-	GlobalOperator      ClusterResource   `json:"global_operator"`
-	NamespaceOperator   NamespaceOperator `json:"namespace_operator"`
-	E2EImage            string            `json:"e2e_image"`
-	E2ENamespace        string            `json:"e2e_namespace"`
-	E2EServiceAccount   string            `json:"e2e_service_account"`
-	ElasticStackVersion string            `json:"elastic_stack_version"`
-	LogVerbosity        int               `json:"log_verbosity"`
-	OperatorImage       string            `json:"operator_image"`
-	TestLicense         string            `json:"test_license"`
-	TestRegex           string            `json:"test_regex"`
-	TestRun             string            `json:"test_run"`
-	TestTimeout         time.Duration     `json:"test_timeout"`
-	AutoPortForwarding  bool              `json:"auto_port_forwarding"`
-	Local               bool              `json:"local"`
+	GlobalOperator        ClusterResource   `json:"global_operator"`
+	NamespaceOperator     NamespaceOperator `json:"namespace_operator"`
+	E2EImage              string            `json:"e2e_image"`
+	E2ENamespace          string            `json:"e2e_namespace"`
+	E2EServiceAccount     string            `json:"e2e_service_account"`
+	ElasticStackVersion   string            `json:"elastic_stack_version"`
+	LogVerbosity          int               `json:"log_verbosity"`
+	OperatorImage         string            `json:"operator_image"`
+	TestLicense           string            `json:"test_license"`
+	TestRegex             string            `json:"test_regex"`
+	TestRun               string            `json:"test_run"`
+	TestTimeout           time.Duration     `json:"test_timeout"`
+	AutoPortForwarding    bool              `json:"auto_port_forwarding"`
+	Local                 bool              `json:"local"`
+	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
