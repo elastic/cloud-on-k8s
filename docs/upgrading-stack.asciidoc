@@ -1,0 +1,13 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-upgrading-stack.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-upgrading-stack"]
+=== Upgrading the stack
+
+The operator can safely perform upgrades to newer versions of the various Elastic Stack resources.
+
+Note that you will still want to follow the process defined in the link:https://www.elastic.co/guide/en/elastic-stack/current/upgrading-elastic-stack.html#[Elasticsearch documentation]. That is to say, check to ensure that your cluster is compatible with the target version, take a snapshot, and upgrade different resources in the order described (along with any other steps mentioned in the referenced article). Provided you are ready to proceed with the upgrade, all you need to do is modify the `version` field of the resource to the version you would like, and the operator will upgrade it for you according to best practices and minimizing disruption.
+
+The <<{p}-orchestration">> docs include more detail on how the operator performs upgrades and how to tune its behavior.
