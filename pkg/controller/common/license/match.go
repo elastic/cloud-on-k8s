@@ -19,7 +19,8 @@ type licenseWithTimeLeft struct {
 }
 
 // BestMatch tries to find the best matching license given a list of enterprise licenses based on the
-// desired license type and the remaining validity period of the license.
+// the minimal Elasticsearch version in the cluster, the desired license type and the remaining validity
+// period of the license.
 // Returns the license, parent license UID, a bool indicating a match was found and an optional error.
 func BestMatch(
 	minVersion *version.Version,

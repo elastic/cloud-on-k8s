@@ -88,7 +88,7 @@ func TestExtractVersion(t *testing.T) {
 	}
 }
 
-func TestCurrentVersions(t *testing.T) {
+func TestMinVersion(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    []corev1.Pod
