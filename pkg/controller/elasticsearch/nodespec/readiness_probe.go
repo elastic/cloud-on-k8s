@@ -27,8 +27,7 @@ func NewReadinessProbe() *corev1.Probe {
 }
 
 const ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
-const ReadinessProbeScript string = `
-#!/usr/bin/env bash
+const ReadinessProbeScript = `#!/usr/bin/env bash
 # Consider a node to be healthy if it responds to a simple GET on "/_cat/nodes?local"
 CURL_TIMEOUT=3
 
