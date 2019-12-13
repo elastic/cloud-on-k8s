@@ -29,7 +29,7 @@ func NewReadinessProbe() *corev1.Probe {
 const ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
 const ReadinessProbeScript = `#!/usr/bin/env bash
 # Consider a node to be healthy if it responds to a simple GET on "/_cat/nodes?local"
-CURL_TIMEOUT=${CURL_TIMEOUT:=3}
+READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=3}
 
 # Check if PROBE_PASSWORD_PATH is set, otherwise fall back to its former name in 1.0.0.beta-1: PROBE_PASSWORD_FILE
 if [[ -z "${PROBE_PASSWORD_PATH}" ]]; then
@@ -48,7 +48,7 @@ fi
 
 # request Elasticsearch
 ENDPOINT="${READINESS_PROBE_PROTOCOL:-https}://127.0.0.1:9200/_cat/nodes?local"
-status=$(curl -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -XGET -s -k ${BASIC_AUTH} $ENDPOINT)
+status=$(curl -o /dev/null -w "%{http_code}" --max-time $READINESS_PROBE_TIMEOUT -XGET -s -k ${BASIC_AUTH} $ENDPOINT)
 
 # ready if status code 200
 if [[ $status == "200" ]]; then
