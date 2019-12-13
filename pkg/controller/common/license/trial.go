@@ -24,7 +24,7 @@ const (
 	TrialStatusSecretKey = "trial-status"
 	TrialPubkeyKey       = "pubkey"
 
-	TrialLicenseSecretName      = "trial.k8s.elastic.co/secret-name" // nolint
+	TrialLicenseSecretName      = "trial.k8s.elastic.co/secret-name"      // nolint
 	TrialLicenseSecretNamespace = "trial.k8s.elastic.co/secret-namespace" // nolint
 )
 

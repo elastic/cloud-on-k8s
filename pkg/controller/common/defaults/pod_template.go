@@ -315,3 +315,16 @@ func (b *PodTemplateBuilder) WithResources(resources corev1.ResourceRequirements
 	}
 	return b
 }
+
+func (b *PodTemplateBuilder) WithPreStopHook(handler corev1.Handler) *PodTemplateBuilder {
+	if b.Container.Lifecycle == nil {
+		b.Container.Lifecycle = &corev1.Lifecycle{}
+	}
+
+	if b.Container.Lifecycle.PreStop == nil {
+		// no user-provided hook, we can use our own
+		b.Container.Lifecycle.PreStop = &handler
+	}
+
+	return b
+}

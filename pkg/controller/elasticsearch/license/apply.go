@@ -24,7 +24,7 @@ var log = logf.Log.WithName("elasticsearch-controller")
 
 // isTrial returns true if an Elasticsearch license is of the trial type
 func isTrial(l *esclient.License) bool {
-	return l != nil && l.Type == string(commonlicense.ElasticsearchLicenseTypeTrial)
+	return l != nil && l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
 }
 
 func applyLinkedLicense(

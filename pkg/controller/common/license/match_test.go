@@ -9,16 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 )
 
 var (
-	now      = time.Date(2019, 01, 31, 0, 0, 0, 0, time.UTC)
-	gold     = ElasticsearchLicenseTypeGold
-	platinum = ElasticsearchLicenseTypePlatinum
-	trial    = ElasticsearchLicenseTypeTrial
-	expired  = client.License{
+	now        = time.Date(2019, 01, 31, 0, 0, 0, 0, time.UTC)
+	gold       = client.ElasticsearchLicenseTypeGold
+	platinum   = client.ElasticsearchLicenseTypePlatinum
+	trial      = client.ElasticsearchLicenseTypeTrial
+	enterprise = client.ElasticsearchLicenseTypeEnterprise
+	expired    = client.License{
 		ExpiryDateInMillis: chrono.MustMillis("2018-12-31"),
 		StartDateInMillis:  chrono.MustMillis("2018-01-01"),
 	}
@@ -36,7 +38,7 @@ var (
 	}
 )
 
-func license(l client.License, t ElasticsearchLicenseType) client.License {
+func license(l client.License, t client.ElasticsearchLicenseType) client.License {
 	l.Type = string(t)
 	return l
 }
@@ -47,7 +49,8 @@ func noopFilter(_ EnterpriseLicense) (bool, error) {
 
 func Test_bestMatchAt(t *testing.T) {
 	type args struct {
-		licenses []EnterpriseLicense
+		licenses   []EnterpriseLicense
+		minVersion version.Version
 	}
 	tests := []struct {
 		name      string
@@ -151,6 +154,47 @@ func Test_bestMatchAt(t *testing.T) {
 			wantFound: true,
 		},
 		{
+			name: "success: mixed platinum/enterprise pre 7.6",
+			args: args{
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(oneMonth, enterprise)},
+								{License: license(twoMonth, platinum)},
+								{License: license(twelveMonth, platinum)},
+							},
+						},
+					},
+				},
+			},
+			want:      license(twelveMonth, platinum),
+			wantFound: true,
+		},
+		{
+			name: "success: mixed platinum/enterprise post 7.6",
+			args: args{
+				minVersion: version.MustParse("7.6.0"),
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(oneMonth, enterprise)},
+								{License: license(twoMonth, platinum)},
+								{License: license(twelveMonth, platinum)},
+							},
+						},
+					},
+				},
+			},
+			want:      license(oneMonth, enterprise),
+			wantFound: true,
+		},
+		{
 			name: "success: longest valid from multiple enterprise licenses",
 			args: args{
 				licenses: []EnterpriseLicense{
@@ -211,7 +255,7 @@ func Test_bestMatchAt(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			got, _, found := bestMatchAt(now, tt.args.licenses, noopFilter)
+			got, _, found := bestMatchAt(now, &tt.args.minVersion, tt.args.licenses, noopFilter)
 			if tt.wantFound != found {
 				t.Errorf("bestMatchAt() found = %v, want %v", found, tt.wantFound)
 			}
@@ -224,7 +268,8 @@ func Test_bestMatchAt(t *testing.T) {
 
 func Test_filterValidForType(t *testing.T) {
 	type args struct {
-		licenses []EnterpriseLicense
+		minVersion version.Version
+		licenses   []EnterpriseLicense
 	}
 	tests := []struct {
 		name string
@@ -247,7 +292,7 @@ func Test_filterValidForType(t *testing.T) {
 							ClusterLicenses: []ElasticsearchLicense{
 								{
 									License: client.License{
-										Type:               string(ElasticsearchLicenseTypePlatinum),
+										Type:               string(client.ElasticsearchLicenseTypePlatinum),
 										ExpiryDateInMillis: chrono.MustMillis("2019-02-01"),
 										StartDateInMillis:  chrono.MustMillis("2019-01-01"),
 									},
@@ -260,7 +305,64 @@ func Test_filterValidForType(t *testing.T) {
 			want: []licenseWithTimeLeft{
 				{
 					license: client.License{
-						Type:               string(ElasticsearchLicenseTypePlatinum),
+						Type:               string(client.ElasticsearchLicenseTypePlatinum),
+						ExpiryDateInMillis: chrono.MustMillis("2019-02-01"),
+						StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+					},
+					remaining: 24 * time.Hour,
+				},
+			},
+		},
+		{
+			name: "matching is version specific: pre-7.6",
+			args: args{
+				minVersion: version.MustParse("7.5.0"),
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-01"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							ClusterLicenses: []ElasticsearchLicense{
+								{
+									License: client.License{
+										Type:               string(client.ElasticsearchLicenseTypeEnterprise),
+										ExpiryDateInMillis: chrono.MustMillis("2019-02-01"),
+										StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []licenseWithTimeLeft{},
+		},
+		{
+			name: "matching is version specific: post-7.6",
+			args: args{
+				minVersion: version.MustParse("7.7.0"),
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-01"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							ClusterLicenses: []ElasticsearchLicense{
+								{
+									License: client.License{
+										Type:               string(client.ElasticsearchLicenseTypeEnterprise),
+										ExpiryDateInMillis: chrono.MustMillis("2019-02-01"),
+										StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []licenseWithTimeLeft{
+				{
+					license: client.License{
+						Type:               string(client.ElasticsearchLicenseTypeEnterprise),
 						ExpiryDateInMillis: chrono.MustMillis("2019-02-01"),
 						StartDateInMillis:  chrono.MustMillis("2019-01-01"),
 					},
@@ -271,7 +373,7 @@ func Test_filterValidForType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := filterValid(now, tt.args.licenses, noopFilter); !reflect.DeepEqual(got, tt.want) {
+			if got := filterValid(now, &tt.args.minVersion, tt.args.licenses, noopFilter); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("filterValidForType expected %v, got %v", tt.want, got)
 			}
 		})

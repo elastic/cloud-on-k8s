@@ -106,17 +106,4 @@ With the above restriction in place, if you create an Elasticsearch object witho
 Cannot create pod elasticsearch-sample-es-ldbgj48c7r: pods "elasticsearch-sample-es-ldbgj48c7r" is forbidden: minimum memory usage per Container is 3Gi, but request is 2Gi
 ...................................
 
-To avoid this, define an empty `limits` section in the specification so that the operator does not apply the default limits to the object:
-
-[source,yaml]
-----
-spec:
-  nodeSets:
-  - podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources:
-            # specify empty limits
-            limits: {}
-----
+To avoid this, explicitly define the requests and limits mandated by your environment in the resource specification. It will prevent the operator from applying the built-in defaults.
