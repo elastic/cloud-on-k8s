@@ -35,9 +35,9 @@ type runFlags struct {
 	skipCleanup           bool
 	local                 bool
 	logToFile             bool
+	ignoreWebhookFailures bool
 	logVerbosity          int
 	testTimeout           time.Duration
-	ignoreWebhookFailures bool
 }
 
 var log logr.Logger
