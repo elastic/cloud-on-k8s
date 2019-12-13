@@ -17,6 +17,8 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
+var downwardApiVolume = volume.DownwardApi{}
+
 func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keystore.Resources) ([]corev1.Volume, []corev1.VolumeMount) {
 
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
@@ -70,6 +72,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 			httpCertificatesVolume.Volume(),
 			scriptsVolume.Volume(),
 			configVolume.Volume(),
+			downwardApiVolume.Volume(),
 		)...)
 	if keystoreResources != nil {
 		volumes = append(volumes, keystoreResources.Volume)
@@ -86,6 +89,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		httpCertificatesVolume.VolumeMount(),
 		scriptsVolume.VolumeMount(),
 		configVolume.VolumeMount(),
+		downwardApiVolume.VolumeMount(),
 	)
 
 	return volumes, volumeMounts
