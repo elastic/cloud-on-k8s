@@ -5,195 +5,132 @@
 package reconciler
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func Test_nextTakesPrecedence(t *testing.T) {
-	type args struct {
-		current reconcile.Result
-		next    reconcile.Result
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
+func TestResults(t *testing.T) {
+	args := []struct {
+		kind   resultKind
+		result reconcile.Result
 	}{
-		{
-			name: "identity",
-			args: args{},
-			want: false,
-		},
-		{
-			name: "generic requeue takes precedence over no requeue",
-			args: args{
-				current: reconcile.Result{},
-				next:    reconcile.Result{Requeue: true},
-			},
-			want: true,
-		},
-		{
-			name: "shorter time to reconcile takes precedence",
-			args: args{
-				current: reconcile.Result{RequeueAfter: 1 * time.Hour},
-				next:    reconcile.Result{RequeueAfter: 1 * time.Minute},
-			},
-			want: true,
-		},
-		{
-			name: "specific requeue trumps generic requeue",
-			args: args{
-				current: reconcile.Result{Requeue: true},
-				next:    reconcile.Result{RequeueAfter: 1 * time.Minute},
-			},
-			want: true,
-		},
+		{kind: noqueueKind, result: reconcile.Result{}},                                               // 0
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}},                // 1
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true}}, // 2
+		{kind: genericKind, result: reconcile.Result{Requeue: true}},                                  // 3
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := nextResultTakesPrecedence(tt.args.current, tt.args.next); got != tt.want {
-				t.Errorf("nextResultTakesPrecedence() = %v, want %v", got, tt.want)
-			}
+
+	wantRes := []struct {
+		kind   resultKind
+		result reconcile.Result
+	}{
+		{kind: noqueueKind, result: reconcile.Result{}},                                               // 0 & 0
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}},                // 0 & 1
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true}}, // 0 & 2
+		{kind: genericKind, result: reconcile.Result{Requeue: true}},                                  // 0 & 3
+
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1 & 0
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1 & 1
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}}, // 1 & 2
+		{kind: genericKind, result: reconcile.Result{Requeue: true}},                   // 1 & 3
+
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true}}, // 2 & 0
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 10 * time.Second}},                // 2 & 1
+		{kind: specificKind, result: reconcile.Result{RequeueAfter: 20 * time.Second, Requeue: true}}, // 2 & 2
+		{kind: genericKind, result: reconcile.Result{Requeue: true}},                                  // 2 & 3
+
+		{kind: genericKind, result: reconcile.Result{Requeue: true}}, // 3 & 0
+		{kind: genericKind, result: reconcile.Result{Requeue: true}}, // 3 & 1
+		{kind: genericKind, result: reconcile.Result{Requeue: true}}, // 3 & 2
+		{kind: genericKind, result: reconcile.Result{Requeue: true}}, // 3 & 3
+	}
+
+	for i, arg := range args {
+		t.Run(fmt.Sprintf("kindOf_%d", i), func(t *testing.T) {
+			require.Equal(t, arg.kind, kindOf(arg.result))
 		})
+	}
+
+	err1 := errors.New("err1")
+	err2 := errors.New("err2")
+
+	idx := 0
+	for i, a := range args {
+		for j, b := range args {
+			// test mergeResult method
+			t.Run(fmt.Sprintf("mergeResult_%d_%d", i, j), func(t *testing.T) {
+				have := &Results{currKind: a.kind, currResult: a.result}
+				have.mergeResult(b.kind, b.result)
+				want := wantRes[idx]
+				require.Equal(t, want.kind, have.currKind, "Kinds do not match")
+				require.Equal(t, want.result, have.currResult, "Results do not match")
+			})
+
+			// test WithResults method
+			t.Run(fmt.Sprintf("withResults_%d_%d", i, j), func(t *testing.T) {
+				this := &Results{currKind: a.kind, currResult: a.result, errors: []error{err1}}
+				that := &Results{currKind: b.kind, currResult: b.result, errors: []error{err2}}
+				have := this.WithResults(that)
+				want := wantRes[idx]
+
+				require.Equal(t, want.kind, have.currKind, "Unexpected kind")
+				require.Equal(t, want.result, have.currResult, "Unexpected result")
+				require.Equal(t, []error{err1, err2}, have.errors, "Errors not merged")
+			})
+
+			idx++
+		}
 	}
 }
 
-func TestResults_Aggregate(t *testing.T) {
-	tests := []struct {
-		name string
-		args []reconcile.Result
-		want reconcile.Result
-	}{
-		{
-			name: "none",
-			args: nil,
-			want: reconcile.Result{},
-		},
-		{
-			name: "one",
-			args: []reconcile.Result{{Requeue: true}},
-			want: reconcile.Result{Requeue: true},
-		},
-		{
-			name: "multiple",
-			args: []reconcile.Result{{}, {Requeue: true}, {RequeueAfter: 1 * time.Second}},
-			want: reconcile.Result{RequeueAfter: 1 * time.Second},
-		},
-		{
-			name: "multiple with large RequeueAfter: reduced to the maximum value",
-			args: []reconcile.Result{{}, {Requeue: true}, {RequeueAfter: 100 * time.Hour}},
-			want: reconcile.Result{RequeueAfter: MaximumRequeueAfter},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &Results{
-				results: tt.args,
-			}
-			if got, _ := r.Aggregate(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Aggregate() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestResults_HasError(t *testing.T) {
-	type fields struct {
-		results []reconcile.Result
-		errors  []error
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   bool
-	}{
-		{
-			name:   "without error",
-			fields: fields{},
-			want:   false,
-		},
-		{
-			name: "with error",
-			fields: fields{
-				errors: []error{errors.New("test")},
-			},
-			want: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &Results{
-				results: tt.fields.results,
-				errors:  tt.fields.errors,
-			}
-			if got := r.HasError(); got != tt.want {
-				t.Errorf("Results.HasError() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestResults_WithResults(t *testing.T) {
-	err1 := errors.New("test-1")
-	err2 := errors.New("test-2")
-	type args struct {
-		other *Results
-	}
-	tests := []struct {
+func TestResultsAggregate(t *testing.T) {
+	testCases := []struct {
 		name    string
 		results *Results
-		args    args
-		want    *Results
+		want    reconcile.Result
 	}{
 		{
-			name:    "to empty from empty",
+			name:    "noqueue result",
 			results: &Results{},
-			args: args{
-				other: &Results{},
-			},
-			want: &Results{},
+			want:    reconcile.Result{},
 		},
 		{
-			name:    "to empty from non empty",
-			results: &Results{},
-			args: args{
-				other: &Results{
-					results: []reconcile.Result{{}},
-					errors:  []error{err1},
-				},
-			},
-			want: &Results{
-				results: []reconcile.Result{{}},
-				errors:  []error{err1},
-			},
+			name:    "generic result",
+			results: &Results{currResult: reconcile.Result{Requeue: true}, currKind: genericKind},
+			want:    reconcile.Result{Requeue: true},
 		},
 		{
-			name: "to non empty from non empty",
-			results: &Results{
-				results: []reconcile.Result{{Requeue: false}},
-				errors:  []error{err1},
-			},
-			args: args{
-				other: &Results{
-					results: []reconcile.Result{{Requeue: true}},
-					errors:  []error{err2},
-				},
-			},
-			want: &Results{
-				results: []reconcile.Result{{Requeue: false}, {Requeue: true}},
-				errors:  []error{err1, err2},
-			},
+			name:    "specific result under MaximumRequeueAfter",
+			results: &Results{currResult: reconcile.Result{RequeueAfter: 1 * time.Hour}, currKind: specificKind},
+			want:    reconcile.Result{RequeueAfter: 1 * time.Hour},
+		},
+		{
+			name:    "specific result over MaximumRequeueAfter",
+			results: &Results{currResult: reconcile.Result{RequeueAfter: 24 * time.Hour}, currKind: specificKind},
+			want:    reconcile.Result{RequeueAfter: MaximumRequeueAfter},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.results.WithResults(tt.args.other); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Results.WithResults() = %v, want %v", got, tt.want)
-			}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			have, _ := tc.results.Aggregate()
+			require.Equal(t, tc.want, have)
 		})
 	}
+}
+
+func TestResultsHasError(t *testing.T) {
+	r := &Results{}
+	require.False(t, r.HasError())
+
+	r = r.WithError(nil)
+	require.False(t, r.HasError())
+
+	r = r.WithError(errors.New("some error"))
+	require.True(t, r.HasError())
 }
