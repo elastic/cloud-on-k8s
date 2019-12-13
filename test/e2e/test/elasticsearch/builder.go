@@ -288,20 +288,21 @@ func (b Builder) WithMutatedFrom(builder *Builder) Builder {
 }
 
 func (b Builder) WithEnvironmentVariable(name, value string) Builder {
-	for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
-		for _, container := range nodeSet.PodTemplate.Spec.Containers {
+	for i, nodeSet := range b.Elasticsearch.Spec.NodeSets {
+		for j, container := range nodeSet.PodTemplate.Spec.Containers {
 			container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers[j].Env = container.Env
 		}
 	}
 	return b
 }
 
 func (b Builder) WithPodLabel(key, value string) Builder {
-	for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
-		if nodeSet.PodTemplate.Labels == nil {
-			nodeSet.PodTemplate.Labels = make(map[string]string)
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		if b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Labels == nil {
+			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Labels = make(map[string]string)
 		}
-		nodeSet.PodTemplate.Labels[key] = value
+		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Labels[key] = value
 	}
 	return b
 }
