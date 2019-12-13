@@ -27,10 +27,9 @@ func NewReadinessProbe() *corev1.Probe {
 }
 
 const ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
-const ReadinessProbeScript string = `
-#!/usr/bin/env bash
+const ReadinessProbeScript = `#!/usr/bin/env bash
 # Consider a node to be healthy if it responds to a simple GET on "/_cat/nodes?local"
-CURL_TIMEOUT=3
+CURL_TIMEOUT=${CURL_TIMEOUT:=3}
 
 # Check if PROBE_PASSWORD_PATH is set, otherwise fall back to its former name in 1.0.0.beta-1: PROBE_PASSWORD_FILE
 if [[ -z "${PROBE_PASSWORD_PATH}" ]]; then
