@@ -29,12 +29,12 @@ const PreStopHookScript = `#!/usr/bin/env bash
 # max time to wait for pods IP to disappear from DNS. As this runs in parallel to grace period
 # (defaulting to 30s) after which process is SIGKILLed, it should be set to allow enough time
 # for the process to gracefully terminate.
-MAX_WAIT_SECONDS=20
+${MAX_WAIT_SECONDS:=20}
 
 # additional wait, allows queries to successfully use IP from DNS from before pod termination
 # this gives a little bit more time for clients that resolved DNS just before DNS record
 # was updated.
-ADDITIONAL_WAIT_SECONDS=1
+${ADDITIONAL_WAIT_SECONDS:=1}
 
 START_TIME=$(date +%s)
 while true; do

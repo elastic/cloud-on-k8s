@@ -7,10 +7,12 @@ package es
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/assert"
@@ -234,33 +236,72 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 }
 
 func TestMutationWhileLoadTesting(t *testing.T) {
+	pt := corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name: esv1.ElasticsearchContainerName,
+					Env: []corev1.EnvVar{
+						{
+							// Use much higher value to greatly reduce chance of race condition.
+							Name:  "ADDITIONAL_WAIT_SECONDS",
+							Value: "10",
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: map[corev1.ResourceName]resource.Quantity{
+							// This has to be set for the topology check to pass, as we query ES pods for their
+							// memory and pod template has to match.
+							corev1.ResourceMemory: resource.MustParse("2Gi"),
+						},
+					},
+				},
+			},
+		},
+	}
 	b := elasticsearch.NewBuilder("test-while-load-testing").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithHTTPLoadBalancer()
+		WithPodTemplate(pt)
 
 	// force a rolling upgrade through label change
-	var pt corev1.PodTemplateSpec
 	pt.Labels = map[string]string{"some_label_name": "some_new_value"}
 	mutated := b.WithNoESTopology().
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
 		WithPodTemplate(pt)
 
-	// keep hitting ES endpoints at high rate during pod cycling to catch any downtime
-	attacker := vegeta.NewAttacker(vegeta.KeepAlive(false))
 	var metrics vegeta.Metrics
+	var attacker vegeta.Attacker
+	// keep hitting ES endpoints at high rate during pod cycling to catch any downtime
 	w := test.NewOnceWatcher(
 		"load test",
 		func(k *test.K8sClient, t *testing.T) {
-			svc, err := k.GetService(b.Elasticsearch.Namespace, esv1.HTTPService(b.Elasticsearch.Name))
-			assert.NoError(t, err)
-			ip := svc.Status.LoadBalancer.Ingress[0].IP
-
-			rate := vegeta.Rate{Freq: 100, Per: time.Second}
+			url := fmt.Sprintf("https://%s.%s.svc.cluster.local:9200/", esv1.HTTPService(b.Elasticsearch.Name), b.Elasticsearch.Namespace)
+			rate := vegeta.Rate{Freq: 10, Per: time.Second}
 			targeter := vegeta.NewStaticTargeter(vegeta.Target{
 				Method: "GET",
-				URL:    fmt.Sprintf("https://%s:9200/", ip),
+				URL:    url,
 			})
 
+			var attackerOption func(*vegeta.Attacker)
+			if test.Ctx().AutoPortForwarding {
+				// we need to forward, use our dialer
+				c := &http.Client{
+					Timeout: vegeta.DefaultTimeout,
+					Transport: &http.Transport{
+						Proxy:               http.ProxyFromEnvironment,
+						DialContext:         portforward.NewForwardingDialer().DialContext,
+						TLSClientConfig:     vegeta.DefaultTLSConfig,
+						MaxIdleConnsPerHost: vegeta.DefaultConnections,
+						DisableKeepAlives:   true,
+					},
+				}
+				attackerOption = vegeta.Client(c)
+			} else {
+				// no forwarding needed, just turn off keep alives
+				attackerOption = vegeta.KeepAlive(false)
+			}
+
+			attacker = *vegeta.NewAttacker(attackerOption)
 			for res := range attacker.Attack(targeter, rate, 0, "ES load test while recycling pods") {
 				metrics.Add(res)
 			}
