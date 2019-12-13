@@ -32,7 +32,6 @@ cat $$<<$$EOF | kubectl apply -f -
 # - a service to point to the webhook
 # - a self signed certificate for the webhook service
 # - a validating webhook configuration
-# - updates the ECK operator statefulset to enable the webhook
 apiVersion: cert-manager.io/v1alpha2
 kind: Issuer
 metadata:
@@ -98,77 +97,6 @@ webhooks:
     - UPDATE
     resources:
     - elasticsearches
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  labels:
-    control-plane: elastic-operator
-  name: elastic-operator
-  namespace: elastic-system
-spec:
-  podManagementPolicy: OrderedReady
-  replicas: 1
-  revisionHistoryLimit: 10
-  selector:
-    matchLabels:
-      control-plane: elastic-operator
-  serviceName: elastic-operator
-  template:
-      labels:
-        control-plane: elastic-operator
-    spec:
-      containers:
-      - args:
-        - manager
-        - --operator-roles
-        - all
-        - --enable-debug-logs=false
-        env:
-        - name: WEBHOOK_SECRET
-          value: elastic-webhook-server-cert
-        - name: OPERATOR_NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-        - name: OPERATOR_IMAGE
-          value: docker.elastic.co/eck/eck-operator:{eck_version}
-        image: docker.elastic.co/eck/eck-operator:{eck_version}
-        imagePullPolicy: Always
-        name: manager
-        ports:
-        - containerPort: 9443
-          name: webhook-server
-          protocol: TCP
-        volumeMounts:
-        # this is the path controller-runtime looks for certs and should not be changed
-        - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: cert
-          readOnly: true
-        resources:
-          limits:
-            cpu: "1"
-            memory: 150Mi
-          requests:
-            cpu: 100m
-            memory: 50Mi
-      volumes:
-      - name: cert
-        secret:
-          defaultMode: 420
-          secretName: elastic-webhook-server-cert
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      serviceAccount: elastic-operator
-      serviceAccountName: elastic-operator
-      terminationGracePeriodSeconds: 10
-  updateStrategy:
-    rollingUpdate:
-      partition: 0
-    type: RollingUpdate
 EOF
 ----
 
