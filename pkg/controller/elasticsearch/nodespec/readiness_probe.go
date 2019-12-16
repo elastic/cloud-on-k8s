@@ -32,7 +32,7 @@ const ReadinessProbeScript = `#!/usr/bin/env bash
 # fail should be called as a last resort to help the user to understand why the probe failed
 function fail {
   timestamp=$(date --iso-8601=seconds)
-  echo "{\"timestamp\": \"${timestamp}\", \"message\": \"readiness probe failed\", "$1"}" | tee /proc/1/fd/1
+  echo "{\"timestamp\": \"${timestamp}\", \"message\": \"readiness probe failed\", "$1"}" | tee /proc/1/fd/2
   exit 1
 }
 
