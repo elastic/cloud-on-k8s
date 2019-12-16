@@ -36,7 +36,7 @@ function fail {
   exit 1
 }
 
-labels="` + volume.DownwardApiMountPath + "/" + volume.LabelsFile + `"
+labels="` + volume.DownwardAPIMountPath + "/" + volume.LabelsFile + `"
 
 if [[ ! -f "${labels}" ]]; then
   fail "\"reason\": \"${labels} does not exist\""

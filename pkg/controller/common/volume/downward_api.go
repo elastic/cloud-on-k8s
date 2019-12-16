@@ -9,8 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var downwardApiVolume = corev1.Volume{
-	Name: volume.DownwardApiVolumeName,
+var downwardAPIVolume = corev1.Volume{
+	Name: volume.DownwardAPIVolumeName,
 	VolumeSource: corev1.VolumeSource{
 		DownwardAPI: &corev1.DownwardAPIVolumeSource{
 			Items: []corev1.DownwardAPIVolumeFile{
@@ -25,22 +25,22 @@ var downwardApiVolume = corev1.Volume{
 	},
 }
 
-var downwardApiVolumeMount = corev1.VolumeMount{
-	Name:      volume.DownwardApiVolumeName,
-	MountPath: volume.DownwardApiMountPath,
+var downwardAPIVolumeMount = corev1.VolumeMount{
+	Name:      volume.DownwardAPIVolumeName,
+	MountPath: volume.DownwardAPIMountPath,
 	ReadOnly:  true,
 }
 
-type DownwardApi struct{}
+type DownwardAPI struct{}
 
-func (DownwardApi) Name() string {
-	return volume.DownwardApiVolumeName
+func (DownwardAPI) Name() string {
+	return volume.DownwardAPIVolumeName
 }
 
-func (DownwardApi) Volume() corev1.Volume {
-	return downwardApiVolume
+func (DownwardAPI) Volume() corev1.Volume {
+	return downwardAPIVolume
 }
 
-func (DownwardApi) VolumeMount() corev1.VolumeMount {
-	return downwardApiVolumeMount
+func (DownwardAPI) VolumeMount() corev1.VolumeMount {
+	return downwardAPIVolumeMount
 }
