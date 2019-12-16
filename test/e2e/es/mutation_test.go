@@ -236,38 +236,15 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 }
 
 func TestMutationWhileLoadTesting(t *testing.T) {
-	pt := corev1.PodTemplateSpec{
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name: esv1.ElasticsearchContainerName,
-					Env: []corev1.EnvVar{
-						{
-							// Use much higher value to greatly reduce chance of race condition.
-							Name:  "ADDITIONAL_WAIT_SECONDS",
-							Value: "10",
-						},
-					},
-					Resources: corev1.ResourceRequirements{
-						Limits: map[corev1.ResourceName]resource.Quantity{
-							// This has to be set for the topology check to pass, as we query ES pods for their
-							// memory and pod template has to match.
-							corev1.ResourceMemory: resource.MustParse("2Gi"),
-						},
-					},
-				},
-			},
-		},
-	}
 	b := elasticsearch.NewBuilder("test-while-load-testing").
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPodTemplate(pt)
+		WithEnvironmentVariable("ADDITIONAL_WAIT_SECONDS", "10")
 
 	// force a rolling upgrade through label change
-	pt.Labels = map[string]string{"some_label_name": "some_new_value"}
 	mutated := b.WithNoESTopology().
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithPodTemplate(pt)
+		WithEnvironmentVariable("ADDITIONAL_WAIT_SECONDS", "10").
+		WithPodLabel("some_label_name", "some_new_value")
 
 	var metrics vegeta.Metrics
 	var attacker vegeta.Attacker
