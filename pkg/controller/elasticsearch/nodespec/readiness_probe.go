@@ -7,6 +7,7 @@ package nodespec
 import (
 	"path"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -43,7 +44,7 @@ if [[ ! -f "${labels}" ]]; then
 fi
 
 # get Elasticsearch version from the downward API
-version=$(grep "elasticsearch.k8s.elastic.co/version" ${labels} | cut -d '=' -f 2)
+version=$(grep "` + label.VersionLabelName + `" ${labels} | cut -d '=' -f 2)
 # remove quotes
 version=$(echo "${version}" | tr -d '"')
 
