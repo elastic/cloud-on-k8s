@@ -36,7 +36,7 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 		},
 		{
 			name:    "valid v4 license",
-			args:    licenseFixtureV3,
+			args:    licenseFixtureV4,
 			wantErr: false,
 		},
 		{
