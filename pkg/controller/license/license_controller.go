@@ -154,7 +154,7 @@ type ReconcileLicenses struct {
 }
 
 // findLicense tries to find the best license available.
-func findLicense(c k8s.Client, checker license.Checker, minVersion *version.Version) (esclient.License, string, bool) {
+func FindLicense(c k8s.Client, checker license.Checker, minVersion *version.Version) (esclient.License, string, bool) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
 		log.Info("Ignoring invalid license objects", "errors", errs)
@@ -219,7 +219,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) 
 	if err != nil {
 		return noResult, true, err
 	}
-	matchingSpec, parent, found := findLicense(r, r.checker, minVersion)
+	matchingSpec, parent, found := FindLicense(r, r.checker, minVersion)
 	if err != nil {
 		return noResult, true, err
 	}

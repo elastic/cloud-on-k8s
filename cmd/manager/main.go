@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/client-go/rest"
-
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
@@ -21,6 +19,7 @@ import (
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -45,6 +44,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/pkg/resource"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
@@ -321,6 +321,9 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "LicenseTrial")
 			os.Exit(1)
 		}
+
+		r := resource.NewLicensingReporter(mgr.GetClient())
+		go r.Start(operatorNamespace)
 	}
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
