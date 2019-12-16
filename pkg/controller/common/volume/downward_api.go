@@ -33,6 +33,8 @@ var downwardAPIVolumeMount = corev1.VolumeMount{
 
 type DownwardAPI struct{}
 
+var _ VolumeLike = DownwardAPI{}
+
 func (DownwardAPI) Name() string {
 	return volume.DownwardAPIVolumeName
 }
