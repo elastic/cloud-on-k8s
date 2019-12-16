@@ -14,6 +14,7 @@ import (
 	ucfg "github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -194,4 +195,94 @@ func TestNewConfigSettings(t *testing.T) {
 func mkKibana() kbv1.Kibana {
 	kb := kbv1.Kibana{}
 	return kb
+}
+
+func Test_getExistingConfig(t *testing.T) {
+
+	testKb := kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testkb",
+			Namespace: "testns",
+		},
+	}
+	testValidSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SecretName(testKb),
+			Namespace: testKb.Namespace,
+		},
+		Data: map[string][]byte{
+			SettingsFilename: defaultConfig,
+		},
+	}
+	testNoYaml := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SecretName(testKb),
+			Namespace: testKb.Namespace,
+		},
+		Data: map[string][]byte{
+			"notarealkey": []byte(`:-{`),
+		},
+	}
+	testInvalidYaml := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SecretName(testKb),
+			Namespace: testKb.Namespace,
+		},
+		Data: map[string][]byte{
+			SettingsFilename: []byte(`:-{`),
+		},
+	}
+
+	tests := []struct {
+		name      string
+		kb        kbv1.Kibana
+		secret    corev1.Secret
+		expectErr bool
+		expectKey string
+	}{
+		{
+			name:      "happy path",
+			kb:        testKb,
+			secret:    testValidSecret,
+			expectErr: false,
+			expectKey: "xpack",
+		},
+		{
+			name:      "no secret exists",
+			kb:        testKb,
+			secret:    corev1.Secret{},
+			expectErr: true,
+			expectKey: "",
+		},
+		{
+			name:      "no kibana.yml exists in secret",
+			kb:        testKb,
+			secret:    testNoYaml,
+			expectErr: true,
+			expectKey: "",
+		},
+		{
+			name:      "cannot parse yaml",
+			kb:        testKb,
+			secret:    testInvalidYaml,
+			expectErr: true,
+			expectKey: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client := k8s.WrapClient(fake.NewFakeClient(&tc.secret))
+			returned, err := getExistingConfig(client, tc.kb)
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			if tc.expectKey != "" {
+				require.NotNil(t, returned)
+				assert.True(t, (*ucfg.Config)(returned).HasField("xpack"))
+			}
+		})
+	}
 }

@@ -7,6 +7,8 @@ package config
 import (
 	"path"
 
+	"github.com/pkg/errors"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -15,9 +17,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"k8s.io/apimachinery/pkg/types"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -34,7 +35,7 @@ type CanonicalConfig struct {
 // TODO sabo does it belong here?
 func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
 
-	currentConfig, _ := getExistingConfig(client, kb)
+	// currentConfig, _ := getExistingConfig(client, kb)
 	specConfig := kb.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1.Config{}
@@ -83,26 +84,16 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
 func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
-	var cfg *settings.CanonicalConfig
 	err := client.Get(types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
-	// how do we want to indicate that nothing is found?
-	if err != nil && apierrors.IsNotFound(err) {
-		return cfg, nil
+	if err != nil {
+		return nil, errors.WithStack(err)
 	}
 	rawCfg, exists := secret.Data[SettingsFilename]
 	if !exists {
-		// TODO make this an error
-		return cfg, nil
+		return nil, errors.Errorf("No key %s in secret %s/%s", SettingsFilename, secret.Namespace, secret.Name)
 	}
-	// dict := make(map(string[interface{}]))
-	// _ = yaml.Unmarshal(rawCfg, dict)
-	// if err != nil{
-
-	// }
-	cfg, _ = settings.ParseConfig(rawCfg)
-	return cfg, nil
+	return settings.ParseConfig(rawCfg)
 }
-
 
 func baseSettings(kb kbv1.Kibana) map[string]interface{} {
 	return map[string]interface{}{
