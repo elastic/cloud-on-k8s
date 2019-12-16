@@ -47,7 +47,7 @@ version=$(grep "elasticsearch.k8s.elastic.co/version" ${labels} | cut -d '=' -f 
 # remove quotes
 version=$(echo "${version}" | tr -d '"')
 
-CURL_TIMEOUT=3
+CURL_TIMEOUT=${CURL_TIMEOUT:=3}
 
 # Check if PROBE_PASSWORD_PATH is set, otherwise fall back to its former name in 1.0.0.beta-1: PROBE_PASSWORD_FILE
 if [[ -z "${PROBE_PASSWORD_PATH}" ]]; then
