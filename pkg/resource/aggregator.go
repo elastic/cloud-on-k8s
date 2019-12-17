@@ -19,6 +19,7 @@ import (
 	kbconfig "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
 	kbpod "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -58,30 +59,15 @@ func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
 	var total resource.Quantity
 	for _, es := range esList.Items {
 		for _, nodeSet := range es.Spec.NodeSets {
-			var mem resource.Quantity
-
-			// read the container memory limits
-			for _, container := range nodeSet.PodTemplate.Spec.Containers {
-				if container.Name == esv1.ElasticsearchContainerName {
-					mem = *container.Resources.Limits.Memory()
-
-					// if not, fallback to twice the max JVM heap size
-					if mem.IsZero() {
-						for _, envVar := range container.Env {
-							if envVar.Name == essettings.EnvEsJavaOpts {
-								mem, err = memFromJavaOpts(envVar.Value)
-								if err != nil {
-									return resource.Quantity{}, err
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// if not, fallback to the default limits
-			if mem.IsZero() {
-				mem = nodespec.DefaultMemoryLimits
+			mem, err := containerMemLimits(
+				nodeSet.PodTemplate.Spec.Containers,
+				esv1.ElasticsearchContainerName,
+				essettings.EnvEsJavaOpts,
+				memFromJavaOpts,
+				nodespec.DefaultMemoryLimits,
+			)
+			if err != nil {
+				return resource.Quantity{}, err
 			}
 
 			total.Add(multiply(mem, nodeSet.Count))
@@ -101,30 +87,15 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 
 	var total resource.Quantity
 	for _, kb := range kbList.Items {
-		var mem resource.Quantity
-
-		// read the container memory limits
-		for _, container := range kb.Spec.PodTemplate.Spec.Containers {
-			if container.Name == kbv1.KibanaContainerName {
-				mem = *container.Resources.Limits.Memory()
-
-				// if not, fallback to the max JVM heap size
-				if mem.IsZero() {
-					for _, envVar := range container.Env {
-						if envVar.Name == kbconfig.EnvNodeOpts {
-							mem, err = memFromNodeOptions(envVar.Value)
-							if err != nil {
-								return resource.Quantity{}, err
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// if not, fallback to the default limits
-		if mem.IsZero() {
-			mem = kbpod.DefaultMemoryLimits
+		mem, err := containerMemLimits(
+			kb.Spec.PodTemplate.Spec.Containers,
+			kbv1.KibanaContainerName,
+			kbconfig.EnvNodeOpts,
+			memFromNodeOptions,
+			kbpod.DefaultMemoryLimits,
+		)
+		if err != nil {
+			return resource.Quantity{}, err
 		}
 
 		total.Add(multiply(mem, kb.Spec.Count))
@@ -143,18 +114,15 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 
 	var total resource.Quantity
 	for _, as := range asList.Items {
-		var mem resource.Quantity
-
-		// read the container memory limits
-		for _, container := range as.Spec.PodTemplate.Spec.Containers {
-			if container.Name == asv1.ApmServerContainerName {
-				mem = *container.Resources.Limits.Memory()
-			}
-		}
-
-		// if not, fallback to the default limits
-		if mem.IsZero() {
-			mem = apmserver.DefaultMemoryLimits
+		mem, err := containerMemLimits(
+			as.Spec.PodTemplate.Spec.Containers,
+			asv1.ApmServerContainerName,
+			"",
+			nil,
+			apmserver.DefaultMemoryLimits,
+		)
+		if err != nil {
+			return resource.Quantity{}, err
 		}
 
 		total.Add(multiply(mem, as.Spec.Count))
@@ -162,6 +130,43 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 	}
 
 	return total, nil
+}
+
+// containerMemLimits reads the container memory limits from the resource specification with fallback
+// on the environment variable and on the default limits
+func containerMemLimits(
+	containers []corev1.Container,
+	containerName string,
+	envVarName string,
+	envLookup func(envVar string) (resource.Quantity, error),
+	defaultLimit resource.Quantity,
+) (resource.Quantity, error) {
+	var mem resource.Quantity
+	for _, container := range containers {
+		if container.Name == containerName {
+			mem = *container.Resources.Limits.Memory()
+
+			// if not, maybe fallback to the environment variable
+			if envLookup != nil && mem.IsZero() {
+				for _, envVar := range container.Env {
+					if envVar.Name == envVarName {
+						var err error
+						mem, err = envLookup(envVar.Value)
+						if err != nil {
+							return resource.Quantity{}, err
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// if not, fallback to the default limits
+	if mem.IsZero() {
+		mem = defaultLimit
+	}
+
+	return mem, nil
 }
 
 // maxHeapSizePattern is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K])
