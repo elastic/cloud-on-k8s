@@ -126,7 +126,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			},
 		},
 		{
-			name:    "prior to 7.6.0, we should not allowed license upload types",
+			name:    "prior to 7.6.0, we should not set allowed license upload types",
 			version: "7.5.0",
 			cfgData: map[string]interface{}{},
 			assert: func(cfg CanonicalConfig) {
