@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,10 +18,8 @@ import (
 )
 
 const (
-	// defaultOperatorLevel is the default license level when no operator license is installed
-	defaultOperatorLevel = "basic"
-	// minSupportedVersion is the minimum Elastic stack version used to find an operator license
-	minSupportedVersion = "6.8.0"
+	// defaultOperatorLicenseLevel is the default license level when no operator license is installed
+	defaultOperatorLicenseLevel = "basic"
 	// licensingCfgMapName is the name of the config map used to store licensing information
 	licensingCfgMapName = "elastic-licensing"
 )
@@ -33,7 +29,7 @@ const (
 type LicensingInfo struct {
 	Timestamp               string `json:"timestamp"`
 	LicenseLevel            string `json:"license_level"`
-	MemoryInGiga            string `json:"memory_in_giga"`
+	Memory                  string `json:"memory"`
 	EnterpriseResourceUnits string `json:"enterprise_resource_units"`
 }
 
@@ -44,17 +40,20 @@ type LicensingResolver struct {
 }
 
 // ToInfo returns licensing information given the total memory of all Elastic managed components
-func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) LicensingInfo {
+func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo, error) {
 	eru := inEnterpriseResourceUnits(totalMemory)
 	memoryInGiga := inGiga(totalMemory)
-	licenseLevel := r.getOperatorLicenseLevel()
+	licenseLevel, err := r.getOperatorLicenseLevel()
+	if err != nil {
+		return LicensingInfo{}, err
+	}
 
 	return LicensingInfo{
 		Timestamp:               time.Now().Format(time.RFC3339),
 		LicenseLevel:            licenseLevel,
-		MemoryInGiga:            memoryInGiga,
+		Memory:                  memoryInGiga,
 		EnterpriseResourceUnits: eru,
-	}
+	}, nil
 }
 
 // Save updates or creates licensing information in a config map
@@ -80,22 +79,25 @@ func (r LicensingResolver) Save(info LicensingInfo, operatorNs string) error {
 }
 
 // getOperatorLicenseLevel gets the level of the operator license.
-// If no license is found, the defaultOperatorLevel is returned.
-func (r LicensingResolver) getOperatorLicenseLevel() string {
-	checker := commonlicense.NewLicenseChecker(r.client, r.operatorNs)
-	minVersion, _ := version.Parse(minSupportedVersion)
-	lic, _, found := license.FindLicense(r.client, checker, minVersion)
-	if !found {
-		return defaultOperatorLevel
+// If no license is found, the defaultOperatorLicenseLevel is returned.
+func (r LicensingResolver) getOperatorLicenseLevel() (string, error) {
+	checker := license.NewLicenseChecker(r.client, r.operatorNs)
+	lic, err := checker.CurrentEnterpriseLicense()
+	if err != nil {
+		return "", err
 	}
 
-	return lic.Type
+	if lic == nil {
+		return defaultOperatorLicenseLevel, nil
+	}
+
+	return string(lic.License.Type), nil
 }
 
 // inGiga converts a resource.Quantity in gigabytes
 func inGiga(q resource.Quantity) string {
 	// divide the value (in bytes) per 1 billion (1GB)
-	return fmt.Sprintf("%0.2f", float32(q.Value())/1000000000)
+	return fmt.Sprintf("%0.2fGB", float32(q.Value())/1000000000)
 }
 
 // inEnterpriseResourceUnits converts a resource.Quantity in Elastic Enterprise resource units

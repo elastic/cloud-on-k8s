@@ -43,6 +43,11 @@ type LicenseSpec struct {
 	ClusterLicenses    []ElasticsearchLicense `json:"cluster_licenses"`
 }
 
+var EnterpriseLicenseTypeOrder = map[OperatorLicenseType]int{
+	LicenseTypeEnterprise:      0,
+	LicenseTypeEnterpriseTrial: 1,
+}
+
 // StartTime is the date as of which this license is valid.
 func (l EnterpriseLicense) StartTime() time.Time {
 	return time.Unix(0, l.License.StartDateInMillis*int64(time.Millisecond))

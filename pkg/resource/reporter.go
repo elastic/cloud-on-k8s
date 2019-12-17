@@ -69,5 +69,5 @@ func (r LicensingReporter) Get() (LicensingInfo, error) {
 		return LicensingInfo{}, err
 	}
 
-	return r.licenseResolver.ToInfo(totalMemory), nil
+	return r.licenseResolver.ToInfo(totalMemory)
 }
