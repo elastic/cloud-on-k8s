@@ -87,6 +87,9 @@ func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
 
 // Valid returns true if the given Enterprise license is valid or an error if any.
 func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
+	if l.IsTrial() {
+		return true, nil
+	}
 	pk, err := lc.publicKeyFor(l)
 	if err != nil {
 		return false, errors.Wrap(err, "while loading signature secret")
