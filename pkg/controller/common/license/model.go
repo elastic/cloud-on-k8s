@@ -43,9 +43,10 @@ type LicenseSpec struct {
 	ClusterLicenses    []ElasticsearchLicense `json:"cluster_licenses"`
 }
 
+// EnterpriseLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
 var EnterpriseLicenseTypeOrder = map[OperatorLicenseType]int{
-	LicenseTypeEnterprise:      0,
-	LicenseTypeEnterpriseTrial: 1,
+	LicenseTypeEnterpriseTrial: 0,
+	LicenseTypeEnterprise:      1,
 }
 
 // StartTime is the date as of which this license is valid.

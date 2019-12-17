@@ -56,13 +56,14 @@ func (lc *checker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 
 	sort.Slice(licenses, func(i, j int) bool {
 		t1, t2 := EnterpriseLicenseTypeOrder[licenses[i].License.Type], EnterpriseLicenseTypeOrder[licenses[j].License.Type]
-		if t1 != t2 { // sort by type
-			return t1 < t2
+		if t1 != t2 { // sort by type (first the most features)
+			return t1 > t2
 		}
-		// and by remaining time
-		return licenses[i].License.ExpiryDateInMillis < licenses[j].License.ExpiryDateInMillis
+		// and by expiry date (first which expires in a long time)
+		return licenses[i].License.ExpiryDateInMillis > licenses[j].License.ExpiryDateInMillis
 	})
 
+	// pick the first valid Enterprise license in the sorted slice
 	for _, l := range licenses {
 		valid, err := lc.Valid(l)
 		if err != nil {
