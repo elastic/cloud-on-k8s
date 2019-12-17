@@ -22,13 +22,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// Kibana configuration settings file
-const (
-	SettingsFilename = "kibana.yml"
-	name             = "kibana-config"
-)
+// SettingsFilename is the name of the Kibana configuration settings file
+const SettingsFilename = "kibana.yml"
 
-var log = logf.Log.WithName(name)
+var log = logf.Log.WithName("kibana-config")
 
 // CanonicalConfig contains configuration for Kibana ("kibana.yml"),
 // as a hierarchical key-value configuration.
