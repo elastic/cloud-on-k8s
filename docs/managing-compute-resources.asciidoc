@@ -25,7 +25,9 @@ For Elasticsearch objects, make sure to consider the heap size when you set reso
 ----
 spec:
   nodeSets:
-  - podTemplate:
+  - name: default
+    count: 1
+    podTemplate:
       spec:
         containers:
         - name: elasticsearch
