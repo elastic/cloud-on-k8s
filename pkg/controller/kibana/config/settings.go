@@ -7,8 +7,6 @@ package config
 import (
 	"path"
 
-	"github.com/pkg/errors"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -18,12 +16,19 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Kibana configuration settings file
-const SettingsFilename = "kibana.yml"
+const (
+	SettingsFilename = "kibana.yml"
+	name             = "kibana-config"
+)
+
+var log = logf.Log.WithName(name)
 
 // CanonicalConfig contains configuration for Kibana ("kibana.yml"),
 // as a hierarchical key-value configuration.
@@ -35,7 +40,8 @@ type CanonicalConfig struct {
 // TODO sabo does it belong here?
 func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
 
-	// currentConfig, _ := getExistingConfig(client, kb)
+	currentConfig := getExistingConfig(client, kb)
+
 	specConfig := kb.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1.Config{}
@@ -50,7 +56,11 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
 
 	if !kb.RequiresAssociation() {
-		if err := cfg.MergeWith(versionSpecificCfg, kibanaTLSCfg, userSettings); err != nil {
+		if err := cfg.MergeWith(
+			currentConfig,
+			versionSpecificCfg,
+			kibanaTLSCfg,
+			userSettings); err != nil {
 			return CanonicalConfig{}, err
 		}
 		return CanonicalConfig{cfg}, nil
@@ -63,6 +73,7 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 
 	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
+		currentConfig,
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
@@ -82,17 +93,27 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 }
 
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
-func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
+func getExistingConfig(client k8s.Client, kb kbv1.Kibana) *settings.CanonicalConfig {
 	var secret corev1.Secret
 	err := client.Get(types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	if err != nil && apierrors.IsNotFound(err) {
+		log.V(1).Info("Kibana config secret does not exist", "kibana_namespace", kb.Namespace, "kibana_name", kb.Name)
+		return nil
+	} else if err != nil && !apierrors.IsNotFound(err) {
+		log.Error(err, "Error retrieving kibana config secret", "kibana_namespace", kb.Namespace, "kibana_name", kb.Name)
+		return nil
 	}
 	rawCfg, exists := secret.Data[SettingsFilename]
 	if !exists {
-		return nil, errors.Errorf("No key %s in secret %s/%s", SettingsFilename, secret.Namespace, secret.Name)
+		log.Error(nil, "No kibana config file in secret", "secret_namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
+		return nil
 	}
-	return settings.ParseConfig(rawCfg)
+	cfg, err := settings.ParseConfig(rawCfg)
+	if err != nil {
+		log.Error(err, "Error parsing existing kibana config in secret", "secret_namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
+		return nil
+	}
+	return cfg
 }
 
 func baseSettings(kb kbv1.Kibana) map[string]interface{} {
@@ -101,6 +122,8 @@ func baseSettings(kb kbv1.Kibana) map[string]interface{} {
 		ServerHost:         "0",
 		ElasticSearchHosts: []string{kb.AssociationConf().GetURL()},
 		XpackMonitoringUiContainerElasticsearchEnabled: true,
+		// this will get overriden if one already exists or is specified by the user
+		XpackSecurityEncryptionKey: rand.String(64),
 	}
 }
 

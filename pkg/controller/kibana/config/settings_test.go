@@ -27,12 +27,14 @@ elasticsearch:
     - ""
 server:
   host: "0"
-  name: ""
+  name: "testkb"
   ssl:
     enabled: true
     key: /mnt/elastic-internal/http-certs/tls.key
     certificate: /mnt/elastic-internal/http-certs/tls.crt
 xpack:
+  security:
+    encryptionKey: thisismyencryptionkey
   monitoring:
     ui:
       container:
@@ -52,6 +54,16 @@ elasticsearch:
 `)
 
 func TestNewConfigSettings(t *testing.T) {
+	defaultKb := mkKibana()
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SecretName(defaultKb),
+			Namespace: defaultKb.Namespace,
+		},
+		Data: map[string][]byte{
+			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey"),
+		},
+	}
 	type args struct {
 		client k8s.Client
 		kb     func() kbv1.Kibana
@@ -65,13 +77,15 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "default config",
 			args: args{
-				kb: mkKibana,
+				client: k8s.WrappedFakeClient(existingSecret),
+				kb:     mkKibana,
 			},
 			want: defaultConfig,
 		},
 		{
 			name: "without TLS",
 			args: args{
+				client: k8s.WrappedFakeClient(existingSecret),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec = kbv1.KibanaSpec{
@@ -88,7 +102,7 @@ func TestNewConfigSettings(t *testing.T) {
 			},
 			want: func() []byte {
 				cfg, err := settings.ParseConfig(defaultConfig)
-				require.NoError(t, err)
+				require.NoError(t, err, "cfg", cfg)
 				removed, err := (*ucfg.Config)(cfg).Remove("server.ssl", -1, settings.Options...)
 				require.True(t, removed)
 				require.NoError(t, err)
@@ -116,9 +130,11 @@ func TestNewConfigSettings(t *testing.T) {
 					return kb
 				},
 				client: k8s.WrapClient(fake.NewFakeClient(
+					existingSecret,
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "auth-secret",
+							Name:      "auth-secret",
+							Namespace: mkKibana().Namespace,
 						},
 						Data: map[string][]byte{
 							"elastic": []byte("password"),
@@ -152,6 +168,7 @@ func TestNewConfigSettings(t *testing.T) {
 		{
 			name: "with user config",
 			args: args{
+				client: k8s.WrappedFakeClient(existingSecret),
 				kb: func() kbv1.Kibana {
 					kb := mkKibana()
 					kb.Spec = kbv1.KibanaSpec{
@@ -172,7 +189,7 @@ func TestNewConfigSettings(t *testing.T) {
 			versionSpecificCfg := settings.MustCanonicalConfig(map[string]interface{}{"elasticsearch.hosts": nil})
 			got, err := NewConfigSettings(tt.args.client, tt.args.kb(), versionSpecificCfg)
 			if tt.wantErr {
-				require.NotNil(t, err)
+				require.Error(t, err)
 			}
 			require.NoError(t, err)
 
@@ -192,8 +209,46 @@ func TestNewConfigSettings(t *testing.T) {
 	}
 }
 
+// TestNewConfigSettingsCreateEncryptionKey checks that we generate a new key if none is specified
+func TestNewConfigSettingsCreateEncryptionKey(t *testing.T) {
+	client := k8s.WrapClient(fake.NewFakeClient())
+	kb := mkKibana()
+	got, err := NewConfigSettings(client, kb, nil)
+	require.NoError(t, err)
+	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
+	require.NoError(t, err)
+	assert.NotEmpty(t, val)
+}
+
+// TestNewConfigSettingsExplicitEncryptionKey tests that we do not override the existing key if one is already specified
+func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
+	kb := mkKibana()
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      SecretName(kb),
+			Namespace: kb.Namespace,
+		},
+		Data: map[string][]byte{
+			SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey"),
+		},
+	}
+	client := k8s.WrapClient(fake.NewFakeClient(existingSecret))
+	got, err := NewConfigSettings(client, kb, nil)
+	require.NoError(t, err)
+	var gotCfg map[string]interface{}
+	require.NoError(t, got.Unpack(&gotCfg))
+	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
+	require.NoError(t, err)
+	assert.Equal(t, "thisismyencryptionkey", val)
+}
+
 func mkKibana() kbv1.Kibana {
-	kb := kbv1.Kibana{}
+	kb := kbv1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testkb",
+			Namespace: "testns",
+		},
+	}
 	return kb
 }
 
@@ -234,38 +289,34 @@ func Test_getExistingConfig(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		kb        kbv1.Kibana
-		secret    corev1.Secret
-		expectErr bool
+		name   string
+		kb     kbv1.Kibana
+		secret corev1.Secret
+		// an empty string means we should expect a nil return, anything else should be a key in the parsed config
 		expectKey string
 	}{
 		{
 			name:      "happy path",
 			kb:        testKb,
 			secret:    testValidSecret,
-			expectErr: false,
 			expectKey: "xpack",
 		},
 		{
 			name:      "no secret exists",
 			kb:        testKb,
 			secret:    corev1.Secret{},
-			expectErr: true,
 			expectKey: "",
 		},
 		{
 			name:      "no kibana.yml exists in secret",
 			kb:        testKb,
 			secret:    testNoYaml,
-			expectErr: true,
 			expectKey: "",
 		},
 		{
 			name:      "cannot parse yaml",
 			kb:        testKb,
 			secret:    testInvalidYaml,
-			expectErr: true,
 			expectKey: "",
 		},
 	}
@@ -273,15 +324,12 @@ func Test_getExistingConfig(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			client := k8s.WrapClient(fake.NewFakeClient(&tc.secret))
-			returned, err := getExistingConfig(client, tc.kb)
-			if tc.expectErr {
-				require.Error(t, err)
+			result := getExistingConfig(client, tc.kb)
+			if tc.expectKey == "" {
+				assert.Nil(t, result)
 			} else {
-				require.NoError(t, err)
-			}
-			if tc.expectKey != "" {
-				require.NotNil(t, returned)
-				assert.True(t, (*ucfg.Config)(returned).HasField("xpack"))
+				require.NotNil(t, result)
+				assert.True(t, (*ucfg.Config)(result).HasField(tc.expectKey))
 			}
 		})
 	}
