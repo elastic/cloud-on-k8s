@@ -42,7 +42,7 @@ type LicensingResolver struct {
 // ToInfo returns licensing information given the total memory of all Elastic managed components
 func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo, error) {
 	eru := inEnterpriseResourceUnits(totalMemory)
-	memoryInGiga := inGiga(totalMemory)
+	memoryInGB := inGB(totalMemory)
 	licenseLevel, err := r.getOperatorLicenseLevel()
 	if err != nil {
 		return LicensingInfo{}, err
@@ -51,7 +51,7 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 	return LicensingInfo{
 		Timestamp:               time.Now().Format(time.RFC3339),
 		LicenseLevel:            licenseLevel,
-		Memory:                  memoryInGiga,
+		Memory:                  memoryInGB,
 		EnterpriseResourceUnits: eru,
 	}, nil
 }
@@ -94,8 +94,8 @@ func (r LicensingResolver) getOperatorLicenseLevel() (string, error) {
 	return string(lic.License.Type), nil
 }
 
-// inGiga converts a resource.Quantity in gigabytes
-func inGiga(q resource.Quantity) string {
+// inGB converts a resource.Quantity in gigabytes
+func inGB(q resource.Quantity) string {
 	// divide the value (in bytes) per 1 billion (1GB)
 	return fmt.Sprintf("%0.2fGB", float32(q.Value())/1000000000)
 }
@@ -106,7 +106,7 @@ func inEnterpriseResourceUnits(q resource.Quantity) string {
 	return fmt.Sprintf("%0.2f", float32(q.Value())/64000000000)
 }
 
-// toMap transforms a LicensingInfo in a map of string, in order to fill in the data of a config map
+// toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
 func (i LicensingInfo) toMap() (map[string]string, error) {
 	bytes, err := json.Marshal(&i)
 	if err != nil {

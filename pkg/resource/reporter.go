@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	// refreshPeriod defines how long the licensing information should be refreshed
+	// refreshPeriod defines how often the licensing information should be refreshed
 	refreshPeriod = 2 * time.Minute
 )
 

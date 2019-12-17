@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	asv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
@@ -106,7 +106,7 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 }
 
 func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
-	var asList asv1.ApmServerList
+	var asList apmv1.ApmServerList
 	err := a.client.List(&asList)
 	if err != nil {
 		return resource.Quantity{}, err
@@ -116,7 +116,7 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 	for _, as := range asList.Items {
 		mem, err := containerMemLimits(
 			as.Spec.PodTemplate.Spec.Containers,
-			asv1.ApmServerContainerName,
+			apmv1.ApmServerContainerName,
 			"",
 			nil,
 			apmserver.DefaultMemoryLimits,
@@ -170,9 +170,7 @@ func containerMemLimits(
 }
 
 // maxHeapSizePattern is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K])
-const maxHeapSizePattern = "-Xmx([0-9]*)([gGmMkK]?)"
-
-var maxHeapSizeRe = regexp.MustCompile(maxHeapSizePattern)
+var maxHeapSizeRe = regexp.MustCompile("-Xmx([0-9]*)([gGmMkK]?)")
 
 // memFromJavaOpts extracts the maximum Java heap size from a Java options string, multiplies the value by 2
 // and converts it to a resource.Quantity
@@ -198,9 +196,7 @@ func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 }
 
 // nodeHeapSizePattern is the pattern to extract the max heap size of the node memory (--max-old-space-size=<mb_size>)
-const nodeHeapSizePattern = "--max-old-space-size=([0-9]*)"
-
-var nodeHeapSizeRe = regexp.MustCompile(nodeHeapSizePattern)
+var nodeHeapSizeRe = regexp.MustCompile("--max-old-space-size=([0-9]*)")
 
 // memFromNodeOptions extracts the Node heap size from a Node options string and converts it to a resource.Quantity
 func memFromNodeOptions(nodeOpts string) (resource.Quantity, error) {
