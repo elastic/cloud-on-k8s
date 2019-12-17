@@ -384,6 +384,7 @@ e2e-local:
 		--auto-port-forwarding \
 		--local \
 		--log-verbosity=$(LOG_VERBOSITY) \
+		--ignore-webhook-failures \
 		--test-timeout=$(TEST_TIMEOUT)
 	@E2E_JSON=$(E2E_JSON) test/e2e/run.sh -run "$(TESTS_MATCH)" -args -testContextPath $(LOCAL_E2E_CTX)
 

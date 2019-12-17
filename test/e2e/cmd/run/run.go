@@ -141,11 +141,12 @@ func (h *helper) initTestContext() error {
 			},
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 		},
-		OperatorImage: h.operatorImage,
-		TestLicense:   h.testLicense,
-		TestRegex:     h.testRegex,
-		TestRun:       h.testRunName,
-		TestTimeout:   h.testTimeout,
+		OperatorImage:         h.operatorImage,
+		TestLicense:           h.testLicense,
+		TestRegex:             h.testRegex,
+		TestRun:               h.testRunName,
+		TestTimeout:           h.testTimeout,
+		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 	}
 
 	for i, ns := range h.managedNamespaces {
