@@ -7,6 +7,7 @@ package resource
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
@@ -28,8 +29,8 @@ const (
 // components
 type LicensingInfo struct {
 	Timestamp               string `json:"timestamp"`
-	LicenseLevel            string `json:"license_level"`
-	Memory                  string `json:"memory"`
+	EckLicenseLevel         string `json:"eck_license_level"`
+	TotalManagedMemory      string `json:"total_managed_memory"`
 	EnterpriseResourceUnits string `json:"enterprise_resource_units"`
 }
 
@@ -50,8 +51,8 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 
 	return LicensingInfo{
 		Timestamp:               time.Now().Format(time.RFC3339),
-		LicenseLevel:            licenseLevel,
-		Memory:                  memoryInGB,
+		EckLicenseLevel:         licenseLevel,
+		TotalManagedMemory:      memoryInGB,
 		EnterpriseResourceUnits: eru,
 	}, nil
 }
@@ -102,8 +103,10 @@ func inGB(q resource.Quantity) string {
 
 // inEnterpriseResourceUnits converts a resource.Quantity in Elastic Enterprise resource units
 func inEnterpriseResourceUnits(q resource.Quantity) string {
-	// divide the value in bytes per 64 billion (64 GB)
-	return fmt.Sprintf("%0.2f", float32(q.Value())/64000000000)
+	// divide by the value (in bytes) per 64 billion (64 GB)
+	eru := float64(q.Value())/64000000000
+	// round to the nearest superior integer
+	return fmt.Sprintf("%f", math.Round(eru + 0.5))
 }
 
 // toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
