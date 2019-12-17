@@ -20,23 +20,24 @@ import (
 )
 
 type runFlags struct {
-	managedNamespaces   []string
-	e2eImage            string
-	elasticStackVersion string
-	kubeConfig          string
-	operatorImage       string
-	testContextOutPath  string
-	testLicense         string
-	scratchDirRoot      string
-	testRegex           string
-	testRunName         string
-	commandTimeout      time.Duration
-	autoPortForwarding  bool
-	skipCleanup         bool
-	local               bool
-	logToFile           bool
-	logVerbosity        int
-	testTimeout         time.Duration
+	managedNamespaces     []string
+	e2eImage              string
+	elasticStackVersion   string
+	kubeConfig            string
+	operatorImage         string
+	testContextOutPath    string
+	testLicense           string
+	scratchDirRoot        string
+	testRegex             string
+	testRunName           string
+	commandTimeout        time.Duration
+	autoPortForwarding    bool
+	skipCleanup           bool
+	local                 bool
+	logToFile             bool
+	ignoreWebhookFailures bool
+	logVerbosity          int
+	testTimeout           time.Duration
 }
 
 var log logr.Logger
@@ -78,6 +79,7 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
 	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 5*time.Minute, "Timeout before failing a test")
 	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if should log test output to file. Disabled by default.")
+	cmd.Flags().BoolVar(&flags.ignoreWebhookFailures, "ignore-webhook-failures", false, "Specifies if webhook errors should be ignored. Useful when running test locally. False by default")
 	logutil.BindFlags(cmd.PersistentFlags())
 
 	// enable setting flags via environment variables

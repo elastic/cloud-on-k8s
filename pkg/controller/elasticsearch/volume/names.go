@@ -35,4 +35,8 @@ const (
 
 	ScriptsVolumeName      = "elastic-internal-scripts"
 	ScriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
+
+	DownwardAPIVolumeName = "downward-api"
+	DownwardAPIMountPath  = "/mnt/elastic-internal/downward-api"
+	LabelsFile            = "labels"
 )
