@@ -220,8 +220,8 @@ func TestNewConfigSettingsCreateEncryptionKey(t *testing.T) {
 	assert.NotEmpty(t, val)
 }
 
-// TestNewConfigSettingsExplicitEncryptionKey tests that we do not override the existing key if one is already specified
-func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
+// TestNewConfigSettingsExistingEncryptionKey tests that we do not override the existing key if one is already specified
+func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	kb := mkKibana()
 	existingSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -240,6 +240,25 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
 	assert.Equal(t, "thisismyencryptionkey", val)
+}
+
+// TestNewConfigSettingsExplicitEncryptionKey tests that we do not override the existing key if one is already specified in the Spec
+// this should not be done since it is a secure setting, but just in case it happens we do not want to ignore it
+func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
+	kb := mkKibana()
+	key := "thisismyencryptionkey"
+	cfg := commonv1.NewConfig(map[string]interface{}{
+		XpackSecurityEncryptionKey: key,
+	})
+	kb.Spec.Config = &cfg
+	client := k8s.WrapClient(fake.NewFakeClient())
+	got, err := NewConfigSettings(client, kb, nil)
+	require.NoError(t, err)
+	var gotCfg map[string]interface{}
+	require.NoError(t, got.Unpack(&gotCfg))
+	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
+	require.NoError(t, err)
+	assert.Equal(t, key, val)
 }
 
 func mkKibana() kbv1.Kibana {
