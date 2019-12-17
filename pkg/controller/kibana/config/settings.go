@@ -37,9 +37,7 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-// TODO sabo does it belong here?
 func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
-
 	currentConfig := getExistingConfig(client, kb)
 
 	specConfig := kb.Spec.Config
@@ -149,11 +147,4 @@ func elasticsearchTLSSettings(kb kbv1.Kibana) map[string]interface{} {
 	}
 
 	return cfg
-}
-
-// ensureEncryptionKey ensures a given config contains an encryption key
-func ensureEncryptionKey(cfg map[string]interface{}) {
-	if _, ok := cfg[XpackSecurityEncryptionKey]; !ok {
-		cfg[XpackSecurityEncryptionKey] = rand.String(64)
-	}
 }
