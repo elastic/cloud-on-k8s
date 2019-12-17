@@ -37,7 +37,7 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 						},
 					},
 				},
-				l: licenseFixture,
+				l: licenseFixtureV3,
 			},
 			wantErr: false,
 			assertion: func(client k8s.Client) {
@@ -53,14 +53,14 @@ func TestUpdateEnterpriseLicense(t *testing.T) {
 			args: args{
 				c:      k8s.WrappedFakeClient(&v1.Secret{}),
 				secret: v1.Secret{},
-				l:      licenseFixture,
+				l:      licenseFixtureV3,
 			},
 			wantErr: false,
 			assertion: func(client k8s.Client) {
 				var sec v1.Secret
 				err := client.Get(types.NamespacedName{}, &sec)
 				require.NoError(t, err)
-				require.Equal(t, string(licenseFixture.License.Type), sec.Labels[LicenseLabelType])
+				require.Equal(t, string(licenseFixtureV3.License.Type), sec.Labels[LicenseLabelType])
 				require.Equal(t, string(LicenseScopeOperator), sec.Labels[LicenseLabelScope])
 				require.Len(t, sec.Data, 1)
 			},
