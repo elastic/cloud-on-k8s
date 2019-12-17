@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package resource
+package license
 
 import (
 	"encoding/json"
@@ -104,9 +104,9 @@ func inGB(q resource.Quantity) string {
 // inEnterpriseResourceUnits converts a resource.Quantity in Elastic Enterprise resource units
 func inEnterpriseResourceUnits(q resource.Quantity) string {
 	// divide by the value (in bytes) per 64 billion (64 GB)
-	eru := float64(q.Value())/64000000000
+	eru := float64(q.Value()) / 64000000000
 	// round to the nearest superior integer
-	return fmt.Sprintf("%f", math.Round(eru + 0.5))
+	return fmt.Sprintf("%f", math.Round(eru+0.5))
 }
 
 // toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map

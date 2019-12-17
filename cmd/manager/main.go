@@ -44,7 +44,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	"github.com/elastic/cloud-on-k8s/pkg/resource"
+	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
@@ -322,7 +322,7 @@ func execute() {
 			os.Exit(1)
 		}
 
-		r := resource.NewLicensingReporter(mgr.GetClient())
+		r := licensing.NewResourceReporter(mgr.GetClient())
 		go r.Start(operatorNamespace)
 	}
 

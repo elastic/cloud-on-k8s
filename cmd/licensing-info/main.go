@@ -10,7 +10,7 @@ import (
 	"log"
 
 	eckscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
-	"github.com/elastic/cloud-on-k8s/pkg/resource"
+	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	licensingInfo, err := resource.NewLicensingReporter(newK8sClient()).Get()
+	licensingInfo, err := license.NewResourceReporter(newK8sClient()).Get()
 	if err != nil {
 		log.Fatal(err, "Failed to get licensing info")
 	}

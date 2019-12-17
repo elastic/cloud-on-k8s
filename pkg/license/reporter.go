@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package resource
+package license
 
 import (
 	"time"
@@ -21,28 +21,28 @@ var (
 	log = logf.Log.WithName("resource")
 )
 
-// LicensingReporter aggregates resources of all Elastic components managed by the operator
+// ResourceReporter aggregates resources of all Elastic components managed by the operator
 // and reports them in a config map in the form of licensing information
-type LicensingReporter struct {
-	aggregator      Aggregator
-	licenseResolver LicensingResolver
+type ResourceReporter struct {
+	aggregator        Aggregator
+	licensingResolver LicensingResolver
 }
 
-// LicensingReporter returns a new LicensingReporter
-func NewLicensingReporter(client client.Client) LicensingReporter {
+// NewResourceReporter returns a new ResourceReporter
+func NewResourceReporter(client client.Client) ResourceReporter {
 	c := k8s.WrapClient(client)
-	return LicensingReporter{
+	return ResourceReporter{
 		aggregator: Aggregator{
 			client: c,
 		},
-		licenseResolver: LicensingResolver{
+		licensingResolver: LicensingResolver{
 			client: c,
 		},
 	}
 }
 
 // Start starts to report the licensing information repeatedly at regular intervals
-func (r LicensingReporter) Start(operatorNs string) {
+func (r ResourceReporter) Start(operatorNs string) {
 	ticker := time.NewTicker(refreshPeriod)
 	for range ticker.C {
 		err := r.Report(operatorNs)
@@ -53,21 +53,21 @@ func (r LicensingReporter) Start(operatorNs string) {
 }
 
 // Report reports the licensing information in a config map
-func (r LicensingReporter) Report(operatorNs string) error {
+func (r ResourceReporter) Report(operatorNs string) error {
 	licensingInfo, err := r.Get()
 	if err != nil {
 		return err
 	}
 
-	return r.licenseResolver.Save(licensingInfo, operatorNs)
+	return r.licensingResolver.Save(licensingInfo, operatorNs)
 }
 
 // Get aggregates managed resources and returns the licensing information
-func (r LicensingReporter) Get() (LicensingInfo, error) {
+func (r ResourceReporter) Get() (LicensingInfo, error) {
 	totalMemory, err := r.aggregator.AggregateMemory()
 	if err != nil {
 		return LicensingInfo{}, err
 	}
 
-	return r.licenseResolver.ToInfo(totalMemory)
+	return r.licensingResolver.ToInfo(totalMemory)
 }
