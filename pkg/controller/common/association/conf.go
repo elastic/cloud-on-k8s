@@ -10,7 +10,6 @@ import (
 	"unsafe"
 
 	"github.com/pkg/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -21,21 +20,18 @@ import (
 )
 
 // FetchWithAssociation retrieves an object and extracts its association configuration.
-func FetchWithAssociation(client k8s.Client, request reconcile.Request, obj commonv1.Associator) (bool, error) {
+func FetchWithAssociation(client k8s.Client, request reconcile.Request, obj commonv1.Associator) error {
 	if err := client.Get(request.NamespacedName, obj); err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, nil
-		}
-		return false, err
+		return err
 	}
 
 	assocConf, err := GetAssociationConf(obj)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	obj.SetAssociationConf(assocConf)
-	return true, nil
+	return nil
 }
 
 // GetAssociationConf extracts the association configuration from the given object by reading the annotations.

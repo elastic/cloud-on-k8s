@@ -137,15 +137,15 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	var apmServer apmv1.ApmServer
-	if ok, err := association.FetchWithAssociation(r.Client, request, &apmServer); !ok {
-		if err != nil {
-			return reconcile.Result{}, err
+	if err := association.FetchWithAssociation(r.Client, request, &apmServer); err != nil {
+		if apierrors.IsNotFound(err) {
+			// APM Server has been deleted, remove artifacts related to the association.
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
+				Namespace: request.Namespace,
+				Name:      request.Name,
+			})
 		}
-		// APM Server has been deleted, remove artifacts related to the association.
-		return reconcile.Result{}, r.onDelete(types.NamespacedName{
-			Namespace: request.Namespace,
-			Name:      request.Name,
-		})
+		return reconcile.Result{}, err
 	}
 
 	if common.IsPaused(apmServer.ObjectMeta) {
