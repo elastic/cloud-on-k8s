@@ -6,11 +6,12 @@ package version6
 
 import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
 )
 
 // SettingsFactory returns Kibana settings for a 6.x Kibana.
-func SettingsFactory(kb kbv1.Kibana) map[string]interface{} {
+func SettingsFactory(kb kbv1.Kibana, _ version.Version) map[string]interface{} {
 	return map[string]interface{}{
 		config.ElasticsearchURL: kb.AssociationConf().GetURL(),
 	}

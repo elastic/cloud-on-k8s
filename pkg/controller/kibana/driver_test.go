@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -203,6 +205,58 @@ func Test_getStrategyType(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.Equal(t, tt.wantStrategy, strategy)
+			}
+		})
+	}
+}
+
+func TestDriver_SettingsFactory(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		version string
+		want    map[string]interface{}
+	}{
+		{
+			name:    "6.x",
+			version: "6.8.0",
+			want: map[string]interface{}{
+				config.ElasticsearchURL: "https://localhost:9200",
+			},
+		},
+		{
+			name:    "7.x",
+			version: "7.1.0",
+			want: map[string]interface{}{
+				config.ElasticsearchHosts: "https://localhost:9200",
+			},
+		},
+		{
+			name:    "7.6.0",
+			version: "7.6.0",
+			want: map[string]interface{}{
+				config.ElasticsearchHosts:              "https://localhost:9200",
+				config.XpackLicenseManagementUIEnabled: false,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := watches.NewDynamicWatches()
+			err := w.Secrets.InjectScheme(scheme.Scheme)
+			assert.NoError(t, err)
+
+			kb := kibanaFixture()
+			kb.Spec.Version = tt.version
+			kbVersion, err := version.Parse(kb.Spec.Version)
+			assert.NoError(t, err)
+
+			client := k8s.WrappedFakeClient()
+
+			d, err := newDriver(client, scheme.Scheme, *kbVersion, w, record.NewFakeRecorder(100))
+			assert.NoError(t, err)
+			if diff := deep.Equal(d.settingsFactory(*kb, *kbVersion), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
