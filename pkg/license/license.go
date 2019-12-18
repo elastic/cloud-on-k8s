@@ -101,7 +101,7 @@ func inGB(q resource.Quantity) string {
 	return fmt.Sprintf("%0.2fGB", float32(q.Value())/1000000000)
 }
 
-// inEnterpriseResourceUnits converts a resource.Quantity in Elastic Enterprise resource units
+// inEnterpriseResourceUnits converts a resource.Quantity to Elastic Enterprise resource units
 func inEnterpriseResourceUnits(q resource.Quantity) string {
 	// divide by the value (in bytes) per 64 billion (64 GB)
 	eru := float64(q.Value()) / 64000000000

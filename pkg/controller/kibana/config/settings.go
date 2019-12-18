@@ -17,9 +17,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// Kibana configuration settings file
 const (
+	// Kibana configuration settings file
 	SettingsFilename = "kibana.yml"
+	// Environment variable name for the Node options that can be used to increase the Kibana maximum memory limit
 	EnvNodeOpts = "NODE_OPTS"
 )
 

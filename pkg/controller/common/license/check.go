@@ -59,7 +59,7 @@ func (lc *checker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 		if t1 != t2 { // sort by type (first the most features)
 			return t1 > t2
 		}
-		// and by expiry date (first which expires in a long time)
+		// and by expiry date (first which expires last)
 		return licenses[i].License.ExpiryDateInMillis > licenses[j].License.ExpiryDateInMillis
 	})
 
