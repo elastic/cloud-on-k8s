@@ -183,6 +183,32 @@ func TestNewConfigSettings(t *testing.T) {
 			},
 			want: append(defaultConfig, []byte(`foo: bar`)...),
 		},
+		{
+			name: "test existing secret does not prevent updates to config, e.g. spec takes precedence even if there is a secret indicating otherwise",
+			args: args{
+				client: k8s.WrappedFakeClient(&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      SecretName(defaultKb),
+						Namespace: defaultKb.Namespace,
+					},
+					Data: map[string][]byte{
+						SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nlogging.verbose: true"),
+					},
+				}),
+				kb: func() kbv1.Kibana {
+					kb := mkKibana()
+					kb.Spec = kbv1.KibanaSpec{
+						Config: &commonv1.Config{
+							Data: map[string]interface{}{
+								"logging.verbose": false,
+							},
+						},
+					}
+					return kb
+				},
+			},
+			want: append(defaultConfig, []byte(`logging.verbose: false`)...),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

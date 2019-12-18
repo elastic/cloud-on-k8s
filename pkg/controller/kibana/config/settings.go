@@ -51,6 +51,7 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
 
 	if !kb.RequiresAssociation() {
+		// merge the configuration with userSettings last so they take precedence
 		if err := cfg.MergeWith(
 			currentConfig,
 			versionSpecificCfg,
@@ -94,7 +95,7 @@ func getExistingConfig(client k8s.Client, kb kbv1.Kibana) *settings.CanonicalCon
 	if err != nil && apierrors.IsNotFound(err) {
 		log.V(1).Info("Kibana config secret does not exist", "kibana_namespace", kb.Namespace, "kibana_name", kb.Name)
 		return nil
-	} else if err != nil && !apierrors.IsNotFound(err) {
+	} else if err != nil {
 		log.Error(err, "Error retrieving kibana config secret", "kibana_namespace", kb.Namespace, "kibana_name", kb.Name)
 		return nil
 	}
