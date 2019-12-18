@@ -303,7 +303,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	if cluster == nil {
 		return nil
 	}
-	log.Info("Updating status",
+	log.V(1).Info("Updating status",
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", es.Namespace,
 		"es_name", es.Name,
