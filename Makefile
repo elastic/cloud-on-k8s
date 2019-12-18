@@ -426,7 +426,7 @@ validate-jenkins-pipelines:
 #########################
 # Kind specific targets #
 #########################
-KIND_NODES ?= 0
+KIND_NODES ?= 3
 KIND_NODE_IMAGE ?= kindest/node:v1.15.3
 KIND_CLUSTER_NAME ?= eck
 
