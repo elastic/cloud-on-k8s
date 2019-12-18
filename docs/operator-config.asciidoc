@@ -11,24 +11,27 @@ ECK can be configured using either command line flags or environment variables.
 
 [width="70%",valign="middle",halign="center",cols="m,m,m,d",options="header"]
 |===
-|Flag |Env Var|Default|Description
-|auto-port-forward |AUTO_PORT_FORWARD |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost.
-|ca-cert-rotate-before |CA_CERT_ROTATE_BEFORE |24h |Duration representing how long before expiration CA certificates should be re-issued.
-|ca-cert-validity |CA_CERT_VALIDITY |8760h |Duration representing the validity period of a generated CA certificate.
-|cert-rotate-before |CERT_ROTATE_BEFORE |24h |Duration representing how long before expiration TLS certificates should be re-issued.
-|cert-validity |CERT_VALIDITY |8760h |Duration representing the validity period of a generated TLS certificate.
-|debug-http-listen |DEBUG_HTTP_LISTEN |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode.
-|development | |false |Enable developmenet mode. Only available as a CLI flag.
-|enable-debug-logs |ENABLE_DEBUG_LOGS |false |Enables debug logs. Equivalent to `log-verbosity=1`.
-|log-verbosity |LOG_VERBOSITY |0 |Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug
-|manage-webhook-certs |MANAGE_WEBHOOK_CERTS |true |Enables automatic webhook certificate management.
-|metrics-port |METRICS_PORT |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
-|namespaces |NAMESPACES | |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
-|operator-namespace |OPERATOR_NAMESPACE | |Namespace the operator runs in. Required.
-|operator-roles |OPERATOR_ROLES |all |Roles this operator should assume. Valid values are `namespace`, `global`, `webhook` or `all`. Accepts multiple comma separated values.
-|webhook-pods-label |WEBHOOK_PODS_LABEL | |Label used to select pods running the webhook server.
-|webhook-secret |WEBHOOK_SECRET | | Kubernetes secret containing the webhook certificates.
+|Flag |Default|Description
+|auto-port-forward |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost.
+|ca-cert-rotate-before |24h |Duration representing how long before expiration CA certificates should be re-issued.
+|ca-cert-validity |8760h |Duration representing the validity period of a generated CA certificate.
+|cert-rotate-before |24h |Duration representing how long before expiration TLS certificates should be re-issued.
+|cert-validity |8760h |Duration representing the validity period of a generated TLS certificate.
+|debug-http-listen |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode.
+|development |false |Enable developmenet mode. Only available as a CLI flag.
+|enable-debug-logs |false |Enables debug logs. Equivalent to `log-verbosity=1`.
+|log-verbosity |0 |Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug
+|manage-webhook-certs |true |Enables automatic webhook certificate management.
+|metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
+|namespaces |"" |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
+|operator-namespace |"" |Namespace the operator runs in. Required.
+|operator-roles |all |Roles this operator should assume. Valid values are `namespace`, `global`, `webhook` or `all`. Accepts multiple comma separated values.
+|webhook-pods-label |"" |Label used to select pods running the webhook server.
+|webhook-secret |"" | Kubernetes secret containing the webhook certificates.
 |===
+
+
+Unless noted otherwise, environment variables can be used instead of flags to configure the operator as well. Simply convert the flag name to upper case and replace any dashes (`-`) with underscores (`_`). For example, the `enable-debug-logs` flag can be set by an environment variable named `ENABLE_DEBUG_LOGS`.
 
 Duration values should be specified as numeric values suffixed by the time unit. For example, a duration of 10 hours should be specified as `10h`. Acceptable time unit suffixes are:
 
