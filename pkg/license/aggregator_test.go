@@ -21,37 +21,37 @@ func TestMemFromJavaOpts(t *testing.T) {
 		{
 			name:     "in k",
 			actual:   "-Xms1k -Xmx8388608k",
-			expected: "16777216k",
+			expected: "16777216Ki",
 		},
 		{
 			name:     "in K",
 			actual:   "-Xmx1024K",
-			expected: "2048k",
+			expected: "2048Ki",
 		},
 		{
 			name:     "in m",
 			actual:   "-Xmx512m -Xms256m",
-			expected: "1024M",
+			expected: "1024Mi",
 		},
 		{
 			name:     "in M",
 			actual:   "-Xmx256M",
-			expected: "512M",
+			expected: "512Mi",
 		},
 		{
 			name:     "in g",
 			actual:   "-Xmx64g",
-			expected: "128G",
+			expected: "128Gi",
 		},
 		{
 			name:     "in G",
 			actual:   "-Xmx64G",
-			expected: "128G",
+			expected: "128Gi",
 		},
 		{
-			name:     "without unit",
-			actual:   "-Xmx83886080",
-			expected: "167772160",
+			name:   "without unit",
+			actual: "-Xmx83886080",
+			isErr:  true,
 		},
 		{
 			name:   "with an invalid Xmx",
@@ -72,7 +72,10 @@ func TestMemFromJavaOpts(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.True(t, resource.MustParse(tt.expected).Equal(q))
+				got := resource.MustParse(tt.expected)
+				if !got.Equal(q) {
+					t.Errorf("memFromJavaOpts(%s) = %v, want %s", tt.actual, got.String(), tt.expected)
+				}
 			}
 		})
 	}
@@ -103,7 +106,10 @@ func TestMemFromNodeOpts(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.True(t, resource.MustParse(tt.expected).Equal(q))
+				got := resource.MustParse(tt.expected)
+				if !got.Equal(q) {
+					t.Errorf("memFromNodeOptions(%s) = %v, want %s", tt.actual, got, tt.expected)
+				}
 			}
 		})
 	}

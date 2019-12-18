@@ -167,7 +167,7 @@ func containerMemLimits(
 }
 
 // maxHeapSizePattern is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K] in binary units)
-var maxHeapSizeRe = regexp.MustCompile("-Xmx([0-9]+)([gGmMkK]?)")
+var maxHeapSizeRe = regexp.MustCompile("-Xmx([0-9]+)([gGmMkK])")
 
 // memFromJavaOpts extracts the maximum Java heap size from a Java options string, multiplies the value by 2
 // and converts it to a resource.Quantity

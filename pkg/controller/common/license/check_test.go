@@ -109,8 +109,8 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 		name     string
 		fields   fields
 		want     bool
-		wantType OperatorLicenseType
 		wantErr  bool
+		wantType OperatorLicenseType
 	}{
 		{
 			name: "get valid enterprise license: OK",
