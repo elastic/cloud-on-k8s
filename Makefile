@@ -439,7 +439,7 @@ bootstrap-kind:
 	KIND_CLUSTER_NAME=${KIND_CLUSTER_NAME} \
 		$(MAKE) kind-cluster-$(KIND_NODES)
 	@ echo "Run the following command to update your current context:"
-	@ echo "export KUBECONFIG=\"$$(kind get kubeconfig-path --name=${KIND_CLUSTER_NAME})\""
+	@ echo "kubectl config set-context kind-${KIND_CLUSTER_NAME}"
 
 ## Start a kind cluster with just the CRDs, e.g.:
 # "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a one node cluster
