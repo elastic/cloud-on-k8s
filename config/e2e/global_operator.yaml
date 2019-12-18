@@ -166,7 +166,7 @@ spec:
       - image: {{ .OperatorImage }}
         imagePullPolicy: IfNotPresent
         name: manager
-        args: ["manager", "--operator-roles", "global,webhook"]
+        args: ["manager", "--operator-roles", "global,webhook", "--log-verbosity=1"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
