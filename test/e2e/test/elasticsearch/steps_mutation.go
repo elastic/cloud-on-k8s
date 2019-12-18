@@ -21,8 +21,10 @@ import (
 const (
 	continuousHealthCheckTimeout = 5 * time.Second
 	// clusterUnavailabilityThreshold is the accepted duration for the cluster to temporarily not respond to requests
-	// (eg. during leader elections in the middle of a rolling upgrade)
-	clusterUnavailabilityThreshold = 60 * time.Second
+	// (eg. during leader elections in the middle of a rolling upgrade).
+	// The value is completely arbitrary and based on observations that killing the master node
+	// on Elasticsearch < 7.2 usually makes the cluster unavailable for about 50 sec in those tests.
+	clusterUnavailabilityThreshold = 120 * time.Second
 )
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
