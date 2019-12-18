@@ -31,12 +31,16 @@ func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		test.Step{
 			Name: "Applying the Elasticsearch mutation should succeed",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				var curEs esv1.Elasticsearch
-				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
+				if err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs); err != nil {
+					return err
+				}
 				curEs.Spec = b.Elasticsearch.Spec
-				require.NoError(t, k.Client.Update(&curEs))
-			},
+				// may error-out with a conflict if the resource is updated concurrently
+				// hence the usage of `test.Eventually`
+				return k.Client.Update(&curEs)
+			}),
 		},
 	}
 }
