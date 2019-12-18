@@ -6,53 +6,53 @@ endif::[]
 [id="{p}-operator-config"]
 == Configuring ECK
 
-You can use several options to configure ECK. Unless otherwise noted, these options can be set as environment variables or command line flags.
+ECK can be configured using either command line flags or environment variables.
 
 
-[width="70%",valign="middle",halign="center",options="header"]
-|==========================
-|Flag |Type|Default|Description
+[width="70%",valign="middle",halign="center",cols="m,m,m,d",options="header"]
+|===
+|Flag |Env Var|Default|Description
+|auto-port-forward |AUTO_PORT_FORWARD |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost.
+|ca-cert-rotate-before |CA_CERT_ROTATE_BEFORE |24h |Duration representing how long before expiration CA certificates should be re-issued.
+|ca-cert-validity |CA_CERT_VALIDITY |8760h |Duration representing the validity period of a generated CA certificate.
+|cert-rotate-before |CERT_ROTATE_BEFORE |24h |Duration representing how long before expiration TLS certificates should be re-issued.
+|cert-validity |CERT_VALIDITY |8760h |Duration representing the validity period of a generated TLS certificate.
+|debug-http-listen |DEBUG_HTTP_LISTEN |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode.
+|development | |false |Enable developmenet mode. Only available as a CLI flag.
+|enable-debug-logs |ENABLE_DEBUG_LOGS |false |Enables debug logs. Equivalent to `log-verbosity=1`.
+|log-verbosity |LOG_VERBOSITY |0 |Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug
+|manage-webhook-certs |MANAGE_WEBHOOK_CERTS |true |Enables automatic webhook certificate management.
+|metrics-port |METRICS_PORT |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
+|namespaces |NAMESPACES | |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
+|operator-namespace |OPERATOR_NAMESPACE | |Namespace the operator runs in. Required.
+|operator-roles |OPERATOR_ROLES |all |Roles this operator should assume. Valid values are `namespace`, `global`, `webhook` or `all`. Accepts multiple comma separated values.
+|webhook-pods-label |WEBHOOK_PODS_LABEL | |Label used to select pods running the webhook server.
+|webhook-secret |WEBHOOK_SECRET | | Kubernetes secret containing the webhook certificates.
+|===
 
-|`log-verbosity` |int |0 |Verbosity level of logs. -2=Error, -1=Warn, 0=Info, >0=Debug
-|`enable-debug-logs` |bool |false |Enables debug logs. Equivalent to `log-verbosity=1`
-|`metrics-port` |int |0 |Port to use for exposing metrics in the Prometheus format. Set 0 to disable
-|`operator-roles` |[]string |all |Roles this operator should assume. Valid values are namespace, global, webhook or all. Accepts multiple comma separated values.
-|`namespaces` |[]string |`""` |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
-|`ca-cert-validity` |duration (string) |1y |Duration representing how long before a newly created CA cert expires
-|`ca-cert-rotate-before` |duration (string) |1d |Duration representing how long before expiration CA certificates should be reissued
-|`cert-validity` |duration (string) |1y |Duration representing how long before a newly created TLS certificate expires
-|`cert-rotate-before` |duration (string) |1d |Duration representing how long before expiration TLS certificates should be reissued
-|`manage-webhook-certs` |bool |true |Enables automatic webhook certificate management
-|`operator-namespace` |string |`""` |K8s namespace the operator runs in
-|`webhook-secret` |string |`""` |K8s secret name mounted into /tmp/cert to be used for webhook certificates
-|`webhook-pods-label` |string |`""` |K8s label to select pods running the operator
-|`development` |bool |false |Enable developmenet mode. Only available as a CLI flag, not an environment variable
-|`debug-http-listen` |string |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode
-|`auto-port-forward` |bool |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost
-|==========================
+Duration values should be specified as numeric values suffixed by the time unit. For example, a duration of 10 hours should be specified as `10h`. Acceptable time unit suffixes are:
+
+[cols="m,d",options="header"]
+|===
+|Suffix |Unit
+|ms | Milliseconds
+|s  | Seconds
+|m  | Minutes
+|h  | Hours
+|===
 
 
-Many of these should not need to be modified, but if necessary you can modify the operator YAML. For instance, to enable `DEBUG` level logs on the operator, restart it with the flag `--enable-debug-logs=true` like so:
+Edit the operator deployment to change any of the flag values. For example, to enable `DEBUG` level logs, the operator needs to be restarted with the `--enable-debug-logs` flag set to `true`. This can be done as follows:
+
+
+Edit the operator Statefulset:
 
 [source,sh]
 ----
 kubectl edit statefulset.apps -n elastic-system elastic-operator
 ----
 
-and change the following lines from:
-
-[source,yaml]
-----
-  spec:
-    containers:
-    - args:
-      - manager
-      - --operator-roles
-      - all
-      - --enable-debug-logs=false
-----
-
-to:
+change the `args` array:
 
 [source,yaml]
 ----
