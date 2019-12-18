@@ -19,6 +19,7 @@ import (
 	kbconfig "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
 	kbpod "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -53,7 +54,7 @@ func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
 	var esList esv1.ElasticsearchList
 	err := a.client.List(&esList)
 	if err != nil {
-		return resource.Quantity{}, err
+		return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Elasticsearch memory")
 	}
 
 	var total resource.Quantity
@@ -66,7 +67,7 @@ func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
 				multiply(nodespec.DefaultMemoryLimits, 2),
 			)
 			if err != nil {
-				return resource.Quantity{}, err
+				return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Elasticsearch memory")
 			}
 
 			total.Add(multiply(mem, nodeSet.Count))
@@ -81,7 +82,7 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 	var kbList kbv1.KibanaList
 	err := a.client.List(&kbList)
 	if err != nil {
-		return resource.Quantity{}, err
+		return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Kibana memory")
 	}
 
 	var total resource.Quantity
@@ -93,7 +94,7 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 			kbpod.DefaultMemoryLimits,
 		)
 		if err != nil {
-			return resource.Quantity{}, err
+			return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Kibana memory")
 		}
 
 		total.Add(multiply(mem, kb.Spec.Count))
@@ -107,7 +108,7 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 	var asList apmv1.ApmServerList
 	err := a.client.List(&asList)
 	if err != nil {
-		return resource.Quantity{}, err
+		return resource.Quantity{}, errors.Wrap(err, "failed to aggregate APM Server memory")
 	}
 
 	var total resource.Quantity
@@ -119,7 +120,7 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 			apmserver.DefaultMemoryLimits,
 		)
 		if err != nil {
-			return resource.Quantity{}, err
+			return resource.Quantity{}, errors.Wrap(err, "failed to aggregate APM Server memory")
 		}
 
 		total.Add(multiply(mem, as.Spec.Count))
