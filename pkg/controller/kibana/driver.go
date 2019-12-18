@@ -51,9 +51,10 @@ var initContainersParameters = keystore.InitContainerParameters{
 type driver struct {
 	client          k8s.Client
 	scheme          *runtime.Scheme
-	settingsFactory func(kb kbv1.Kibana) map[string]interface{}
+	settingsFactory func(kb kbv1.Kibana, v version.Version) map[string]interface{}
 	dynamicWatches  watches.DynamicWatches
 	recorder        record.EventRecorder
+	version         version.Version
 }
 
 func (d *driver) DynamicWatches() watches.DynamicWatches {
@@ -248,7 +249,7 @@ func (d *driver) Reconcile(
 		return &results
 	}
 
-	versionSpecificCfg := settings.MustCanonicalConfig(d.settingsFactory(*kb))
+	versionSpecificCfg := settings.MustCanonicalConfig(d.settingsFactory(*kb, d.version))
 	kbSettings, err := config.NewConfigSettings(d.client, *kb, versionSpecificCfg)
 	if err != nil {
 		return results.WithError(err)
@@ -285,16 +286,11 @@ func newDriver(
 		scheme:         scheme,
 		dynamicWatches: watches,
 		recorder:       recorder,
+		version:        version,
 	}
 	switch version.Major {
 	case 6:
-		switch {
-		case version.Minor >= 6:
-			// 6.6 docker container already defaults to v7 settings
-			d.settingsFactory = version7.SettingsFactory
-		default:
-			d.settingsFactory = version6.SettingsFactory
-		}
+		d.settingsFactory = version6.SettingsFactory
 	case 7:
 		d.settingsFactory = version7.SettingsFactory
 	default:
