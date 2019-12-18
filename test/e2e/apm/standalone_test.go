@@ -25,6 +25,19 @@ func TestApmStandalone(t *testing.T) {
 		RunSequential(t)
 }
 
+func TestApmStandaloneWithRUM(t *testing.T) {
+	apmBuilder := apmserver.NewBuilder("standalone-with-rum").
+		WithConfig(map[string]interface{}{
+			"output.console": map[string]interface{}{
+				"pretty": true,
+			},
+		}).
+		WithRUM(true)
+
+	test.Sequence(nil, test.EmptySteps, apmBuilder).
+		RunSequential(t)
+}
+
 func TestApmStandaloneNoTLS(t *testing.T) {
 	apmBuilder := apmserver.NewBuilder("standalone-no-tls").
 		WithConfig(map[string]interface{}{

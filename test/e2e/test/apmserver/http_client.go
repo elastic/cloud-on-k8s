@@ -25,7 +25,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-const DefaultReqTimeout = 1 * time.Minute
+const (
+	DefaultReqTimeout = 1 * time.Minute
+	backendIntakePath = "/intake/v2/events"
+	rumIntakePath     = "/intake/v2/rum/events"
+)
 
 // ApmClient is a simple client to use with an Apm Server.
 type ApmClient struct {
@@ -178,12 +182,16 @@ type EventsError struct {
 // IntakeV2Events exposes the Events API.
 // In the happy case, this will return nil, nil, indicating all events were accepted.
 // See https://www.elastic.co/guide/en/apm/server/current/events-api.html for more details.
-func (c *ApmClient) IntakeV2Events(ctx context.Context, payload []byte) (*EventsErrorResponse, error) {
+func (c *ApmClient) IntakeV2Events(ctx context.Context, rum bool, payload []byte) (*EventsErrorResponse, error) {
 	var eventsErrorResponse EventsErrorResponse
 
+	path := backendIntakePath
+	if rum {
+		path = rumIntakePath
+	}
 	request, err := http.NewRequest(
 		http.MethodPost,
-		stringsutil.Concat(c.endpoint, "/intake/v2/events"),
+		stringsutil.Concat(c.endpoint, path),
 		bytes.NewBuffer(payload),
 	)
 	if err != nil {
