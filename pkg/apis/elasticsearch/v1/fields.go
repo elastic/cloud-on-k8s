@@ -39,6 +39,8 @@ const (
 	XPackSecurityTransportSslEnabled                = "xpack.security.transport.ssl.enabled"
 	XPackSecurityTransportSslKey                    = "xpack.security.transport.ssl.key"
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
+
+	XPackLicenseUploadTypes = "xpack.license.upload.types" // >= 7.6.0
 )
 
 var UnsupportedSettings = []string{

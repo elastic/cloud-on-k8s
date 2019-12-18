@@ -19,7 +19,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
 	require.NoError(t, err)
 
-	validLicenseFixture := licenseFixture
+	validLicenseFixture := licenseFixtureV3
 	validLicenseFixture.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(1 * time.Hour))
 
 	signatureBytes, err := NewSigner(privKey).Sign(validLicenseFixture)
@@ -87,7 +87,7 @@ func Test_CurrentEnterpriseLicense(t *testing.T) {
 	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
 	require.NoError(t, err)
 
-	validLicenseFixture := licenseFixture
+	validLicenseFixture := licenseFixtureV3
 	validLicenseFixture.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(1 * time.Hour))
 	signatureBytes, err := NewSigner(privKey).Sign(validLicenseFixture)
 	require.NoError(t, err)

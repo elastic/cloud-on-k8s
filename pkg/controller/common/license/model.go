@@ -35,12 +35,14 @@ type LicenseSpec struct {
 	IssueDateInMillis  int64                  `json:"issue_date_in_millis"`
 	ExpiryDate         *time.Time             `json:"expiry_date,omitempty"`
 	ExpiryDateInMillis int64                  `json:"expiry_date_in_millis"`
-	MaxInstances       int                    `json:"max_instances"`
+	MaxInstances       int                    `json:"max_instances,omitempty"`
+	MaxResourceUnits   int                    `json:"max_resource_units,omitempty"`
 	IssuedTo           string                 `json:"issued_to"`
 	Issuer             string                 `json:"issuer"`
 	StartDateInMillis  int64                  `json:"start_date_in_millis"`
 	Signature          string                 `json:"signature,omitempty"`
 	ClusterLicenses    []ElasticsearchLicense `json:"cluster_licenses"`
+	Version            int                    // not marshalled but part of the signature
 }
 
 // EnterpriseLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.

@@ -39,14 +39,13 @@ function fail {
 
 labels="` + volume.DownwardAPIMountPath + "/" + volume.LabelsFile + `"
 
-if [[ ! -f "${labels}" ]]; then
-  fail "\"reason\": \"${labels} does not exist\""
+version=""
+if [[ -f "${labels}" ]]; then
+  # get Elasticsearch version from the downward API
+  version=$(grep "` + label.VersionLabelName + `" ${labels} | cut -d '=' -f 2)
+  # remove quotes
+  version=$(echo "${version}" | tr -d '"')
 fi
-
-# get Elasticsearch version from the downward API
-version=$(grep "` + label.VersionLabelName + `" ${labels} | cut -d '=' -f 2)
-# remove quotes
-version=$(echo "${version}" | tr -d '"')
 
 READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=3}
 

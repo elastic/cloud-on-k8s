@@ -13,6 +13,7 @@ import (
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	escerts "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
 
@@ -111,6 +112,12 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, certResources
 		// 7.x syntax
 		cfg[esv1.XPackSecurityAuthcRealmsFileFile1Order] = -100
 		cfg[esv1.XPackSecurityAuthcRealmsNativeNative1Order] = -99
+	}
+
+	if ver.IsSameOrAfter(version.MustParse("7.6.0")) {
+		cfg[esv1.XPackLicenseUploadTypes] = []string{
+			string(client.ElasticsearchLicenseTypeTrial), string(client.ElasticsearchLicenseTypeEnterprise),
+		}
 	}
 
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
