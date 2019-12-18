@@ -9,7 +9,7 @@ endif::[]
 ECK can be configured using either command line flags or environment variables.
 
 
-[width="70%",valign="middle",halign="center",cols="m,m,m,d",options="header"]
+[width="70%",valign="middle",halign="center",cols="m,m,d",options="header"]
 |===
 |Flag |Default|Description
 |auto-port-forward |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost.
