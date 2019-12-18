@@ -295,7 +295,6 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", es.Namespace, "es_name", es.Name)
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)
@@ -304,6 +303,12 @@ func (r *ReconcileElasticsearch) updateStatus(
 	if cluster == nil {
 		return nil
 	}
+	log.V(1).Info("Updating status",
+		"iteration", atomic.LoadUint64(&r.iteration),
+		"namespace", es.Namespace,
+		"es_name", es.Name,
+		"status", cluster.Status,
+	)
 	return common.UpdateStatus(r.Client, cluster)
 }
 
