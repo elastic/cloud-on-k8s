@@ -15,6 +15,7 @@ pipeline {
         REPOSITORY = "eck"
         IMG_NAME = "eck-operator"
         REGISTRY = "docker.elastic.co"
+        OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
     }
 
     stages {
