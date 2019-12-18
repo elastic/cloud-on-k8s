@@ -322,8 +322,11 @@ func execute() {
 			os.Exit(1)
 		}
 
-		r := licensing.NewResourceReporter(mgr.GetClient())
-		go r.Start(operatorNamespace)
+		go func() {
+			mgr.GetCache().WaitForCacheSync(nil)
+			r := licensing.NewResourceReporter(mgr.GetClient())
+			r.Start(operatorNamespace)
+		}()
 	}
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
