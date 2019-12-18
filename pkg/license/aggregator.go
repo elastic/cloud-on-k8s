@@ -62,9 +62,8 @@ func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
 			mem, err := containerMemLimits(
 				nodeSet.PodTemplate.Spec.Containers,
 				esv1.ElasticsearchContainerName,
-				essettings.EnvEsJavaOpts,
-				memFromJavaOpts,
-				nodespec.DefaultMemoryLimits,
+				essettings.EnvEsJavaOpts, memFromJavaOpts,
+				multiply(nodespec.DefaultMemoryLimits, 2),
 			)
 			if err != nil {
 				return resource.Quantity{}, err
@@ -90,8 +89,7 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 		mem, err := containerMemLimits(
 			kb.Spec.PodTemplate.Spec.Containers,
 			kbv1.KibanaContainerName,
-			kbconfig.EnvNodeOpts,
-			memFromNodeOptions,
+			kbconfig.EnvNodeOpts, memFromNodeOptions,
 			kbpod.DefaultMemoryLimits,
 		)
 		if err != nil {
@@ -117,8 +115,7 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 		mem, err := containerMemLimits(
 			as.Spec.PodTemplate.Spec.Containers,
 			apmv1.ApmServerContainerName,
-			"",
-			nil,
+			"", nil, // no fallback with limits defined in an env var
 			apmserver.DefaultMemoryLimits,
 		)
 		if err != nil {
@@ -169,7 +166,7 @@ func containerMemLimits(
 	return mem, nil
 }
 
-// maxHeapSizePattern is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K])
+// maxHeapSizePattern is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K] in binary units)
 var maxHeapSizeRe = regexp.MustCompile("-Xmx([0-9]+)([gGmMkK]?)")
 
 // memFromJavaOpts extracts the maximum Java heap size from a Java options string, multiplies the value by 2
@@ -183,14 +180,8 @@ func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 	if err != nil {
 		return resource.Quantity{}, err
 	}
-	// capitalize the suffix unless it's a K to have a surjection of [g|G|m|M|k|K] in [G|M|k]
-	suffix := match[2]
-	switch suffix {
-	case "K", "k":
-		suffix = "k"
-	default:
-		suffix = strings.ToUpper(suffix)
-	}
+	// capitalize the suffix unless to have a surjection of [g|G|m|M|k|K] in [Gi|Mi|Ki]
+	suffix := strings.ToUpper(match[2]) + "i"
 	// multiply by 2 and convert it in a quantity using the suffix
 	return resource.ParseQuantity(fmt.Sprintf("%d%s", value*2, suffix))
 }

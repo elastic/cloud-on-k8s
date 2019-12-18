@@ -106,7 +106,7 @@ func inEnterpriseResourceUnits(q resource.Quantity) string {
 	// divide by the value (in bytes) per 64 billion (64 GB)
 	eru := float64(q.Value()) / 64000000000
 	// round to the nearest superior integer
-	return fmt.Sprintf("%f", math.Ceil(eru))
+	return fmt.Sprintf("%d", int64(math.Ceil(eru)))
 }
 
 // toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
