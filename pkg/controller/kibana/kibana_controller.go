@@ -220,7 +220,12 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 	if state.Kibana.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
-	log.Info("Updating status", "iteration", atomic.LoadUint64(&r.iteration), "namespace", state.Kibana.Namespace, "kibana_name", state.Kibana.Name)
+	log.Info("Updating status",
+		"iteration", atomic.LoadUint64(&r.iteration),
+		"namespace", state.Kibana.Namespace,
+		"kibana_name", state.Kibana.Name,
+		"status", state.Kibana.Status,
+	)
 	return common.UpdateStatus(r.Client, state.Kibana)
 }
 

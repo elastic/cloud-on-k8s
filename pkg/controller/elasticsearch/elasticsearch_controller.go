@@ -307,6 +307,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 		"iteration", atomic.LoadUint64(&r.iteration),
 		"namespace", es.Namespace,
 		"es_name", es.Name,
+		"status", cluster.Status,
 	)
 	return common.UpdateStatus(r.Client, cluster)
 }
