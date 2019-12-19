@@ -17,6 +17,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
+// Simple program that returns the licensing information, including the total memory of all Elastic managed components by
+// the operator and its equivalent in "Enterprise Resource Units".
+//
+// The main objective of its existence is to show a use of the ResourceReporter and also to propose an alternative to
+// immediately retrieve the licensing information.
+//
+// Example of use:
+//
+//  > go run cmd/licensing-info/main.go | jq .
+//  {
+//    "timestamp": "2019-12-17T11:56:02+01:00",
+//    "license_level": "basic",
+//    "memory": "5.37GB",
+//    "enterprise_resource_units": "1"
+//  }
+//
+
 func main() {
 	licensingInfo, err := license.NewResourceReporter(newK8sClient()).Get()
 	if err != nil {
