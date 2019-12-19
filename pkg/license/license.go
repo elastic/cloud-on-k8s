@@ -10,6 +10,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -23,6 +24,8 @@ const (
 	defaultOperatorLicenseLevel = "basic"
 	// licensingCfgMapName is the name of the config map used to store licensing information
 	licensingCfgMapName = "elastic-licensing"
+	// Type represents the Elastic usage type used to mark the config map that stores licensing information
+	Type = "elastic-usage"
 )
 
 // LicensingInfo represents information about the operator license including the total memory of all Elastic managed
@@ -69,6 +72,9 @@ func (r LicensingResolver) Save(info LicensingInfo, operatorNs string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: operatorNs,
 			Name:      licensingCfgMapName,
+			Labels:    map[string]string{
+				common.TypeLabelName: Type,
+			},
 		},
 		Data: data,
 	}
