@@ -8,7 +8,7 @@ plans:
   serviceAccount: true
   psp: true
   gke:
-    region: europe-west1
+    region: europe-west2
     adminUsername: admin
     localSsdCount: 1
     nodeCountPerZone: 1
