@@ -141,12 +141,12 @@ pipeline {
 def runWith(lib, failedTests, clusterName, stackVersion) {
     sh """
         cat >.env <<EOF
-OPERATOR_IMAGE = "${IMAGE}"
-GCLOUD_PROJECT = "$GCLOUD_PROJECT"
-STACK_VERSION = "${stackVersion}"
+OPERATOR_IMAGE = ${IMAGE}
+GCLOUD_PROJECT = $GCLOUD_PROJECT
+STACK_VERSION = ${stackVersion}
 SKIP_DOCKER_COMMAND = true
 REGISTRY = eu.gcr.io
-REPOSITORY = "$GCLOUD_PROJECT"
+REPOSITORY = $GCLOUD_PROJECT
 E2E_JSON = true
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.json
 GO_TAGS = release

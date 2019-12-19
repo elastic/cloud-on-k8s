@@ -31,10 +31,10 @@ pipeline {
                         sh """
                             cat >.env <<EOF
 VERSION = ${TAG_NAME}
-REGISTRY = "${REGISTRY}"
-REPOSITORY = "${REPOSITORY}"
-IMG_NAME = "${IMG_NAME}"
-OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
+REGISTRY = ${REGISTRY}
+REPOSITORY = ${REPOSITORY}
+IMG_NAME = ${IMG_NAME}
+OPERATOR_IMAGE = ${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}
 SNAPSHOT = false
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
