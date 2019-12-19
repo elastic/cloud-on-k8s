@@ -147,14 +147,14 @@ you can get errors reporting a conflict while updating a resource. You can ignor
 [id="{p}-eck-debug-logs"]
 === Enable ECK debug logs
 
-To enable `DEBUG` level logs on the operator, restart it with the flag `--enable-debug-logs=true`. For example:
+To enable `DEBUG` level logs on the operator, edit the `elastic-operator` StatefulSet and set the `--log-verbosity` flag to `1` as illustrated below. Once your change is saved, the operator will be automatically restarted by the StatefulSet controller to apply the new settings.
 
 [source,sh]
 ----
 kubectl edit statefulset.apps -n elastic-system elastic-operator
 ----
 
-and change the following lines from:
+change the `args` array as follows:
 
 [source,yaml]
 ----
@@ -164,21 +164,9 @@ and change the following lines from:
       - manager
       - --operator-roles
       - all
-      - --enable-debug-logs=false
+      - --log-verbosity=1
 ----
 
-to
-
-[source,yaml]
-----
-  spec:
-    containers:
-    - args:
-      - manager
-      - --operator-roles
-      - all
-      - --enable-debug-logs=true
-----
 
 [float]
 [id="{p}-pause-controllers"]
