@@ -9,7 +9,7 @@ endif::[]
 ECK can be configured using either command line flags or environment variables.
 
 
-[width="70%",valign="middle",halign="center",cols="m,m,d",options="header"]
+[valign="middle",halign="center",cols="m,m,d",options="header"]
 |===
 |Flag |Default|Description
 |auto-port-forward |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost.
@@ -45,27 +45,6 @@ Duration values should be specified as numeric values suffixed by the time unit.
 |===
 
 
-Edit the operator deployment to change any of the flag values. For example, to enable `DEBUG` level logs, the operator needs to be restarted with the `--enable-debug-logs` flag set to `true`. This can be done as follows:
-
-
-Edit the operator Statefulset:
-
-[source,sh]
-----
-kubectl edit statefulset.apps -n elastic-system elastic-operator
-----
-
-change the `args` array:
-
-[source,yaml]
-----
-  spec:
-    containers:
-    - args:
-      - manager
-      - --operator-roles
-      - all
-      - --enable-debug-logs=true
-----
+Edit the `elastic-operator` StatefulSet to change any of the flag values. <<{p}-eck-debug-logs>> illustrates how to change the log level of the operator using this method.
 
 include::webhook.asciidoc[]
