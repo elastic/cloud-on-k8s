@@ -67,12 +67,12 @@ func (r LicensingResolver) Save(info LicensingInfo, operatorNs string) error {
 		return err
 	}
 
-	log.V(1).Info("Saving", "license_info", info)
+	log.V(1).Info("Saving", "namespace", operatorNs, "configmap_name", licensingCfgMapName, "license_info", info)
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: operatorNs,
 			Name:      licensingCfgMapName,
-			Labels:    map[string]string{
+			Labels: map[string]string{
 				common.TypeLabelName: Type,
 			},
 		},

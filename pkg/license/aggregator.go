@@ -71,7 +71,8 @@ func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
 			}
 
 			total.Add(multiply(mem, nodeSet.Count))
-			log.V(1).Info("Collecting", "es_name", es.Name, "memory", mem.String(), "count", nodeSet.Count)
+			log.V(1).Info("Collecting", "namespace", es.Namespace, "es_name", es.Name,
+				"memory", mem.String(), "count", nodeSet.Count)
 		}
 	}
 
@@ -98,7 +99,8 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 		}
 
 		total.Add(multiply(mem, kb.Spec.Count))
-		log.V(1).Info("Collecting", "kibana_name", kb.Name, "memory", mem.String(), "count", kb.Spec.Count)
+		log.V(1).Info("Collecting", "namespace", kb.Namespace, "kibana_name", kb.Name,
+			"memory", mem.String(), "count", kb.Spec.Count)
 	}
 
 	return total, nil
@@ -124,7 +126,8 @@ func (a Aggregator) aggregateApmServerMemory() (resource.Quantity, error) {
 		}
 
 		total.Add(multiply(mem, as.Spec.Count))
-		log.V(1).Info("Collecting", "as_name", as.Name, "memory", mem.String(), "count", as.Spec.Count)
+		log.V(1).Info("Collecting", "namespace", as.Namespace, "as_name", as.Name,
+			"memory", mem.String(), "count", as.Spec.Count)
 	}
 
 	return total, nil
