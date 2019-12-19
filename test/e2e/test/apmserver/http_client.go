@@ -83,6 +83,9 @@ func (c *ApmClient) doRequest(context context.Context, request *http.Request) (*
 	// inject the authorization (secret token)
 	request.Header.Set("Authorization", c.authorizationHeaderValue)
 
+	// allow json content
+	request.Header.Set("Accept", "application/json")
+
 	return c.client.Do(withContext)
 }
 
