@@ -68,6 +68,9 @@ const (
 	WebhookPort              = 9443
 
 	DebugHTTPServerListenAddressFlag = "debug-http-listen"
+
+	// resourceReporterFrequency defines the reporting frequency of the resource reporter
+	resourceReporterFrequency = 2 * time.Minute
 )
 
 var (
@@ -325,7 +328,7 @@ func execute() {
 		go func() {
 			mgr.GetCache().WaitForCacheSync(nil)
 			r := licensing.NewResourceReporter(mgr.GetClient())
-			r.Start(operatorNamespace)
+			r.Start(operatorNamespace, resourceReporterFrequency)
 		}()
 	}
 

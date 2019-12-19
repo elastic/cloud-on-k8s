@@ -5,8 +5,11 @@
 package license
 
 import (
+	"context"
 	"testing"
+	"time"
 
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	essettings "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
@@ -15,6 +18,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func Test_Get(t *testing.T) {
@@ -159,4 +164,58 @@ func Test_Get(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "204.80GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "4", licensingInfo.EnterpriseResourceUnits)
+}
+
+func Test_Start(t *testing.T) {
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "es-test",
+		},
+		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 20}}}}
+	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 2}}
+	apm := apmv1.ApmServer{Spec: apmv1.ApmServerSpec{Count: 2}}
+	k8sClient := k8s.FakeClient(&es, &kb, &apm)
+	operatorNs := "test-system"
+	refreshPeriod := 1 * time.Second
+
+	// start the resource reporter
+	go NewResourceReporter(k8sClient).Start(operatorNs, refreshPeriod)
+
+	// check that the licensing config map exists
+	assert.Eventually(t, func() bool {
+		var cm corev1.ConfigMap
+		err := k8sClient.Get(context.Background(), types.NamespacedName{
+			Namespace: operatorNs,
+			Name:      licensingCfgMapName,
+		}, &cm)
+		if err != nil {
+			return false
+		}
+		return cm.Data["timestamp"] != "" &&
+			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
+			cm.Data["enterprise_resource_units"] == "2" &&
+			cm.Data["total_managed_memory"] == "89.12GB"
+	}, refreshPeriod*2, refreshPeriod/2)
+
+	// increase the Elasticsearch nodes count
+	es.Spec.NodeSets[0].Count = 40
+	err := k8sClient.Update(context.Background(), &es)
+	assert.NoError(t, err)
+
+	// check that the licensing config map has been updated
+	assert.Eventually(t, func() bool {
+		var cm corev1.ConfigMap
+		err := k8sClient.Get(context.Background(), types.NamespacedName{
+			Namespace: operatorNs,
+			Name:      licensingCfgMapName,
+		}, &cm)
+		if err != nil {
+			return false
+		}
+
+		return cm.Data["timestamp"] != "" &&
+			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
+			cm.Data["enterprise_resource_units"] == "3" &&
+			cm.Data["total_managed_memory"] == "175.02GB"
+	}, refreshPeriod*2, refreshPeriod/2)
 }

@@ -12,11 +12,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	// refreshPeriod defines how often the licensing information should be refreshed
-	refreshPeriod = 2 * time.Minute
-)
-
 var (
 	log = logf.Log.WithName("resource")
 )
@@ -42,7 +37,12 @@ func NewResourceReporter(client client.Client) ResourceReporter {
 }
 
 // Start starts to report the licensing information repeatedly at regular intervals
-func (r ResourceReporter) Start(operatorNs string) {
+func (r ResourceReporter) Start(operatorNs string, refreshPeriod time.Duration) {
+	err := r.Report(operatorNs)
+	if err != nil {
+		log.Error(err, "Failed to report licensing information")
+	}
+
 	ticker := time.NewTicker(refreshPeriod)
 	for range ticker.C {
 		err := r.Report(operatorNs)
