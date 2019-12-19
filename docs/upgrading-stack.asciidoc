@@ -4,10 +4,10 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-upgrading-stack.htm
 ****
 endif::[]
 [id="{p}-upgrading-stack"]
-=== Upgrading the stack
+=== Upgrading to newer versions of the Elastic stack
 
 The operator can safely perform upgrades to newer versions of the various Elastic Stack resources.
 
-Note that you will still want to follow the process defined in the link:https://www.elastic.co/guide/en/elastic-stack/current/upgrading-elastic-stack.html#[Elasticsearch documentation]. That is to say, check to ensure that your cluster is compatible with the target version, take a snapshot, and upgrade different resources in the order described (along with any other steps mentioned in the referenced article). Provided you are ready to proceed with the upgrade, all you need to do is modify the `version` field of the resource to the version you would like, and the operator will upgrade it for you according to best practices and minimizing disruption.
+Note that you should still follow the instructions in the link:https://www.elastic.co/guide/en/elastic-stack/current/upgrading-elastic-stack.html[Elasticsearch documentation] and ensure that your cluster is compatible with the target version, take backups, and follow the specific upgrade instructions for each resource type (especially the order in which the upgrade should be carried out). When you are ready to proceed, simply modify the `version` field in the resource spec to the desired stack version and the operator will start the upgrade process automatically.
 
-The <<{p}-orchestration>> docs include more detail on how the operator performs upgrades and how to tune its behavior.
+See <<{p}-orchestration>> for more information on how the operator performs upgrades and how to tune its behavior.
