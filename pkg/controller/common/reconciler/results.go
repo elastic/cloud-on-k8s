@@ -14,10 +14,30 @@ import (
 // MaximumRequeueAfter is the maximum period of time in which we requeue a reconciliation.
 const MaximumRequeueAfter = 10 * time.Hour
 
+type resultKind int
+
+const (
+	noqueueKind  resultKind = iota // reconcile.Result{}
+	specificKind                   // reconcile.Result{RequeueAfter: x}
+	genericKind                    // reconcile.Result{Requeue: true}
+)
+
+func kindOf(r reconcile.Result) resultKind {
+	switch {
+	case r.RequeueAfter > 0:
+		return specificKind
+	case r.Requeue:
+		return genericKind
+	default:
+		return noqueueKind
+	}
+}
+
 // Results collects intermediate results of a reconciliation run and any errors that occurred.
 type Results struct {
-	results []reconcile.Result
-	errors  []error
+	currResult reconcile.Result
+	currKind   resultKind
+	errors     []error
 }
 
 // HasError returns true if Results contains one or more errors.
@@ -28,7 +48,7 @@ func (r *Results) HasError() bool {
 // WithResults appends the results and error from the other Results.
 func (r *Results) WithResults(other *Results) *Results {
 	if other != nil {
-		r.results = append(r.results, other.results...)
+		r.mergeResult(other.currKind, other.currResult)
 		r.errors = append(r.errors, other.errors...)
 	}
 	return r
@@ -44,8 +64,24 @@ func (r *Results) WithError(err error) *Results {
 
 // WithResult adds a result to the results.
 func (r *Results) WithResult(res reconcile.Result) *Results {
-	r.results = append(r.results, res)
+	kind := kindOf(res)
+	r.mergeResult(kind, res)
 	return r
+}
+
+// mergeResult updates the current result if the other result has higher priority.
+// Order of priority is: noqueue < specific < generic
+// When there are two specific results, the one with the lowest RequeueAfter takes precedence.
+func (r *Results) mergeResult(kind resultKind, res reconcile.Result) {
+	switch {
+	case kind > r.currKind:
+		r.currKind = kind
+		r.currResult = res
+	case kind == r.currKind && kind == specificKind:
+		if res.RequeueAfter < r.currResult.RequeueAfter {
+			r.currResult = res
+		}
+	}
 }
 
 // Apply applies the output of a reconciliation step to the results. The step outcome is implicitly considered
@@ -58,38 +94,14 @@ func (r *Results) Apply(step string, recoverableStep func() (reconcile.Result, e
 	return r.WithError(err).WithResult(result)
 }
 
-// Aggregate compares the collected results with each other and returns the most specific one.
-// Where specific means requeue at a given time is more specific then generic requeue which is more specific
-// than no requeue. It also returns any errors recorded.
-// The aggregated `result.RequeueAfter` period will not be larger than MaximumRequeueAfter.
+// Aggregate returns the highest priority reconcile result and any errors seen so far.
 func (r *Results) Aggregate() (reconcile.Result, error) {
-	var current reconcile.Result
-	for _, next := range r.results {
-		if nextResultTakesPrecedence(current, next) {
-			current = next
-		}
-	}
-	if current.RequeueAfter > MaximumRequeueAfter {
+	if r.currResult.RequeueAfter > MaximumRequeueAfter {
 		// A client-go leaky timer issue will cause memory leaks for long requeue periods,
 		// see https://github.com/elastic/cloud-on-k8s/issues/1984.
 		// To prevent this from happening, let's restrict the requeue to a fixed short-term value.
 		// TODO: remove once https://github.com/kubernetes/client-go/issues/701 is fixed.
-		current.RequeueAfter = MaximumRequeueAfter
+		r.currResult.RequeueAfter = MaximumRequeueAfter
 	}
-	return current, k8serrors.NewAggregate(r.errors)
-}
-
-// nextResultTakesPrecedence compares the current reconciliation result with the proposed one,
-// and returns true if the current result should be replaced by the proposed one.
-func nextResultTakesPrecedence(current, next reconcile.Result) bool {
-	if current == next {
-		return false // no need to replace the result
-	}
-	if next.Requeue && !current.Requeue && current.RequeueAfter <= 0 {
-		return true // next requests requeue current does not, next takes precedence
-	}
-	if next.RequeueAfter > 0 && (current.RequeueAfter == 0 || next.RequeueAfter < current.RequeueAfter) {
-		return true // next requests a requeue and current does not or wants it only later
-	}
-	return false // default case
+	return r.currResult, k8serrors.NewAggregate(r.errors)
 }

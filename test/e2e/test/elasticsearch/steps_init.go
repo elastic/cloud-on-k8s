@@ -9,12 +9,14 @@ import (
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // InitTestSteps includes pre-requisite tests (eg. is k8s accessible),
@@ -29,7 +31,6 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				require.NoError(t, err)
 			},
 		},
-
 		{
 			Name: "Elasticsearch CRDs should exist",
 			Test: func(t *testing.T) {
@@ -42,7 +43,29 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				}
 			},
 		},
-
+		{
+			Name: "Webhook endpoint should not be empty",
+			Test: test.Eventually(func() error {
+				if test.Ctx().IgnoreWebhookFailures {
+					return nil
+				}
+				webhookEndpoints := &corev1.Endpoints{}
+				if err := k.Client.Get(types.NamespacedName{
+					Namespace: test.Ctx().GlobalOperator.Namespace,
+					Name:      webhook.WebhookServiceName,
+				}, webhookEndpoints); err != nil {
+					return err
+				}
+				if len(webhookEndpoints.Subsets) == 0 {
+					return fmt.Errorf(
+						"endpoint %s/%s is empty",
+						webhookEndpoints.Namespace,
+						webhookEndpoints.Name,
+					)
+				}
+				return nil
+			}),
+		},
 		{
 			Name: "Remove Elasticsearch if it already exists",
 			Test: func(t *testing.T) {

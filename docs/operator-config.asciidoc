@@ -16,8 +16,8 @@ You can use several options to configure ECK. Unless otherwise noted, these opti
 |`log-verbosity` |int |0 |Verbosity level of logs. -2=Error, -1=Warn, 0=Info, >0=Debug
 |`enable-debug-logs` |bool |false |Enables debug logs. Equivalent to `log-verbosity=1`
 |`metrics-port` |int |0 |Port to use for exposing metrics in the Prometheus format. Set 0 to disable
-|`operator-roles` |[]string |all |Roles this operator should assume. Valid values are namespace, global, webhook or all. Accepts multiple comma separated values. See <<{p}-ns-config>> for more information
-|`namespaces` |[]string |`""` |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces. See <<{p}-ns-config>> for more information
+|`operator-roles` |[]string |all |Roles this operator should assume. Valid values are namespace, global, webhook or all. Accepts multiple comma separated values.
+|`namespaces` |[]string |`""` |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
 |`ca-cert-validity` |duration (string) |1y |Duration representing how long before a newly created CA cert expires
 |`ca-cert-rotate-before` |duration (string) |1d |Duration representing how long before expiration CA certificates should be reissued
 |`cert-validity` |duration (string) |1y |Duration representing how long before a newly created TLS certificate expires
@@ -65,9 +65,4 @@ to:
       - --enable-debug-logs=true
 ----
 
-[id="{p}-ns-config"]
-=== Namespace and role configuration
-
-The `operator-roles` and `namespaces` flags have some intricacies that are worth discussing. A fully functioning operator will *require* both `global` and `namespace` roles running in the cluster (though potentially in different operator deployments). That is to say, with `--operator-roles=global,namespace` (or `--operator-roles=all`). If you want to limit the operator to a specific set of namespaces, you must set the `namespaces` flag as well. For example `--operator-roles=global,namespace --namespaces=my-namespace1,mynamespace2`. To have it manage all namespaces, you can simply omit the `namespaces` flag.
-
-The global role acts across namespaces and is not related to a specific deployment of the Elastic stack. The global operator deployed cluster-wide is responsible for high-level cross-cluster features.
+include::webhook.asciidoc[]

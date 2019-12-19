@@ -287,6 +287,26 @@ func (b Builder) WithMutatedFrom(builder *Builder) Builder {
 	return b
 }
 
+func (b Builder) WithEnvironmentVariable(name, value string) Builder {
+	for i, nodeSet := range b.Elasticsearch.Spec.NodeSets {
+		for j, container := range nodeSet.PodTemplate.Spec.Containers {
+			container.Env = append(container.Env, corev1.EnvVar{Name: name, Value: value})
+			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Spec.Containers[j].Env = container.Env
+		}
+	}
+	return b
+}
+
+func (b Builder) WithPodLabel(key, value string) Builder {
+	for i := range b.Elasticsearch.Spec.NodeSets {
+		if b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Labels == nil {
+			b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Labels = make(map[string]string)
+		}
+		b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Labels[key] = value
+	}
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {

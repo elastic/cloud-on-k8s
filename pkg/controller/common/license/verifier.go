@@ -94,7 +94,7 @@ func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
 	if err != nil {
 		return err
 	}
-	//TODO optional pubkey fingerprint check
+	// TODO optional pubkey fingerprint check
 	hashed := sha512.Sum512(contentBytes)
 	return rsa.VerifyPKCS1v15(v.PublicKey, crypto.SHA512, hashed[:], signedContentSig)
 }
@@ -158,8 +158,7 @@ func (s *Signer) Sign(l EnterpriseLicense) ([]byte, error) {
 
 	buf := bytes.NewBuffer(sig)
 
-	// we only support version 3 for now
-	if err := writeInt(buf, 3); err != nil {
+	if err := writeInt(buf, l.License.Version); err != nil {
 		return nil, err
 	}
 	if err := writeInt(buf, len(magic)); err != nil {
@@ -198,7 +197,8 @@ type licenseSpec struct {
 	IssueDateInMillis  int64  `json:"issue_date_in_millis,omitempty"`
 	StartDateInMillis  int64  `json:"start_date_in_millis,omitempty"`
 	ExpiryDateInMillis int64  `json:"expiry_date_in_millis,omitempty"`
-	MaxInstances       int    `json:"max_instances"`
+	MaxInstances       int    `json:"max_instances,omitempty"`
+	MaxResourceUnits   int    `json:"max_resource_units,omitempty"`
 	IssuedTo           string `json:"issued_to"`
 	Issuer             string `json:"issuer"`
 }
@@ -211,6 +211,7 @@ func toVerifiableSpec(l EnterpriseLicense) licenseSpec {
 		StartDateInMillis:  l.License.StartDateInMillis,
 		ExpiryDateInMillis: l.License.ExpiryDateInMillis,
 		MaxInstances:       l.License.MaxInstances,
+		MaxResourceUnits:   l.License.MaxResourceUnits,
 		IssuedTo:           l.License.IssuedTo,
 		Issuer:             l.License.Issuer,
 	}

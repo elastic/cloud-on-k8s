@@ -166,7 +166,7 @@ spec:
       - image: {{ .OperatorImage }}
         imagePullPolicy: IfNotPresent
         name: manager
-        args: ["manager", "--operator-roles", "global,webhook"]
+        args: ["manager", "--operator-roles", "global,webhook", "--log-verbosity=1"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
@@ -185,6 +185,13 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
+        readinessProbe:
+          httpGet:
+            path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
+            port: webhook-server
+            scheme: HTTPS
+          failureThreshold: 3
+          periodSeconds: 5
         ports:
         - containerPort: 9443
           name: webhook-server
@@ -213,7 +220,7 @@ webhooks:
         namespace: {{ .GlobalOperator.Namespace }}
         # this is the path controller-runtime automatically generates
         path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
-    failurePolicy: Ignore
+    failurePolicy: {{ if .IgnoreWebhookFailures }}Ignore{{ else }}Fail{{ end }}
     name: elastic-es-validation.k8s.elastic.co
     rules:
       - apiGroups:
@@ -232,7 +239,7 @@ webhooks:
         namespace: {{ .GlobalOperator.Namespace }}
         # this is the path controller-runtime automatically generates
         path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
-    failurePolicy: Ignore
+    failurePolicy: {{ if .IgnoreWebhookFailures }}Ignore{{ else }}Fail{{ end }}
     name: elastic-es-validation.k8s.elastic.co
     rules:
       - apiGroups:
@@ -255,4 +262,4 @@ spec:
     - port: 443
       targetPort: 9443
   selector:
-    control-plane: elastic-operator
+    control-plane: {{ .GlobalOperator.Name }}

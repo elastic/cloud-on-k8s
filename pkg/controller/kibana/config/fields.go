@@ -10,6 +10,7 @@ const (
 	ServerHost                                     = "server.host"
 	ElasticSearchHosts                             = "elasticsearch.hosts"
 	XpackMonitoringUiContainerElasticsearchEnabled = "xpack.monitoring.ui.container.elasticsearch.enabled"
+	XpackLicenseManagementUIEnabled                = "xpack.license_management.ui.enabled" // >= 7.6
 
 	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
 	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
