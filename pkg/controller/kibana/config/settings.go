@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/go-ucfg"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,7 +37,7 @@ type CanonicalConfig struct {
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
 func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
 	currentConfig := getExistingConfig(client, kb)
-
+	filteredCurrCfg := filterExistingConfig(currentConfig)
 	specConfig := kb.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1.Config{}
@@ -53,7 +54,7 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 	if !kb.RequiresAssociation() {
 		// merge the configuration with userSettings last so they take precedence
 		if err := cfg.MergeWith(
-			currentConfig,
+			filteredCurrCfg,
 			versionSpecificCfg,
 			kibanaTLSCfg,
 			userSettings); err != nil {
@@ -69,7 +70,7 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 
 	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
-		currentConfig,
+		filteredCurrCfg,
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
@@ -110,6 +111,25 @@ func getExistingConfig(client k8s.Client, kb kbv1.Kibana) *settings.CanonicalCon
 		return nil
 	}
 	return cfg
+}
+
+// filterExistingConfig filters an existing config for only items we want to preserve between spec changes
+// because they cannot be generated deterministically, e.g. encryption keys
+func filterExistingConfig(cfg *settings.CanonicalConfig) *settings.CanonicalConfig {
+	if cfg == nil {
+		return nil
+	}
+	val, err := (*ucfg.Config)(cfg).String(XpackSecurityEncryptionKey, -1, settings.Options...)
+	if err != nil {
+		log.V(1).Info("Current config does not contain key", "key", XpackSecurityEncryptionKey, "error", err)
+		return nil
+	}
+	filteredCfg, err := settings.NewSingleValue(XpackSecurityEncryptionKey, val)
+	if err != nil {
+		log.Error(err, "Error filtering current config")
+		return nil
+	}
+	return filteredCfg
 }
 
 func baseSettings(kb kbv1.Kibana) map[string]interface{} {

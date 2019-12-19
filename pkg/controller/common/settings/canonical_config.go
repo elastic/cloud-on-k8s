@@ -62,12 +62,22 @@ func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
 // MustNewSingleValue creates a new config holding a single string value.
 // Convenience constructor, will panic in the unlikely event of errors.
 func MustNewSingleValue(k string, v string) *CanonicalConfig {
-	cfg := fromConfig(ucfg.New())
+	cfg := NewCanonicalConfig()
 	err := cfg.asUCfg().SetString(k, -1, v, Options...)
 	if err != nil {
 		panic(err)
 	}
 	return cfg
+}
+
+// NewSingleValue creates a new config holding a single string value.
+func NewSingleValue(k string, v string) (*CanonicalConfig, error) {
+	cfg := fromConfig(ucfg.New())
+	err := cfg.asUCfg().SetString(k, -1, v, Options...)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return cfg, nil
 }
 
 // ParseConfig parses the given configuration content into a CanonicalConfig.

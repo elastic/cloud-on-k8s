@@ -209,6 +209,25 @@ func TestNewConfigSettings(t *testing.T) {
 			},
 			want: append(defaultConfig, []byte(`logging.verbose: false`)...),
 		},
+		{
+			name: "test existing secret does not prevent removing items from config in spec",
+			args: args{
+				client: k8s.WrappedFakeClient(&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      SecretName(defaultKb),
+						Namespace: defaultKb.Namespace,
+					},
+					Data: map[string][]byte{
+						SettingsFilename: []byte("xpack.security.encryptionKey: thisismyencryptionkey\nlogging.verbose: true"),
+					},
+				}),
+				kb: func() kbv1.Kibana {
+					kb := mkKibana()
+					return kb
+				},
+			},
+			want: append(defaultConfig),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -378,4 +397,18 @@ func Test_getExistingConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_filterExistingConfig(t *testing.T) {
+	cfg, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
+		XpackSecurityEncryptionKey: "value",
+		"notakey":                  "notavalue",
+	})
+	require.NoError(t, err)
+	want, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
+		XpackSecurityEncryptionKey: "value",
+	})
+	require.NoError(t, err)
+	filtered := filterExistingConfig(cfg)
+	assert.Equal(t, want, filtered)
 }
