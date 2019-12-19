@@ -185,8 +185,11 @@ func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 	if err != nil {
 		return resource.Quantity{}, err
 	}
-	// capitalize the suffix to have a surjection of [g|G|m|M|k|K] in [Gi|Mi|Ki]
-	suffix := strings.ToUpper(match[2]) + "i"
+	suffix := match[2]
+	if suffix != "" {
+		// capitalize the suffix and add `i` to have a surjection of [g|G|m|M|k|K] in [Gi|Mi|Ki]
+		suffix = strings.ToUpper(match[2]) + "i"
+	}
 	// multiply by 2 and convert it to a quantity using the suffix
 	return resource.ParseQuantity(fmt.Sprintf("%d%s", value*2, suffix))
 }

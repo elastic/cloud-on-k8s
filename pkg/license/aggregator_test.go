@@ -49,9 +49,9 @@ func TestMemFromJavaOpts(t *testing.T) {
 			expected: resource.MustParse("128Gi"),
 		},
 		{
-			name:   "without unit",
-			actual: "-Xmx83886080",
-			isErr:  true,
+			name:     "without unit",
+			actual:   "-Xmx1048576",
+			expected: resource.MustParse("2Mi"),
 		},
 		{
 			name:   "without value",
