@@ -9,7 +9,7 @@ endif::[]
 ECK can be configured using either command line flags or environment variables.
 
 
-[valign="middle",halign="center",cols="m,m,d",options="header"]
+[width="100%",valign="middle",halign="center",cols="~m,~m,d",options="header"]
 |===
 |Flag |Default|Description
 |auto-port-forward |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost.
@@ -35,7 +35,7 @@ Unless noted otherwise, environment variables can be used instead of flags to co
 
 Duration values should be specified as numeric values suffixed by the time unit. For example, a duration of 10 hours should be specified as `10h`. Acceptable time unit suffixes are:
 
-[cols="m,d",options="header"]
+[width="50%",cols="m,d",options="header"]
 |===
 |Suffix |Unit
 |ms | Milliseconds
