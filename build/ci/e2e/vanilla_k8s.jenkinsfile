@@ -82,11 +82,11 @@ pipeline {
 def runTests(kindImage) {
     sh """
         cat >.env <<EOF
-OPERATOR_IMAGE = "${IMAGE}"
-GCLOUD_PROJECT = "$GCLOUD_PROJECT"
+OPERATOR_IMAGE = ${IMAGE}
+GCLOUD_PROJECT = $GCLOUD_PROJECT
 SKIP_DOCKER_COMMAND = true
 REGISTRY = eu.gcr.io
-REPOSITORY = "$GCLOUD_PROJECT"
+REPOSITORY = $GCLOUD_PROJECT
 E2E_JSON = true
 KIND_NODE_IMAGE = ${kindImage}
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.json
