@@ -9,7 +9,7 @@ endif::[]
 ECK can be configured using either command line flags or environment variables.
 
 
-[width="100%",valign="middle",halign="center",cols="~m,~m,d",options="header"]
+[width="100%",cols=".^35m,.^25m,.^40d",options="header"]
 |===
 |Flag |Default|Description
 |auto-port-forward |false |Enables automatic port forwarding to allow running the operator outside the cluster. For dev use only as it exposes k8s resources on ephemeral ports to localhost.
@@ -19,7 +19,6 @@ ECK can be configured using either command line flags or environment variables.
 |cert-validity |8760h |Duration representing the validity period of a generated TLS certificate.
 |debug-http-listen |localhost:6060 |Listen address for the debug HTTP server. Only available in development mode.
 |development |false |Enable developmenet mode. Only available as a CLI flag.
-|enable-debug-logs |false |Enables debug logs. Equivalent to `log-verbosity=1`.
 |log-verbosity |0 |Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug
 |manage-webhook-certs |true |Enables automatic webhook certificate management.
 |metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
@@ -31,11 +30,11 @@ ECK can be configured using either command line flags or environment variables.
 |===
 
 
-Unless noted otherwise, environment variables can be used instead of flags to configure the operator as well. Simply convert the flag name to upper case and replace any dashes (`-`) with underscores (`_`). For example, the `enable-debug-logs` flag can be set by an environment variable named `ENABLE_DEBUG_LOGS`.
+Unless noted otherwise, environment variables can be used instead of flags to configure the operator as well. Simply convert the flag name to upper case and replace any dashes (`-`) with underscores (`_`). For example, the `log-verbosity` flag can be set by an environment variable named `LOG_VERBOSITY`.
 
 Duration values should be specified as numeric values suffixed by the time unit. For example, a duration of 10 hours should be specified as `10h`. Acceptable time unit suffixes are:
 
-[width="50%",cols="m,d",options="header"]
+[width="50%",cols="25m,75d",options="header"]
 |===
 |Suffix |Unit
 |ms | Milliseconds
