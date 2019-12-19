@@ -147,7 +147,7 @@ func containerMemLimits(
 		if container.Name == containerName {
 			mem = *container.Resources.Limits.Memory()
 
-			// if not, maybe fallback to the environment variable
+			// if memory is defined at the container level, maybe fallback to the environment variable
 			if envLookup != nil && mem.IsZero() {
 				for _, envVar := range container.Env {
 					if envVar.Name == envVarName {
@@ -162,7 +162,7 @@ func containerMemLimits(
 		}
 	}
 
-	// if not, fallback to the default limits
+	// if still no memory found, fallback to the default limits
 	if mem.IsZero() {
 		mem = defaultLimit
 	}
@@ -170,10 +170,11 @@ func containerMemLimits(
 	return mem, nil
 }
 
-// maxHeapSizePattern is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K] in binary units)
+// maxHeapSizeRe is the pattern to extract the max Java heap size (-Xmx<size>[g|G|m|M|k|K] in binary units)
 var maxHeapSizeRe = regexp.MustCompile(`-Xmx([0-9]+)([gGmMkK]?)(?:\s.+|$)`)
 
 // memFromJavaOpts extracts the maximum Java heap size from a Java options string, multiplies the value by 2
+// (giving twice the JVM memory to the container is a common thing people do)
 // and converts it to a resource.Quantity
 func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 	match := maxHeapSizeRe.FindStringSubmatch(javaOpts)
@@ -184,13 +185,13 @@ func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 	if err != nil {
 		return resource.Quantity{}, err
 	}
-	// capitalize the suffix unless to have a surjection of [g|G|m|M|k|K] in [Gi|Mi|Ki]
+	// capitalize the suffix to have a surjection of [g|G|m|M|k|K] in [Gi|Mi|Ki]
 	suffix := strings.ToUpper(match[2]) + "i"
-	// multiply by 2 and convert it in a quantity using the suffix
+	// multiply by 2 and convert it to a quantity using the suffix
 	return resource.ParseQuantity(fmt.Sprintf("%d%s", value*2, suffix))
 }
 
-// nodeHeapSizePattern is the pattern to extract the max heap size of the node memory (--max-old-space-size=<mb_size>)
+// nodeHeapSizeRe is the pattern to extract the max heap size of the node memory (--max-old-space-size=<mb_size>)
 var nodeHeapSizeRe = regexp.MustCompile("--max-old-space-size=([0-9]*)")
 
 // memFromNodeOptions extracts the Node heap size from a Node options string and converts it to a resource.Quantity
