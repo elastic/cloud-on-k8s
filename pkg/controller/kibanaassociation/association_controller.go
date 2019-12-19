@@ -129,15 +129,15 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	var kibana kbv1.Kibana
-	if ok, err := association.FetchWithAssociation(r.Client, request, &kibana); !ok {
-		if err != nil {
-			return reconcile.Result{}, err
+	if err := association.FetchWithAssociation(r.Client, request, &kibana); err != nil {
+		if apierrors.IsNotFound(err) {
+			// Kibana has been deleted, remove artifacts related to the association.
+			return reconcile.Result{}, r.onDelete(types.NamespacedName{
+				Namespace: request.Namespace,
+				Name:      request.Name,
+			})
 		}
-		// Kibana has been deleted, remove artifacts related to the association.
-		return reconcile.Result{}, r.onDelete(types.NamespacedName{
-			Namespace: request.Namespace,
-			Name:      request.Name,
-		})
+		return reconcile.Result{}, err
 	}
 
 	// Kibana is being deleted, short-circuit reconciliation and remove artifacts related to the association.
