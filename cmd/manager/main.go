@@ -68,9 +68,6 @@ const (
 	WebhookPort              = 9443
 
 	DebugHTTPServerListenAddressFlag = "debug-http-listen"
-
-	// resourceReporterFrequency defines the reporting frequency of the resource reporter
-	resourceReporterFrequency = 2 * time.Minute
 )
 
 var (
@@ -329,7 +326,7 @@ func execute() {
 			time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
 			mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
 			r := licensing.NewResourceReporter(mgr.GetClient())
-			r.Start(operatorNamespace, resourceReporterFrequency)
+			r.Start(operatorNamespace, licensing.ResourceReporterFrequency)
 		}()
 	}
 
