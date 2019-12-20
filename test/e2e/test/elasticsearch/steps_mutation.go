@@ -11,6 +11,7 @@ import (
 	"time"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -20,12 +21,25 @@ import (
 
 const (
 	continuousHealthCheckTimeout = 5 * time.Second
-	// clusterUnavailabilityThreshold is the accepted duration for the cluster to temporarily not respond to requests
-	// (eg. during leader elections in the middle of a rolling upgrade).
-	// The value is completely arbitrary and based on observations that killing the master node
-	// on Elasticsearch < 7.2 usually makes the cluster unavailable for about 50 sec in those tests.
-	clusterUnavailabilityThreshold = 120 * time.Second
 )
+
+// clusterUnavailabilityThreshold is the accepted duration for the cluster to temporarily not respond to requests
+// (eg. during leader elections in the middle of a rolling upgrade).
+func cluserUnavailabilityThreshold(b Builder) time.Duration {
+	cluster := b.Elasticsearch
+	if b.MutatedFrom != nil {
+		cluster = b.MutatedFrom.Elasticsearch
+	}
+	v := version.MustParse(cluster.Spec.Version)
+	if (&v).IsSameOrAfter(version.MustParse("7.2.0")) {
+		// in version 7.2 and above, there is usually close to zero unavailability when a master node is killed
+		// we still keep an arbitrary safety margin
+		return 20 * time.Second
+	}
+	// in other versions (< 7.2), we commonly get about 50sec unavailability, and more on a stressed test environment
+	// let's take a larger arbitrary safety margin
+	return 120 * time.Second
+}
 
 func (b Builder) UpgradeTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
@@ -169,7 +183,7 @@ func (hc *ContinuousHealthCheck) AppendErr(err error) {
 
 // Start runs health checks in a goroutine, until stopped
 func (hc *ContinuousHealthCheck) Start() {
-	clusterUnavailability := clusterUnavailability{threshold: clusterUnavailabilityThreshold}
+	clusterUnavailability := clusterUnavailability{threshold: cluserUnavailabilityThreshold(hc.b)}
 	go func() {
 		ticker := time.NewTicker(test.DefaultRetryDelay)
 		for {
