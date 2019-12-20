@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -46,6 +47,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -329,7 +331,6 @@ func execute() {
 			r.Start(operatorNamespace, licensing.ResourceReporterFrequency)
 		}()
 	}
-
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
@@ -392,6 +393,29 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 
 	if err := (&esv1.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
 		log.Error(err, "unable to create webhook", "webhook", "Elasticsearch")
+		os.Exit(1)
+	}
+
+	// wait for the secret to be populated in the local filesystem before returning
+	interval := time.Second * 1
+	timeout := time.Second * 30
+	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certificates.CertFileName)
+	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
+	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+		_, err := os.Stat(keyPath)
+		// err could be that the file does not exist, but also that permission was denied or something else
+		if os.IsNotExist(err) {
+			log.V(1).Info("Webhook certificate file not present on filesystem yet", "path", keyPath)
+			return false, nil
+		} else if err != nil {
+			log.Error(err, "Error checking if webhook secret path exists", "path", keyPath)
+			return false, err
+		}
+		log.V(1).Info("Webhook certificate file present on filesystem", "path", keyPath)
+		return true, nil
+	})
+
+	if err != nil {
 		os.Exit(1)
 	}
 }
