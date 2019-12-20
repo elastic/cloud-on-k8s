@@ -94,20 +94,20 @@ func getExistingConfig(client k8s.Client, kb kbv1.Kibana) *settings.CanonicalCon
 	var secret corev1.Secret
 	err := client.Get(types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
-		log.V(1).Info("Kibana config secret does not exist", "kibana_namespace", kb.Namespace, "kibana_name", kb.Name)
+		log.V(1).Info("Kibana config secret does not exist", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return nil
 	} else if err != nil {
-		log.Error(err, "Error retrieving kibana config secret", "kibana_namespace", kb.Namespace, "kibana_name", kb.Name)
+		log.Error(err, "Error retrieving kibana config secret", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return nil
 	}
 	rawCfg, exists := secret.Data[SettingsFilename]
 	if !exists {
-		log.Error(nil, "No kibana config file in secret", "secret_namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
+		log.Error(nil, "No kibana config file in secret", "namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
 		return nil
 	}
 	cfg, err := settings.ParseConfig(rawCfg)
 	if err != nil {
-		log.Error(err, "Error parsing existing kibana config in secret", "secret_namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
+		log.Error(err, "Error parsing existing kibana config in secret", "namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
 		return nil
 	}
 	return cfg
