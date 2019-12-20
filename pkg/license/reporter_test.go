@@ -32,7 +32,7 @@ func Test_Get(t *testing.T) {
 	}
 	licensingInfo, err := NewResourceReporter(k8s.FakeClient(&es)).Get()
 	assert.NoError(t, err)
-	assert.Equal(t, "42.95GB", licensingInfo.TotalManagedMemory)
+	assert.Equal(t, "21.47GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "1", licensingInfo.EnterpriseResourceUnits)
 
 	es = esv1.Elasticsearch{
@@ -171,7 +171,7 @@ func Test_Start(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "es-test",
 		},
-		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 20}}}}
+		Spec: esv1.ElasticsearchSpec{NodeSets: []esv1.NodeSet{{Count: 40}}}}
 	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 2}}
 	apm := apmv1.ApmServer{Spec: apmv1.ApmServerSpec{Count: 2}}
 	k8sClient := k8s.FakeClient(&es, &kb, &apm)
@@ -198,7 +198,7 @@ func Test_Start(t *testing.T) {
 	}, refreshPeriod*2, refreshPeriod/2)
 
 	// increase the Elasticsearch nodes count
-	es.Spec.NodeSets[0].Count = 40
+	es.Spec.NodeSets[0].Count = 80
 	err := k8sClient.Update(context.Background(), &es)
 	assert.NoError(t, err)
 
@@ -212,7 +212,6 @@ func Test_Start(t *testing.T) {
 		if err != nil {
 			return false
 		}
-
 		return cm.Data["timestamp"] != "" &&
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "3" &&

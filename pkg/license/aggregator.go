@@ -64,7 +64,7 @@ func (a Aggregator) aggregateElasticsearchMemory() (resource.Quantity, error) {
 				nodeSet.PodTemplate.Spec.Containers,
 				esv1.ElasticsearchContainerName,
 				essettings.EnvEsJavaOpts, memFromJavaOpts,
-				multiply(nodespec.DefaultMemoryLimits, 2),
+				nodespec.DefaultMemoryLimits,
 			)
 			if err != nil {
 				return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Elasticsearch memory")
