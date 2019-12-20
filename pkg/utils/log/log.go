@@ -20,20 +20,16 @@ import (
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-var (
-	verbosity       = flag.Int("log-verbosity", 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
-	enableDebugLogs = flag.Bool("enable-debug-logs", false, "Enable debug logs")
-)
+var verbosity = flag.Int("log-verbosity", 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
 
 // BindFlags attaches logging flags to the given flag set.
 func BindFlags(flags *pflag.FlagSet) {
 	flags.AddGoFlag(flag.Lookup("log-verbosity"))
-	flags.AddGoFlag(flag.Lookup("enable-debug-logs"))
 }
 
-// InitLogger initializes the global logger informed by the values of log-verbosity and enable-debug-logs flags.
+// InitLogger initializes the global logger informed by the value of log-verbosity flag.
 func InitLogger() {
-	setLogger(verbosity, enableDebugLogs)
+	setLogger(verbosity)
 }
 
 // ChangeVerbosity replaces the global logger with a new logger set to the specified verbosity level.
@@ -46,12 +42,11 @@ func InitLogger() {
 // -1    |  1        | Warn
 // -2    |  2        | Error
 func ChangeVerbosity(v int) {
-	debugLogs := false
-	setLogger(&v, &debugLogs)
+	setLogger(&v)
 }
 
-func setLogger(v *int, debug *bool) {
-	zapLevel := determineLogLevel(v, debug)
+func setLogger(v *int) {
+	zapLevel := determineLogLevel(v)
 
 	// if the Zap custom level is less than debug (verbosity level 2 and above) set the klog level to the same level
 	if zapLevel.Level() < zap.DebugLevel {
@@ -85,12 +80,10 @@ func setLogger(v *int, debug *bool) {
 	}))
 }
 
-func determineLogLevel(v *int, debug *bool) zap.AtomicLevel {
+func determineLogLevel(v *int) zap.AtomicLevel {
 	switch {
 	case v != nil && *v > -3:
 		return zap.NewAtomicLevelAt(zapcore.Level(*v * -1))
-	case debug != nil && *debug:
-		return zap.NewAtomicLevelAt(zapcore.DebugLevel)
 	case dev.Enabled:
 		return zap.NewAtomicLevelAt(zapcore.DebugLevel)
 	default:
