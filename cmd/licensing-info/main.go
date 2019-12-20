@@ -25,7 +25,7 @@ import (
 //
 // Example of use:
 //
-//  > go run cmd/licensing-info/main.go | jq .
+//  > go run cmd/licensing-info/main.go
 //  {
 //    "timestamp": "2019-12-17T11:56:02+01:00",
 //    "license_level": "basic",
