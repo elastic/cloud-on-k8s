@@ -38,10 +38,11 @@ func NewResourceReporter(client client.Client) ResourceReporter {
 
 // Start starts to report the licensing information repeatedly at regular intervals
 func (r ResourceReporter) Start(operatorNs string, refreshPeriod time.Duration) {
-	err := r.Report(operatorNs)
-	if err != nil {
-		log.Error(err, "Failed to report licensing information")
-	}
+	// report once as soon as possible to not wait the first tick with a retry
+	// because the cache may not be started
+	doWithRetry(3, func() error {
+		return r.Report(operatorNs)
+	})
 
 	ticker := time.NewTicker(refreshPeriod)
 	for range ticker.C {
@@ -49,6 +50,18 @@ func (r ResourceReporter) Start(operatorNs string, refreshPeriod time.Duration) 
 		if err != nil {
 			log.Error(err, "Failed to report licensing information")
 		}
+	}
+}
+
+func doWithRetry(maxRetries int, f func() error) {
+	retry := 1
+	for {
+		err := f()
+		if err == nil || retry == maxRetries {
+			break
+		}
+		time.Sleep(1*time.Second)
+		retry++
 	}
 }
 

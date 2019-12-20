@@ -326,7 +326,6 @@ func execute() {
 		}
 
 		go func() {
-			mgr.GetCache().WaitForCacheSync(nil)
 			r := licensing.NewResourceReporter(mgr.GetClient())
 			r.Start(operatorNamespace, resourceReporterFrequency)
 		}()
