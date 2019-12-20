@@ -2,20 +2,20 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package driver
+package bootstrap
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func bootstrappedES() *esv1.Elasticsearch {
@@ -28,32 +28,10 @@ func bootstrappedES() *esv1.Elasticsearch {
 	}
 }
 
-func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable *int32) *esv1.Elasticsearch {
-	es := bootstrappedES()
-	es.Spec.UpdateStrategy = esv1.UpdateStrategy{
-		ChangeBudget: esv1.ChangeBudget{
-			MaxSurge:       maxSurge,
-			MaxUnavailable: maxUnavailable,
-		},
-	}
-
-	return es
-}
-
 func notBootstrappedES() *esv1.Elasticsearch {
 	return &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
 		Spec:       esv1.ElasticsearchSpec{Version: "7.3.0"},
-	}
-}
-
-func reBootstrappingES() *esv1.Elasticsearch {
-	return &esv1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "cluster",
-			Annotations: map[string]string{},
-		},
-		Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
 	}
 }
 
@@ -146,33 +124,6 @@ func TestReconcileClusterUUID(t *testing.T) {
 			cluster:       notBootstrappedES(),
 			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
 			wantCluster:   bootstrappedES(),
-		},
-		{
-			name: "annotated, bootstrapped, but needs re-bootstrapping due to single node upgrade ",
-			c: k8s.WrappedFakeClient(
-				bootstrappedES(),
-				sset.TestPod{
-					ClusterName: "cluster",
-					Version:     "6.8.0",
-					Master:      true,
-				}.BuildPtr()),
-			cluster:       bootstrappedES(),
-			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
-			wantCluster:   reBootstrappingES(),
-		},
-		{
-			name: "not annotated, bootstrapped, but still on pre-upgrade version",
-			c: k8s.WrappedFakeClient(
-				reBootstrappingES(),
-				sset.TestPod{
-					ClusterName: "cluster",
-					Version:     "6.8.0",
-					Master:      true,
-				}.BuildPtr(),
-			),
-			cluster:       reBootstrappingES(),
-			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
-			wantCluster:   reBootstrappingES(),
 		},
 	}
 	for _, tt := range tests {

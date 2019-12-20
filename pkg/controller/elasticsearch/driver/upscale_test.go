@@ -8,15 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,6 +16,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 var onceDone = &sync.Once{}
@@ -34,8 +37,11 @@ func init() {
 }
 
 func TestHandleUpscaleAndSpecChanges(t *testing.T) {
-	k8sClient := k8s.WrappedFakeClient()
-	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"}}
+	es := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+		Spec:       esv1.ElasticsearchSpec{Version: "7.5.0"},
+	}
+	k8sClient := k8s.WrappedFakeClient(&es)
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
@@ -56,6 +62,13 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 						Type: appsv1.RollingUpdateStatefulSetStrategyType,
 						RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
 							Partition: pointer.Int32(3),
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								string(label.NodeTypesMasterLabelName): "true",
+							},
 						},
 					},
 				},
@@ -266,10 +279,17 @@ func Test_adjustZenConfig(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        TestEsName,
 			Namespace:   TestEsNamespace,
-			Annotations: map[string]string{ClusterUUIDAnnotationName: "uuid"},
+			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
 		},
+		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
 	}
-	notBootstrappedES := esv1.Elasticsearch{}
+	notBootstrappedES := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      TestEsName,
+			Namespace: TestEsNamespace,
+		},
+		Spec: esv1.ElasticsearchSpec{Version: "7.5.0"},
+	}
 
 	tests := []struct {
 		name                      string
@@ -325,7 +345,7 @@ func Test_adjustZenConfig(t *testing.T) {
 			if pods == nil {
 				pods = tt.statefulSet.Pods()
 			}
-			client := k8s.WrappedFakeClient(pods...)
+			client := k8s.WrappedFakeClient(append(pods, &tt.es)...)
 			err := adjustZenConfig(client, tt.es, resources)
 			require.NoError(t, err)
 			for _, res := range resources {

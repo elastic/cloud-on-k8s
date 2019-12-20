@@ -6,11 +6,13 @@ package client
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	"github.com/pkg/errors"
 )
 
 // Info represents the response from /
@@ -66,14 +68,23 @@ func (n Nodes) Names() []string {
 
 // Node partially models an Elasticsearch node retrieved from /_nodes
 type Node struct {
-	Name  string   `json:"name"`
-	Roles []string `json:"roles"`
-	JVM   struct {
+	Name    string   `json:"name"`
+	Version string   `json:"version"`
+	Roles   []string `json:"roles"`
+	JVM     struct {
 		StartTimeInMillis int64 `json:"start_time_in_millis"`
 		Mem               struct {
 			HeapMaxInBytes int `json:"heap_max_in_bytes"`
 		} `json:"mem"`
 	} `json:"jvm"`
+}
+
+func (n Node) isV7OrAbove() (bool, error) {
+	v, err := version.Parse(n.Version)
+	if err != nil {
+		return false, errors.Wrap(err, fmt.Sprintf("unable to parse node version %s", n.Version))
+	}
+	return v.Major > 7, nil
 }
 
 // NodesStats partially models the response from a request to /_nodes/stats

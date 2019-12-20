@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -110,6 +111,24 @@ func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []st
 
 func (c *clientV6) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
 	return errors.New("Not supported in Elasticsearch 6.x")
+}
+
+func (c *clientV6) ClusterBootstrappedForZen2(ctx context.Context) (bool, error) {
+	// Look at the current master node of the cluster: if it's running version 7.x.x or above,
+	// the cluster has been bootstrapped.
+	// Even though c is a clientV6, it may be targeting a mixed v6/v7 having a v7 master.
+	var response Nodes
+	if err := c.get(ctx, "/_nodes/_master", &response); err != nil {
+		return false, err
+	}
+	if len(response.Nodes) != 1 {
+		return false, fmt.Errorf("GET /_nodes/_master returned %d nodes", len(response.Nodes))
+	}
+	for _, master := range response.Nodes {
+		return master.isV7OrAbove()
+	}
+	// should never happen since we ensured a single entry in the above map
+	return false, errors.New("no master found in ClusterBootstrappedForZen2")
 }
 
 func (c *clientV6) Request(ctx context.Context, r *http.Request) (*http.Response, error) {

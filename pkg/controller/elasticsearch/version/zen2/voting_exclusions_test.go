@@ -17,12 +17,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type fakeESClient struct {
+type fakeVotingConfigExclusionsESClient struct {
 	called bool
 	client.Client
 }
 
-func (f *fakeESClient) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+func (f *fakeVotingConfigExclusionsESClient) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
 	f.called = true
 	return nil
 }
@@ -84,7 +84,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			clientMock := &fakeESClient{}
+			clientMock := &fakeVotingConfigExclusionsESClient{}
 			requeue, err := ClearVotingConfigExclusions(es, tt.c, clientMock, tt.actualStatefulSets)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRequeue, requeue)

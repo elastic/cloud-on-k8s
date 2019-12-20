@@ -2,15 +2,17 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package driver
+package bootstrap
 
 import (
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
+
+var log = logf.Log.WithName("elasticsearch-uuid")
 
 const (
 	// ClusterUUIDAnnotationName used to store the cluster UUID as an annotation when cluster has been bootstrapped.
@@ -25,53 +27,16 @@ func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 }
 
 func ReconcileClusterUUID(c k8s.Client, cluster *esv1.Elasticsearch, observedState observer.State) error {
-	reBootstrap, err := clusterNeedsReBootstrap(c, cluster)
-	if err != nil {
-		return err
-	}
-
 	if AnnotatedForBootstrap(*cluster) {
-		if reBootstrap {
-			log.Info("cluster re-bootstrap necessary",
-				"version", cluster.Spec.Version,
-				"namespace", cluster.Namespace,
-				"name", cluster.Name,
-			)
-			return removeUUIDAnnotation(c, cluster)
-		}
 		// already annotated, nothing to do.
 		return nil
 	}
-	if clusterIsBootstrapped(observedState) && !reBootstrap {
+	if clusterIsBootstrapped(observedState) {
 		// cluster bootstrapped but not annotated yet
 		return annotateWithUUID(cluster, observedState, c)
 	}
 	// cluster not bootstrapped yet
 	return nil
-}
-
-func removeUUIDAnnotation(client k8s.Client, es *esv1.Elasticsearch) error {
-	annotations := es.Annotations
-	if annotations == nil {
-		return nil
-	}
-	delete(es.Annotations, ClusterUUIDAnnotationName)
-	return client.Update(es)
-}
-
-// clusterNeedsReBootstrap is true if we are updating a single master cluster from 6.x to 7.x
-// because we lose the 'cluster' when rolling the single master node.
-// Invariant: no grow and shrink
-func clusterNeedsReBootstrap(client k8s.Client, es *esv1.Elasticsearch) (bool, error) {
-	initialZen2Upgrade, err := zen2.IsInitialZen2Upgrade(client, *es)
-	if err != nil {
-		return false, err
-	}
-	currentMasters, err := sset.GetActualMastersForCluster(client, *es)
-	if err != nil {
-		return false, err
-	}
-	return len(currentMasters) == 1 && initialZen2Upgrade, nil
 }
 
 // clusterIsBootstrapped returns true if the cluster has formed and has a UUID.

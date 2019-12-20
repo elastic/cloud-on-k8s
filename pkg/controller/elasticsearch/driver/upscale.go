@@ -7,6 +7,7 @@ package driver
 import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
+
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -93,11 +94,9 @@ func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources node
 	if err := zen1.SetupMinimumMasterNodesConfig(k8sClient, es, resources); err != nil {
 		return err
 	}
-	// patch configs to consider zen2 initial master nodes if cluster is not bootstrapped yet
-	if !AnnotatedForBootstrap(es) {
-		if err := zen2.SetupInitialMasterNodes(resources); err != nil {
-			return err
-		}
+	// patch configs to consider zen2 initial master nodes
+	if err := zen2.SetupInitialMasterNodes(es, k8sClient, resources); err != nil {
+		return err
 	}
 	return nil
 }

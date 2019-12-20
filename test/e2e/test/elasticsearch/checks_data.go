@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"reflect"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -153,28 +152,15 @@ func dataIntegrityReplicas(b Builder) int {
 	if initial == nil {
 		initial = &b // consider mutated == initial
 	}
-
 	if MustNumDataNodes(initial.Elasticsearch) == 1 || MustNumDataNodes(b.Elasticsearch) == 1 {
 		// a 1 node cluster can only be green if shards have no replicas
 		return 0
 	}
-
-	// attempt do detect a rolling upgrade scenario
-	// Important: this only checks ES version and spec, other changes such as secure settings update
-	// are tricky to capture and ignored here.
-	isVersionUpgrade := initial.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
-	httpOptionsChange := reflect.DeepEqual(initial.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
-	for _, initialNs := range initial.Elasticsearch.Spec.NodeSets {
-		for _, mutatedNs := range b.Elasticsearch.Spec.NodeSets {
-			if initialNs.Name == mutatedNs.Name &&
-				(isVersionUpgrade || httpOptionsChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
-				// a rolling upgrade is scheduled for that NodeSpec
-				// we need at least 1 replica per shard for the cluster to remain green during the operation
-				return 1
-			}
-		}
+	if b.TriggersRollingUpgrade() {
+		// a rolling upgrade will happen during the mutation: nodes will go down
+		// we need at least 1 replica per shard for the cluster to remain green during the operation
+		return 1
 	}
-
 	// default to 0 replicas, to ensure proper data migration happens during the mutation
 	return 0
 }
