@@ -177,6 +177,8 @@ func Test_Start(t *testing.T) {
 	k8sClient := k8s.FakeClient(&es, &kb, &apm)
 	operatorNs := "test-system"
 	refreshPeriod := 1 * time.Second
+	waitFor := 10 * refreshPeriod
+	tick := refreshPeriod / 2
 
 	// start the resource reporter
 	go NewResourceReporter(k8sClient).Start(operatorNs, refreshPeriod)
@@ -195,7 +197,7 @@ func Test_Start(t *testing.T) {
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "2" &&
 			cm.Data["total_managed_memory"] == "89.12GB"
-	}, refreshPeriod*2, refreshPeriod/2)
+	}, waitFor, tick)
 
 	// increase the Elasticsearch nodes count
 	es.Spec.NodeSets[0].Count = 80
@@ -216,5 +218,5 @@ func Test_Start(t *testing.T) {
 			cm.Data["eck_license_level"] == defaultOperatorLicenseLevel &&
 			cm.Data["enterprise_resource_units"] == "3" &&
 			cm.Data["total_managed_memory"] == "175.02GB"
-	}, refreshPeriod*2, refreshPeriod/2)
+	}, waitFor, tick)
 }
