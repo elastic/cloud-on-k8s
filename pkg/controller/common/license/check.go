@@ -5,6 +5,7 @@
 package license
 
 import (
+	"sort"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -14,6 +15,7 @@ import (
 )
 
 type Checker interface {
+	CurrentEnterpriseLicense() (*EnterpriseLicense, error)
 	EnterpriseFeaturesEnabled() (bool, error)
 	Valid(l EnterpriseLicense) (bool, error)
 }
@@ -45,27 +47,49 @@ func (lc *checker) publicKeyFor(l EnterpriseLicense) ([]byte, error) {
 	}, &signatureSec)
 }
 
-// EnterpriseFeaturesEnabled returns true if a valid enterprise license is installed.
-func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
+// CurrentEnterpriseLicense returns the currently valid Enterprise license if installed.
+func (lc *checker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
 	licenses, err := EnterpriseLicenses(lc.k8sClient)
 	if err != nil {
-		return false, errors.Wrap(err, "failed to list enterprise licenses")
+		return nil, errors.Wrap(err, "failed to list enterprise licenses")
 	}
 
+	sort.Slice(licenses, func(i, j int) bool {
+		t1, t2 := EnterpriseLicenseTypeOrder[licenses[i].License.Type], EnterpriseLicenseTypeOrder[licenses[j].License.Type]
+		if t1 != t2 { // sort by type (first the most features)
+			return t1 > t2
+		}
+		// and by expiry date (first which expires last)
+		return licenses[i].License.ExpiryDateInMillis > licenses[j].License.ExpiryDateInMillis
+	})
+
+	// pick the first valid Enterprise license in the sorted slice
 	for _, l := range licenses {
 		valid, err := lc.Valid(l)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		if valid {
-			return true, nil
+			return &l, nil
 		}
 	}
-	return false, nil
+	return nil, nil
+}
+
+// EnterpriseFeaturesEnabled returns true if a valid enterprise license is installed.
+func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
+	license, err := lc.CurrentEnterpriseLicense()
+	if err != nil {
+		return false, err
+	}
+	return license != nil, nil
 }
 
 // Valid returns true if the given Enterprise license is valid or an error if any.
 func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
+	if l.IsTrial() {
+		return true, nil
+	}
 	pk, err := lc.publicKeyFor(l)
 	if err != nil {
 		return false, errors.Wrap(err, "while loading signature secret")
@@ -82,6 +106,10 @@ func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 }
 
 type MockChecker struct{}
+
+func (MockChecker) CurrentEnterpriseLicense() (*EnterpriseLicense, error) {
+	return &EnterpriseLicense{}, nil
+}
 
 func (MockChecker) EnterpriseFeaturesEnabled() (bool, error) {
 	return true, nil

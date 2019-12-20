@@ -31,14 +31,17 @@ const (
 	ConfigVolumePath = ApmBaseDir + "/config"
 )
 
-var DefaultResources = corev1.ResourceRequirements{
-	Requests: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("512Mi"),
-	},
-	Limits: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("512Mi"),
-	},
-}
+var (
+	DefaultMemoryLimits = resource.MustParse("512Mi")
+	DefaultResources    = corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: DefaultMemoryLimits,
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: DefaultMemoryLimits,
+		},
+	}
+)
 
 func readinessProbe(tls bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP

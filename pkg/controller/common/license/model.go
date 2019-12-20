@@ -45,6 +45,12 @@ type LicenseSpec struct {
 	Version            int                    // not marshalled but part of the signature
 }
 
+// EnterpriseLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
+var EnterpriseLicenseTypeOrder = map[OperatorLicenseType]int{
+	LicenseTypeEnterpriseTrial: 0,
+	LicenseTypeEnterprise:      1,
+}
+
 // StartTime is the date as of which this license is valid.
 func (l EnterpriseLicense) StartTime() time.Time {
 	return time.Unix(0, l.License.StartDateInMillis*int64(time.Millisecond))
