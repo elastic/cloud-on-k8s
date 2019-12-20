@@ -515,7 +515,7 @@ include::snapshots.asciidoc[]
 
 By default, the readiness probe checks that the pod can successfully respond to HTTP requests within a three second timeout. This is acceptable in most cases. In some cases (such as when the cluster is under heavy load), it may be helpful to increase the timeout. This allows the pod to stay in a `Ready` state and thus be part of the Elasticsearch service even if it is responding slowly. To adjust the timeout, set the `READINESS_PROBE_TIMEOUT` environment variable in the pod template. The readiness probe configuration also must be updated with the new timeout. For example, to increase the API call timeout to ten seconds and the overall check time to twelve seconds:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 spec:
   version: {version}
@@ -553,7 +553,7 @@ When an Elasticsearch `Pod` is terminated, its `Endpoint` is removed from the `S
 
 To address this issue and guarantee no downtime for new connections, ECK relies on a link:https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/[PreStop lifecycle hook]. This waits to terminate the Elasticsearch process until the `Service` DNS record does not contain the IP of the `Pod`. First, the PreStop lifecycle hook will keep querying DNS for `MAX_WAIT_SECONDS` (defaulting to 20) and then it will wait for `ADDITIONAL_WAIT_SECONDS` (defaulting to 1). Additional wait is used to give clients time to use an IP resolved just before DNS record was updated. The exact behavior is configurable using environment variables, for example:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 spec:
   version: {version}
