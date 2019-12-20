@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -392,7 +392,8 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
 	timeout := time.Second * 30
-	keyPath := path.Join(mgr.GetWebhookServer().CertDir, "tls.crt")
+	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certificates.CertFileName)
+	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
 	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		_, err := os.Stat(keyPath)
 		// err could be that the file does not exist, but also that permission was denied or something else
