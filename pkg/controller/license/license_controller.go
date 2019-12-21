@@ -153,7 +153,7 @@ type ReconcileLicenses struct {
 	checker   license.Checker
 }
 
-// findLicense tries to find the best license available.
+// findLicense tries to find the best Elastic stack license available.
 func findLicense(c k8s.Client, checker license.Checker, minVersion *version.Version) (esclient.License, string, bool) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
@@ -220,9 +220,6 @@ func (r *ReconcileLicenses) reconcileClusterLicense(cluster esv1.Elasticsearch) 
 		return noResult, true, err
 	}
 	matchingSpec, parent, found := findLicense(r, r.checker, minVersion)
-	if err != nil {
-		return noResult, true, err
-	}
 	if !found {
 		// no license, delete cluster level licenses to revert to basic
 		log.V(1).Info("No enterprise license found. Attempting to remove cluster license secret", "namespace", cluster.Namespace, "es_name", cluster.Name)

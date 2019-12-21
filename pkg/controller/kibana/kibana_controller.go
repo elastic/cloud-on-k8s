@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -131,15 +132,15 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// retrieve the kibana object
 	var kb kbv1.Kibana
-	if ok, err := association.FetchWithAssociation(r.Client, request, &kb); !ok {
-		if err != nil {
-			return reconcile.Result{}, err
+	if err := association.FetchWithAssociation(r.Client, request, &kb); err != nil {
+		if apierrors.IsNotFound(err) {
+			r.onDelete(types.NamespacedName{
+				Namespace: request.Namespace,
+				Name:      request.Name,
+			})
+			return reconcile.Result{}, nil
 		}
-		r.onDelete(types.NamespacedName{
-			Namespace: request.Namespace,
-			Name:      request.Name,
-		})
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, err
 	}
 
 	// skip reconciliation if paused

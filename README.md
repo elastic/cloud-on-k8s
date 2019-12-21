@@ -4,13 +4,13 @@
 
 # Elastic Cloud on Kubernetes (ECK)
 
-Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch and Kibana on Kubernetes based on the operator pattern.
+Elastic Cloud on Kubernetes automates the deployment, provisioning, management, and orchestration of Elasticsearch, Kibana and APM Server on Kubernetes based on the operator pattern.
 
 This is a beta version.
 
 Current features:
 
-*  Elasticsearch and Kibana deployments
+*  Elasticsearch, Kibana and APM Server deployments
 *  TLS Certificates management
 *  Safe Elasticsearch cluster configuration & topology changes
 *  Persistent volumes usage
@@ -19,8 +19,8 @@ Current features:
 
 Supported versions:
 
-*  Kubernetes: 1.11+
-*  Elasticsearch: 6.8+, 7.1+
+*  Kubernetes 1.12+ or OpenShift 3.11+
+*  Elastic Stack: 6.8+, 7.1+
 
 Check the [Quickstart](https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-quickstart.html) if you want to deploy you first cluster with ECK.
 

@@ -30,14 +30,17 @@ var ports = []corev1.ContainerPort{
 	{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 }
 
-var DefaultResources = corev1.ResourceRequirements{
-	Requests: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("1Gi"),
-	},
-	Limits: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("1Gi"),
-	},
-}
+var (
+	DefaultMemoryLimits = resource.MustParse("1Gi")
+	DefaultResources    = corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: DefaultMemoryLimits,
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: DefaultMemoryLimits,
+		},
+	}
+)
 
 // readinessProbe is the readiness probe for the Kibana container
 func readinessProbe(useTLS bool) corev1.Probe {

@@ -37,6 +37,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		a.CheckApmServerVersion(b.ApmServer),
 		a.CheckEventsAPI(),
 		a.CheckEventsInElasticsearch(b.ApmServer, k),
+		a.CheckRUMEventsAPI(b.RUMEnabled()),
 	}
 }
 
@@ -122,16 +123,39 @@ func (c *apmClusterChecks) CheckEventsAPI() test.Step {
 		Test: func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
 			defer cancel()
-			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, []byte(sampleBody))
+			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, false, []byte(sampleBody))
 			require.NoError(t, err)
 
 			// in the happy case, we get no error response
 			assert.Nil(t, eventsErrorResponse)
 			if eventsErrorResponse != nil {
 				// provide more details:
-				assert.Equal(t, eventsErrorResponse.Accepted, 2)
+				assert.Equal(t, 2, eventsErrorResponse.Accepted)
 				assert.Len(t, eventsErrorResponse.Errors, 0)
 			}
+		},
+	}
+}
+
+func (c *apmClusterChecks) CheckRUMEventsAPI(rumEnabled bool) test.Step {
+	sampleBody := `{"metadata":{"service":{"name":"apm-agent-js","version":"1.0.0","agent":{"name":"rum-js","version":"0.0.0"}}}}
+{"transaction":{"id":"611f4fa950f04631","type":"page-load","duration":643,"context":{"page":{"referer":"http://localhost:8000/test/e2e/","url":"http://localhost:8000/test/e2e/general-usecase/"}},"trace_id":"611f4fa950f04631aaaaaaaaaaaaaaaa","span_count":{"started":1}}}`
+
+	should := "forbidden"
+	assertError := assert.NotNil
+	if rumEnabled {
+		should = "accepted"
+		assertError = assert.Nil
+	}
+	return test.Step{
+		Name: "Events should be " + should,
+		Test: func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+			defer cancel()
+			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, true, []byte(sampleBody))
+			require.NoError(t, err)
+
+			assertError(t, eventsErrorResponse)
 		},
 	}
 }

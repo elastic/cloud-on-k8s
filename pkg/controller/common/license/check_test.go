@@ -82,3 +82,103 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		})
 	}
 }
+
+func Test_CurrentEnterpriseLicense(t *testing.T) {
+	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
+	require.NoError(t, err)
+
+	validLicenseFixture := licenseFixtureV3
+	validLicenseFixture.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(1 * time.Hour))
+	signatureBytes, err := NewSigner(privKey).Sign(validLicenseFixture)
+	require.NoError(t, err)
+	validLicense := asRuntimeObjects(validLicenseFixture, signatureBytes)
+
+	validTrialLicenseFixture := trialLicenseFixture
+	validTrialLicenseFixture.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(1 * time.Hour))
+	trialSignatureBytes, err := NewSigner(privKey).Sign(validTrialLicenseFixture)
+	require.NoError(t, err)
+	validTrialLicense := asRuntimeObjects(validTrialLicenseFixture, trialSignatureBytes)
+
+	type fields struct {
+		initialObjects    []runtime.Object
+		operatorNamespace string
+		publicKey         []byte
+	}
+
+	tests := []struct {
+		name     string
+		fields   fields
+		want     bool
+		wantErr  bool
+		wantType OperatorLicenseType
+	}{
+		{
+			name: "get valid enterprise license: OK",
+			fields: fields{
+				initialObjects:    validLicense,
+				operatorNamespace: "test-system",
+				publicKey:         publicKeyBytesFixture(t),
+			},
+			want:     true,
+			wantType: LicenseTypeEnterprise,
+			wantErr:  false,
+		},
+		{
+			name: "get valid trial enterprise license: OK",
+			fields: fields{
+				initialObjects:    validTrialLicense,
+				operatorNamespace: "test-system",
+				publicKey:         publicKeyBytesFixture(t),
+			},
+			want:     true,
+			wantType: LicenseTypeEnterpriseTrial,
+			wantErr:  false,
+		},
+		{
+			name: "get valid enterprise license among two licenses: OK",
+			fields: fields{
+				initialObjects:    append(validLicense, validTrialLicense...),
+				operatorNamespace: "test-system",
+				publicKey:         publicKeyBytesFixture(t),
+			},
+			want:     true,
+			wantType: LicenseTypeEnterprise,
+			wantErr:  false,
+		},
+		{
+			name: "no license: OK",
+			fields: fields{
+				initialObjects:    []runtime.Object{},
+				operatorNamespace: "test-system",
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "invalid public key: FAIL",
+			fields: fields{
+				initialObjects:    validLicense,
+				operatorNamespace: "test-system",
+				publicKey:         []byte("not a public key"),
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lc := &checker{
+				k8sClient:         k8s.WrappedFakeClient(tt.fields.initialObjects...),
+				operatorNamespace: tt.fields.operatorNamespace,
+				publicKey:         tt.fields.publicKey,
+			}
+			got, err := lc.CurrentEnterpriseLicense()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Checker.CurrentEnterpriseLicense() err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.want != (got != nil) {
+				t.Errorf("Checker.CurrentEnterpriseLicense() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

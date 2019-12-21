@@ -35,10 +35,10 @@ pipeline {
             steps {
                 sh """
                     cat >.env <<EOF
-GCLOUD_PROJECT = "$GCLOUD_PROJECT"
-OPERATOR_IMAGE = "$IMAGE"
+GCLOUD_PROJECT = $GCLOUD_PROJECT
+OPERATOR_IMAGE = $IMAGE
 REGISTRY = eu.gcr.io
-REPOSITORY = "$GCLOUD_PROJECT"
+REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 SKIP_DOCKER_COMMAND = true
 E2E_JSON = true

@@ -30,16 +30,16 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 1. Run `make dependencies` to download the Go libraries needed to compile the project.
 
-2. Get a working development Kubernetes cluster. You can either use:
+2. Get a working development Kubernetes cluster. You can use:
 
     [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube)
 
-    ```bash
+      ```bash
       make bootstrap-minikube
       # Sets up a Minikube cluster with required resources
       ```
 
-      or [GKE](https://cloud.google.com/kubernetes-engine/)
+    [GKE](https://cloud.google.com/kubernetes-engine/)
 
       Make sure that container registry authentication is correctly configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication).
 
@@ -47,6 +47,13 @@ Run `make check-requisites` to check that all dependencies are installed.
       export GCLOUD_PROJECT=my-project-id
       make bootstrap-gke
       # Sets up GKE cluster with required resources
+      ```
+
+    [Kind](https://kind.sigs.k8s.io/)
+
+      ```bash
+      make bootstrap-kind
+      # Sets up a kind cluster with required resources
       ```
 
 3. Deploy the operator.

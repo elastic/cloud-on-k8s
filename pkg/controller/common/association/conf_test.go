@@ -28,7 +28,6 @@ func testFetchAPMServer(t *testing.T) {
 		name          string
 		apmServer     *apmv1.ApmServer
 		request       reconcile.Request
-		wantOK        bool
 		wantErr       bool
 		wantAssocConf *commonv1.AssociationConf
 	}{
@@ -36,7 +35,6 @@ func testFetchAPMServer(t *testing.T) {
 			name:      "with association annotation",
 			apmServer: mkAPMServer(true),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "apm-server-test", Namespace: "apm-ns"}},
-			wantOK:    true,
 			wantAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "apm-user",
@@ -48,13 +46,12 @@ func testFetchAPMServer(t *testing.T) {
 			name:      "without association annotation",
 			apmServer: mkAPMServer(false),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "apm-server-test", Namespace: "apm-ns"}},
-			wantOK:    true,
 		},
 		{
 			name:      "non existent",
 			apmServer: mkAPMServer(true),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "some-other-apm", Namespace: "apm-ns"}},
-			wantOK:    false,
+			wantErr:   true,
 		},
 	}
 
@@ -63,21 +60,18 @@ func testFetchAPMServer(t *testing.T) {
 			client := k8s.WrappedFakeClient(tc.apmServer)
 
 			var got apmv1.ApmServer
-			ok, err := FetchWithAssociation(client, tc.request, &got)
+			err := FetchWithAssociation(client, tc.request, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
 				return
 			}
 
-			require.Equal(t, tc.wantOK, ok)
-			if tc.wantOK {
-				require.Equal(t, "apm-server-test", got.Name)
-				require.Equal(t, "apm-ns", got.Namespace)
-				require.Equal(t, "test-image", got.Spec.Image)
-				require.EqualValues(t, 1, got.Spec.Count)
-				require.Equal(t, tc.wantAssocConf, got.AssociationConf())
-			}
+			require.Equal(t, "apm-server-test", got.Name)
+			require.Equal(t, "apm-ns", got.Namespace)
+			require.Equal(t, "test-image", got.Spec.Image)
+			require.EqualValues(t, 1, got.Spec.Count)
+			require.Equal(t, tc.wantAssocConf, got.AssociationConf())
 		})
 	}
 }
@@ -108,7 +102,6 @@ func testFetchKibana(t *testing.T) {
 		name          string
 		kibana        *kbv1.Kibana
 		request       reconcile.Request
-		wantOK        bool
 		wantErr       bool
 		wantAssocConf *commonv1.AssociationConf
 	}{
@@ -116,7 +109,6 @@ func testFetchKibana(t *testing.T) {
 			name:    "with association annotation",
 			kibana:  mkKibana(true),
 			request: reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}},
-			wantOK:  true,
 			wantAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "kb-user",
@@ -128,13 +120,12 @@ func testFetchKibana(t *testing.T) {
 			name:    "without association annotation",
 			kibana:  mkKibana(false),
 			request: reconcile.Request{NamespacedName: types.NamespacedName{Name: "kb-test", Namespace: "kb-ns"}},
-			wantOK:  true,
 		},
 		{
 			name:    "non existent",
 			kibana:  mkKibana(true),
 			request: reconcile.Request{NamespacedName: types.NamespacedName{Name: "some-other-kb", Namespace: "kb-ns"}},
-			wantOK:  false,
+			wantErr: true,
 		},
 	}
 
@@ -143,21 +134,18 @@ func testFetchKibana(t *testing.T) {
 			client := k8s.WrappedFakeClient(tc.kibana)
 
 			var got kbv1.Kibana
-			ok, err := FetchWithAssociation(client, tc.request, &got)
+			err := FetchWithAssociation(client, tc.request, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
 				return
 			}
 
-			require.Equal(t, tc.wantOK, ok)
-			if tc.wantOK {
-				require.Equal(t, "kb-test", got.Name)
-				require.Equal(t, "kb-ns", got.Namespace)
-				require.Equal(t, "test-image", got.Spec.Image)
-				require.EqualValues(t, 1, got.Spec.Count)
-				require.Equal(t, tc.wantAssocConf, got.AssociationConf())
-			}
+			require.Equal(t, "kb-test", got.Name)
+			require.Equal(t, "kb-ns", got.Namespace)
+			require.Equal(t, "test-image", got.Spec.Image)
+			require.EqualValues(t, 1, got.Spec.Count)
+			require.Equal(t, tc.wantAssocConf, got.AssociationConf())
 		})
 	}
 }
@@ -197,8 +185,8 @@ func TestUpdateAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	ok, _ := FetchWithAssociation(client, request, &got)
-	require.True(t, ok)
+	err := FetchWithAssociation(client, request, &got)
+	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
@@ -213,11 +201,11 @@ func TestUpdateAssociationConf(t *testing.T) {
 		URL:            "https://new-es.svc:9300",
 	}
 
-	err := UpdateAssociationConf(client, &got, newAssocConf)
+	err = UpdateAssociationConf(client, &got, newAssocConf)
 	require.NoError(t, err)
 
-	ok, _ = FetchWithAssociation(client, request, &got)
-	require.True(t, ok)
+	err = FetchWithAssociation(client, request, &got)
+	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
@@ -239,8 +227,8 @@ func TestRemoveAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	ok, _ := FetchWithAssociation(client, request, &got)
-	require.True(t, ok)
+	err := FetchWithAssociation(client, request, &got)
+	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)
@@ -248,11 +236,11 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// remove and check the new values
-	err := RemoveAssociationConf(client, &got)
+	err = RemoveAssociationConf(client, &got)
 	require.NoError(t, err)
 
-	ok, _ = FetchWithAssociation(client, request, &got)
-	require.True(t, ok)
+	err = FetchWithAssociation(client, request, &got)
+	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
 	require.Equal(t, "test-image", got.Spec.Image)

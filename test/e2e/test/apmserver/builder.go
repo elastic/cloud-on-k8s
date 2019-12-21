@@ -101,6 +101,10 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	return b
 }
 
+func (b Builder) WithRUM(enabled bool) Builder {
+	return b.WithConfig(map[string]interface{}{"apm-server.rum.enabled": true})
+}
+
 func (b Builder) WithHTTPCfg(cfg commonv1.HTTPConfig) Builder {
 	b.ApmServer.Spec.HTTP = cfg
 	return b
@@ -110,4 +114,14 @@ func (b Builder) WithHTTPCfg(cfg commonv1.HTTPConfig) Builder {
 
 func (b Builder) RuntimeObjects() []runtime.Object {
 	return []runtime.Object{&b.ApmServer}
+}
+
+func (b Builder) RUMEnabled() bool {
+	rumEnabledConfig, ok := b.ApmServer.Spec.Config.Data["apm-server.rum.enabled"]
+	if ok {
+		if v, ok := rumEnabledConfig.(bool); ok {
+			return v
+		}
+	}
+	return false // rum disabled by default
 }

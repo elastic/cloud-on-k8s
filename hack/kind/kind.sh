@@ -16,7 +16,7 @@ set -e
 # Print commands
 set -x
 
-KIND_LOG_LEVEL=${KIND_LOG_LEVEL:-warning}
+KIND_LOGGING=${KIND_LOGGING:-"-v 1"}
 CLUSTER_NAME=${KIND_CLUSTER_NAME:-eck-e2e}
 NODES=3
 MANIFEST=/tmp/cluster.yml
@@ -86,17 +86,18 @@ function setup_kind_cluster() {
     config_opts="--config ${MANIFEST}"
   fi
   # Create Kind cluster
-  if ! (kind create cluster --name=${CLUSTER_NAME} ${config_opts} --loglevel "${KIND_LOG_LEVEL}" --retain --image "${NODE_IMAGE}"); then
+  if ! (kind ${KIND_LOGGING} create cluster --name=${CLUSTER_NAME} ${config_opts} --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1
   fi
 
-  KUBECONFIG="$(kind get kubeconfig-path --name="${CLUSTER_NAME}")"
-  export KUBECONFIG
+  # persist kubeconfig for reliabililty in following kubectl commands
+  TMPKUBECONFIG=$(mktemp)
+  kind --name=${CLUSTER_NAME} get kubeconfig > ${TMPKUBECONFIG}
 
   # setup storage
-  kubectl delete storageclass standard || true
-  kubectl apply -f "${scriptpath}/local-path-storage.yaml"
+  kubectl --kubeconfig=${TMPKUBECONFIG} delete storageclass standard || true
+  kubectl --kubeconfig=${TMPKUBECONFIG} apply -f "${scriptpath}/local-path-storage.yaml"
 
   echo "Kind setup complete"
 }
@@ -138,7 +139,7 @@ fi
 if [[ -n "${LOAD_IMAGES}" ]]; then
   IMAGES=(${LOAD_IMAGES//,/ })
   for image in "${IMAGES[@]}"; do
-          kind --loglevel "${KIND_LOG_LEVEL}" --name ${CLUSTER_NAME} load docker-image --nodes ${workers} "${image}"
+          kind ${KIND_LOGGING} --name ${CLUSTER_NAME} load docker-image --nodes ${workers} "${image}"
   done
 fi
 

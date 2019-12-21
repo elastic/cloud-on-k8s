@@ -23,8 +23,12 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// SettingsFilename is the name of the Kibana configuration settings file
-const SettingsFilename = "kibana.yml"
+const (
+	// SettingsFilename is the Kibana configuration settings file
+	SettingsFilename = "kibana.yml"
+	// EnvNodeOpts is the environment variable name for the Node options that can be used to increase the Kibana maximum memory limit
+	EnvNodeOpts = "NODE_OPTS"
+)
 
 var log = logf.Log.WithName("kibana-config")
 

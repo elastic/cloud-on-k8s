@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -48,6 +49,12 @@ var (
 	}
 )
 
+var trialLicenseFixture = EnterpriseLicense{
+	License: LicenseSpec{
+		Type: LicenseTypeEnterpriseTrial,
+	},
+}
+
 func withSignature(l EnterpriseLicense, sig []byte) EnterpriseLicense {
 	l.License.Signature = string(sig)
 	return l
@@ -58,11 +65,12 @@ func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
 	if err != nil {
 		panic(err)
 	}
+
 	return []runtime.Object{
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "test-system",
-				Name:      "test-license",
+				Name:      fmt.Sprintf("test-%s-license", string(l.License.Type)),
 				Labels: map[string]string{
 					common.TypeLabelName: Type,
 					LicenseLabelScope:    string(LicenseScopeOperator),

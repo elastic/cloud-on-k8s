@@ -36,6 +36,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -177,16 +178,15 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	var as apmv1.ApmServer
-	if ok, err := association.FetchWithAssociation(r.Client, request, &as); !ok {
-		if err != nil {
-			return reconcile.Result{}, err
+	if err := association.FetchWithAssociation(r.Client, request, &as); err != nil {
+		if apierrors.IsNotFound(err) {
+			r.onDelete(types.NamespacedName{
+				Namespace: request.Namespace,
+				Name:      request.Name,
+			})
+			return reconcile.Result{}, nil
 		}
-		// APM Server has been deleted, remove related artifacts.
-		r.onDelete(types.NamespacedName{
-			Namespace: request.Namespace,
-			Name:      request.Name,
-		})
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, err
 	}
 
 	if common.IsPaused(as.ObjectMeta) {
