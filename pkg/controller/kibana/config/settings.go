@@ -5,8 +5,6 @@
 package config
 
 import (
-	"path"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -16,10 +14,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/go-ucfg"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"path"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -36,8 +36,14 @@ type CanonicalConfig struct {
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
 func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
-	currentConfig := getExistingConfig(client, kb)
-	filteredCurrCfg := filterExistingConfig(currentConfig)
+	currentConfig, err := getExistingConfig(client, kb)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	filteredCurrCfg, err := filterExistingConfig(currentConfig)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
 	specConfig := kb.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1.Config{}
@@ -90,46 +96,47 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 }
 
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
-func getExistingConfig(client k8s.Client, kb kbv1.Kibana) *settings.CanonicalConfig {
+func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
 	var secret corev1.Secret
 	err := client.Get(types.NamespacedName{Name: SecretName(kb), Namespace: kb.Namespace}, &secret)
 	if err != nil && apierrors.IsNotFound(err) {
 		log.V(1).Info("Kibana config secret does not exist", "namespace", kb.Namespace, "kibana_name", kb.Name)
-		return nil
+		return nil, nil
 	} else if err != nil {
 		log.Error(err, "Error retrieving kibana config secret", "namespace", kb.Namespace, "kibana_name", kb.Name)
-		return nil
+		return nil, err
 	}
 	rawCfg, exists := secret.Data[SettingsFilename]
 	if !exists {
-		log.Error(nil, "No kibana config file in secret", "namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
-		return nil
+		err = errors.New("Kibana config secret exists but missing config file key")
+		log.Error(err, "", "namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
+		return nil, err
 	}
 	cfg, err := settings.ParseConfig(rawCfg)
 	if err != nil {
 		log.Error(err, "Error parsing existing kibana config in secret", "namespace", secret.Namespace, "secret_name", secret.Name, "key", SettingsFilename)
-		return nil
+		return nil, err
 	}
-	return cfg
+	return cfg, nil
 }
 
 // filterExistingConfig filters an existing config for only items we want to preserve between spec changes
 // because they cannot be generated deterministically, e.g. encryption keys
-func filterExistingConfig(cfg *settings.CanonicalConfig) *settings.CanonicalConfig {
+func filterExistingConfig(cfg *settings.CanonicalConfig) (*settings.CanonicalConfig, error) {
 	if cfg == nil {
-		return nil
+		return nil, nil
 	}
 	val, err := (*ucfg.Config)(cfg).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	if err != nil {
 		log.V(1).Info("Current config does not contain key", "key", XpackSecurityEncryptionKey, "error", err)
-		return nil
+		return nil, nil
 	}
 	filteredCfg, err := settings.NewSingleValue(XpackSecurityEncryptionKey, val)
 	if err != nil {
 		log.Error(err, "Error filtering current config")
-		return nil
+		return nil, err
 	}
-	return filteredCfg
+	return filteredCfg, nil
 }
 
 func baseSettings(kb kbv1.Kibana) map[string]interface{} {

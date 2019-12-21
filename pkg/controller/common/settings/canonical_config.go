@@ -60,7 +60,7 @@ func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
 }
 
 // MustNewSingleValue creates a new config holding a single string value.
-// Convenience constructor, will panic in the unlikely event of errors.
+// It is NewSingleValue but panics rather than returning errors, largely used for convenience in tests
 func MustNewSingleValue(k string, v string) *CanonicalConfig {
 	cfg := NewCanonicalConfig()
 	err := cfg.asUCfg().SetString(k, -1, v, Options...)

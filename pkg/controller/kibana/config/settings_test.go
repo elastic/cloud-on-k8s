@@ -358,40 +358,50 @@ func Test_getExistingConfig(t *testing.T) {
 		secret corev1.Secret
 		// an empty string means we should expect a nil return, anything else should be a key in the parsed config
 		expectKey string
+		expectErr bool
 	}{
 		{
 			name:      "happy path",
 			kb:        testKb,
 			secret:    testValidSecret,
 			expectKey: "xpack",
+			expectErr: false,
 		},
 		{
 			name:      "no secret exists",
 			kb:        testKb,
 			secret:    corev1.Secret{},
 			expectKey: "",
+			expectErr: false,
 		},
 		{
 			name:      "no kibana.yml exists in secret",
 			kb:        testKb,
 			secret:    testNoYaml,
 			expectKey: "",
+			expectErr: true,
 		},
 		{
 			name:      "cannot parse yaml",
 			kb:        testKb,
 			secret:    testInvalidYaml,
 			expectKey: "",
+			expectErr: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			client := k8s.WrapClient(fake.NewFakeClient(&tc.secret))
-			result := getExistingConfig(client, tc.kb)
-			if tc.expectKey == "" {
-				assert.Nil(t, result)
+			result, err := getExistingConfig(client, tc.kb)
+			if tc.expectErr {
+				require.Error(t, err)
 			} else {
+				require.NoError(t, err)
+			}
+
+			if tc.expectKey != "" {
+
 				require.NotNil(t, result)
 				assert.True(t, (*ucfg.Config)(result).HasField(tc.expectKey))
 			}
@@ -400,15 +410,34 @@ func Test_getExistingConfig(t *testing.T) {
 }
 
 func Test_filterExistingConfig(t *testing.T) {
-	cfg, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
-		XpackSecurityEncryptionKey: "value",
-		"notakey":                  "notavalue",
-	})
-	require.NoError(t, err)
-	want, err := settings.NewCanonicalConfigFrom(map[string]interface{}{
-		XpackSecurityEncryptionKey: "value",
-	})
-	require.NoError(t, err)
-	filtered := filterExistingConfig(cfg)
-	assert.Equal(t, want, filtered)
+	tests := []struct {
+		name      string
+		cfg       *settings.CanonicalConfig
+		want      *settings.CanonicalConfig
+		expectErr bool
+	}{
+		{
+			name: "happy path",
+			cfg: settings.MustCanonicalConfig(map[string]interface{}{
+				XpackSecurityEncryptionKey: "value",
+				"notakey":                  "notavalue",
+			}),
+			want: settings.MustCanonicalConfig(map[string]interface{}{
+				XpackSecurityEncryptionKey: "value",
+			}),
+			expectErr: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual, err := filterExistingConfig(tc.cfg)
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tc.want, actual)
+		})
+	}
 }
