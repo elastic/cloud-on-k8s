@@ -84,7 +84,7 @@ func (n Node) isV7OrAbove() (bool, error) {
 	if err != nil {
 		return false, errors.Wrap(err, fmt.Sprintf("unable to parse node version %s", n.Version))
 	}
-	return v.Major > 7, nil
+	return v.Major >= 7, nil
 }
 
 // NodesStats partially models the response from a request to /_nodes/stats

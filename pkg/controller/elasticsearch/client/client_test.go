@@ -602,3 +602,38 @@ func TestAPIError_Types(t *testing.T) {
 		})
 	}
 }
+
+func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
+	tests := []struct {
+		expectedPath, version        string
+		bootstrappedForZen2, wantErr bool
+	}{
+		{
+			expectedPath:        "/_nodes/_master",
+			version:             "6.8.0",
+			bootstrappedForZen2: false,
+			wantErr:             false,
+		},
+		{
+			expectedPath:        "/_nodes/_master",
+			version:             "7.5.0",
+			bootstrappedForZen2: true,
+			wantErr:             false,
+		},
+	}
+
+	for _, tt := range tests {
+		client := NewMockClient(version.MustParse(tt.version), func(req *http.Request) *http.Response {
+			require.Equal(t, tt.expectedPath, req.URL.Path)
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(fixtures.MasterNodeForVersion(tt.version))),
+			}
+		})
+		bootstrappedForZen2, err := client.ClusterBootstrappedForZen2(context.Background())
+		if (err != nil) != tt.wantErr {
+			t.Errorf("Client.DeleteVotingConfigExclusions() error = %v, wantErr %v", err, tt.wantErr)
+		}
+		require.Equal(t, tt.bootstrappedForZen2, bootstrappedForZen2)
+	}
+}
