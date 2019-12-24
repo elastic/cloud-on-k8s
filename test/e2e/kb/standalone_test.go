@@ -10,6 +10,7 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
@@ -27,14 +28,20 @@ func TestKibanaStandalone(t *testing.T) {
 func mkKibanaStandaloneBuilders(t *testing.T) []test.Builder {
 	t.Helper()
 
-	tmpl, err := template.ParseFiles("testdata/kibana_standalone.yaml")
+	namespace := test.Ctx().ManagedNamespace(0)
+	stackVersion := test.Ctx().ElasticStackVersion
+
+	templateFile := "testdata/kibana_standalone.yaml"
+	v := version.MustParse(stackVersion)
+	if v.Major == 6 {
+		templateFile = "testdata/kibana_standalone_6x.yaml"
+	}
+
+	tmpl, err := template.ParseFiles(templateFile)
 	require.NoError(t, err, "Failed to parse template")
 
 	buf := new(bytes.Buffer)
 	require.NoError(t, tmpl.Execute(buf, map[string]string{"Suffix": rand.String(4)}))
-
-	namespace := test.Ctx().ManagedNamespace(0)
-	stackVersion := test.Ctx().ElasticStackVersion
 
 	transform := func(builder test.Builder) test.Builder {
 		switch b := builder.(type) {

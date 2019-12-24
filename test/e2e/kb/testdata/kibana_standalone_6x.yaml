@@ -1,0 +1,37 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: test-kibana-standalone-es-{{ .Suffix }}
+spec:
+  version: 6.8.5
+  nodeSets:
+  - count: 1
+    name: mdi
+    config:
+      node.master: true
+      node.data: true
+      node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: test-kibana-standalone-{{ .Suffix }}
+spec:
+  version: 6.8.5
+  count: 1
+  config:
+    elasticsearch.url:
+      - https://test-kibana-standalone-es-{{ .Suffix }}-es-http:9200
+    elasticsearch.username: elastic
+    elasticsearch.ssl.verificationMode: none
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          env:
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: test-kibana-standalone-es-{{ .Suffix }}-es-elastic-user
+                  key: elastic
