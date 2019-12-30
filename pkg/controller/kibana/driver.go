@@ -28,7 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/version/version7"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -289,9 +288,7 @@ func newDriver(
 		version:        version,
 	}
 	switch version.Major {
-	case 6:
-		d.settingsFactory = version6.SettingsFactory
-	case 7:
+	case 6, 7:
 		d.settingsFactory = version7.SettingsFactory
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", version)

@@ -221,7 +221,7 @@ func TestDriver_SettingsFactory(t *testing.T) {
 			name:    "6.x",
 			version: "6.8.0",
 			want: map[string]interface{}{
-				config.ElasticsearchURL: "https://localhost:9200",
+				config.ElasticsearchHosts: "https://localhost:9200",
 			},
 		},
 		{
