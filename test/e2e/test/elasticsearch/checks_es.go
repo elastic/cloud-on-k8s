@@ -74,7 +74,7 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 			if err != nil {
 				return err
 			}
-			actualHealth := esv1.ElasticsearchHealth(health.Status)
+			actualHealth := health.Status
 			expectedHealth := esv1.ElasticsearchGreenHealth
 			if actualHealth != expectedHealth {
 				return fmt.Errorf("cluster health is not green, but %s", actualHealth)
