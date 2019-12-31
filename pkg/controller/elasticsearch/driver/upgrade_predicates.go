@@ -217,7 +217,9 @@ var predicates = [...]Predicate{
 		},
 	},
 	{
-		name: "do_not_delete_last_started_shard",
+		// We may need to delete nodes in a yellow cluster, but not if they contain the only replica
+		// of a shard since it would make the cluster go red.
+		name: "require_started_replica",
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
@@ -238,15 +240,13 @@ var predicates = [...]Predicate{
 					continue
 				}
 				shardKey := shard.Key()
-				shardReplica := replicas[shardKey]
-				replicas[shardKey] = shardReplica + 1
+				replicas[shardKey] += 1
 				if shard.State == client.STARTED {
-					assignedReplica := startedReplicas[shardKey]
-					startedReplicas[shardKey] = assignedReplica + 1
+					startedReplicas[shardKey] += 1
 				}
 			}
 
-			// Do not delete a node with a Primary if at least one replica is not STARTED
+			// Do not delete a node with a Primary if there is not at least one STARTED replica
 			shardsByNode := allShards.GetShardsByNode()
 			shardsOnCandidate := shardsByNode[candidate.Name]
 			for _, shard := range shardsOnCandidate {
@@ -254,9 +254,10 @@ var predicates = [...]Predicate{
 					continue
 				}
 				shardKey := shard.Key()
-				replicas := replicas[shardKey]
+				numReplicas := replicas[shardKey]
 				assignedReplica := startedReplicas[shardKey]
-				if replicas > 0 && assignedReplica == 0 {
+				// We accept here that there will be some unavailability if an index is configured with zero replicas
+				if numReplicas > 0 && assignedReplica == 0 {
 					// If this node is deleted there will be no more shards available
 					return false, nil
 				}
