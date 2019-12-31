@@ -255,7 +255,7 @@ spec:
   http:
     tls:
       certificate:
-        secretName: my-cert
+        secretName: quickstart-es-cert
 ----
 
 [float]
