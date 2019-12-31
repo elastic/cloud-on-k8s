@@ -83,6 +83,26 @@ func Test_podsToUpgrade(t *testing.T) {
 			want: []string{"masters-0", "masters-1"},
 		},
 		{
+			name: "no pods to upgrade if the StatefulSet UpdateRevision is empty",
+			args: args{
+				statefulSets: sset.StatefulSetList{
+					sset.TestSset{
+						Name: "masters", Replicas: 2, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "", UpdatedReplicas: 0, Replicas: 2},
+					}.Build(),
+					sset.TestSset{
+						Name: "nodes", Replicas: 3, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "", UpdatedReplicas: 3, Replicas: 3},
+					}.Build(),
+				},
+				pods: []runtime.Object{
+					podWithRevision("masters-0", "rev-a"),
+					podWithRevision("masters-1", "rev-a"),
+				},
+			},
+			want: []string{},
+		},
+		{
 			name: "only 1 node need to be upgraded",
 			args: args{
 				statefulSets: sset.StatefulSetList{
