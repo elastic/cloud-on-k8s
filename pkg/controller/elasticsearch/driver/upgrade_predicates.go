@@ -240,9 +240,9 @@ var predicates = [...]Predicate{
 					continue
 				}
 				shardKey := shard.Key()
-				replicas[shardKey] += 1
+				replicas[shardKey]++
 				if shard.State == client.STARTED {
-					startedReplicas[shardKey] += 1
+					startedReplicas[shardKey]++
 				}
 			}
 
