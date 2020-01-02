@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
-	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,7 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
@@ -188,15 +185,13 @@ func Test_getStrategyType(t *testing.T) {
 			kb := kibanaFixture()
 			kb.Name = tt.expectedKbName
 			kb.Spec.Version = tt.expectedVersion
-			kbVersion, err := version.Parse(kb.Spec.Version)
-			assert.NoError(t, err)
 
 			client := k8s.WrappedFakeClient(tt.initialObjects...)
 			if tt.clientError {
 				client = &failingClient{}
 			}
 
-			d, err := newDriver(client, scheme.Scheme, *kbVersion, w, record.NewFakeRecorder(100))
+			d, err := newDriver(client, scheme.Scheme, w, record.NewFakeRecorder(100), kb)
 			assert.NoError(t, err)
 
 			strategy, err := d.getStrategyType(kb)
@@ -205,58 +200,6 @@ func Test_getStrategyType(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.Equal(t, tt.wantStrategy, strategy)
-			}
-		})
-	}
-}
-
-func TestDriver_SettingsFactory(t *testing.T) {
-
-	tests := []struct {
-		name    string
-		version string
-		want    map[string]interface{}
-	}{
-		{
-			name:    "6.x",
-			version: "6.8.0",
-			want: map[string]interface{}{
-				config.ElasticsearchURL: "https://localhost:9200",
-			},
-		},
-		{
-			name:    "7.x",
-			version: "7.1.0",
-			want: map[string]interface{}{
-				config.ElasticsearchHosts: "https://localhost:9200",
-			},
-		},
-		{
-			name:    "7.6.0",
-			version: "7.6.0",
-			want: map[string]interface{}{
-				config.ElasticsearchHosts:              "https://localhost:9200",
-				config.XpackLicenseManagementUIEnabled: false,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			w := watches.NewDynamicWatches()
-			err := w.Secrets.InjectScheme(scheme.Scheme)
-			assert.NoError(t, err)
-
-			kb := kibanaFixture()
-			kb.Spec.Version = tt.version
-			kbVersion, err := version.Parse(kb.Spec.Version)
-			assert.NoError(t, err)
-
-			client := k8s.WrappedFakeClient()
-
-			d, err := newDriver(client, scheme.Scheme, *kbVersion, w, record.NewFakeRecorder(100))
-			assert.NoError(t, err)
-			if diff := deep.Equal(d.settingsFactory(*kb, *kbVersion), tt.want); diff != nil {
-				t.Error(diff)
 			}
 		})
 	}
@@ -384,35 +327,35 @@ func TestDriverDeploymentParams(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "6.x is supported",
+			name: "6.8.x is supported",
 			args: args{
 				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.Version = "6.5.0"
+					kb.Spec.Version = "6.8.0"
 					return kb
 				},
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.5.0"
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
 				return p
 			}(),
 			wantErr: false,
 		},
 		{
-			name: "6.6 docker container already defaults elasticsearch.hosts",
+			name: "6.8 docker container already defaults elasticsearch.hosts",
 			args: args{
 				kb: func() *kbv1.Kibana {
 					kb := kibanaFixture()
-					kb.Spec.Version = "6.6.0"
+					kb.Spec.Version = "6.8.0"
 					return kb
 				},
 				initialObjects: defaultInitialObjects,
 			},
 			want: func() deployment.Params {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.6.0"
+				p.PodTemplateSpec.Labels["kibana.k8s.elastic.co/version"] = "6.8.0"
 				return p
 			}(),
 			wantErr: false,
@@ -426,12 +369,10 @@ func TestDriverDeploymentParams(t *testing.T) {
 			client := k8s.WrappedFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
 			err := w.Secrets.InjectScheme(scheme.Scheme)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			kbVersion, err := version.Parse(kb.Spec.Version)
-			assert.NoError(t, err)
-			d, err := newDriver(client, scheme.Scheme, *kbVersion, w, record.NewFakeRecorder(100))
-			assert.NoError(t, err)
+			d, err := newDriver(client, scheme.Scheme, w, record.NewFakeRecorder(100), kb)
+			require.NoError(t, err)
 
 			got, err := d.deploymentParams(kb)
 			if tt.wantErr {
@@ -440,6 +381,48 @@ func TestDriverDeploymentParams(t *testing.T) {
 			}
 
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestMinSupportedVersion(t *testing.T) {
+	testCases := []struct {
+		name    string
+		version string
+		wantErr bool
+	}{
+		{
+			name:    "6.7.0 should be unsupported",
+			version: "6.6.0",
+			wantErr: true,
+		},
+		{
+			name:    "6.8.0 should be supported",
+			version: "6.8.0",
+			wantErr: false,
+		},
+		{
+			name:    "7.6.0 should be supported",
+			version: "7.6.0",
+			wantErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			kb := kibanaFixture()
+			kb.Spec.Version = tc.version
+			client := k8s.WrappedFakeClient(defaultInitialObjects()...)
+			w := watches.NewDynamicWatches()
+			err := w.Secrets.InjectScheme(scheme.Scheme)
+			require.NoError(t, err)
+
+			_, err = newDriver(client, scheme.Scheme, w, record.NewFakeRecorder(100), kb)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

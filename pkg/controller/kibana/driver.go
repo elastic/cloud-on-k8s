@@ -15,10 +15,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -28,8 +28,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/version/version6"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/version/version7"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,13 +46,15 @@ var initContainersParameters = keystore.InitContainerParameters{
 	DataVolumePath:                volume.DataVolumeMountPath,
 }
 
+// minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
+var minSupportedVersion = version.From(6, 8, 0)
+
 type driver struct {
-	client          k8s.Client
-	scheme          *runtime.Scheme
-	settingsFactory func(kb kbv1.Kibana, v version.Version) map[string]interface{}
-	dynamicWatches  watches.DynamicWatches
-	recorder        record.EventRecorder
-	version         version.Version
+	client         k8s.Client
+	scheme         *runtime.Scheme
+	dynamicWatches watches.DynamicWatches
+	recorder       record.EventRecorder
+	version        version.Version
 }
 
 func (d *driver) DynamicWatches() watches.DynamicWatches {
@@ -249,8 +249,7 @@ func (d *driver) Reconcile(
 		return &results
 	}
 
-	versionSpecificCfg := settings.MustCanonicalConfig(d.settingsFactory(*kb, d.version))
-	kbSettings, err := config.NewConfigSettings(d.client, *kb, versionSpecificCfg)
+	kbSettings, err := config.NewConfigSettings(d.client, *kb, d.version)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -277,24 +276,27 @@ func (d *driver) Reconcile(
 func newDriver(
 	client k8s.Client,
 	scheme *runtime.Scheme,
-	version version.Version,
 	watches watches.DynamicWatches,
 	recorder record.EventRecorder,
+	kb *kbv1.Kibana,
 ) (*driver, error) {
-	d := driver{
+	ver, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
+		return nil, err
+	}
+
+	if !ver.IsSameOrAfter(minSupportedVersion) {
+		err := fmt.Errorf("unsupported Kibana version: %s", ver)
+		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
+		return nil, err
+	}
+
+	return &driver{
 		client:         client,
 		scheme:         scheme,
 		dynamicWatches: watches,
 		recorder:       recorder,
-		version:        version,
-	}
-	switch version.Major {
-	case 6:
-		d.settingsFactory = version6.SettingsFactory
-	case 7:
-		d.settingsFactory = version7.SettingsFactory
-	default:
-		return nil, fmt.Errorf("unsupported version: %s", version)
-	}
-	return &d, nil
+		version:        *ver,
+	}, nil
 }
