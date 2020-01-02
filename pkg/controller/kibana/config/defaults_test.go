@@ -7,7 +7,6 @@ package config
 import (
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -41,9 +40,7 @@ func TestVersionDefaults(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
-			kb := &kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: tc.version, ElasticsearchRef: commonv1.ObjectSelector{Name: "test"}}}
-			kb.SetAssociationConf(&commonv1.AssociationConf{URL: "https://localhost:9200"})
+			kb := &kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: tc.version}}
 			v := version.MustParse(tc.version)
 
 			defaults := VersionDefaults(kb, v)
