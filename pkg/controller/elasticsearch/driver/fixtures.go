@@ -105,13 +105,14 @@ func newUpgradeTestPods(pods ...testPod) upgradeTestPods {
 	return result
 }
 
-func (u upgradeTestPods) toES(maxUnavailable int) esv1.Elasticsearch {
+func (u upgradeTestPods) toES(version string, maxUnavailable int) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      TestEsName,
 			Namespace: TestEsNamespace,
 		},
 		Spec: esv1.ElasticsearchSpec{
+			Version: version,
 			UpdateStrategy: esv1.UpdateStrategy{
 				ChangeBudget: esv1.ChangeBudget{
 					MaxUnavailable: pointer.Int32(int32(maxUnavailable)),
@@ -147,7 +148,7 @@ func (u upgradeTestPods) toStatefulSetList() sset.StatefulSetList {
 	return statefulSetList
 }
 
-func (u upgradeTestPods) toRuntimeObjects(maxUnavailable int, f filter) []runtime.Object {
+func (u upgradeTestPods) toRuntimeObjects(version string, maxUnavailable int, f filter) []runtime.Object {
 	var result []runtime.Object
 	i := 0
 	for _, testPod := range u {
@@ -157,7 +158,7 @@ func (u upgradeTestPods) toRuntimeObjects(maxUnavailable int, f filter) []runtim
 		}
 		i++
 	}
-	es := u.toES(maxUnavailable)
+	es := u.toES(version, maxUnavailable)
 	result = append(result, &es)
 	return result
 }
@@ -270,7 +271,7 @@ func (t testPod) toPodPtr() *corev1.Pod {
 
 type testESState struct {
 	inCluster []string
-	green     bool
+	health    esv1.ElasticsearchHealth
 	ESState
 }
 
@@ -278,8 +279,8 @@ func (t *testESState) ShardAllocationsEnabled() (bool, error) {
 	return true, nil
 }
 
-func (t *testESState) GreenHealth() (bool, error) {
-	return t.green, nil
+func (t *testESState) Health() (esv1.ElasticsearchHealth, error) {
+	return t.health, nil
 }
 
 func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {

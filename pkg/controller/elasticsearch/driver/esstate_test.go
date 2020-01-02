@@ -153,34 +153,34 @@ func Test_memoizingShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T)
 }
 
 func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
-	esClient := &fakeESClient{health: esclient.Health{Status: string(esv1.ElasticsearchGreenHealth)}}
-	h := &memoizingGreenHealth{esClient: esClient}
+	esClient := &fakeESClient{health: esclient.Health{Status: esv1.ElasticsearchGreenHealth}}
+	h := &memoizingHealth{esClient: esClient}
 
-	green, err := h.GreenHealth()
+	health, err := h.Health()
 	require.NoError(t, err)
 	// es should be requested on first call
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
-	require.True(t, green)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, health)
 	// ES should not be requested again on subsequent calls
-	green, err = h.GreenHealth()
+	health, err = h.Health()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
-	require.True(t, green)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, health)
 
 	// simulate yellow health
-	esClient = &fakeESClient{health: esclient.Health{Status: string(esv1.ElasticsearchYellowHealth)}}
-	h = &memoizingGreenHealth{esClient: esClient}
-	green, err = h.GreenHealth()
+	esClient = &fakeESClient{health: esclient.Health{Status: esv1.ElasticsearchYellowHealth}}
+	h = &memoizingHealth{esClient: esClient}
+	health, err = h.Health()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
-	require.False(t, green)
+	require.NotEqual(t, esv1.ElasticsearchGreenHealth, health)
 }
 
 func TestNewMemoizingESState(t *testing.T) {
 	esClient := &fakeESClient{}
 	// just make sure everything is initialized correctly (no panic for nil pointers)
 	s := NewMemoizingESState(esClient)
-	_, err := s.GreenHealth()
+	_, err := s.Health()
 	require.NoError(t, err)
 	_, err = s.ShardAllocationsEnabled()
 	require.NoError(t, err)
