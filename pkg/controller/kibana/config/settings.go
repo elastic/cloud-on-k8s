@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/go-ucfg"
@@ -21,7 +22,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"path"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -41,15 +41,17 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *settings.CanonicalConfig) (CanonicalConfig, error) {
+func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, v version.Version) (CanonicalConfig, error) {
 	currentConfig, err := getExistingConfig(client, kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
+
 	filteredCurrCfg, err := filterExistingConfig(currentConfig)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
+
 	specConfig := kb.Spec.Config
 	if specConfig == nil {
 		specConfig = &commonv1.Config{}
@@ -60,8 +62,9 @@ func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, versionSpecificCfg *se
 		return CanonicalConfig{}, err
 	}
 
-	cfg := settings.MustCanonicalConfig(baseSettings(kb))
+	cfg := settings.MustCanonicalConfig(baseSettings(&kb))
 	kibanaTLSCfg := settings.MustCanonicalConfig(kibanaTLSSettings(kb))
+	versionSpecificCfg := VersionDefaults(&kb, v)
 
 	if !kb.RequiresAssociation() {
 		// merge the configuration with userSettings last so they take precedence
@@ -145,15 +148,20 @@ func filterExistingConfig(cfg *settings.CanonicalConfig) (*settings.CanonicalCon
 	return filteredCfg, nil
 }
 
-func baseSettings(kb kbv1.Kibana) map[string]interface{} {
-	return map[string]interface{}{
-		ServerName:         kb.Name,
-		ServerHost:         "0",
-		ElasticsearchHosts: []string{kb.AssociationConf().GetURL()},
+func baseSettings(kb *kbv1.Kibana) map[string]interface{} {
+	conf := map[string]interface{}{
+		ServerName: kb.Name,
+		ServerHost: "0",
 		XpackMonitoringUiContainerElasticsearchEnabled: true,
 		// this will get overriden if one already exists or is specified by the user
 		XpackSecurityEncryptionKey: rand.String(64),
 	}
+
+	if kb.RequiresAssociation() {
+		conf[ElasticsearchHosts] = []string{kb.AssociationConf().GetURL()}
+	}
+
+	return conf
 }
 
 func kibanaTLSSettings(kb kbv1.Kibana) map[string]interface{} {

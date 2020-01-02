@@ -72,6 +72,11 @@ func Parse(version string) (*Version, error) {
 	return &Version{Major: major, Minor: minor, Patch: patch, Label: label}, nil
 }
 
+// From creates a new version from the given major, minor, patch numbers.
+func From(major, minor, patch int) Version {
+	return Version{Major: major, Minor: minor, Patch: patch}
+}
+
 // MustParse is a variant of Parse that panics if the version is not valid
 func MustParse(version string) Version {
 	v, err := Parse(version)

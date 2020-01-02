@@ -10,10 +10,10 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	ucfg "github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
-	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -23,8 +23,6 @@ import (
 
 var defaultConfig = []byte(`
 elasticsearch:
-  hosts:
-    - ""
 server:
   host: "0"
   name: "testkb"
@@ -153,9 +151,6 @@ func TestNewConfigSettings(t *testing.T) {
 			want: func() []byte {
 				cfg, err := settings.ParseConfig(defaultConfig)
 				require.NoError(t, err)
-				removed, err := (*ucfg.Config)(cfg).Remove("elasticsearch.hosts", -1, settings.Options...)
-				require.True(t, removed)
-				require.NoError(t, err)
 				assocCfg, err := settings.ParseConfig(associationConfig)
 				require.NoError(t, err)
 				require.NoError(t, cfg.MergeWith(assocCfg))
@@ -226,13 +221,14 @@ func TestNewConfigSettings(t *testing.T) {
 					return kb
 				},
 			},
-			want: append(defaultConfig),
+			want: defaultConfig,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			versionSpecificCfg := settings.MustCanonicalConfig(map[string]interface{}{"elasticsearch.hosts": nil})
-			got, err := NewConfigSettings(tt.args.client, tt.args.kb(), versionSpecificCfg)
+			kb := tt.args.kb()
+			v := version.From(7, 5, 0)
+			got, err := NewConfigSettings(tt.args.client, kb, v)
 			if tt.wantErr {
 				require.Error(t, err)
 			}
@@ -247,9 +243,8 @@ func TestNewConfigSettings(t *testing.T) {
 			require.NoError(t, err)
 			var wantCfg map[string]interface{}
 			require.NoError(t, cfg.Unpack(&wantCfg))
-			if diff := deep.Equal(wantCfg, gotCfg); diff != nil {
-				t.Error(diff)
-			}
+
+			require.Equal(t, wantCfg, gotCfg)
 		})
 	}
 }
@@ -258,7 +253,8 @@ func TestNewConfigSettings(t *testing.T) {
 func TestNewConfigSettingsCreateEncryptionKey(t *testing.T) {
 	client := k8s.WrapClient(fake.NewFakeClient())
 	kb := mkKibana()
-	got, err := NewConfigSettings(client, kb, nil)
+	v := version.MustParse(kb.Spec.Version)
+	got, err := NewConfigSettings(client, kb, v)
 	require.NoError(t, err)
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
@@ -278,7 +274,8 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 		},
 	}
 	client := k8s.WrapClient(fake.NewFakeClient(existingSecret))
-	got, err := NewConfigSettings(client, kb, nil)
+	v := version.MustParse(kb.Spec.Version)
+	got, err := NewConfigSettings(client, kb, v)
 	require.NoError(t, err)
 	var gotCfg map[string]interface{}
 	require.NoError(t, got.Unpack(&gotCfg))
@@ -297,7 +294,8 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	})
 	kb.Spec.Config = &cfg
 	client := k8s.WrapClient(fake.NewFakeClient())
-	got, err := NewConfigSettings(client, kb, nil)
+	v := version.MustParse(kb.Spec.Version)
+	got, err := NewConfigSettings(client, kb, v)
 	require.NoError(t, err)
 	var gotCfg map[string]interface{}
 	require.NoError(t, got.Unpack(&gotCfg))
@@ -312,6 +310,7 @@ func mkKibana() kbv1.Kibana {
 			Name:      "testkb",
 			Namespace: "testns",
 		},
+		Spec: kbv1.KibanaSpec{Version: "7.5.0"},
 	}
 	return kb
 }
