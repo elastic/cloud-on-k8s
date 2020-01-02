@@ -31,27 +31,18 @@ const (
 // Rolling upgrades from eg. v6 to v7 do not need that setting.
 // It ensures `cluster.initial_master_nodes` does not vary over time, when this function gets called multiple times.
 func SetupInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSpecResources nodespec.ResourcesList) error {
-	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(*v) {
-		// we only care about zen2-compatible clusters here
-		return err
-	}
-
 	// if the cluster is annotated with `cluster.initial_master_nodes` (zen2 bootstrap in progress),
 	// make sure we reuse that value since it is not supposed to vary over time
 	if initialMasterNodes := getInitialMasterNodesAnnotation(es); initialMasterNodes != nil {
 		return patchInitialMasterNodesConfig(nodeSpecResources, initialMasterNodes)
 	}
 
-	// we want to set `cluster.initial_master_nodes` if either:
-	// - a new cluster is getting created
-	isInitialClusterBootstrap := !bootstrap.AnnotatedForBootstrap(es)
-	// - we're upgrading (effectively restarting) a single zen1 master to zen2
-	isSingleMasterUpgrade, err := singleZen1MasterUpgrade(k8sClient, es, nodeSpecResources)
+	// in most cases, `cluster.initial_master_nodes` should not be set
+	shouldSetup, err := shouldSetInitialMasterNodes(es, k8sClient, nodeSpecResources)
 	if err != nil {
 		return err
 	}
-	if !isInitialClusterBootstrap && !isSingleMasterUpgrade {
-		// nothing to do
+	if !shouldSetup {
 		return nil
 	}
 
@@ -64,14 +55,26 @@ func SetupInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSp
 		"namespace", es.Namespace,
 		"es_name", es.Name,
 		"cluster.initial_master_nodes", strings.Join(initialMasterNodes, ","),
-		"is_initial_cluster_bootstrap", isInitialClusterBootstrap,
-		"is_single_master_upgrade", isSingleMasterUpgrade,
 	)
 	if err := patchInitialMasterNodesConfig(nodeSpecResources, initialMasterNodes); err != nil {
 		return err
 	}
 	// keep the computed value in an annotation for reuse in subsequent reconciliations
 	return setInitialMasterNodesAnnotation(k8sClient, es, initialMasterNodes)
+}
+
+func shouldSetInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSpecResources nodespec.ResourcesList) (bool, error) {
+	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(*v) {
+		// we only care about zen2-compatible clusters here
+		return false, err
+	}
+	// we want to set `cluster.initial_master_nodes` if:
+	// - a new cluster is getting created (not already bootstrapped)
+	if !bootstrap.AnnotatedForBootstrap(es) {
+		return true, nil
+	}
+	// - we're upgrading (effectively restarting) a single zen1 master to zen2
+	return singleZen1MasterUpgrade(k8sClient, es, nodeSpecResources)
 }
 
 // RemoveZen2BootstrapAnnotation removes the initialMasterNodesAnnotation (if set) once zen2 is bootstrapped
