@@ -7,6 +7,7 @@ package driver
 import (
 	"sync"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -50,7 +51,7 @@ func buildOnce(s *upscaleState) error {
 
 	var result error
 	s.once.Do(func() {
-		s.isBootstrapped = AnnotatedForBootstrap(s.ctx.es)
+		s.isBootstrapped = bootstrap.AnnotatedForBootstrap(s.ctx.es)
 		s.allowMasterCreation = true
 
 		if s.isBootstrapped {
