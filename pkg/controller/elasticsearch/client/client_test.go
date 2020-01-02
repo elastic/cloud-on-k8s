@@ -605,35 +605,50 @@ func TestAPIError_Types(t *testing.T) {
 
 func TestClient_ClusterBootstrappedForZen2(t *testing.T) {
 	tests := []struct {
-		expectedPath, version        string
-		bootstrappedForZen2, wantErr bool
+		name                               string
+		expectedPath, version, apiResponse string
+		bootstrappedForZen2, wantErr       bool
 	}{
 		{
+			name:                "6.x master node",
 			expectedPath:        "/_nodes/_master",
 			version:             "6.8.0",
+			apiResponse:         fixtures.MasterNodeForVersion("6.8.0"),
 			bootstrappedForZen2: false,
 			wantErr:             false,
 		},
 		{
+			name:                "7.x master node",
 			expectedPath:        "/_nodes/_master",
 			version:             "7.5.0",
+			apiResponse:         fixtures.MasterNodeForVersion("7.5.0"),
 			bootstrappedForZen2: true,
+			wantErr:             false,
+		},
+		{
+			name:                "no master node",
+			expectedPath:        "/_nodes/_master",
+			version:             "7.5.0",
+			apiResponse:         `{"cluster_name": "elasticsearch-sample", "nodes": {}}`,
+			bootstrappedForZen2: false,
 			wantErr:             false,
 		},
 	}
 
 	for _, tt := range tests {
-		client := NewMockClient(version.MustParse(tt.version), func(req *http.Request) *http.Response {
-			require.Equal(t, tt.expectedPath, req.URL.Path)
-			return &http.Response{
-				StatusCode: 200,
-				Body:       ioutil.NopCloser(strings.NewReader(fixtures.MasterNodeForVersion(tt.version))),
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewMockClient(version.MustParse(tt.version), func(req *http.Request) *http.Response {
+				require.Equal(t, tt.expectedPath, req.URL.Path)
+				return &http.Response{
+					StatusCode: 200,
+					Body:       ioutil.NopCloser(strings.NewReader(tt.apiResponse)),
+				}
+			})
+			bootstrappedForZen2, err := client.ClusterBootstrappedForZen2(context.Background())
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Client.ClusterBootstrappedForZen2() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			require.Equal(t, tt.bootstrappedForZen2, bootstrappedForZen2)
 		})
-		bootstrappedForZen2, err := client.ClusterBootstrappedForZen2(context.Background())
-		if (err != nil) != tt.wantErr {
-			t.Errorf("Client.DeleteVotingConfigExclusions() error = %v, wantErr %v", err, tt.wantErr)
-		}
-		require.Equal(t, tt.bootstrappedForZen2, bootstrappedForZen2)
 	}
 }

@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 
@@ -121,8 +120,9 @@ func (c *clientV6) ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
 	if err := c.get(ctx, "/_nodes/_master", &response); err != nil {
 		return false, err
 	}
-	if len(response.Nodes) != 1 {
-		return false, fmt.Errorf("GET /_nodes/_master returned %d nodes", len(response.Nodes))
+	if len(response.Nodes) == 0 {
+		// no known master node (yet), consider the cluster is not bootstrapped
+		return false, nil
 	}
 	for _, master := range response.Nodes {
 		return master.isV7OrAbove()
