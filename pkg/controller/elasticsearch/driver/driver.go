@@ -9,6 +9,11 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -19,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -33,10 +39,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -229,7 +231,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	if err := ReconcileClusterUUID(d.Client, &d.ES, observedState); err != nil {
+	if err := bootstrap.ReconcileClusterUUID(d.Client, &d.ES, observedState); err != nil {
 		return results.WithError(err)
 	}
 

@@ -83,10 +83,10 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		test.Step{
 			Name: "Start querying Elasticsearch cluster health while mutation is going on",
 			Skip: func() bool {
-				// Don't monitor cluster health if we're doing a rolling upgrade of a one data node cluster.
-				// The cluster will become unavailable at some point, then its health will be red
-				// after the upgrade while shards are initializing.
-				return IsOneDataNodeRollingUpgrade(b)
+				// Don't monitor cluster health if we're doing a rolling upgrade from a single data node cluster.
+				// The cluster will become either unavailable (single node) or red (multi-nodes) when
+				// that node goes down.
+				return IsRollingUpgradeFromOneDataNode(b)
 			},
 			Test: func(t *testing.T) {
 				var err error
@@ -110,7 +110,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 			test.Step{
 				Name: "Elasticsearch cluster health should not have been red during mutation process",
 				Skip: func() bool {
-					return IsOneDataNodeRollingUpgrade(b)
+					return IsRollingUpgradeFromOneDataNode(b)
 				},
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
@@ -129,16 +129,11 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 		})
 }
 
-func IsOneDataNodeRollingUpgrade(b Builder) bool {
+func IsRollingUpgradeFromOneDataNode(b Builder) bool {
 	if b.MutatedFrom == nil {
 		return false
 	}
-	initial := b.MutatedFrom.Elasticsearch
-	mutated := b.Elasticsearch
-	// consider we're in the 1-node rolling upgrade scenario if we mutate
-	// from one data node to one data node with the same name
-	if MustNumDataNodes(initial) == 1 && MustNumDataNodes(mutated) == 1 &&
-		initial.Spec.NodeSets[0].Name == mutated.Spec.NodeSets[0].Name {
+	if MustNumDataNodes(b.MutatedFrom.Elasticsearch) == 1 && b.TriggersRollingUpgrade() {
 		return true
 	}
 	return false

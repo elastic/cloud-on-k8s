@@ -725,3 +725,18 @@ const (
 	}
 	  `
 )
+
+func MasterNodeForVersion(version string) string {
+	return `
+{
+	"cluster_name": "elasticsearch-sample",
+	"nodes": {
+		"ICZ6uWfXQ3iQMzz-oLMlNw": {
+			"name": "elasticsearch-sample-es-default-0",
+			"version": "` + version + `",
+			"roles": ["ingest", "master", "data", "ml"]
+		}
+	}
+}
+`
+}
