@@ -19,8 +19,8 @@ type ESState interface {
 	NodesInCluster(nodeNames []string) (bool, error)
 	// ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 	ShardAllocationsEnabled() (bool, error)
-	// GreenHealth returns true if the cluster health is currently green.
-	GreenHealth() (bool, error)
+	// Health returns the health of the Elasticsearch cluster.
+	Health() (esv1.ElasticsearchHealth, error)
 }
 
 // MemoizingESState requests Elasticsearch for the requested information only once, at first call.
@@ -29,7 +29,7 @@ type MemoizingESState struct {
 	esClient esclient.Client
 	*memoizingNodes
 	*memoizingShardsAllocationEnabled
-	*memoizingGreenHealth
+	*memoizingHealth
 }
 
 // NewMemoizingESState returns an initialized MemoizingESState.
@@ -38,7 +38,7 @@ func NewMemoizingESState(esClient esclient.Client) ESState {
 		esClient:                         esClient,
 		memoizingNodes:                   &memoizingNodes{esClient: esClient},
 		memoizingShardsAllocationEnabled: &memoizingShardsAllocationEnabled{esClient: esClient},
-		memoizingGreenHealth:             &memoizingGreenHealth{esClient: esClient},
+		memoizingHealth:                  &memoizingHealth{esClient: esClient},
 	}
 }
 
@@ -109,31 +109,31 @@ func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, erro
 	return s.enabled, nil
 }
 
-// -- Green health
+// -- Cluster Health
 
-// memoizingGreenHealth provides cluster health information.
-type memoizingGreenHealth struct {
-	greenHealth bool
-	once        sync.Once
-	esClient    esclient.Client
+// memoizingHealth provides cluster health information.
+type memoizingHealth struct {
+	health   esv1.ElasticsearchHealth
+	once     sync.Once
+	esClient esclient.Client
 }
 
 // initialize requests Elasticsearch for cluster health, only once.
-func (h *memoizingGreenHealth) initialize() error {
+func (h *memoizingHealth) initialize() error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
 	health, err := h.esClient.GetClusterHealth(ctx)
 	if err != nil {
 		return err
 	}
-	h.greenHealth = health.Status == string(esv1.ElasticsearchGreenHealth)
+	h.health = health.Status
 	return nil
 }
 
-// GreenHealth returns true if the cluster health is currently green.
-func (h *memoizingGreenHealth) GreenHealth() (bool, error) {
+// Health returns the cluster health.
+func (h *memoizingHealth) Health() (esv1.ElasticsearchHealth, error) {
 	if err := initOnce(&h.once, h.initialize); err != nil {
-		return false, err
+		return "", err
 	}
-	return h.greenHealth, nil
+	return h.health, nil
 }

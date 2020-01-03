@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
@@ -26,21 +27,21 @@ type Info struct {
 
 // Health represents the response from _cluster/health
 type Health struct {
-	ClusterName                 string  `json:"cluster_name"`
-	Status                      string  `json:"status"`
-	TimedOut                    bool    `json:"timed_out"`
-	NumberOfNodes               int     `json:"number_of_nodes"`
-	NumberOfDataNodes           int     `json:"number_of_data_nodes"`
-	ActivePrimaryShards         int     `json:"active_primary_shards"`
-	ActiveShards                int     `json:"active_shards"`
-	RelocatingShards            int     `json:"relocating_shards"`
-	InitializingShards          int     `json:"initializing_shards"`
-	UnassignedShards            int     `json:"unassigned_shards"`
-	DelayedUnassignedShards     int     `json:"delayed_unassigned_shards"`
-	NumberOfPendingTasks        int     `json:"number_of_pending_tasks"`
-	NumberOfInFlightFetch       int     `json:"number_of_in_flight_fetch"`
-	TaskMaxWaitingInQueueMillis int     `json:"task_max_waiting_in_queue_millis"`
-	ActiveShardsPercentAsNumber float32 `json:"active_shards_percent_as_number"`
+	ClusterName                 string                   `json:"cluster_name"`
+	Status                      esv1.ElasticsearchHealth `json:"status"`
+	TimedOut                    bool                     `json:"timed_out"`
+	NumberOfNodes               int                      `json:"number_of_nodes"`
+	NumberOfDataNodes           int                      `json:"number_of_data_nodes"`
+	ActivePrimaryShards         int                      `json:"active_primary_shards"`
+	ActiveShards                int                      `json:"active_shards"`
+	RelocatingShards            int                      `json:"relocating_shards"`
+	InitializingShards          int                      `json:"initializing_shards"`
+	UnassignedShards            int                      `json:"unassigned_shards"`
+	DelayedUnassignedShards     int                      `json:"delayed_unassigned_shards"`
+	NumberOfPendingTasks        int                      `json:"number_of_pending_tasks"`
+	NumberOfInFlightFetch       int                      `json:"number_of_in_flight_fetch"`
+	TaskMaxWaitingInQueueMillis int                      `json:"task_max_waiting_in_queue_millis"`
+	ActiveShardsPercentAsNumber float32                  `json:"active_shards_percent_as_number"`
 }
 
 type ShardState string
@@ -51,6 +52,13 @@ const (
 	INITIALIZING ShardState = "INITIALIZING"
 	RELOCATING   ShardState = "RELOCATING"
 	UNASSIGNED   ShardState = "UNASSIGNED"
+)
+
+type ShardType string
+
+const (
+	Primary ShardType = "p"
+	Replica ShardType = "r"
 )
 
 // Nodes partially models the response from a request to /_nodes
@@ -127,6 +135,7 @@ type Shard struct {
 	Shard    string     `json:"shard"`
 	State    ShardState `json:"state"`
 	NodeName string     `json:"node"`
+	Type     ShardType  `json:"prirep"`
 }
 
 type RoutingTable struct {
@@ -176,6 +185,16 @@ func (s Shard) IsStarted() bool {
 // IsInitializing is true if the shard is currently initializing on the node.
 func (s Shard) IsInitializing() bool {
 	return s.State == INITIALIZING
+}
+
+// IsReplica is true if the shard is a replica.
+func (s Shard) IsReplica() bool {
+	return s.Type == Replica
+}
+
+// IsPrimary is true if the shard is a primary shard.
+func (s Shard) IsPrimary() bool {
+	return s.Type == Primary
 }
 
 // Key is a composite key of index name and shard number that identifies all

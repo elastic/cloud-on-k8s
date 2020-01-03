@@ -49,7 +49,7 @@ func (s *State) updateWithPhase(
 
 	s.status.Health = esv1.ElasticsearchUnknownHealth
 	if observedState.ClusterHealth != nil && observedState.ClusterHealth.Status != "" {
-		s.status.Health = esv1.ElasticsearchHealth(observedState.ClusterHealth.Status)
+		s.status.Health = observedState.ClusterHealth.Status
 	}
 	return s
 }

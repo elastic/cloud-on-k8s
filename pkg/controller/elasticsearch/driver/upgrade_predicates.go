@@ -142,23 +142,23 @@ var predicates = [...]Predicate{
 		},
 	},
 	{
-		// In Yellow or Red status only allow unhealthy Pods to be restarted.
+		// If health is not Green or Yellow only allow unhealthy Pods to be restarted.
 		// This is intended to unlock some situations where the cluster is not green and
 		// a Pod has to be restarted a second time.
-		name: "do_not_restart_healthy_node_if_not_green",
+		name: "only_restart_healthy_node_if_green_or_yellow",
 		fn: func(
 			context PredicateContext,
 			candidate corev1.Pod,
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
-			// Green health is retrieved only once from the cluster.
+			// Cluster health is retrieved only once from the cluster.
 			// We rely on "shard conflict" predicate to avoid to delete two ES nodes that share some shards.
-			green, err := context.esState.GreenHealth()
+			health, err := context.esState.Health()
 			if err != nil {
 				return false, err
 			}
-			if green {
+			if health == esv1.ElasticsearchGreenHealth || health == esv1.ElasticsearchYellowHealth {
 				return true, nil
 			}
 			_, healthy := context.healthyPods[candidate.Name]
@@ -166,6 +166,103 @@ var predicates = [...]Predicate{
 				return true, nil
 			}
 			return false, nil
+		},
+	},
+	{
+		// During a rolling upgrade, primary shards assigned to a node running a new version cannot have their
+		// replicas assigned to a node with the old version. Therefore we must allow some Pods to be restarted
+		// even if cluster health is Yellow so the replicas can be assigned.
+		// This predicate checks that the following conditions are met for a candidate:
+		// * A cluster upgrade is in progress and the candidate version is not up to date
+		// * All primaries are assigned, only replicas are actually not assigned
+		// * There are no initializing or relocating shards
+		// See https://github.com/elastic/cloud-on-k8s/issues/1643
+		name: "if_yellow_only_restart_upgrading_nodes_with_unassigned_replicas",
+		fn: func(
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
+		) (b bool, e error) {
+			health, err := context.esState.Health()
+			if err != nil {
+				return false, err
+			}
+			_, healthyNode := context.healthyPods[candidate.Name]
+			if health != esv1.ElasticsearchYellowHealth || !healthyNode {
+				// This predicate is only relevant on healthy node if cluster health is yellow
+				return true, nil
+			}
+			version := candidate.Labels[label.VersionLabelName]
+			if version == context.es.Spec.Version {
+				// Restart in yellow state is only allowed during version upgrade
+				return false, nil
+			}
+			// This candidate needs a version upgrade, check if the Shards are in a compatible state.
+			shards, err := context.shardLister.GetShards()
+			if err != nil {
+				return false, err
+			}
+			for _, shard := range shards {
+				switch shard.State {
+				case client.INITIALIZING, client.RELOCATING:
+					return false, nil
+				case client.UNASSIGNED:
+					if !shard.IsReplica() {
+						return false, nil
+					}
+				}
+			}
+			return true, nil
+		},
+	},
+	{
+		// We may need to delete nodes in a yellow cluster, but not if they contain the only replica
+		// of a shard since it would make the cluster go red.
+		name: "require_started_replica",
+		fn: func(
+			context PredicateContext,
+			candidate corev1.Pod,
+			deletedPods []corev1.Pod,
+			maxUnavailableReached bool,
+		) (b bool, e error) {
+			allShards, err := context.shardLister.GetShards()
+			if err != nil {
+				return false, err
+			}
+			// We maintain two data structures to record:
+			// * The total number of replicas for a shard
+			// * How many of them are STARTED
+			startedReplicas := make(map[string]int)
+			replicas := make(map[string]int)
+			for _, shard := range allShards {
+				if shard.NodeName == candidate.Name {
+					continue
+				}
+				shardKey := shard.Key()
+				replicas[shardKey]++
+				if shard.State == client.STARTED {
+					startedReplicas[shardKey]++
+				}
+			}
+
+			// Do not delete a node with a Primary if there is not at least one STARTED replica
+			shardsByNode := allShards.GetShardsByNode()
+			shardsOnCandidate := shardsByNode[candidate.Name]
+			for _, shard := range shardsOnCandidate {
+				if !shard.IsPrimary() {
+					continue
+				}
+				shardKey := shard.Key()
+				numReplicas := replicas[shardKey]
+				assignedReplica := startedReplicas[shardKey]
+				// We accept here that there will be some unavailability if an index is configured with zero replicas
+				if numReplicas > 0 && assignedReplica == 0 {
+					// If this node is deleted there will be no more shards available
+					return false, nil
+				}
+			}
+			return true, nil
 		},
 	},
 	{

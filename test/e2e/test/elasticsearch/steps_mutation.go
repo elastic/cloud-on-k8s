@@ -207,7 +207,7 @@ func (hc *ContinuousHealthCheck) Start() {
 					continue
 				}
 				clusterUnavailability.markAvailable()
-				if esv1.ElasticsearchHealth(health.Status) == esv1.ElasticsearchRedHealth {
+				if health.Status == esv1.ElasticsearchRedHealth {
 					hc.AppendErr(errors.New("cluster health red"))
 					continue
 				}
