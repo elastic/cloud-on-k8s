@@ -1,13 +1,11 @@
 [id="{p}-licensing"]
 == Managing licenses in ECK
 
-When you install the default distribution of ECK, you receive a basic license. Any Elastic stack application you manage through
-ECK will also be basic licensed. For the full list of free features that are included in the basic license, see: https://www.elastic.co/subscriptions.
+When you install the default distribution of ECK, you receive a Basic license. Any Elastic stack application you manage through ECK will also be Basic licensed. For the full list of free features that are included in the Basic license, see: https://www.elastic.co/subscriptions.
 
 [float]
 === Starting a trial
-If you want to try the features included in the Enterprise subscription, you can start a 30-day trial. To start a trial create
-a Kubernetes secret as shown below:
+If you want to try the features included in the Enterprise subscription, you can start a 30-day trial. To start a trial create a Kubernetes secret as shown below. Note that it must be in the same namespace as the operator:
 
 [source,yaml]
 ----
@@ -28,11 +26,11 @@ EOF
 
 NOTE: You can initiate a trial only if a trial has not previously been activated.
 
-At the end of the trial period, the platinum and enterprise features operate in a link:https://www.elastic.co/guide/en/elastic-stack-overview/current/license-expiration.html[degraded mode]. You can revert to a basic license, extend the trial, or purchase an enterprise subscription.
+At the end of the trial period, the Platinum and Enterprise features operate in a link:https://www.elastic.co/guide/en/elastic-stack-overview/current/license-expiration.html[degraded mode]. You can revert to a Basic license, extend the trial, or purchase an Enterprise subscription.
 
 [float]
 === Adding a license
-If you have a valid enterprise subscription you will receive a license as a JSON file.
+If you have a valid Enterprise subscription you will receive a license as a JSON file.
 To add the license to your ECK installation, create a Kubernetes secret of the following form:
 
 [source,yaml]
@@ -51,7 +49,7 @@ data:
 <1> this label is required for ECK to identify your license secret
 <2> the license file can have any name
 
-An easy way to create this secret is to rely on `kubectl` 's built-in support for secrets:
+An easy way to create this secret is to rely on `kubectl` 's built-in support for secrets. Note that it must be in the same namespace as the operator:
 
 [source,shell script]
 ----
@@ -59,16 +57,12 @@ kubectl create secret generic eck-license --from-file=my-license-file.json -n el
 kubectl label secret eck-license "license.k8s.elastic.co/scope"=operator -n elastic-system
 ----
 
-NOTE: Once you have installed a license into ECK new Elastic stack applications you manage with ECK will have all platinum and enterprise features enabled.
-Applications that were created before you installed the license will be upgraded to platinum or enterprise features without interruption of service after a short delay.
+NOTE: Once you have installed a license into ECK, any Elastic stack applications you manage with ECK will have all Platinum and Enterprise features enabled. Applications that were created before you installed the license will be upgraded to Platinum or Enterprise features without interruption of service after a short delay.
 
 [float]
 === Updating your license
-Once your current enterprise license expires you will receive a new enterprise license from Elastic as long as you  have
-a valid enterprise subscription.
+Before your current Enterprise license expires, you will receive a new Enterprise license from Elastic (provided your subscription is valid).
 
-To avoid any unintended downgrade of individual Elasticsearch clusters to a basic license while installing the new license
-we recommend you install the new enterprise license as a new Kubernetes secret next to your existing enterprise license.
-Just replace `eck-license` with a different name in the examples above. ECK will pick the right license automatically.
+To avoid any unintended downgrade of individual Elasticsearch clusters to a Basic license while installing the new license we recommend you install the new Enterprise license as a new Kubernetes secret next to your existing Enterprise license. Just replace `eck-license` with a different name from the examples above. ECK will use the correct license automatically.
 
-As soon as you have installed the new license you can safely delete the old license if you want.
+Once you have created the new license secret you can safely delete the old license secret.
