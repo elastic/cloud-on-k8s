@@ -174,6 +174,10 @@ func podsToUpgrade(
 ) ([]corev1.Pod, error) {
 	var toUpgrade []corev1.Pod
 	for _, statefulSet := range statefulSets {
+		if statefulSet.Status.UpdateRevision == "" {
+			// no upgrade scheduled
+			continue
+		}
 		// Inspect each pod, starting from the highest ordinal, and decrement the idx to allow
 		// pod upgrades to go through, controlled by the StatefulSet controller.
 		for idx := sset.GetReplicas(statefulSet) - 1; idx >= 0; idx-- {
@@ -190,26 +194,12 @@ func podsToUpgrade(
 				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
 				continue
 			}
-			alreadyUpgraded := podUpgradeDone(pod, statefulSet.Status.UpdateRevision)
-			if !alreadyUpgraded {
+			if sset.PodRevision(pod) != statefulSet.Status.UpdateRevision {
 				toUpgrade = append(toUpgrade, pod)
 			}
 		}
 	}
 	return toUpgrade, nil
-}
-
-// podUpgradeDone inspects the given pod and returns true if it was successfully upgraded.
-func podUpgradeDone(pod corev1.Pod, expectedRevision string) bool {
-	if expectedRevision == "" {
-		// no upgrade scheduled for the sset
-		return false
-	}
-	if sset.PodRevision(pod) != expectedRevision {
-		// pod revision does not match the sset upgrade revision
-		return false
-	}
-	return true
 }
 
 func disableShardsAllocation(esClient esclient.Client) error {
