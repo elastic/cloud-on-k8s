@@ -99,6 +99,8 @@ func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources node
 	return nil
 }
 
+// adjustStatefulSetReplicas updates the replicas count in expected according to
+// what is allowed by the upscaleState, that may be mutated as a result.
 func adjustStatefulSetReplicas(
 	upscaleState *upscaleState,
 	actualStatefulSets sset.StatefulSetList,
