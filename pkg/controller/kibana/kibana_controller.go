@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -187,18 +186,12 @@ func (r *ReconcileKibana) isCompatible(kb *kbv1.Kibana) (bool, error) {
 }
 
 func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
-	ver, err := version.Parse(kb.Spec.Version)
+	driver, err := newDriver(r, r.scheme, r.dynamicWatches, r.recorder, kb)
 	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
 		return reconcile.Result{}, err
 	}
 
 	state := NewState(request, kb)
-	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches, r.recorder)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	// version specific reconcile
 	results := driver.Reconcile(&state, kb, r.params)
 
 	// update status

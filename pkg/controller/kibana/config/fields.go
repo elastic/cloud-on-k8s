@@ -8,7 +8,6 @@ package config
 const (
 	ServerName                                     = "server.name"
 	ServerHost                                     = "server.host"
-	ElasticSearchHosts                             = "elasticsearch.hosts"
 	XpackMonitoringUiContainerElasticsearchEnabled = "xpack.monitoring.ui.container.elasticsearch.enabled"
 	XpackLicenseManagementUIEnabled                = "xpack.license_management.ui.enabled" // >= 7.6
 
@@ -18,7 +17,6 @@ const (
 	ElasticsearchUsername = "elasticsearch.username"
 	ElasticsearchPassword = "elasticsearch.password"
 
-	ElasticsearchURL   = "elasticsearch.url"
 	ElasticsearchHosts = "elasticsearch.hosts"
 
 	ServerSSLEnabled     = "server.ssl.enabled"
