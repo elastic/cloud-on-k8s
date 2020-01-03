@@ -72,3 +72,18 @@ we recommend you install the new enterprise license as a new Kubernetes secret n
 Just replace `eck-license` with a different name in the examples above. ECK will pick the right license automatically.
 
 As soon as you have installed the new license you can safely delete the old license if you want.
+
+[float]
+=== Getting usage data
+The operator periodically writes the total amount of Elastic resources under management to a config map. It is named `elastic-licensing` in the same namespace as the operator. For an example of retrieving the data:
+
+[source,shell]
+----
+> kubectl -n elastic-system get configmap elastic-licensing -o json | jq .data
+{
+  "eck_license_level": "basic",
+  "enterprise_resource_units": "1",
+  "timestamp": "2020-01-03T23:38:20Z",
+  "total_managed_memory": "3.22GB"
+}
+----
