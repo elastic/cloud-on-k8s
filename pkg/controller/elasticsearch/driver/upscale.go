@@ -73,7 +73,7 @@ func adjustResources(
 	upscaleState := newUpscaleState(ctx, actualStatefulSets, expectedResources)
 	adjustedResources := make(nodespec.ResourcesList, 0, len(expectedResources))
 	for _, nodeSpecRes := range expectedResources {
-		adjusted, err := adjustStatefulSetReplicas(*upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
+		adjusted, err := adjustStatefulSetReplicas(upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +100,7 @@ func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources node
 }
 
 func adjustStatefulSetReplicas(
-	upscaleState upscaleState,
+	upscaleState *upscaleState,
 	actualStatefulSets sset.StatefulSetList,
 	expected appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
