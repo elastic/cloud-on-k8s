@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -217,6 +217,18 @@ func Test_isMasterNodeJoining(t *testing.T) {
 }
 
 func Test_newUpscaleState(t *testing.T) {
+	bootstrappedES := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "cluster",
+			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
+		},
+		Spec: esv1.ElasticsearchSpec{Version: "7.3.0"},
+	}
+
+	notBootstrappedES := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
+		Spec:       esv1.ElasticsearchSpec{Version: "7.3.0"},
+	}
 	type args struct {
 		ctx      upscaleCtx
 		actual   sset.StatefulSetList
@@ -229,12 +241,12 @@ func Test_newUpscaleState(t *testing.T) {
 	}{
 		{
 			name: "cluster not bootstrapped",
-			args: args{ctx: upscaleCtx{es: *notBootstrappedES()}},
+			args: args{ctx: upscaleCtx{es: notBootstrappedES}},
 			want: &upscaleState{allowMasterCreation: true, isBootstrapped: false, createsAllowed: nil},
 		},
 		{
 			name: "bootstrapped, no master node joining",
-			args: args{ctx: upscaleCtx{k8sClient: k8s.WrappedFakeClient(), es: *bootstrappedES()}},
+			args: args{ctx: upscaleCtx{k8sClient: k8s.WrappedFakeClient(), es: bootstrappedES}},
 			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: nil},
 		},
 		{
@@ -242,7 +254,7 @@ func Test_newUpscaleState(t *testing.T) {
 			args: args{
 				ctx: upscaleCtx{
 					k8sClient: k8s.WrappedFakeClient(sset.TestPod{ClusterName: "cluster", Master: true, Phase: corev1.PodPending}.BuildPtr()),
-					es:        *bootstrappedES(),
+					es:        bootstrappedES,
 				},
 			},
 			want: &upscaleState{allowMasterCreation: false, isBootstrapped: true, createsAllowed: nil, recordedCreates: 1},
@@ -252,7 +264,7 @@ func Test_newUpscaleState(t *testing.T) {
 			args: args{
 				ctx: upscaleCtx{
 					k8sClient: k8s.WrappedFakeClient(sset.TestPod{ClusterName: "cluster", Master: false, Data: true, Phase: corev1.PodPending}.BuildPtr()),
-					es:        *bootstrappedES(),
+					es:        bootstrappedES,
 				},
 			},
 			want: &upscaleState{allowMasterCreation: true, isBootstrapped: true, createsAllowed: nil},
@@ -268,6 +280,24 @@ func Test_newUpscaleState(t *testing.T) {
 				t.Errorf("newUpscaleState() got = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func bootstrappedESWithChangeBudget(maxSurge, maxUnavailable *int32) esv1.Elasticsearch {
+	return esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "cluster",
+			Annotations: map[string]string{bootstrap.ClusterUUIDAnnotationName: "uuid"},
+		},
+		Spec: esv1.ElasticsearchSpec{
+			Version: "7.3.0",
+			UpdateStrategy: esv1.UpdateStrategy{
+				ChangeBudget: esv1.ChangeBudget{
+					MaxSurge:       maxSurge,
+					MaxUnavailable: maxUnavailable,
+				},
+			},
+		},
 	}
 }
 
@@ -303,7 +333,7 @@ func Test_newUpscaleStateWithChangeBudget(t *testing.T) {
 			name: args.name,
 			ctx: upscaleCtx{
 				k8sClient: k8s.WrappedFakeClient(),
-				es:        *bootstrappedESWithChangeBudget(args.maxSurge, pointer.Int32(0)),
+				es:        bootstrappedESWithChangeBudget(args.maxSurge, pointer.Int32(0)),
 			},
 			actual:   actualSsets,
 			expected: expectedResources,

@@ -5,6 +5,8 @@
 package elasticsearch
 
 import (
+	"reflect"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -311,4 +313,25 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 
 func (b Builder) RuntimeObjects() []runtime.Object {
 	return []runtime.Object{&b.Elasticsearch}
+}
+
+func (b Builder) TriggersRollingUpgrade() bool {
+	if b.MutatedFrom == nil {
+		return false
+	}
+	// attempt do detect a rolling upgrade scenario
+	// Important: this only checks ES version and spec, other changes such as secure settings update
+	// are tricky to capture and ignored here.
+	isVersionUpgrade := b.MutatedFrom.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
+	httpOptionsChange := reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
+	for _, initialNs := range b.MutatedFrom.Elasticsearch.Spec.NodeSets {
+		for _, mutatedNs := range b.Elasticsearch.Spec.NodeSets {
+			if initialNs.Name == mutatedNs.Name &&
+				(isVersionUpgrade || httpOptionsChange || !reflect.DeepEqual(initialNs, mutatedNs)) {
+				// a rolling upgrade is scheduled for that NodeSpec
+				return true
+			}
+		}
+	}
+	return false
 }

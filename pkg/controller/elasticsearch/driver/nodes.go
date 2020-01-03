@@ -96,8 +96,16 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 
-	// Update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
+	// Maybe update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
 	requeue, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, actualStatefulSets)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if requeue {
+		results.WithResult(defaultRequeue)
+	}
+	// Remove the zen2 bootstrap annotation if bootstrap is over.
+	requeue, err = zen2.RemoveZen2BootstrapAnnotation(d.Client, d.ES, esClient)
 	if err != nil {
 		return results.WithError(err)
 	}

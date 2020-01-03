@@ -6,18 +6,17 @@ package driver
 
 import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
-	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type upscaleCtx struct {
@@ -74,7 +73,7 @@ func adjustResources(
 	upscaleState := newUpscaleState(ctx, actualStatefulSets, expectedResources)
 	adjustedResources := make(nodespec.ResourcesList, 0, len(expectedResources))
 	for _, nodeSpecRes := range expectedResources {
-		adjusted, err := adjustStatefulSetReplicas(*upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
+		adjusted, err := adjustStatefulSetReplicas(upscaleState, actualStatefulSets, *nodeSpecRes.StatefulSet.DeepCopy())
 		if err != nil {
 			return nil, err
 		}
@@ -93,17 +92,17 @@ func adjustZenConfig(k8sClient k8s.Client, es esv1.Elasticsearch, resources node
 	if err := zen1.SetupMinimumMasterNodesConfig(k8sClient, es, resources); err != nil {
 		return err
 	}
-	// patch configs to consider zen2 initial master nodes if cluster is not bootstrapped yet
-	if !AnnotatedForBootstrap(es) {
-		if err := zen2.SetupInitialMasterNodes(resources); err != nil {
-			return err
-		}
+	// patch configs to consider zen2 initial master nodes
+	if err := zen2.SetupInitialMasterNodes(es, k8sClient, resources); err != nil {
+		return err
 	}
 	return nil
 }
 
+// adjustStatefulSetReplicas updates the replicas count in expected according to
+// what is allowed by the upscaleState, that may be mutated as a result.
 func adjustStatefulSetReplicas(
-	upscaleState upscaleState,
+	upscaleState *upscaleState,
 	actualStatefulSets sset.StatefulSetList,
 	expected appsv1.StatefulSet,
 ) (appsv1.StatefulSet, error) {
