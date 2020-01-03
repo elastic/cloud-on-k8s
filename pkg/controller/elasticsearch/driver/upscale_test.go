@@ -206,9 +206,10 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 		expected           appsv1.StatefulSet
 	}
 	tests := []struct {
-		name string
-		args args
-		want appsv1.StatefulSet
+		name             string
+		args             args
+		want             appsv1.StatefulSet
+		wantUpscaleState *upscaleState
 	}{
 		{
 			name: "new StatefulSet to create",
@@ -217,7 +218,8 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 				actualStatefulSets: sset.StatefulSetList{},
 				expected:           sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
 			},
-			want: sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
+			want:             sset.TestSset{Name: "new-sset", Replicas: 3}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 3, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 		},
 		{
 			name: "same StatefulSet already exists",
@@ -226,7 +228,8 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 3}.Build(),
 			},
-			want: sset.TestSset{Name: "sset", Replicas: 3}.Build(),
+			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 		},
 		{
 			name: "downscale case",
@@ -235,7 +238,8 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 1}.Build(),
 			},
-			want: sset.TestSset{Name: "sset", Replicas: 3}.Build(),
+			want:             sset.TestSset{Name: "sset", Replicas: 3}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 0, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 		},
 		{
 			name: "upscale case: data nodes",
@@ -244,7 +248,8 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: false, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
 			},
-			want: sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
+			want:             sset.TestSset{Name: "sset", Replicas: 5, Master: false, Data: true}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 2, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 		},
 		{
 			name: "upscale case: master nodes - one by one",
@@ -253,7 +258,8 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset", Replicas: 5, Master: true, Data: true}.Build(),
 			},
-			want: sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
+			want:             sset.TestSset{Name: "sset", Replicas: 4, Master: true, Data: true}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 		},
 		{
 			name: "upscale case: new additional master sset - one by one",
@@ -262,7 +268,8 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 				actualStatefulSets: sset.StatefulSetList{sset.TestSset{Name: "sset", Replicas: 3, Master: true, Data: true}.Build()},
 				expected:           sset.TestSset{Name: "sset-2", Replicas: 3, Master: true, Data: true}.Build(),
 			},
-			want: sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
+			want:             sset.TestSset{Name: "sset-2", Replicas: 1, Master: true, Data: true}.Build(),
+			wantUpscaleState: &upscaleState{recordedCreates: 1, isBootstrapped: true, allowMasterCreation: false, createsAllowed: pointer.Int32(3)},
 		},
 	}
 	for _, tt := range tests {
@@ -270,6 +277,7 @@ func Test_adjustStatefulSetReplicas(t *testing.T) {
 			got, err := adjustStatefulSetReplicas(tt.args.state, tt.args.actualStatefulSets, tt.args.expected)
 			require.NoError(t, err)
 			require.Nil(t, deep.Equal(got, tt.want))
+			require.Equal(t, tt.wantUpscaleState, tt.args.state)
 		})
 	}
 }
