@@ -75,7 +75,7 @@ As soon as you have installed the new license you can safely delete the old lice
 
 [float]
 === Getting usage data
-The operator periodically writes the total amount of Elastic resources under management to a config map. It is named `elastic-licensing` in the same namespace as the operator. For an example of retrieving the data:
+The operator periodically writes the total amount of Elastic resources under management to a config map. It is named `elastic-licensing` in the same namespace as the operator. Here is an example of retrieving the data:
 
 [source,shell]
 ----
