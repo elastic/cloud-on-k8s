@@ -1,0 +1,32 @@
+[[release-highlights-1.0.0]]
+== 1.0.0 release highlights
+
+[float]
+[id="{p}-general-availability"]
+=== General availability
+
+Elastic Cloud on Kubernetes has graduated from beta and is now in general availability.
+
+[float]
+[id="{p}-release-v1"]
+=== Resource version promotion
+
+Custom resources have graduated to version `v1`.  `v1beta1` manifests will still function, but are deprecated and should be updated to `v1`. Support for `v1beta1` will be removed in a future release. See <<{p}-upgrading-eck>> for more information.
+
+[float]
+[id="{p}-release-webhook"]
+=== Webhook validation
+
+Webhook validation has been re-introduced. This allows for additional validation when Elastic resources are created or updated. See <<{p}-webhook>> for more information.
+
+[float]
+[id="{p}-multi-namespace"]
+=== Multiple namespace management
+
+ECK can now manage multiple specific namespaces simultaneously (previously only all namespaces or a single namespace was possible).  See <<{p}-operator-config>> for more information.
+
+[float]
+[id="{p}-release-license-mgmt"]
+=== License management
+
+Handling of licenses has been greatly improved. If the license changes, all new clusters will use it and all existing clusters will be upgraded to the new cluster. See <<{p}-licensing>> for more information.
