@@ -4,7 +4,7 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-upgrading-stack.htm
 ****
 endif::[]
 [id="{p}-upgrading-stack"]
-=== Upgrading to newer versions of the Elastic stack
+== Upgrading the Elastic stack version
 
 The operator can safely perform upgrades to newer versions of the various Elastic Stack resources.
 
