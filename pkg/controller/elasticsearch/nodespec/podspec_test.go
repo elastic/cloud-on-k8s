@@ -117,7 +117,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	require.NoError(t, err)
 	// should be patched with volume and env
 	for i := range initContainers {
-		initContainers[i].Env = append(initContainers[i].Env, defaults.PodDownwardEnvVars...)
+		initContainers[i].Env = append(initContainers[i].Env, defaults.PodDownwardEnvVars()...)
 		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
 	}
 
@@ -158,7 +158,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			InitContainers: append(initContainers, corev1.Container{
 				Name:         "additional-init-container",
 				Image:        "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
-				Env:          defaults.PodDownwardEnvVars,
+				Env:          defaults.PodDownwardEnvVars(),
 				VolumeMounts: volumeMounts,
 			}),
 			Containers: []corev1.Container{
@@ -173,8 +173,8 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 						{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},
 					},
 					Env: append(
-						DefaultEnvVars(sampleES.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(sampleES.Name, nodeSet.Name))),
-						corev1.EnvVar{Name: "my-env", Value: "my-value"}),
+						[]corev1.EnvVar{{Name: "my-env", Value: "my-value"}},
+						DefaultEnvVars(sampleES.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(sampleES.Name, nodeSet.Name)))...),
 					Resources:      DefaultResources,
 					VolumeMounts:   volumeMounts,
 					ReadinessProbe: NewReadinessProbe(),
@@ -187,13 +187,6 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			AutomountServiceAccountToken:  &varFalse,
 			Affinity:                      DefaultAffinity(sampleES.Name),
 		},
-	}
-
-	// pods built with BuildPodTemplateSpec sort env vars, so our expected result must be sorted as well.
-	for _, container := range expected.Spec.Containers {
-		sort.SliceStable(container.Env, func(i, j int) bool {
-			return container.Env[i].Name < container.Env[j].Name
-		})
 	}
 
 	deep.MaxDepth = 25

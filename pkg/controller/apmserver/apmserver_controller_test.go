@@ -75,7 +75,7 @@ func (tp testParams) withInitContainer() testParams {
 			},
 			Name:  "",
 			Image: "docker.elastic.co/apm/apm-server:1.0",
-			Env:   defaults.PodDownwardEnvVars,
+			Env:   defaults.PodDownwardEnvVars(),
 		},
 	}
 	return tp
@@ -152,7 +152,7 @@ func expectedDeploymentParams() testParams {
 							"-c",
 							"config/config-secret/apm-server.yml",
 						},
-						Env: append(defaults.PodDownwardEnvVars, corev1.EnvVar{
+						Env: defaults.ExtendPodDownwardEnvVars(corev1.EnvVar{
 							Name: "SECRET_TOKEN",
 							ValueFrom: &corev1.EnvVarSource{
 								SecretKeyRef: &corev1.SecretKeySelector{

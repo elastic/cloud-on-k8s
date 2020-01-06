@@ -121,7 +121,7 @@ func NewPrepareFSInitContainer(
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
-		Env:     defaults.PodDownwardEnvVars,
+		Env:     defaults.PodDownwardEnvVars(),
 		Command: []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
 		VolumeMounts: append(
 			PluginVolumes.InitContainerVolumeMounts(),

@@ -12,9 +12,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 )
 
-var (
-	// PodDownwardEnvVars inject the runtime Pod Name and IP as environment variables.
-	PodDownwardEnvVars = []corev1.EnvVar{
+// PodDownwardEnvVars returns default environment variables created from the downward API.
+func PodDownwardEnvVars() []corev1.EnvVar {
+	return []corev1.EnvVar{
 		{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 		}},
@@ -22,7 +22,13 @@ var (
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
 		}},
 	}
-)
+}
+
+// ExtendPodDownwardEnvVars creates a new EnvVar array with the default downward API variables prepended to given list.
+func ExtendPodDownwardEnvVars(vars ...corev1.EnvVar) []corev1.EnvVar {
+	podDownwardEnvVars := PodDownwardEnvVars()
+	return append(podDownwardEnvVars, vars...)
+}
 
 // PodTemplateBuilder helps with building a pod template inheriting values
 // from a user-provided pod template. It focuses on building a pod with
@@ -204,10 +210,6 @@ func (b *PodTemplateBuilder) WithEnv(vars ...corev1.EnvVar) *PodTemplateBuilder 
 			b.Container.Env = append(b.Container.Env, v)
 		}
 	}
-	// order env vars by name to ensure stable pod spec comparison
-	sort.SliceStable(b.Container.Env, func(i, j int) bool {
-		return b.Container.Env[i].Name < b.Container.Env[j].Name
-	})
 	return b
 }
 
@@ -259,7 +261,7 @@ func (b *PodTemplateBuilder) WithInitContainerDefaults() *PodTemplateBuilder {
 		}
 
 		// append the dynamic pod name and IP env vars
-		c.Env = append(c.Env, PodDownwardEnvVars...)
+		c.Env = append(c.Env, PodDownwardEnvVars()...)
 	}
 	return b
 }
