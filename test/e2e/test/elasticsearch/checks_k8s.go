@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"time"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -227,11 +228,16 @@ func CheckESPassword(b Builder, k *test.K8sClient) test.Step {
 }
 
 func CheckExpectedPodsEventuallyReady(b Builder, k *test.K8sClient) test.Step {
+	// Most tests require less than 5 minutes for all Pods to be running and ready,
+	// but it occasionally takes longer for various reasons (long pod Pod creation time, long volume binding, etc.).
+	// We use a longer timeout here to not be impacted too much by those external factors, and only fail
+	// if things seem to be stuck.
+	timeout := 15 * time.Minute
 	return test.Step{
 		Name: "All expected Pods should eventually be ready",
-		Test: test.Eventually(func() error {
+		Test: test.UntilSuccess(func() error {
 			return checkExpectedPodsReady(b, k)
-		}),
+		}, timeout),
 	}
 }
 
