@@ -1,5 +1,9 @@
 :page_id: elastic-stack-orchestration
-include::github-header.asciidoc[]
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
 [id="{p}-{page_id}"]
 = Elastic Stack Orchestration
 
