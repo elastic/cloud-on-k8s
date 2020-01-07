@@ -100,7 +100,7 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 		filepath.Join(ConfigVolumePath, "config-secret"),
 	)
 
-	env := append(defaults.PodDownwardEnvVars, corev1.EnvVar{
+	env := defaults.ExtendPodDownwardEnvVars(corev1.EnvVar{
 		Name: "SECRET_TOKEN",
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{

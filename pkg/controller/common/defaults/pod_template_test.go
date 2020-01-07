@@ -597,10 +597,10 @@ func TestPodTemplateBuilder_WithEnv(t *testing.T) {
 			want:        []corev1.EnvVar{{Name: "var1"}, {Name: "var2"}},
 		},
 		{
-			name:        "env vars should be sorted alphabetically",
+			name:        "env var order should be preserved",
 			PodTemplate: corev1.PodTemplateSpec{},
 			vars:        []corev1.EnvVar{{Name: "cc"}, {Name: "aa"}, {Name: "bb"}},
-			want:        []corev1.EnvVar{{Name: "aa"}, {Name: "bb"}, {Name: "cc"}},
+			want:        []corev1.EnvVar{{Name: "cc"}, {Name: "aa"}, {Name: "bb"}},
 		},
 		{
 			name: "append to but don't override user provided env vars",
@@ -754,13 +754,13 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 				{
 					Name:         "user-init-container1",
 					Image:        "user-image",
-					Env:          PodDownwardEnvVars,
+					Env:          PodDownwardEnvVars(),
 					VolumeMounts: defaultVolumeMounts,
 				},
 				{
 					Name:  "user-init-container2",
 					Image: "default-image",
-					Env:   PodDownwardEnvVars,
+					Env:   PodDownwardEnvVars(),
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      "foo",
 						MountPath: "/foo",
@@ -770,7 +770,7 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 				{
 					Name:  "user-init-container3",
 					Image: "default-image",
-					Env:   PodDownwardEnvVars,
+					Env:   PodDownwardEnvVars(),
 					// uses the same mount path as a default mount, so default mount should not be used
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      "bar",
@@ -780,7 +780,7 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 				{
 					Name:  "user-init-container4",
 					Image: "default-image",
-					Env:   PodDownwardEnvVars,
+					Env:   PodDownwardEnvVars(),
 					// uses the same name as a default mount, so default mount should not be used
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      defaultVolumeMount.Name,

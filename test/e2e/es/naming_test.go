@@ -104,7 +104,7 @@ func testRejectionOfLongName(t *testing.T) {
 					err := k.Client.Create(obj)
 					if err != nil {
 						// validating webhook is active and rejected the request
-						require.Contains(t, err.Error(), `admission webhook "elastic-es-validation.k8s.elastic.co" denied the request`)
+						require.Contains(t, err.Error(), `admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request`)
 						return
 					}
 
