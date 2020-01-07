@@ -1,0 +1,46 @@
+:page_id: pod-disruption-budget
+include::../../github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Pod disruption budget
+
+A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of Pods while the Kubernetes cluster administrator manages Kubernetes nodes.
+Elasticsearch makes sure some indices don't become unavailable.
+
+A default PDB of 1 `maxUnavailable` Pod on the entire cluster is enforced by default.
+
+This default can be tweaked in the Elasticsearch specification:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 3
+  podDisruptionBudget:
+    spec:
+      maxUnavailable: 2
+      selector:
+        matchLabels:
+          elasticsearch.k8s.elastic.co/cluster-name: quickstart
+----
+
+It can also be explicitly disabled:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 3
+  podDisruptionBudget: {}
+----

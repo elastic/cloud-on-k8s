@@ -1,5 +1,7 @@
-[id="{p}-kibana"]
-== Running Kibana on ECK
+:page_id: kibana
+include::../github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Running Kibana on ECK
 
 The <<{p}-deploy-kibana,quickstart>> is a good starting point to quickly setup a Kibana instance with ECK.
 The following sections describe how to customize a Kibana deployment to suit your requirements.
@@ -18,7 +20,7 @@ The following sections describe how to customize a Kibana deployment to suit you
 
 [float]
 [id="{p}-kibana-eck-managed-es"]
-=== Use an Elasticsearch cluster managed by ECK
+== Use an Elasticsearch cluster managed by ECK
 
 It is quite straightforward to connect a Kibana instance to an Elasticsearch cluster managed by ECK:
 
@@ -42,7 +44,7 @@ The Kibana configuration file is automatically setup by ECK to establish a secur
 
 [float]
 [id="{p}-kibana-external-es"]
-=== Connect to an Elasticsearch cluster not managed by ECK
+== Connect to an Elasticsearch cluster not managed by ECK
 
 It is also possible to configure Kibana to connect to an Elasticsearch cluster that is being managed by a different installation of ECK or running outside the Kubernetes cluster. In this case, you need to know the IP address or URL of the Elasticsearch cluster and a valid username and password pair to access the cluster.
 
@@ -106,7 +108,7 @@ spec:
 
 [float]
 [id="{p}-kibana-advanced-configuration"]
-=== Advanced configuration
+== Advanced configuration
 
 If you already looked at the Elasticsearch on ECK documentation, then concepts and ideas described here might sound familiar to you.
 This is because the resource definitions in ECK share the same philosophy when it comes to:
@@ -118,7 +120,7 @@ This is because the resource definitions in ECK share the same philosophy when i
 
 [float]
 [id="{p}-kibana-pod-configuration"]
-==== Pod Configuration
+=== Pod Configuration
 You can define a <<{p}-pod-template,pod template>> to customize the Kibana pod and override any configuration values.
 
 The following example demonstrates how to create a Kibana deployment with custom node affinity and resource limits.
@@ -155,7 +157,7 @@ See <<{p}-compute-resources-kibana-and-apm>> for more information.
 
 [float]
 [id="{p}-kibana-configuration"]
-==== Kibana Configuration
+=== Kibana Configuration
 You can add your own Kibana settings to the `spec.config` section.
 
 The following example demonstrates how to set the `elasticsearch.requestHeadersWhitelist` configuration option:
@@ -178,7 +180,7 @@ spec:
 
 [float]
 [id="{p}-kibana-scaling"]
-=== Scale out a Kibana deployment
+== Scale out a Kibana deployment
 
 You may want to deploy more than one instance of Kibana. In this case all the instances must share the same encryption key. If you do not set one, the operator will generate one for you. If you would like to set your own encryption key, this can be done by setting the `xpack.security.encryptionKey` property using a secure setting as described in the next section.
 
@@ -186,7 +188,7 @@ Note that while most reconfigurations of your Kibana instances will be carried o
 
 [float]
 [id="{p}-kibana-secure-settings"]
-=== Secure Settings
+== Secure Settings
 
 <<{p}-es-secure-settings,Similar to Elasticsearch>>, you can use Kubernetes secrets to manage secure settings for Kibana as well.
 
@@ -219,11 +221,11 @@ spec:
 
 [float]
 [id="{p}-kibana-http-configuration"]
-=== HTTP Configuration
+== HTTP Configuration
 
 [float]
 [id="{p}-kibana-http-publish"]
-==== Load balancer settings and TLS SANs
+=== Load balancer settings and TLS SANs
 
 By default a `ClusterIP` link:https://kubernetes.io/docs/concepts/services-networking/service/[service] is created and associated with the Kibana deployment.
 You may want to expose Kibana externally with a link:https://kubernetes.io/docs/concepts/services-networking/service/#loadbalancer[load balancer].
@@ -253,13 +255,13 @@ spec:
 
 [float]
 [id="{p}-kibana-http-custom-tls"]
-==== Provide your own certificate
+=== Provide your own certificate
 
 If you want to use your own certificate, the required configuration is identical to Elasticsearch.  See: <<{p}-custom-http-certificate>>.
 
 [float]
 [id="{p}-kibana-http-disable-tls"]
-==== Disable TLS
+=== Disable TLS
 
 You can disable the generation of the self-signed certificate and hence disable TLS.
 

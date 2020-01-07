@@ -1,0 +1,50 @@
+:page_id: elasticsearch-specification
+include::../github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Running Elasticsearch on ECK
+
+Before you deploy and run ECK, take some time to look at the basic and advanced settings available on this page. These settings are related both to Elasticsearch and Kubernetes.
+
+**Basic settings**
+
+- <<{p}-http-settings-tls-sans>>
+- <<{p}-jvm-heap-size>>
+- <<{p}-node-configuration>>
+- <<{p}-pod-template>>
+- <<{p}-volume-claim-templates>>
+
+**Advanced settings**
+
+- <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
+- <<{p}-bundles-plugins>>
+- <<{p}-custom-http-certificate>>
+- <<{p}-es-secure-settings>>
+- <<{p}-init-containers-plugin-downloads>>
+- <<{p}-orchestration>>
+- <<{p}-pod-disruption-budget>>
+- <<{p}-prestop>>
+- <<{p}-readiness>>
+- <<{p}-reserved-settings>>
+- <<{p}-snapshots,Create automated snapshots>>
+- <<{p}-update-strategy>>
+- <<{p}-virtual-memory>>
+
+include::elasticsearch/http-settings-tls-sans.asciidoc[leveloffset=+1]
+include::elasticsearch/jvm-heap-size.asciidoc[leveloffset=+1]
+include::elasticsearch/node-configuration.asciidoc[leveloffset=+1]
+include::elasticsearch/pod-template.asciidoc[leveloffset=+1]
+include::elasticsearch/volume-claim-templates.asciidoc[leveloffset=+1]
+
+include::elasticsearch/advanced-node-scheduling.asciidoc[leveloffset=+1]
+include::elasticsearch/bundles-plugins.asciidoc[leveloffset=+1]
+include::elasticsearch/custom-http-certificate.asciidoc[leveloffset=+1]
+include::elasticsearch/es-secure-settings.asciidoc[leveloffset=+1]
+include::elasticsearch/init-containers-plugin-downloads.asciidoc[leveloffset=+1]
+include::elasticsearch/orchestration.asciidoc[leveloffset=+1]
+include::elasticsearch/pod-disruption-budget.asciidoc[leveloffset=+1]
+include::elasticsearch/prestop.asciidoc[leveloffset=+1]
+include::elasticsearch/readiness.asciidoc[leveloffset=+1]
+include::elasticsearch/reserved-settings.asciidoc[leveloffset=+1]
+include::elasticsearch/snapshots.asciidoc[leveloffset=+1]
+include::elasticsearch/update-strategy.asciidoc[leveloffset=+1]
+include::elasticsearch/virtual-memory.asciidoc[leveloffset=+1]

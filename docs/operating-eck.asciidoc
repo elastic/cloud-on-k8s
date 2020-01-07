@@ -1,0 +1,18 @@
+:page_id: operating-eck
+include::github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Operating ECK
+
+- <<{p}-operator-config>>
+- <<{p}-webhook>>
+- <<{p}-licensing>>
+- <<{p}-upgrading-eck>>
+- <<{p}-uninstalling-eck>>
+- <<{p}-troubleshooting>>
+
+include::operating-eck/operator-config.asciidoc[leveloffset=+1]
+include::operating-eck/webhook.asciidoc[leveloffset=+1]
+include::operating-eck/licensing.asciidoc[leveloffset=+1]
+include::operating-eck/upgrading-eck.asciidoc[leveloffset=+1]
+include::operating-eck/uninstalling-eck.asciidoc[leveloffset=+1]
+include::operating-eck/troubleshooting.asciidoc[leveloffset=+1]

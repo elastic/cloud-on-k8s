@@ -1,12 +1,9 @@
-ifdef::env-github[]
-****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-custom-images.html[View this document on the Elastic website]
-****
-endif::[]
-[id="{p}-custom-images"]
-== Creating custom images
+:page_id: custom-images
+include::../github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Creating custom images
 
-You can create your own custom Elasticsearch or Kibana image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to link:k8s-init-containers-plugin-downloads.html[install them via init container] each time a pod starts. To do this, you must use the official image as the base for it to function properly. For example, if you want to create an Elasticsearch 7.3.2 image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
+You can create your own custom Elasticsearch or Kibana image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to <<{p}-init-containers-plugin-downloads,install them via init container>> each time a pod starts. To do this, you must use the official image as the base for it to function properly. For example, if you want to create an Elasticsearch 7.3.2 image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
 
 . Create a `Dockerfile` containing:
 +
@@ -42,7 +39,7 @@ The steps are similar for https://docs.microsoft.com/en-us/azure/aks/tutorial-ku
 For more information, you can check the following references:
 [float]
 [id="{p}-references"]
-=== References
+== References
 
 - https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_c_customized_image[Elasticsearch doc on creating custom images]
 - https://cloud.google.com/container-registry/docs/how-to[Google Container Registry docs]

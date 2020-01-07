@@ -1,10 +1,7 @@
-ifdef::env-github[]
-****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-accessing-elastic-services.html[View this document on the Elastic website]
-****
-endif::[]
-[id="{p}-accessing-elastic-services"]
-== Accessing Elastic Stack services
+:page_id: accessing-elastic-services
+include::../github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Accessing Elastic Stack services
 
 To access the Elastic Stack services, you will need to retrieve:
 
@@ -18,13 +15,13 @@ And choose between:
 
 [float]
 [id="{p}-security"]
-=== Security
+== Security
 
 All Elastic Stack resources deployed by the ECK Operator are secured by default. The operator sets up basic authentication and TLS to encrypt network traffic to, from, and within your Elasticsearch cluster.
 
 [float]
 [id="{p}-authentication"]
-==== Authentication
+=== Authentication
 
 To access Elasticsearch, Kibana or APM Server, the operator manages a default user named `elastic` with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
 
@@ -36,13 +33,13 @@ To access Elasticsearch, Kibana or APM Server, the operator manages a default us
 
 [float]
 [id="{p}-services"]
-=== Services
+== Services
 
 You can access Elasticsearch, Kibana or APM Server by using native Kubernetes services that are not reachable from the public Internet by default.
 
 [float]
 [id="{p}-kubernetes-service"]
-==== Managing Kubernetes services
+=== Managing Kubernetes services
 
 For each resource, `Elasticsearch`, `Kibana` or `ApmServer`, the operator manages a Kubernetes service named `<name>-[es|kb|apm]-http`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
 
@@ -58,7 +55,7 @@ hulk-kb-http        ClusterIP      10.19.247.151   <none>           5601:31380/T
 
 [float]
 [id="{p}-allow-public-access"]
-==== Allowing public access
+=== Allowing public access
 
 You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of the resource manifest.
 On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur costs.
@@ -90,13 +87,13 @@ hulk-kb-http        LoadBalancer   10.19.247.151   35.242.197.228   5601:31380/T
 
 [float]
 [id="{p}-tls-certificates"]
-=== TLS Certificates
+== TLS Certificates
 
 This section only covers TLS certificates for the HTTP layer. Those for the transport layer used for Elasticsearch internal communication between Elasticsearch nodes in a cluster are managed by ECK and are not configurable.
 
 [float]
 [id="{p}-default-self-signed-certificate"]
-==== Default self-signed certificate
+=== Default self-signed certificate
 
 By default, the operator manages a self-signed certificate with a custom CA for Elasticsearch, Kibana and APM Server.
 The CA, the certificate and the private key are each stored in a separate `Secret`.
@@ -123,7 +120,7 @@ QLYL4zLEby3vRxq65+xofVBJAaM=
 
 [float]
 [id="{p}-static-ip-custom-domain"]
-===== Reserving static IP and custom domain
+==== Reserving static IP and custom domain
 
 To use a custom domain name with the self-signed certificate, you can reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service`. Whatever you use, your DNS must be added to the certificate SAN in the `spec.http.tls.selfSignedCertificate.subjectAltNames` section of your Elastic resource manifest.
 
@@ -143,7 +140,7 @@ spec:
 
 [float]
 [id="{p}-setting-up-your-own-certificate"]
-==== Setting up your own certificate
+=== Setting up your own certificate
 
 You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the cluster is encrypted.
 
@@ -171,7 +168,7 @@ spec:
 
 [float]
 [id="{p}-disable-tls"]
-==== Disable TLS
+=== Disable TLS
 
 You can explicitly disable TLS for Kibana or APM Server and the HTTP layer of Elasticsearch.
 
@@ -186,7 +183,7 @@ spec:
 
 [float]
 [id="{p}-request-elasticsearch-endpoint"]
-=== Requesting the Elasticsearch endpoint
+== Requesting the Elasticsearch endpoint
 
 You can request the Elasticsearch endpoint within or outside the Kubernetes cluster.
 

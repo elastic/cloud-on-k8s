@@ -1,10 +1,7 @@
-ifdef::env-github[]
-****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-openshift.html[View this document on the Elastic website]
-****
-endif::[]
-[id="{p}-openshift"]
-== Deploying ECK on OpenShift
+:page_id: openshift
+include::github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Deploying ECK on OpenShift
 
 This page shows how to run ECK on OpenShift.
 
@@ -19,13 +16,13 @@ NOTE: Only Elasticsearch and Kibana are compatible with the `restricted` https:/
 
 [float]
 [id="{p}-openshift-before-you-begin"]
-=== Before you begin
+== Before you begin
 
 . To run the instructions on this page, you must be a `system:admin` user or a user with the privileges to create Projects, CRDs, and RBAC resources at the cluster level.
 
 . Set virtual memory settings on the Kubernetes nodes.
 +
-Before deploying an Elasticsearch cluster with ECK, make sure that the Kubernetes nodes in your cluster have the correct `vm.max_map_count` sysctl setting applied. By default, Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) which restricts privileged access required to change this setting in the underlying Kubernetes nodes. 
+Before deploying an Elasticsearch cluster with ECK, make sure that the Kubernetes nodes in your cluster have the correct `vm.max_map_count` sysctl setting applied. By default, Pods created by ECK are likely to run with the `restricted` https://docs.openshift.com/container-platform/4.1/authentication/managing-security-context-constraints.html[Security Context Constraint] (SCC) which restricts privileged access required to change this setting in the underlying Kubernetes nodes.
 +
 Alternatively, you can opt for setting `node.store.allow_mmap: false` at the <<{p}-node-configuration,Elasticsearch node configuration>> level, but note that this has performance implications and is not recommended for production workloads.
 +
@@ -33,8 +30,8 @@ For more information, see: <<{p}-virtual-memory>>.
 
 [float]
 [id="{p}-openshift-deploy-the-operator"]
-=== Deploy the operator
-. Apply the all-in-one template, as described in the link:k8s-quickstart.html[quickstart].
+== Deploy the operator
+. Apply the all-in-one template, as described in the <<{p}-quickstart, quickstart>>.
 +
 [source,shell,subs="attributes"]
 ----
@@ -78,7 +75,7 @@ In the example above the user `developer` is allowed to manage Elastic resources
 
 [float]
 [id="{p}-openshift-deploy-elasticsearch"]
-=== Deploy an Elasticsearch instance with a route
+== Deploy an Elasticsearch instance with a route
 
 Use the following code to create an Elasticsearch cluster `elasticsearch-sample` and a "passthrough" route to access it:
 
@@ -118,7 +115,7 @@ EOF
 
 [float]
 [id="{p}-openshift-deploy-kibana"]
-=== Deploy a Kibana instance with a route
+== Deploy a Kibana instance with a route
 
 Use the following code to create a Kibana instance and a "passthrough" route to access it:
 
@@ -167,7 +164,7 @@ oc get route -n elastic
 
 [float]
 [id="{p}-openshift-apm"]
-=== Deploy an APM Server instance with a route
+== Deploy an APM Server instance with a route
 
 It is currently not possible to run the APM Server with the `restricted` SCC. A possible workaround is to allow the Pod to run with the default `uid 1000` by assigning it to the `anyuid` SCC:
 
@@ -239,6 +236,6 @@ kibana-sample-kb-97c6b6b8d-lqfd2 scc:restricted
 
 [float]
 [id="{p}-openshift-es-plugins"]
-=== Elasticsearch plugins
+== Elasticsearch plugins
 
 Note that Elasticsearch plugins cannot be installed at runtime in most OpenShift environments. This is because the plugin installer must run as root, but Elasticsearch is restricted from running as root. To add plugins to Elasticsearch, you can use custom images as described in <<{p}-custom-images>>.

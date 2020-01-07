@@ -1,0 +1,51 @@
+:page_id: update-strategy
+include::../../github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Update strategy
+
+Sometimes the operator must take a Pod down, for example, to restart a node and apply a new configuration value. Other times the operator must spin up pods above what is currently in the specification, say to migrate to a new node set. You can limit the number of these simultaneous changes  using an `updateStrategy` as follows:
+
+[source,yaml]
+----
+spec:
+  updateStrategy:
+    changeBudget:
+      maxSurge: 3
+      maxUnavailable: 1
+----
+`maxSurge` refers to the number of Pods that can be scheduled above the total number of Pods in the currently applied specification. This setting might be useful when the new specification has similar number of Pods, but different node sets (for example, when migrating Pods to a new node set). It will prevent the operator from creating all new Pods before removing the old ones thus preventing having (temporarily) as many as two times more pods than the specification defines.
+
+`maxUnavailable` refers to the number of Pods that can be unavailable out of the total number of Pods in the currently applied specification. Unavailable is defined as a Pod being not ready from Kubernetes perspective.
+
+As these constraints are enforced immediately after the specification is applied, it is possible the the actual state of the cluster might violate these constraints. When the cluster is outside these constraints, the operator can add or remove nodes only with the purpose of getting closer to these constraints. When the cluster is within these constraints, the operator can either add or remove nodes, as long as the cluster remains within the predefined constraints.
+
+For example, if a new specification defines a larger cluster with `maxUnavailable: 0`, the operator creates the missing Pods according to the best practices. Similarly, if a new specification defines a smaller cluster with `maxSurge: 0`, the operator safely removes the unnecessary Pods.
+
+== Specifying changeBudget
+For both `maxSurge` and `maxUnavailable` you can specify the following values:
+
+* `null` - the default value is used
+* non-negative - the value is used as is
+* negative - the value is unbounded
+
+== Default behavior
+When `updateStrategy` is not present in the specification, it defaults to the following:
+
+[source,yaml]
+----
+spec:
+  updateStrategy:
+    changeBudget:
+      maxSurge: -1
+      maxUnavailable: 1
+----
+
+`maxSurge` is unbounded: this means that all the missing Pods are immediately created according to the best practices at any given time.
+`maxUnavailable` defaults to `1`: this assures that clusters have at most one unavailable Pod at any given time.
+
+== Caveats
+* With both `maxSurge` and `maxUnavailable` set to `0`, the operator cannot bring down an existing Pod nor create a new Pod.
+* Due to the safety measures employed by the operator, a particular changeBudget might be insufficient to perform the requested update. For example, with `maxSurge` set to 0 you cannot remove the last data node from one nodeSet and add a data node to a different nodeSet. In this case the operator cannot remove the old node and migrate data as other nodes are not available, and can't add the new node because `maxSurge` is set to 0.
+* Currently, the operator has a limited understanding of the cluster topology and during the update might not pick the optimal order of Pods being added or removed. This can block the update process and you might need to specify a higher `maxSurge` than theoretically needed.
+
+If any of the above occurs, the operator generates logs to indicate that upscaling or downscaling are limited by `maxSurge` or `maxUnavailable` settings.

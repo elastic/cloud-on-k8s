@@ -1,5 +1,7 @@
-[id="{p}-glossary"]
-== Glossary
+:page_id: glossary
+include::github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Glossary
 
 This glossary supplements the link:https://kubernetes.io/docs/reference/glossary/[Kubernetes glossary] and covers terms used in the Elastic Cloud on Kubernetes (ECK) documentation.
 

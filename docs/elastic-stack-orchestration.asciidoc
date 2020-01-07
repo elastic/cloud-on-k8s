@@ -1,0 +1,20 @@
+:page_id: elastic-stack-orchestration
+include::github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Elastic Stack Orchestration
+
+- <<{p}-accessing-elastic-services>>
+- <<{p}-managing-compute-resources>>
+- <<{p}-upgrading-stack>>
+- <<{p}-custom-images>>
+- <<{p}-elasticsearch-specification>>
+- <<{p}-kibana>>
+- <<{p}-apm-server>>
+
+include::elastic-stack-orchestration/accessing-elastic-services.asciidoc[leveloffset=+1]
+include::elastic-stack-orchestration/managing-compute-resources.asciidoc[leveloffset=+1]
+include::elastic-stack-orchestration/upgrading-stack.asciidoc[leveloffset=+1]
+include::elastic-stack-orchestration/custom-images.asciidoc[leveloffset=+1]
+include::elastic-stack-orchestration/elasticsearch-specification.asciidoc[leveloffset=+1]
+include::elastic-stack-orchestration/kibana.asciidoc[leveloffset=+1]
+include::elastic-stack-orchestration/apm-server.asciidoc[leveloffset=+1]

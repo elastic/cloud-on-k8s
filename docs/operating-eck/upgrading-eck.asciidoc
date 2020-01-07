@@ -1,14 +1,11 @@
-ifdef::env-github[]
-****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-upgrading-eck.html[View this document on the Elastic website]
-****
-endif::[]
-[id="{p}-upgrading-eck"]
-== Upgrading ECK
+:page_id: upgrading-eck
+include::../github-header.asciidoc[]
+[id="{p}-{page_id}"]
+= Upgrading ECK
 
 [float]
 [id="{p}-upgrade-to-v1beta1"]
-=== Upgrading to ECK 1.0.0-beta1 from previous versions
+== Upgrading to ECK 1.0.0-beta1 from previous versions
 
 ECK 1.0.0-beta1 includes changes that are incompatible with previous versions of the operator. Notable changes include:
 
@@ -39,7 +36,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 
 [float]
 [id="{p}-convert-manifests"]
-==== Convert Manifests
+=== Convert Manifests
 
 .Elasticsearch
 * Replace `v1alpha1` in the `apiVersion` field with `v1beta1`
@@ -125,7 +122,7 @@ CAUTION: These instructions are general guidelines only. You should have a thoro
 
 [float]
 [id="{p}-1.0.0-beta1-backwards-compatibility"]
-==== Backwards compatibility
+=== Backwards compatibility
 
 The 1.0.0-beta version of the operator does not delete resources created by older versions of the operator, but it also does not manage them. Attempting to delete resources created with a 0.9.0 version will hang if ECK 1.0.0-beta1 is running. To unblock the deletion, remove any registered finalizer from the resource (substituting the correct name for `quickstart`):
 
