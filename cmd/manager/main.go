@@ -30,6 +30,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
@@ -207,9 +208,13 @@ func execute() {
 	cfg := ctrl.GetConfigOrDie()
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
-	err := controllerscheme.SetupScheme()
-	if err != nil {
-		log.Error(err, "Error setting up schemes")
+	if err := controllerscheme.SetupScheme(); err != nil {
+		log.Error(err, "Error setting up scheme")
+		os.Exit(1)
+	}
+	// also set up the v1beta1 scheme, used by the v1beta1 webhook
+	if err := controllerscheme.SetupV1beta1Scheme(); err != nil {
+		log.Error(err, "Error setting up v1beta1 schemes")
 		os.Exit(1)
 	}
 
@@ -391,8 +396,13 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		}
 	}
 
+	// setup v1 and v1beta1 webhooks
 	if err := (&esv1.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
-		log.Error(err, "unable to create webhook", "webhook", "Elasticsearch")
+		log.Error(err, "unable to create webhook", "version", "v1", "webhook", "Elasticsearch")
+		os.Exit(1)
+	}
+	if err := (&esv1beta1.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
+		log.Error(err, "unable to create webhook", "version", "v1beta1", "webhook", "Elasticsearch")
 		os.Exit(1)
 	}
 
