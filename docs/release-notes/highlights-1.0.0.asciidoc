@@ -29,4 +29,4 @@ ECK can now manage multiple specific namespaces simultaneously (previously only 
 [id="{p}-release-license-mgmt"]
 === License management
 
-Handling of licenses has been greatly improved. If the license changes, all new clusters will use it and all existing clusters will be upgraded to the new cluster. See <<{p}-licensing>> for more information.
+Handling of licenses has been greatly improved. If the license changes, all new clusters will use it and all existing clusters will be upgraded to the new license. See <<{p}-licensing>> for more information.
