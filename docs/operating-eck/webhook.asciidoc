@@ -13,7 +13,7 @@ A validating webhook provides additional validation of Elasticsearch resources: 
 == Architecture
 The webhook is composed of 4 main components. Here is a brief description of each of them to understand how they interact, their naming, and how they are managed.
 
-. A `ValidatingWebhookConfiguration` object that defines the validating webhook, named `elastic-es-validation.k8s.elastic.co`. It must be created before starting the operator. The `caBundle` field can be automatically managed as part of the automatic certificate management _(see below)_.
+. A `ValidatingWebhookConfiguration` object that defines the validating webhook, targeting the right webhook path and resource. It must be created before starting the operator. The `caBundle` field can be automatically managed as part of the automatic certificate management _(see below)_.
 . A Kubernetes Service is used to expose the validating server, named `elastic-webhook-server`. It is in the same Namespace as the webhook server.
 . A webhook server that actually validates the submitted resources. In ECK it is the operator itself when it is configured with the `webhook` role. See <<{p}-operator-config,Configuring ECK>> for more information about the `operator-roles` flag.
 . A Secret containing the required certificates to secure the connection between the API server and the webhook server.
@@ -91,7 +91,7 @@ webhooks:
       # this is the path controller-runtime automatically generates
       path: /validate-elasticsearch-k8s-elastic-co-{eck_crd_version}-elasticsearch
   failurePolicy: Ignore
-  name: elastic-es-validation.k8s.elastic.co
+  name: elastic-es-validation-{eck_crd_version}.k8s.elastic.co
   sideEffects: None
   rules:
   - apiGroups:
