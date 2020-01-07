@@ -43,7 +43,7 @@ func TestParams_ReconcileResources(t *testing.T) {
 				},
 				Webhooks: []v1beta1.ValidatingWebhook{
 					{
-						Name:         "elastic-es-validation.k8s.elastic.co",
+						Name:         "elastic-es-validation-v1.k8s.elastic.co",
 						ClientConfig: v1beta1.WebhookClientConfig{},
 					},
 				},
