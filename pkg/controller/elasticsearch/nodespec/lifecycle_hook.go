@@ -23,30 +23,30 @@ const PreStopHookScript = `#!/usr/bin/env bash
 
 set -eux
 
-# This script will wait for up to $MAX_WAIT_SECONDS for $POD_IP to disappear from DNS record,
-# then it will wait additional $ADDITIONAL_WAIT_SECONDS and exit. This slows down the process shutdown
+# This script will wait for up to $PRE_STOP_MAX_WAIT_SECONDS for $POD_IP to disappear from DNS record,
+# then it will wait additional $PRE_STOP_ADDITIONAL_WAIT_SECONDS and exit. This slows down the process shutdown
 # and allows to make changes to the pool gracefully, without blackholing traffic when DNS
 # contains IP that is already inactive. Assumes $HEADLESS_SERVICE_NAME and $POD_IP env variables are defined.
 
 # max time to wait for pods IP to disappear from DNS. As this runs in parallel to grace period
 # after which process is SIGKILLed, it should be set to allow enough time for the process to gracefully terminate.
-MAX_WAIT_SECONDS=${MAX_WAIT_SECONDS:=20}
+PRE_STOP_MAX_WAIT_SECONDS=${PRE_STOP_MAX_WAIT_SECONDS:=20}
 
 # additional wait before shutting down Elasticsearch.
 # It allows kube-proxy to refresh its routes (defaults to every 30 seconds) and remove that Pod IP once Terminating.
 # Also gives some additional bonus time to in-flight requests to terminate.
-ADDITIONAL_WAIT_SECONDS=${ADDITIONAL_WAIT_SECONDS:=30}
+PRE_STOP_ADDITIONAL_WAIT_SECONDS=${PRE_STOP_ADDITIONAL_WAIT_SECONDS:=30}
 
 START_TIME=$(date +%s)
 while true; do
    ELAPSED_TIME=$(($(date +%s) - $START_TIME))
 
-   if [ $ELAPSED_TIME -gt $MAX_WAIT_SECONDS ]; then
+   if [ $ELAPSED_TIME -gt $PRE_STOP_MAX_WAIT_SECONDS ]; then
       exit 1
    fi
 
    if ! getent hosts $HEADLESS_SERVICE_NAME | grep $POD_IP; then
-      sleep $ADDITIONAL_WAIT_SECONDS
+      sleep $PRE_STOP_ADDITIONAL_WAIT_SECONDS
       exit 0
    fi
 
