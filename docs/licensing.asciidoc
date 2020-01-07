@@ -66,3 +66,18 @@ Before your current Enterprise license expires, you will receive a new Enterpris
 To avoid any unintended downgrade of individual Elasticsearch clusters to a Basic license while installing the new license we recommend you install the new Enterprise license as a new Kubernetes secret next to your existing Enterprise license. Just replace `eck-license` with a different name from the examples above. ECK will use the correct license automatically.
 
 Once you have created the new license secret you can safely delete the old license secret.
+
+[float]
+=== Getting usage data
+The operator periodically writes the total amount of Elastic resources under management to a config map. It is named `elastic-licensing` in the same namespace as the operator. Here is an example of retrieving the data:
+
+[source,shell]
+----
+> kubectl -n elastic-system get configmap elastic-licensing -o json | jq .data
+{
+  "eck_license_level": "basic",
+  "enterprise_resource_units": "1",
+  "timestamp": "2020-01-03T23:38:20Z",
+  "total_managed_memory": "3.22GB"
+}
+----
