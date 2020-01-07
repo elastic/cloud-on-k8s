@@ -29,14 +29,13 @@ set -eux
 # contains IP that is already inactive. Assumes $HEADLESS_SERVICE_NAME and $POD_IP env variables are defined.
 
 # max time to wait for pods IP to disappear from DNS. As this runs in parallel to grace period
-# (defaulting to 30s) after which process is SIGKILLed, it should be set to allow enough time
-# for the process to gracefully terminate.
+# after which process is SIGKILLed, it should be set to allow enough time for the process to gracefully terminate.
 MAX_WAIT_SECONDS=${MAX_WAIT_SECONDS:=20}
 
-# additional wait, allows queries to successfully use IP from DNS from before pod termination
-# this gives a little bit more time for clients that resolved DNS just before DNS record
-# was updated.
-ADDITIONAL_WAIT_SECONDS=${ADDITIONAL_WAIT_SECONDS:=1}
+# additional wait before shutting down Elasticsearch.
+# It allows kube-proxy to refresh its routes (defaults to every 30 seconds) and remove that Pod IP once Terminating.
+# Also gives some additional bonus time to in-flight requests to terminate.
+ADDITIONAL_WAIT_SECONDS=${ADDITIONAL_WAIT_SECONDS:=30}
 
 START_TIME=$(date +%s)
 while true; do
