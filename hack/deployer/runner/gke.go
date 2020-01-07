@@ -167,8 +167,9 @@ func (d *GkeDriver) create() error {
 		`--region {{.Region}} --username {{.AdminUsername}} --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --image-type COS --disk-type pd-ssd --disk-size 30 ` +
 		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
-		`--enable-cloud-logging --enable-cloud-monitoring --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
-		`--no-enable-autoupgrade --no-enable-autorepair --network projects/{{.GCloudProject}}/global/networks/default ` +
+		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
+		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
+		`--network projects/{{.GCloudProject}}/global/networks/default ` +
 		`--subnetwork projects/{{.GCloudProject}}/regions/{{.Region}}/subnetworks/default` + pspOption).
 		AsTemplate(d.ctx).
 		Run()
