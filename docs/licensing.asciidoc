@@ -77,6 +77,7 @@ The operator periodically writes the total amount of Elastic resources under man
 {
   "eck_license_level": "basic",
   "enterprise_resource_units": "1",
+  "max_enterprise_resource_units": "10",
   "timestamp": "2020-01-03T23:38:20Z",
   "total_managed_memory": "3.22GB"
 }
