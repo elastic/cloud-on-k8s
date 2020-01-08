@@ -64,8 +64,8 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 		EnterpriseResourceUnits: ERUs,
 	}
 
-	// include the max ERUs only for a non trial license
-	if operatorLicense != nil && !operatorLicense.IsTrial() {
+	// include the max ERUs only for a non trial/basic license
+	if maxERUs > 0 {
 		licensingInfo.MaxEnterpriseResourceUnits = strconv.Itoa(maxERUs)
 	}
 
