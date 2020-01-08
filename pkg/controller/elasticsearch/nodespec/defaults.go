@@ -25,7 +25,7 @@ const (
 	DefaultImageRepository string = "docker.elastic.co/elasticsearch/elasticsearch"
 
 	// DefaultTerminationGracePeriodSeconds is the termination grace period for the Elasticsearch containers
-	DefaultTerminationGracePeriodSeconds int64 = 120
+	DefaultTerminationGracePeriodSeconds int64 = 180
 )
 
 var (
