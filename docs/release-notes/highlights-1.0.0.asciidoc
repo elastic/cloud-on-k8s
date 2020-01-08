@@ -30,3 +30,9 @@ ECK can now manage multiple specific namespaces simultaneously (previously only 
 === License management
 
 Handling of licenses has been greatly improved. If the license changes, all new clusters will use it and all existing clusters will be upgraded to the new cluster. See <<{p}-licensing>> for more information.
+
+[float]
+[id="{p}-release-mesh-compat"]
+=== Service mesh compatibility
+
+Compatibility with service mesh systems such as Istio has been improved, with changes such as link:https://github.com/elastic/cloud-on-k8s/pull/2083[#2038].
