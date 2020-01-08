@@ -106,7 +106,7 @@ kubectl create secret generic gcs-credentials --from-file=gcs.client.default.cre
 
 . Edit the `secureSettings` section of the Elasticsearch resource:
 +
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
