@@ -15,10 +15,10 @@ func TestToMap(t *testing.T) {
 	i := LicensingInfo{}
 	data, err := i.toMap()
 	assert.NoError(t, err)
-	assert.Equal(t, 5, len(data))
+	assert.Equal(t, 4, len(data))
 	assert.Equal(t, "", data["eck_license_level"])
 
-	i = LicensingInfo{EckLicenseLevel: "basic"}
+	i = LicensingInfo{EckLicenseLevel: "basic", MaxEnterpriseResourceUnits: "10"}
 	data, err = i.toMap()
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(data))
