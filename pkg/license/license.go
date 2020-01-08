@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -31,10 +32,11 @@ const (
 // LicensingInfo represents information about the operator license including the total memory of all Elastic managed
 // components
 type LicensingInfo struct {
-	Timestamp               string `json:"timestamp"`
-	EckLicenseLevel         string `json:"eck_license_level"`
-	TotalManagedMemory      string `json:"total_managed_memory"`
-	EnterpriseResourceUnits string `json:"enterprise_resource_units"`
+	Timestamp                  string `json:"timestamp"`
+	EckLicenseLevel            string `json:"eck_license_level"`
+	TotalManagedMemory         string `json:"total_managed_memory"`
+	MaxEnterpriseResourceUnits string `json:"max_enterprise_resource_units,omitempty"`
+	EnterpriseResourceUnits    string `json:"enterprise_resource_units"`
 }
 
 // LicensingResolver resolves the licensing information of the operator
@@ -45,19 +47,29 @@ type LicensingResolver struct {
 
 // ToInfo returns licensing information given the total memory of all Elastic managed components
 func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo, error) {
-	eru := inEnterpriseResourceUnits(totalMemory)
+	ERUs := inEnterpriseResourceUnits(totalMemory)
 	memoryInGB := inGB(totalMemory)
-	licenseLevel, err := r.getOperatorLicenseLevel()
+	operatorLicense, err := r.getOperatorLicense()
 	if err != nil {
 		return LicensingInfo{}, err
 	}
 
-	return LicensingInfo{
+	licenseLevel := r.getOperatorLicenseLevel(operatorLicense)
+	maxERUs := r.getMaxEnterpriseResourceUnits(operatorLicense)
+
+	licensingInfo := LicensingInfo{
 		Timestamp:               time.Now().Format(time.RFC3339),
 		EckLicenseLevel:         licenseLevel,
 		TotalManagedMemory:      memoryInGB,
-		EnterpriseResourceUnits: eru,
-	}, nil
+		EnterpriseResourceUnits: ERUs,
+	}
+
+	// include the max ERUs only for a non trial license
+	if operatorLicense != nil && !operatorLicense.IsTrial() {
+		licensingInfo.MaxEnterpriseResourceUnits = strconv.Itoa(maxERUs)
+	}
+
+	return licensingInfo, nil
 }
 
 // Save updates or creates licensing information in a config map
@@ -85,20 +97,33 @@ func (r LicensingResolver) Save(info LicensingInfo, operatorNs string) error {
 	return err
 }
 
-// getOperatorLicenseLevel gets the level of the operator license.
-// If no license is found, the defaultOperatorLicenseLevel is returned.
-func (r LicensingResolver) getOperatorLicenseLevel() (string, error) {
+// getOperatorLicense gets the operator license.
+func (r LicensingResolver) getOperatorLicense() (*license.EnterpriseLicense, error) {
 	checker := license.NewLicenseChecker(r.client, r.operatorNs)
-	lic, err := checker.CurrentEnterpriseLicense()
-	if err != nil {
-		return "", err
-	}
+	return checker.CurrentEnterpriseLicense()
+}
 
+// getOperatorLicenseLevel gets the level of the operator license.
+// If no license is given, the defaultOperatorLicenseLevel is returned.
+func (r LicensingResolver) getOperatorLicenseLevel(lic *license.EnterpriseLicense) string {
 	if lic == nil {
-		return defaultOperatorLicenseLevel, nil
+		return defaultOperatorLicenseLevel
 	}
+	return string(lic.License.Type)
+}
 
-	return string(lic.License.Type), nil
+// getMaxEnterpriseResourceUnits returns the maximum of enterprise resources units that is allowed for a given license.
+// For old style enterprise orchestration licenses which only have max_instances, the maximum of enterprise resources
+// units is derived by dividing max_instances by 2.
+func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.EnterpriseLicense) int {
+	if lic == nil {
+		return 0
+	}
+	maxERUs := lic.License.MaxResourceUnits
+	if maxERUs == 0 {
+		maxERUs = lic.License.MaxInstances / 2
+	}
+	return maxERUs
 }
 
 // inGB converts a resource.Quantity in gigabytes
