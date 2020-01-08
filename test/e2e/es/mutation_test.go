@@ -237,13 +237,11 @@ func TestMutationWithLargerMaxUnavailable(t *testing.T) {
 
 func TestMutationWhileLoadTesting(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-while-load-testing").
-		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithEnvironmentVariable("ADDITIONAL_WAIT_SECONDS", "10")
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	// force a rolling upgrade through label change
 	mutated := b.WithNoESTopology().
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources).
-		WithEnvironmentVariable("ADDITIONAL_WAIT_SECONDS", "10").
 		WithPodLabel("some_label_name", "some_new_value")
 
 	var metrics vegeta.Metrics
