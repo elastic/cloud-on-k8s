@@ -75,7 +75,7 @@ The operator periodically writes the total amount of Elastic resources under man
 ----
 > kubectl -n elastic-system get configmap elastic-licensing -o json | jq .data
 {
-  "eck_license_level": "basic",
+  "eck_license_level": "enterprise",
   "enterprise_resource_units": "1",
   "max_enterprise_resource_units": "10",
   "timestamp": "2020-01-03T23:38:20Z",
