@@ -37,6 +37,7 @@ plans:
   psp: false
   aks:
     nodeCount: 3
+    location: westeurope
 - id: aks-dev
   operation: create
   clusterName: dev
@@ -47,3 +48,4 @@ plans:
   psp: false
   aks:
     nodeCount: 3
+    location: northeurope
