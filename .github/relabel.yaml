@@ -1,3 +1,6 @@
 requiredLabels:
+  # add "triage" label for anything missing an ">enhancement" or similar label
   - missingLabel: triage
-    regex: >.*
+    regex: ">.*"
+  - missingLabel: needs-version
+    regex: "v.*"
