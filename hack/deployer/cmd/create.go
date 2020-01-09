@@ -75,9 +75,10 @@ func CreateCommand() *cobra.Command {
 }
 
 func GetEnvVar(name string) (string, error) {
-	if val, ok := os.LookupEnv(name); !ok {
+	val, ok := os.LookupEnv(name)
+	if !ok {
 		return "", fmt.Errorf("%s environment variable not present", name)
-	} else {
-		return val, nil
 	}
+
+	return val, nil
 }
