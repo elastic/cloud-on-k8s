@@ -8,8 +8,7 @@
 [float]
 === Breaking changes
 
-* Remove v1alpha1 CRD version &amp; generate a single trivial all-in-one flavor {pull}2119[#2119] (issue: {issue}2044[#2044])
-* Add multi-namespace cache support {pull}1995[#1995]
+* Remove v1alpha1 CRD version and generate a single trivial all-in-one flavor {pull}2119[#2119] (issue: {issue}2044[#2044])
 
 
 [[feature-1.0.0]]
@@ -26,25 +25,26 @@
 * Readiness probe: do not log tail errors {pull}2366[#2366]
 * Wait 30sec in the preStop hook to account for kube-proxy refresh {pull}2360[#2360] (issue: {issue}2318[#2318])
 * Allow user to override readiness timeout {pull}2260[#2260] (issue: {issue}2259[#2259])
-* Support 7.6 and new stack level enterprise license type. {pull}2242[#2242]
-* Minimize downtime during pod recycling {pull}2233[#2233] (issue: {issue}1927[#1927])
+* Support 7.6 and new stack level enterprise license type {pull}2242[#2242]
+* Minimize downtime during Pod recycling {pull}2233[#2233] (issue: {issue}1927[#1927])
 * Bump ctrl-runtime dependency {pull}2232[#2232]
 * Do not reconcile APM Server if association is not fully configured {pull}2224[#2224]
-* Upgrade from trial to platinum/enterprise license {pull}2206[#2206]
+* Upgrade from trial to Platinum/Enterprise license {pull}2206[#2206]
 * Remove finalizers {pull}2195[#2195]
-* Downgrade to basic if user deletes license secret {pull}2188[#2188]
+* Downgrade to Basic if user deletes license secret {pull}2188[#2188]
 * Add default requests and limits to the init containers {pull}2186[#2186] (issue: {issue}2179[#2179])
 * Sort seed hosts to avoid unecessary configmap updates {pull}2171[#2171]
 * Turn blacklist into warning events and logs statements {pull}2162[#2162]
 * Autostart trial {pull}2160[#2160]
 * Reconcile all clusters on license change {pull}2145[#2145]
 * Pods upgrade: log a summary of failed predicates {pull}2128[#2128]
-* Add webhook Secret and ValidatingWebhookConfiguration certificate management {pull}2126[#2126]
+* Add webhook secret and ValidatingWebhookConfiguration certificate management {pull}2126[#2126]
 * Name service ports based on protocol {pull}2083[#2083]
 * Simplify license installation {pull}2073[#2073]
 * Check resource version when deleting a Pod during force-upgrades {pull}2066[#2066] (issue: {issue}1916[#1916])
 * Perform forced rolling upgrade even if ES is reachable {pull}2022[#2022]
 * Refactor expectations with proper garbage collection {pull}2000[#2000] (issue: {issue}1611[#1611])
+* Add multi-namespace cache support {pull}1995[#1995]
 
 [[bug-1.0.0]]
 [float]
@@ -52,12 +52,12 @@
 
 * Do not report max ERUs for basic licenses {pull}2377[#2377]
 * Fix v1beta1 webhook {pull}2358[#2358] (issue: {issue}2355[#2355])
-* Preserve environment variable order in pod spec {pull}2341[#2341]
+* Preserve environment variable order in Pod specification {pull}2341[#2341]
 * Reuse the same upscaleState across StatefulSets {pull}2339[#2339] (issue: {issue}2338[#2338])
 * Allow node restart even if cluster health is yellow {pull}2330[#2330]
-* Don&#39;t upgrade pods if empty StatefulSet UpdateRevision {pull}2321[#2321] (issue: {issue}2320[#2320])
+* Do not upgrade Pods if empty StatefulSet UpdateRevision {pull}2321[#2321] (issue: {issue}2320[#2320])
 * Fix how cluster.initial_master_nodes is set {pull}2315[#2315] (issue: {issue}2291[#2291])
-* Wait for webhook key to be present in fs {pull}2312[#2312]
+* Wait for webhook key to be present in filesystem {pull}2312[#2312]
 * Do not fail if annotations file does not exist {pull}2275[#2275]
 * Fix readiness probe {pull}2272[#2272]
 * Change priority order of reconcile results {pull}2250[#2250]
@@ -69,9 +69,9 @@
 * Update service when labels and annotations are modified {pull}2210[#2210]
 * Fix readiness script in case of operator upgrade {pull}2208[#2208]
 * Restore v1alpha1 in the list of crds {pull}2199[#2199] (issue: {issue}2196[#2196])
-* Don&#39;t use env variables ending in _FILE with Elasticsearch {pull}2180[#2180]
+* Do not use env variables ending in _FILE with Elasticsearch {pull}2180[#2180]
 * Ignore and do not use an empty CA {pull}2140[#2140]
-* Fix Kibana to terminate all pods before restarting during version change {pull}2137[#2137]
+* Fix Kibana to terminate all Pods before restarting during version change {pull}2137[#2137]
 * Perform StatefulSets deletions before replicas downscale {pull}2062[#2062]
 * Always enable native realm {pull}2038[#2038]
 * Fix nil pointer in upgrade predicates {pull}2035[#2035]
