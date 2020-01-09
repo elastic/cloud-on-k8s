@@ -23,6 +23,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	// RollingUpgradeTimeout is used for checking a rolling upgrade is complete.
+	// Most tests require less than 5 minutes for all Pods to be running and ready,
+	// but it occasionally takes longer for various reasons (long Pod creation time, long volume binding, etc.).
+	// We use a longer timeout here to not be impacted too much by those external factors, and only fail
+	// if things seem to be stuck.
+	RollingUpgradeTimeout = 15 * time.Minute
+)
+
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		CheckCertificateAuthority(b, k),
@@ -228,16 +237,11 @@ func CheckESPassword(b Builder, k *test.K8sClient) test.Step {
 }
 
 func CheckExpectedPodsEventuallyReady(b Builder, k *test.K8sClient) test.Step {
-	// Most tests require less than 5 minutes for all Pods to be running and ready,
-	// but it occasionally takes longer for various reasons (long pod Pod creation time, long volume binding, etc.).
-	// We use a longer timeout here to not be impacted too much by those external factors, and only fail
-	// if things seem to be stuck.
-	timeout := 15 * time.Minute
 	return test.Step{
 		Name: "All expected Pods should eventually be ready",
 		Test: test.UntilSuccess(func() error {
 			return checkExpectedPodsReady(b, k)
-		}, timeout),
+		}, RollingUpgradeTimeout),
 	}
 }
 
