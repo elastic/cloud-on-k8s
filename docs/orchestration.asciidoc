@@ -120,9 +120,9 @@ If an Elasticsearch node holds the only copy of a shard, this shard becomes unav
 ** A cluster version upgrade is in progress and some `Pods` are not up to date
 ** There are no initializing or relocating shards
 
-If the above conditions are met then ECK can delete a `Pod` for upgrade even if the cluster health is yellow as long as the `Pod` is not holding the last available replica of a shard.
+If the above conditions are met, then ECK can delete a `Pod` for upgrade even if the cluster health is yellow as long as the `Pod` is not holding the last available replica of a shard.
 
-Advanced users may force an upgrade by manually deleting `Pods` themselves. The deleted `Pods` will be automatically recreated at the latest revision. There are two exceptions to this rule:
+Advanced users can force an upgrade by manually deleting `Pods`. The deleted `Pods` are automatically recreated at the latest revision. There are two exceptions to this rule:
 
 ** If all the Elasticsearch nodes of a `NodeSet` are unavailable, probably caused by a misconfiguration, the operator ignores the cluster health and upgrades nodes of the `NodeSet`.
 ** If an Elasticsearch node to upgrade is not healthy, and not part of the Elasticsearch cluster, the operator ignores the cluster health and upgrades the Elasticsearch node.
