@@ -53,6 +53,7 @@ type GkeSettings struct {
 // AksSettings encapsulates settings specific to AKS
 type AksSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
+	Location      string `yaml:"location"`
 	AcrName       string `yaml:"acrName"`
 	NodeCount     int    `yaml:"nodeCount"`
 }

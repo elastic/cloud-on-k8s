@@ -64,6 +64,7 @@ func (gdf *AksDriverFactory) Create(plan Plan) (Driver, error) {
 			"MachineType":       plan.MachineType,
 			"KubernetesVersion": plan.KubernetesVersion,
 			"AcrName":           plan.Aks.AcrName,
+			"Location":          plan.Aks.Location,
 		},
 		vaultClient: vaultClient,
 	}, nil
@@ -166,7 +167,7 @@ func (d *AksDriver) create() error {
 		servicePrincipal = fmt.Sprintf(" --service-principal %s --client-secret %s", secrets[0], secrets[1])
 	}
 
-	cmd := `az aks create --resource-group {{.ResourceGroup}} --name {{.ClusterName}} ` +
+	cmd := `az aks create --resource-group {{.ResourceGroup}} --name {{.ClusterName}} --location {{.Location}} ` +
 		`--node-count {{.NodeCount}} --node-vm-size {{.MachineType}} --kubernetes-version {{.KubernetesVersion}} ` +
 		`--node-osdisk-size 30 --enable-addons http_application_routing,monitoring --generate-ssh-keys` + servicePrincipal
 	if err := NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
