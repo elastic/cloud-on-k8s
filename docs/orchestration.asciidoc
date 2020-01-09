@@ -116,7 +116,14 @@ If an Elasticsearch node holds the only copy of a shard, this shard becomes unav
 
 * Elasticsearch `Pods` may stay `Pending` during a rolling upgrade if the Kubernetes scheduler cannot re-schedule them back. This is especially important when using local `PersistentVolumes`. If the Kubernetes node bound to a local `PersistentVolume` does not have enough capacity to host an upgraded `Pod` which was temporarily removed, that `Pod` will stay Pending.
 
-* Rolling upgrades can only make progress if the Elasticsearch cluster health is green. It is risky to attempt upgrading a cluster in the yellow state as some shards could become completely unavailable and degrade the cluster health to red. ECK takes the cautionary approach of waiting for green health before progressing but advanced users may force an upgrade by manually deleting `Pods` themselves. The deleted `Pods` will be automatically recreated at the latest revision. There are two exceptions to this rule:
+* Rolling upgrades can only make progress if the Elasticsearch cluster health is green. ECK might also make progress if the cluster health is yellow under the following conditions:
+** A cluster version upgrade is in progress and some `Pods` are not up to date
+** There are no initializing or relocating shards
+
+If the above conditions are met then ECK can delete a `Pod` for upgrade even if the cluster health is yellow as long as the `Pod` is not holding the last available replica of a shard.
+
+Advanced users may force an upgrade by manually deleting `Pods` themselves. The deleted `Pods` will be automatically recreated at the latest revision. There are two exceptions to this rule:
+
 ** If all the Elasticsearch nodes of a `NodeSet` are unavailable, probably caused by a misconfiguration, the operator ignores the cluster health and upgrades nodes of the `NodeSet`.
 ** If an Elasticsearch node to upgrade is not healthy, and not part of the Elasticsearch cluster, the operator ignores the cluster health and upgrades the Elasticsearch node.
 
