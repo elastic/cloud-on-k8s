@@ -99,34 +99,34 @@ func (ctx *rollingUpgradeCtx) getAllowedDeletions() (int, bool) {
 }
 
 // sortCandidates is the default sort function, masters have lower priority as
-// we want to update the data nodes first.
-// If 2 Pods are of the same type then use the reverse ordinal order.
+// we want to update the data nodes first. After that pods are sorted by stateful set name
+// then reverse ordinal order
 // TODO: Add some priority to unhealthy (bootlooping) Pods
 func sortCandidates(allPods []corev1.Pod) {
 	sort.Slice(allPods, func(i, j int) bool {
 		pod1 := allPods[i]
 		pod2 := allPods[j]
-		if (label.IsMasterNode(pod1) && label.IsMasterNode(pod2)) ||
-			(!label.IsMasterNode(pod1) && !label.IsMasterNode(pod2)) { // same type, use the reverse name function
-			ssetName1, ord1, err := sset.StatefulSetName(pod1.Name)
-			if err != nil {
-				return false
-			}
-			ssetName2, ord2, err := sset.StatefulSetName(pod2.Name)
-			if err != nil {
-				return false
-			}
-			if ssetName1 == ssetName2 {
-				// same name, compare ordinal, higher first
-				return ord1 > ord2
-			}
-			return ssetName1 < ssetName2
-		}
 		if label.IsMasterNode(pod1) && !label.IsMasterNode(pod2) {
-			// pod2 has higher priority since it is a data node
+			// pod2 has higher priority since it is not a master node
 			return false
 		}
-		return true
+		if !label.IsMasterNode(pod1) && label.IsMasterNode(pod2) {
+			return true
+		}
+		// neither or both are masters, use the reverse name function
+		ssetName1, ord1, err := sset.StatefulSetName(pod1.Name)
+		if err != nil {
+			return false
+		}
+		ssetName2, ord2, err := sset.StatefulSetName(pod2.Name)
+		if err != nil {
+			return false
+		}
+		if ssetName1 == ssetName2 {
+			// same name, compare ordinal, higher first
+			return ord1 > ord2
+		}
+		return ssetName1 < ssetName2
 	})
 }
 

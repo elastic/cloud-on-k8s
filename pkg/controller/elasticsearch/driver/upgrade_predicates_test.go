@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // These tests are focused on "type changes", i.e. when the type of a nodeSet is changed.
@@ -675,48 +676,50 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 			name: "Mixed nodes",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").needsUpgrade(true),
-					newTestPod("data-0").needsUpgrade(true),
-					newTestPod("masters-1").needsUpgrade(true),
-					newTestPod("data-1").needsUpgrade(true),
-					newTestPod("masters-2").needsUpgrade(true),
+					// use "amasters" rather than "masters" to ensure we are not relying on the name sort accidentally
+					newTestPod("amasters-0").isMaster(true).needsUpgrade(true),
+					newTestPod("data-0").isData(true).needsUpgrade(true),
+					newTestPod("amasters-1").isMaster(true).needsUpgrade(true),
+					newTestPod("data-1").isData(true).needsUpgrade(true),
+					newTestPod("amasters-2").isMaster(true).needsUpgrade(true),
 				),
 				esState: &testESState{
-					inCluster: []string{"data-1", "data-0", "masters-2", "masters-1", "masters-0"},
+					inCluster: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},
 					health:    esv1.ElasticsearchUnknownHealth,
 				},
 			},
-			want: []string{"data-1", "data-0", "masters-2", "masters-1", "masters-0"},
+			want: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},
 		},
 		{
 			name: "Masters first",
 			fields: fields{
 				upgradeTestPods: newUpgradeTestPods(
-					newTestPod("masters-0").needsUpgrade(true),
-					newTestPod("masters-1").needsUpgrade(true),
-					newTestPod("masters-2").needsUpgrade(true),
-					newTestPod("data-0").needsUpgrade(true),
-					newTestPod("data-1").needsUpgrade(true),
-					newTestPod("data-2").needsUpgrade(true),
+					// use "amasters" rather than "masters" to ensure we are not relying on the name sort accidentally
+					newTestPod("amasters-0").isMaster(true).needsUpgrade(true),
+					newTestPod("amasters-1").isMaster(true).needsUpgrade(true),
+					newTestPod("amasters-2").isMaster(true).needsUpgrade(true),
+					newTestPod("data-0").isData(true).needsUpgrade(true),
+					newTestPod("data-1").isData(true).needsUpgrade(true),
+					newTestPod("data-2").isData(true).needsUpgrade(true),
 				),
 				esState: &testESState{
-					inCluster: []string{"data-2", "data-1", "data-0", "masters-2", "masters-1", "masters-0"},
+					inCluster: []string{"data-2", "data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},
 					health:    esv1.ElasticsearchUnknownHealth,
 				},
 			},
-			want: []string{"data-2", "data-1", "data-0", "masters-2", "masters-1", "masters-0"},
+			want: []string{"data-2", "data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			toUpgrade := tt.fields.upgradeTestPods.toUpgrade()
 			sortCandidates(toUpgrade)
-			assert.Equal(t, len(tt.want), len(toUpgrade))
-			for i := range tt.want {
-				if tt.want[i] != toUpgrade[i].Name {
-					t.Errorf("DeletionStrategyContext.SortFunction() = %v, want %v", names(toUpgrade), tt.want)
-				}
+			require.Equal(t, len(tt.want), len(toUpgrade))
+			var actualNames []string
+			for i := range toUpgrade {
+				actualNames = append(actualNames, toUpgrade[i].Name)
 			}
+			assert.Equal(t, tt.want, actualNames)
 		})
 	}
 }
