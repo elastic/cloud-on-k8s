@@ -185,13 +185,6 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
-        readinessProbe:
-          httpGet:
-            path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
-            port: webhook-server
-            scheme: HTTPS
-          failureThreshold: 3
-          periodSeconds: 5
         ports:
         - containerPort: 9443
           name: webhook-server
