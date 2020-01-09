@@ -26,7 +26,7 @@ import (
 const (
 	// RollingUpgradeTimeout is used for checking a rolling upgrade is complete.
 	// Most tests require less than 5 minutes for all Pods to be running and ready,
-	// but it occasionally takes longer for various reasons (long pod Pod creation time, long volume binding, etc.).
+	// but it occasionally takes longer for various reasons (long Pod creation time, long volume binding, etc.).
 	// We use a longer timeout here to not be impacted too much by those external factors, and only fail
 	// if things seem to be stuck.
 	RollingUpgradeTimeout = 15 * time.Minute
