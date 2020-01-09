@@ -19,7 +19,7 @@ import (
 func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string) test.Step {
 	return test.Step{
 		Name: "Elasticsearch secure settings should eventually be set in all nodes keystore",
-		Test: test.Eventually(func() error {
+		Test: test.UntilSuccess(func() error {
 			pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			if err != nil {
 				return err
@@ -59,6 +59,6 @@ func CheckESKeystoreEntries(k *test.K8sClient, b Builder, expectedKeys []string)
 			}
 
 			return nil
-		}),
+		}, RollingUpgradeTimeout),
 	}
 }
