@@ -106,8 +106,8 @@ func sortCandidates(allPods []corev1.Pod) {
 	sort.Slice(allPods, func(i, j int) bool {
 		pod1 := allPods[i]
 		pod2 := allPods[j]
+		// check if either is a master node. masters come after all other roles
 		if label.IsMasterNode(pod1) && !label.IsMasterNode(pod2) {
-			// pod2 has higher priority since it is not a master node
 			return false
 		}
 		if !label.IsMasterNode(pod1) && label.IsMasterNode(pod2) {
