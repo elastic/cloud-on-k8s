@@ -262,41 +262,49 @@ bootstrap-minikube:
 	hack/minikube-cluster.sh
 	$(MAKE) set-context-minikube cluster-bootstrap
 
-## -- gke
+## -- clouds
 
-require-gcloud-project:
-ifndef GCLOUD_PROJECT
-	$(error GCLOUD_PROJECT not set)
-endif
-
-DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --config-file=hack/deployer/config/deployer-config.yml
+PROVIDER=$(shell test -f hack/deployer/config/provider && cat hack/deployer/config/provider)
+DEPLOYER=./hack/deployer/deployer --plans-file=hack/deployer/config/plans.yml --config-file=hack/deployer/config/deployer-config-$(PROVIDER).yml
 
 build-deployer:
 	@ go build -mod=readonly -o ./hack/deployer/deployer ./hack/deployer/main.go
 
-setup-deployer-for-gke-once: require-gcloud-project build-deployer
-ifeq (,$(wildcard hack/deployer/config/deployer-config.yml))
-	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config/deployer-config.yml
+create-default-config:
+ifeq (,$(wildcard hack/deployer/config/deployer-config-$(PROVIDER).yml))
+	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config --provider=$(PROVIDER)
 endif
 
-credentials: setup-deployer-for-gke-once
+setup-deployer: build-deployer
+ifeq ($(PROVIDER),)
+	$(MAKE) switch-gke
+endif
+	$(MAKE) create-default-config
+
+get-deployer-config: setup-deployer
+	@ $(DEPLOYER) get config
+
+credentials: setup-deployer
 	@ $(DEPLOYER) get credentials
 
-set-context-gke: credentials
+set-context: credentials
 	$(eval KUBECTL_CLUSTER=$($(DEPLOYER) get clusterName))
 
-bootstrap-gke: setup-deployer-for-gke-once
+bootstrap-cloud: setup-deployer
 	@ $(DEPLOYER) execute
 	$(MAKE) cluster-bootstrap
 ifeq ($(PSP), 1)
 	$(MAKE) apply-psp
 endif
 
-delete-gke: setup-deployer-for-gke-once
+delete-cloud: setup-deployer
 	@ $(DEPLOYER) execute --operation=delete
 
-get-deployer-config: setup-deployer-for-gke-once
-	@ $(DEPLOYER) get config
+switch-gke:
+	@ echo "gke" > hack/deployer/config/provider
+
+switch-aks:
+	@ echo "aks" > hack/deployer/config/provider
 
 #################################
 ##  --    Docker images    --  ##

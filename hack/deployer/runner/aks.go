@@ -18,6 +18,14 @@ const (
 	AksVaultPath                   = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
 	AksResourceGroupVaultFieldName = "resource-group"
 	AksAcrNameVaultFieldName       = "acr-name"
+	AksConfigFileName              = "deployer-config-aks.yml"
+	DefaultAksRunConfigTemplate    = `id: aks-dev
+overrides:
+  clusterName: %s-dev-cluster
+  aks:
+    resourceGroup: %s
+    acrName: %s
+`
 )
 
 type AksDriverFactory struct {
