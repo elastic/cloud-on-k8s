@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -14,6 +15,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -43,6 +45,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckClusterHealth(b, k),
 		CheckESPassword(b, k),
 		CheckESDataVolumeType(b.Elasticsearch, k),
+		CheckClusterUUIDAnnotation(b.Elasticsearch, k),
 	}
 }
 
@@ -230,6 +233,26 @@ func CheckESPassword(b Builder, k *test.K8sClient) test.Step {
 			}
 			if password == "" {
 				return fmt.Errorf("user password is not set")
+			}
+			return nil
+		}),
+	}
+}
+
+// CheckClusterUUIDAnnotation waits until the Elasticsearch resource eventually gets annotated
+// with the Cluster UUID.
+// When the test suite is performing a mutation, it allows making sure the cluster is bootstrapped
+// before moving on with the mutation.
+func CheckClusterUUIDAnnotation(es esv1.Elasticsearch, k *test.K8sClient) test.Step {
+	return test.Step{
+		Name: "Cluster should be annotated with its UUID once bootstrapped",
+		Test: test.Eventually(func() error {
+			var retrievedES esv1.Elasticsearch
+			if err := k.Client.Get(k8s.ExtractNamespacedName(&es), &retrievedES); err != nil {
+				return err
+			}
+			if !bootstrap.AnnotatedForBootstrap(retrievedES) {
+				return errors.New("no bootstrap annotation set")
 			}
 			return nil
 		}),
