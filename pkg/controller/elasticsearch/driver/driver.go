@@ -166,9 +166,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		))
 
 	// always update the elasticsearch state bits
-	if observedState.ClusterInfo != nil && observedState.ClusterHealth != nil {
-		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
-	}
+	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 
 	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return results.WithError(err)
