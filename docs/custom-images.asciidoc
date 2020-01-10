@@ -34,8 +34,11 @@ Configure your Elasticsearch specification to use the newly pushed image, for ex
 [source,yaml]
 ----
 spec:
+  version: 7.3.2
   image: gcr.io/$PROJECT-ID/elasticsearch-gcs:7.3.2
 ----
+
+NOTE: Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
 
 The steps are similar for https://docs.microsoft.com/en-us/azure/aks/tutorial-kubernetes-prepare-acr[Azure Kubernetes Service] and https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-basics.html#use-ecr[AWS Elastic Container Registry].
 
