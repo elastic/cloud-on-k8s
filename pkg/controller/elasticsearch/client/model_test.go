@@ -67,3 +67,51 @@ func TestClusterRoutingAllocation(t *testing.T) {
 	require.Equal(t, expected, settings)
 	require.Equal(t, false, settings.Transient.IsShardsAllocationEnabled())
 }
+
+func TestLicenseUpdateResponse_IsSuccess(t *testing.T) {
+	type fields struct {
+		Acknowledged  bool
+		LicenseStatus string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name: "success: valid & ack'ed",
+			fields: fields{
+				Acknowledged:  true,
+				LicenseStatus: "valid",
+			},
+			want: true,
+		},
+		{
+			name: "no success: not valid",
+			fields: fields{
+				Acknowledged:  true,
+				LicenseStatus: "invalid",
+			},
+			want: false,
+		},
+		{
+			name: "no success: not ack'ed",
+			fields: fields{
+				Acknowledged:  false,
+				LicenseStatus: "valid",
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lr := LicenseUpdateResponse{
+				Acknowledged:  tt.fields.Acknowledged,
+				LicenseStatus: tt.fields.LicenseStatus,
+			}
+			if got := lr.IsSuccess(); got != tt.want {
+				t.Errorf("IsSuccess() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

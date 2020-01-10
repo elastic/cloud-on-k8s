@@ -337,7 +337,7 @@ type LicenseUpdateResponse struct {
 }
 
 func (lr LicenseUpdateResponse) IsSuccess() bool {
-	return lr.LicenseStatus == "valid"
+	return lr.Acknowledged == true && lr.LicenseStatus == "valid"
 }
 
 // StartTrialResponse is the response to the start trial API call.
