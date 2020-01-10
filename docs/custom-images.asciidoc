@@ -6,36 +6,39 @@ endif::[]
 [id="{p}-custom-images"]
 == Creating custom images
 
-You can create your own custom Elasticsearch or Kibana image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to link:k8s-init-containers-plugin-downloads.html[install them via init container] each time a pod starts. To do this, you must use the official image as the base for it to function properly. For example, if you want to create an Elasticsearch 7.3.2 image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
+You can create your own custom Elasticsearch or Kibana image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to link:k8s-init-containers-plugin-downloads.html[install them via init container] each time a pod starts. To do this, you must use the official image as the base for it to function properly. For example, if you want to create an Elasticsearch {version} image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
 
 . Create a `Dockerfile` containing:
 +
+[subs="attributes"]
 ----
-FROM docker.elastic.co/elasticsearch/elasticsearch:7.3.2
+FROM docker.elastic.co/elasticsearch/elasticsearch:{version}
 RUN bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
 . Build the image with:
 +
+[subs="attributes"]
 ----
-docker build --tag elasticsearch-gcs:7.3.2
+docker build --tag elasticsearch-gcs:{version}
 ----
 
 There are various hosting options for your images. If you use Google Kubernetes Engine, it is automatically configured to use the Google Container Registry (see https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#google-kubernetes-engine[here] for more information). To use the image, you can then https://cloud.google.com/container-registry/docs/pushing-and-pulling#pushing_an_image_to_a_registry[push to the registry] with:
 
+[subs="attributes"]
 ----
-docker tag elasticsearch-gcs:7.3.2 gcr.io/$PROJECT-ID/elasticsearch-gcs:7.3.2
-docker push gcr.io/$PROJECT-ID/elasticsearch-gcs:7.3.2
+docker tag elasticsearch-gcs:{version} gcr.io/$PROJECT-ID/elasticsearch-gcs:{version}
+docker push gcr.io/$PROJECT-ID/elasticsearch-gcs:{version}
 ----
 
 
 Configure your Elasticsearch specification to use the newly pushed image, for example:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 spec:
-  version: 7.3.2
-  image: gcr.io/$PROJECT-ID/elasticsearch-gcs:7.3.2
+  version: {version}
+  image: gcr.io/$PROJECT-ID/elasticsearch-gcs:{version}
 ----
 
 NOTE: Providing the correct version is always required as ECK reasons about APIs and capabilities available to it based on the version field.
