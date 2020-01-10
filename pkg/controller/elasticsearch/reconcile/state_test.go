@@ -170,7 +170,6 @@ func TestState_Apply(t *testing.T) {
 			effects: func(s *State) {
 				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
 					ClusterHealth: nil,
-					ClusterInfo:   nil,
 				})
 			},
 			wantEvents: []events.Event{},

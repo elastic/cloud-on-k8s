@@ -166,9 +166,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		))
 
 	// always update the elasticsearch state bits
-	if observedState.ClusterInfo != nil && observedState.ClusterHealth != nil {
-		d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
-	}
+	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 
 	if err := d.verifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return results.WithError(err)
@@ -231,8 +229,12 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	if err := bootstrap.ReconcileClusterUUID(d.Client, &d.ES, observedState); err != nil {
+	requeue, err := bootstrap.ReconcileClusterUUID(d.Client, &d.ES, esClient, esReachable)
+	if err != nil {
 		return results.WithError(err)
+	}
+	if requeue {
+		results = results.WithResult(defaultRequeue)
 	}
 
 	// reconcile StatefulSets and nodes configuration

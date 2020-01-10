@@ -14,9 +14,7 @@ import (
 
 // State contains information about an observed state of Elasticsearch.
 type State struct {
-	// TODO: verify usages of the two below never assume they are set (check for nil)
-	// ClusterInfo is mostly used to retrieve the cluster UUID.
-	ClusterInfo *esclient.Info
+	// TODO: verify usages of the below never assume they are set (check for nil)
 	// ClusterHealth is the current traffic light health as reported by Elasticsearch.
 	ClusterHealth *esclient.Health
 	// TODO should probably be a separate observer
@@ -26,20 +24,9 @@ type State struct {
 
 // RetrieveState returns the current Elasticsearch cluster state
 func RetrieveState(ctx context.Context, cluster types.NamespacedName, esClient esclient.Client) State {
-	// retrieve cluster info, health and license in parallel
-	infoChan := make(chan *client.Info)
+	// retrieve cluster health and license in parallel
 	healthChan := make(chan *client.Health)
 	licenseChan := make(chan *client.License)
-
-	go func() {
-		info, err := esClient.GetClusterInfo(ctx)
-		if err != nil {
-			log.V(1).Info("Unable to retrieve cluster info", "error", err, "namespace", cluster.Namespace, "es_name", cluster.Name)
-			infoChan <- nil
-			return
-		}
-		infoChan <- &info
-	}()
 
 	go func() {
 		health, err := esClient.GetClusterHealth(ctx)
@@ -63,7 +50,6 @@ func RetrieveState(ctx context.Context, cluster types.NamespacedName, esClient e
 
 	// return the state when ready, may contain nil values
 	return State{
-		ClusterInfo:    <-infoChan,
 		ClusterHealth:  <-healthChan,
 		ClusterLicense: <-licenseChan,
 	}

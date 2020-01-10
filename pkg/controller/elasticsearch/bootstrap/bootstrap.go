@@ -6,8 +6,11 @@ package bootstrap
 
 import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+
+	"context"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -25,32 +28,55 @@ func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 	return bootstrapped
 }
 
-func ReconcileClusterUUID(c k8s.Client, cluster *esv1.Elasticsearch, observedState observer.State) error {
+// ReconcileClusterUUID attempts to set the ClusterUUID annotation on the Elasticsearch resource if not already set.
+// It returns a boolean indicating whether the reconciliation should be re-queued (ES not reachable).
+func ReconcileClusterUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
 	if AnnotatedForBootstrap(*cluster) {
 		// already annotated, nothing to do.
-		return nil
+		return false, nil
 	}
-	if clusterIsBootstrapped(observedState) {
-		// cluster bootstrapped but not annotated yet
-		return annotateWithUUID(cluster, observedState, c)
+	if !esReachable {
+		// retry later
+		return true, nil
 	}
-	// cluster not bootstrapped yet
-	return nil
+	clusterUUID, err := getClusterUUID(esClient)
+	if err != nil {
+		return false, err
+	}
+	if !isUUIDValid(clusterUUID) {
+		// retry later
+		return true, nil
+	}
+	return false, annotateWithUUID(k8sClient, cluster, clusterUUID)
 }
 
-// clusterIsBootstrapped returns true if the cluster has formed and has a UUID.
-func clusterIsBootstrapped(observedState observer.State) bool {
-	return observedState.ClusterInfo != nil &&
-		len(observedState.ClusterInfo.ClusterUUID) > 0 &&
-		observedState.ClusterInfo.ClusterUUID != formingClusterUUID
+// getClusterUUID retrieves the cluster UUID using the given esClient.
+func getClusterUUID(esClient client.Client) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	defer cancel()
+	info, err := esClient.GetClusterInfo(ctx)
+	if err != nil {
+		return "", err
+	}
+	return info.ClusterUUID, nil
+}
+
+// isUUIDValid returns true if the uuid corresponds to formed cluster UUID.
+func isUUIDValid(uuid string) bool {
+	return uuid != "" && uuid != formingClusterUUID
 }
 
 // annotateWithUUID annotates the cluster with its UUID, to mark it as "bootstrapped".
-func annotateWithUUID(cluster *esv1.Elasticsearch, observedState observer.State, c k8s.Client) error {
-	log.Info("Annotating bootstrapped cluster with its UUID", "namespace", cluster.Namespace, "es_name", cluster.Name)
+func annotateWithUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, uuid string) error {
+	log.Info(
+		"Annotating bootstrapped cluster with its UUID",
+		"namespace", cluster.Namespace,
+		"es_name", cluster.Name,
+		"uuid", uuid,
+	)
 	if cluster.Annotations == nil {
 		cluster.Annotations = make(map[string]string)
 	}
-	cluster.Annotations[ClusterUUIDAnnotationName] = observedState.ClusterInfo.ClusterUUID
-	return c.Update(cluster)
+	cluster.Annotations[ClusterUUIDAnnotationName] = uuid
+	return k8sClient.Update(cluster)
 }

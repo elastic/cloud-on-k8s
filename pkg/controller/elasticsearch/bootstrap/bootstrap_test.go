@@ -5,13 +5,12 @@
 package bootstrap
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,102 +33,105 @@ func notBootstrappedES() *esv1.Elasticsearch {
 	}
 }
 
-func TestAnnotatedForBootstrap(t *testing.T) {
-	require.True(t, AnnotatedForBootstrap(*bootstrappedES()))
-	require.False(t, AnnotatedForBootstrap(*notBootstrappedES()))
+type fakeESClient struct {
+	esclient.Client
+	uuid string
+	err  error
 }
 
-func Test_annotateWithUUID(t *testing.T) {
-	cluster := notBootstrappedES()
-	observedState := observer.State{ClusterInfo: &client.Info{ClusterUUID: "cluster-uuid"}}
-	k8sClient := k8s.WrappedFakeClient(cluster)
-
-	err := annotateWithUUID(cluster, observedState, k8sClient)
-	require.NoError(t, err)
-	require.True(t, AnnotatedForBootstrap(*cluster))
-
-	var retrieved esv1.Elasticsearch
-	err = k8sClient.Get(k8s.ExtractNamespacedName(cluster), &retrieved)
-	require.NoError(t, err)
-	require.True(t, AnnotatedForBootstrap(retrieved))
+func (f *fakeESClient) GetClusterInfo(ctx context.Context) (esclient.Info, error) {
+	return esclient.Info{ClusterUUID: f.uuid}, f.err
 }
 
-func Test_clusterIsBootstrapped(t *testing.T) {
+func TestReconcileClusterUUID1(t *testing.T) {
+	type args struct {
+		cluster     *esv1.Elasticsearch
+		esClient    esclient.Client
+		esReachable bool
+	}
 	tests := []struct {
-		name  string
-		state observer.State
-		want  bool
+		name           string
+		args           args
+		wantRequeue    bool
+		wantErr        bool
+		wantAnnotation string
 	}{
 		{
-			name:  "empty state",
-			state: observer.State{},
-			want:  false,
+			name: "cluster already annotated, nothing to do",
+			args: args{
+				cluster:     bootstrappedES(),
+				esReachable: true,
+			},
+			wantRequeue:    false,
+			wantAnnotation: "uuid",
 		},
 		{
-			name:  "cluster uuid empty",
-			state: observer.State{ClusterInfo: &esclient.Info{}},
-			want:  false,
+			name: "es not reachable yet, should requeue",
+			args: args{
+				cluster:     notBootstrappedES(),
+				esReachable: false,
+			},
+			wantRequeue:    true,
+			wantAnnotation: "",
 		},
 		{
-			name:  "cluster uuid _na_ (not available) yet, cluster is still forming",
-			state: observer.State{ClusterInfo: &esclient.Info{ClusterUUID: "_na_"}},
-			want:  false,
+			name: "returned uuid is empty, should requeue",
+			args: args{
+				cluster:     notBootstrappedES(),
+				esReachable: true,
+				esClient:    &fakeESClient{uuid: ""},
+			},
+			wantRequeue:    true,
+			wantAnnotation: "",
 		},
 		{
-			name:  "cluster uuid set, cluster bootstrapped",
-			state: observer.State{ClusterInfo: &esclient.Info{ClusterUUID: "6902c192-ec1d-11e9-81b4-2a2ae2dbcce4"}},
-			want:  true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, clusterIsBootstrapped(tt.state))
-		})
-	}
-}
-
-func TestReconcileClusterUUID(t *testing.T) {
-	tests := []struct {
-		name          string
-		c             k8s.Client
-		cluster       *esv1.Elasticsearch
-		observedState observer.State
-		wantCluster   *esv1.Elasticsearch
-	}{
-		{
-			name:        "already annotated",
-			c:           k8s.WrappedFakeClient(),
-			cluster:     bootstrappedES(),
-			wantCluster: bootstrappedES(),
+			name: "returned uuid is _na_, should requeue",
+			args: args{
+				cluster:     notBootstrappedES(),
+				esReachable: true,
+				esClient:    &fakeESClient{uuid: formingClusterUUID},
+			},
+			wantRequeue:    true,
+			wantAnnotation: "",
 		},
 		{
-			name:          "not annotated, but not bootstrapped yet (cluster state empty)",
-			cluster:       notBootstrappedES(),
-			c:             k8s.WrappedFakeClient(),
-			observedState: observer.State{ClusterInfo: nil},
-			wantCluster:   notBootstrappedES(),
+			name: "es client returns an error",
+			args: args{
+				cluster:     notBootstrappedES(),
+				esReachable: true,
+				esClient:    &fakeESClient{uuid: "", err: errors.New("error")},
+			},
+			wantRequeue:    false,
+			wantErr:        true,
+			wantAnnotation: "",
 		},
 		{
-			name:          "not annotated, but not bootstrapped yet (cluster UUID empty)",
-			cluster:       notBootstrappedES(),
-			c:             k8s.WrappedFakeClient(),
-			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: ""}},
-			wantCluster:   notBootstrappedES(),
-		},
-		{
-			name:          "not annotated, but bootstrapped",
-			c:             k8s.WrappedFakeClient(notBootstrappedES()),
-			cluster:       notBootstrappedES(),
-			observedState: observer.State{ClusterInfo: &client.Info{ClusterUUID: "uuid"}},
-			wantCluster:   bootstrappedES(),
+			name: "es client returns a uuid",
+			args: args{
+				cluster:     notBootstrappedES(),
+				esReachable: true,
+				esClient:    &fakeESClient{uuid: "abcd"},
+			},
+			wantRequeue:    false,
+			wantErr:        false,
+			wantAnnotation: "abcd",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ReconcileClusterUUID(tt.c, tt.cluster, tt.observedState)
+			k8sClient := k8s.WrappedFakeClient(tt.args.cluster)
+			requeue, err := ReconcileClusterUUID(k8sClient, tt.args.cluster, tt.args.esClient, tt.args.esReachable)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tt.wantRequeue, requeue)
+			// get back the cluster
+			var updatedCluster esv1.Elasticsearch
+			err = k8sClient.Get(k8s.ExtractNamespacedName(tt.args.cluster), &updatedCluster)
 			require.NoError(t, err)
-			comparison.RequireEqual(t, tt.wantCluster, tt.cluster)
+			require.Equal(t, tt.wantAnnotation, updatedCluster.Annotations[ClusterUUIDAnnotationName])
 		})
 	}
 }
