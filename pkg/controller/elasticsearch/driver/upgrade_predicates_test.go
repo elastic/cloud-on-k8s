@@ -679,16 +679,17 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 					// use "amasters" rather than "masters" to ensure we are not relying on the name sort accidentally
 					newTestPod("amasters-0").isMaster(true).needsUpgrade(true),
 					newTestPod("data-0").isData(true).needsUpgrade(true),
+					newTestPod("masters-0").isMaster(true).needsUpgrade(true),
 					newTestPod("amasters-1").isMaster(true).needsUpgrade(true),
 					newTestPod("data-1").isData(true).needsUpgrade(true),
 					newTestPod("amasters-2").isMaster(true).needsUpgrade(true),
 				),
 				esState: &testESState{
-					inCluster: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},
+					inCluster: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0", "masters-0"},
 					health:    esv1.ElasticsearchUnknownHealth,
 				},
 			},
-			want: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},
+			want: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0", "masters-0"},
 		},
 		{
 			name: "Masters first",
