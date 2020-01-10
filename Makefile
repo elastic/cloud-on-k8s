@@ -23,7 +23,7 @@ SNAPSHOT   	?= true
 LOG_VERBOSITY ?= 1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
+ifeq ($(shell go env GOBIN),)
 GOBIN=$(shell go env GOPATH)/bin
 else
 GOBIN=$(shell go env GOBIN)
@@ -32,7 +32,7 @@ endif
 # find or download controller-gen
 # note this does not validate the version
 controller-gen:
-ifeq (, $(shell command -v controller-gen))
+ifeq ($(shell command -v controller-gen),)
 	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
@@ -271,7 +271,7 @@ build-deployer:
 	@ go build -mod=readonly -o ./hack/deployer/deployer ./hack/deployer/main.go
 
 create-default-config:
-ifeq (,$(wildcard hack/deployer/config/deployer-config-$(PROVIDER).yml))
+ifeq ($(wildcard hack/deployer/config/deployer-config-$(PROVIDER).yml),)
 	@ ./hack/deployer/deployer create defaultConfig --path=hack/deployer/config --provider=$(PROVIDER)
 endif
 
