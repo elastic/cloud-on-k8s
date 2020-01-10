@@ -91,7 +91,7 @@ func (c *clientV6) GetLicense(ctx context.Context) (License, error) {
 
 func (c *clientV6) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
 	var response LicenseUpdateResponse
-	return response, c.post(ctx, "/_xpack/license", licenses, &response)
+	return response, c.post(ctx, "/_xpack/license?acknowledge=true", licenses, &response)
 }
 
 func (c *clientV6) StartTrial(ctx context.Context) (StartTrialResponse, error) {
