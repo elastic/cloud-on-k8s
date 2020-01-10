@@ -24,7 +24,7 @@ func (c *clientV7) GetLicense(ctx context.Context) (License, error) {
 
 func (c *clientV7) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
 	var response LicenseUpdateResponse
-	return response, c.post(ctx, "/_license", licenses, &response)
+	return response, c.post(ctx, "/_license?acknowledge=true", licenses, &response)
 }
 
 func (c *clientV7) StartBasic(ctx context.Context) (StartBasicResponse, error) {
