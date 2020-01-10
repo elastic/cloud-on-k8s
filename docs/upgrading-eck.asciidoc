@@ -12,7 +12,9 @@ endif::[]
 
 ECK 1.0.0 is largely compatible with the beta version of the operator (see <<{p}-ga-openshift,the exceptions for earlier Kubernetes and OpenShift versions>>). There is not a direct upgrade path from the alpha version.
 
-To upgrade from 1.0.0-beta1, follow the <<{p}-quickstart>>. Note that all Elasticsearch pods will go through a rolling restart when the operator is upgraded. Once upgraded, you should use the `v1` API version for all Elastic manifests.
+To upgrade from 1.0.0-beta1, follow the <<{p}-quickstart>>. Note that all Elasticsearch Pods go through a rolling restart when the operator is upgraded.
+
+After the upgrade, use the `v1` API version for all Elastic manifests.
 
 See the <<release-highlights-1.0.0>> for more information on new features.
 
@@ -26,4 +28,6 @@ Upgrading from ECK 1.0.0-beta1 to 1.0.0 has some special considerations for user
 
 In this case, ECK must be uninstalled and reinstalled (due to link:https://github.com/kubernetes/kubernetes/issues/73752[an upstream bug] that was not backported). To uninstall ECK, see <<{p}-uninstalling-eck>>. Then you can follow the <<{p}-quickstart>> to install anew. You may wish to save your existing `v1beta1` manifests and update them to the `v1` API version, and to <<{p}-snapshots,take snapshots>> and restore them as well.
 
-Once upgraded, you should use the `v1` API version for all Elastic manifests.
+In this case, ECK must be uninstalled and reinstalled (due to link:https://github.com/kubernetes/kubernetes/issues/73752[an upstream bug] that was not backported). To uninstall ECK, see <<{p}-uninstalling-eck>>. Then you can follow the <<{p}-quickstart>> to install anew. You can save your existing `v1beta1` manifests, update them to the `v1` API version, <<{p}-snapshots,take snapshots>> and restore them as well.
+
+After the upgrade, use the `v1` API version for all Elastic manifests.
