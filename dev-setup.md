@@ -45,8 +45,8 @@ Run `make check-requisites` to check that all dependencies are installed.
 
       ```bash
       export GCLOUD_PROJECT=my-project-id
-      make bootstrap-gke
-      # Sets up GKE cluster with required resources
+      make bootstrap-cloud
+      # Sets up GKE cluster (by default) with required resources
       ```
 
     [Kind](https://kind.sigs.k8s.io/)
