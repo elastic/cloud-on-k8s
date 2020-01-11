@@ -7,13 +7,14 @@ package driver
 import (
 	"testing"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const testNamespace = "ns"
@@ -29,9 +30,15 @@ func podWithRevision(name, revision string) *corev1.Pod {
 }
 
 func Test_podsToUpgrade(t *testing.T) {
+	defaultEs := esv1.Elasticsearch{
+		Spec: esv1.ElasticsearchSpec{
+			Version: "7.1.0",
+		},
+	}
 	type args struct {
-		pods         []runtime.Object
+		pods         upgradeTestPods
 		statefulSets sset.StatefulSetList
+		es           esv1.Elasticsearch
 	}
 	tests := []struct {
 		name    string
@@ -52,13 +59,14 @@ func Test_podsToUpgrade(t *testing.T) {
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 3},
 					}.Build(),
 				},
-				pods: []runtime.Object{
-					podWithRevision("masters-0", "rev-a"),
-					podWithRevision("masters-1", "rev-a"),
-					podWithRevision("nodes-0", "rev-a"),
-					podWithRevision("nodes-1", "rev-a"),
-					podWithRevision("nodes-2", "rev-a"),
-				},
+				pods: newUpgradeTestPods(
+					newTestPod("masters-0").withRevision("rev-a").withVersion("7.1.0"),
+					newTestPod("masters-1").withRevision("rev-a").withVersion("7.1.0"),
+					newTestPod("nodes-0").withRevision("rev-a").withVersion("7.1.0"),
+					newTestPod("nodes-1").withRevision("rev-a").withVersion("7.1.0"),
+					newTestPod("nodes-2").withRevision("rev-a").withVersion("7.1.0"),
+				),
+				es: defaultEs,
 			},
 			want: []string{"masters-0", "masters-1", "nodes-0", "nodes-1", "nodes-2"},
 		},
@@ -75,10 +83,11 @@ func Test_podsToUpgrade(t *testing.T) {
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
-				pods: []runtime.Object{
-					podWithRevision("masters-0", "rev-a"),
-					podWithRevision("masters-1", "rev-a"),
-				},
+				pods: newUpgradeTestPods(
+					newTestPod("masters-0").withRevision("rev-a").withVersion("7.1.0"),
+					newTestPod("masters-1").withRevision("rev-a").withVersion("7.1.0"),
+				),
+				es: defaultEs,
 			},
 			want: []string{"masters-0", "masters-1"},
 		},
@@ -95,10 +104,11 @@ func Test_podsToUpgrade(t *testing.T) {
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
-				pods: []runtime.Object{
-					podWithRevision("masters-0", "rev-a"),
-					podWithRevision("masters-1", "rev-a"),
-				},
+				pods: newUpgradeTestPods(
+					newTestPod("masters-0").withRevision("rev-a").withVersion("7.1.0"),
+					newTestPod("masters-1").withRevision("rev-a").withVersion("7.1.0"),
+				),
+				es: defaultEs,
 			},
 			want: []string{},
 		},
@@ -115,18 +125,43 @@ func Test_podsToUpgrade(t *testing.T) {
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
-				pods: []runtime.Object{
-					podWithRevision("masters-0", "rev-b"),
-					podWithRevision("masters-1", "rev-a"),
-				},
+				pods: newUpgradeTestPods(
+					newTestPod("masters-0").withRevision("rev-b").withVersion("7.1.0"),
+					newTestPod("masters-1").withRevision("rev-a").withVersion("7.1.0"),
+				),
+				es: defaultEs,
 			},
 			want: []string{"masters-1"},
+		},
+		{
+			name: "StatefulSet has been updated with a new ES version but StatefulSet update revision is not yet up to date",
+			args: args{
+				statefulSets: sset.StatefulSetList{
+					sset.TestSset{
+						Name: "masters", Replicas: 2, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-a", UpdatedReplicas: 0, Replicas: 2},
+					}.Build(),
+					sset.TestSset{
+						Name: "nodes", Replicas: 3, Master: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-a", UpdatedReplicas: 0, Replicas: 3},
+					}.Build(),
+				},
+				pods: newUpgradeTestPods(
+					newTestPod("masters-0").withRevision("rev-a").withVersion("6.8.2"),
+					newTestPod("masters-1").withRevision("rev-a").withVersion("6.8.2"),
+					newTestPod("nodes-0").withRevision("rev-a").withVersion("6.8.2"),
+					newTestPod("nodes-1").withRevision("rev-a").withVersion("6.8.2"),
+					newTestPod("nodes-2").withRevision("rev-a").withVersion("6.8.2"),
+				),
+				es: defaultEs,
+			},
+			want: []string{"masters-0", "masters-1", "nodes-0", "nodes-1", "nodes-2"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(tt.args.pods...)
-			got, err := podsToUpgrade(client, tt.args.statefulSets)
+			client := k8s.WrappedFakeClient(tt.args.pods.toRuntimeObjects(tt.args.es.Spec.Version, 1, nothing)...)
+			got, err := podsToUpgrade(tt.args.es, client, tt.args.statefulSets)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("podsToUpgrade() error = %v, wantErr %v", err, tt.wantErr)
 				return

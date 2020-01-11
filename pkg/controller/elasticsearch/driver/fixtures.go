@@ -5,6 +5,7 @@
 package driver
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,9 +25,7 @@ const (
 )
 
 type testPod struct {
-	name                                                     string
-	version                                                  string
-	ssetName                                                 string
+	name, version, revision, ssetName                        string
 	master, data, healthy, toUpgrade, inCluster, terminating bool
 	uid                                                      types.UID
 }
@@ -45,6 +44,7 @@ func (t testPod) isHealthy(v bool) testPod              { t.healthy = v; return 
 func (t testPod) needsUpgrade(v bool) testPod           { t.toUpgrade = v; return t }
 func (t testPod) isTerminating(v bool) testPod          { t.terminating = v; return t }
 func (t testPod) withVersion(v string) testPod          { t.version = v; return t }
+func (t testPod) withRevision(v string) testPod         { t.revision = v; return t }
 func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t } //nolint:unparam
 
 // filter to simulate a Pod that has been removed while upgrading
@@ -243,6 +243,7 @@ func (t testPod) toPod() corev1.Pod {
 	labels := map[string]string{}
 	labels[label.VersionLabelName] = t.version
 	labels[label.ClusterNameLabelName] = TestEsName
+	labels[appsv1.StatefulSetRevisionLabel] = t.revision
 	label.NodeTypesMasterLabelName.Set(t.master, labels)
 	label.NodeTypesDataLabelName.Set(t.data, labels)
 	labels[label.StatefulSetNameLabelName] = t.ssetName
