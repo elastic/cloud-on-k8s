@@ -12,21 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-const testNamespace = "ns"
-
-func podWithRevision(name, revision string) *corev1.Pod {
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: testNamespace,
-			Labels:    map[string]string{appsv1.StatefulSetRevisionLabel: revision},
-		},
-	}
-}
 
 func Test_podsToUpgrade(t *testing.T) {
 	defaultEs := esv1.Elasticsearch{
