@@ -203,8 +203,10 @@ func podsToUpgrade(
 				continue
 			}
 			// We consider that a Pod needs an update if at least one the following condition is met:
-			// 1. The update revision of the Pod does not match the one of the StatefulSet
+			// 1. The update revision of the Pod does not match the one in the status of the StatefulSet
 			// 2. The Elasticsearch version run by the Pod does not match the expected one in the Elasticsearch object
+			// Using the Pod revision might not be enough since it is not propagated consistently across all the StatefulSets.
+			// See https://github.com/elastic/cloud-on-k8s/issues/2393#issuecomment-572951884
 			podVersion, err := label.ExtractVersion(pod.Labels)
 			if err != nil {
 				return toUpgrade, err
