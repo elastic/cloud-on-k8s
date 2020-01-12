@@ -137,20 +137,20 @@ func Test_podsToUpgrade(t *testing.T) {
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
-						Name: "masters", Replicas: 2, Master: true,
-						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-a", UpdatedReplicas: 0, Replicas: 2},
+						Name: "masters", Replicas: 2, Master: true, Data: false,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-master-a", UpdateRevision: "rev-master-b", UpdatedReplicas: 0, Replicas: 2},
 					}.Build(),
 					sset.TestSset{
-						Name: "nodes", Replicas: 3, Master: true,
-						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-a", UpdatedReplicas: 0, Replicas: 3},
+						Name: "nodes", Replicas: 3, Master: false, Data: true,
+						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-nodes-a", UpdateRevision: "rev-nodes-a", UpdatedReplicas: 0, Replicas: 3},
 					}.Build(),
 				},
 				pods: newUpgradeTestPods(
-					newTestPod("masters-0").withRevision("rev-a").withVersion("6.8.2"),
-					newTestPod("masters-1").withRevision("rev-a").withVersion("6.8.2"),
-					newTestPod("nodes-0").withRevision("rev-a").withVersion("6.8.2"),
-					newTestPod("nodes-1").withRevision("rev-a").withVersion("6.8.2"),
-					newTestPod("nodes-2").withRevision("rev-a").withVersion("6.8.2"),
+					newTestPod("masters-0").withRevision("rev-master-a").withVersion("6.8.2"),
+					newTestPod("masters-1").withRevision("rev-master-a").withVersion("6.8.2"),
+					newTestPod("nodes-0").withRevision("rev-nodes-a").withVersion("6.8.2"),
+					newTestPod("nodes-1").withRevision("rev-nodes-a").withVersion("6.8.2"),
+					newTestPod("nodes-2").withRevision("rev-nodes-a").withVersion("6.8.2"),
 				),
 				es: defaultEs,
 			},
