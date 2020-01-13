@@ -492,7 +492,7 @@ spec:
 
 ==== Caveats
 * With both `maxSurge` and `maxUnavailable` set to `0`, the operator cannot bring down an existing Pod nor create a new Pod.
-* Due to the safety measures employed by the operator, a particular `changeBudget` might be insufficient to perform the requested update. For example, with `maxSurge` set to 0 you cannot remove the last data node from one `nodeSet` and add a data node to a different `nodeSet`. In this case, the operator cannot remove the old node and migrate data as other nodes are not available, and can't add the new node because `maxSurge` is set to 0.
+* Due to the safety measures employed by the operator, certain `changeBudget`s might prevent the operator from making any progress . For example, with `maxSurge` set to 0, you cannot remove the last data node from one `nodeSet` and add a data node to a different `nodeSet`. In this case, the operator cannot create the new node because `maxSurge` is 0, and it cannot remove the old node because there are no other data nodes to migrate the data to.
 * Currently, the operator has a limited understanding of the cluster topology and during the update it might not pick the optimal order of Pods being added or removed. This can block the update process and you need to specify a higher `maxSurge` than theoretically needed.
 
 If any of the above occurs, the operator generates logs to indicate that upscaling or downscaling are limited by `maxSurge` or `maxUnavailable` settings.
