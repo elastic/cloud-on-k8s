@@ -122,9 +122,10 @@ If an Elasticsearch node holds the only copy of a shard, this shard becomes unav
 
 If the above conditions are met then ECK can delete a `Pod` for upgrade even if the cluster health is yellow as long as the `Pod` is not holding the last available replica of a shard.
 
-Advanced users may force an upgrade by manually deleting `Pods` themselves. The deleted `Pods` will be automatically recreated at the latest revision. There are two exceptions to this rule:
-
+There are two situations where the health of the cluster is deliberately ignored:
 ** If all the Elasticsearch nodes of a `NodeSet` are unavailable, probably caused by a misconfiguration, the operator ignores the cluster health and upgrades nodes of the `NodeSet`.
 ** If an Elasticsearch node to upgrade is not healthy, and not part of the Elasticsearch cluster, the operator ignores the cluster health and upgrades the Elasticsearch node.
 
 * Elasticsearch versions cannot be downgraded. For example it is impossible to downgrade an existing cluster from version 7.3.0 to 7.2.0. This is not supported by Elasticsearch.
+
+Advanced users may force an upgrade by manually deleting `Pods` themselves. The deleted `Pods` will be automatically recreated at the latest revision.
