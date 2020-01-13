@@ -487,7 +487,7 @@ spec:
       maxUnavailable: 1
 ----
 
-`maxSurge` is unbounded: This means that all the missing Pods are immediately created according to the best practices at any given time.
+`maxSurge` is unbounded: This means that all the required Pods are created immediately.
 `maxUnavailable` defaults to `1`: This assures that clusters have at most one unavailable Pod at any given time.
 
 ==== Caveats
