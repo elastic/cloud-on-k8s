@@ -230,11 +230,18 @@ curl: (51) SSL: no alternative certificate subject name matches target host name
 ----
 
 As the certificate subject by default is service name we can resolve this by using the service name 
-and specify the resolve information through an additional argument.  
+and specify the resolve information through an additional argument.
 
 [source,sh]
 ----
-curl --cacert tls.crt -u elastic:$PW https://$NAME-es-http:9200/ --resolve $NAME-es-http:9200:$IP
+> curl --cacert tls.crt -u elastic:$PW https://$NAME-es-http:9200/ --resolve $NAME-es-http:9200:$IP
+{
+  "name" : "hulk-es-4qk62zd928",
+  "cluster_name" : "hulk",
+  "cluster_uuid" : "q6itjqFqRqW576FXF0uohg",
+  "version" : {...},
+  "tagline" : "You Know, for Search"
+}
 ----
 
 Alternatively, and for other clients where the resolve information can't be specified, or when it is more convenient modify the server side, you can add the external IP of the service to the SANs of the certificate in the same Elasticsearch resource YAML manifest used to create the cluster and apply it again using `kubectl`.
@@ -252,21 +259,7 @@ spec:
         - ip: 35.198.131.115
 ----
 
-You can now reach Elasticsearch:
-
-[source,sh]
-----
-> curl --cacert tls.crt -u elastic:$PW https://$NAME-es-http:9200/ --resolve $NAME-es-http:9200:$IP
-{
-  "name" : "hulk-es-4qk62zd928",
-  "cluster_name" : "hulk",
-  "cluster_uuid" : "q6itjqFqRqW576FXF0uohg",
-  "version" : {...},
-  "tagline" : "You Know, for Search"
-}
-----
-
-If IP was added to the list of SANs: 
++You can now reach Elasticsearch without `--resolve`:
 
 [source,sh]
 ----
