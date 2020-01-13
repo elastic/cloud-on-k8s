@@ -7,6 +7,7 @@ package driver
 import (
 	"fmt"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -148,7 +149,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// When not reconciled, set the phase to ApplyingChanges only if it was Ready to avoid to
 	// override another "not Ready" phase like MigratingData.
-	if Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
+	if Reconciled(d.ES, expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
 		reconcileState.UpdateElasticsearchReady(resourcesState, observedState)
 	} else if reconcileState.IsElasticsearchReady(observedState) {
 		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
@@ -163,7 +164,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 // Reconciled reports whether the actual StatefulSets are reconciled to match the expected StatefulSets
 // by checking that the expected template hash label is reconciled for all StatefulSets, there are no
 // pod upgrades in progress and all pods are running.
-func Reconciled(expectedStatefulSets, actualStatefulSets sset.StatefulSetList, client k8s.Client) bool {
+func Reconciled(es esv1.Elasticsearch, expectedStatefulSets, actualStatefulSets sset.StatefulSetList, client k8s.Client) bool {
 	// actual sset should have the expected sset template hash label
 	for _, expectedSset := range expectedStatefulSets {
 		actualSset, ok := actualStatefulSets.GetByName(expectedSset.Name)
@@ -178,7 +179,7 @@ func Reconciled(expectedStatefulSets, actualStatefulSets sset.StatefulSetList, c
 	}
 
 	// all pods should have been upgraded
-	pods, err := podsToUpgrade(client, actualStatefulSets)
+	pods, err := podsToUpgrade(es, client, actualStatefulSets)
 	if err != nil {
 		return false
 	}
