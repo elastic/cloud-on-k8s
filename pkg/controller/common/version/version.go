@@ -93,6 +93,11 @@ func (v *Version) IsSameOrAfter(other Version) bool {
 		(v.Major == other.Major && v.Minor == other.Minor && v.Patch >= other.Patch)
 }
 
+// IsSame returns true if the receiver is the same version than the argument.
+func (v *Version) IsSame(other Version) bool {
+	return v.Major == other.Major && v.Minor == other.Minor && v.Patch == other.Patch
+}
+
 // Min returns the minimum version in vs or nil.
 func Min(vs []Version) *Version {
 	sort.SliceStable(vs, func(i, j int) bool {
