@@ -7,17 +7,16 @@ package driver
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func (d *defaultDriver) MaybeForceUpgrade(statefulSets sset.StatefulSetList) (bool, error) {
 	// Get the pods to upgrade
-	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
+	podsToUpgrade, err := podsToUpgrade(d.ES, d.Client, statefulSets)
 	if err != nil {
 		return false, err
 	}
