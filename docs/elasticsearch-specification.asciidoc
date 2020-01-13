@@ -464,7 +464,7 @@ spec:
 
 `maxUnavailable`: Refers to the number of Pods that can be unavailable out of the total number of Pods in the currently applied specification. A Pod is defined unavailable when it is not ready from a Kubernetes perspective.
 
-As these constraints are enforced immediately after the specification is applied, it is possible that the actual state of the cluster might violate these constraints. When the cluster is outside these constraints, the operator can add or remove nodes only with the purpose of getting closer to these constraints. When the cluster is within these constraints, the operator can either add or remove nodes, as long as the cluster remains within the predefined constraints.
+The operator only tries to apply these constraints when a new specification is being applied. It is possible that the cluster state does not conform to the constraints at the beginning of the operation due to external factors. The operator will attempt to get to the desired state by adding or removing Pods as necessary while ensuring that the constraints are still satisfied.
 
 For example, if a new specification defines a larger cluster with `maxUnavailable: 0`, the operator creates the missing Pods according to the best practices. Similarly, if a new specification defines a smaller cluster with `maxSurge: 0`, the operator safely removes the unnecessary Pods.
 
