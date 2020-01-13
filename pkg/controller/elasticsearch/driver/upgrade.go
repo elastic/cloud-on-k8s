@@ -202,7 +202,7 @@ func podsToUpgrade(
 				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
 				continue
 			}
-			// We consider a Pod for an upgrade if at least one the following conditions is met:
+			// We consider a Pod for an upgrade if at least one of the following conditions is met:
 			// 1. The update revision of the Pod does not match the one in the status of the StatefulSet
 			// 2. The Elasticsearch version run by the Pod does not match the expected one in the Elasticsearch object
 			// Relying only on Pod revision is not enough since it might not be propagated consistently across all the StatefulSets.
