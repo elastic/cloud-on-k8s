@@ -116,7 +116,7 @@ If an Elasticsearch node holds the only copy of a shard, this shard becomes unav
 
 * Elasticsearch `Pods` may stay `Pending` during a rolling upgrade if the Kubernetes scheduler cannot re-schedule them back. This is especially important when using local `PersistentVolumes`. If the Kubernetes node bound to a local `PersistentVolume` does not have enough capacity to host an upgraded `Pod` which was temporarily removed, that `Pod` will stay Pending.
 
-* Rolling upgrades can only make progress if the Elasticsearch cluster health is green. ECK might also make progress if the cluster health is yellow under the following conditions:
+* Rolling upgrades can make progress if the Elasticsearch cluster health is green. ECK will also make progress if the cluster health is yellow under the following conditions:
 ** A cluster version upgrade is in progress and some `Pods` are not up to date
 ** There are no initializing or relocating shards
 
