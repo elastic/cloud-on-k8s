@@ -24,20 +24,23 @@ type Plan struct {
 	KubernetesVersion string `yaml:"kubernetesVersion"`
 	MachineType       string `yaml:"machineType"`
 	ServiceAccount    bool   `yaml:"serviceAccount"`
+	WorkDir           string `yaml: "workDir"`
 
 	Psp bool `yaml:"psp"`
 
 	Gke *GkeSettings `yaml:"gke,omitempty"`
 	Aks *AksSettings `yaml:"aks,omitempty"`
+	Ocp *OcpSettings `yaml:"ocp,omitempty"`
 
 	VaultInfo *VaultInfo `yaml:"vaultInfo,omitempty"`
 }
 
 type VaultInfo struct {
-	Address  string `yaml:"address"`
-	RoleId   string `yaml:"roleId"`   //nolint
-	SecretId string `yaml:"secretId"` //nolint
-	Token    string `yaml:"token"`
+	Address     string `yaml:"address"`
+	RoleId      string `yaml:"roleId"`   //nolint
+	SecretId    string `yaml:"secretId"` //nolint
+	Token       string `yaml:"token"`
+	ClientToken string `yaml:"clientToken"`
 }
 
 // GkeSettings encapsulates settings specific to GKE
@@ -56,6 +59,17 @@ type AksSettings struct {
 	Location      string `yaml:"location"`
 	AcrName       string `yaml:"acrName"`
 	NodeCount     int    `yaml:"nodeCount"`
+}
+
+// GkeSettings encapsulates settings specific to GKE
+type OcpSettings struct {
+	BaseDomain    string `yaml:"baseDomain"`
+	GCloudProject string `yaml:"gCloudProject"`
+	Region        string `yaml:"region"`
+	AdminUsername string `yaml:"adminUsername"`
+	LocalSsdCount int    `yaml:"localSsdCount"`
+	NodeCount     int    `yaml:"nodeCountPerZone"`
+	SshPubKey     string `yaml:"sshPubKey"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
