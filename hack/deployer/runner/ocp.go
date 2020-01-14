@@ -18,7 +18,7 @@ const (
 	OcpDriverID                     = "ocp"
 	OcpVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-ocp-k8s-operator"
 	OcpServiceAccountVaultFieldName = "service-account"
-	OcpPullSecretFieldName          = "ocp-pull-secret"
+	OcpPullSecretFieldName          = "ocp-pull-secret" //nolint
 	OcpStateBucket                  = "eck-deployer-ocp-clusters-state"
 
 	OcpInstallerConfigTemplate = `apiVersion: v1
@@ -55,12 +55,6 @@ platform:
 pullSecret: '{{.PullSecret}}'`
 )
 
-var (
-	// GKE uses 18 chars to prefix the pvc created by a cluster
-	OcppvcPrefixMaxLength = 18
-	OcpStorageProvisioner = "kubernetes.io/no-provisioner"
-)
-
 func init() {
 	drivers[OcpDriverID] = &OcpDriverFactory{}
 }
@@ -95,7 +89,6 @@ func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
 			"MachineType":       plan.MachineType,
 			"LocalSsdCount":     plan.Ocp.LocalSsdCount,
 			"NodeCount":         plan.Ocp.NodeCount,
-			"SshPubKey":         plan.Ocp.SshPubKey,
 			"BaseDomain":        baseDomain,
 			"WorkDir":           plan.WorkDir,
 			"OcpStateBucket":    OcpStateBucket,
@@ -114,9 +107,12 @@ func (d *OcpDriver) Execute() error {
 		d.ctx["WorkDir"] = dir
 	}
 
-	log.Printf("Using WorkDir: %s", d.ctx["WorkDir"])
+	log.Printf("using WorkDir: %s", d.ctx["WorkDir"])
 	d.ctx["ClusterStateDir"] = filepath.Join(d.ctx["WorkDir"].(string), d.ctx["ClusterName"].(string))
-	os.MkdirAll(d.ctx["ClusterStateDir"].(string), os.ModePerm)
+
+	if err := os.MkdirAll(d.ctx["ClusterStateDir"].(string), os.ModePerm); err != nil {
+		return err
+	}
 
 	if err := d.auth(); err != nil {
 		return err
@@ -127,7 +123,7 @@ func (d *OcpDriver) Execute() error {
 		return err
 	}
 
-	d.ctx["PullSecret"], err = client.Get(OcpVaultPath, "pull-secret")
+	d.ctx["PullSecret"], _ = client.Get(OcpVaultPath, "pull-secret")
 
 	exists, err := d.clusterExists()
 	if err != nil {
@@ -145,14 +141,12 @@ func (d *OcpDriver) Execute() error {
 		if exists {
 			log.Printf("not creating as cluster exists")
 
-			if err := d.UploadCredentials(); err != nil {
+			if err := d.uploadCredentials(); err != nil {
 				return err
 			}
 
-		} else {
-			if err := d.create(); err != nil {
-				return err
-			}
+		} else if err := d.create(); err != nil {
+			return err
 		}
 
 		if err := d.GetCredentials(); err != nil {
@@ -209,20 +203,18 @@ func (d *OcpDriver) clusterExists() (bool, error) {
 		// getting the credentials is expected for non
 		// existing clusters.
 		return false, nil
-	} else {
-		log.Println("Cluster state synced: Testing that the OpenShift cluster is alive... ")
-		kubeConfig := filepath.Join(d.ctx["WorkDir"].(string), d.ctx["ClusterName"].(string), "auth", "kubeconfig")
-		cmd := "kubectl version"
-		alive, err := NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().WithVariable("KUBECONFIG", kubeConfig).OutputContainsAny("Server Version")
-
-		if !alive {
-			log.Printf("A cluster state dir was found in %s but the cluster is not responding to `kubectl version`", d.ctx["ClusterStateDir"])
-		}
-
-		return alive, err
 	}
 
-	return false, err
+	log.Println("Cluster state synced: Testing that the OpenShift cluster is alive... ")
+	kubeConfig := filepath.Join(d.ctx["WorkDir"].(string), d.ctx["ClusterName"].(string), "auth", "kubeconfig")
+	cmd := "kubectl version"
+	alive, err := NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().WithVariable("KUBECONFIG", kubeConfig).OutputContainsAny("Server Version")
+
+	if !alive {
+		log.Printf("a cluster state dir was found in %s but the cluster is not responding to `kubectl version`", d.ctx["ClusterStateDir"])
+	}
+
+	return alive, err
 }
 
 func (d *OcpDriver) create() error {
@@ -248,28 +240,27 @@ func (d *OcpDriver) create() error {
 		return err
 	}
 
-	return d.UploadCredentials()
+	return d.uploadCredentials()
 }
 
-func (d *OcpDriver) ensureBucketExists() error {
+func (d *OcpDriver) ensureBucketExists() {
 	cmd := "gsutil mb gs://{{.OcpStateBucket}}"
 	_ = NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().Run()
-	return nil
 }
 
-func (d *OcpDriver) UploadCredentials() error {
+func (d *OcpDriver) uploadCredentials() error {
 	// We do this check twice to avoid re-downloading files
 	// from the bucket when we already have them locally.
 	// The second time is further down in this function and it's
-	// done when the rsync succeedes
+	// done when the rsync succeeds
 	if _, err := os.Stat(d.ctx["ClusterStateDir"].(string)); os.IsNotExist(err) {
-		log.Printf("ClusterStateDir %s not present", d.ctx["ClusterStateDir"])
+		log.Printf("clusterStateDir %s not present", d.ctx["ClusterStateDir"])
 		return nil
 	}
 
 	d.ensureBucketExists()
 
-	log.Printf("Uploading cluster state %s to gs://%s/%s", d.ctx["ClusterStateDir"], OcpStateBucket, d.ctx["ClusterName"])
+	log.Printf("uploading cluster state %s to gs://%s/%s", d.ctx["ClusterStateDir"], OcpStateBucket, d.ctx["ClusterName"])
 	cmd := "gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}"
 	return NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().Run()
 }
@@ -280,7 +271,7 @@ func (d *OcpDriver) GetCredentials() error {
 	// We do this check twice to avoid re-downloading files
 	// from the bucket when we already have them locally.
 	// The second time is further down in this function and it's
-	// done when the rsync succeedes
+	// done when the rsync succeeds
 	if _, err := os.Stat(kubeConfig); !os.IsNotExist(err) {
 		return nil
 	}
@@ -303,7 +294,7 @@ func (d *OcpDriver) GetCredentials() error {
 		log.Printf("gsutil failed: %s", err)
 	}
 
-	return fmt.Errorf("Credentials not found")
+	return fmt.Errorf("credentials not found")
 
 }
 
@@ -320,6 +311,6 @@ func (d *OcpDriver) delete() error {
 
 	// No need to check whether this `rb` command succeeds
 	cmd := "gsutil rb gs://{{.OcpStateBucket}}"
-	NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().Run()
+	_ = NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().Run()
 	return nil
 }

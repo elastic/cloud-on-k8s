@@ -17,22 +17,19 @@ type Plans struct {
 
 // Plan encapsulates information needed to provision a cluster
 type Plan struct {
-	Id                string `yaml:"id"` //nolint
-	Operation         string `yaml:"operation"`
-	ClusterName       string `yaml:"clusterName"`
-	Provider          string `yaml:"provider"`
-	KubernetesVersion string `yaml:"kubernetesVersion"`
-	MachineType       string `yaml:"machineType"`
-	ServiceAccount    bool   `yaml:"serviceAccount"`
-	WorkDir           string `yaml: "workDir"`
-
-	Psp bool `yaml:"psp"`
-
-	Gke *GkeSettings `yaml:"gke,omitempty"`
-	Aks *AksSettings `yaml:"aks,omitempty"`
-	Ocp *OcpSettings `yaml:"ocp,omitempty"`
-
-	VaultInfo *VaultInfo `yaml:"vaultInfo,omitempty"`
+	Id                string       `yaml:"id"` //nolint
+	Operation         string       `yaml:"operation"`
+	ClusterName       string       `yaml:"clusterName"`
+	Provider          string       `yaml:"provider"`
+	KubernetesVersion string       `yaml:"kubernetesVersion"`
+	MachineType       string       `yaml:"machineType"`
+	WorkDir           string       `yaml:"workDir"`
+	Gke               *GkeSettings `yaml:"gke,omitempty"`
+	Aks               *AksSettings `yaml:"aks,omitempty"`
+	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
+	VaultInfo         *VaultInfo   `yaml:"vaultInfo,omitempty"`
+	ServiceAccount    bool         `yaml:"serviceAccount"`
+	Psp               bool         `yaml:"psp"`
 }
 
 type VaultInfo struct {
@@ -69,7 +66,6 @@ type OcpSettings struct {
 	AdminUsername string `yaml:"adminUsername"`
 	LocalSsdCount int    `yaml:"localSsdCount"`
 	NodeCount     int    `yaml:"nodeCountPerZone"`
-	SshPubKey     string `yaml:"sshPubKey"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
