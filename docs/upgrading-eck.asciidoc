@@ -26,8 +26,6 @@ Upgrading from ECK 1.0.0-beta1 to 1.0.0 has some special considerations for user
 - Kubernetes versions < 1.13
 - OpenShift 3.11
 
-In this case, ECK must be uninstalled and reinstalled (due to link:https://github.com/kubernetes/kubernetes/issues/73752[an upstream bug] that was not backported). To uninstall ECK, see <<{p}-uninstalling-eck>>. Then you can follow the <<{p}-quickstart>> to install anew. You may wish to save your existing `v1beta1` manifests and update them to the `v1` API version, and to <<{p}-snapshots,take snapshots>> and restore them as well.
-
 In this case, ECK must be uninstalled and reinstalled (due to link:https://github.com/kubernetes/kubernetes/issues/73752[an upstream bug] that was not backported). To uninstall ECK, see <<{p}-uninstalling-eck>>. Then you can follow the <<{p}-quickstart>> to install anew. You can save your existing `v1beta1` manifests, update them to the `v1` API version, <<{p}-snapshots,take snapshots>> and restore them as well.
 
 After the upgrade, use the `v1` API version for all Elastic manifests.
