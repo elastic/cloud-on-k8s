@@ -12,7 +12,7 @@ endif::[]
 
 ECK 1.0.0 is largely compatible with the beta version of the operator (see <<{p}-ga-openshift,the exceptions for earlier Kubernetes and OpenShift versions>>). There is not a direct upgrade path from the alpha version.
 
-To upgrade from 1.0.0-beta1, follow the <<{p}-quickstart>>. Note that all Elasticsearch Pods go through a rolling restart when the operator is upgraded.
+To upgrade from 1.0.0-beta1, follow the <<{p}-quickstart>>. Note that all Elasticsearch and Kibana Pods go through a rolling restart when the operator is upgraded.
 
 After the upgrade, use the `v1` API version for all Elastic manifests.
 
