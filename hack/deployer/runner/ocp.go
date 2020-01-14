@@ -20,6 +20,13 @@ const (
 	OcpServiceAccountVaultFieldName = "service-account"
 	OcpPullSecretFieldName          = "ocp-pull-secret" //nolint
 	OcpStateBucket                  = "eck-deployer-ocp-clusters-state"
+	OcpConfigFileName               = "deployer-config-ocp.yml"
+	DefaultOcpRunConfigTemplate     = `id: ocp-dev
+overrides:
+  clusterName: %s-dev-cluster
+  ocp:
+    gCloudProject: %s
+`
 
 	OcpInstallerConfigTemplate = `apiVersion: v1
 baseDomain: {{.BaseDomain}}
@@ -68,11 +75,6 @@ type OcpDriver struct {
 }
 
 func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
-	pvcPrefix := plan.ClusterName
-	if len(pvcPrefix) > pvcPrefixMaxLength {
-		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
-	}
-
 	baseDomain := plan.Ocp.BaseDomain
 	if baseDomain == "" {
 		baseDomain = "ocp.elastic.dev"
@@ -82,7 +84,6 @@ func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
 		ctx: map[string]interface{}{
 			"GCloudProject":     plan.Ocp.GCloudProject,
 			"ClusterName":       plan.ClusterName,
-			"PVCPrefix":         pvcPrefix,
 			"Region":            plan.Ocp.Region,
 			"AdminUsername":     plan.Ocp.AdminUsername,
 			"KubernetesVersion": plan.KubernetesVersion,
@@ -232,7 +233,7 @@ func (d *OcpDriver) create() error {
 		return err
 	}
 
-	err = NewCommand("openshift-install create cluster --log-level debug --dir {{.ClusterStateDir}}").
+	err = NewCommand("openshift-install create cluster --dir {{.ClusterStateDir}}").
 		AsTemplate(d.ctx).
 		Run()
 
@@ -241,11 +242,6 @@ func (d *OcpDriver) create() error {
 	}
 
 	return d.uploadCredentials()
-}
-
-func (d *OcpDriver) ensureBucketExists() {
-	cmd := "gsutil mb gs://{{.OcpStateBucket}}"
-	_ = NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().Run()
 }
 
 func (d *OcpDriver) uploadCredentials() error {
@@ -258,10 +254,15 @@ func (d *OcpDriver) uploadCredentials() error {
 		return nil
 	}
 
-	d.ensureBucketExists()
+	cmd := "gsutil mb gs://{{.OcpStateBucket}}"
+	exists, err := NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("already exists")
+
+	if !exists && err != nil {
+		return err
+	}
 
 	log.Printf("uploading cluster state %s to gs://%s/%s", d.ctx["ClusterStateDir"], OcpStateBucket, d.ctx["ClusterName"])
-	cmd := "gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}"
+	cmd = "gsutil rsync -r -d {{.ClusterStateDir}} gs://{{.OcpStateBucket}}/{{.ClusterName}}"
 	return NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().Run()
 }
 
@@ -301,7 +302,7 @@ func (d *OcpDriver) GetCredentials() error {
 func (d *OcpDriver) delete() error {
 	log.Println("Deleting cluster...")
 
-	err := NewCommand("openshift-install destroy cluster --log-level debug --dir {{.ClusterStateDir}}").
+	err := NewCommand("openshift-install destroy cluster --dir {{.ClusterStateDir}}").
 		AsTemplate(d.ctx).
 		Run()
 
