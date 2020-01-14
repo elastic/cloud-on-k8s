@@ -229,8 +229,7 @@ Now you should get this message:
 curl: (51) SSL: no alternative certificate subject name matches target host name '35.198.131.115'
 ----
 
-As the certificate subject by default is service name we can resolve this by using the service name 
-and specify the resolve information through an additional argument.
+As the certificate subject by default is service name we can resolve this by using the service name and specify the resolve information through an additional argument.
 
 [source,sh]
 ----
@@ -244,7 +243,7 @@ and specify the resolve information through an additional argument.
 }
 ----
 
-Alternatively, and for other clients where the resolve information can't be specified, or when it is more convenient modify the server side, you can add the external IP of the service to the SANs of the certificate in the same Elasticsearch resource YAML manifest used to create the cluster and apply it again using `kubectl`.
+As an alternative, you can edit the spec of the Elasticsearch resource to include the external IP in certificate subject alternative names (SANs) as described below. This is useful for other clients where resolve information cannot be specified, or when it is more convenient to make changes on the server rather than client.
 
 [source,yaml]
 ----
@@ -259,7 +258,7 @@ spec:
         - ip: 35.198.131.115
 ----
 
-+You can now reach Elasticsearch without `--resolve`:
+You can now reach Elasticsearch without `--resolve`:
 
 [source,sh]
 ----
