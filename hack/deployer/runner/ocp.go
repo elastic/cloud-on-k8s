@@ -132,13 +132,13 @@ func (d *OcpDriver) Execute() error {
 	}
 
 	switch d.plan.Operation {
-	case "delete":
+	case DeleteAction:
 		if exists {
 			err = d.delete()
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
 		}
-	case "create":
+	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")
 

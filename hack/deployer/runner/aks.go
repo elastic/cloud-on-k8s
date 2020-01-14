@@ -89,7 +89,7 @@ func (d *AksDriver) Execute() error {
 	}
 
 	switch d.plan.Operation {
-	case "delete":
+	case DeleteAction:
 		if exists {
 			if err := d.delete(); err != nil {
 				return err
@@ -97,7 +97,7 @@ func (d *AksDriver) Execute() error {
 		} else {
 			log.Printf("not deleting as cluster doesn't exist")
 		}
-	case "create":
+	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")
 		} else {

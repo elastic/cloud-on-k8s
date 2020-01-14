@@ -11,6 +11,11 @@ import (
 	"github.com/imdario/mergo"
 )
 
+const (
+	CreateAction = "create"
+	DeleteAction = "delete"
+)
+
 var (
 	drivers = make(map[string]DriverFactory)
 )
