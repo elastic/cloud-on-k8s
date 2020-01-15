@@ -26,6 +26,7 @@ overrides:
   clusterName: %s-dev-cluster
   ocp:
     gCloudProject: %s
+    pullSecret: '%s'
 `
 
 	OcpInstallerConfigTemplate = `apiVersion: v1
@@ -93,6 +94,7 @@ func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
 			"BaseDomain":        baseDomain,
 			"WorkDir":           plan.Ocp.WorkDir,
 			"OcpStateBucket":    OcpStateBucket,
+			"PullSecret":        plan.Ocp.PullSecret,
 		},
 	}, nil
 }
@@ -119,12 +121,14 @@ func (d *OcpDriver) Execute() error {
 		return err
 	}
 
-	client, err := NewClient(*d.plan.VaultInfo)
-	if err != nil {
-		return err
-	}
+	if d.ctx["PullSecret"] == nil {
+		client, err := NewClient(*d.plan.VaultInfo)
+		if err != nil {
+			return err
+		}
 
-	d.ctx["PullSecret"], _ = client.Get(OcpVaultPath, "pull-secret")
+		d.ctx["PullSecret"], _ = client.Get(OcpVaultPath, "pull-secret")
+	}
 
 	exists, err := d.clusterExists()
 	if err != nil {

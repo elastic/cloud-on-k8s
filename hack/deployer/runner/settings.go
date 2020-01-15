@@ -64,6 +64,7 @@ type OcpSettings struct {
 	Region        string `yaml:"region"`
 	AdminUsername string `yaml:"adminUsername"`
 	WorkDir       string `yaml:"workDir"`
+	PullSecret    string `yaml:"PullSecret"`
 	LocalSsdCount int    `yaml:"localSsdCount"`
 	NodeCount     int    `yaml:"nodeCount"`
 }
