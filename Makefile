@@ -290,8 +290,10 @@ credentials: setup-deployer
 set-context: credentials
 	$(eval KUBECTL_CLUSTER=$($(DEPLOYER) get clusterName))
 
-bootstrap-cloud: setup-deployer
+bootstrap-k8s: setup-deployer
 	@ $(DEPLOYER) execute
+
+bootstrap-cloud: bootstrap-k8s
 	$(MAKE) cluster-bootstrap
 ifeq ($(PSP), 1)
 	$(MAKE) apply-psp
