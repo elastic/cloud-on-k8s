@@ -306,6 +306,9 @@ switch-gke:
 switch-aks:
 	@ echo "aks" > hack/deployer/config/provider
 
+switch-ocp:
+	@ echo "ocp" > hack/deployer/config/provider
+
 #################################
 ##  --    Docker images    --  ##
 #################################

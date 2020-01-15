@@ -59,6 +59,17 @@ func CreateCommand() *cobra.Command {
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
 				}
+			case runner.OcpDriverID:
+				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
+				if err != nil {
+					return err
+				}
+
+				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject)
+				fullPath := path.Join(filePath, runner.OcpConfigFileName)
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
+					return err
+				}
 			default:
 				return fmt.Errorf("unknown provider %s", provider)
 			}

@@ -13,10 +13,11 @@ import (
 )
 
 type VaultClient struct {
-	client   *api.Client
-	roleID   string
-	secretID string
-	token    string
+	client      *api.Client
+	roleID      string
+	secretID    string
+	token       string
+	clientToken string
 }
 
 func NewClient(info VaultInfo) (*VaultClient, error) {
@@ -27,10 +28,11 @@ func NewClient(info VaultInfo) (*VaultClient, error) {
 	}
 
 	return &VaultClient{
-		client:   client,
-		roleID:   info.RoleId,
-		secretID: info.SecretId,
-		token:    info.Token,
+		client:      client,
+		roleID:      info.RoleId,
+		secretID:    info.SecretId,
+		token:       info.Token,
+		clientToken: info.ClientToken,
 	}, nil
 }
 
@@ -43,6 +45,8 @@ func (v *VaultClient) auth() error {
 	var data map[string]interface{}
 	var method string
 
+	var clientToken string
+
 	switch {
 	case v.token != "":
 		method = "github"
@@ -50,20 +54,27 @@ func (v *VaultClient) auth() error {
 	case v.roleID != "" && v.secretID != "":
 		method = "approle"
 		data = map[string]interface{}{"role_id": v.roleID, "secret_id": v.secretID}
+	case v.clientToken != "":
+		method = "clientToken"
+		clientToken = v.clientToken
 	default:
 		return fmt.Errorf("vault auth info not present")
 	}
 
-	resp, err := v.client.Logical().Write(fmt.Sprintf("auth/%s/login", method), data)
-	if err != nil {
-		return err
+	if clientToken == "" {
+		resp, err := v.client.Logical().Write(fmt.Sprintf("auth/%s/login", method), data)
+		if err != nil {
+			return err
+		}
+
+		if resp.Auth == nil {
+			return fmt.Errorf("no auth info in response")
+		}
+
+		clientToken = resp.Auth.ClientToken
 	}
 
-	if resp.Auth == nil {
-		return fmt.Errorf("no auth info in response")
-	}
-
-	v.client.SetToken(resp.Auth.ClientToken)
+	v.client.SetToken(clientToken)
 
 	return nil
 }

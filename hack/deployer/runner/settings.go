@@ -17,27 +17,26 @@ type Plans struct {
 
 // Plan encapsulates information needed to provision a cluster
 type Plan struct {
-	Id                string `yaml:"id"` //nolint
-	Operation         string `yaml:"operation"`
-	ClusterName       string `yaml:"clusterName"`
-	Provider          string `yaml:"provider"`
-	KubernetesVersion string `yaml:"kubernetesVersion"`
-	MachineType       string `yaml:"machineType"`
-	ServiceAccount    bool   `yaml:"serviceAccount"`
-
-	Psp bool `yaml:"psp"`
-
-	Gke *GkeSettings `yaml:"gke,omitempty"`
-	Aks *AksSettings `yaml:"aks,omitempty"`
-
-	VaultInfo *VaultInfo `yaml:"vaultInfo,omitempty"`
+	Id                string       `yaml:"id"` //nolint
+	Operation         string       `yaml:"operation"`
+	ClusterName       string       `yaml:"clusterName"`
+	Provider          string       `yaml:"provider"`
+	KubernetesVersion string       `yaml:"kubernetesVersion"`
+	MachineType       string       `yaml:"machineType"`
+	Gke               *GkeSettings `yaml:"gke,omitempty"`
+	Aks               *AksSettings `yaml:"aks,omitempty"`
+	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
+	VaultInfo         *VaultInfo   `yaml:"vaultInfo,omitempty"`
+	ServiceAccount    bool         `yaml:"serviceAccount"`
+	Psp               bool         `yaml:"psp"`
 }
 
 type VaultInfo struct {
-	Address  string `yaml:"address"`
-	RoleId   string `yaml:"roleId"`   //nolint
-	SecretId string `yaml:"secretId"` //nolint
-	Token    string `yaml:"token"`
+	Address     string `yaml:"address"`
+	RoleId      string `yaml:"roleId"`   //nolint
+	SecretId    string `yaml:"secretId"` //nolint
+	Token       string `yaml:"token"`
+	ClientToken string `yaml:"clientToken"`
 }
 
 // GkeSettings encapsulates settings specific to GKE
@@ -55,6 +54,17 @@ type AksSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
 	AcrName       string `yaml:"acrName"`
+	NodeCount     int    `yaml:"nodeCount"`
+}
+
+// GkeSettings encapsulates settings specific to GKE
+type OcpSettings struct {
+	BaseDomain    string `yaml:"baseDomain"`
+	GCloudProject string `yaml:"gCloudProject"`
+	Region        string `yaml:"region"`
+	AdminUsername string `yaml:"adminUsername"`
+	WorkDir       string `yaml:"workDir"`
+	LocalSsdCount int    `yaml:"localSsdCount"`
 	NodeCount     int    `yaml:"nodeCount"`
 }
 
