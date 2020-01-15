@@ -23,7 +23,6 @@ type Plan struct {
 	Provider          string       `yaml:"provider"`
 	KubernetesVersion string       `yaml:"kubernetesVersion"`
 	MachineType       string       `yaml:"machineType"`
-	WorkDir           string       `yaml:"workDir"`
 	Gke               *GkeSettings `yaml:"gke,omitempty"`
 	Aks               *AksSettings `yaml:"aks,omitempty"`
 	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
@@ -64,8 +63,9 @@ type OcpSettings struct {
 	GCloudProject string `yaml:"gCloudProject"`
 	Region        string `yaml:"region"`
 	AdminUsername string `yaml:"adminUsername"`
+	WorkDir       string `yaml:"workDir"`
 	LocalSsdCount int    `yaml:"localSsdCount"`
-	NodeCount     int    `yaml:"nodeCountPerZone"`
+	NodeCount     int    `yaml:"nodeCount"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file

@@ -91,7 +91,7 @@ func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
 			"LocalSsdCount":     plan.Ocp.LocalSsdCount,
 			"NodeCount":         plan.Ocp.NodeCount,
 			"BaseDomain":        baseDomain,
-			"WorkDir":           plan.WorkDir,
+			"WorkDir":           plan.Ocp.WorkDir,
 			"OcpStateBucket":    OcpStateBucket,
 		},
 	}, nil
