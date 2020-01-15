@@ -65,7 +65,12 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject)
+				pullSecret, err := GetEnvVar("OCP_PULL_SECRET")
+				if err != nil {
+					return err
+				}
+
+				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
 				fullPath := path.Join(filePath, runner.OcpConfigFileName)
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
