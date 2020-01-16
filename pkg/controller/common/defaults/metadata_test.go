@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestSetDefaultLabels(t *testing.T) {
+func TestAppendMetadata(t *testing.T) {
 	tests := []struct {
 		name     string
 		existing map[string]string
@@ -37,8 +37,8 @@ func TestSetDefaultLabels(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := SetDefaultLabels(tt.existing, tt.defaults); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("SetDefaultLabels() = %v, want %v", got, tt.want)
+			if got := AppendMetadata(tt.existing, tt.defaults); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("AppendMetadata() = %v, want %v", got, tt.want)
 			}
 		})
 	}

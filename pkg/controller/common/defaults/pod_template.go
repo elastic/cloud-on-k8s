@@ -79,7 +79,13 @@ func (b *PodTemplateBuilder) setDefaults() *PodTemplateBuilder {
 
 // WithLabels sets the given labels, but does not override those that already exist.
 func (b *PodTemplateBuilder) WithLabels(labels map[string]string) *PodTemplateBuilder {
-	b.PodTemplate.Labels = SetDefaultLabels(b.PodTemplate.Labels, labels)
+	b.PodTemplate.Labels = AppendMetadata(b.PodTemplate.Labels, labels)
+	return b
+}
+
+// WithAnnotations sets the given annotations, but does not override those that already exist.
+func (b *PodTemplateBuilder) WithAnnotations(annotations map[string]string) *PodTemplateBuilder {
+	b.PodTemplate.Annotations = AppendMetadata(b.PodTemplate.Annotations, annotations)
 	return b
 }
 

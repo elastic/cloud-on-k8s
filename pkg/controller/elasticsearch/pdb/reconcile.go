@@ -99,7 +99,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList, schem
 	expected.Name = esv1.DefaultPodDisruptionBudget(es.Name)
 	expected.Namespace = es.Namespace
 	// and append our labels
-	expected.Labels = defaults.SetDefaultLabels(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
+	expected.Labels = defaults.AppendMetadata(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
 	// set owner reference for deletion upon ES resource deletion
 	if err := reconciler.SetControllerReference(&es, &expected, scheme); err != nil {
 		return nil, err

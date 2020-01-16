@@ -401,7 +401,7 @@ func (r *ReconcileApmServer) deploymentParams(
 	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	// TODO: also need to hash secret token?
 
-	podSpec.Labels = defaults.SetDefaultLabels(podSpec.Labels, podLabels)
+	podSpec.Labels = defaults.AppendMetadata(podSpec.Labels, podLabels)
 
 	return deployment.Params{
 		Name:            apmname.Deployment(as.Name),

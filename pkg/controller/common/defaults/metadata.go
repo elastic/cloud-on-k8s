@@ -4,11 +4,11 @@
 
 package defaults
 
-// SetDefaultLabels append labels from defaults into existing. If a label already exists,
+// AppendMetadata append labels/annotations from defaults into existing. If a label/annotation already exists,
 // its value is not overridden from the one in defaults.
-// One use case here is to inherit user-provided labels, and append our own only if not already
+// One use case here is to inherit user-provided labels/annotations, and append our own only if not already
 // set by the user.
-func SetDefaultLabels(existing map[string]string, defaults map[string]string) map[string]string {
+func AppendMetadata(existing map[string]string, defaults map[string]string) map[string]string {
 	if existing == nil {
 		existing = make(map[string]string, len(defaults))
 	}
