@@ -10,7 +10,7 @@
       - string:
           name: VERSION
           default: 1.13
-          description: "Kubernetes version, default is 1.12"
+          description: "Kubernetes version, default is 1.13"
       - bool:
           name: SEND_NOTIFICATIONS
           default: true
