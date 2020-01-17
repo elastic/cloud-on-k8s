@@ -39,7 +39,7 @@ EOF
 cat >deployer-config.yml <<EOF
 id: gke-ci
 overrides:
-  kubernetesVersion: "1.12"
+  kubernetesVersion: "1.13"
   clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR
