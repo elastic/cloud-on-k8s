@@ -58,6 +58,52 @@ func TestModel_RemoteCluster(t *testing.T) {
 	}
 }
 
+func TestModel_License(t *testing.T) {
+	tests := []struct {
+		name    string
+		license License
+		want    string
+	}{
+		{
+			name: "platinum",
+			license: License{
+				UID:                "304d04fe-c2d2-8774-cd34-7a71a4cc8c4d",
+				Type:               "platinum",
+				IssueDateInMillis:  1576000000000,
+				ExpiryDateInMillis: 1590000000000,
+				MaxNodes:           100,
+				IssuedTo:           "ECK Test",
+				Issuer:             "ECK Tester",
+				StartDateInMillis:  1576000000000,
+				Signature:          "AAA...xyz",
+			},
+			want: `{"uid":"304d04fe-c2d2-8774-cd34-7a71a4cc8c4d","type":"platinum","issue_date_in_millis":1576000000000,"expiry_date_in_millis":1590000000000,"max_nodes":100,"issued_to":"ECK Test","issuer":"ECK Tester","start_date_in_millis":1576000000000,"signature":"AAA...xyz"}`,
+		},
+		{
+			name: "enterprise",
+			license: License{
+				UID:                "304d04fe-c2d2-8774-cd34-7a71a4cc8c4d",
+				Type:               "enterprise",
+				IssueDateInMillis:  1576000000000,
+				ExpiryDateInMillis: 1590000000000,
+				MaxResourceUnits:   100,
+				IssuedTo:           "ECK Test",
+				Issuer:             "ECK Tester",
+				StartDateInMillis:  1576000000000,
+				Signature:          "AAA...xyz",
+			},
+			want: `{"uid":"304d04fe-c2d2-8774-cd34-7a71a4cc8c4d","type":"enterprise","issue_date_in_millis":1576000000000,"expiry_date_in_millis":1590000000000,"max_resource_units":100,"issued_to":"ECK Test","issuer":"ECK Tester","start_date_in_millis":1576000000000,"signature":"AAA...xyz"}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			json, err := json.Marshal(tt.license)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, string(json))
+		})
+	}
+}
+
 func TestClusterRoutingAllocation(t *testing.T) {
 	clusterSettingsSample := `{"persistent":{},"transient":{"cluster":{"routing":{"allocation":{"enable":"none","exclude":{"_name":"excluded"}}}}}}`
 	expected := ClusterRoutingAllocation{Transient: AllocationSettings{Cluster: ClusterRoutingSettings{Routing: RoutingSettings{Allocation: RoutingAllocationSettings{Enable: "none", Exclude: AllocationExclude{Name: "excluded"}}}}}}
