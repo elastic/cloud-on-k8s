@@ -7,6 +7,7 @@ package nodespec
 import (
 	"path"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,6 +49,11 @@ var (
 		Limits: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: DefaultMemoryLimits,
 		},
+	}
+
+	// DefaultAnnotations are the default annotations for the Elasticsearch pods
+	DefaultAnnotations = map[string]string{
+		annotation.FilebeatModuleAnnotation: "elasticsearch",
 	}
 )
 

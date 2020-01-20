@@ -1,4 +1,5 @@
-# This sample sets up an Elasticsearch cluster and a Kibana instance preconfigured for that cluster
+# This sample sets up an Elasticsearch cluster and a Kibana instance preconfigured for that cluster.
+# The hints based autodiscover annotations for Filebeat are managed by ECK.
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
@@ -11,11 +12,6 @@ spec:
     count: 3
     config:
       node.store.allow_mmap: false
-    podTemplate:
-      metadata:
-        annotations:
-           "co.elastic.logs/module": elasticsearch
-      spec:
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
@@ -36,10 +32,6 @@ spec:
   count: 1
   elasticsearchRef:
     name: "monitor"
-  podTemplate:
-    metadata:
-      annotations:
-        "co.elastic.logs/module": kibana
   http:
     service:
       spec:

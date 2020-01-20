@@ -60,6 +60,7 @@ func BuildPodTemplateSpec(
 		WithVolumes(volumes...).
 		WithVolumeMounts(volumeMounts...).
 		WithLabels(labels).
+		WithAnnotations(DefaultAnnotations).
 		WithInitContainers(initContainers...).
 		WithPreStopHook(*NewPreStopHook()).
 		WithInitContainerDefaults()
