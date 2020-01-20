@@ -228,7 +228,7 @@ func Test_checkDownscaleInvariants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			toDelete, reason := checkDownscaleInvariants(*tt.state, tt.statefulSet, 1)
-			canDownscale := toDelete > 0
+			canDownscale := toDelete == 1
 			if canDownscale != tt.wantCanDownscale {
 				t.Errorf("canDownscale() canDownscale = %v, want %v", canDownscale, tt.wantCanDownscale)
 			}
