@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"strings"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -615,6 +616,63 @@ func Test_validUpgradePath(t *testing.T) {
 			actualErrors := len(actual) > 0
 			if tt.expectErrors != actualErrors {
 				t.Errorf("failed validUpgradePath(). Name: %v, actual %v, wanted: %v, value: %v", tt.name, actual, tt.expectErrors, tt.proposed)
+			}
+		})
+	}
+}
+
+func Test_noUnknownFields(t *testing.T) {
+
+	var GetEsWithLastApplied = func(lastApplied string) Elasticsearch {
+		return Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					corev1.LastAppliedConfigAnnotation: lastApplied,
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name         string
+		es           Elasticsearch
+		errorOnField string
+	}{
+		{
+			name: "good annotation",
+			es: GetEsWithLastApplied(
+				`{"apiVersion":"elasticsearch.k8s.elastic.co/v1","kind":"Elasticsearch"` +
+					`,"metadata":{"annotations":{},"name":"quickstart","namespace":"default"},` +
+					`"spec":{"nodeSets":[{"config":{"node.store.allow_mmap":false},"count":1,` +
+					`"name":"default"}],"version":"7.5.1"}}`),
+		},
+		{
+			name: "no annotation",
+			es:   Elasticsearch{},
+		},
+		{
+			name: "bad annotation",
+			es: GetEsWithLastApplied(
+				`{"apiVersion":"elasticsearch.k8s.elastic.co/v1","kind":"Elasticsearch"` +
+					`,"metadata":{"annotations":{},"name":"quickstart","namespace":"default"},` +
+					`"spec":{"nodeSets":[{"config":{"node.store.allow_mmap":false},"count":1,` +
+					`"name":"default","wrongthing":true}],"version":"7.5.1"}}`),
+			errorOnField: "wrongthing",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := noUnknownFields(&tt.es)
+			actualErrors := len(actual) > 0
+			expectErrors := tt.errorOnField != ""
+			if expectErrors != actualErrors || (actualErrors && !strings.Contains(actual[0].Field, tt.errorOnField)) {
+				t.Errorf(
+					"failed NoUnknownFields(). Name: %v, actual %v, wanted error on field: %v, es value: %v",
+					tt.name,
+					actual,
+					tt.errorOnField,
+					tt.es)
 			}
 		})
 	}

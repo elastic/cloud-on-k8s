@@ -5,16 +5,14 @@
 package v1
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"reflect"
-	"strings"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -66,22 +64,7 @@ func (r *Elasticsearch) check(validations []validation) field.ErrorList {
 
 // noUnknownFields checks whether the last applied config annotation contains json with unknown fields.
 func noUnknownFields(es *Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
-	if cfg, ok := es.Annotations[v1.LastAppliedConfigAnnotation]; ok {
-		d := json.NewDecoder(strings.NewReader(cfg))
-		d.DisallowUnknownFields()
-		var es Elasticsearch
-		if err := d.Decode(&es); err != nil {
-			errString := err.Error()
-			unknownPrefix := "json: unknown field "
-			if strings.HasPrefix(errString, unknownPrefix) {
-				fld := strings.TrimPrefix(errString, unknownPrefix)
-				errs = append(errs, field.Invalid(field.NewPath(fld), es.Name, errString))
-			}
-		}
-	}
-
-	return errs
+	return commonv1.NoUnknownFields(es, es.ObjectMeta)
 }
 
 // validName checks whether the name is valid.
