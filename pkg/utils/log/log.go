@@ -55,6 +55,10 @@ func setLogger(v *int) {
 		_ = flagset.Set("v", strconv.Itoa(int(zapLevel.Level())*-1))
 	}
 
+	opts := []zap.Option{zap.Fields(
+		zap.String("service.version", getVersionString()),
+	)}
+
 	var encoder zapcore.Encoder
 	if dev.Enabled {
 		encoderConf := zap.NewDevelopmentEncoderConfig()
@@ -64,11 +68,18 @@ func setLogger(v *int) {
 		encoderConf := zap.NewProductionEncoderConfig()
 		encoderConf.MessageKey = "message"
 		encoderConf.TimeKey = "@timestamp"
+		encoderConf.LevelKey = "log.level"
+		encoderConf.NameKey = "log.logger"
+		encoderConf.StacktraceKey = "error.stack_trace"
 		encoderConf.EncodeTime = zapcore.ISO8601TimeEncoder
 		encoder = zapcore.NewJSONEncoder(encoderConf)
+		opts = append(opts,
+			zap.Fields(
+				zap.String("service.type", "eck"),
+				zap.String("ecs.version", "1.4.0"),
+			))
 	}
 
-	opts := []zap.Option{zap.Fields(zap.String("ver", getVersionString()))}
 	stackTraceLevel := zap.NewAtomicLevelAt(zapcore.ErrorLevel)
 	crlog.SetLogger(crzap.New(func(o *crzap.Options) {
 		o.DestWritter = os.Stderr
