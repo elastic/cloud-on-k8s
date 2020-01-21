@@ -47,7 +47,7 @@ type ReconcileWebhookResources struct {
 }
 
 func (r *ReconcileWebhookResources) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	defer common.LogReconciliationRun(log, request, "validating_webhook_configuration", &r.iteration)()
 	res := r.reconcileInternal()
 	return res.Aggregate()
 }

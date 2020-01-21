@@ -127,7 +127,7 @@ type ReconcileKibana struct {
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	defer common.LogReconciliationRun(log, request, "kibana_name", &r.iteration)()
 
 	// retrieve the kibana object
 	var kb kbv1.Kibana
