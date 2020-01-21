@@ -20,6 +20,11 @@ import (
 	crzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
+const (
+	EcsVersion     = "1.4.0"
+	EcsServiceType = "eck"
+)
+
 var verbosity = flag.Int("log-verbosity", 0, "Verbosity level of logs (-2=Error, -1=Warn, 0=Info, >0=Debug)")
 
 // BindFlags attaches logging flags to the given flag set.
@@ -75,8 +80,8 @@ func setLogger(v *int) {
 		encoder = zapcore.NewJSONEncoder(encoderConf)
 		opts = append(opts,
 			zap.Fields(
-				zap.String("service.type", "eck"),
-				zap.String("ecs.version", "1.4.0"),
+				zap.String("service.type", EcsServiceType),
+				zap.String("ecs.version", EcsVersion),
 			))
 	}
 
