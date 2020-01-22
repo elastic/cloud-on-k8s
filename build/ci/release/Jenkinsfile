@@ -12,53 +12,41 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
-        REPOSITORY = "eck"
-        IMG_NAME = "eck-operator"
-        REGISTRY = "docker.elastic.co"
-        OPERATOR_IMAGE = "${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
+
+        TAG_NAME = sh(script: 'echo -n $TAG_NAME', returnStdout: true)
     }
 
     stages {
-        stage('Doing release') {
-            when {
-                expression {
-                    releaseImageNotExist()
-                }
-            }
+        stage('Nightly or release build') {
             stages {
-                stage('Build and push release image') {
+                stage('Build and push Docker image') {
                     steps {
                         sh """
-                            cat >.env <<EOF
-VERSION = ${TAG_NAME}
-REGISTRY = ${REGISTRY}
-REPOSITORY = ${REPOSITORY}
-IMG_NAME = ${IMG_NAME}
-OPERATOR_IMAGE = ${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}
-SNAPSHOT = false
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
-ELASTIC_DOCKER_LOGIN = eckadmin
-EOF
-                            make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
+                        build/ci/setenv
+                        make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
                         """
                     }
                 }
                 stage('Upload yaml to S3') {
+                    when {
+                        buildingTag()
+                    }
                     steps {
                         sh 'make -C build/ci yaml-upload'
                     }
                 }
-                stage('Send message to Slack') {
+                stage('Notify successful release build') {
+                    when {
+                        buildingTag()
+                    }
                     steps {
                         script {
-                            def msg = "${OPERATOR_IMAGE} was pushed \r\n" +
-                                "https://download.elastic.co/downloads/eck/${TAG_NAME}/all-in-one.yaml was uploaded \r\n" +
-                                "Congratulations!"
                             slackSend botUser: true,
                                 channel: '#cloud-k8s',
                                 color: 'good',
-                                message: msg,
+                                message: "`${TAG_NAME}` was pushed \r\n" +
+                                    "https://download.elastic.co/downloads/eck/" + TAG_NAME + "/all-in-one.yaml was uploaded \r\n" +
+                                    "Congratulations!",
                                 tokenCredentialId: 'cloud-ci-slack-integration-token'
                         }
                     }
@@ -69,26 +57,28 @@ EOF
 
     post {
         success {
-            build job: 'cloud-on-k8s-e2e-tests-custom',
-                parameters: [string(name: 'IMAGE', value: "${OPERATOR_IMAGE}")],
-                wait: false
+            script {
+                def operatorImage = readFile("$WORKSPACE/operator-image.txt").trim()
 
-            build job: 'cloud-on-k8s-stack',
-                parameters: [string(name: 'IMAGE', value: "${OPERATOR_IMAGE}")],
-                wait: false
-                
-            build job: 'cloud-on-k8s-versions-gke',
-                parameters: [string(name: 'IMAGE', value: "${OPERATOR_IMAGE}")],
-                wait: false
+                build job: 'cloud-on-k8s-e2e-tests-custom',
+                    parameters: [string(name: 'IMAGE', value: operatorImage)],
+                    wait: false
+
+                build job: 'cloud-on-k8s-stack',
+                    parameters: [string(name: 'IMAGE', value: operatorImage)],
+                    wait: false
+
+                build job: 'cloud-on-k8s-versions-gke',
+                    parameters: [string(name: 'IMAGE', value: operatorImage)],
+                    wait: false
+            }
         }
         unsuccessful {
             script {
-                def msg = "Release job failed! \r\n" +
-                          "${BUILD_URL}"
                 slackSend botUser: true,
                     channel: '#cloud-k8s',
                     color: 'danger',
-                    message: msg,
+                    message: "${JOB_NAME} job failed! \r\n" + "${BUILD_URL}",
                     tokenCredentialId: 'cloud-ci-slack-integration-token'
             }
         }
@@ -96,12 +86,4 @@ EOF
             cleanWs()
         }
     }
-
-}
-
-def releaseImageNotExist() {
-    return sh (
-        script: "docker pull $OPERATOR_IMAGE",
-        returnStatus: true
-    ) == 1
 }

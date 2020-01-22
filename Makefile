@@ -414,7 +414,12 @@ ci-e2e: e2e-compile run-deployer install-crds apply-psp e2e
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-ci-release: clean ci-check build-operator-image
+check-image-nonexistence:
+	@ docker pull $(OPERATOR_IMAGE) \
+		&& { echo "Error: image $(OPERATOR_IMAGE) already exists"; exit 1; } \
+		|| echo "Success: image $(OPERATOR_IMAGE) does not exist"
+
+ci-release: check-image-nonexistence  clean ci-check build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################

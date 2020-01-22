@@ -52,7 +52,7 @@ e2e-tests.json
 e2e-tests.xml
 
 # ignore files fo release job
-eck_image.txt
+operator-image.txt
 
 # ignore generated public key file
 pkg/controller/common/license/zz_generated.pubkey.go

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License;
+# you may not use this file except in compliance with the Elastic License.
+
+# Script to set environment variables to run CI build tasks.
+
+set -eu
+
+REGISTRY=docker.elastic.co
+IMG_NAME=eck-operator
+
+# the presence of a tag implies the construction of a release
+if [[ ${TAG_NAME:-""} != "" ]]; then
+    # release build
+    REPOSITORY=eck
+    SNAPSHOT=false
+    VERSION=${TAG_NAME}
+else
+    # nightly build
+    REPOSITORY=eck-snapshots
+    SNAPSHOT=true
+    VERSION=$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
+fi
+
+OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${VERSION}
+
+# write the operator image to give a way to the 'release/Jenkinsfile' to trigger e2e tests jobs with
+# the newly built operator docker image
+echo $OPERATOR_IMAGE > operator-image.txt
+
+# write env vars in an .env file sourced by the root Makefile
+cat >.env <<EOF
+REGISTRY = ${REGISTRY}
+IMG_NAME = ${IMG_NAME}
+
+REPOSITORY = ${REPOSITORY}
+SNAPSHOT = ${SNAPSHOT}
+VERSION = ${VERSION}
+
+OPERATOR_IMAGE = ${OPERATOR_IMAGE}
+
+GO_TAGS = release
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
+ELASTIC_DOCKER_LOGIN = eckadmin
+EOF
