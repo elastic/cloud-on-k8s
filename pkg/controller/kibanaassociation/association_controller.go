@@ -5,9 +5,12 @@
 package kibanaassociation
 
 import (
+	"context"
 	"reflect"
 	"time"
 
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -83,12 +86,17 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
+	var tracer *apm.Tracer
+	if params.EnableAPM {
+		tracer = commonapm.NewTracer("kibana_assoc_controller", log)
+	}
 	return &ReconcileAssociation{
 		Client:     client,
 		scheme:     mgr.GetScheme(),
 		watches:    watches.NewDynamicWatches(),
 		recorder:   mgr.GetEventRecorderFor(name),
 		Parameters: params,
+		tracer:     tracer,
 	}
 }
 
@@ -111,6 +119,7 @@ type ReconcileAssociation struct {
 	recorder record.EventRecorder
 	watches  watches.DynamicWatches
 	operator.Parameters
+	tracer *apm.Tracer
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -127,7 +136,10 @@ func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
 // the Association.Spec
 func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	tx, ctx := commonapm.NewTransaction(r.tracer, request.NamespacedName, "kibana_association")
+	defer commonapm.EndTransaction(tx)
 
+	span, _ := apm.StartSpan(ctx, "fetch_association", "app")
 	var kibana kbv1.Kibana
 	if err := association.FetchWithAssociation(r.Client, request, &kibana); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -139,6 +151,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		}
 		return reconcile.Result{}, err
 	}
+	span.End()
 
 	// Kibana is being deleted, short-circuit reconciliation and remove artifacts related to the association.
 	if !kibana.DeletionTimestamp.IsZero() {
@@ -156,12 +169,13 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	newStatus, err := r.reconcileInternal(&kibana)
+	newStatus, err := r.reconcileInternal(ctx, &kibana)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
 
 	// maybe update status
+	span, ctx = apm.StartSpan(ctx, "update_status", "app")
 	if !reflect.DeepEqual(kibana.Status.AssociationStatus, newStatus) {
 		oldStatus := kibana.Status.AssociationStatus
 		kibana.Status.AssociationStatus = newStatus
@@ -172,7 +186,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 				return reconcile.Result{Requeue: true}, nil
 			}
 
-			return defaultRequeue, err
+			return defaultRequeue, commonapm.CaptureError(ctx, err)
 		}
 		r.recorder.AnnotatedEventf(&kibana,
 			annotation.ForAssociationStatusChange(oldStatus, newStatus),
@@ -180,6 +194,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 			events.EventAssociationStatusChange,
 			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
 	}
+	span.End()
 	return resultFromStatus(newStatus), err
 }
 
@@ -202,13 +217,15 @@ func (r *ReconcileAssociation) isCompatible(kibana *kbv1.Kibana) (bool, error) {
 	return compat, err
 }
 
-func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.AssociationStatus, error) {
+func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kbv1.Kibana) (commonv1.AssociationStatus, error) {
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
-
+	var span *apm.Span
 	// garbage collect leftover resources that are not required anymore
+	span, ctx = apm.StartSpan(ctx, "deleted_orphaned_resources", "app")
 	if err := deleteOrphanedResources(r, kibana); err != nil {
-		log.Error(err, "Error while trying to delete orphaned resources. Continuing.", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
+		log.Error(commonapm.CaptureError(ctx, err), "Error while trying to delete orphaned resources. Continuing.", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 	}
+	span.End()
 
 	if kibana.Spec.ElasticsearchRef.Name == "" {
 		// stop watching any ES cluster previously referenced for this Kibana resource
@@ -245,6 +262,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 	}
 
 	var es esv1.Elasticsearch
+	span, ctx = apm.StartSpan(ctx, "get_elasticsearch", "app")
 	if err := r.Get(esRefKey, &es); err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kibana, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
 		if apierrors.IsNotFound(err) {
@@ -253,17 +271,21 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 			// - deleted: existing resources will be garbage collected
 			// in any case, since the user explicitly requested a managed association,
 			// remove connection details if they are set
+			span, ctx = apm.StartSpan(ctx, "remove_assoc_conf", "app")
 			if err := association.RemoveAssociationConf(r.Client, kibana); err != nil && !errors.IsConflict(err) {
 				log.Error(err, "Failed to remove Elasticsearch configuration from Kibana object",
 					"namespace", kibana.Namespace, "kibana_name", kibana.Name)
-				return commonv1.AssociationPending, err
+				return commonv1.AssociationPending, commonapm.CaptureError(ctx, err)
 			}
+			span.End()
 
 			return commonv1.AssociationPending, nil
 		}
-		return commonv1.AssociationFailed, err
+		return commonv1.AssociationFailed, commonapm.CaptureError(ctx, err)
 	}
+	span.End()
 
+	span, ctx = apm.StartSpan(ctx, "reconcile_es_user", "app")
 	if err := association.ReconcileEsUser(
 		r.Client,
 		r.scheme,
@@ -275,13 +297,16 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 		elasticsearchuser.KibanaSystemUserBuiltinRole,
 		kibanaUserSuffix,
 		es); err != nil {
-		return commonv1.AssociationPending, err
+		return commonv1.AssociationPending, commonapm.CaptureError(ctx, err)
 	}
+	span.End()
 
+	span, ctx = apm.StartSpan(ctx, "reconcile_es_ca", "app")
 	caSecret, err := r.reconcileElasticsearchCA(kibana, esRefKey)
 	if err != nil {
-		return commonv1.AssociationPending, err
+		return commonv1.AssociationPending, commonapm.CaptureError(ctx, err)
 	}
+	span.End()
 
 	// construct the expected association configuration
 	authSecret := association.ClearTextSecretKeySelector(kibana, kibanaUserSuffix)
@@ -294,6 +319,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 	}
 
 	// update the association configuration if necessary
+	span, ctx = apm.StartSpan(ctx, "update_assoc_conf", "app")
 	if !reflect.DeepEqual(expectedESAssoc, kibana.AssociationConf()) {
 		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		if err := association.UpdateAssociationConf(r.Client, kibana, expectedESAssoc); err != nil {
@@ -301,10 +327,11 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 				return commonv1.AssociationPending, nil
 			}
 			log.Error(err, "Failed to update association configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
-			return commonv1.AssociationPending, err
+			return commonv1.AssociationPending, commonapm.CaptureError(ctx, err)
 		}
 		kibana.SetAssociationConf(expectedESAssoc)
 	}
+	span.End()
 
 	return commonv1.AssociationEstablished, nil
 }
