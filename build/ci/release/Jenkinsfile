@@ -13,7 +13,7 @@ pipeline {
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
-
+        // Try reading the env variable which is only defined for a release build
         TAG_NAME = sh(script: 'echo -n $TAG_NAME', returnStdout: true)
     }
 
