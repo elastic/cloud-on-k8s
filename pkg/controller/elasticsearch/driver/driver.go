@@ -175,7 +175,6 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	observedState := d.Observers.ObservedStateResolver(
 		k8s.ExtractNamespacedName(&d.ES),
 		d.newElasticsearchClient(
-			context.Background(), // use a new context as we want to trace independent transactions for the observers
 			resourcesState,
 			internalUsers.ControllerUser,
 			*min,
@@ -192,7 +191,6 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
-		d.Context,
 		resourcesState,
 		internalUsers.ControllerUser,
 		*min,
@@ -281,14 +279,13 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
-	ctx context.Context,
 	state *reconcile.ResourcesState,
 	user user.User,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
 	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts, apm.TransactionFromContext(ctx))
+	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported

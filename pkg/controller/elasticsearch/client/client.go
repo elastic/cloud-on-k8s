@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"go.elastic.co/apm"
 	"go.elastic.co/apm/module/apmelasticsearch"
 )
 
@@ -114,7 +113,6 @@ func NewElasticsearchClient(
 	esUser UserAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
-	tx *apm.Transaction,
 ) Client {
 	certPool := x509.NewCertPool()
 	for _, c := range caCerts {
@@ -154,7 +152,6 @@ func NewElasticsearchClient(
 		User:      esUser,
 		caCerts:   caCerts,
 		transport: &transportConfig,
-		tx:        tx,
 		HTTP: &http.Client{
 			Transport: apmelasticsearch.WrapRoundTripper(&transportConfig),
 		},

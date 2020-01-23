@@ -14,7 +14,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	"go.elastic.co/apm"
 )
 
 type baseClient struct {
@@ -23,7 +22,6 @@ type baseClient struct {
 	transport *http.Transport
 	Endpoint  string
 	caCerts   []*x509.Certificate
-	tx        *apm.Transaction
 }
 
 // Close idle connections in the underlying http client.
@@ -58,10 +56,6 @@ func (c *baseClient) equal(c2 *baseClient) bool {
 }
 
 func (c *baseClient) doRequest(context context.Context, request *http.Request) (*http.Response, error) {
-	// set any (long-running) transaction into the context for convenience if no tracing information is already set
-	if c.tx != nil && apm.TransactionFromContext(context) == nil && apm.SpanFromContext(context) == nil {
-		context = apm.ContextWithTransaction(context, c.tx)
-	}
 	withContext := request.WithContext(context)
 	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
 
