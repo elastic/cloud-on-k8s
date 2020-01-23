@@ -32,6 +32,7 @@ echo ${OPERATOR_IMAGE} > operator-image.txt
 
 # write env vars in an .env file sourced by the root Makefile
 cat >.env <<EOF
+GCLOUD_PROJECT = ${GCLOUD_PROJECT}
 REGISTRY = ${REGISTRY}
 IMG_NAME = ${IMG_NAME}
 

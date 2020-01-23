@@ -12,6 +12,7 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
+        GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
 
         TAG_NAME = sh(script: 'echo -n $TAG_NAME', returnStdout: true)
     }
@@ -19,15 +20,27 @@ pipeline {
     stages {
         stage('Nightly or release build') {
             stages {
-                stage('Build and push Docker image') {
+                stage('Run checks') {
                     steps {
-                        sh """
-                        build/ci/setenv
-                        make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
-                        """
+                        sh 'make -C build/ci TARGET=ci-check ci'
                     }
                 }
-                stage('Upload yaml to S3') {
+                stage('Setenv') {
+                    steps {
+                        sh 'build/ci/setenv'
+                    }
+                }
+                stage('Run unit and integration tests') {
+                    steps {
+                        sh 'make -C build/ci TARGET=ci ci'
+                    }
+                }
+                stage('Build and push Docker image') {
+                    steps {
+                        sh 'make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci'
+                    }
+                }
+                stage('Upload YAML manifest to S3') {
                     steps {
                         sh 'make -C build/ci yaml-upload'
                     }
