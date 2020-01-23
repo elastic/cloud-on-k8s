@@ -4,15 +4,19 @@
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
-# Script to set environment variables to run CI build tasks.
+# Script to set environment variables to run CI tasks.
 
 set -eu
 
 REGISTRY=docker.elastic.co
 IMG_NAME=eck-operator
 
+# Variable provided in the CI context
+WORKSPACE=${WORKSPACE:-$(pwd)}
+TAG_NAME=${TAG_NAME:-""}
+
 # the presence of a tag implies the construction of a release
-if [[ ${TAG_NAME:-""} != "" ]]; then
+if [[ ${TAG_NAME} != "" ]]; then
     # release build
     REPOSITORY=eck
     SNAPSHOT=false
@@ -35,7 +39,6 @@ cat >.env <<EOF
 GCLOUD_PROJECT = ${GCLOUD_PROJECT}
 REGISTRY = ${REGISTRY}
 IMG_NAME = ${IMG_NAME}
-
 REPOSITORY = ${REPOSITORY}
 SNAPSHOT = ${SNAPSHOT}
 VERSION = ${VERSION}
