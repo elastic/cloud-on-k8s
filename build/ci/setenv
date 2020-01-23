@@ -28,7 +28,7 @@ OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${VERSION}
 
 # write the operator image to give a way to the 'release/Jenkinsfile' to trigger e2e tests jobs with
 # the newly built operator docker image
-echo $OPERATOR_IMAGE > operator-image.txt
+echo ${OPERATOR_IMAGE} > operator-image.txt
 
 # write env vars in an .env file sourced by the root Makefile
 cat >.env <<EOF
