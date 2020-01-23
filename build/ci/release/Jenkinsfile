@@ -39,7 +39,10 @@ pipeline {
                 }
                 stage('Upload YAML manifest to S3') {
                     steps {
-                        sh 'make -C build/ci yaml-upload'
+                        script {
+                            env.VERSION = readFromEnvFile("VERSION")
+                            sh 'make -C build/ci yaml-upload'
+                        }
                     }
                 }
                 stage('Notify successful release build') {
@@ -65,7 +68,7 @@ pipeline {
     post {
         success {
             script {
-                def operatorImage = readFile("$WORKSPACE/operator-image.txt").trim()
+                def operatorImage = readFromEnvFile("OPERATOR_IMAGE")
 
                 build job: 'cloud-on-k8s-e2e-tests-custom',
                     parameters: [string(name: 'IMAGE', value: operatorImage)],
@@ -93,4 +96,16 @@ pipeline {
             cleanWs()
         }
     }
+}
+
+def readFromEnvFile(name) {
+    def val = sh(returnStdout: true, script:
+    """
+    awk \'/${name}/{print \$3}\' .env
+    """
+    ).trim()
+
+    sh("echo ${name}=${val}")
+
+    return val
 }
