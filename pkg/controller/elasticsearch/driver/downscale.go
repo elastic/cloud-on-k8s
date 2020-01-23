@@ -106,22 +106,20 @@ func calculateDownscales(
 
 		case expectedReplicas < actualReplicas:
 			// the StatefulSet should be downscaled
-			if canDownscale, reason := checkDownscaleInvariants(state, actualSset); !canDownscale {
+			requestedDeletes := actualReplicas - expectedReplicas
+			allowedDeletes, reason := checkDownscaleInvariants(state, actualSset, requestedDeletes)
+			if allowedDeletes == 0 {
 				ssetLogger(actualSset).V(1).Info("Cannot downscale StatefulSet", "reason", reason)
 				continue
 			}
-			toDelete := actualReplicas - expectedReplicas
-			if label.IsMasterNodeSet(actualSset) {
-				toDelete = 1 // only one removal allowed for masters
-			}
-			toDelete = state.getMaxNodesToRemove(toDelete)
+
 			downscales = append(downscales, ssetDownscale{
 				statefulSet:     actualSset,
 				initialReplicas: actualReplicas,
-				targetReplicas:  actualReplicas - toDelete,
+				targetReplicas:  actualReplicas - allowedDeletes,
 				finalReplicas:   expectedReplicas,
 			})
-			state.recordNodeRemoval(actualSset, toDelete)
+			state.recordNodeRemoval(actualSset, allowedDeletes)
 
 		default:
 			// nothing to do

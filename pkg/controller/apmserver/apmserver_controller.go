@@ -23,7 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -35,7 +34,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"go.elastic.co/apm"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -429,7 +430,7 @@ func (r *ReconcileApmServer) deploymentParams(
 	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	// TODO: also need to hash secret token?
 
-	podSpec.Labels = defaults.SetDefaultLabels(podSpec.Labels, podLabels)
+	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
 		Name:            apmname.Deployment(as.Name),

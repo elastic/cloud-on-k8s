@@ -151,6 +151,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 			},
 			Annotations: map[string]string{
 				"pod-template-annotation-name": "pod-template-annotation-value",
+				"co.elastic.logs/module":       "elasticsearch",
 			},
 		},
 		Spec: corev1.PodSpec{

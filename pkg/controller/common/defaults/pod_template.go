@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 // PodDownwardEnvVars returns default environment variables created from the downward API.
@@ -79,7 +80,13 @@ func (b *PodTemplateBuilder) setDefaults() *PodTemplateBuilder {
 
 // WithLabels sets the given labels, but does not override those that already exist.
 func (b *PodTemplateBuilder) WithLabels(labels map[string]string) *PodTemplateBuilder {
-	b.PodTemplate.Labels = SetDefaultLabels(b.PodTemplate.Labels, labels)
+	b.PodTemplate.Labels = maps.MergePreservingExistingKeys(b.PodTemplate.Labels, labels)
+	return b
+}
+
+// WithAnnotations sets the given annotations, but does not override those that already exist.
+func (b *PodTemplateBuilder) WithAnnotations(annotations map[string]string) *PodTemplateBuilder {
+	b.PodTemplate.Annotations = maps.MergePreservingExistingKeys(b.PodTemplate.Annotations, annotations)
 	return b
 }
 

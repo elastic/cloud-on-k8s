@@ -20,24 +20,25 @@ const (
 	RespectMaxUnavailableInvariant   = "Not removing node to respect maxUnavailable setting"
 )
 
-// checkDownscaleInvariants returns true if the given state state allows downscaling the given StatefulSet.
-// If not, it also returns the reason why.
-func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulSet) (bool, string) {
-	// if removalsAllowed is nil then removals shouldn't be bounded here
-	if state.removalsAllowed != nil && *state.removalsAllowed < 1 {
-		return false, RespectMaxUnavailableInvariant
-	}
-
+// checkDownscaleInvariants returns the number of nodes that can be removed if the given state state allows downscaling
+// the given StatefulSet. If that number is 0, it also returns the reason why.
+func checkDownscaleInvariants(state downscaleState, statefulSet appsv1.StatefulSet, requestedDeletes int32) (int32, string) {
 	if label.IsMasterNodeSet(statefulSet) {
 		if state.masterRemovalInProgress {
-			return false, OneMasterAtATimeInvariant
+			return 0, OneMasterAtATimeInvariant
 		}
 		if state.runningMasters == 1 {
-			return false, AtLeastOneRunningMasterInvariant
+			return 0, AtLeastOneRunningMasterInvariant
 		}
+		requestedDeletes = 1 // only one removal allowed for masters
+	}
+	allowedDeletes := state.getMaxNodesToRemove(requestedDeletes)
+
+	if allowedDeletes == 0 {
+		return 0, RespectMaxUnavailableInvariant
 	}
 
-	return true, ""
+	return allowedDeletes, ""
 }
 
 // downscaleState tracks the state of a downscale to be checked against invariants

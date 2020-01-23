@@ -5,6 +5,7 @@
 package pod
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -39,6 +40,11 @@ var (
 		Limits: map[corev1.ResourceName]resource.Quantity{
 			corev1.ResourceMemory: DefaultMemoryLimits,
 		},
+	}
+
+	// DefaultAnnotations are the default annotations for the Kibana pods
+	DefaultAnnotations = map[string]string{
+		annotation.FilebeatModuleAnnotation: "kibana",
 	}
 )
 
@@ -75,6 +81,7 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.Pod
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
 		WithLabels(labels).
+		WithAnnotations(DefaultAnnotations).
 		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).

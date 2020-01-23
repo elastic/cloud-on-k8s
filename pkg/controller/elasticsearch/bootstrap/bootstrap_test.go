@@ -101,8 +101,8 @@ func TestReconcileClusterUUID1(t *testing.T) {
 				esReachable: true,
 				esClient:    &fakeESClient{uuid: "", err: errors.New("error")},
 			},
-			wantRequeue:    false,
-			wantErr:        true,
+			wantRequeue:    true,
+			wantErr:        false,
 			wantAnnotation: "",
 		},
 		{

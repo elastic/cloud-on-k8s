@@ -503,7 +503,7 @@ If any of the above occurs, the operator generates logs to indicate that upscali
 A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of Pods while the Kubernetes cluster administrator manages Kubernetes nodes.
 Elasticsearch makes sure some indices don't become unavailable.
 
-A default PDB of 1 `maxUnavailable` Pod on the entire cluster is enforced by default.
+A default PDB is enforced by default: it allows one Elasticsearch Pod to be taken down as long as the cluster has a `green` health.
 
 This default can be tweaked in the Elasticsearch specification:
 
@@ -520,13 +520,15 @@ spec:
     count: 3
   podDisruptionBudget:
     spec:
-      maxUnavailable: 2
+      minAvailable: 2
       selector:
         matchLabels:
           elasticsearch.k8s.elastic.co/cluster-name: quickstart
 ----
 
-It can also be explicitly disabled:
+Note that link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/#arbitrary-controllers-and-selectors[`maxUnavailable` cannot be used with an arbitrary label selector], hence the usage of `minAvailable` in this example.
+
+The default PDB can also be explicitly disabled:
 
 [source,yaml,subs="attributes"]
 ----

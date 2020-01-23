@@ -444,6 +444,9 @@ func expectedDeploymentParams() deployment.Params {
 					"kibana.k8s.elastic.co/config-checksum": "c530a02188193a560326ce91e34fc62dcbd5722b45534a3f60957663",
 					"kibana.k8s.elastic.co/version":         "7.0.0",
 				},
+				Annotations: map[string]string{
+					"co.elastic.logs/module": "kibana",
+				},
 			},
 			Spec: corev1.PodSpec{
 				Volumes: []corev1.Volume{
