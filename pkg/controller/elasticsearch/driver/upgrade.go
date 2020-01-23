@@ -62,8 +62,8 @@ func (d *defaultDriver) handleRollingUpgrades(
 
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
-		d,
 		ctx,
+		d,
 		statefulSets,
 		esClient,
 		esState,
@@ -108,8 +108,8 @@ type rollingUpgradeCtx struct {
 }
 
 func newRollingUpgrade(
-	d *defaultDriver,
 	ctx context.Context,
+	d *defaultDriver,
 	statefulSets sset.StatefulSetList,
 	esClient esclient.Client,
 	esState ESState,

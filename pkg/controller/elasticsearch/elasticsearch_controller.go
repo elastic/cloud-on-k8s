@@ -232,14 +232,13 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	span, ctx = apm.StartSpan(ctx, "update_controller_version", "app")
 	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		apm.CaptureError(ctx, err)
-		return reconcile.Result{}, err
+		return reconcile.Result{}, apm.CaptureError(ctx, err)
 	}
 	span.End()
 
 	state := esreconcile.NewState(es)
 	results := r.internalReconcile(ctx, es, state)
-	span, ctx = apm.StartSpan(ctx, "update_status", "app")
+	span, _ = apm.StartSpan(ctx, "update_status", "app")
 	err = r.updateStatus(es, state)
 	if err != nil {
 		if apierrors.IsConflict(err) {

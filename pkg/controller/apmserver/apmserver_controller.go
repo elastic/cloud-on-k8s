@@ -209,8 +209,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	if compatible, err := r.isCompatible(&as); err != nil || !compatible {
-		apm.CaptureError(ctx, err)
-		return reconcile.Result{}, err
+		return reconcile.Result{}, apm.CaptureError(ctx, err)
 	}
 
 	span, _ = apm.StartSpan(ctx, "remove_finalizers", "app")

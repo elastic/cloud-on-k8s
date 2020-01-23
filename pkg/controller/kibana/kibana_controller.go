@@ -180,8 +180,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// update controller version annotation if necessary
 	err = annotation.UpdateControllerVersion(r.Client, &kb, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		apm.CaptureError(ctx, err)
-		return reconcile.Result{}, err
+		return reconcile.Result{}, apm.CaptureError(ctx, err)
 	}
 
 	// main reconciliation logic
