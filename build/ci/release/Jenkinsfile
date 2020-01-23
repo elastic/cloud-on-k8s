@@ -28,9 +28,6 @@ pipeline {
                     }
                 }
                 stage('Upload yaml to S3') {
-                    when {
-                        buildingTag()
-                    }
                     steps {
                         sh 'make -C build/ci yaml-upload'
                     }
