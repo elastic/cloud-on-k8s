@@ -6,61 +6,79 @@
 
 # Script to set environment variables to run CI tasks.
 #
-# Usage: setenv COMMAND
+# Usage: setenv CONTEXT
 #
-#	Command: test or release (test by default)
+#   CONTEXT      test or release (test by default)
+#                Note: the GCLOUD_PROJECT env var must be set for `test`.
 
 set -eu
-
-COMMAND=${1:-"test"} # test or release
 
 REGISTRY=docker.elastic.co
 IMG_NAME=eck-operator
 
-# Variable provided in the CI context
+# Variables that can be provided in a CI context
 WORKSPACE=${WORKSPACE:-$(pwd)}
 TAG_NAME=${TAG_NAME:-""}
 
-# the presence of a tag implies the construction of a release
-if [[ ${TAG_NAME} != "" ]]; then
-    # release build
-    REPOSITORY=eck
-    SNAPSHOT=false
-    VERSION=${TAG_NAME}
-else
-    # nightly build
-    REPOSITORY=eck-snapshots
-    SNAPSHOT=true
-    VERSION=$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
-fi
+reset() {
+    rm -f .env
+}
 
-OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${VERSION}
+setup_vars() {
+    # the presence of the TAG_NAME env var indicates the build of a release
+    if [[ ${TAG_NAME} != "" ]]; then
+        # release build
+        REPOSITORY=eck
+        SNAPSHOT=false
+        VERSION=${TAG_NAME}
+    else
+        # nightly build
+        REPOSITORY=eck-snapshots
+        SNAPSHOT=true
+        VERSION=$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
+    fi
 
-# write the operator image to give a way to the 'release/Jenkinsfile' to trigger e2e tests jobs with
-# the newly built operator docker image
-echo ${OPERATOR_IMAGE} > operator-image.txt
+    OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${VERSION}
+}
 
-# write env vars in an .env file sourced by the root Makefile
-cat >.env <<EOF
-GCLOUD_PROJECT = ${GCLOUD_PROJECT}
-REGISTRY = ${REGISTRY}
-IMG_NAME = ${IMG_NAME}
+add_var() {
+    local key=$1 value=$2
+    echo "$key = $value" >> .env
+}
 
-REPOSITORY = ${REPOSITORY}
-SNAPSHOT = ${SNAPSHOT}
-VERSION = ${VERSION}
+# write env vars in an .env file which is sourced by the root Makefile
+write_env() {
+    local context=$1
 
-OPERATOR_IMAGE = ${OPERATOR_IMAGE}
-EOF
+    # reset
+    > .env
 
-# write release env vars
-case $COMMAND in
-	release)
-cat >>.env <<EOF
+    # add base variables
+    add_var REGISTRY        ${REGISTRY}
+    add_var IMG_NAME        ${IMG_NAME}
+    add_var REPOSITORY      ${REPOSITORY}
+    add_var SNAPSHOT        ${SNAPSHOT}
+    add_var VERSION         ${VERSION}
+    add_var OPERATOR_IMAGE  ${OPERATOR_IMAGE}
 
-ELASTIC_DOCKER_LOGIN = eckadmin
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
-EOF
-	;;
-esac
+    # add specific variables depending the context
+    case $context in
+        test)
+            add_var GCLOUD_PROJECT  ${GCLOUD_PROJECT}
+        ;;
+        release)
+            add_var GO_TAGS                 release
+            add_var ELASTIC_DOCKER_LOGIN    eckadmin
+            add_var "export LICENSE_PUBKEY" /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
+        ;;
+    esac
+}
+
+main() {
+    local context=${1:-"test"} # test or release
+
+    setup_vars
+    write_env $context
+}
+
+main "$@"
