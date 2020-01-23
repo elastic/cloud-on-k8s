@@ -79,7 +79,7 @@ func shouldSetInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, no
 
 // RemoveZen2BootstrapAnnotation removes the initialMasterNodesAnnotation (if set) once zen2 is bootstrapped
 // on the corresponding cluster.
-func RemoveZen2BootstrapAnnotation(k8sClient k8s.Client, es esv1.Elasticsearch, esClient client.Client) (bool, error) {
+func RemoveZen2BootstrapAnnotation(ctx context.Context, k8sClient k8s.Client, es esv1.Elasticsearch, esClient client.Client) (bool, error) {
 	if v, err := version.Parse(es.Spec.Version); err != nil || !versionCompatibleWithZen2(*v) {
 		// we only care about zen2-compatible clusters here
 		return false, err
@@ -90,7 +90,7 @@ func RemoveZen2BootstrapAnnotation(k8sClient k8s.Client, es esv1.Elasticsearch, 
 	}
 	// the cluster was annotated to indicate it is performing a zen2 bootstrap,
 	// let's check if that bootstrap is done so we can remove the annotation
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
 	defer cancel()
 	isBootstrapped, err := esClient.ClusterBootstrappedForZen2(ctx)
 	if err != nil {

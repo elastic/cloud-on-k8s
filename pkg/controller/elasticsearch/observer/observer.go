@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -56,10 +57,12 @@ type Observer struct {
 
 	lastState State
 	mutex     sync.RWMutex
+
+	tracer *apm.Tracer
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation) *Observer {
+func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation, tracer *apm.Tracer) *Observer {
 	observer := Observer{
 		cluster:       cluster,
 		esClient:      esClient,
@@ -69,6 +72,7 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 		stopOnce:      sync.Once{},
 		onObservation: onObservation,
 		mutex:         sync.RWMutex{},
+		tracer:        tracer,
 	}
 
 	log.Info("Creating observer for cluster", "namespace", cluster.Namespace, "es_name", cluster.Name)
@@ -130,6 +134,12 @@ func (o *Observer) retrieveState(ctx context.Context) {
 	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
+
+	if o.tracer != nil {
+		tx := o.tracer.StartTransaction(o.cluster.String(), "elasticsearch_async")
+		defer tx.End()
+		timeoutCtx = apm.ContextWithTransaction(timeoutCtx, tx)
+	}
 
 	newState := RetrieveState(timeoutCtx, o.cluster, o.esClient)
 

@@ -5,12 +5,14 @@
 package kibana
 
 import (
+	"context"
 	"reflect"
 	"sync/atomic"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
@@ -19,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -55,12 +58,17 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	client := k8s.WrapClient(mgr.GetClient())
+	var tracer *apm.Tracer
+	if params.EnableAPM {
+		tracer = commonapm.NewTracer("kibana_controller", log)
+	}
 	return &ReconcileKibana{
 		Client:         client,
 		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
+		tracer:         tracer,
 	}
 }
 
@@ -122,12 +130,16 @@ type ReconcileKibana struct {
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
+
+	tracer *apm.Tracer
 }
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	tx, ctx := commonapm.NewTransaction(r.tracer, request.NamespacedName, "kibana")
+	defer commonapm.EndTransaction(tx)
 
 	// retrieve the kibana object
 	var kb kbv1.Kibana
@@ -168,11 +180,12 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// update controller version annotation if necessary
 	err = annotation.UpdateControllerVersion(r.Client, &kb, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		apm.CaptureError(ctx, err)
 		return reconcile.Result{}, err
 	}
 
 	// main reconciliation logic
-	return r.doReconcile(request, &kb)
+	return r.doReconcile(ctx, request, &kb)
 }
 
 func (r *ReconcileKibana) isCompatible(kb *kbv1.Kibana) (bool, error) {
@@ -185,17 +198,19 @@ func (r *ReconcileKibana) isCompatible(kb *kbv1.Kibana) (bool, error) {
 	return compat, err
 }
 
-func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
+func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
 	driver, err := newDriver(r, r.scheme, r.dynamicWatches, r.recorder, kb)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	state := NewState(request, kb)
-	results := driver.Reconcile(&state, kb, r.params)
+	results := driver.Reconcile(ctx, &state, kb, r.params)
 
 	// update status
+	span, _ := apm.StartSpan(ctx, "update status", "db.k8s")
 	err = r.updateStatus(state)
+	span.End()
 	if err != nil && errors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{Requeue: true}, nil

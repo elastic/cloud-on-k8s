@@ -5,10 +5,12 @@
 package driver
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
 	"time"
 
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -16,6 +18,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -83,6 +86,9 @@ type DefaultDriverParameters struct {
 	// Expectations control some expectations set on resources in the cache, in order to
 	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
 	Expectations *expectations.Expectations
+
+	// Parent context, contains tracing data
+	Context context.Context
 }
 
 // defaultDriver is the default Driver implementation
@@ -110,22 +116,29 @@ var _ commondriver.Interface = &defaultDriver{}
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *defaultDriver) Reconcile() *reconciler.Results {
-	results := &reconciler.Results{}
+	results := reconciler.NewResult(d.Context)
 
 	// garbage collect secrets attached to this cluster that we don't need anymore
+	span, ctx := apm.StartSpan(d.Context, "delete_orphaned_secrets", "app")
 	if err := cleanup.DeleteOrphanedSecrets(d.Client, d.ES); err != nil {
 		return results.WithError(err)
 	}
+	span.End()
 
+	span, _ = apm.StartSpan(d.Context, "reconcile_scripts", "app")
 	if err := configmap.ReconcileScriptsConfigMap(d.Client, d.Scheme(), d.ES); err != nil {
 		return results.WithError(err)
 	}
+	span.End()
 
+	span, _ = apm.StartSpan(d.Context, "reconcile_service", "app")
 	externalService, err := common.ReconcileService(d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
+	span.End()
 
+	span, _ = apm.StartSpan(d.Context, "reconcile_certs", "app")
 	certificateResources, res := certificates.Reconcile(
 		d,
 		d.ES,
@@ -133,14 +146,17 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
 	)
+	span.End()
 	if results.WithResults(res).HasError() {
 		return results
 	}
 
+	span, _ = apm.StartSpan(d.Context, "reconcile_users", "app")
 	internalUsers, err := user.ReconcileUsers(d.Client, d.Scheme(), d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
+	span.End()
 
 	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
 	if err != nil {
@@ -163,7 +179,9 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 			internalUsers.ControllerUser,
 			*min,
 			certificateResources.TrustedHTTPCertificates,
-		))
+			context.Background(), // use a new context as we want to trace independent transactions for the observers
+		),
+		commonapm.TracerFromContext(d.Context))
 
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
@@ -178,6 +196,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		internalUsers.ControllerUser,
 		*min,
 		certificateResources.TrustedHTTPCertificates,
+		d.Context,
 	)
 	defer esClient.Close()
 
@@ -186,6 +205,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
+	span, ctx = apm.StartSpan(d.Context, "reconcile_license", "app")
 	results.Apply(
 		"reconcile-cluster-license",
 		func() (controller.Result, error) {
@@ -194,6 +214,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 			}
 
 			err := license.Reconcile(
+				ctx,
 				d.Client,
 				d.ES,
 				esClient,
@@ -210,13 +231,17 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 			return controller.Result{}, err
 		},
 	)
+	span.End()
 
 	// Compute seed hosts based on current masters with a podIP
+	span, _ = apm.StartSpan(d.Context, "update_seed_hosts", "app")
 	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
+	span.End()
 
 	// setup a keystore with secure settings in an init container, if specified by the user
+	span, _ = apm.StartSpan(d.Context, "update_keystore", "app")
 	keystoreResources, err := keystore.NewResources(
 		d,
 		&d.ES,
@@ -224,12 +249,15 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
 		initcontainer.KeystoreParams,
 	)
+	span.End()
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	requeue, err := bootstrap.ReconcileClusterUUID(d.Client, &d.ES, esClient, esReachable)
+	span, ctx = apm.StartSpan(d.Context, "reconcile_uuid", "app")
+	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
+	span.End()
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -238,7 +266,9 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	res = d.reconcileNodeSpecs(esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
+	span, ctx = apm.StartSpan(d.Context, "reconcile_node_specs", "app")
+	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
+	span.End()
 	results = results.WithResults(res)
 
 	if res.HasError() {
@@ -255,9 +285,10 @@ func (d *defaultDriver) newElasticsearchClient(
 	user user.User,
 	v version.Version,
 	caCerts []*x509.Certificate,
+	ctx context.Context,
 ) esclient.Client {
 	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
+	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts, apm.TransactionFromContext(ctx))
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported

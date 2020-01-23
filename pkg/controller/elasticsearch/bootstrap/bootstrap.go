@@ -30,7 +30,7 @@ func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 
 // ReconcileClusterUUID attempts to set the ClusterUUID annotation on the Elasticsearch resource if not already set.
 // It returns a boolean indicating whether the reconciliation should be re-queued (ES not reachable).
-func ReconcileClusterUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
+func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
 	if AnnotatedForBootstrap(*cluster) {
 		// already annotated, nothing to do.
 		return false, nil
@@ -39,7 +39,7 @@ func ReconcileClusterUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, esC
 		// retry later
 		return true, nil
 	}
-	clusterUUID, err := getClusterUUID(esClient)
+	clusterUUID, err := getClusterUUID(ctx, esClient)
 	if err != nil {
 		return false, err
 	}
@@ -51,8 +51,8 @@ func ReconcileClusterUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, esC
 }
 
 // getClusterUUID retrieves the cluster UUID using the given esClient.
-func getClusterUUID(esClient client.Client) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+func getClusterUUID(ctx context.Context, esClient client.Client) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
 	defer cancel()
 	info, err := esClient.GetClusterInfo(ctx)
 	if err != nil {

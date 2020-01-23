@@ -5,6 +5,7 @@
 package migration
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -122,7 +123,7 @@ func TestIsMigratingData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := IsMigratingData(tt.args.shardLister, tt.args.podName, tt.args.exclusions)
+			got, err := IsMigratingData(context.Background(), tt.args.shardLister, tt.args.podName, tt.args.exclusions)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("IsMigratingData() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -160,7 +161,7 @@ func TestMigrateData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			allocationSetter := fakeAllocationSetter{}
-			err := MigrateData(&allocationSetter, tt.leavingNodes)
+			err := MigrateData(context.Background(), &allocationSetter, tt.leavingNodes)
 			require.NoError(t, err)
 			assert.Contains(t, allocationSetter.value, tt.want)
 		})

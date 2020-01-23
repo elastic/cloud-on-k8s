@@ -5,6 +5,7 @@
 package migration
 
 import (
+	"context"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -63,8 +64,8 @@ func nodeIsMigratingData(nodeName string, shards client.Shards, exclusions map[s
 // IsMigratingData looks only at the presence of shards on a given node
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
-func IsMigratingData(shardLister esclient.ShardLister, podName string, exclusions []string) (bool, error) {
-	shards, err := shardLister.GetShards()
+func IsMigratingData(ctx context.Context, shardLister esclient.ShardLister, podName string, exclusions []string) (bool, error) {
+	shards, err := shardLister.GetShards(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -76,11 +77,11 @@ func IsMigratingData(shardLister esclient.ShardLister, podName string, exclusion
 }
 
 // MigrateData sets allocation filters for the given nodes.
-func MigrateData(allocationSetter esclient.AllocationSetter, leavingNodes []string) error {
+func MigrateData(ctx context.Context, allocationSetter esclient.AllocationSetter, leavingNodes []string) error {
 	exclusions := "none_excluded"
 	if len(leavingNodes) > 0 {
 		exclusions = strings.Join(leavingNodes, ",")
 	}
 	// update allocation exclusions
-	return allocationSetter.ExcludeFromShardAllocation(exclusions)
+	return allocationSetter.ExcludeFromShardAllocation(ctx, exclusions)
 }

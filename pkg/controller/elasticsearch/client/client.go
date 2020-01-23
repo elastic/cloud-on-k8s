@@ -17,6 +17,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"go.elastic.co/apm"
+	"go.elastic.co/apm/module/apmelasticsearch"
 )
 
 const (
@@ -105,7 +107,15 @@ type Client interface {
 // NewElasticsearchClient creates a new client for the target cluster.
 //
 // If dialer is not nil, it will be used to create new TCP connections
-func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, v version.Version, caCerts []*x509.Certificate) Client {
+// If tx is not nil it will be used to trace any requests made by this client
+func NewElasticsearchClient(
+	dialer net.Dialer,
+	esURL string,
+	esUser UserAuth,
+	v version.Version,
+	caCerts []*x509.Certificate,
+	tx *apm.Transaction,
+) Client {
 	certPool := x509.NewCertPool()
 	for _, c := range caCerts {
 		certPool.AddCert(c)
@@ -138,13 +148,15 @@ func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, v 
 	if dialer != nil {
 		transportConfig.DialContext = dialer.DialContext
 	}
+
 	base := &baseClient{
 		Endpoint:  esURL,
 		User:      esUser,
 		caCerts:   caCerts,
 		transport: &transportConfig,
+		tx:        tx,
 		HTTP: &http.Client{
-			Transport: &transportConfig,
+			Transport: apmelasticsearch.WrapRoundTripper(&transportConfig),
 		},
 	}
 	return versioned(base, v)

@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"context"
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -405,7 +406,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				dynamicWatches: tt.fields.dynamicWatches,
 				Parameters:     tt.fields.Parameters,
 			}
-			got, err := r.doReconcile(tt.args.request, tt.as.DeepCopy())
+			got, err := r.doReconcile(context.Background(), tt.args.request, tt.as.DeepCopy())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileApmServer.doReconcile() error = %v, wantErr %v", err, tt.wantErr)
 				return

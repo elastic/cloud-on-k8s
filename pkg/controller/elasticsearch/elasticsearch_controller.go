@@ -5,12 +5,14 @@
 package elasticsearch
 
 import (
+	"context"
 	"fmt"
 	"sync/atomic"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -26,7 +28,7 @@ import (
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-
+	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -60,11 +62,15 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
 	client := k8s.WrapClient(mgr.GetClient())
+	var tracer *apm.Tracer
+	if params.EnableAPM {
+		tracer = commonapm.NewTracer("elasticsearch_controller", log)
+	}
 	return &ReconcileElasticsearch{
-		Client:   client,
-		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetEventRecorderFor(name),
-
+		Client:      client,
+		scheme:      mgr.GetScheme(),
+		recorder:    mgr.GetEventRecorderFor(name),
+		tracer:      tracer,
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
 		dynamicWatches: watches.NewDynamicWatches(),
@@ -158,6 +164,7 @@ type ReconcileElasticsearch struct {
 	operator.Parameters
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
+	tracer   *apm.Tracer
 
 	esObservers *observer.Manager
 
@@ -174,9 +181,12 @@ type ReconcileElasticsearch struct {
 // Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	tx, ctx := commonapm.NewTransaction(r.tracer, request.NamespacedName, "elasticsearch")
+	defer commonapm.EndTransaction(tx)
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// Fetch the Elasticsearch instance
+	span, ctx := apm.StartSpan(ctx, "fetch_resource", "app")
 	es := esv1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &es)
 	if err != nil {
@@ -192,35 +202,44 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+	span.End()
 
 	if common.IsPaused(es.ObjectMeta) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return common.PauseRequeue, nil
 	}
 
+	span, ctx = apm.StartSpan(ctx, "reconcile_compatibility", "app")
 	selector := map[string]string{label.ClusterNameLabelName: es.Name}
 	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 		return reconcile.Result{}, err
 	}
+	span.End()
 	if !compat {
 		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
 		return reconcile.Result{}, nil
 	}
 
+	span, ctx = apm.StartSpan(ctx, "remove_finalizers", "app")
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
 		return reconcile.Result{}, err
 	}
+	span.End()
 
+	span, ctx = apm.StartSpan(ctx, "update_controller_version", "app")
 	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
+		apm.CaptureError(ctx, err)
 		return reconcile.Result{}, err
 	}
+	span.End()
 
 	state := esreconcile.NewState(es)
-	results := r.internalReconcile(es, state)
+	results := r.internalReconcile(ctx, es, state)
+	span, ctx = apm.StartSpan(ctx, "update_status", "app")
 	err = r.updateStatus(es, state)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -229,14 +248,16 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		}
 		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
+	span.End()
 	return results.WithError(err).Aggregate()
 }
 
 func (r *ReconcileElasticsearch) internalReconcile(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) *reconciler.Results {
-	results := &reconciler.Results{}
+	results := reconciler.NewResult(ctx)
 
 	if es.IsMarkedForDeletion() {
 		// resource will be deleted, nothing to reconcile
@@ -244,6 +265,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
+	span, _ := apm.StartSpan(ctx, "validate", "app")
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
 	err := es.ValidateCreate()
 	if err != nil {
@@ -256,6 +278,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		reconcileState.UpdateElasticsearchInvalid(err)
 		return results
 	}
+	span.End()
 
 	err = es.CheckForWarnings()
 	if err != nil {
@@ -288,6 +311,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
+		Context:            ctx,
 	}).Reconcile()
 }
 

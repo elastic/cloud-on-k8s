@@ -5,6 +5,8 @@
 package driver
 
 import (
+	"context"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -29,9 +31,12 @@ type downscaleContext struct {
 	expectations   *expectations.Expectations
 	// ES cluster
 	es esv1.Elasticsearch
+
+	ctx context.Context
 }
 
 func newDownscaleContext(
+	ctx context.Context,
 	k8sClient k8s.Client,
 	esClient esclient.Client,
 	resourcesState reconcile.ResourcesState,
@@ -50,6 +55,7 @@ func newDownscaleContext(
 		reconcileState: reconcileState,
 		es:             es,
 		expectations:   expectations,
+		ctx:            ctx,
 	}
 }
 

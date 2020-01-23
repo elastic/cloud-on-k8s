@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -20,12 +21,13 @@ import (
 )
 
 func Reconcile(
+	ctx context.Context,
 	driver driver.Interface,
 	apm *apmv1.ApmServer,
 	services []corev1.Service,
 	rotation certificates.RotationParams,
-) reconciler.Results {
-	results := reconciler.Results{}
+) *reconciler.Results {
+	results := reconciler.NewResult(ctx)
 	selfSignedCert := apm.Spec.HTTP.TLS.SelfSignedCertificate
 	if selfSignedCert != nil && selfSignedCert.Disabled {
 		return results
@@ -44,7 +46,7 @@ func Reconcile(
 		rotation,
 	)
 	if err != nil {
-		return *results.WithError(err)
+		return results.WithError(err)
 	}
 
 	// handle CA expiry via requeue
@@ -64,7 +66,7 @@ func Reconcile(
 		rotation, // todo correct rotation
 	)
 	if err != nil {
-		return *results.WithError(err)
+		return results.WithError(err)
 	}
 	// reconcile http public cert secret
 	results.WithError(http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), apm, name.APMNamer, httpCertificates))

@@ -13,13 +13,13 @@ import (
 	"strings"
 	"time"
 
-	// allow gcp authentication
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
+	// allow gcp authentication
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -71,6 +71,8 @@ const (
 	WebhookPort              = 9443
 
 	DebugHTTPServerListenAddressFlag = "debug-http-listen"
+
+	EnableAPMFlag = "enable-apm"
 )
 
 var (
@@ -151,6 +153,10 @@ func init() {
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
 	)
+	Cmd.Flags().Bool(
+		EnableAPMFlag,
+		false,
+		"Enable APM tracing. Configure Endpoint, Token per environment variables ")
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -276,6 +282,7 @@ func execute() {
 		os.Exit(1)
 	}
 	log.Info("Setting up controllers", "roles", roles)
+	enableAPM := viper.GetBool(EnableAPMFlag)
 	params := operator.Parameters{
 		Dialer:            dialer,
 		OperatorNamespace: operatorNamespace,
@@ -288,6 +295,7 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
+		EnableAPM: enableAPM,
 	}
 
 	if operator.HasRole(operator.WebhookServer, roles) {

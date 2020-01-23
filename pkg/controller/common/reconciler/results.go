@@ -5,8 +5,10 @@
 package reconciler
 
 import (
+	"context"
 	"time"
 
+	"go.elastic.co/apm"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -38,6 +40,13 @@ type Results struct {
 	currResult reconcile.Result
 	currKind   resultKind
 	errors     []error
+	ctx        context.Context
+}
+
+func NewResult(ctx context.Context) *Results {
+	return &Results{
+		ctx: ctx,
+	}
 }
 
 // HasError returns true if Results contains one or more errors.
@@ -58,6 +67,7 @@ func (r *Results) WithResults(other *Results) *Results {
 func (r *Results) WithError(err error) *Results {
 	if err != nil {
 		r.errors = append(r.errors, err)
+		apm.CaptureError(r.ctx, err)
 	}
 	return r
 }

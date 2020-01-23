@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -229,36 +231,44 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 }
 
 func (d *driver) Reconcile(
+	ctx context.Context,
 	state *State,
 	kb *kbv1.Kibana,
 	params operator.Parameters,
 ) *reconciler.Results {
-	results := reconciler.Results{}
+	results := reconciler.NewResult(ctx)
 	if !association.IsConfiguredIfSet(kb, d.recorder) {
-		return &results
+		return results
 	}
 
+	span, _ := apm.StartSpan(ctx, "reconcile_service", "app")
 	svc, err := common.ReconcileService(d.client, d.scheme, NewService(*kb), kb)
+	span.End()
 	if err != nil {
 		// TODO: consider updating some status here?
 		return results.WithError(err)
 	}
 
+	span, _ = apm.StartSpan(ctx, "reconcile_certs", "app")
 	results.WithResults(kbcerts.Reconcile(d, *kb, []corev1.Service{*svc}, params.CACertRotation))
+	span.End()
 	if results.HasError() {
-		return &results
+		return results
 	}
 
+	span, _ = apm.StartSpan(ctx, "reconcile_settings", "app")
 	kbSettings, err := config.NewConfigSettings(d.client, *kb, d.version)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings, params.OperatorInfo)
+	span.End()
 	if err != nil {
 		return results.WithError(err)
 	}
 
+	span, _ = apm.StartSpan(ctx, "reconcile_deployment", "app")
 	deploymentParams, err := d.deploymentParams(kb)
 	if err != nil {
 		return results.WithError(err)
@@ -266,11 +276,12 @@ func (d *driver) Reconcile(
 
 	expectedDp := deployment.New(deploymentParams)
 	reconciledDp, err := deployment.Reconcile(d.client, d.scheme, expectedDp, kb)
+	span.End()
 	if err != nil {
 		return results.WithError(err)
 	}
 	state.UpdateKibanaState(reconciledDp)
-	return &results
+	return results
 }
 
 func newDriver(

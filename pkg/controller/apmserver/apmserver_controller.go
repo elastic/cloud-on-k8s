@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -33,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -87,12 +90,17 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	client := k8s.WrapClient(mgr.GetClient())
+	var tracer *apm.Tracer
+	if params.EnableAPM {
+		tracer = commonapm.NewTracer("apmserver_controller", log)
+	}
 	return &ReconcileApmServer{
 		Client:         client,
 		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
+		tracer:         tracer,
 	}
 }
 
@@ -152,6 +160,7 @@ type ReconcileApmServer struct {
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
+	tracer    *apm.Tracer
 }
 
 func (r *ReconcileApmServer) K8sClient() k8s.Client {
@@ -176,7 +185,10 @@ var _ driver.Interface = &ReconcileApmServer{}
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	tx, ctx := commonapm.NewTransaction(r.tracer, request.NamespacedName, "apmserver")
+	defer commonapm.EndTransaction(tx)
 
+	span, _ := apm.StartSpan(ctx, "fetch_with_assoc", "app")
 	var as apmv1.ApmServer
 	if err := association.FetchWithAssociation(r.Client, request, &as); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -188,6 +200,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 		return reconcile.Result{}, err
 	}
+	span.End()
 
 	if common.IsPaused(as.ObjectMeta) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
@@ -195,29 +208,36 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	if compatible, err := r.isCompatible(&as); err != nil || !compatible {
+		apm.CaptureError(ctx, err)
 		return reconcile.Result{}, err
 	}
 
+	span, _ = apm.StartSpan(ctx, "remove_finalizers", "app")
 	// Remove any previous finalizer used in ECK v1.0.0-beta1 that we don't need anymore
 	if err := finalizer.RemoveAll(r.Client, &as); err != nil {
 		return reconcile.Result{}, err
 	}
+	span.End()
 
 	if as.IsMarkedForDeletion() {
+		span, _ = apm.StartSpan(ctx, "on_delete", "app")
 		// APM server will be deleted, clean up resources
 		r.onDelete(k8s.ExtractNamespacedName(&as))
+		span.End()
 		return reconcile.Result{}, nil
 	}
 
+	span, _ = apm.StartSpan(ctx, "update_controller_version", "app")
 	if err := annotation.UpdateControllerVersion(r.Client, &as, r.OperatorInfo.BuildInfo.Version); err != nil {
 		return reconcile.Result{}, err
 	}
+	span.End()
 
 	if !association.IsConfiguredIfSet(&as, r.recorder) {
 		return reconcile.Result{}, nil
 	}
 
-	return r.doReconcile(request, &as)
+	return r.doReconcile(ctx, request, &as)
 }
 
 func (r *ReconcileApmServer) isCompatible(as *apmv1.ApmServer) (bool, error) {
@@ -229,19 +249,24 @@ func (r *ReconcileApmServer) isCompatible(as *apmv1.ApmServer) (bool, error) {
 	return compat, err
 }
 
-func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
+func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
 	state := NewState(request, as)
+	span, _ := apm.StartSpan(ctx, "reconcile_service", "app")
 	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(*as), as)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	results := apmcerts.Reconcile(r, as, []corev1.Service{*svc}, r.CACertRotation)
+	span.End()
+	span, ctx = apm.StartSpan(ctx, "reconcile_certs", "app")
+	results := apmcerts.Reconcile(ctx, r, as, []corev1.Service{*svc}, r.CACertRotation)
 	if results.HasError() {
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return res, err
 	}
+	span.End()
 
+	span, _ = apm.StartSpan(ctx, "reconcile_deployment", "app")
 	state, err = r.reconcileApmServerDeployment(state, as)
 	if err != nil {
 		if errors.IsConflict(err) {
@@ -251,15 +276,18 @@ func (r *ReconcileApmServer) doReconcile(request reconcile.Request, as *apmv1.Ap
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
 		return state.Result, err
 	}
+	span.End()
 
 	state.UpdateApmServerExternalService(*svc)
 
 	// update status
+	span, _ = apm.StartSpan(ctx, "update_status", "app")
 	err = r.updateStatus(state)
 	if err != nil && errors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}
+	span.End()
 	res, err := results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
 	return res, err

@@ -5,6 +5,8 @@
 package driver
 
 import (
+	"context"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -52,7 +54,7 @@ func HandleDownscale(
 	if len(leavingNodes) != 0 {
 		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
 	}
-	if err := migration.MigrateData(downscaleCtx.esClient, leavingNodes); err != nil {
+	if err := migration.MigrateData(downscaleCtx.ctx, downscaleCtx.esClient, leavingNodes); err != nil {
 		return results.WithError(err)
 	}
 
@@ -186,7 +188,7 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		migrating, err := migration.IsMigratingData(ctx.shardLister, node, allLeavingNodes)
+		migrating, err := migration.IsMigratingData(ctx.ctx, ctx.shardLister, node, allLeavingNodes)
 		if err != nil {
 			return performableDownscale, err
 		}
@@ -213,6 +215,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 
 	if label.IsMasterNodeSet(downscale.statefulSet) {
 		if err := updateZenSettingsForDownscale(
+			downscaleCtx.ctx,
 			downscaleCtx.k8sClient,
 			downscaleCtx.esClient,
 			downscaleCtx.es,
@@ -238,6 +241,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 // updateZenSettingsForDownscale makes sure zen1 and zen2 settings are updated to account for nodes
 // that will soon be removed.
 func updateZenSettingsForDownscale(
+	ctx context.Context,
 	c k8s.Client,
 	esClient esclient.Client,
 	es esv1.Elasticsearch,
@@ -246,12 +250,12 @@ func updateZenSettingsForDownscale(
 	excludeNodes ...string,
 ) error {
 	// Maybe update zen1 minimum_master_nodes.
-	if err := maybeUpdateZen1ForDownscale(c, esClient, es, reconcileState, actualStatefulSets); err != nil {
+	if err := maybeUpdateZen1ForDownscale(ctx, c, esClient, es, reconcileState, actualStatefulSets); err != nil {
 		return err
 	}
 
 	// Maybe update zen2 settings to exclude leaving master nodes from voting.
-	if err := zen2.AddToVotingConfigExclusions(c, esClient, es, excludeNodes); err != nil {
+	if err := zen2.AddToVotingConfigExclusions(ctx, c, esClient, es, excludeNodes); err != nil {
 		return err
 	}
 	return nil
@@ -259,6 +263,7 @@ func updateZenSettingsForDownscale(
 
 // maybeUpdateZen1ForDownscale updates zen1 minimum master nodes if we are downscaling from 2 to 1 master node.
 func maybeUpdateZen1ForDownscale(
+	ctx context.Context,
 	c k8s.Client,
 	esClient esclient.Client,
 	es esv1.Elasticsearch,
@@ -288,5 +293,5 @@ func maybeUpdateZen1ForDownscale(
 		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1
-	return zen1.UpdateMinimumMasterNodesTo(es, c, esClient, minimumMasterNodes)
+	return zen1.UpdateMinimumMasterNodesTo(ctx, es, c, esClient, minimumMasterNodes)
 }

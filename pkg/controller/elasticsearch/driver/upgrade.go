@@ -22,6 +22,7 @@ import (
 )
 
 func (d *defaultDriver) handleRollingUpgrades(
+	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
 	expectedMaster []string,
@@ -62,6 +63,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	// Maybe upgrade some of the nodes.
 	deletedPods, err := newRollingUpgrade(
 		d,
+		ctx,
 		statefulSets,
 		esClient,
 		esState,
@@ -83,13 +85,14 @@ func (d *defaultDriver) handleRollingUpgrades(
 	}
 
 	// Maybe re-enable shards allocation if upgraded nodes are back into the cluster.
-	res := d.MaybeEnableShardsAllocation(esClient, esState)
+	res := d.MaybeEnableShardsAllocation(ctx, esClient, esState)
 	results.WithResults(res)
 
 	return results
 }
 
 type rollingUpgradeCtx struct {
+	ctx             context.Context
 	client          k8s.Client
 	ES              esv1.Elasticsearch
 	statefulSets    sset.StatefulSetList
@@ -106,6 +109,7 @@ type rollingUpgradeCtx struct {
 
 func newRollingUpgrade(
 	d *defaultDriver,
+	ctx context.Context,
 	statefulSets sset.StatefulSetList,
 	esClient esclient.Client,
 	esState ESState,
@@ -115,6 +119,7 @@ func newRollingUpgrade(
 	healthyPods map[string]corev1.Pod,
 ) rollingUpgradeCtx {
 	return rollingUpgradeCtx{
+		ctx:             ctx,
 		client:          d.Client,
 		ES:              d.ES,
 		statefulSets:    statefulSets,
@@ -219,14 +224,14 @@ func podsToUpgrade(
 	return toUpgrade, nil
 }
 
-func disableShardsAllocation(esClient esclient.Client) error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+func disableShardsAllocation(ctx context.Context, esClient esclient.Client) error {
+	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 	return esClient.DisableReplicaShardsAllocation(ctx)
 }
 
-func doSyncFlush(es esv1.Elasticsearch, esClient esclient.Client) error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+func doSyncFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Client) error {
+	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 	err := esClient.SyncedFlush(ctx)
 	if esclient.IsConflict(err) {
@@ -239,6 +244,7 @@ func doSyncFlush(es esv1.Elasticsearch, esClient esclient.Client) error {
 }
 
 func (d *defaultDriver) MaybeEnableShardsAllocation(
+	ctx context.Context,
 	esClient esclient.Client,
 	esState ESState,
 ) *reconciler.Results {
@@ -280,7 +286,7 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	}
 
 	log.Info("Enabling shards allocation", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 	if err := esClient.EnableShardAllocation(ctx); err != nil {
 		return results.WithError(err)
@@ -297,13 +303,13 @@ func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Cli
 	}
 	if shardsAllocationEnabled {
 		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
-		if err := disableShardsAllocation(esClient); err != nil {
+		if err := disableShardsAllocation(ctx.ctx, esClient); err != nil {
 			return err
 		}
 	}
 
 	// Request a sync flush to optimize indices recovery when the node restarts.
-	if err := doSyncFlush(ctx.ES, esClient); err != nil {
+	if err := doSyncFlush(ctx.ctx, ctx.ES, esClient); err != nil {
 		return err
 	}
 

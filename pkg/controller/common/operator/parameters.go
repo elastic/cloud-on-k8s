@@ -22,4 +22,6 @@ type Parameters struct {
 	CACertRotation certificates.RotationParams
 	// CertRotation defines the rotation params for non-CA certificates.
 	CertRotation certificates.RotationParams
+	// EnableAPM controls whether APM tracing will be attempted.
+	EnableAPM bool
 }
