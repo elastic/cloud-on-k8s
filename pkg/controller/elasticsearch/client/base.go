@@ -58,8 +58,8 @@ func (c *baseClient) equal(c2 *baseClient) bool {
 }
 
 func (c *baseClient) doRequest(context context.Context, request *http.Request) (*http.Response, error) {
-	// set any (long-running) transaction into the context if any
-	if c.tx != nil {
+	// set any (long-running) transaction into the context for convenience if no tracing information is already set
+	if c.tx != nil && apm.TransactionFromContext(context) == nil && apm.SpanFromContext(context) == nil {
 		context = apm.ContextWithTransaction(context, c.tx)
 	}
 	withContext := request.WithContext(context)

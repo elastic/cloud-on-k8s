@@ -156,7 +156,7 @@ func init() {
 	Cmd.Flags().Bool(
 		EnableAPMFlag,
 		false,
-		"Enable APM tracing. Configure Endpoint, Token per environment variables ")
+		"Enable APM tracing. Configure endpoint, token etc per environment variables")
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
