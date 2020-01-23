@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"go.elastic.co/apm"
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -66,7 +66,7 @@ func (r *Results) WithResults(other *Results) *Results {
 // WithError adds an error to the results.
 func (r *Results) WithError(err error) *Results {
 	if err != nil {
-		r.errors = append(r.errors, apm.CaptureError(r.ctx, err))
+		r.errors = append(r.errors, commonapm.CaptureError(r.ctx, err))
 	}
 	return r
 }

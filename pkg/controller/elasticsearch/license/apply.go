@@ -106,7 +106,7 @@ func updateLicense(
 		return pkgerrors.Wrap(err, fmt.Sprintf("failed to update license to %s", desired.Type))
 	}
 	if !response.IsSuccess() {
-		return fmt.Errorf("failed to apply license: %s", response.LicenseStatus)
+		return pkgerrors.Errorf("failed to apply license: %s", response.LicenseStatus)
 	}
 	return nil
 }

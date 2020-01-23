@@ -10,6 +10,7 @@ import (
 	"go.elastic.co/apm"
 )
 
+// NewTracer returns a new APM tracer with the logger in log configured.
 func NewTracer(serviceName string, log logr.Logger) *apm.Tracer {
 	build := about.GetBuildInfo()
 	tracer, err := apm.NewTracer(serviceName, build.Version+"-"+build.Hash)

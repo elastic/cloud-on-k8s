@@ -5,11 +5,10 @@
 package http
 
 import (
-	"fmt"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -40,7 +39,7 @@ func (s CertificatesSecret) Validate() error {
 	// Validate private key
 	key, exist := s.Data[certificates.KeyFileName]
 	if !exist {
-		return fmt.Errorf("can't find private key %s in %s/%s", certificates.KeyFileName, s.Namespace, s.Name)
+		return pkgerrors.Errorf("can't find private key %s in %s/%s", certificates.KeyFileName, s.Namespace, s.Name)
 	}
 	_, err := certificates.ParsePEMPrivateKey(key)
 	if err != nil {
@@ -49,7 +48,7 @@ func (s CertificatesSecret) Validate() error {
 	// Validate host certificate
 	cert, exist := s.Data[certificates.CertFileName]
 	if !exist {
-		return fmt.Errorf("can't find certificate %s in %s/%s", certificates.CertFileName, s.Namespace, s.Name)
+		return pkgerrors.Errorf("can't find certificate %s in %s/%s", certificates.CertFileName, s.Namespace, s.Name)
 	}
 	_, err = certificates.ParsePEMCerts(cert)
 	if err != nil {

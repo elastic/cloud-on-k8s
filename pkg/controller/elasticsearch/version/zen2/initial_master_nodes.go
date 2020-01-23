@@ -6,7 +6,6 @@ package zen2
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -17,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
 )
 
 const (
@@ -48,7 +48,7 @@ func SetupInitialMasterNodes(es esv1.Elasticsearch, k8sClient k8s.Client, nodeSp
 
 	initialMasterNodes := nodeSpecResources.MasterNodesNames()
 	if len(initialMasterNodes) == 0 {
-		return fmt.Errorf("no master node found to compute `cluster.initial_master_nodes`")
+		return pkgerrors.Errorf("no master node found to compute `cluster.initial_master_nodes`")
 	}
 	log.Info(
 		"Setting `cluster.initial_master_nodes`",

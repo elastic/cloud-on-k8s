@@ -13,6 +13,8 @@ import (
 
 type tracer struct{}
 
+// NewTransaction starts a new transaction and sets up a new context with that transaction that also contains the related
+// APM agent's tracer.
 func NewTransaction(t *apm.Tracer, name types.NamespacedName, txType string) (*apm.Transaction, context.Context) {
 	if t == nil {
 		return nil, context.Background() // apm turned off
@@ -24,12 +26,14 @@ func NewTransaction(t *apm.Tracer, name types.NamespacedName, txType string) (*a
 	return tx, context.WithValue(ctx, tracer{}, t)
 }
 
+// EndTransaction nil safe version of APM agents tx.End()
 func EndTransaction(tx *apm.Transaction) {
 	if tx != nil {
 		tx.End()
 	}
 }
 
+// TracerFromContext retrieves an apm.Tracer from the context or nil.
 func TracerFromContext(ctx context.Context) *apm.Tracer {
 	tracer, _ := ctx.Value(tracer{}).(*apm.Tracer)
 	return tracer

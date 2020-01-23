@@ -7,6 +7,7 @@ package reconciler
 import (
 	"fmt"
 
+	pkgerrors "github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -45,17 +46,17 @@ func newAlreadyOwnedError(object metav1.Object, owner metav1.OwnerReference) *Al
 func SetControllerReference(owner, object metav1.Object, scheme *runtime.Scheme) error {
 	ro, ok := owner.(runtime.Object)
 	if !ok {
-		return fmt.Errorf("%T is not a runtime.Object, cannot call SetControllerReference", owner)
+		return pkgerrors.Errorf("%T is not a runtime.Object, cannot call SetControllerReference", owner)
 	}
 
 	ownerNs := owner.GetNamespace()
 	if ownerNs != "" {
 		objNs := object.GetNamespace()
 		if objNs == "" {
-			return fmt.Errorf("cluster-scoped resource must not have a namespace-scoped owner, owner's namespace %s", ownerNs)
+			return pkgerrors.Errorf("cluster-scoped resource must not have a namespace-scoped owner, owner's namespace %s", ownerNs)
 		}
 		if ownerNs != objNs {
-			return fmt.Errorf("cross-namespace owner references are disallowed, owner's namespace %s, obj's namespace %s", owner.GetNamespace(), object.GetNamespace())
+			return pkgerrors.Errorf("cross-namespace owner references are disallowed, owner's namespace %s, obj's namespace %s", owner.GetNamespace(), object.GetNamespace())
 		}
 	}
 

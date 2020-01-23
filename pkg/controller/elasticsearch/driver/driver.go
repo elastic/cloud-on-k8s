@@ -218,6 +218,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 				esClient,
 				observedState.ClusterLicense,
 			)
+			span.End()
 			if err != nil {
 				d.ReconcileState.AddEvent(
 					corev1.EventTypeWarning,
@@ -229,7 +230,6 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 			return controller.Result{}, err
 		},
 	)
-	span.End()
 
 	// Compute seed hosts based on current masters with a podIP
 	span, _ = apm.StartSpan(d.Context, "update_seed_hosts", "app")

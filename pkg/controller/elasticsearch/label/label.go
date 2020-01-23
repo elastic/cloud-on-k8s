@@ -5,8 +5,6 @@
 package label
 
 import (
-	"fmt"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -89,7 +87,7 @@ func IsDataNode(pod corev1.Pod) bool {
 func ExtractVersion(labels map[string]string) (*version.Version, error) {
 	labelValue, ok := labels[VersionLabelName]
 	if !ok {
-		return nil, fmt.Errorf("version label %s is missing", VersionLabelName)
+		return nil, errors.Errorf("version label %s is missing", VersionLabelName)
 	}
 	v, err := version.Parse(labelValue)
 	if err != nil {

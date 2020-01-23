@@ -6,7 +6,6 @@ package elasticsearch
 
 import (
 	"context"
-	"fmt"
 	"sync/atomic"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -28,6 +27,7 @@ import (
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -232,7 +232,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	span, ctx = apm.StartSpan(ctx, "update_controller_version", "app")
 	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		return reconcile.Result{}, apm.CaptureError(ctx, err)
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 	span.End()
 
@@ -295,7 +295,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 	supported := esversion.SupportedVersions(*ver)
 	if supported == nil {
-		return results.WithError(fmt.Errorf("unsupported version: %s", ver))
+		return results.WithError(pkgerrors.Errorf("unsupported version: %s", ver))
 	}
 
 	return driver.NewDefaultDriver(driver.DefaultDriverParameters{

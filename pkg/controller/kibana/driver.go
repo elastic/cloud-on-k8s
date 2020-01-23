@@ -31,6 +31,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -298,7 +299,7 @@ func newDriver(
 	}
 
 	if !ver.IsSameOrAfter(minSupportedVersion) {
-		err := fmt.Errorf("unsupported Kibana version: %s", ver)
+		err := pkgerrors.Errorf("unsupported Kibana version: %s", ver)
 		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
 		return nil, err
 	}

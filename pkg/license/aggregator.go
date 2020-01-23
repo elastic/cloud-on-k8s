@@ -179,7 +179,7 @@ var maxHeapSizeRe = regexp.MustCompile(`-Xmx([0-9]+)([gGmMkK]?)(?:\s.+|$)`)
 func memFromJavaOpts(javaOpts string) (resource.Quantity, error) {
 	match := maxHeapSizeRe.FindStringSubmatch(javaOpts)
 	if len(match) != 3 {
-		return resource.Quantity{}, fmt.Errorf("cannot extract max jvm heap size from %s", javaOpts)
+		return resource.Quantity{}, errors.Errorf("cannot extract max jvm heap size from %s", javaOpts)
 	}
 	value, err := strconv.Atoi(match[1])
 	if err != nil {
@@ -201,7 +201,7 @@ var nodeHeapSizeRe = regexp.MustCompile("--max-old-space-size=([0-9]*)")
 func memFromNodeOptions(nodeOpts string) (resource.Quantity, error) {
 	match := nodeHeapSizeRe.FindStringSubmatch(nodeOpts)
 	if len(match) != 2 {
-		return resource.Quantity{}, fmt.Errorf("cannot extract max node heap size from %s", nodeOpts)
+		return resource.Quantity{}, errors.Errorf("cannot extract max node heap size from %s", nodeOpts)
 	}
 
 	return resource.ParseQuantity(match[1] + "M")
