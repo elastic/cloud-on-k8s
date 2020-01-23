@@ -5,8 +5,14 @@
 # you may not use this file except in compliance with the Elastic License.
 
 # Script to set environment variables to run CI tasks.
+#
+# Usage: setenv COMMAND
+#
+#	Command: test or release (test by default)
 
 set -eu
+
+COMMAND=${1:-"test"} # test or release
 
 REGISTRY=docker.elastic.co
 IMG_NAME=eck-operator
@@ -39,13 +45,22 @@ cat >.env <<EOF
 GCLOUD_PROJECT = ${GCLOUD_PROJECT}
 REGISTRY = ${REGISTRY}
 IMG_NAME = ${IMG_NAME}
+
 REPOSITORY = ${REPOSITORY}
 SNAPSHOT = ${SNAPSHOT}
 VERSION = ${VERSION}
 
 OPERATOR_IMAGE = ${OPERATOR_IMAGE}
+EOF
 
+# write release env vars
+case $COMMAND in
+	release)
+cat >>.env <<EOF
+
+ELASTIC_DOCKER_LOGIN = eckadmin
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
-ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
+	;;
+esac
