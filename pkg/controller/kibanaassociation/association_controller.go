@@ -86,17 +86,12 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
-	var tracer *apm.Tracer
-	if params.EnableAPM {
-		tracer = commonapm.NewTracer("kibana_assoc_controller", log)
-	}
 	return &ReconcileAssociation{
 		Client:     client,
 		scheme:     mgr.GetScheme(),
 		watches:    watches.NewDynamicWatches(),
 		recorder:   mgr.GetEventRecorderFor(name),
 		Parameters: params,
-		tracer:     tracer,
 	}
 }
 
@@ -119,7 +114,6 @@ type ReconcileAssociation struct {
 	recorder record.EventRecorder
 	watches  watches.DynamicWatches
 	operator.Parameters
-	tracer *apm.Tracer
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -136,7 +130,7 @@ func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
 // the Association.Spec
 func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.tracer, request.NamespacedName, "kibana_association")
+	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "kibana_association")
 	defer commonapm.EndTransaction(tx)
 
 	span, _ := apm.StartSpan(ctx, "fetch_association", "app")

@@ -58,17 +58,12 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	client := k8s.WrapClient(mgr.GetClient())
-	var tracer *apm.Tracer
-	if params.EnableAPM {
-		tracer = commonapm.NewTracer("kibana_controller", log)
-	}
 	return &ReconcileKibana{
 		Client:         client,
 		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
-		tracer:         tracer,
 	}
 }
 
@@ -130,15 +125,13 @@ type ReconcileKibana struct {
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
-
-	tracer *apm.Tracer
 }
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.tracer, request.NamespacedName, "kibana")
+	tx, ctx := commonapm.NewTransaction(r.params.Tracer, request.NamespacedName, "kibana")
 	defer commonapm.EndTransaction(tx)
 
 	// retrieve the kibana object

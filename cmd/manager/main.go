@@ -13,8 +13,10 @@ import (
 	"strings"
 	"time"
 
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.elastic.co/apm"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
@@ -282,7 +284,10 @@ func execute() {
 		os.Exit(1)
 	}
 	log.Info("Setting up controllers", "roles", roles)
-	enableAPM := viper.GetBool(EnableAPMFlag)
+	var tracer *apm.Tracer
+	if viper.GetBool(EnableAPMFlag) {
+		tracer = commonapm.NewTracer("elastic-operator", log)
+	}
 	params := operator.Parameters{
 		Dialer:            dialer,
 		OperatorNamespace: operatorNamespace,
@@ -295,7 +300,7 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
-		EnableAPM: enableAPM,
+		Tracer: tracer,
 	}
 
 	if operator.HasRole(operator.WebhookServer, roles) {

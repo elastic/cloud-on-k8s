@@ -91,17 +91,12 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	client := k8s.WrapClient(mgr.GetClient())
-	var tracer *apm.Tracer
-	if params.EnableAPM {
-		tracer = commonapm.NewTracer("apmserver_controller", log)
-	}
 	return &ReconcileApmServer{
 		Client:         client,
 		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
-		tracer:         tracer,
 	}
 }
 
@@ -161,7 +156,6 @@ type ReconcileApmServer struct {
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
-	tracer    *apm.Tracer
 }
 
 func (r *ReconcileApmServer) K8sClient() k8s.Client {
@@ -186,7 +180,7 @@ var _ driver.Interface = &ReconcileApmServer{}
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.tracer, request.NamespacedName, "apmserver")
+	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "apmserver")
 	defer commonapm.EndTransaction(tx)
 
 	span, _ := apm.StartSpan(ctx, "fetch_with_assoc", "app")

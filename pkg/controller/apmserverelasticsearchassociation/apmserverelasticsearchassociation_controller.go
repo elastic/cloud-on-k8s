@@ -67,17 +67,12 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServerElasticsearchAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
-	var tracer *apm.Tracer
-	if params.EnableAPM {
-		tracer = commonapm.NewTracer("apmserver_assoc_controller", log)
-	}
 	return &ReconcileApmServerElasticsearchAssociation{
 		Client:     client,
 		scheme:     mgr.GetScheme(),
 		watches:    watches.NewDynamicWatches(),
 		recorder:   mgr.GetEventRecorderFor(name),
 		Parameters: params,
-		tracer:     tracer,
 	}
 }
 
@@ -127,7 +122,6 @@ type ReconcileApmServerElasticsearchAssociation struct {
 	recorder record.EventRecorder
 	watches  watches.DynamicWatches
 	operator.Parameters
-	tracer *apm.Tracer
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 }
@@ -144,7 +138,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.Namespac
 // and what is in the ApmServerElasticsearchAssociation.Spec
 func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.tracer, request.NamespacedName, "apmserver_assoc")
+	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "apmserver_assoc")
 	defer commonapm.EndTransaction(tx)
 
 	var span *apm.Span
