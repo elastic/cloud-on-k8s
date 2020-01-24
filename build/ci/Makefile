@@ -51,7 +51,7 @@ ci-build-image:
 	( \
 		docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
 		docker login -u eckadmin -p $(DOCKER_PASSWORD) push.docker.elastic.co && \
-		docker push push.$(CI_IMAGE)\
+		docker push push.$(CI_IMAGE) \
 	)
 
 # read AWS creds from Vault for YAML upload to S3
