@@ -168,7 +168,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 
 	// maybe update status
 	result, err := r.updateStatus(ctx, kibana, newStatus)
-	if err != nil || reflect.DeepEqual(result, reconcile.Result{}) {
+	if err != nil || !reflect.DeepEqual(result, reconcile.Result{}) {
 		return result, err
 	}
 	return resultFromStatus(newStatus), err
