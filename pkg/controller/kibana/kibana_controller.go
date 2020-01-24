@@ -212,7 +212,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 }
 
 func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
-	span, _ := apm.StartSpan(ctx, "update_status", "app")
+	span, _ := apm.StartSpan(ctx, "update_status", commonapm.SpanTypeApp)
 	defer span.End()
 
 	current := state.originalKibana

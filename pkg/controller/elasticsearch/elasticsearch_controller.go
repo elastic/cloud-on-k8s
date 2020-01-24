@@ -6,7 +6,6 @@ package elasticsearch
 
 import (
 	"context"
-	"reflect"
 	"sync/atomic"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -181,8 +180,9 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// Fetch the Elasticsearch instance
-	es, err := r.fetchElasticsearch(ctx, request)
-	if err != nil || reflect.DeepEqual(es, esv1.Elasticsearch{}) {
+	var es esv1.Elasticsearch
+	requeue, err := r.fetchElasticsearch(ctx, request, &es)
+	if err != nil || requeue {
 		return reconcile.Result{}, err
 	}
 
@@ -226,11 +226,10 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	return results.WithError(err).Aggregate()
 }
 
-func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request reconcile.Request) (esv1.Elasticsearch, error) {
-	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", "app")
+func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request reconcile.Request, es *esv1.Elasticsearch) (bool, error) {
+	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", commonapm.SpanTypeApp)
 	defer span.End()
-	es := esv1.Elasticsearch{}
-	err := r.Get(request.NamespacedName, &es)
+	err := r.Get(request.NamespacedName, es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -239,12 +238,12 @@ func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return esv1.Elasticsearch{}, nil
+			return true, nil
 		}
 		// Error reading the object - requeue the request.
-		return esv1.Elasticsearch{}, err
+		return true, err
 	}
-	return es, nil
+	return false, nil
 }
 
 func (r *ReconcileElasticsearch) internalReconcile(
@@ -260,7 +259,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	span, _ := apm.StartSpan(ctx, "validate", "app")
+	span, _ := apm.StartSpan(ctx, "validate", commonapm.SpanTypeApp)
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
 	err := es.ValidateCreate()
 	span.End()
@@ -315,7 +314,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	span, _ := apm.StartSpan(ctx, "update_status", "app")
+	span, _ := apm.StartSpan(ctx, "update_status", commonapm.SpanTypeApp)
 	defer span.End()
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {

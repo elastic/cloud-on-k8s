@@ -182,7 +182,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) updateStatus(ctx context.Context, apmServer apmv1.ApmServer, newStatus commonv1.AssociationStatus) error {
-	span, _ := apm.StartSpan(ctx, "update_association", "app")
+	span, _ := apm.StartSpan(ctx, "update_association", commonapm.SpanTypeApp)
 	defer span.End()
 
 	oldStatus := apmServer.Status.Association
@@ -253,23 +253,9 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 	}
 
 	var es esv1.Elasticsearch
-	var span *apm.Span
-	span, ctx = apm.StartSpan(ctx, "get_elasticsearch", "app")
-	err = r.Get(elasticsearchRef.NamespacedName(), &es)
-	span.End()
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, apmServer, events.EventAssociationError,
-			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
-		if apierrors.IsNotFound(err) {
-			// ES is not found, remove any existing backend configuration and retry in a bit.
-			if err := association.RemoveAssociationConf(r.Client, apmServer); err != nil && !errors.IsConflict(err) {
-				log.Error(err, "Failed to remove Elasticsearch output from APMServer object", "namespace", apmServer.Namespace, "name", apmServer.Name)
-				return commonv1.AssociationPending, apm.CaptureError(ctx, err)
-			}
-
-			return commonv1.AssociationPending, nil
-		}
-		return commonv1.AssociationFailed, apm.CaptureError(ctx, err)
+	associationStatus, err := r.getElasticsearch(ctx, apmServer, elasticsearchRef, &es)
+	if associationStatus != "" || err != nil {
+		return associationStatus, err
 	}
 
 	if err := association.ReconcileEsUser(
@@ -288,12 +274,10 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		return commonv1.AssociationPending, commonapm.CaptureError(ctx, err)
 	}
 
-	span, ctx = apm.StartSpan(ctx, "reconcile_es_ca", "app")
-	caSecret, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())
+	caSecret, err := r.reconcileElasticsearchCA(ctx, apmServer, elasticsearchRef.NamespacedName())
 	if err != nil {
 		return commonv1.AssociationPending, commonapm.CaptureError(ctx, err) // maybe not created yet
 	}
-	span.End()
 
 	// construct the expected ES output configuration
 	authSecretRef := association.ClearTextSecretKeySelector(apmServer, apmUserSuffix)
@@ -305,7 +289,42 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		URL:            services.ExternalServiceURL(es),
 	}
 
-	span, ctx = apm.StartSpan(ctx, "update_apm_assoc", "apm")
+	var status commonv1.AssociationStatus
+	status, err = r.updateAssocConf(ctx, expectedAssocConf, apmServer)
+	if err != nil || status != "" {
+		return status, err
+	}
+
+	if err := deleteOrphanedResources(ctx, r, apmServer); err != nil {
+		log.Error(commonapm.CaptureError(ctx, err), "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
+	}
+	return commonv1.AssociationEstablished, nil
+}
+
+func (r *ReconcileApmServerElasticsearchAssociation) getElasticsearch(ctx context.Context, apmServer *apmv1.ApmServer, elasticsearchRef commonv1.ObjectSelector, es *esv1.Elasticsearch) (commonv1.AssociationStatus, error) {
+	span, _ := apm.StartSpan(ctx, "get_elasticsearch", commonapm.SpanTypeApp)
+	defer span.End()
+	err := r.Get(elasticsearchRef.NamespacedName(), es)
+	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, apmServer, events.EventAssociationError,
+			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
+		if apierrors.IsNotFound(err) {
+			// ES is not found, remove any existing backend configuration and retry in a bit.
+			if err := association.RemoveAssociationConf(r.Client, apmServer); err != nil && !errors.IsConflict(err) {
+				log.Error(err, "Failed to remove Elasticsearch output from APMServer object", "namespace", apmServer.Namespace, "name", apmServer.Name)
+				return commonv1.AssociationPending, apm.CaptureError(ctx, err)
+			}
+
+			return commonv1.AssociationPending, nil
+		}
+		return commonv1.AssociationFailed, apm.CaptureError(ctx, err)
+	}
+	return "", nil
+}
+
+func (r *ReconcileApmServerElasticsearchAssociation) updateAssocConf(ctx context.Context, expectedAssocConf *commonv1.AssociationConf, apmServer *apmv1.ApmServer) (commonv1.AssociationStatus, error) {
+	span, spanctx := apm.StartSpan(ctx, "update_apm_assoc", commonapm.SpanTypeApp)
+	defer span.End()
 	if !reflect.DeepEqual(expectedAssocConf, apmServer.AssociationConf()) {
 		log.Info("Updating APMServer spec with Elasticsearch association configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
 		if err := association.UpdateAssociationConf(r.Client, apmServer, expectedAssocConf); err != nil {
@@ -313,23 +332,17 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 				return commonv1.AssociationPending, nil
 			}
 			log.Error(err, "Failed to update APMServer association configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
-			return commonv1.AssociationPending, commonapm.CaptureError(ctx, err)
+			return commonv1.AssociationPending, commonapm.CaptureError(spanctx, err)
 		}
 		apmServer.SetAssociationConf(expectedAssocConf)
 	}
-	span.End()
-
-	span, ctx = apm.StartSpan(ctx, "delete_orphaned_resources", "app")
-	if err := deleteOrphanedResources(r, apmServer); err != nil {
-		log.Error(commonapm.CaptureError(ctx, err), "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
-	}
-	span.End()
-
-	return commonv1.AssociationEstablished, nil
+	return "", nil
 }
 
-func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmv1.ApmServer, es types.NamespacedName) (association.CASecret, error) {
-	apmKey := k8s.ExtractNamespacedName(apm)
+func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ctx context.Context, as *apmv1.ApmServer, es types.NamespacedName) (association.CASecret, error) {
+	span, _ := apm.StartSpan(ctx, "reconcile_es_ca", commonapm.SpanTypeApp)
+	defer span.End()
+	apmKey := k8s.ExtractNamespacedName(as)
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(apmKey),
@@ -339,12 +352,12 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 		return association.CASecret{}, err
 	}
 	// Build the labels applied on the secret
-	labels := labels.NewLabels(apm.Name)
-	labels[AssociationLabelName] = apm.Name
+	labels := labels.NewLabels(as.Name)
+	labels[AssociationLabelName] = as.Name
 	return association.ReconcileCASecret(
 		r.Client,
 		r.scheme,
-		apm,
+		as,
 		es,
 		labels,
 		elasticsearchCASecretSuffix,
@@ -355,18 +368,20 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ap
 // attempts. If a user changes namespace on a vertex of an association the standard reconcile mechanism will not delete the
 // now redundant old user object/secret. This function lists all resources that don't match the current name/namespace
 // combinations and deletes them.
-func deleteOrphanedResources(c k8s.Client, apm *apmv1.ApmServer) error {
+func deleteOrphanedResources(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) error {
+	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", commonapm.SpanTypeApp)
+	defer span.End()
 	var secrets corev1.SecretList
-	ns := client.InNamespace(apm.Namespace)
-	matchLabels := client.MatchingLabels(NewResourceLabels(apm.Name))
+	ns := client.InNamespace(as.Namespace)
+	matchLabels := client.MatchingLabels(NewResourceLabels(as.Name))
 	if err := c.List(&secrets, ns, matchLabels); err != nil {
 		return err
 	}
 
 	for _, s := range secrets.Items {
-		controlledBy := metav1.IsControlledBy(&s, apm)
-		if controlledBy && !apm.Spec.ElasticsearchRef.IsDefined() {
-			log.Info("Deleting secret", "namespace", s.Namespace, "secret_name", s.Name, "as_name", apm.Name)
+		controlledBy := metav1.IsControlledBy(&s, as)
+		if controlledBy && !as.Spec.ElasticsearchRef.IsDefined() {
+			log.Info("Deleting secret", "namespace", s.Namespace, "secret_name", s.Name, "as_name", as.Name)
 			if err := c.Delete(&s); err != nil {
 				return err
 			}

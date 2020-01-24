@@ -97,7 +97,7 @@ func (r *Results) mergeResult(kind resultKind, res reconcile.Result) {
 // Apply applies the output of a reconciliation step to the results. The step outcome is implicitly considered
 // recoverable as we just record the results and continue.
 func (r *Results) Apply(step string, recoverableStep func(context.Context) (reconcile.Result, error)) *Results {
-	span, ctx := apm.StartSpan(r.ctx, step, "app")
+	span, ctx := apm.StartSpan(r.ctx, step, commonapm.SpanTypeApp)
 	defer span.End()
 	result, err := recoverableStep(ctx)
 	if err != nil {

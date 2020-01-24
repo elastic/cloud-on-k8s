@@ -7,6 +7,7 @@ package user
 import (
 	"context"
 
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,7 +82,7 @@ func ReconcileUsers(
 	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 ) (*InternalUsers, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_users", "app")
+	span, _ := apm.StartSpan(ctx, "reconcile_users", commonapm.SpanTypeApp)
 	defer span.End()
 
 	nsn := k8s.ExtractNamespacedName(&es)

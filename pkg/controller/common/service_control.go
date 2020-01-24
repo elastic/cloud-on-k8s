@@ -8,6 +8,7 @@ import (
 	"context"
 	"reflect"
 
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -30,7 +31,7 @@ func ReconcileService(
 	expected *corev1.Service,
 	owner metav1.Object,
 ) (*corev1.Service, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_service", "app")
+	span, _ := apm.StartSpan(ctx, "reconcile_service", commonapm.SpanTypeApp)
 	defer span.End()
 
 	reconciled := &corev1.Service{}

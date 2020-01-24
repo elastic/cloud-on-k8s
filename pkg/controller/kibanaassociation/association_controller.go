@@ -175,7 +175,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 }
 
 func (r *ReconcileAssociation) updateStatus(ctx context.Context, kibana kbv1.Kibana, newStatus commonv1.AssociationStatus) (reconcile.Result, error) {
-	span, _ := apm.StartSpan(ctx, "update_status", "app")
+	span, _ := apm.StartSpan(ctx, "update_status", commonapm.SpanTypeApp)
 	defer span.End()
 	if !reflect.DeepEqual(kibana.Status.AssociationStatus, newStatus) {
 		oldStatus := kibana.Status.AssociationStatus
@@ -298,7 +298,7 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 }
 
 func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expectedESAssoc *commonv1.AssociationConf, kibana *kbv1.Kibana) (commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "update_assoc_conf", "app")
+	span, _ := apm.StartSpan(ctx, "update_assoc_conf", commonapm.SpanTypeApp)
 	defer span.End()
 	if !reflect.DeepEqual(expectedESAssoc, kibana.AssociationConf()) {
 		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
@@ -315,7 +315,7 @@ func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expect
 }
 
 func (r *ReconcileAssociation) getElasticsearch(ctx context.Context, kibana *kbv1.Kibana, esRefKey types.NamespacedName) (esv1.Elasticsearch, commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "get_elasticsearch", "app")
+	span, _ := apm.StartSpan(ctx, "get_elasticsearch", commonapm.SpanTypeApp)
 	defer span.End()
 	var es esv1.Elasticsearch
 	if err := r.Get(esRefKey, &es); err != nil {
@@ -326,7 +326,7 @@ func (r *ReconcileAssociation) getElasticsearch(ctx context.Context, kibana *kbv
 			// - deleted: existing resources will be garbage collected
 			// in any case, since the user explicitly requested a managed association,
 			// remove connection details if they are set
-			span, ctx = apm.StartSpan(ctx, "remove_assoc_conf", "app")
+			span, ctx = apm.StartSpan(ctx, "remove_assoc_conf", commonapm.SpanTypeApp)
 			if err := association.RemoveAssociationConf(r.Client, kibana); err != nil && !errors.IsConflict(err) {
 				log.Error(err, "Failed to remove Elasticsearch configuration from Kibana object",
 					"namespace", kibana.Namespace, "kibana_name", kibana.Name)
@@ -342,7 +342,7 @@ func (r *ReconcileAssociation) getElasticsearch(ctx context.Context, kibana *kbv
 }
 
 func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kibana *kbv1.Kibana, es types.NamespacedName) (association.CASecret, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_es_ca", "app")
+	span, _ := apm.StartSpan(ctx, "reconcile_es_ca", commonapm.SpanTypeApp)
 	defer span.End()
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// watch ES CA secret to reconcile on any change
@@ -369,7 +369,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kib
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
 // attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
 func deleteOrphanedResources(ctx context.Context, c k8s.Client, kibana *kbv1.Kibana) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", "app")
+	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", commonapm.SpanTypeApp)
 	defer span.End()
 
 	var secrets corev1.SecretList

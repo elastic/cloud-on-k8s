@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,7 +40,7 @@ func IsTooYoungForGC(object metav1.Object) bool {
 
 // DeleteOrphanedSecrets cleans up secrets that are not needed anymore for the given es cluster.
 func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_secrets", "app")
+	span, _ := apm.StartSpan(ctx, "delete_orphaned_secrets", commonapm.SpanTypeApp)
 	defer span.End()
 	var secrets corev1.SecretList
 	ns := client.InNamespace(es.Namespace)

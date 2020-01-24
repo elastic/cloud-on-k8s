@@ -11,6 +11,7 @@ import (
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -263,7 +264,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	span, _ := apm.StartSpan(ctx, "reconcile_deployment", "app")
+	span, _ := apm.StartSpan(ctx, "reconcile_deployment", commonapm.SpanTypeApp)
 	defer span.End()
 	deploymentParams, err := d.deploymentParams(kb)
 	if err != nil {

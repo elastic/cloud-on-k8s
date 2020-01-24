@@ -425,7 +425,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	state State,
 	as *apmv1.ApmServer,
 ) (State, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_deployment", "app")
+	span, _ := apm.StartSpan(ctx, "reconcile_deployment", commonapm.SpanTypeApp)
 	defer span.End()
 
 	reconciledApmServerSecret, err := r.reconcileApmServerSecret(as)
@@ -474,7 +474,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 }
 
 func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) error {
-	span, _ := apm.StartSpan(ctx, "update_status", "app")
+	span, _ := apm.StartSpan(ctx, "update_status", commonapm.SpanTypeApp)
 	defer span.End()
 
 	current := state.originalApmServer

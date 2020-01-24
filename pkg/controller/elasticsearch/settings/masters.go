@@ -13,6 +13,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
@@ -42,7 +43,7 @@ func UpdateSeedHostsConfigMap(
 	es esv1.Elasticsearch,
 	pods []corev1.Pod,
 ) error {
-	span, _ := apm.StartSpan(ctx, "update_seed_hosts", "app")
+	span, _ := apm.StartSpan(ctx, "update_seed_hosts", commonapm.SpanTypeApp)
 	defer span.End()
 
 	// Get the masters from the pods

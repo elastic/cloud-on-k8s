@@ -10,6 +10,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -44,7 +45,7 @@ type CanonicalConfig struct {
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
 func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version) (CanonicalConfig, error) {
-	span, _ := apm.StartSpan(ctx, "new_config_settings", "app")
+	span, _ := apm.StartSpan(ctx, "new_config_settings", commonapm.SpanTypeApp)
 	defer span.End()
 
 	currentConfig, err := getExistingConfig(client, kb)

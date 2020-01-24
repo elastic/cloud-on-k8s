@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"unsafe"
 
+	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -23,7 +24,7 @@ import (
 
 // FetchWithAssociation retrieves an object and extracts its association configuration.
 func FetchWithAssociation(ctx context.Context, client k8s.Client, request reconcile.Request, obj commonv1.Associator) error {
-	span, _ := apm.StartSpan(ctx, "fetch_association", "app")
+	span, _ := apm.StartSpan(ctx, "fetch_association", commonapm.SpanTypeApp)
 	defer span.End()
 	if err := client.Get(request.NamespacedName, obj); err != nil {
 		return err
