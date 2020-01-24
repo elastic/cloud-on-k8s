@@ -183,7 +183,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	var es esv1.Elasticsearch
 	requeue, err := r.fetchElasticsearch(ctx, request, &es)
 	if err != nil || requeue {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	if common.IsPaused(es.ObjectMeta) {
@@ -195,7 +195,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	if !compat {
@@ -205,7 +205,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	err = annotation.UpdateControllerVersion(ctx, r.Client, &es, r.OperatorInfo.BuildInfo.Version)

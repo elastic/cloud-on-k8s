@@ -144,7 +144,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 			})
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	// skip reconciliation if paused
@@ -156,12 +156,12 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// check for compatibility with the operator version
 	compatible, err := r.isCompatible(ctx, &kb)
 	if err != nil || !compatible {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(r.Client, &kb); err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	// Kibana will be deleted nothing to do other than remove the watches
@@ -186,14 +186,13 @@ func (r *ReconcileKibana) isCompatible(ctx context.Context, kb *kbv1.Kibana) (bo
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
-
 	return compat, err
 }
 
 func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
 	driver, err := newDriver(r, r.scheme, r.dynamicWatches, r.recorder, kb)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	state := NewState(request, kb)

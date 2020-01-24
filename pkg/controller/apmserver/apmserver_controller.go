@@ -192,7 +192,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 			})
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	if common.IsPaused(as.ObjectMeta) {
@@ -216,7 +216,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &as, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	if !association.IsConfiguredIfSet(&as, r.recorder) {
@@ -255,7 +255,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 			return reconcile.Result{Requeue: true}, nil
 		}
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Deployment reconciliation error: %v", err)
-		return state.Result, err
+		return state.Result, commonapm.CaptureError(ctx, err)
 	}
 
 	state.UpdateApmServerExternalService(*svc)

@@ -165,7 +165,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	}
 
 	if compatible, err := r.isCompatible(ctx, &apmServer); err != nil || !compatible {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &apmServer, r.OperatorInfo.BuildInfo.Version); err != nil {
@@ -176,9 +176,9 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	// we want to attempt a status update even in the presence of errors
 	err2 := r.updateStatus(ctx, apmServer, newStatus)
 	if err2 != nil {
-		return defaultRequeue, err2
+		return defaultRequeue, commonapm.CaptureError(ctx, err2)
 	}
-	return resultFromStatus(newStatus), err
+	return resultFromStatus(newStatus), commonapm.CaptureError(ctx, err)
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) updateStatus(ctx context.Context, apmServer apmv1.ApmServer, newStatus commonv1.AssociationStatus) error {
@@ -189,7 +189,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) updateStatus(ctx context.Co
 	if !reflect.DeepEqual(oldStatus, newStatus) {
 		apmServer.Status.Association = newStatus
 		if err := r.Status().Update(&apmServer); err != nil {
-			return commonapm.CaptureError(ctx, err)
+			return err
 		}
 		r.recorder.AnnotatedEventf(&apmServer,
 			annotation.ForAssociationStatusChange(oldStatus, newStatus),
@@ -271,12 +271,12 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		apmUserSuffix,
 		es,
 	); err != nil { // TODO distinguish conflicts and non-recoverable errors here
-		return commonv1.AssociationPending, commonapm.CaptureError(ctx, err)
+		return commonv1.AssociationPending, err
 	}
 
 	caSecret, err := r.reconcileElasticsearchCA(ctx, apmServer, elasticsearchRef.NamespacedName())
 	if err != nil {
-		return commonv1.AssociationPending, commonapm.CaptureError(ctx, err) // maybe not created yet
+		return commonv1.AssociationPending, err // maybe not created yet
 	}
 
 	// construct the expected ES output configuration
@@ -296,7 +296,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 	}
 
 	if err := deleteOrphanedResources(ctx, r, apmServer); err != nil {
-		log.Error(commonapm.CaptureError(ctx, err), "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
+		log.Error(err, "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
 	}
 	return commonv1.AssociationEstablished, nil
 }
