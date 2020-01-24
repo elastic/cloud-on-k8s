@@ -106,7 +106,6 @@ type Client interface {
 // NewElasticsearchClient creates a new client for the target cluster.
 //
 // If dialer is not nil, it will be used to create new TCP connections
-// If tx is not nil it will be used to trace any requests made by this client
 func NewElasticsearchClient(
 	dialer net.Dialer,
 	esURL string,
