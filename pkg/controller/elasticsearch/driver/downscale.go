@@ -54,7 +54,7 @@ func HandleDownscale(
 	if len(leavingNodes) != 0 {
 		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
 	}
-	if err := migration.MigrateData(downscaleCtx.ctx, downscaleCtx.esClient, leavingNodes); err != nil {
+	if err := migration.MigrateData(downscaleCtx.parentCtx, downscaleCtx.esClient, leavingNodes); err != nil {
 		return results.WithError(err)
 	}
 
@@ -186,7 +186,7 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		migrating, err := migration.IsMigratingData(ctx.ctx, ctx.shardLister, node, allLeavingNodes)
+		migrating, err := migration.IsMigratingData(ctx.parentCtx, ctx.shardLister, node, allLeavingNodes)
 		if err != nil {
 			return performableDownscale, err
 		}
@@ -213,7 +213,7 @@ func doDownscale(downscaleCtx downscaleContext, downscale ssetDownscale, actualS
 
 	if label.IsMasterNodeSet(downscale.statefulSet) {
 		if err := updateZenSettingsForDownscale(
-			downscaleCtx.ctx,
+			downscaleCtx.parentCtx,
 			downscaleCtx.k8sClient,
 			downscaleCtx.esClient,
 			downscaleCtx.es,

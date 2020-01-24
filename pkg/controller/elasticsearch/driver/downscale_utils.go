@@ -32,7 +32,7 @@ type downscaleContext struct {
 	// ES cluster
 	es esv1.Elasticsearch
 
-	ctx context.Context
+	parentCtx context.Context
 }
 
 func newDownscaleContext(
@@ -55,7 +55,7 @@ func newDownscaleContext(
 		reconcileState: reconcileState,
 		es:             es,
 		expectations:   expectations,
-		ctx:            ctx,
+		parentCtx:      ctx,
 	}
 }
 

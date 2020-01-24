@@ -21,8 +21,7 @@ func NewTransaction(t *apm.Tracer, name types.NamespacedName, txType string) (*a
 	}
 	tx := t.StartTransaction(name.String(), txType)
 	ctx := apm.ContextWithTransaction(context.Background(), tx)
-	// also add the tracer as we need to start async transactions deep inside the call hierarchy
-	// DISCUSS: alternative would be to explicitly pass the tracer down the call chain as an explicit arg
+	// also add the tracer as we need to start new transactions deep inside the call hierarchy e.g. for Elasticsearch observers
 	return tx, context.WithValue(ctx, tracer{}, t)
 }
 

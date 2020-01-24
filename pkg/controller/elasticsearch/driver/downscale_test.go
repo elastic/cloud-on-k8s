@@ -154,7 +154,7 @@ func TestHandleDownscale(t *testing.T) {
 				Namespace: "ns",
 			},
 		},
-		ctx: context.Background(),
+		parentCtx: context.Background(),
 	}
 
 	// request master nodes downscale from 3 to 1 replicas
@@ -873,7 +873,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,
-				ctx:            context.Background(),
+				parentCtx:      context.Background(),
 			}
 			// do the downscale
 			err := doDownscale(downscaleCtx, tt.downscale, sset.StatefulSetList{ssetMasters, ssetData})
@@ -972,7 +972,7 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 				reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
 				esClient:       esClient,
 				es:             es,
-				ctx:            context.Background(),
+				parentCtx:      context.Background(),
 			}
 			// do the downscale
 			err := doDownscale(downscaleCtx, tt.downscale, tt.statefulSets)

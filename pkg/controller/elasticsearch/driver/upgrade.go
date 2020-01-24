@@ -92,7 +92,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 }
 
 type rollingUpgradeCtx struct {
-	ctx             context.Context
+	parentCtx       context.Context
 	client          k8s.Client
 	ES              esv1.Elasticsearch
 	statefulSets    sset.StatefulSetList
@@ -119,7 +119,7 @@ func newRollingUpgrade(
 	healthyPods map[string]corev1.Pod,
 ) rollingUpgradeCtx {
 	return rollingUpgradeCtx{
-		ctx:             ctx,
+		parentCtx:       ctx,
 		client:          d.Client,
 		ES:              d.ES,
 		statefulSets:    statefulSets,
@@ -303,13 +303,13 @@ func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Cli
 	}
 	if shardsAllocationEnabled {
 		log.Info("Disabling shards allocation", "es_name", ctx.ES.Name, "namespace", ctx.ES.Namespace)
-		if err := disableShardsAllocation(ctx.ctx, esClient); err != nil {
+		if err := disableShardsAllocation(ctx.parentCtx, esClient); err != nil {
 			return err
 		}
 	}
 
 	// Request a sync flush to optimize indices recovery when the node restarts.
-	if err := doSyncFlush(ctx.ctx, ctx.ES, esClient); err != nil {
+	if err := doSyncFlush(ctx.parentCtx, ctx.ES, esClient); err != nil {
 		return err
 	}
 
