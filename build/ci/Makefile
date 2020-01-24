@@ -7,6 +7,7 @@
 ROOT_DIR = $(CURDIR)/../..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 ALL_IN_ONE_OUTPUT_FILE ?= config/all-in-one.yaml
+S3_ECK_DIR ?= s3://download.elasticsearch.org/downloads/eck
 
 # This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
 VAULT_CLIENT_TIMEOUT = 120
@@ -50,15 +51,20 @@ ci-build-image:
 		-p $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin) \
 		push.docker.elastic.co && docker push push.$(CI_IMAGE))
 
-VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
-AWS_ACCESS_KEY_ID = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
-AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS))
-# reads AWS creds for yaml upload to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
+# read AWS creds from Vault for YAML upload to S3
+yaml-upload: VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
+yaml-upload: AWS_ACCESS_KEY_ID = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
+yaml-upload: AWS_SECRET_ACCESS_KEY = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS))
+yaml-upload: YAML_SRC = "$(GO_MOUNT_PATH)/$(ALL_IN_ONE_OUTPUT_FILE)"
+yaml-upload: YAML_DST = "$(S3_ECK_DIR)/$(VERSION)/all-in-one.yaml"
 yaml-upload:
+ifndef VERSION
+	$(error VERSION not set to upload YAML to S3)
+endif
 	@ $(MAKE) \
 		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
-		DOCKER_CMD="aws s3 cp $(GO_MOUNT_PATH)/$(ALL_IN_ONE_OUTPUT_FILE) \
-		s3://download.elasticsearch.org/downloads/eck/$(VERSION)/all-in-one.yaml" ci-internal
+		DOCKER_CMD="aws s3 ls $(YAML_DST) && echo OK: $(YAML_DST) already uploaded || aws s3 cp $(YAML_SRC) $(YAML_DST)" \
+		ci-internal
 
 # reads Elastic public key from Vault into license.key
 get-elastic-public-key:

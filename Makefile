@@ -180,7 +180,9 @@ go-debug:
 
 build-operator-image:
 ifeq ($(SKIP_DOCKER_COMMAND), false)
-	$(MAKE) docker-build docker-push
+	@ docker pull $(OPERATOR_IMAGE) \
+	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
+	|| $(MAKE) docker-build docker-push
 endif
 
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
@@ -414,12 +416,8 @@ ci-e2e: e2e-compile run-deployer install-crds apply-psp e2e
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
-check-image-nonexistence:
-	@ docker pull $(OPERATOR_IMAGE) \
-		&& { echo "Error: image $(OPERATOR_IMAGE) already exists"; exit 1; } \
-		|| echo "Success: image $(OPERATOR_IMAGE) does not exist"
 
-ci-release: check-image-nonexistence clean ci-check build-operator-image
+ci-release: clean ci-check generate-all-in-one build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################
