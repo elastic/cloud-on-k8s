@@ -5,6 +5,9 @@
 package configmap
 
 import (
+	"context"
+
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,7 +34,10 @@ func NewConfigMapWithData(es types.NamespacedName, data map[string]string) corev
 
 // ReconcileScriptsConfigMap reconciles a configmap containing scripts used by
 // init containers and readiness probe.
-func ReconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es esv1.Elasticsearch) error {
+func ReconcileScriptsConfigMap(ctx context.Context, c k8s.Client, scheme *runtime.Scheme, es esv1.Elasticsearch) error {
+	span, _ := apm.StartSpan(ctx, "reconcile_scripts", "app")
+	defer span.End()
+
 	fsScript, err := initcontainer.RenderPrepareFsScript()
 	if err != nil {
 		return err

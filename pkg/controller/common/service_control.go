@@ -5,12 +5,14 @@
 package common
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"go.elastic.co/apm"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,11 +24,15 @@ import (
 var log = logf.Log.WithName("common")
 
 func ReconcileService(
+	ctx context.Context,
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	expected *corev1.Service,
 	owner metav1.Object,
 ) (*corev1.Service, error) {
+	span, _ := apm.StartSpan(ctx, "reconcile_service", "app")
+	defer span.End()
+
 	reconciled := &corev1.Service{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,

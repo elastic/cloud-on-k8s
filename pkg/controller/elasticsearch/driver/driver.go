@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"time"
 
-	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -119,44 +118,35 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	results := reconciler.NewResult(d.Context)
 
 	// garbage collect secrets attached to this cluster that we don't need anymore
-	span, ctx := apm.StartSpan(d.Context, "delete_orphaned_secrets", "app")
-	if err := cleanup.DeleteOrphanedSecrets(d.Client, d.ES); err != nil {
+	if err := cleanup.DeleteOrphanedSecrets(d.Context, d.Client, d.ES); err != nil {
 		return results.WithError(err)
 	}
-	span.End()
 
-	span, _ = apm.StartSpan(d.Context, "reconcile_scripts", "app")
-	if err := configmap.ReconcileScriptsConfigMap(d.Client, d.Scheme(), d.ES); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(d.Context, d.Client, d.Scheme(), d.ES); err != nil {
 		return results.WithError(err)
 	}
-	span.End()
 
-	span, _ = apm.StartSpan(d.Context, "reconcile_service", "app")
-	externalService, err := common.ReconcileService(d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
+	externalService, err := common.ReconcileService(d.Context, d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
-	span.End()
 
-	span, _ = apm.StartSpan(d.Context, "reconcile_certs", "app")
 	certificateResources, res := certificates.Reconcile(
+		d.Context,
 		d,
 		d.ES,
 		[]corev1.Service{*externalService},
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
 	)
-	span.End()
 	if results.WithResults(res).HasError() {
 		return results
 	}
 
-	span, _ = apm.StartSpan(d.Context, "reconcile_users", "app")
-	internalUsers, err := user.ReconcileUsers(d.Client, d.Scheme(), d.ES)
+	internalUsers, err := user.ReconcileUsers(d.Context, d.Client, d.Scheme(), d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
-	span.End()
 
 	resourcesState, err := reconcile.NewResourcesStateFromAPI(d.Client, d.ES)
 	if err != nil {
@@ -203,10 +193,9 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	span, ctx = apm.StartSpan(d.Context, "reconcile_license", "app")
 	results.Apply(
 		"reconcile-cluster-license",
-		func() (controller.Result, error) {
+		func(ctx context.Context) (controller.Result, error) {
 			if !esReachable {
 				return defaultRequeue, nil
 			}
@@ -218,7 +207,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 				esClient,
 				observedState.ClusterLicense,
 			)
-			span.End()
+
 			if err != nil {
 				d.ReconcileState.AddEvent(
 					corev1.EventTypeWarning,
@@ -232,14 +221,11 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	)
 
 	// Compute seed hosts based on current masters with a podIP
-	span, _ = apm.StartSpan(d.Context, "update_seed_hosts", "app")
-	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(d.Context, d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
-	span.End()
 
 	// setup a keystore with secure settings in an init container, if specified by the user
-	span, _ = apm.StartSpan(d.Context, "update_keystore", "app")
 	keystoreResources, err := keystore.NewResources(
 		d,
 		&d.ES,
@@ -247,15 +233,12 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
 		initcontainer.KeystoreParams,
 	)
-	span.End()
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	span, ctx = apm.StartSpan(d.Context, "reconcile_uuid", "app")
-	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
-	span.End()
+	requeue, err := bootstrap.ReconcileClusterUUID(d.Context, d.Client, &d.ES, esClient, esReachable)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -264,9 +247,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	span, ctx = apm.StartSpan(d.Context, "reconcile_node_specs", "app")
-	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
-	span.End()
+	res = d.reconcileNodeSpecs(d.Context, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
 	results = results.WithResults(res)
 
 	if res.HasError() {

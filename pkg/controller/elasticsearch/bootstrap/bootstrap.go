@@ -8,6 +8,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 
 	"context"
 
@@ -31,6 +32,8 @@ func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 // ReconcileClusterUUID attempts to set the ClusterUUID annotation on the Elasticsearch resource if not already set.
 // It returns a boolean indicating whether the reconciliation should be re-queued (ES not reachable).
 func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
+	span, spanctx := apm.StartSpan(ctx, "reconcile_cluster_uuid", "app")
+	defer span.End()
 	if AnnotatedForBootstrap(*cluster) {
 		// already annotated, nothing to do.
 		return false, nil
@@ -39,7 +42,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 		// retry later
 		return true, nil
 	}
-	clusterUUID, err := getClusterUUID(ctx, esClient)
+	clusterUUID, err := getClusterUUID(spanctx, esClient)
 	if err != nil {
 		// There was an error while retrieving the UUID of the Elasticsearch cluster.
 		// For example, it could be the case with ES 6.x if the cluster does not have a master yet, in this case an

@@ -5,6 +5,7 @@
 package config
 
 import (
+	"context"
 	"path"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -18,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/go-ucfg"
 	"github.com/pkg/errors"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -41,7 +43,10 @@ type CanonicalConfig struct {
 }
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(client k8s.Client, kb kbv1.Kibana, v version.Version) (CanonicalConfig, error) {
+func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v version.Version) (CanonicalConfig, error) {
+	span, _ := apm.StartSpan(ctx, "new_config_settings", "app")
+	defer span.End()
+
 	currentConfig, err := getExistingConfig(client, kb)
 	if err != nil {
 		return CanonicalConfig{}, err

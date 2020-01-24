@@ -6,6 +6,7 @@ package elasticsearch
 
 import (
 	"context"
+	"reflect"
 	"sync/atomic"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -180,7 +181,54 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
 
 	// Fetch the Elasticsearch instance
-	span, ctx := apm.StartSpan(ctx, "fetch_resource", "app")
+	es, err := r.fetchElasticsearch(ctx, request)
+	if err != nil || reflect.DeepEqual(es, esv1.Elasticsearch{}) {
+		return reconcile.Result{}, err
+	}
+
+	if common.IsPaused(es.ObjectMeta) {
+		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
+		return common.PauseRequeue, nil
+	}
+
+	selector := map[string]string{label.ClusterNameLabelName: es.Name}
+	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
+		return reconcile.Result{}, err
+	}
+
+	if !compat {
+		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
+		return reconcile.Result{}, nil
+	}
+
+	// Remove any previous Finalizers
+	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	err = annotation.UpdateControllerVersion(ctx, r.Client, &es, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+	}
+
+	state := esreconcile.NewState(es)
+	results := r.internalReconcile(ctx, es, state)
+	err = r.updateStatus(ctx, es, state)
+	if err != nil {
+		if apierrors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
+			return reconcile.Result{Requeue: true}, nil
+		}
+		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
+	}
+	return results.WithError(err).Aggregate()
+}
+
+func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request reconcile.Request) (esv1.Elasticsearch, error) {
+	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", "app")
+	defer span.End()
 	es := esv1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &es)
 	if err != nil {
@@ -191,58 +239,12 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 				Namespace: request.Namespace,
 				Name:      request.Name,
 			})
-			return reconcile.Result{}, nil
+			return esv1.Elasticsearch{}, nil
 		}
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		return esv1.Elasticsearch{}, err
 	}
-	span.End()
-
-	if common.IsPaused(es.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
-		return common.PauseRequeue, nil
-	}
-
-	span, ctx = apm.StartSpan(ctx, "reconcile_compatibility", "app")
-	selector := map[string]string{label.ClusterNameLabelName: es.Name}
-	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-		return reconcile.Result{}, err
-	}
-	span.End()
-	if !compat {
-		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
-		return reconcile.Result{}, nil
-	}
-
-	span, ctx = apm.StartSpan(ctx, "remove_finalizers", "app")
-	// Remove any previous Finalizers
-	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
-		return reconcile.Result{}, err
-	}
-	span.End()
-
-	span, ctx = apm.StartSpan(ctx, "update_controller_version", "app")
-	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
-	if err != nil {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
-	}
-	span.End()
-
-	state := esreconcile.NewState(es)
-	results := r.internalReconcile(ctx, es, state)
-	span, _ = apm.StartSpan(ctx, "update_status", "app")
-	err = r.updateStatus(es, state)
-	if err != nil {
-		if apierrors.IsConflict(err) {
-			log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
-			return reconcile.Result{Requeue: true}, nil
-		}
-		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventReconciliationError, "Reconciliation error: %v", err)
-	}
-	span.End()
-	return results.WithError(err).Aggregate()
+	return es, nil
 }
 
 func (r *ReconcileElasticsearch) internalReconcile(
@@ -261,6 +263,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	span, _ := apm.StartSpan(ctx, "validate", "app")
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
 	err := es.ValidateCreate()
+	span.End()
 	if err != nil {
 		log.Error(
 			err,
@@ -271,7 +274,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		reconcileState.UpdateElasticsearchInvalid(err)
 		return results
 	}
-	span.End()
 
 	err = es.CheckForWarnings()
 	if err != nil {
@@ -309,9 +311,12 @@ func (r *ReconcileElasticsearch) internalReconcile(
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
+	span, _ := apm.StartSpan(ctx, "update_status", "app")
+	defer span.End()
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)

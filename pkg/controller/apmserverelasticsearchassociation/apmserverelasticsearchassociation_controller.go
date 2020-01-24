@@ -138,13 +138,11 @@ func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.Namespac
 // and what is in the ApmServerElasticsearchAssociation.Spec
 func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "apmserver_assoc")
+	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "apm_association")
 	defer commonapm.EndTransaction(tx)
 
-	var span *apm.Span
-	span, ctx = apm.StartSpan(ctx, "fetch_assoc", "app")
 	var apmServer apmv1.ApmServer
-	if err := association.FetchWithAssociation(r.Client, request, &apmServer); err != nil {
+	if err := association.FetchWithAssociation(ctx, r.Client, request, &apmServer); err != nil {
 		if apierrors.IsNotFound(err) {
 			// APM Server has been deleted, remove artifacts related to the association.
 			return reconcile.Result{}, r.onDelete(types.NamespacedName{
@@ -154,7 +152,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		}
 		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
-	span.End()
 
 	if common.IsPaused(apmServer.ObjectMeta) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
@@ -167,23 +164,32 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		return reconcile.Result{}, commonapm.CaptureError(ctx, r.onDelete(apmName))
 	}
 
-	if compatible, err := r.isCompatible(&apmServer); err != nil || !compatible {
+	if compatible, err := r.isCompatible(ctx, &apmServer); err != nil || !compatible {
 		return reconcile.Result{}, err
 	}
 
-	span, ctx = apm.StartSpan(ctx, "update_controller_version", "app")
-	if err := annotation.UpdateControllerVersion(r.Client, &apmServer, r.OperatorInfo.BuildInfo.Version); err != nil {
+	if err := annotation.UpdateControllerVersion(ctx, r.Client, &apmServer, r.OperatorInfo.BuildInfo.Version); err != nil {
 		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
-	span.End()
 
 	newStatus, err := r.reconcileInternal(ctx, &apmServer)
+	// we want to attempt a status update even in the presence of errors
+	err2 := r.updateStatus(ctx, apmServer, newStatus)
+	if err2 != nil {
+		return defaultRequeue, err2
+	}
+	return resultFromStatus(newStatus), err
+}
+
+func (r *ReconcileApmServerElasticsearchAssociation) updateStatus(ctx context.Context, apmServer apmv1.ApmServer, newStatus commonv1.AssociationStatus) error {
+	span, _ := apm.StartSpan(ctx, "update_association", "app")
+	defer span.End()
+
 	oldStatus := apmServer.Status.Association
-	span, ctx = apm.StartSpan(ctx, "update_association", "app")
 	if !reflect.DeepEqual(oldStatus, newStatus) {
 		apmServer.Status.Association = newStatus
 		if err := r.Status().Update(&apmServer); err != nil {
-			return defaultRequeue, commonapm.CaptureError(ctx, err)
+			return commonapm.CaptureError(ctx, err)
 		}
 		r.recorder.AnnotatedEventf(&apmServer,
 			annotation.ForAssociationStatusChange(oldStatus, newStatus),
@@ -192,8 +198,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
 
 	}
-	span.End()
-	return resultFromStatus(newStatus), err
+	return nil
 }
 
 func elasticsearchWatchName(assocKey types.NamespacedName) string {
@@ -215,9 +220,9 @@ func resultFromStatus(status commonv1.AssociationStatus) reconcile.Result {
 	}
 }
 
-func (r *ReconcileApmServerElasticsearchAssociation) isCompatible(apmServer *apmv1.ApmServer) (bool, error) {
+func (r *ReconcileApmServerElasticsearchAssociation) isCompatible(ctx context.Context, apmServer *apmv1.ApmServer) (bool, error) {
 	selector := map[string]string{labels.ApmServerNameLabelName: apmServer.Name}
-	compat, err := annotation.ReconcileCompatibility(r.Client, apmServer, selector, r.OperatorInfo.BuildInfo.Version)
+	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, apmServer, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, apmServer, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
@@ -267,8 +272,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		return commonv1.AssociationFailed, apm.CaptureError(ctx, err)
 	}
 
-	span, ctx = apm.StartSpan(ctx, "reconcile_es_user", "app")
 	if err := association.ReconcileEsUser(
+		ctx,
 		r.Client,
 		r.scheme,
 		apmServer,
@@ -282,7 +287,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 	); err != nil { // TODO distinguish conflicts and non-recoverable errors here
 		return commonv1.AssociationPending, commonapm.CaptureError(ctx, err)
 	}
-	span.End()
 
 	span, ctx = apm.StartSpan(ctx, "reconcile_es_ca", "app")
 	caSecret, err := r.reconcileElasticsearchCA(apmServer, elasticsearchRef.NamespacedName())

@@ -5,6 +5,7 @@
 package settings
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -17,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,11 +36,15 @@ func Quorum(nMasters int) int {
 // UpdateSeedHostsConfigMap updates the config map that contains the seed hosts. It returns true if a reconcile
 // iteration should be triggered later because some pods don't have an IP yet.
 func UpdateSeedHostsConfigMap(
+	ctx context.Context,
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 	pods []corev1.Pod,
 ) error {
+	span, _ := apm.StartSpan(ctx, "update_seed_hosts", "app")
+	defer span.End()
+
 	// Get the masters from the pods
 	var masters []corev1.Pod
 	for _, p := range pods {

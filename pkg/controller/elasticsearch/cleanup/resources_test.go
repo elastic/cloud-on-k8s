@@ -5,6 +5,7 @@
 package cleanup
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -142,7 +143,7 @@ func TestDeleteOrphanedSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := DeleteOrphanedSecrets(tt.client, tt.es)
+			err := DeleteOrphanedSecrets(context.Background(), tt.client, tt.es)
 			require.NoError(t, err)
 			// the correct number of secrets should remain in the cache
 			var secrets corev1.SecretList

@@ -5,6 +5,9 @@
 package user
 
 import (
+	"context"
+
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -73,10 +76,13 @@ func aggregateAllUsers(customUsers corev1.SecretList, defaultUsers ...ClearTextC
 // A second file called 'users_roles' is contained in this third secret as well which describes
 // role assignments for the users specified in the first file.
 func ReconcileUsers(
+	ctx context.Context,
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 ) (*InternalUsers, error) {
+	span, _ := apm.StartSpan(ctx, "reconcile_users", "app")
+	defer span.End()
 
 	nsn := k8s.ExtractNamespacedName(&es)
 	internalSecrets := NewInternalUserCredentials(nsn)

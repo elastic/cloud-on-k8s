@@ -5,11 +5,13 @@
 package association
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -20,7 +22,9 @@ import (
 )
 
 // FetchWithAssociation retrieves an object and extracts its association configuration.
-func FetchWithAssociation(client k8s.Client, request reconcile.Request, obj commonv1.Associator) error {
+func FetchWithAssociation(ctx context.Context, client k8s.Client, request reconcile.Request, obj commonv1.Associator) error {
+	span, _ := apm.StartSpan(ctx, "fetch_association", "app")
+	defer span.End()
 	if err := client.Get(request.NamespacedName, obj); err != nil {
 		return err
 	}

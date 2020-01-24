@@ -9,6 +9,7 @@ import (
 	"time"
 
 	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	"go.elastic.co/apm"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -95,8 +96,10 @@ func (r *Results) mergeResult(kind resultKind, res reconcile.Result) {
 
 // Apply applies the output of a reconciliation step to the results. The step outcome is implicitly considered
 // recoverable as we just record the results and continue.
-func (r *Results) Apply(step string, recoverableStep func() (reconcile.Result, error)) *Results {
-	result, err := recoverableStep()
+func (r *Results) Apply(step string, recoverableStep func(context.Context) (reconcile.Result, error)) *Results {
+	span, ctx := apm.StartSpan(r.ctx, step, "app")
+	defer span.End()
+	result, err := recoverableStep(ctx)
 	if err != nil {
 		log.Info("Recoverable error during step, continuing", "step", step, "error", err)
 	}

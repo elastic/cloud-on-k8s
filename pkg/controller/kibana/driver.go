@@ -242,34 +242,29 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	span, _ := apm.StartSpan(ctx, "reconcile_service", "app")
-	svc, err := common.ReconcileService(d.client, d.scheme, NewService(*kb), kb)
-	span.End()
+	svc, err := common.ReconcileService(ctx, d.client, d.scheme, NewService(*kb), kb)
 	if err != nil {
 		// TODO: consider updating some status here?
 		return results.WithError(err)
 	}
 
-	span, _ = apm.StartSpan(ctx, "reconcile_certs", "app")
-	results.WithResults(kbcerts.Reconcile(d, *kb, []corev1.Service{*svc}, params.CACertRotation))
-	span.End()
+	results.WithResults(kbcerts.Reconcile(ctx, d, *kb, []corev1.Service{*svc}, params.CACertRotation))
 	if results.HasError() {
 		return results
 	}
 
-	span, _ = apm.StartSpan(ctx, "reconcile_settings", "app")
-	kbSettings, err := config.NewConfigSettings(d.client, *kb, d.version)
+	kbSettings, err := config.NewConfigSettings(ctx, d.client, *kb, d.version)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings, params.OperatorInfo)
-	span.End()
+	err = config.ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	span, _ = apm.StartSpan(ctx, "reconcile_deployment", "app")
+	span, _ := apm.StartSpan(ctx, "reconcile_deployment", "app")
+	defer span.End()
 	deploymentParams, err := d.deploymentParams(kb)
 	if err != nil {
 		return results.WithError(err)
@@ -277,7 +272,6 @@ func (d *driver) Reconcile(
 
 	expectedDp := deployment.New(deploymentParams)
 	reconciledDp, err := deployment.Reconcile(d.client, d.scheme, expectedDp, kb)
-	span.End()
 	if err != nil {
 		return results.WithError(err)
 	}

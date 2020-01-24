@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	apmagent "go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -27,6 +28,8 @@ func Reconcile(
 	services []corev1.Service,
 	rotation certificates.RotationParams,
 ) *reconciler.Results {
+	span, _ := apmagent.StartSpan(ctx, "reconcile_certs", "app")
+	defer span.End()
 	results := reconciler.NewResult(ctx)
 	selfSignedCert := apm.Spec.HTTP.TLS.SelfSignedCertificate
 	if selfSignedCert != nil && selfSignedCert.Disabled {

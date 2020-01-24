@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -35,6 +36,8 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	keystoreResources *keystore.Resources,
 	certResources *certificates.CertificateResources,
 ) *reconciler.Results {
+	span, spanctx := apm.StartSpan(ctx, "reconcile_node_spec", "app")
+	defer span.End()
 	results := &reconciler.Results{}
 
 	// check if actual StatefulSets and corresponding pods match our expectations before applying any change
@@ -60,10 +63,11 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	esState := NewMemoizingESState(ctx, esClient)
+	esState := NewMemoizingESState(spanctx, esClient)
 
 	// Phase 1: apply expected StatefulSets resources and scale up.
 	upscaleCtx := upscaleCtx{
+		parentCtx:     spanctx,
 		k8sClient:     d.K8sClient(),
 		es:            d.ES,
 		scheme:        d.Scheme(),
@@ -100,7 +104,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Maybe update Zen1 minimum master nodes through the API, corresponding to the current nodes we have.
-	requeue, err := zen1.UpdateMinimumMasterNodes(ctx, d.Client, d.ES, esClient, actualStatefulSets)
+	requeue, err := zen1.UpdateMinimumMasterNodes(spanctx, d.Client, d.ES, esClient, actualStatefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -108,7 +112,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		results.WithResult(defaultRequeue)
 	}
 	// Remove the zen2 bootstrap annotation if bootstrap is over.
-	requeue, err = zen2.RemoveZen2BootstrapAnnotation(ctx, d.Client, d.ES, esClient)
+	requeue, err = zen2.RemoveZen2BootstrapAnnotation(spanctx, d.Client, d.ES, esClient)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -116,7 +120,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		results.WithResult(defaultRequeue)
 	}
 	// Maybe clear zen2 voting config exclusions.
-	requeue, err = zen2.ClearVotingConfigExclusions(ctx, d.ES, d.Client, esClient, actualStatefulSets)
+	requeue, err = zen2.ClearVotingConfigExclusions(spanctx, d.ES, d.Client, esClient, actualStatefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -128,7 +132,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
 	// or because it should be removed entirely.
 	downscaleCtx := newDownscaleContext(
-		ctx,
+		spanctx,
 		d.Client,
 		esClient,
 		resourcesState,
@@ -144,7 +148,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Phase 3: handle rolling upgrades.
-	rollingUpgradesRes := d.handleRollingUpgrades(ctx, esClient, esState, expectedResources.MasterNodesNames())
+	rollingUpgradesRes := d.handleRollingUpgrades(spanctx, esClient, esState, expectedResources.MasterNodesNames())
 	results.WithResults(rollingUpgradesRes)
 	if rollingUpgradesRes.HasError() {
 		return results
