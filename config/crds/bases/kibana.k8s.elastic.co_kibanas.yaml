@@ -6049,6 +6049,10 @@ spec:
                 - secretName
                 type: object
               type: array
+            serviceAccountName:
+              description: ServiceAccountName is the name of the ServiceAccount to
+                use to check access to objects in different namespaces.
+              type: string
             version:
               description: Version of Kibana.
               type: string
