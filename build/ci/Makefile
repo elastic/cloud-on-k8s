@@ -43,13 +43,16 @@ ci-internal: ci-build-image
 		bash -c "$(DOCKER_CMD)"
 
 
-# reads Docker password from Vault,
-# checks if Docker image exists by trying to pull it. If there is no image, then build and push it.
+# read Docker password from Vault
+ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
+# build and push the CI image only if it does not yet exist
 ci-build-image:
-	@ docker pull $(CI_IMAGE) || (docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(CI_IMAGE) \
-		--label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && docker login -u eckadmin \
-		-p $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin) \
-		push.docker.elastic.co && docker push push.$(CI_IMAGE))
+	@ docker pull $(CI_IMAGE) || \
+	( \
+		docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
+		docker login -u eckadmin -p $(DOCKER_PASSWORD) push.docker.elastic.co && \
+		docker push push.$(CI_IMAGE)\
+	)
 
 # read AWS creds from Vault for YAML upload to S3
 yaml-upload: VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
