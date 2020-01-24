@@ -24,9 +24,15 @@ A good rule of thumb is to size it to half the size of RAM allocated to the Pod.
 To minimize disruption caused by Pod evictions due to resource contention, you should run Elasticsearch pods at the "Guaranteed" QoS level by setting both `requests` and `limits` to the same value.
 
 Consider also that Kubernetes throttles containers exceeding the CPU limit defined in the `limits` section. Do not set this value too low or it would affect the performance of Elasticsearch, even if you have enough resources available in the Kubernetes cluster.
-A link:https://github.com/kubernetes/kubernetes/issues/51135[known Kubernetes issue] may lead to over-aggressive CPU limits throttling. If the host Linux Kernel does not include link:https://github.com/kubernetes/kubernetes/issues/67577[this CFS quota fix], you may want to keep CPU limits unset, or link:https://github.com/kubernetes/kubernetes/pull/63437[tweak the CFS quota period].
 
+[NOTE]
+===============================
+A link:https://github.com/kubernetes/kubernetes/issues/51135[known Kubernetes issue] may lead to over-aggressive CPU limits throttling. If the host Linux Kernel does not include link:https://github.com/kubernetes/kubernetes/issues/67577[this CFS quota fix], you may want to:
 
+* not set any CPU limit in the Elasticsearch resource (Burstable QoS)
+* link:https://github.com/kubernetes/kubernetes/pull/63437[reduce the CFS quota period] in kubelet configuration
+* link:https://github.com/kubernetes/kubernetes/issues/51135#issuecomment-386319185[disable CFS quotas] in kubelet configuration
+===============================
 
 [source,yaml]
 ----
