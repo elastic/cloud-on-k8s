@@ -419,7 +419,7 @@ check-image-nonexistence:
 		&& { echo "Error: image $(OPERATOR_IMAGE) already exists"; exit 1; } \
 		|| echo "Success: image $(OPERATOR_IMAGE) does not exist"
 
-ci-release: check-image-nonexistence  clean ci-check build-operator-image
+ci-release: check-image-nonexistence clean ci-check build-operator-image
 	@ echo $(OPERATOR_IMAGE) was pushed!
 
 ##########################
