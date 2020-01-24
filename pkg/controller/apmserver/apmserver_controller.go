@@ -204,18 +204,14 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
 	}
 
-	span, _ := apm.StartSpan(ctx, "remove_finalizers", "app")
 	// Remove any previous finalizer used in ECK v1.0.0-beta1 that we don't need anymore
 	if err := finalizer.RemoveAll(r.Client, &as); err != nil {
 		return reconcile.Result{}, err
 	}
-	span.End()
 
 	if as.IsMarkedForDeletion() {
-		span, _ = apm.StartSpan(ctx, "on_delete", "app")
 		// APM server will be deleted, clean up resources
 		r.onDelete(k8s.ExtractNamespacedName(&as))
-		span.End()
 		return reconcile.Result{}, nil
 	}
 
