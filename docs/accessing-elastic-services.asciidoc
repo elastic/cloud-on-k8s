@@ -30,7 +30,7 @@ To access Elasticsearch, Kibana or APM Server, the operator manages a default us
 
 [source,sh]
 ----
-> kubectl get secret hulk-es-elastic-user -o go-template='{{.data.elastic | base64decode }}'
+> kubectl get secret hulk-es-elastic-user -o go-template='{{.data.elastic | base64 --decode }}'
 42xyz42citsale42xyz42
 ----
 
