@@ -45,7 +45,6 @@ ci-internal: ci-build-image
 		$(CI_IMAGE) \
 		bash -c "$(DOCKER_CMD)"
 
-
 # read Docker password from Vault
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
 # build and push the CI image only if it does not yet exist
@@ -75,9 +74,11 @@ endif
 # reads Elastic public key from Vault into license.key
 get-elastic-public-key:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
+	@ echo export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key >> .env
 
 get-test-license:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=enterprise  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
+	@ echo TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.json >> .env
 
 get-docker-creds:
 	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ../../.env

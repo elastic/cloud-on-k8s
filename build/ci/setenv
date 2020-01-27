@@ -5,23 +5,21 @@
 # you may not use this file except in compliance with the Elastic License.
 
 # Script to set environment variables to run CI tasks.
-#
-# Usage: setenv CONTEXT
-#
-#   CONTEXT      test or release (test by default)
-#                Note: the GCLOUD_PROJECT env var must be set for `test`.
 
 set -eu
 
 REGISTRY=docker.elastic.co
 IMG_NAME=eck-operator
 
+ROOT=$(dirname $0)/../..
+ENV_FILE=$ROOT/.env
+
 # Variables that can be provided in a CI context
-WORKSPACE=${WORKSPACE:-$(pwd)}
+WORKSPACE=${WORKSPACE:-$ROOT}
 TAG_NAME=${TAG_NAME:-""}
 
 reset() {
-    rm -f .env
+    rm -f $ENV_FILE
 }
 
 setup_vars() {
@@ -42,16 +40,17 @@ setup_vars() {
 }
 
 add_var() {
-    local key=$1 value=$2
-    echo "$key = $value" >> .env
+    local key=$1 value=${2:-}
+
+    if [[ $value != "" ]]; then
+        echo "$key = $value" >> $ENV_FILE
+    fi
 }
 
 # write env vars in an .env file which is sourced by the root Makefile
 write_env() {
-    local context=$1
-
     # reset
-    > .env
+    > $ENV_FILE
 
     # add base variables
     add_var REGISTRY        ${REGISTRY}
@@ -61,24 +60,14 @@ write_env() {
     add_var VERSION         ${VERSION}
     add_var OPERATOR_IMAGE  ${OPERATOR_IMAGE}
 
-    # add specific variables depending the context
-    case $context in
-        test)
-            add_var GCLOUD_PROJECT  ${GCLOUD_PROJECT}
-        ;;
-        release)
-            add_var GO_TAGS                 release
-            add_var ELASTIC_DOCKER_LOGIN    eckadmin
-            add_var "export LICENSE_PUBKEY" /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
-        ;;
-    esac
+    # add optional variables
+    add_var GCLOUD_PROJECT        ${GCLOUD_PROJECT:-}
+    add_var ELASTIC_DOCKER_LOGIN  ${ELASTIC_DOCKER_LOGIN:-}
 }
 
 main() {
-    local context=${1:-"test"} # test or release
-
     setup_vars
-    write_env $context
+    write_env
 }
 
 main "$@"
