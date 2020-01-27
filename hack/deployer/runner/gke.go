@@ -167,17 +167,17 @@ func (d *GkeDriver) clusterExists() (bool, error) {
 
 func (d *GkeDriver) create() error {
 	log.Println("Creating cluster...")
-	pspOption := ""
+
+	opts := []string{}
 	if d.plan.Psp {
-		pspOption = "--enable-pod-security-policy "
+		opts = append(opts, "--enable-pod-security-policy")
 	}
 
-	cidrOptions := ""
 	if d.plan.Gke.ClusterIPv4CIDR != "" {
-		cidrOptions += fmt.Sprintf("--cluster-ipv4-cidr=%s ", d.plan.Gke.ClusterIPv4CIDR)
+		opts = append(opts, fmt.Sprintf("--cluster-ipv4-cidr=%s ", d.plan.Gke.ClusterIPv4CIDR))
 	}
 	if d.plan.Gke.ServicesIPv4CIDR != "" {
-		cidrOptions += fmt.Sprintf("--services-ipv4-cidr=%s ", d.plan.Gke.ServicesIPv4CIDR)
+		opts = append(opts, fmt.Sprintf("--services-ipv4-cidr=%s ", d.plan.Gke.ServicesIPv4CIDR))
 	}
 
 	return NewCommand(`gcloud beta container --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
@@ -188,7 +188,7 @@ func (d *GkeDriver) create() error {
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
 		`--subnetwork projects/{{.GCloudProject}}/regions/{{.Region}}/subnetworks/default ` +
-		cidrOptions + pspOption).
+		strings.Join(opts, " ")).
 		AsTemplate(d.ctx).
 		Run()
 }
