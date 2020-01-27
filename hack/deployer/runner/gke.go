@@ -60,6 +60,8 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 			"LocalSsdCount":     plan.Gke.LocalSsdCount,
 			"GcpScopes":         plan.Gke.GcpScopes,
 			"NodeCountPerZone":  plan.Gke.NodeCountPerZone,
+			"ClusterIPv4CIDR":   plan.Gke.ClusterIPv4CIDR,
+			"ServicesIPv4CIDR":  plan.Gke.ServicesIPv4CIDR,
 		},
 	}, nil
 }
@@ -167,7 +169,15 @@ func (d *GkeDriver) create() error {
 	log.Println("Creating cluster...")
 	pspOption := ""
 	if d.plan.Psp {
-		pspOption = " --enable-pod-security-policy"
+		pspOption = "--enable-pod-security-policy "
+	}
+
+	cidrOptions := ""
+	if d.plan.Gke.ClusterIPv4CIDR != "" {
+		cidrOptions += fmt.Sprintf("--cluster-ipv4-cidr=%s ", d.plan.Gke.ClusterIPv4CIDR)
+	}
+	if d.plan.Gke.ServicesIPv4CIDR != "" {
+		cidrOptions += fmt.Sprintf("--services-ipv4-cidr=%s ", d.plan.Gke.ServicesIPv4CIDR)
 	}
 
 	return NewCommand(`gcloud beta container --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
@@ -177,7 +187,8 @@ func (d *GkeDriver) create() error {
 		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
-		`--subnetwork projects/{{.GCloudProject}}/regions/{{.Region}}/subnetworks/default` + pspOption).
+		`--subnetwork projects/{{.GCloudProject}}/regions/{{.Region}}/subnetworks/default ` +
+		cidrOptions + pspOption).
 		AsTemplate(d.ctx).
 		Run()
 }
