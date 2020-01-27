@@ -248,6 +248,9 @@ This can also be done for Kibana and APM Server.
 On startup, the operator deploys an https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/[admission webhook] that points to the operator's service. If this is inaccessible, you may see errors in your Kubernetes API server logs indicating that it cannot reach the service. A common cause may be that the operator pods are failing to start for some reason, or that the control plane is isolated from the operator pod by some mechanism (for instance via network policies or running the control plane externally as in https://github.com/elastic/cloud-on-k8s/issues/896#issuecomment-507224945[issue #869] and https://github.com/elastic/cloud-on-k8s/issues/1369[issue #1369]).
 
 You can also change the https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook configuration to `Fail`, which will cause creations and updates to error out if there is an error contacting the webhook.
+
+If validation webhook is preventing you from doing changes by the unknown fields validation, you can force the webhook to ignore it by removing `kubectl.kubernetes.io/last-applied-configuration` annotation from your resource.
+
 [float]
 [id="{p}-ask-for-help"]
 === Ask for help
