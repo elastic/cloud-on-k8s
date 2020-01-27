@@ -38,7 +38,7 @@ spec:
 
 NOTE: `namespace` is optional if the Elasticsearch cluster is running in the same namespace as Kibana.
 
-NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as long as they both are in namespaces that are watched by the same ECK instance. ECK will copy the required `Secret` from Elasticsearch to Kibana namespace. If this behavior is not desired, more than one ECK instance can be deployed. Kibana won't be able to automatically (through `elasticsearchRef`) connect to Elasticsearch in a namespace managed by different ECK instance.
+NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as long as they both are in namespaces that are watched by the same ECK instance. ECK will copy the required `Secret` from Elasticsearch to Kibana namespace. If this behavior is not desired, more than one ECK instance can be deployed. Kibana won't be able to automatically connect to Elasticsearch (through `elasticsearchRef`) in a namespace managed by a different ECK instance.
 
 The Kibana configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
 
