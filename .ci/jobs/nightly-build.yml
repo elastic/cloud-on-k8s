@@ -12,5 +12,6 @@
             branches:
               - master
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
-      script-path: build/ci/release/Jenkinsfile
+      # Jenkinsfile shared with the release-build job
+      script-path: build/ci/build/Jenkinsfile
       lightweight-checkout: true

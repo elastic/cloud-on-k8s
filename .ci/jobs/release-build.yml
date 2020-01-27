@@ -4,7 +4,8 @@
     name: cloud-on-k8s-release-build
     project-type: multibranch
     prune-dead-branches: true
-    script-path: 'build/ci/release/Jenkinsfile'
+    # Jenkinsfile shared with the nightly-build job
+    script-path: 'build/ci/build/Jenkinsfile'
     scm:
       - github:
           repo: 'cloud-on-k8s'
