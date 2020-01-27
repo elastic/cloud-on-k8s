@@ -23,6 +23,9 @@ endif
 
 CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
+# Set environment variables in a .env file for the root Makefile
+$(shell ./setenv)
+
 show-image:
 	@ echo $(CI_IMAGE)
 

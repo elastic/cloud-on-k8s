@@ -27,13 +27,11 @@ pipeline {
                 }
                 stage('Run unit and integration tests') {
                     steps {
-                        sh 'build/ci/setenv test'
                         sh 'make -C build/ci TARGET=ci ci'
                     }
                 }
                 stage('Build and push Docker image') {
                     steps {
-                        sh 'build/ci/setenv release'
                         sh 'make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci'
                     }
                 }
