@@ -129,7 +129,7 @@ func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
 // Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
 // the Association.Spec
 func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	defer common.LogReconciliationRun(log, request, "kibana_name", &r.iteration)()
 	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "kibana_association")
 	defer commonapm.EndTransaction(tx)
 

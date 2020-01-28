@@ -47,6 +47,8 @@ type GkeSettings struct {
 	LocalSsdCount    int    `yaml:"localSsdCount"`
 	NodeCountPerZone int    `yaml:"nodeCountPerZone"`
 	GcpScopes        string `yaml:"gcpScopes"`
+	ClusterIPv4CIDR  string `yaml:"clusterIpv4Cidr"`
+	ServicesIPv4CIDR string `yaml:"servicesIpv4Cidr"`
 }
 
 // AksSettings encapsulates settings specific to AKS
