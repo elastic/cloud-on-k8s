@@ -96,12 +96,5 @@ func (r *Results) Apply(step string, recoverableStep func() (reconcile.Result, e
 
 // Aggregate returns the highest priority reconcile result and any errors seen so far.
 func (r *Results) Aggregate() (reconcile.Result, error) {
-	if r.currResult.RequeueAfter > MaximumRequeueAfter {
-		// A client-go leaky timer issue will cause memory leaks for long requeue periods,
-		// see https://github.com/elastic/cloud-on-k8s/issues/1984.
-		// To prevent this from happening, let's restrict the requeue to a fixed short-term value.
-		// TODO: remove once https://github.com/kubernetes/client-go/issues/701 is fixed.
-		r.currResult.RequeueAfter = MaximumRequeueAfter
-	}
 	return r.currResult, k8serrors.NewAggregate(r.errors)
 }
