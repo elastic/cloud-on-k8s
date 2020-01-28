@@ -145,7 +145,7 @@ func init() {
 	Cmd.Flags().String(
 		WebhookSecretFlag,
 		"",
-		fmt.Sprintf("K8s secret mounted into to the path designed by %s to be used for webhook certificates", WebhookCertDirFlag),
+		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", WebhookCertDirFlag),
 	)
 	Cmd.Flags().String(
 		WebhookCertDirFlag,
