@@ -426,6 +426,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 	})
 
 	if err != nil {
+		log.Error(err, "Timeout lapsed waiting for webhook certificate to be available", "path", keyPath)
 		os.Exit(1)
 	}
 }
