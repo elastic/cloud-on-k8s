@@ -5,7 +5,6 @@
 package v1
 
 import (
-	"strings"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -666,7 +665,7 @@ func Test_noUnknownFields(t *testing.T) {
 			actual := noUnknownFields(&tt.es)
 			actualErrors := len(actual) > 0
 			expectErrors := tt.errorOnField != ""
-			if expectErrors != actualErrors || (actualErrors && !strings.Contains(actual[0].Field, tt.errorOnField)) {
+			if expectErrors != actualErrors || (actualErrors && actual[0].Field != tt.errorOnField) {
 				t.Errorf(
 					"failed NoUnknownFields(). Name: %v, actual %v, wanted error on field: %v, es value: %v",
 					tt.name,
