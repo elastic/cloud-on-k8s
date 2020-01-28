@@ -76,7 +76,7 @@ pipeline {
                             createConfig()
                             createDeployerConfig()
 
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e-smoketest ci')
 
                             sh 'make -C build/ci TARGET=e2e-generate-xml ci'
                             junit "e2e-tests.xml"
