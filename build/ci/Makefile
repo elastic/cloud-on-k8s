@@ -50,7 +50,7 @@ ci-internal: ci-build-image
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
 # build and push the CI image only if it does not yet exist
 ci-build-image:
-	@ docker pull $(CI_IMAGE) || \
+	@ docker pull -q $(CI_IMAGE) || \
 	( \
 		docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
 		docker login -u eckadmin -p $(DOCKER_PASSWORD) push.docker.elastic.co && \
