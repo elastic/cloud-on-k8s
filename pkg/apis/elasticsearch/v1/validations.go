@@ -5,16 +5,14 @@
 package v1
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"reflect"
-	"strings"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -64,40 +62,9 @@ func (r *Elasticsearch) check(validations []validation) field.ErrorList {
 	return errs
 }
 
-// noUnknownFields checks whether the last applied config annotation contains json with unknown fields. As this
-// annotation is supplied only by `kubectl apply` command it can get stale if other commands/tooling is used (ie.
-// annotation content will not reflect the actual resource). This would prevent making any changes if last applied
-// config (when validation hook was turned off or before this validation was introduced) was incorrect.
-// To avoid that, we first make sure that the marshalled annotation is deep equal to the object. If it is, we assume
-// that annotation is up to date with the object and it can be used as source of truth for validation.
+// noUnknownFields checks whether the last applied config annotation contains json with unknown fields.
 func noUnknownFields(es *Elasticsearch) field.ErrorList {
-	var errs field.ErrorList
-	// check if annotation is present
-	if cfg, ok := es.Annotations[v1.LastAppliedConfigAnnotation]; ok {
-		d := json.NewDecoder(strings.NewReader(cfg))
-		var dest Elasticsearch
-		// check if annotation is valid, only then we can attempt comparison
-		if err := d.Decode(&dest); err == nil {
-			// effectively ignore this annotation from comparison
-			dest.Annotations[v1.LastAppliedConfigAnnotation] = es.Annotations[v1.LastAppliedConfigAnnotation]
-			// check if annotation and the object represent the same thing, if yes, we can use annotation to validate the object
-			if reflect.DeepEqual(*es, dest) {
-				d = json.NewDecoder(strings.NewReader(cfg))
-				d.DisallowUnknownFields()
-				if err := d.Decode(&dest); err != nil {
-					// decoding most likely failed due to unknown fields, but make sure below
-					errString := err.Error()
-					unknownPrefix := "json: unknown field "
-					if strings.HasPrefix(errString, unknownPrefix) {
-						fld := strings.TrimPrefix(errString, unknownPrefix)
-						errs = append(errs, field.Invalid(field.NewPath(fld), es.Name, errString))
-					}
-				}
-			}
-		}
-	}
-
-	return errs
+	return commonv1.NoUnknownFields(es, es.ObjectMeta)
 }
 
 // validName checks whether the name is valid.

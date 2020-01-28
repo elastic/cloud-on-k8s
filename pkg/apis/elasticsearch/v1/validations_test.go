@@ -5,7 +5,6 @@
 package v1
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -623,30 +622,16 @@ func Test_validUpgradePath(t *testing.T) {
 }
 
 func Test_noUnknownFields(t *testing.T) {
+
 	var GetEsWithLastApplied = func(lastApplied string) Elasticsearch {
-		d := json.NewDecoder(strings.NewReader(lastApplied))
-		var es Elasticsearch
-		d.Decode(&es)
-
-		es.Annotations[corev1.LastAppliedConfigAnnotation] = lastApplied
-
-		return es
+		return Elasticsearch{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{
+					corev1.LastAppliedConfigAnnotation: lastApplied,
+				},
+			},
+		}
 	}
-
-	es := GetEsWithLastApplied(
-		`{"apiVersion":"elasticsearch.k8s.elastic.co/v1","kind":"Elasticsearch"` +
-			`,"metadata":{"annotations":{},"name":"quickstart","namespace":"default"},` +
-			`"spec":{"nodeSets":[{"config":{"node.store.allow_mmap":false},"count":1,` +
-			`"name":"default"}],"version":"7.5.1"}}`)
-
-	oldAnnotationEs := *es.DeepCopy()
-	oldAnnotationEs.APIVersion = "7.5.2"
-	oldBadAnnotationEs := *oldAnnotationEs.DeepCopy()
-	oldBadAnnotationEs.Annotations[corev1.LastAppliedConfigAnnotation] =
-		strings.ReplaceAll(
-			oldBadAnnotationEs.Annotations[corev1.LastAppliedConfigAnnotation],
-			"nodeSets",
-			"nodes")
 
 	tests := []struct {
 		name         string
@@ -654,26 +639,19 @@ func Test_noUnknownFields(t *testing.T) {
 		errorOnField string
 	}{
 		{
-			name: "good annotation - validated and passed",
-			es:   es,
+			name: "good annotation",
+			es: GetEsWithLastApplied(
+				`{"apiVersion":"elasticsearch.k8s.elastic.co/v1","kind":"Elasticsearch"` +
+					`,"metadata":{"annotations":{},"name":"quickstart","namespace":"default"},` +
+					`"spec":{"nodeSets":[{"config":{"node.store.allow_mmap":false},"count":1,` +
+					`"name":"default"}],"version":"7.5.1"}}`),
 		},
 		{
-			name: "old annotation - not validated and passed",
-			es:   oldAnnotationEs,
+			name: "no annotation",
+			es:   Elasticsearch{},
 		},
 		{
-			name: "old and bad annotation - not validated and passed",
-			es:   oldBadAnnotationEs,
-		},
-		{
-			name: "no annotation - not validated and passed",
-			es: Elasticsearch{
-				TypeMeta: metav1.TypeMeta{APIVersion: "elasticsearch.k8s.elastic.co/v1"},
-				Spec:     ElasticsearchSpec{Version: "7.4.0"},
-			},
-		},
-		{
-			name: "bad annotation - validated and not passed",
+			name: "bad annotation",
 			es: GetEsWithLastApplied(
 				`{"apiVersion":"elasticsearch.k8s.elastic.co/v1","kind":"Elasticsearch"` +
 					`,"metadata":{"annotations":{},"name":"quickstart","namespace":"default"},` +
