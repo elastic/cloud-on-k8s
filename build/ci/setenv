@@ -14,7 +14,7 @@ IMG_NAME=eck-operator
 ROOT=$(dirname $0)/../..
 ENV_FILE=$ROOT/.env
 
-# Variables that can be provided in a CI context
+# variables that can be provided in a CI context
 WORKSPACE=${WORKSPACE:-$ROOT}
 TAG_NAME=${TAG_NAME:-""}
 
@@ -22,8 +22,10 @@ reset() {
     rm -f $ENV_FILE
 }
 
+# Prepare variables to write in the .env file.
+# The presence of the TAG_NAME env var indicates the build of a release, conversely
+# without TAG_NAME it is a nightly build.
 setup_vars() {
-    # the presence of the TAG_NAME env var indicates the build of a release
     if [[ ${TAG_NAME} != "" ]]; then
         # release build
         REPOSITORY=eck
@@ -47,7 +49,7 @@ add_var() {
     fi
 }
 
-# write env vars in an .env file which is sourced by the root Makefile
+# Write env vars in an .env file which is sourced by the root Makefile
 write_env() {
     # reset
     > $ENV_FILE
@@ -60,7 +62,7 @@ write_env() {
     add_var VERSION         ${VERSION}
     add_var OPERATOR_IMAGE  ${OPERATOR_IMAGE}
 
-    # add optional variables
+    # add optional variables if defined
     add_var GCLOUD_PROJECT        ${GCLOUD_PROJECT:-}
     add_var ELASTIC_DOCKER_LOGIN  ${ELASTIC_DOCKER_LOGIN:-}
 }
