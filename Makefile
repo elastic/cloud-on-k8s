@@ -410,7 +410,10 @@ ci-check: check-license-header lint generate check-local-changes
 
 ci: unit_xml integration_xml docker-build
 
-# Run e2e tests in a dedicated cluster.
+# Run e2e tests in a dedicated cluster
+ci-e2e-smoketest: TESTS_MATCH = TestSmoke
+ci-e2e-smoketest: e2e-compile run-deployer install-crds apply-psp e2e
+
 ci-e2e: GO_TAGS ?= release
 ci-e2e: e2e-compile run-deployer install-crds apply-psp e2e
 
