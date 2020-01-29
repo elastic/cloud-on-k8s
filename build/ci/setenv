@@ -8,7 +8,7 @@
 
 set -eu
 
-REGISTRY=docker.elastic.co
+REGISTRY=${REGISTRY:-"docker.elastic.co"}
 IMG_NAME=eck-operator
 
 ROOT=$(dirname $0)/../..
@@ -33,7 +33,7 @@ setup_vars() {
         VERSION=${TAG_NAME}
     else
         # nightly build
-        REPOSITORY=eck-snapshots
+        REPOSITORY=${REPOSITORY:-eck-snapshots}
         SNAPSHOT=true
         VERSION=$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
     fi
@@ -65,6 +65,7 @@ write_env() {
     # add optional variables if defined
     add_var GCLOUD_PROJECT        ${GCLOUD_PROJECT:-}
     add_var ELASTIC_DOCKER_LOGIN  ${ELASTIC_DOCKER_LOGIN:-}
+    add_var E2E_JSON              ${E2E_JSON:-}
 }
 
 main() {

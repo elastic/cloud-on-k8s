@@ -13,6 +13,9 @@ pipeline {
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
+        REGISTRY = "eu.gcr.io"
+        REPOSITORY = GCLOUD_PROJECT
+        E2E_JSON = "true"
     }
 
     stages {
@@ -127,7 +130,6 @@ void createConfig() {
         cat >.env <<EOF
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
-SKIP_DOCKER_COMMAND = false
 IMG_SUFFIX = -ci
 E2E_JSON = true
 EOF
