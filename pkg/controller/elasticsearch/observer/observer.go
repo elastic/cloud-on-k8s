@@ -136,7 +136,7 @@ func (o *Observer) retrieveState(ctx context.Context) {
 	defer cancel()
 
 	if o.tracer != nil {
-		tx := o.tracer.StartTransaction(o.cluster.String(), "elasticsearch_async")
+		tx := o.tracer.StartTransaction(o.cluster.String(), "elasticsearch_observer")
 		defer tx.End()
 		timeoutCtx = apm.ContextWithTransaction(timeoutCtx, tx)
 	}

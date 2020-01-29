@@ -130,7 +130,7 @@ func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
 // the Association.Spec
 func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "kibana_name", &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "kibana_association")
+	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "kibana-association")
 	defer commonapm.EndTransaction(tx)
 
 	var kibana kbv1.Kibana
@@ -167,9 +167,8 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	// maybe update status
-	result, err2 := r.updateStatus(ctx, kibana, newStatus)
-	if err2 != nil || !reflect.DeepEqual(result, reconcile.Result{}) {
-		return result, commonapm.CaptureError(ctx, err2)
+	if result, err := r.updateStatus(ctx, kibana, newStatus); err != nil || !reflect.DeepEqual(result, reconcile.Result{}) {
+		return result, commonapm.CaptureError(ctx, err)
 	}
 	return resultFromStatus(newStatus), commonapm.CaptureError(ctx, err)
 }

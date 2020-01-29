@@ -138,7 +138,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.Namespac
 // and what is in the ApmServerElasticsearchAssociation.Spec
 func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "apm_association")
+	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "apm-es-association")
 	defer commonapm.EndTransaction(tx)
 
 	var apmServer apmv1.ApmServer
@@ -174,9 +174,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 
 	newStatus, err := r.reconcileInternal(ctx, &apmServer)
 	// we want to attempt a status update even in the presence of errors
-	err2 := r.updateStatus(ctx, apmServer, newStatus)
-	if err2 != nil {
-		return defaultRequeue, commonapm.CaptureError(ctx, err2)
+	if err := r.updateStatus(ctx, apmServer, newStatus); err != nil {
+		return defaultRequeue, commonapm.CaptureError(ctx, err)
 	}
 	return resultFromStatus(newStatus), commonapm.CaptureError(ctx, err)
 }
