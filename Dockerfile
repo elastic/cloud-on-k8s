@@ -16,7 +16,6 @@ COPY cmd/    cmd/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-		go generate -tags="$GO_TAGS" ./pkg/... ./cmd/... && \
 		go build \
             -mod readonly \
 			-ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \

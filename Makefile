@@ -94,9 +94,11 @@ dependencies:
 ALL_CRDS=config/crds/all-crds.yaml
 generate: generate-crds generate-api-docs generate-notice-file
 
-generate-crds: controller-gen
+go-generate:
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
+
+generate-crds: go-generate controller-gen
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	# We generate CRDs with trivialVersions=true, to support pre-1.13 Kubernetes versions. This means the CRDs
@@ -479,7 +481,7 @@ ifneq ($(ECK_IMAGE),)
 	$(eval OPERATOR_IMAGE=$(ECK_IMAGE))
 	@docker pull $(OPERATOR_IMAGE)
 else
-	$(MAKE) docker-build
+	$(MAKE) go-generate docker-build
 endif
 
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
