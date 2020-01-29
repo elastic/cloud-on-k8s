@@ -26,7 +26,8 @@ ECK can be configured using either command line flags or environment variables.
 |operator-namespace |"" |Namespace the operator runs in. Required.
 |operator-roles |all |Roles this operator should assume. Valid values are `namespace`, `global`, `webhook` or `all`. Accepts multiple comma separated values.
 |webhook-pods-label |"" |Label used to select pods running the webhook server.
-|webhook-secret |"" | Kubernetes secret containing the webhook certificates.
+|webhook-secret |"" | K8s secret mounted into the path designated by webhook-cert-dir to be used for webhook certificates.
+|webhook-cert-dir |"{TempDir}/k8s-webhook-server/serving-certs" |Path to the directory that contains the webhook server key and certificate.
 |===
 
 
