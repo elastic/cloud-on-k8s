@@ -374,7 +374,8 @@ e2e-run:
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
-		--test-timeout=$(TEST_TIMEOUT)
+		--test-timeout=$(TEST_TIMEOUT) \
+		--monitoring-secrets=$(MONITORING_SECRETS)
 
 e2e-generate-xml:
 	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json

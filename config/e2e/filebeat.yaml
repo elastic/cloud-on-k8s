@@ -1,0 +1,191 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: {{ .E2ENamespace }}
+  labels:
+    k8s-app: filebeat
+data:
+  filebeat.yml: |-
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          host: ${NODE_NAME}
+          hints.enabled: true
+          hints.default_config:
+            type: container
+            paths:
+              - /var/lib/docker/containers/${data.kubernetes.container.id}/*.log
+
+    processors:
+      - add_cloud_metadata:
+      - add_host_metadata:
+
+    output.elasticsearch:
+      hosts: ['https://${MONITORING_IP}:${ELASTICSEARCH_PORT}']
+      username: ${MONITORING_USER}
+      password: ${MONITORING_PASS}
+      ssl.certificate_authorities:
+      - /mnt/elastic/monitoring-ca.crt
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: {{ .E2ENamespace }}
+  labels:
+    k8s-app: filebeat
+spec:
+  selector:
+    matchLabels:
+      k8s-app: filebeat
+  template:
+    metadata:
+      labels:
+        k8s-app: filebeat
+    spec:
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:7.5.1
+          args: [
+            "-c", "/etc/filebeat.yml",
+            "-e",
+          ]
+          env:
+            - name: ELASTICSEARCH_HOST
+              value: monitor-es-http
+            - name: ELASTICSEARCH_PORT
+              value: "9200"
+            - name: MONITORING_USER
+              valueFrom:
+                secretKeyRef:
+                  name: "eck-{{ .TestRun }}"
+                  key: monitoring-user
+            - name: MONITORING_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: "eck-{{ .TestRun }}"
+                  key: monitoring-pass
+            - name: MONITORING_IP
+              valueFrom:
+                secretKeyRef:
+                  name: "eck-{{ .TestRun }}"
+                  key: monitoring-ip
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            runAsUser: 0
+            # If using Red Hat OpenShift uncomment this:
+            #privileged: true
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/filebeat.yml
+              readOnly: true
+              subPath: filebeat.yml
+            - name: data
+              mountPath: /usr/share/filebeat/data
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: monitoring-ca
+              mountPath: /mnt/elastic/monitoring-ca.crt
+              readOnly: true
+              subPath: monitoring-ca
+      volumes:
+        - name: config
+          configMap:
+            defaultMode: 0600
+            name: filebeat-config
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        # data folder stores a registry of read status for all files, so we don't send everything again on a Filebeat pod restart
+        - name: data
+          hostPath:
+            path: /var/lib/filebeat-data
+            type: DirectoryOrCreate
+        - name: monitoring-ca
+          secret:
+            secretName: "eck-{{ .TestRun }}"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: filebeat
+subjects:
+  - kind: ServiceAccount
+    name: filebeat
+    namespace: {{ .E2ENamespace }}
+roleRef:
+  kind: ClusterRole
+  name: filebeat
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: filebeat
+  labels:
+    k8s-app: filebeat
+rules:
+  - apiGroups: [""] # "" indicates the core API group
+    resources:
+      - namespaces
+      - pods
+    verbs:
+      - get
+      - watch
+      - list
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: filebeat
+  namespace: {{ .E2ENamespace }}
+  labels:
+    k8s-app: filebeat
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-filebeat-restricted
+  namespace: {{ .E2ENamespace }}
+  labels:
+    test-run: {{ .TestRun }}
+rules:
+  - apiGroups:
+      - policy
+    resources:
+      - podsecuritypolicies
+    resourceNames:
+      - elastic.filebeat.restricted
+    verbs:
+      - use
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-filebeat-restricted-binding
+  namespace: {{ .E2ENamespace }}
+  labels:
+    test-run: {{ .TestRun }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: elastic-filebeat-restricted
+subjects:
+  - kind: ServiceAccount
+    name: filebeat
