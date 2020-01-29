@@ -17,7 +17,7 @@ const ElasticsearchContainerName = "elasticsearch"
 // ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 type ElasticsearchSpec struct {
 	// Version of Elasticsearch.
-	Version string `json:"version,omitempty"`
+	Version string `json:"version"`
 
 	// Image is the Elasticsearch Docker image to deploy.
 	Image string `json:"image,omitempty"`
