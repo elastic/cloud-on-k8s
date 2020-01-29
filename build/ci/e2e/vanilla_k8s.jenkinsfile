@@ -28,28 +28,28 @@ pipeline {
         }
         stage('Run tests on different versions of vanilla K8s') {
             parallel {
-                stage("1.11.10") {
+                stage("1.12.10") {
                     steps {
                         checkout scm
-                        runTests("kindest/node:v1.11.10")
+                        runTests("kindest/node:v1.12.10")
                     }
                 }
-                stage("1.15.3") {
+                stage("1.16.4") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         checkout scm
-                        runTests("kindest/node:v1.15.3")
+                        runTests("kindest/node:v1.16.4")
                     }
                 }
-                stage("1.16.2") {
+                stage("1.17.0") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         checkout scm
-                        runTests("kindest/node:v1.16.2")
+                        runTests("kindest/node:v1.17.0")
                     }
                 }
             }
