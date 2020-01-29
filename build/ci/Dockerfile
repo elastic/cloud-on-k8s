@@ -7,7 +7,7 @@ ENV KUBECTL_VERSION=1.14.7
 ENV DOCKER_VERSION=18.03.1-ce
 ENV GOLANGCILINT_VERSION=1.21.0
 ENV GOTESTSUM_VERSION=0.3.5
-ENV KIND_VERSION=0.5.1
+ENV KIND_VERSION=0.7.0
 
 # Install golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
