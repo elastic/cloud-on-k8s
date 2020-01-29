@@ -8,8 +8,7 @@ spec:
   nodeSets:
   - name: default
     config:
-      # most Elasticsearch configuration parameters are possible to set, e.g:
-      node.attr.attr_name: attr_value
+      # most Elasticsearch configuration parameters are possible to set, e.g: node.attr.attr_name: attr_value
       node.master: true
       node.data: true
       node.ingest: true
@@ -30,6 +29,9 @@ spec:
         #   securityContext:
         #     privileged: true
         #   command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        ###
+        # uncomment the line below if using a service-mesh, such as linkerd2
+        # automountServiceAccountToken: true
         containers:
         - name: elasticsearch
           # specify resource limits and requests
