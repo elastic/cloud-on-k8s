@@ -138,7 +138,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.Namespac
 // Reconcile reads that state of the cluster for a ApmServerElasticsearchAssociation object and makes changes based on the state read
 // and what is in the ApmServerElasticsearchAssociation.Spec
 func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	defer common.LogReconciliationRun(log, request, &r.iteration)()
+	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()
 
 	var apmServer apmv1.ApmServer
 	if err := association.FetchWithAssociation(r.Client, request, &apmServer); err != nil {

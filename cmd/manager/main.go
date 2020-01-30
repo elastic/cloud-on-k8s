@@ -70,6 +70,7 @@ const (
 
 	ManageWebhookCertsFlag   = "manage-webhook-certs"
 	WebhookSecretFlag        = "webhook-secret"
+	WebhookCertDirFlag       = "webhook-cert-dir"
 	WebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort              = 9443
 
@@ -137,12 +138,12 @@ func init() {
 	Cmd.Flags().Bool(
 		ManageWebhookCertsFlag,
 		true,
-		"enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
+		"Enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
 	)
 	Cmd.Flags().String(
 		OperatorNamespaceFlag,
 		"",
-		"k8s namespace the operator runs in",
+		"K8s namespace the operator runs in",
 	)
 	Cmd.Flags().Bool(
 		RbacControlledReferencesFlag,
@@ -152,7 +153,13 @@ func init() {
 	Cmd.Flags().String(
 		WebhookSecretFlag,
 		"",
-		"k8s secret mounted into /tmp/cert to be used for webhook certificates",
+		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", WebhookCertDirFlag),
+	)
+	Cmd.Flags().String(
+		WebhookCertDirFlag,
+		// this is controller-runtime's own default, copied here for making the default explicit when using `--help`
+		filepath.Join(os.TempDir(), "k8s-webhook-server", "serving-certs"),
+		"Path to the directory that contains the webhook server key and certificate",
 	)
 	Cmd.Flags().String(
 		DebugHTTPServerListenAddressFlag,
@@ -229,7 +236,8 @@ func execute() {
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("Setting up manager")
 	opts := ctrl.Options{
-		Scheme: clientgoscheme.Scheme,
+		Scheme:  clientgoscheme.Scheme,
+		CertDir: viper.GetString(WebhookCertDirFlag),
 	}
 
 	// configure the manager cache based on the number of managed namespaces
