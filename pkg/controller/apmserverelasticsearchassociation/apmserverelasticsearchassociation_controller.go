@@ -303,6 +303,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 func (r *ReconcileApmServerElasticsearchAssociation) getElasticsearch(ctx context.Context, apmServer *apmv1.ApmServer, elasticsearchRef commonv1.ObjectSelector, es *esv1.Elasticsearch) (commonv1.AssociationStatus, error) {
 	span, _ := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
+
 	err := r.Get(elasticsearchRef.NamespacedName(), es)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, apmServer, events.EventAssociationError,
@@ -324,6 +325,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) getElasticsearch(ctx contex
 func (r *ReconcileApmServerElasticsearchAssociation) updateAssocConf(ctx context.Context, expectedAssocConf *commonv1.AssociationConf, apmServer *apmv1.ApmServer) (commonv1.AssociationStatus, error) {
 	span, _ := apm.StartSpan(ctx, "update_apm_assoc", tracing.SpanTypeApp)
 	defer span.End()
+
 	if !reflect.DeepEqual(expectedAssocConf, apmServer.AssociationConf()) {
 		log.Info("Updating APMServer spec with Elasticsearch association configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
 		if err := association.UpdateAssociationConf(r.Client, apmServer, expectedAssocConf); err != nil {
@@ -341,6 +343,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) updateAssocConf(ctx context
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ctx context.Context, as *apmv1.ApmServer, es types.NamespacedName) (association.CASecret, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_es_ca", tracing.SpanTypeApp)
 	defer span.End()
+
 	apmKey := k8s.ExtractNamespacedName(as)
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
@@ -370,6 +373,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ct
 func deleteOrphanedResources(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) error {
 	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
 	defer span.End()
+
 	var secrets corev1.SecretList
 	ns := client.InNamespace(as.Namespace)
 	matchLabels := client.MatchingLabels(NewResourceLabels(as.Name))

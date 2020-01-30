@@ -31,6 +31,7 @@ func Reconcile(
 ) *reconciler.Results {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
+
 	selfSignedCert := kb.Spec.HTTP.TLS.SelfSignedCertificate
 	if selfSignedCert != nil && selfSignedCert.Disabled {
 		return nil

@@ -99,6 +99,7 @@ func (r *Results) mergeResult(kind resultKind, res reconcile.Result) {
 func (r *Results) Apply(step string, recoverableStep func(context.Context) (reconcile.Result, error)) *Results {
 	span, ctx := apm.StartSpan(r.ctx, step, tracing.SpanTypeApp)
 	defer span.End()
+
 	result, err := recoverableStep(ctx)
 	if err != nil {
 		log.Info("Recoverable error during step, continuing", "step", step, "error", err)

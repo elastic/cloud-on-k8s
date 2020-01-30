@@ -176,6 +176,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 func (r *ReconcileAssociation) updateStatus(ctx context.Context, kibana kbv1.Kibana, newStatus commonv1.AssociationStatus) (reconcile.Result, error) {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
+
 	if !reflect.DeepEqual(kibana.Status.AssociationStatus, newStatus) {
 		oldStatus := kibana.Status.AssociationStatus
 		kibana.Status.AssociationStatus = newStatus
@@ -299,6 +300,7 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expectedESAssoc *commonv1.AssociationConf, kibana *kbv1.Kibana) (commonv1.AssociationStatus, error) {
 	span, _ := apm.StartSpan(ctx, "update_assoc_conf", tracing.SpanTypeApp)
 	defer span.End()
+
 	if !reflect.DeepEqual(expectedESAssoc, kibana.AssociationConf()) {
 		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		if err := association.UpdateAssociationConf(r.Client, kibana, expectedESAssoc); err != nil {
@@ -316,6 +318,7 @@ func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expect
 func (r *ReconcileAssociation) getElasticsearch(ctx context.Context, kibana *kbv1.Kibana, esRefKey types.NamespacedName) (esv1.Elasticsearch, commonv1.AssociationStatus, error) {
 	span, _ := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
+
 	var es esv1.Elasticsearch
 	if err := r.Get(esRefKey, &es); err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kibana, events.EventAssociationError, "Failed to find referenced backend %s: %v", esRefKey, err)
@@ -343,6 +346,7 @@ func (r *ReconcileAssociation) getElasticsearch(ctx context.Context, kibana *kbv
 func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kibana *kbv1.Kibana, es types.NamespacedName) (association.CASecret, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_es_ca", tracing.SpanTypeApp)
 	defer span.End()
+
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{

@@ -31,6 +31,7 @@ const (
 func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime.Object, version string) error {
 	span, _ := apm.StartSpan(ctx, "update_controller_version", tracing.SpanTypeApp)
 	defer span.End()
+
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
 	if err != nil {
@@ -73,6 +74,7 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime
 func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.Object, selector map[string]string, controllerVersion string) (bool, error) {
 	span, spanctx := apm.StartSpan(ctx, "reconcile_compatibility", tracing.SpanTypeApp)
 	defer span.End()
+
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
 	if err != nil {

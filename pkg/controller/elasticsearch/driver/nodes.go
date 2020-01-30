@@ -39,6 +39,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 ) *reconciler.Results {
 	span, spanctx := apm.StartSpan(ctx, "reconcile_node_spec", tracing.SpanTypeApp)
 	defer span.End()
+
 	results := &reconciler.Results{}
 
 	// check if actual StatefulSets and corresponding pods match our expectations before applying any change

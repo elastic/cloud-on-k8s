@@ -42,6 +42,7 @@ func IsTooYoungForGC(object metav1.Object) bool {
 func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
 	span, _ := apm.StartSpan(ctx, "delete_orphaned_secrets", tracing.SpanTypeApp)
 	defer span.End()
+
 	var secrets corev1.SecretList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)

@@ -229,6 +229,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request reconcile.Request, es *esv1.Elasticsearch) (bool, error) {
 	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
+
 	err := r.Get(request.NamespacedName, es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -263,6 +264,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
 	err := es.ValidateCreate()
 	span.End()
+
 	if err != nil {
 		log.Error(
 			err,
@@ -316,6 +318,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 ) error {
 	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
+
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)

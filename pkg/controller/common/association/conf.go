@@ -26,6 +26,7 @@ import (
 func FetchWithAssociation(ctx context.Context, client k8s.Client, request reconcile.Request, obj commonv1.Associator) error {
 	span, _ := apm.StartSpan(ctx, "fetch_association", tracing.SpanTypeApp)
 	defer span.End()
+
 	if err := client.Get(request.NamespacedName, obj); err != nil {
 		return err
 	}

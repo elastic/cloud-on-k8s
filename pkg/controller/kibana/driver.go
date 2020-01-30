@@ -266,6 +266,7 @@ func (d *driver) Reconcile(
 
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
+
 	deploymentParams, err := d.deploymentParams(kb)
 	if err != nil {
 		return results.WithError(err)

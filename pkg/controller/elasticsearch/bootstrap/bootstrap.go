@@ -35,6 +35,7 @@ func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
 	span, spanctx := apm.StartSpan(ctx, "reconcile_cluster_uuid", tracing.SpanTypeApp)
 	defer span.End()
+
 	if AnnotatedForBootstrap(*cluster) {
 		// already annotated, nothing to do.
 		return false, nil

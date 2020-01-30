@@ -83,6 +83,7 @@ func ReconcileEsUser(
 ) error {
 	span, _ := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
+
 	pw := commonuser.RandomPasswordBytes()
 
 	secKey := secretKey(associated, userObjectSuffix)

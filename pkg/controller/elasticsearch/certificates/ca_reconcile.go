@@ -45,6 +45,7 @@ func Reconcile(
 ) (*CertificateResources, *reconciler.Results) {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
+
 	results := &reconciler.Results{}
 
 	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
