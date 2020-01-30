@@ -253,7 +253,7 @@ You can also change the https://kubernetes.io/docs/reference/access-authn-authz/
 If the validation webhook is preventing you from making changes due to the unknown fields validation like below, you can force the webhook to ignore it by removing the`kubectl.kubernetes.io/last-applied-configuration` annotation from your resource.
 
 ```
-admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request: Elasticsearch.elasticsearch.k8s.elastic.co "quickstart" is invalid: some-misspelled-field: Invalid value: "some-misspelled-field": some-misspelled-field field is unknown
+admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request: Elasticsearch.elasticsearch.k8s.elastic.co "quickstart" is invalid: some-misspelled-field: Invalid value: "some-misspelled-field": some-misspelled-field field found in kubectl.kubernetes.io/last-applied-configuration annotation is unknown
 ```
 
 
