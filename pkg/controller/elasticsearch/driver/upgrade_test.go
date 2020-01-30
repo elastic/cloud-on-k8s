@@ -36,11 +36,11 @@ func Test_podsToUpgrade(t *testing.T) {
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
-						Name: "masters", Replicas: 2, Master: true,
+						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2},
 					}.Build(),
 					sset.TestSset{
-						Name: "nodes", Replicas: 3, Master: true,
+						Name: "nodes", Namespace: TestEsNamespace, Replicas: 3, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 3},
 					}.Build(),
 				},
@@ -60,11 +60,11 @@ func Test_podsToUpgrade(t *testing.T) {
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
-						Name: "masters", Replicas: 2, Master: true,
+						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 0, Replicas: 2},
 					}.Build(),
 					sset.TestSset{
-						Name: "nodes", Replicas: 3, Master: true,
+						Name: "nodes", Namespace: TestEsNamespace, Replicas: 3, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
@@ -81,11 +81,11 @@ func Test_podsToUpgrade(t *testing.T) {
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
-						Name: "masters", Replicas: 2, Master: true,
+						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "", UpdatedReplicas: 0, Replicas: 2},
 					}.Build(),
 					sset.TestSset{
-						Name: "nodes", Replicas: 3, Master: true,
+						Name: "nodes", Namespace: TestEsNamespace, Replicas: 3, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
@@ -102,11 +102,11 @@ func Test_podsToUpgrade(t *testing.T) {
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
-						Name: "masters", Replicas: 2, Master: true,
+						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-a", UpdateRevision: "rev-b", UpdatedReplicas: 1, Replicas: 2},
 					}.Build(),
 					sset.TestSset{
-						Name: "nodes", Replicas: 3, Master: true,
+						Name: "nodes", Namespace: TestEsNamespace, Replicas: 3, Master: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-b", UpdateRevision: "rev-b", UpdatedReplicas: 3, Replicas: 3},
 					}.Build(),
 				},
@@ -123,11 +123,11 @@ func Test_podsToUpgrade(t *testing.T) {
 			args: args{
 				statefulSets: sset.StatefulSetList{
 					sset.TestSset{
-						Name: "masters", Replicas: 2, Master: true, Data: false,
+						Name: "masters", Namespace: TestEsNamespace, Replicas: 2, Master: true, Data: false,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-master-a", UpdateRevision: "rev-master-b", UpdatedReplicas: 0, Replicas: 2},
 					}.Build(),
 					sset.TestSset{
-						Name: "nodes", Replicas: 3, Master: false, Data: true,
+						Name: "nodes", Namespace: TestEsNamespace, Replicas: 3, Master: false, Data: true,
 						Status: appsv1.StatefulSetStatus{CurrentRevision: "rev-nodes-a", UpdateRevision: "rev-nodes-a", UpdatedReplicas: 0, Replicas: 3},
 					}.Build(),
 				},
