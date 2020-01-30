@@ -147,7 +147,7 @@ func init() {
 	Cmd.Flags().Bool(
 		RbacControlledReferencesFlag,
 		false, // Set to false for backward compatibility
-		"enables role based access control for references on resources accross namespaces ",
+		"enables role based access control for references on resources across namespaces ",
 	)
 	Cmd.Flags().String(
 		WebhookSecretFlag,
