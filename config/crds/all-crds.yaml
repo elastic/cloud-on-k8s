@@ -367,6 +367,8 @@ spec:
             version:
               description: Version of the APM Server.
               type: string
+          required:
+          - version
           type: object
         status:
           description: ApmServerStatus defines the observed state of ApmServer
@@ -1103,6 +1105,7 @@ spec:
               type: string
           required:
           - nodeSets
+          - version
           type: object
         status:
           description: ElasticsearchStatus defines the observed state of Elasticsearch
@@ -1505,6 +1508,8 @@ spec:
             version:
               description: Version of Kibana.
               type: string
+          required:
+          - version
           type: object
         status:
           description: KibanaStatus defines the observed state of Kibana

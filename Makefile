@@ -101,11 +101,8 @@ go-generate:
 generate-crds: go-generate controller-gen
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
-	# We generate CRDs with trivialVersions=true, to support pre-1.13 Kubernetes versions. This means the CRDs
-	# include validation for the latest version **only**. Older versions are still mentioned, but will be validated
-	# against the latest version schema.
-	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
-	# build a patched merged version of the CRDs
+	$(CONTROLLER_GEN) crd paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
+	# apply patches to work around some CRD generation issues, and merge them into a single file
 	kubectl kustomize config/crds/patches > $(ALL_CRDS)
 	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
