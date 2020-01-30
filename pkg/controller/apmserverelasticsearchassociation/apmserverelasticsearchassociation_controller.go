@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"time"
 
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -138,8 +138,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.Namespac
 // and what is in the ApmServerElasticsearchAssociation.Spec
 func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "apm-es-association")
-	defer commonapm.EndTransaction(tx)
+	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "apm-es-association")
+	defer tracing.EndTransaction(tx)
 
 	var apmServer apmv1.ApmServer
 	if err := association.FetchWithAssociation(ctx, r.Client, request, &apmServer); err != nil {
@@ -150,7 +150,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 				Name:      request.Name,
 			})
 		}
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	if common.IsPaused(apmServer.ObjectMeta) {
@@ -161,27 +161,27 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	// ApmServer is being deleted, short-circuit reconciliation and remove artifacts related to the association.
 	if !apmServer.DeletionTimestamp.IsZero() {
 		apmName := k8s.ExtractNamespacedName(&apmServer)
-		return reconcile.Result{}, commonapm.CaptureError(ctx, r.onDelete(apmName))
+		return reconcile.Result{}, tracing.CaptureError(ctx, r.onDelete(apmName))
 	}
 
 	if compatible, err := r.isCompatible(ctx, &apmServer); err != nil || !compatible {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &apmServer, r.OperatorInfo.BuildInfo.Version); err != nil {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	newStatus, err := r.reconcileInternal(ctx, &apmServer)
 	// we want to attempt a status update even in the presence of errors
 	if err := r.updateStatus(ctx, apmServer, newStatus); err != nil {
-		return defaultRequeue, commonapm.CaptureError(ctx, err)
+		return defaultRequeue, tracing.CaptureError(ctx, err)
 	}
-	return resultFromStatus(newStatus), commonapm.CaptureError(ctx, err)
+	return resultFromStatus(newStatus), tracing.CaptureError(ctx, err)
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) updateStatus(ctx context.Context, apmServer apmv1.ApmServer, newStatus commonv1.AssociationStatus) error {
-	span, _ := apm.StartSpan(ctx, "update_association", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "update_association", tracing.SpanTypeApp)
 	defer span.End()
 
 	oldStatus := apmServer.Status.Association
@@ -301,7 +301,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) getElasticsearch(ctx context.Context, apmServer *apmv1.ApmServer, elasticsearchRef commonv1.ObjectSelector, es *esv1.Elasticsearch) (commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "get_elasticsearch", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 	err := r.Get(elasticsearchRef.NamespacedName(), es)
 	if err != nil {
@@ -322,7 +322,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) getElasticsearch(ctx contex
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) updateAssocConf(ctx context.Context, expectedAssocConf *commonv1.AssociationConf, apmServer *apmv1.ApmServer) (commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "update_apm_assoc", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "update_apm_assoc", tracing.SpanTypeApp)
 	defer span.End()
 	if !reflect.DeepEqual(expectedAssocConf, apmServer.AssociationConf()) {
 		log.Info("Updating APMServer spec with Elasticsearch association configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
@@ -339,7 +339,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) updateAssocConf(ctx context
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ctx context.Context, as *apmv1.ApmServer, es types.NamespacedName) (association.CASecret, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_es_ca", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "reconcile_es_ca", tracing.SpanTypeApp)
 	defer span.End()
 	apmKey := k8s.ExtractNamespacedName(as)
 	// watch ES CA secret to reconcile on any change
@@ -368,7 +368,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ct
 // now redundant old user object/secret. This function lists all resources that don't match the current name/namespace
 // combinations and deletes them.
 func deleteOrphanedResources(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
 	defer span.End()
 	var secrets corev1.SecretList
 	ns := client.InNamespace(as.Namespace)

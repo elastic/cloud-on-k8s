@@ -6,7 +6,7 @@ package bootstrap
 
 import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
@@ -33,7 +33,7 @@ func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 // ReconcileClusterUUID attempts to set the ClusterUUID annotation on the Elasticsearch resource if not already set.
 // It returns a boolean indicating whether the reconciliation should be re-queued (ES not reachable).
 func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
-	span, spanctx := apm.StartSpan(ctx, "reconcile_cluster_uuid", commonapm.SpanTypeApp)
+	span, spanctx := apm.StartSpan(ctx, "reconcile_cluster_uuid", tracing.SpanTypeApp)
 	defer span.End()
 	if AnnotatedForBootstrap(*cluster) {
 		// already annotated, nothing to do.

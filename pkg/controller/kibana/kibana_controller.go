@@ -12,12 +12,12 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -131,8 +131,8 @@ type ReconcileKibana struct {
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "kibana_name", &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.params.Tracer, request.NamespacedName, "kibana")
-	defer commonapm.EndTransaction(tx)
+	tx, ctx := tracing.NewTransaction(r.params.Tracer, request.NamespacedName, "kibana")
+	defer tracing.EndTransaction(tx)
 
 	// retrieve the kibana object
 	var kb kbv1.Kibana
@@ -144,7 +144,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 			})
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// skip reconciliation if paused
@@ -156,12 +156,12 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// check for compatibility with the operator version
 	compatible, err := r.isCompatible(ctx, &kb)
 	if err != nil || !compatible {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(r.Client, &kb); err != nil {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// Kibana will be deleted nothing to do other than remove the watches
@@ -173,7 +173,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// update controller version annotation if necessary
 	err = annotation.UpdateControllerVersion(ctx, r.Client, &kb, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// main reconciliation logic
@@ -192,7 +192,7 @@ func (r *ReconcileKibana) isCompatible(ctx context.Context, kb *kbv1.Kibana) (bo
 func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
 	driver, err := newDriver(r, r.scheme, r.dynamicWatches, r.recorder, kb)
 	if err != nil {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	state := NewState(request, kb)
@@ -211,7 +211,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 }
 
 func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
-	span, _ := apm.StartSpan(ctx, "update_status", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 
 	current := state.originalKibana

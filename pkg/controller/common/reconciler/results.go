@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -67,7 +67,7 @@ func (r *Results) WithResults(other *Results) *Results {
 // WithError adds an error to the results.
 func (r *Results) WithError(err error) *Results {
 	if err != nil {
-		r.errors = append(r.errors, commonapm.CaptureError(r.ctx, err))
+		r.errors = append(r.errors, tracing.CaptureError(r.ctx, err))
 	}
 	return r
 }
@@ -97,7 +97,7 @@ func (r *Results) mergeResult(kind resultKind, res reconcile.Result) {
 // Apply applies the output of a reconciliation step to the results. The step outcome is implicitly considered
 // recoverable as we just record the results and continue.
 func (r *Results) Apply(step string, recoverableStep func(context.Context) (reconcile.Result, error)) *Results {
-	span, ctx := apm.StartSpan(r.ctx, step, commonapm.SpanTypeApp)
+	span, ctx := apm.StartSpan(r.ctx, step, tracing.SpanTypeApp)
 	defer span.End()
 	result, err := recoverableStep(ctx)
 	if err != nil {

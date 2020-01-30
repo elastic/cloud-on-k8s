@@ -17,13 +17,13 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
@@ -170,7 +170,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 			*min,
 			certificateResources.TrustedHTTPCertificates,
 		),
-		commonapm.TracerFromContext(d.Context))
+		tracing.TracerFromContext(d.Context))
 
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)

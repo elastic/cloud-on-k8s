@@ -11,7 +11,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -19,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
@@ -176,14 +176,14 @@ type ReconcileElasticsearch struct {
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
-	tx, ctx := commonapm.NewTransaction(r.Tracer, request.NamespacedName, "elasticsearch")
-	defer commonapm.EndTransaction(tx)
+	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "elasticsearch")
+	defer tracing.EndTransaction(tx)
 
 	// Fetch the Elasticsearch instance
 	var es esv1.Elasticsearch
 	requeue, err := r.fetchElasticsearch(ctx, request, &es)
 	if err != nil || requeue {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	if common.IsPaused(es.ObjectMeta) {
@@ -195,7 +195,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, &es, events.EventCompatCheckError, "Error during compatibility check: %v", err)
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	if !compat {
@@ -205,12 +205,12 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(r.Client, &es); err != nil {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	err = annotation.UpdateControllerVersion(ctx, r.Client, &es, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		return reconcile.Result{}, commonapm.CaptureError(ctx, err)
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	state := esreconcile.NewState(es)
@@ -227,7 +227,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 }
 
 func (r *ReconcileElasticsearch) fetchElasticsearch(ctx context.Context, request reconcile.Request, es *esv1.Elasticsearch) (bool, error) {
-	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "fetch_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 	err := r.Get(request.NamespacedName, es)
 	if err != nil {
@@ -259,7 +259,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	span, _ := apm.StartSpan(ctx, "validate", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
 	err := es.ValidateCreate()
 	span.End()
@@ -314,7 +314,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es esv1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	span, _ := apm.StartSpan(ctx, "update_status", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
 	defer span.End()
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {

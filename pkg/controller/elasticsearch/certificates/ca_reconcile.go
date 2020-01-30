@@ -10,11 +10,11 @@ import (
 	"time"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -43,7 +43,7 @@ func Reconcile(
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
 ) (*CertificateResources, *reconciler.Results) {
-	span, _ := apm.StartSpan(ctx, "reconcile_certs", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 	results := &reconciler.Results{}
 

@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -81,7 +81,7 @@ func ReconcileEsUser(
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
 ) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_es_user", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
 	pw := commonuser.RandomPasswordBytes()
 

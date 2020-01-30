@@ -9,10 +9,10 @@ import (
 	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
@@ -37,7 +37,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	keystoreResources *keystore.Resources,
 	certResources *certificates.CertificateResources,
 ) *reconciler.Results {
-	span, spanctx := apm.StartSpan(ctx, "reconcile_node_spec", commonapm.SpanTypeApp)
+	span, spanctx := apm.StartSpan(ctx, "reconcile_node_spec", tracing.SpanTypeApp)
 	defer span.End()
 	results := &reconciler.Results{}
 

@@ -7,7 +7,7 @@ package annotation
 import (
 	"context"
 
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	tracing "github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
@@ -29,7 +29,7 @@ const (
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
 func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime.Object, version string) error {
-	span, _ := apm.StartSpan(ctx, "update_controller_version", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "update_controller_version", tracing.SpanTypeApp)
 	defer span.End()
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
@@ -71,7 +71,7 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime
 // if an object does not have an annotation, it will determine if it is a new object or if it has been previously reconciled by an older controller version, as this annotation
 // was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so
 func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.Object, selector map[string]string, controllerVersion string) (bool, error) {
-	span, spanctx := apm.StartSpan(ctx, "reconcile_compatibility", commonapm.SpanTypeApp)
+	span, spanctx := apm.StartSpan(ctx, "reconcile_compatibility", tracing.SpanTypeApp)
 	defer span.End()
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)

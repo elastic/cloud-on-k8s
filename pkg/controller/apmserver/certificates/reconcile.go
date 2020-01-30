@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	apmagent "go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -29,7 +29,7 @@ func Reconcile(
 	services []corev1.Service,
 	rotation certificates.RotationParams,
 ) *reconciler.Results {
-	span, _ := apmagent.StartSpan(ctx, "reconcile_certs", commonapm.SpanTypeApp)
+	span, _ := apmagent.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 	results := reconciler.NewResult(ctx)
 	selfSignedCert := apm.Spec.HTTP.TLS.SelfSignedCertificate

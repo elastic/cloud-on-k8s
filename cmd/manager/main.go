@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm"
@@ -286,7 +286,7 @@ func execute() {
 	log.Info("Setting up controllers", "roles", roles)
 	var tracer *apm.Tracer
 	if viper.GetBool(EnableAPMFlag) {
-		tracer = commonapm.NewTracer("elastic-operator", log)
+		tracer = tracing.NewTracer("elastic-operator", log)
 	}
 	params := operator.Parameters{
 		Dialer:            dialer,

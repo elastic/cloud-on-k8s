@@ -10,8 +10,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	commonapm "github.com/elastic/cloud-on-k8s/pkg/controller/common/apm"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
@@ -29,7 +29,7 @@ func ReconcileConfigSecret(
 	kbSettings CanonicalConfig,
 	operatorInfo about.OperatorInfo,
 ) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_config_secret", commonapm.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
 	defer span.End()
 
 	settingsYamlBytes, err := kbSettings.Render()
