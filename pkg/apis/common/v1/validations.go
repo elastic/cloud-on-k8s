@@ -25,8 +25,14 @@ func NoUnknownFields(dest interface{}, meta metav1.ObjectMeta) field.ErrorList {
 			unknownPrefix := "json: unknown field "
 			if strings.HasPrefix(errString, unknownPrefix) {
 				fld := strings.TrimPrefix(errString, unknownPrefix)
-				fld = fld[1 : len(fld)-1] // removes quotes from fld
-				errs = append(errs, field.Invalid(field.NewPath(fld), fld, fmt.Sprintf("%s field is unknown", fld)))
+				if len(fld) >= 2 {
+					fld = fld[1 : len(fld)-1] // removes quotes from fld
+				}
+				err := field.Invalid(
+					field.NewPath(fld),
+					fld,
+					fmt.Sprintf("%s field found in %s annotation is unknown", fld, v1.LastAppliedConfigAnnotation))
+				errs = append(errs, err)
 			}
 		}
 	}
