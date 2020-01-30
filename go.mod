@@ -26,8 +26,6 @@ require (
 	github.com/imdario/mergo v0.3.8
 	github.com/influxdata/tdigest v0.0.1 // indirect
 	github.com/magiconair/properties v1.8.1
-	github.com/onsi/ginkgo v1.10.1 // indirect
-	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v1.1.0 // indirect
@@ -50,12 +48,10 @@ require (
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	gopkg.in/yaml.v3 v3.0.0-20191120175047-4206685974f2
-	k8s.io/api v0.0.0-20191114100352-16d7abae0d2a
-	k8s.io/apimachinery v0.0.0-20191028221656-72ed19daf4bb
-	k8s.io/client-go v0.0.0-20191114101535-6c5935290e33
+	k8s.io/api v0.17.0
+	k8s.io/apimachinery v0.17.0
+	k8s.io/client-go v0.17.0
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20190918143330-0270cf2f1c1d // indirect
-	k8s.io/utils v0.0.0-20191010214722-8d271d903fe4 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
-	sigs.k8s.io/controller-tools v0.2.4
+	sigs.k8s.io/controller-tools v0.2.5
 )
