@@ -74,7 +74,7 @@ const (
 
 	DebugHTTPServerListenAddressFlag = "debug-http-listen"
 
-	EnableAPMFlag = "enable-apm"
+	EnableTracingFlag = "enable-tracing"
 )
 
 var (
@@ -156,9 +156,9 @@ func init() {
 		"Listen address for debug HTTP server (only available in development mode)",
 	)
 	Cmd.Flags().Bool(
-		EnableAPMFlag,
+		EnableTracingFlag,
 		false,
-		"Enable APM tracing in the operator. Configure endpoint, token etc per environment variables")
+		"Enable APM tracing in the operator. Endpoint, token etc are to be configured via environment variables. See https://www.elastic.co/guide/en/apm/agent/go/current/configuration.html")
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -285,7 +285,7 @@ func execute() {
 	}
 	log.Info("Setting up controllers", "roles", roles)
 	var tracer *apm.Tracer
-	if viper.GetBool(EnableAPMFlag) {
+	if viper.GetBool(EnableTracingFlag) {
 		tracer = tracing.NewTracer("elastic-operator", log)
 	}
 	params := operator.Parameters{
