@@ -191,7 +191,7 @@ func (h *helper) initTestSecrets() error {
 		}
 
 		monitoringSecrets := struct {
-			MonitoringIp   string `json:"monitoringIp"` //nolint
+			MonitoringIP   string `json:"monitoringIp"`
 			MonitoringUser string `json:"monitoringUser"`
 			MonitoringPass string `json:"monitoringPass"`
 			MonitoringCa   string `json:"monitoringCa"`
@@ -201,7 +201,7 @@ func (h *helper) initTestSecrets() error {
 			return err
 		}
 
-		h.testSecrets["monitoring-ip"] = monitoringSecrets.MonitoringIp //nolint
+		h.testSecrets["monitoring-ip"] = monitoringSecrets.MonitoringIP
 		h.testSecrets["monitoring-user"] = monitoringSecrets.MonitoringUser
 		h.testSecrets["monitoring-pass"] = monitoringSecrets.MonitoringPass
 		h.testSecrets["monitoring-ca"] = monitoringSecrets.MonitoringCa

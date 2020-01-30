@@ -30,6 +30,9 @@ license.key
 # test licenses used in the E2E tests
 test-license.json
 
+# Monitoring secrets
+monitoring-secrets.json
+
 # generated from merging multiple files in the Makefile
 config/all-in-one.yaml
 

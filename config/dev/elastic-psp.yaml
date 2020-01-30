@@ -47,6 +47,7 @@
           max: 65535
     readOnlyRootFilesystem: false
 ---
+  # PSP needed for DaemonSet running Filebeat. Allows for hostNetwork, running as root and using hostPath volume type.
   apiVersion: policy/v1beta1
   kind: PodSecurityPolicy
   metadata:
@@ -79,7 +80,7 @@
     hostIPC: false
     hostPID: false
     runAsUser:
-      # Allow the container to run with root privileges.
+      # Allow the container to run as root.
       rule: 'RunAsAny'
     seLinux:
       # This policy assumes the nodes are using AppArmor rather than SELinux.
