@@ -31,7 +31,7 @@ func NoUnknownFields(dest interface{}, meta metav1.ObjectMeta) field.ErrorList {
 				err := field.Invalid(
 					field.NewPath(fld),
 					fld,
-					fmt.Sprintf("%s field found in %s annotation is unknown", fld, v1.LastAppliedConfigAnnotation))
+					fmt.Sprintf("%s field found in the %s annotation is unknown", fld, v1.LastAppliedConfigAnnotation))
 				errs = append(errs, err)
 			}
 		}
