@@ -248,7 +248,7 @@ func (h *helper) deployNamespaceOperator() error {
 
 func (h *helper) deployFilebeat() error {
 	if h.monitoringSecrets == "" {
-		log.Info("Not deploying filebeat")
+		log.Info("No monitoring secrets provided, filebeat is not deployed")
 		return nil
 	}
 
