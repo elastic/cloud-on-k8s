@@ -6,12 +6,16 @@ package tracing
 
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/go-logr/logr"
 	"go.elastic.co/apm"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+var (
+	log = logf.Log.WithName("tracing")
 )
 
 // NewTracer returns a new APM tracer with the logger in log configured.
-func NewTracer(serviceName string, log logr.Logger) *apm.Tracer {
+func NewTracer(serviceName string) *apm.Tracer {
 	build := about.GetBuildInfo()
 	tracer, err := apm.NewTracer(serviceName, build.Version+"-"+build.Hash)
 	if err != nil {

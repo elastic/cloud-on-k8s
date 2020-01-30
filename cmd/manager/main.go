@@ -286,7 +286,7 @@ func execute() {
 	log.Info("Setting up controllers", "roles", roles)
 	var tracer *apm.Tracer
 	if viper.GetBool(EnableTracingFlag) {
-		tracer = tracing.NewTracer("elastic-operator", log)
+		tracer = tracing.NewTracer("elastic-operator")
 	}
 	params := operator.Parameters{
 		Dialer:            dialer,
