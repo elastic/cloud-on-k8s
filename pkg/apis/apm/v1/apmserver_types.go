@@ -41,7 +41,7 @@ type ApmServerSpec struct {
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is the name of the ServiceAccount to use to check access to objects in different namespaces.
+	// ServiceAccountName is the name of the ServiceAccount used to check access to objects in different namespaces.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }

@@ -46,7 +46,7 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is the name of the ServiceAccount to use to check access to objects in different namespaces.
+	// ServiceAccountName is the name of the ServiceAccount used to check access to objects in different namespaces.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
