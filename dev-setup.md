@@ -12,8 +12,10 @@ Before you start, install the following tools and packages:
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
 * [docker](https://docs.docker.com/)
-* [gcloud](https://cloud.google.com/sdk/gcloud/) (Install `beta` components and `docker-credential-gcr`: `gcloud components install beta docker-credential-gcr`)
 * sha1sum (for Mac `brew install md5sha1sum`)
+* [gcloud](https://cloud.google.com/sdk/gcloud/) 
+  * Install beta and docker-credential-gcr components:  `gcloud components install beta docker-credential-gcr`
+
 
 ### Get sources 
 
