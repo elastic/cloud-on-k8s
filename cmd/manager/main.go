@@ -148,7 +148,7 @@ func init() {
 	Cmd.Flags().Bool(
 		CheckReferencesRbac,
 		false, // Set to false for backward compatibility
-		"Restrict cross-namespace resource assocation through RBAC (eg. referencing Elasticsearch from Kibana)",
+		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
 	)
 	Cmd.Flags().String(
 		WebhookSecretFlag,
