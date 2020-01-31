@@ -111,17 +111,17 @@ Before you start, pull the latest files from these repos:
 1. Find the right file (or create a new one).
 1. Add your content.
 1. Test the doc build locally:
-$GIT_HOME/docs/build_docs --asciidoctor --doc $GIT_HOME/cloud-on-k8s/docs/index.asciidoc --chunk 1 —open`
+`$GIT_HOME/docs/build_docs --asciidoctor --doc $GIT_HOME/cloud-on-k8s/docs/index.asciidoc --chunk 1 —open`
 1. Push a PR for review and add the label `>docs`.
 
 **When a release goes out**
 1. Track your doc issues in the Cloud Working Board with `>docs` and the release label.
 1. Sync with the ECK release manager on which branch you push the doc PRs.
-1. Optionally and depending on the release manager, you might need to update the [conf.yaml](https://github.com/elastic/docs/blob/master/conf.yaml) file:
-   * Add the release number to the list of `branches` 
-   * Update `current` with the release branch
+1. Update the [conf.yaml](https://github.com/elastic/docs/blob/master/conf.yaml) file:
+   * Add the release branch to the list of `branches`. 
+   * Set `current` to the release branch.
 
-NOTE: Cloud documentation builds roughly every 30 minutes. 
+NOTE: Cloud documentation builds [roughly every 30 minutes](https://elasticsearch-ci.elastic.co/job/elastic+docs+master+build/). 
 
 **To get in touch with a writer**
 * Slack: ping **@cloud-writers** in [#cloud-pubs](https://elastic.slack.com/messages/C9HNMNZU1)
