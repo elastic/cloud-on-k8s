@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	apmagent "go.elastic.co/apm"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -25,27 +25,27 @@ import (
 func Reconcile(
 	ctx context.Context,
 	driver driver.Interface,
-	apm *apmv1.ApmServer,
+	as *apmv1.ApmServer,
 	services []corev1.Service,
 	rotation certificates.RotationParams,
 ) *reconciler.Results {
-	span, _ := apmagent.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
-	selfSignedCert := apm.Spec.HTTP.TLS.SelfSignedCertificate
+	selfSignedCert := as.Spec.HTTP.TLS.SelfSignedCertificate
 	if selfSignedCert != nil && selfSignedCert.Disabled {
 		return results
 	}
 
-	labels := labels.NewLabels(apm.Name)
+	labels := labels.NewLabels(as.Name)
 
 	// reconcile CA certs first
 	httpCa, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
 		driver.Scheme(),
 		name.APMNamer,
-		apm,
+		as,
 		labels,
 		certificates.HTTPCAType,
 		rotation,
@@ -62,10 +62,10 @@ func Reconcile(
 	// discover and maybe reconcile for the http certificates to use
 	httpCertificates, err := http.ReconcileHTTPCertificates(
 		driver,
-		apm,
+		as,
 		name.APMNamer,
 		httpCa,
-		apm.Spec.HTTP.TLS,
+		as.Spec.HTTP.TLS,
 		labels,
 		services,
 		rotation, // todo correct rotation
@@ -74,6 +74,6 @@ func Reconcile(
 		return results.WithError(err)
 	}
 	// reconcile http public cert secret
-	results.WithError(http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), apm, name.APMNamer, httpCertificates))
+	results.WithError(http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), as, name.APMNamer, httpCertificates))
 	return results
 }
