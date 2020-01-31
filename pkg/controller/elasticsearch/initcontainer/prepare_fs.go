@@ -81,12 +81,12 @@ var (
 	// defaultResources are the default request and limits for the init container.
 	defaultResources = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("20Mi"),
+			corev1.ResourceMemory: resource.MustParse("50Mi"),
 			corev1.ResourceCPU:    resource.MustParse("0.1"),
 		},
 		Limits: map[corev1.ResourceName]resource.Quantity{
 			// Memory limit should be at least 12582912 when running with CRI-O
-			corev1.ResourceMemory: resource.MustParse("20Mi"),
+			corev1.ResourceMemory: resource.MustParse("50Mi"),
 			corev1.ResourceCPU:    resource.MustParse("0.1"),
 		},
 	}
