@@ -21,6 +21,7 @@ var log = logf.Log.WithName("observer")
 type Settings struct {
 	ObservationInterval time.Duration
 	RequestTimeout      time.Duration
+	Tracer              *apm.Tracer
 }
 
 // Default values:
@@ -57,12 +58,10 @@ type Observer struct {
 
 	lastState State
 	mutex     sync.RWMutex
-
-	tracer *apm.Tracer
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation, tracer *apm.Tracer) *Observer {
+func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation) *Observer {
 	observer := Observer{
 		cluster:       cluster,
 		esClient:      esClient,
@@ -72,7 +71,6 @@ func NewObserver(cluster types.NamespacedName, esClient client.Client, settings 
 		stopOnce:      sync.Once{},
 		onObservation: onObservation,
 		mutex:         sync.RWMutex{},
-		tracer:        tracer,
 	}
 
 	log.Info("Creating observer for cluster", "namespace", cluster.Namespace, "es_name", cluster.Name)
@@ -135,8 +133,8 @@ func (o *Observer) retrieveState(ctx context.Context) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
 
-	if o.tracer != nil {
-		tx := o.tracer.StartTransaction(o.cluster.String(), "elasticsearch_observer")
+	if o.settings.Tracer != nil {
+		tx := o.settings.Tracer.StartTransaction(o.cluster.String(), "elasticsearch_observer")
 		defer tx.End()
 		timeoutCtx = apm.ContextWithTransaction(timeoutCtx, tx)
 	}

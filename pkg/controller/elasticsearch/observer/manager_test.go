@@ -66,14 +66,14 @@ func TestManager_Observe(t *testing.T) {
 		},
 		{
 			name:                   "Observe a second cluster",
-			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil, nil)},
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:       cluster("cluster2"),
 			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster"), cluster("cluster2")},
 		},
 		{
 			name:                   "Observe twice the same cluster (idempotent)",
-			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil, nil)},
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:       cluster("cluster"),
 			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster")},
@@ -81,7 +81,7 @@ func TestManager_Observe(t *testing.T) {
 		},
 		{
 			name:              "Observe twice the same cluster with a different client",
-			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil, nil)},
+			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:  cluster("cluster"),
 			// more client comparison tests in client_test.go
 			clusterToObserveClient: fakeClientWithDifferentUser,
@@ -98,7 +98,7 @@ func TestManager_Observe(t *testing.T) {
 			if initial, exists := tt.initiallyObserved[tt.clusterToObserve]; exists {
 				initialCreationTime = initial.creationTime
 			}
-			observer := m.Observe(tt.clusterToObserve, tt.clusterToObserveClient, nil)
+			observer := m.Observe(tt.clusterToObserve, tt.clusterToObserveClient)
 			// returned observer should be the correct one
 			require.Equal(t, tt.clusterToObserve, observer.cluster)
 			// list of observers should have been updated
@@ -172,9 +172,9 @@ func TestManager_AddObservationListener(t *testing.T) {
 	})
 
 	// observe 2 clusters
-	obs1 := m.Observe(cluster("cluster1"), fakeEsClient200(client.UserAuth{}), nil)
+	obs1 := m.Observe(cluster("cluster1"), fakeEsClient200(client.UserAuth{}))
 	defer obs1.Stop()
-	obs2 := m.Observe(cluster("cluster2"), fakeEsClient200(client.UserAuth{}), nil)
+	obs2 := m.Observe(cluster("cluster2"), fakeEsClient200(client.UserAuth{}))
 	defer obs2.Stop()
 
 	// add a listener that is only interested in cluster1

@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -31,24 +30,24 @@ func NewManager(settings Settings) *Manager {
 
 // ObservedStateResolver returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster types.NamespacedName, esClient client.Client, tracer *apm.Tracer) State {
-	return m.Observe(cluster, esClient, tracer).LastState()
+func (m *Manager) ObservedStateResolver(cluster types.NamespacedName, esClient client.Client) State {
+	return m.Observe(cluster, esClient).LastState()
 }
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Client, tracer *apm.Tracer) *Observer {
+func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Client) *Observer {
 	m.lock.RLock()
 	observer, exists := m.observers[cluster]
 	m.lock.RUnlock()
 
 	switch {
 	case !exists:
-		return m.createObserver(cluster, esClient, tracer)
+		return m.createObserver(cluster, esClient)
 	case exists && !observer.esClient.Equal(esClient):
 		log.Info("Replacing observer HTTP client", "namespace", cluster.Namespace, "es_name", cluster.Name)
 		m.StopObserving(cluster)
-		return m.createObserver(cluster, esClient, tracer)
+		return m.createObserver(cluster, esClient)
 	default:
 		return observer
 	}
@@ -56,8 +55,8 @@ func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Client, 
 
 // createObserver creates a new observer according to the given arguments,
 // and create/replace its entry in the observers map
-func (m *Manager) createObserver(cluster types.NamespacedName, esClient client.Client, tracer *apm.Tracer) *Observer {
-	observer := NewObserver(cluster, esClient, m.settings, m.notifyListeners, tracer)
+func (m *Manager) createObserver(cluster types.NamespacedName, esClient client.Client) *Observer {
+	observer := NewObserver(cluster, esClient, m.settings, m.notifyListeners)
 	observer.Start()
 	m.lock.Lock()
 	m.observers[cluster] = observer

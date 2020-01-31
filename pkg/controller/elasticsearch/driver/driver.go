@@ -23,7 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
@@ -167,7 +166,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			*min,
 			certificateResources.TrustedHTTPCertificates,
 		),
-		tracing.TracerFromContext(ctx))
+	)
 
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)

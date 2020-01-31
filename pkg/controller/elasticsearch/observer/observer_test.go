@@ -40,7 +40,7 @@ func createAndRunTestObserver(onObs OnObservation) *Observer {
 	obs := NewObserver(cluster("cluster"), fakeEsClient, Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
-	}, onObs, nil)
+	}, onObs)
 	obs.Start()
 	return obs
 }
