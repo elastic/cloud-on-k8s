@@ -33,7 +33,7 @@ func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 // ReconcileClusterUUID attempts to set the ClusterUUID annotation on the Elasticsearch resource if not already set.
 // It returns a boolean indicating whether the reconciliation should be re-queued (ES not reachable).
 func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
-	span, spanctx := apm.StartSpan(ctx, "reconcile_cluster_uuid", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_cluster_uuid", tracing.SpanTypeApp)
 	defer span.End()
 
 	if AnnotatedForBootstrap(*cluster) {
@@ -44,7 +44,7 @@ func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *es
 		// retry later
 		return true, nil
 	}
-	clusterUUID, err := getClusterUUID(spanctx, esClient)
+	clusterUUID, err := getClusterUUID(ctx, esClient)
 	if err != nil {
 		// There was an error while retrieving the UUID of the Elasticsearch cluster.
 		// For example, it could be the case with ES 6.x if the cluster does not have a master yet, in this case an

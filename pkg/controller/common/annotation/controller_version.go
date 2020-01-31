@@ -72,7 +72,7 @@ func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime
 // if an object does not have an annotation, it will determine if it is a new object or if it has been previously reconciled by an older controller version, as this annotation
 // was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so
 func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.Object, selector map[string]string, controllerVersion string) (bool, error) {
-	span, spanctx := apm.StartSpan(ctx, "reconcile_compatibility", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "reconcile_compatibility", tracing.SpanTypeApp)
 	defer span.End()
 
 	accessor := meta.NewAccessor()
@@ -103,11 +103,11 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.
 		}
 		if exist {
 			log.Info("Resource was previously reconciled by incompatible controller version and missing annotation, adding annotation", "controller_version", controllerVersion, "namespace", namespace, "name", name, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-			err = UpdateControllerVersion(spanctx, client, obj, UnknownControllerVersion)
+			err = UpdateControllerVersion(ctx, client, obj, UnknownControllerVersion)
 			return false, err
 		}
 		// no annotation exists and there are no existing resources, so this has not previously been reconciled
-		err = UpdateControllerVersion(spanctx, client, obj, controllerVersion)
+		err = UpdateControllerVersion(ctx, client, obj, controllerVersion)
 		return true, err
 	}
 
