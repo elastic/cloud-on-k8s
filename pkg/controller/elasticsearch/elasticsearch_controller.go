@@ -262,7 +262,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
-	span, _ := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
 	// this is the same validation as the webhook, but we run it again here in case the webhook has not been configured
 	err := es.ValidateCreate()
 	span.End()

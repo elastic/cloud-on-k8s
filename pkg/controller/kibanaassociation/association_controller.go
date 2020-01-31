@@ -316,7 +316,7 @@ func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expect
 }
 
 func (r *ReconcileAssociation) getElasticsearch(ctx context.Context, kibana *kbv1.Kibana, esRefKey types.NamespacedName) (esv1.Elasticsearch, commonv1.AssociationStatus, error) {
-	span, _ := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
+	span, ctx := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
 
 	var es esv1.Elasticsearch
