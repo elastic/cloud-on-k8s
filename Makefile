@@ -30,9 +30,8 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # find or download controller-gen
-# note this does not validate the version
 controller-gen:
-ifeq ($(shell command -v controller-gen),)
+ifneq ($(shell controller-gen --version), Version: v0.2.5)
 	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
