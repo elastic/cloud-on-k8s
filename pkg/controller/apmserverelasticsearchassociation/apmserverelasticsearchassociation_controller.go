@@ -265,7 +265,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	// Check if reference to Elasticsearch is allowed to be established
-	if allowed, err := association.IsAllowedReference(
+	if allowed, err := association.CheckAndUnbind(
 		r.accessReviewer,
 		apmServer,
 		&es,

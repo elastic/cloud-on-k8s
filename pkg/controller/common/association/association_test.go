@@ -180,13 +180,13 @@ func TestIsAllowedReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := IsAllowedReference(tt.args.accessReviewer, tt.args.associated, tt.args.object, &tt.args.unbinder)
+			got, err := CheckAndUnbind(tt.args.accessReviewer, tt.args.associated, tt.args.object, &tt.args.unbinder)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("IsAllowedReference() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CheckAndUnbind() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("IsAllowedReference() = %v, want %v", got, tt.want)
+				t.Errorf("CheckAndUnbind() = %v, want %v", got, tt.want)
 			}
 			if tt.args.unbinder.called != tt.wantFakeUnbinderCalled {
 				t.Errorf("fakeUnbinder.called = %v, want %v", tt.args.unbinder.called, tt.wantFakeUnbinderCalled)

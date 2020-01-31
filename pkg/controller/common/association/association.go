@@ -55,8 +55,8 @@ type Unbinder interface {
 	Unbind(associated commonv1.Associated) error
 }
 
-// IsAllowedReference checks if a reference is allowed and unbind the association if it is not the case
-func IsAllowedReference(
+// CheckAndUnbind checks if a reference is allowed and unbind the association if it is not the case
+func CheckAndUnbind(
 	accessReviewer rbac.AccessReviewer,
 	associated commonv1.Associated,
 	object runtime.Object,
@@ -80,10 +80,7 @@ func IsAllowedReference(
 			"remote_name", metaObject.GetNamespace(),
 			"remote_namespace", metaObject.GetName(),
 		)
-		if err := unbinder.Unbind(associated); err != nil {
-			return false, err
-		}
-		return false, err
+		return false, unbinder.Unbind(associated)
 	}
 	return true, nil
 }

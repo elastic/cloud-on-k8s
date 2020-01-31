@@ -275,7 +275,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 	}
 
 	// Check if reference to Elasticsearch is allowed to be established
-	if allowed, err := association.IsAllowedReference(
+	if allowed, err := association.CheckAndUnbind(
 		r.accessReviewer,
 		kibana,
 		&es,
