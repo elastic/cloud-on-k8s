@@ -40,10 +40,6 @@ type KibanaSpec struct {
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
-
-	// ServiceAccountName is the name of the ServiceAccount used to check access to objects in different namespaces.
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // KibanaHealth expresses the status of the Kibana instances.

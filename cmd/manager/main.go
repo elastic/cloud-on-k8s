@@ -64,7 +64,7 @@ const (
 	CertValidityFlag       = "cert-validity"
 	CertRotateBeforeFlag   = "cert-rotate-before"
 
-	RbacControlledReferencesFlag = "rbac-controlled-references"
+	CheckReferencesRbac = "check-references-rbac"
 
 	OperatorNamespaceFlag = "operator-namespace"
 
@@ -146,9 +146,9 @@ func init() {
 		"K8s namespace the operator runs in",
 	)
 	Cmd.Flags().Bool(
-		RbacControlledReferencesFlag,
+		CheckReferencesRbac,
 		false, // Set to false for backward compatibility
-		"enables role based access control for references on resources across namespaces ",
+		"Restrict cross-namespace resource assocation through RBAC (eg. referencing Elasticsearch from Kibana)",
 	)
 	Cmd.Flags().String(
 		WebhookSecretFlag,
@@ -310,7 +310,7 @@ func execute() {
 		setupWebhook(mgr, params.CertRotation, clientset)
 	}
 
-	rbacControlledReferences := viper.GetBool(RbacControlledReferencesFlag)
+	rbacControlledReferences := viper.GetBool(CheckReferencesRbac)
 
 	var accessReviewer rbac.AccessReviewer
 	if rbacControlledReferences {

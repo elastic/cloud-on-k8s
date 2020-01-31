@@ -46,7 +46,8 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is the name of the ServiceAccount used to check access to objects in different namespaces.
+	// ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
+	// Can only be used if ECK is configured for checking references RBAC.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }

@@ -44,10 +44,6 @@ type ElasticsearchSpec struct {
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
-
-	// ServiceAccountName is the name of the ServiceAccount used to check access to objects in different namespaces.
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster

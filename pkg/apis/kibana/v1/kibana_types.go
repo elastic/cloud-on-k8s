@@ -41,7 +41,8 @@ type KibanaSpec struct {
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
-	// ServiceAccountName is the name of the ServiceAccount used to check access to objects in different namespaces.
+	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// Can only be used if ECK is configured for checking references RBAC.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }

@@ -42,7 +42,7 @@ metadata:
   name: kibana-user
   namespace: kibana-ns
 ---
-# This RoleBinding give the permission to Kibana to access the Elasticsearch cluster
+# This RoleBinding gives the permission to Kibana to access the Elasticsearch cluster
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -63,7 +63,7 @@ metadata:
   name: apmserver-user
   namespace: apmserver-ns
 ---
-# This RoleBinding give the permission to Kibana to access the Elasticsearch cluster
+# This RoleBinding gives the permission to Kibana to access the Elasticsearch cluster
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -116,5 +116,5 @@ spec:
   elasticsearchRef:
     name: "elasticsearch-sample"
     namespace: "elasticsearch-ns"
-  # Service account used the APM Server to get access to the Elasticsearch cluster
+  # Service account used by the APM Server to get access to the Elasticsearch cluster
   serviceAccountName: apmserver-user

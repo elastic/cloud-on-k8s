@@ -5,10 +5,10 @@
 package rbac
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
+	"github.com/gobuffalo/flect"
 	authorizationapi "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,7 +26,7 @@ const (
 var log = logf.Log.WithName("access-review")
 
 type AccessReviewer interface {
-	// AccessAllowed checks that the given ServiceAccount is allowed to update an other object.
+	// AccessAllowed checks that the given ServiceAccount is allowed to get an other object.
 	AccessAllowed(serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error)
 }
 
@@ -70,17 +70,13 @@ func (s *subjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 	}
 
 	kind := object.GetObjectKind().GroupVersionKind().Kind
-	plural, err := toPlural(kind)
-	if err != nil {
-		return false, nil
-	}
 
 	sar := &authorizationapi.SubjectAccessReview{
 		Spec: authorizationapi.SubjectAccessReviewSpec{
 			ResourceAttributes: &authorizationapi.ResourceAttributes{
 				Namespace: metaObject.GetNamespace(),
 				Verb:      "get",
-				Resource:  plural,
+				Resource:  flect.Pluralize(kind),
 				Group:     strings.ToLower(object.GetObjectKind().GroupVersionKind().Group),
 				Version:   strings.ToLower(object.GetObjectKind().GroupVersionKind().Version),
 				Name:      metaObject.GetName(),
@@ -95,29 +91,16 @@ func (s *subjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 	}
 	log.V(1).Info(
 		"Access review", "result",
-		sar.Status, "serviceAccount", serviceAccount,
-		"sourceNamespace", sourceNamespace,
-		"remoteKind", kind,
-		"remoteNamespace", metaObject.GetNamespace(),
-		"remoteName", metaObject.GetName(),
+		sar.Status, "service_account", serviceAccount,
+		"source_namespace", sourceNamespace,
+		"remote_kind", kind,
+		"remote_namespace", metaObject.GetNamespace(),
+		"remote_name", metaObject.GetName(),
 	)
 	if sar.Status.Denied {
 		return false, nil
 	}
 	return sar.Status.Allowed, nil
-}
-
-// Lazy hack to get the plural form
-func toPlural(singular string) (string, error) {
-	switch singular {
-	case "Elasticsearch":
-		return "elasticsearches", nil
-	case "Kibana":
-		return "kibanas", nil
-	case "ApmServer":
-		return "apmservers", nil
-	}
-	return "", fmt.Errorf("unknown singular kind: %s", singular)
 }
 
 type permissiveAccessReviewer struct{}
