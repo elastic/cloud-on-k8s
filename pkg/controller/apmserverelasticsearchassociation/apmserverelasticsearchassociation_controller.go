@@ -191,7 +191,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	}
 
 	return results.
-		WithResult(rbac.NextReconciliation(r.accessReviewer)).
+		WithResult(association.RequeueRbacCheck(r.accessReviewer)).
 		WithResult(resultFromStatus(newStatus)).
 		Aggregate()
 }

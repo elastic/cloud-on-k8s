@@ -6,7 +6,6 @@ package rbac
 
 import (
 	"strings"
-	"time"
 
 	"github.com/gobuffalo/flect"
 	authorizationapi "k8s.io/api/authorization/v1"
@@ -17,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -31,14 +29,14 @@ type AccessReviewer interface {
 	AccessAllowed(serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error)
 }
 
-type subjectAccessReviewer struct {
+type SubjectAccessReviewer struct {
 	client kubernetes.Interface
 }
 
-var _ AccessReviewer = &subjectAccessReviewer{}
+var _ AccessReviewer = &SubjectAccessReviewer{}
 
 func NewSubjectAccessReviewer(client kubernetes.Interface) AccessReviewer {
-	return &subjectAccessReviewer{
+	return &SubjectAccessReviewer{
 		client: client,
 	}
 }
@@ -47,7 +45,7 @@ func NewPermissiveAccessReviewer() AccessReviewer {
 	return &permissiveAccessReviewer{}
 }
 
-func (s *subjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error) {
+func (s *SubjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNamespace string, object runtime.Object) (bool, error) {
 	metaObject, err := meta.Accessor(object)
 	if err != nil {
 		return false, nil
@@ -116,17 +114,4 @@ var _ AccessReviewer = &permissiveAccessReviewer{}
 
 func (s *permissiveAccessReviewer) AccessAllowed(_ string, _ string, _ runtime.Object) (bool, error) {
 	return true, nil
-}
-
-// NextReconciliation returns a reconcile result depending on the implementation of the AccessReviewer.
-// It is mostly used when using the subjectAccessReviewer implementation in which case a next reconcile loop should be
-// triggered later to keep the association in sync with the RBAC roles and bindings.
-// See https://github.com/elastic/cloud-on-k8s/issues/2468#issuecomment-579157063
-func NextReconciliation(accessReviewer AccessReviewer) reconcile.Result {
-	switch accessReviewer.(type) {
-	case *subjectAccessReviewer:
-		return reconcile.Result{RequeueAfter: 15 * time.Minute}
-	default:
-		return reconcile.Result{}
-	}
 }

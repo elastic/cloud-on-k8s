@@ -188,7 +188,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	return results.
-		WithResult(rbac.NextReconciliation(r.accessReviewer)).
+		WithResult(association.RequeueRbacCheck(r.accessReviewer)).
 		WithResult(resultFromStatus(newStatus)).
 		Aggregate()
 }

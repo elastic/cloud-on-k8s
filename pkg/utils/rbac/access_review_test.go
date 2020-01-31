@@ -203,45 +203,16 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &subjectAccessReviewer{
+			s := &SubjectAccessReviewer{
 				client: tt.fields.clientProvider(),
 			}
 			got, err := s.AccessAllowed(tt.args.serviceAccount, tt.args.sourceNamespace, tt.args.object)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("subjectAccessReviewer.AccessAllowed() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("SubjectAccessReviewer.AccessAllowed() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("subjectAccessReviewer.AccessAllowed() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNextReconciliation(t *testing.T) {
-	type args struct {
-		accessReviewer AccessReviewer
-	}
-	tests := []struct {
-		name                string
-		args                args
-		wantNonZeroDuration bool
-	}{
-		{
-			name:                "Schedule a requeue if there's some access control",
-			args:                args{accessReviewer: NewSubjectAccessReviewer(fake.NewSimpleClientset())},
-			wantNonZeroDuration: true,
-		},
-		{
-			name:                "No requeue if there is no access control",
-			args:                args{accessReviewer: NewPermissiveAccessReviewer()},
-			wantNonZeroDuration: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NextReconciliation(tt.args.accessReviewer); !reflect.DeepEqual(got.RequeueAfter > 0, tt.wantNonZeroDuration) {
-				t.Errorf("NextReconciliation() = %v, wantNonZeroDuration: %v", got, tt.wantNonZeroDuration)
+				t.Errorf("SubjectAccessReviewer.AccessAllowed() = %v, want %v", got, tt.want)
 			}
 		})
 	}
