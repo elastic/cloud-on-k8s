@@ -365,12 +365,15 @@ spec:
                 type: object
               type: array
             serviceAccountName:
-              description: ServiceAccountName is the name of the ServiceAccount used
-                to check access to objects in different namespaces.
+              description: ServiceAccountName is used to check access from the current
+                resource to a resource (eg. Elasticsearch) in a different namespace.
+                Can only be used if ECK is configured for checking references RBAC.
               type: string
             version:
               description: Version of the APM Server.
               type: string
+          required:
+          - version
           type: object
         status:
           description: ApmServerStatus defines the observed state of ApmServer
@@ -1078,8 +1081,10 @@ spec:
                 type: object
               type: array
             serviceAccountName:
-              description: ServiceAccountName is the name of the ServiceAccount used
-                to check access to objects in different namespaces.
+              description: ServiceAccountName is used to check access from the current
+                resource to a resource (eg. a remote Elasticsearch cluster) in a different
+                namespace. Can only be used if ECK is configured for checking references
+                RBAC.
               type: string
             updateStrategy:
               description: UpdateStrategy specifies how updates to the cluster should
@@ -1111,6 +1116,7 @@ spec:
               type: string
           required:
           - nodeSets
+          - version
           type: object
         status:
           description: ElasticsearchStatus defines the observed state of Elasticsearch
@@ -1511,12 +1517,15 @@ spec:
                 type: object
               type: array
             serviceAccountName:
-              description: ServiceAccountName is the name of the ServiceAccount used
-                to check access to objects in different namespaces.
+              description: ServiceAccountName is used to check access from the current
+                resource to a resource (eg. Elasticsearch) in a different namespace.
+                Can only be used if ECK is configured for checking references RBAC.
               type: string
             version:
               description: Version of Kibana.
               type: string
+          required:
+          - version
           type: object
         status:
           description: KibanaStatus defines the observed state of Kibana

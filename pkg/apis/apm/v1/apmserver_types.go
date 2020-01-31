@@ -16,7 +16,7 @@ const ApmServerContainerName = "apm-server"
 // ApmServerSpec holds the specification of an APM Server.
 type ApmServerSpec struct {
 	// Version of the APM Server.
-	Version string `json:"version,omitempty"`
+	Version string `json:"version"`
 
 	// Image is the APM Server Docker image to deploy.
 	Image string `json:"image,omitempty"`

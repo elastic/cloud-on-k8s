@@ -13,7 +13,6 @@ bin
 *.out
 
 # Kubernetes Generated files - skip generated files, except for vendored files
-
 !vendor/**/zz_generated.*
 
 # editor and IDE paraphernalia
@@ -27,6 +26,9 @@ vendor/
 
 # Elastic public key
 license.key
+
+# test licenses used in the E2E tests
+test-license.json
 
 # generated from merging multiple files in the Makefile
 config/all-in-one.yaml
@@ -57,5 +59,5 @@ eck_image.txt
 # ignore generated public key file
 pkg/controller/common/license/zz_generated.pubkey.go
 
-# ignores validator for Jenkins pipelines
+# ignore validator for Jenkins pipelines
 hack/pipeline-validator/validator

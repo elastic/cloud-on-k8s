@@ -16,7 +16,7 @@ const KibanaContainerName = "kibana"
 // KibanaSpec holds the specification of a Kibana instance.
 type KibanaSpec struct {
 	// Version of Kibana.
-	Version string `json:"version,omitempty"`
+	Version string `json:"version"`
 
 	// Image is the Kibana Docker image to deploy.
 	Image string `json:"image,omitempty"`
