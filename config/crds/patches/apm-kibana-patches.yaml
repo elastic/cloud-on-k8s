@@ -25,3 +25,9 @@
 # without this the API server complains with "The CustomResourceDefinition "elasticsearches.elasticsearch.k8s.elastic.co" is invalid: spec.validation.openAPIV3Schema.type: Required value: must not be empty at the root" on 1.15 at least. When we stop supporting 1.11 we should remove these as well.
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/items/properties/targetPort/x-kubernetes-int-or-string
+
+# these are not technically required by the API server, but kubectl validation will fail because of these markers so we remove them to make applying the CRDs easier. These too should be removed when we stop supporting 1.11
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/x-kubernetes-list-map-keys
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/x-kubernetes-list-type

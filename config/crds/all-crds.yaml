@@ -222,10 +222,6 @@ spec:
                             - port
                             type: object
                           type: array
-                          x-kubernetes-list-map-keys:
-                          - port
-                          - protocol
-                          x-kubernetes-list-type: map
                         publishNotReadyAddresses:
                           description: publishNotReadyAddresses, when set to true,
                             indicates that DNS implementations must publish the notReadyAddresses
@@ -642,10 +638,6 @@ spec:
                             - port
                             type: object
                           type: array
-                          x-kubernetes-list-map-keys:
-                          - port
-                          - protocol
-                          x-kubernetes-list-type: map
                         publishNotReadyAddresses:
                           description: publishNotReadyAddresses, when set to true,
                             indicates that DNS implementations must publish the notReadyAddresses
@@ -1420,10 +1412,6 @@ spec:
                             - port
                             type: object
                           type: array
-                          x-kubernetes-list-map-keys:
-                          - port
-                          - protocol
-                          x-kubernetes-list-type: map
                         publishNotReadyAddresses:
                           description: publishNotReadyAddresses, when set to true,
                             indicates that DNS implementations must publish the notReadyAddresses
