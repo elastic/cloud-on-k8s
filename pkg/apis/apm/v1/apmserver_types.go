@@ -123,6 +123,10 @@ func (as *ApmServer) AssociationConf() *commonv1.AssociationConf {
 	return as.assocConf
 }
 
+func (as *ApmServer) ServiceAccountName() string {
+	return as.Spec.ServiceAccountName
+}
+
 func (as *ApmServer) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	as.assocConf = assocConf
 }

@@ -274,20 +274,13 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 		return commonv1.AssociationFailed, err
 	}
 
-	allowed, err := r.accessReviewer.AccessAllowed(kibana.Spec.ServiceAccountName, kibana.Namespace, &es)
-	if err != nil {
-		return commonv1.AssociationPending, err
-	}
-	if !allowed {
-		log.Info("Association not allowed",
-			"kibana_name", kibanaKey.Name,
-			"kibana_namespace", kibanaKey.Namespace,
-			"serviceAccount", kibana.Spec.ServiceAccountName,
-			"es_name", esRefKey.Name,
-			"es_namespace", esRefKey.Namespace,
-		)
-		// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-		err := user.DeleteUser(r.Client, NewUserLabelSelector(kibanaKey))
+	// Check if reference to Elasticsearch is allowed to be established
+	if allowed, err := association.IsAllowedReference(
+		r.accessReviewer,
+		kibana,
+		&es,
+		r,
+	); err != nil || !allowed {
 		return commonv1.AssociationPending, err
 	}
 
@@ -334,6 +327,17 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 	}
 
 	return commonv1.AssociationEstablished, nil
+}
+
+// Unbind remove the association resources
+func (r *ReconcileAssociation) Unbind(kibana commonv1.Associated) error {
+	kibanaKey := k8s.ExtractNamespacedName(kibana)
+	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
+	if err := user.DeleteUser(r.Client, NewUserLabelSelector(kibanaKey)); err != nil {
+		return err
+	}
+	// Also remove the association configuration
+	return association.RemoveAssociationConf(r.Client, kibana)
 }
 
 func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbv1.Kibana, es types.NamespacedName) (association.CASecret, error) {

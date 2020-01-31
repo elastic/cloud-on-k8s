@@ -76,7 +76,7 @@ func (s *subjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 			ResourceAttributes: &authorizationapi.ResourceAttributes{
 				Namespace: metaObject.GetNamespace(),
 				Verb:      "get",
-				Resource:  flect.Pluralize(kind),
+				Resource:  strings.ToLower(flect.Pluralize(kind)),
 				Group:     strings.ToLower(object.GetObjectKind().GroupVersionKind().Group),
 				Version:   strings.ToLower(object.GetObjectKind().GroupVersionKind().Version),
 				Name:      metaObject.GetName(),

@@ -29,6 +29,7 @@ type Associated interface {
 	runtime.Object
 	ElasticsearchRef() ObjectSelector
 	AssociationConf() *AssociationConf
+	ServiceAccountName() string
 }
 
 // Associator describes an object that allows its association to be set.

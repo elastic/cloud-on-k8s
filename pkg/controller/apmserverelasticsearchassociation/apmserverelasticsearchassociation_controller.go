@@ -264,20 +264,13 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		return commonv1.AssociationFailed, err
 	}
 
-	allowed, err := r.accessReviewer.AccessAllowed(apmServer.Spec.ServiceAccountName, apmServer.Namespace, &es)
-	if err != nil {
-		return commonv1.AssociationPending, err
-	}
-	if !allowed {
-		log.Info("Association not allowed",
-			"as_name", apmServer.Name,
-			"as_namespace", apmServer.Namespace,
-			"serviceAccount", apmServer.Spec.ServiceAccountName,
-			"es_name", es.Name,
-			"es_namespace", es.Namespace,
-		)
-		// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-		err := user.DeleteUser(r.Client, NewUserLabelSelector(assocKey))
+	// Check if reference to Elasticsearch is allowed to be established
+	if allowed, err := association.IsAllowedReference(
+		r.accessReviewer,
+		apmServer,
+		&es,
+		r,
+	); err != nil || !allowed {
 		return commonv1.AssociationPending, err
 	}
 
@@ -328,6 +321,17 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	return commonv1.AssociationEstablished, nil
+}
+
+// Unbind remove the association resources
+func (r *ReconcileApmServerElasticsearchAssociation) Unbind(apm commonv1.Associated) error {
+	apmKey := k8s.ExtractNamespacedName(apm)
+	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
+	if err := user.DeleteUser(r.Client, NewUserLabelSelector(apmKey)); err != nil {
+		return err
+	}
+	// Also remove the association configuration
+	return association.RemoveAssociationConf(r.Client, apm)
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmv1.ApmServer, es types.NamespacedName) (association.CASecret, error) {

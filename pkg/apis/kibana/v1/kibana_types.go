@@ -82,6 +82,10 @@ func (k *Kibana) SecureSettings() []commonv1.SecretSource {
 	return k.Spec.SecureSettings
 }
 
+func (k *Kibana) ServiceAccountName() string {
+	return k.Spec.ServiceAccountName
+}
+
 func (k *Kibana) AssociationConf() *commonv1.AssociationConf {
 	return k.assocConf
 }
