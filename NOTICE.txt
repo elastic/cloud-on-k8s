@@ -2086,10 +2086,10 @@ limitations under the License.
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/api
-Version : v0.0.0-20191114100352-16d7abae0d2a
-Time    : 2019-11-14 10:03:52 +0000 UTC
+Version : v0.17.0
+Time    : 2019-12-10 23:01:29 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.0.0-20191114100352-16d7abae0d2a/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.17.0/LICENSE:
 
 
                                  Apache License
@@ -2297,10 +2297,10 @@ Contents of probable licence file $GOMODCACHE/k8s.io/api@v0.0.0-20191114100352-1
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/apimachinery
-Version : v0.0.0-20191028221656-72ed19daf4bb
-Time    : 2019-10-28 22:16:56 +0000 UTC
+Version : v0.17.0
+Time    : 2019-11-21 17:54:48 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.0.0-20191028221656-72ed19daf4bb/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.17.0/LICENSE:
 
 
                                  Apache License
@@ -2508,10 +2508,10 @@ Contents of probable licence file $GOMODCACHE/k8s.io/apimachinery@v0.0.0-2019102
 
 --------------------------------------------------------------------------------
 Module  : k8s.io/client-go
-Version : v0.0.0-20191114101535-6c5935290e33
-Time    : 2019-11-14 10:15:35 +0000 UTC
+Version : v0.17.0
+Time    : 2019-12-10 23:09:07 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.0.0-20191114101535-6c5935290e33/LICENSE:
+Contents of probable licence file $GOMODCACHE/k8s.io/client-go@v0.17.0/LICENSE:
 
 
                                  Apache License
@@ -3129,10 +3129,10 @@ Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-runtime@v0.
 
 --------------------------------------------------------------------------------
 Module  : sigs.k8s.io/controller-tools
-Version : v0.2.4
-Time    : 2019-11-19 20:17:20 +0000 UTC
+Version : v0.2.5
+Time    : 2020-01-29 21:54:14 +0000 UTC
 
-Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.2.4/LICENSE:
+Contents of probable licence file $GOMODCACHE/sigs.k8s.io/controller-tools@v0.2.5/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
