@@ -21,6 +21,7 @@ func NewTracer(serviceName string) *apm.Tracer {
 	if err != nil {
 		// don't fail the application because tracing fails
 		log.Error(err, "failed to created tracer for "+serviceName)
+		return nil
 	}
 	tracer.SetLogger(NewLogAdapter(log))
 	return tracer

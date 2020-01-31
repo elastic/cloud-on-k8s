@@ -23,12 +23,17 @@ type logAdapter struct {
 	log logr.Logger
 }
 
-func (l *logAdapter) Debugf(format string, args ...interface{}) {
-	l.log.Info(fmt.Sprintf(format, args...))
-}
-
 func (l *logAdapter) Errorf(format string, args ...interface{}) {
 	l.log.Error(pkgerrors.Errorf(format, args...), "")
 }
 
+func (l *logAdapter) Warningf(format string, args ...interface{}) {
+	l.log.V(-1).Info(fmt.Sprintf(format, args...))
+}
+
+func (l *logAdapter) Debugf(format string, args ...interface{}) {
+	l.log.V(1).Info(fmt.Sprintf(format, args...))
+}
+
 var _ apm.Logger = &logAdapter{}
+var _ apm.WarningLogger = &logAdapter{}
