@@ -11,6 +11,7 @@ import (
 	"github.com/gobuffalo/flect"
 	authorizationapi "k8s.io/api/authorization/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -69,21 +70,7 @@ func (s *subjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 		return false, allErrs.ToAggregate()
 	}
 
-	kind := object.GetObjectKind().GroupVersionKind().Kind
-
-	sar := &authorizationapi.SubjectAccessReview{
-		Spec: authorizationapi.SubjectAccessReviewSpec{
-			ResourceAttributes: &authorizationapi.ResourceAttributes{
-				Namespace: metaObject.GetNamespace(),
-				Verb:      "get",
-				Resource:  strings.ToLower(flect.Pluralize(kind)),
-				Group:     strings.ToLower(object.GetObjectKind().GroupVersionKind().Group),
-				Version:   strings.ToLower(object.GetObjectKind().GroupVersionKind().Version),
-				Name:      metaObject.GetName(),
-			},
-			User: ServiceAccountUsernamePrefix + sourceNamespace + ":" + serviceAccount,
-		},
-	}
+	sar := newSubjectAccessReview(metaObject, object, serviceAccount, sourceNamespace)
 
 	sar, err = s.client.AuthorizationV1().SubjectAccessReviews().Create(sar)
 	if err != nil {
@@ -93,7 +80,7 @@ func (s *subjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 		"Access review", "result",
 		sar.Status, "service_account", serviceAccount,
 		"source_namespace", sourceNamespace,
-		"remote_kind", kind,
+		"remote_kind", object.GetObjectKind().GroupVersionKind().Kind,
 		"remote_namespace", metaObject.GetNamespace(),
 		"remote_name", metaObject.GetName(),
 	)
@@ -101,6 +88,26 @@ func (s *subjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 		return false, nil
 	}
 	return sar.Status.Allowed, nil
+}
+
+func newSubjectAccessReview(
+	metaObject metav1.Object,
+	object runtime.Object,
+	serviceAccount, sourceNamespace string,
+) *authorizationapi.SubjectAccessReview {
+	return &authorizationapi.SubjectAccessReview{
+		Spec: authorizationapi.SubjectAccessReviewSpec{
+			ResourceAttributes: &authorizationapi.ResourceAttributes{
+				Namespace: metaObject.GetNamespace(),
+				Verb:      "get",
+				Resource:  strings.ToLower(flect.Pluralize(object.GetObjectKind().GroupVersionKind().Kind)),
+				Group:     strings.ToLower(object.GetObjectKind().GroupVersionKind().Group),
+				Version:   strings.ToLower(object.GetObjectKind().GroupVersionKind().Version),
+				Name:      metaObject.GetName(),
+			},
+			User: ServiceAccountUsernamePrefix + sourceNamespace + ":" + serviceAccount,
+		},
+	}
 }
 
 type permissiveAccessReviewer struct{}

@@ -125,7 +125,7 @@ func (f *fakeUnbinder) Unbind(associated commonv1.Associated) error {
 	return nil
 }
 
-func TestIsAllowedReference(t *testing.T) {
+func TestCheckAndUnbind(t *testing.T) {
 	apmServer := &apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apm-server-sample",

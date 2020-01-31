@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	authorizationapi "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,7 +22,7 @@ type fakeClientProvider func() kubernetes.Interface
 
 func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 
-	es := &v1.Elasticsearch{
+	es := &esv1.Elasticsearch{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "Elasticsearch",
 		},
@@ -77,7 +77,7 @@ func Test_subjectAccessReviewer_AccessAllowed(t *testing.T) {
 			name: "allowed if in the same namespace",
 			args: args{
 				sourceNamespace: "kibana-ns",
-				object: &v1.Elasticsearch{
+				object: &esv1.Elasticsearch{
 					TypeMeta: metav1.TypeMeta{
 						Kind: "Elasticsearch",
 					},
@@ -242,6 +242,60 @@ func TestNextReconciliation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NextReconciliation(tt.args.accessReviewer); !reflect.DeepEqual(got.RequeueAfter > 0, tt.wantNonZeroDuration) {
 				t.Errorf("NextReconciliation() = %v, wantNonZeroDuration: %v", got, tt.wantNonZeroDuration)
+			}
+		})
+	}
+}
+
+func Test_newSubjectAccessReview(t *testing.T) {
+	es := &esv1.Elasticsearch{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Elasticsearch",
+			APIVersion: "elasticsearch.k8s.elastic.co/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-sample",
+			Namespace: "es-ns",
+		},
+	}
+	type args struct {
+		metaObject      metav1.Object
+		object          runtime.Object
+		serviceAccount  string
+		sourceNamespace string
+	}
+	tests := []struct {
+		name string
+		args args
+		want *authorizationapi.SubjectAccessReview
+	}{
+		{
+			name: "Simple SubjectAccessReview generation",
+			args: args{
+				object:          es,
+				metaObject:      es,
+				serviceAccount:  "foo",
+				sourceNamespace: "apmserver-ns",
+			},
+			want: &authorizationapi.SubjectAccessReview{
+				Spec: authorizationapi.SubjectAccessReviewSpec{
+					ResourceAttributes: &authorizationapi.ResourceAttributes{
+						Namespace: "es-ns",
+						Verb:      "get",
+						Resource:  "elasticsearches",
+						Group:     "elasticsearch.k8s.elastic.co",
+						Version:   "v1",
+						Name:      "es-sample",
+					},
+					User: ServiceAccountUsernamePrefix + "apmserver-ns" + ":" + "foo",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := newSubjectAccessReview(tt.args.metaObject, tt.args.object, tt.args.serviceAccount, tt.args.sourceNamespace); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("newSubjectAccessReview() = %v, want %v", got, tt.want)
 			}
 		})
 	}
