@@ -26,6 +26,7 @@ import (
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/pkg/errors"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -190,7 +191,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.WithStack(err)
 	}
 
 	if common.IsPaused(es.ObjectMeta) {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -252,6 +253,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:3]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:3]
 				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.HTTPGet.Scheme = corev1.URISchemeHTTP
+				params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
 				return params
 			}(),
 			wantErr: false,
@@ -380,7 +382,9 @@ func TestDriverDeploymentParams(t *testing.T) {
 				return
 			}
 
-			require.Equal(t, tt.want, got)
+			if diff := deep.Equal(got, tt.want); diff != nil {
+				t.Error(diff)
+			}
 		})
 	}
 }
@@ -510,7 +514,7 @@ func expectedDeploymentParams() deployment.Params {
 					Image: "my-image",
 					Name:  kbv1.KibanaContainerName,
 					Ports: []corev1.ContainerPort{
-						{Name: "http", ContainerPort: int32(5601), Protocol: corev1.ProtocolTCP},
+						{Name: "https", ContainerPort: int32(5601), Protocol: corev1.ProtocolTCP},
 					},
 					ReadinessProbe: &corev1.Probe{
 						FailureThreshold:    3,

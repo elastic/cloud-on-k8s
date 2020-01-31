@@ -164,7 +164,7 @@ func expectedDeploymentParams() testParams {
 							},
 						}),
 						Ports: []corev1.ContainerPort{
-							{Name: "http", ContainerPort: int32(8200), Protocol: corev1.ProtocolTCP},
+							{Name: "https", ContainerPort: int32(8200), Protocol: corev1.ProtocolTCP},
 						},
 						ReadinessProbe: &corev1.Probe{
 							FailureThreshold:    3,
