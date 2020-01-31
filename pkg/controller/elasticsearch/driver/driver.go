@@ -50,7 +50,7 @@ var (
 // Driver orchestrates the reconciliation of an Elasticsearch resource.
 // Its lifecycle is bound to a single reconciliation attempt.
 type Driver interface {
-	Reconcile() *reconciler.Results
+	Reconcile(context.Context) *reconciler.Results
 }
 
 // NewDefaultDriver returns the default driver implementation.
@@ -85,9 +85,6 @@ type DefaultDriverParameters struct {
 	// Expectations control some expectations set on resources in the cache, in order to
 	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
 	Expectations *expectations.Expectations
-
-	// Parent context, contains tracing data
-	Context context.Context
 }
 
 // defaultDriver is the default Driver implementation
@@ -114,25 +111,25 @@ func (d *defaultDriver) Recorder() record.EventRecorder {
 var _ commondriver.Interface = &defaultDriver{}
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
-func (d *defaultDriver) Reconcile() *reconciler.Results {
-	results := reconciler.NewResult(d.Context)
+func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
+	results := reconciler.NewResult(ctx)
 
 	// garbage collect secrets attached to this cluster that we don't need anymore
-	if err := cleanup.DeleteOrphanedSecrets(d.Context, d.Client, d.ES); err != nil {
+	if err := cleanup.DeleteOrphanedSecrets(ctx, d.Client, d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	if err := configmap.ReconcileScriptsConfigMap(d.Context, d.Client, d.Scheme(), d.ES); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.Scheme(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	externalService, err := common.ReconcileService(d.Context, d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
+	externalService, err := common.ReconcileService(ctx, d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	certificateResources, res := certificates.Reconcile(
-		d.Context,
+		ctx,
 		d,
 		d.ES,
 		[]corev1.Service{*externalService},
@@ -143,7 +140,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results
 	}
 
-	internalUsers, err := user.ReconcileUsers(d.Context, d.Client, d.Scheme(), d.ES)
+	internalUsers, err := user.ReconcileUsers(ctx, d.Client, d.Scheme(), d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -170,7 +167,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 			*min,
 			certificateResources.TrustedHTTPCertificates,
 		),
-		tracing.TracerFromContext(d.Context))
+		tracing.TracerFromContext(ctx))
 
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
@@ -221,7 +218,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	)
 
 	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(d.Context, d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
 
@@ -238,7 +235,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	requeue, err := bootstrap.ReconcileClusterUUID(d.Context, d.Client, &d.ES, esClient, esReachable)
+	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -247,7 +244,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	res = d.reconcileNodeSpecs(d.Context, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
+	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
 	results = results.WithResults(res)
 
 	if res.HasError() {

@@ -307,8 +307,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
-		Context:            ctx,
-	}).Reconcile()
+	}).Reconcile(ctx)
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
