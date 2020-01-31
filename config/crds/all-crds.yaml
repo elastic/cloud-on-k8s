@@ -218,7 +218,6 @@ spec:
                                   for services with clusterIP=None, and should be
                                   omitted or set equal to the ''port'' field. More
                                   info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
-                                x-kubernetes-int-or-string: true
                             required:
                             - port
                             type: object
@@ -639,7 +638,6 @@ spec:
                                   for services with clusterIP=None, and should be
                                   omitted or set equal to the ''port'' field. More
                                   info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
-                                x-kubernetes-int-or-string: true
                             required:
                             - port
                             type: object
@@ -872,7 +870,6 @@ spec:
                                     - type: integer
                                     - type: string
                                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                    x-kubernetes-int-or-string: true
                                   description: 'Limits describes the maximum amount
                                     of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                   type: object
@@ -882,7 +879,6 @@ spec:
                                     - type: integer
                                     - type: string
                                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                    x-kubernetes-int-or-string: true
                                   description: 'Requests describes the minimum amount
                                     of compute resources required. If Requests is
                                     omitted for a container, it defaults to Limits
@@ -967,7 +963,6 @@ spec:
                                 - type: integer
                                 - type: string
                                 pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                x-kubernetes-int-or-string: true
                               description: Represents the actual resources of the
                                 underlying volume.
                               type: object
@@ -1044,7 +1039,6 @@ spec:
                         i.e. even in absence of the evicted pod. For example, one
                         can prevent all voluntary evictions by specifying 0. This
                         is a mutually exclusive setting with "minAvailable".
-                      x-kubernetes-int-or-string: true
                     minAvailable:
                       anyOf:
                       - type: integer
@@ -1054,7 +1048,6 @@ spec:
                         the eviction, i.e. even in the absence of the evicted pod.  So
                         for example you can prevent all voluntary evictions by specifying
                         "100%".
-                      x-kubernetes-int-or-string: true
                     selector:
                       description: Label query over pods whose evictions are managed
                         by the disruption budget.
@@ -1423,7 +1416,6 @@ spec:
                                   for services with clusterIP=None, and should be
                                   omitted or set equal to the ''port'' field. More
                                   info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
-                                x-kubernetes-int-or-string: true
                             required:
                             - port
                             type: object

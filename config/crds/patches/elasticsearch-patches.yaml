@@ -21,3 +21,17 @@
 # that would maybe not match the user's k8s version.
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/podTemplate/properties
+
+# without these the API server complains with "The CustomResourceDefinition "elasticsearches.elasticsearch.k8s.elastic.co" is invalid: spec.validation.openAPIV3Schema.type: Required value: must not be empty at the root" on 1.15 at least. When we stop supporting 1.11 we should remove these as well.
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/items/properties/targetPort/x-kubernetes-int-or-string
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/podDisruptionBudget/properties/spec/properties/maxUnavailable/x-kubernetes-int-or-string
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/podDisruptionBudget/properties/spec/properties/minAvailable/x-kubernetes-int-or-string
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/items/properties/spec/properties/resources/properties/limits/additionalProperties/x-kubernetes-int-or-string
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/items/properties/spec/properties/resources/properties/requests/additionalProperties/x-kubernetes-int-or-string
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/nodeSets/items/properties/volumeClaimTemplates/items/properties/status/properties/capacity/additionalProperties/x-kubernetes-int-or-string
