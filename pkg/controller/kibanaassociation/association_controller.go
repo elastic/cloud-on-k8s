@@ -329,12 +329,12 @@ func (r *ReconcileAssociation) getElasticsearch(ctx context.Context, kibana *kbv
 			// in any case, since the user explicitly requested a managed association,
 			// remove connection details if they are set
 			span, _ = apm.StartSpan(ctx, "remove_assoc_conf", tracing.SpanTypeApp)
+			defer span.End()
 			if err := association.RemoveAssociationConf(r.Client, kibana); err != nil && !errors.IsConflict(err) {
 				log.Error(err, "Failed to remove Elasticsearch configuration from Kibana object",
 					"namespace", kibana.Namespace, "kibana_name", kibana.Name)
 				return es, commonv1.AssociationPending, err
 			}
-			span.End()
 
 			return es, commonv1.AssociationPending, nil
 		}
