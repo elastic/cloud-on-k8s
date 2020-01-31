@@ -16,6 +16,7 @@ The goal of this document is to provide a high-level overview on how you can get
     - [Submit your changes](#submit-your-changes)
       - [Sign the CLA](#sign-the-cla)
       - [Prepare a Pull Request](#prepare-a-pull-request)
+  - [Contribute to ECK documentation](#contribute-to-eck-documentation)
   - [Design documents](#design-documents)
 
 ## Report your bugs
@@ -97,6 +98,40 @@ Here are some good practices for a good pull request:
 - Run and pass unit and integration tests with `make unit` and `make integration`.
 - Write a short and self-explanatory title.
 - Write a clear description to make the code reviewer understand what the PR is about.
+
+## Contribute to ECK documentation
+
+Whether it’s a new or an existing feature, make sure you document it.
+
+Before you start, pull the latest files from these repos:
+[elastic/cloud-on-k8s](https://github.com/elastic/cloud-on-k8s): Contains the docs source files for Elastic Cloud on Kubernetes.
+[elastic/docs](https://github.com/elastic/docs): Has the tools to publish locally your changes before committing them.
+
+**To make a doc change**
+1. Find the right file (or create a new one).
+1. Add your content.
+1. Test the doc build locally:
+$GIT_HOME/docs/build_docs --asciidoctor --doc $GIT_HOME/cloud-on-k8s/docs/index.asciidoc --chunk 1 —open`
+1. Push a PR for review and add the label `>docs`.
+
+**When a release goes out**
+1. Track your doc issues in the Cloud Working Board with `>docs` and the release label.
+1. Sync with the ECK release manager on which branch you push the doc PRs.
+1. Optionally and depending on the release manager, you might need to update the [conf.yaml](https://github.com/elastic/docs/blob/master/conf.yaml) file:
+   * Add the release number to the list of `branches` 
+   * Update `current` with the release branch
+
+NOTE: Cloud documentation builds roughly every 30 minutes. 
+
+**To get in touch with a writer**
+* Slack: ping **@cloud-writers** in [#cloud-pubs](https://elastic.slack.com/messages/C9HNMNZU1)
+* GitHub: **@elastic/cloud-writers** and `area:doc` label 
+* Email: cloud-pubs@elastic.co
+
+**For more doc guidance**
+* [How do I make a simple docs change?](https://github.com/elastic/cloud/blob/master/docs/README.md#how-do-i-make-a-simple-docs-change)
+* [Doc build process](https://github.com/elastic/docs/blob/master/README.asciidoc)
+
 
 ## Design documents
 
