@@ -79,6 +79,9 @@ MANAGED_NAMESPACES ?=
 # TODO: only relevant on GKE for e2e tests for the moment
 PSP ?= 0
 
+## -- Tools
+KUBECTL_VERSION=$(shell [[ `kubectl --client=true version | grep 'Minor:"[0-9]*' -o| grep -o [0-9]*` -lt 14 ]] && echo notok || echo ok)
+
 #####################################
 ##  --       Development       --  ##
 #####################################
@@ -99,6 +102,9 @@ go-generate:
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 
 generate-crds: go-generate controller-gen
+	# check kubectl version because of kustomize support
+	$(info Checking kubectl version)
+ifeq ($(KUBECTL_VERSION), ok)
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
 	$(CONTROLLER_GEN) crd paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
@@ -106,6 +112,10 @@ generate-crds: go-generate controller-gen
 	kubectl kustomize config/crds/patches > $(ALL_CRDS)
 	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
+else
+	$(error kubectl client version must equal or bigger than 1.14)
+	exit 1
+endif
 
 generate-api-docs:
 	@hack/api-docs/build.sh
