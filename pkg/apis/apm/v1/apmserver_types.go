@@ -40,6 +40,11 @@ type ApmServerSpec struct {
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
+
+	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// Can only be used if ECK is enforcing RBAC on references.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // ApmServerHealth expresses the status of the Apm Server instances.
@@ -116,6 +121,10 @@ func (as *ApmServer) SecureSettings() []commonv1.SecretSource {
 
 func (as *ApmServer) AssociationConf() *commonv1.AssociationConf {
 	return as.assocConf
+}
+
+func (as *ApmServer) ServiceAccountName() string {
+	return as.Spec.ServiceAccountName
 }
 
 func (as *ApmServer) SetAssociationConf(assocConf *commonv1.AssociationConf) {

@@ -45,6 +45,11 @@ type ElasticsearchSpec struct {
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
+
+	// ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
+	// Can only be used if ECK is enforcing RBAC on references.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster

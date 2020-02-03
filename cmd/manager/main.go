@@ -48,6 +48,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -62,6 +63,8 @@ const (
 	CACertRotateBeforeFlag = "ca-cert-rotate-before"
 	CertValidityFlag       = "cert-validity"
 	CertRotateBeforeFlag   = "cert-rotate-before"
+
+	EnforceRbacOnRefs = "enforce-rbac-on-refs"
 
 	OperatorNamespaceFlag = "operator-namespace"
 
@@ -141,6 +144,11 @@ func init() {
 		OperatorNamespaceFlag,
 		"",
 		"K8s namespace the operator runs in",
+	)
+	Cmd.Flags().Bool(
+		EnforceRbacOnRefs,
+		false, // Set to false for backward compatibility
+		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
 	)
 	Cmd.Flags().String(
 		WebhookSecretFlag,
@@ -302,6 +310,15 @@ func execute() {
 		setupWebhook(mgr, params.CertRotation, clientset)
 	}
 
+	enforceRbacOnRefs := viper.GetBool(EnforceRbacOnRefs)
+
+	var accessReviewer rbac.AccessReviewer
+	if enforceRbacOnRefs {
+		accessReviewer = rbac.NewSubjectAccessReviewer(clientset)
+	} else {
+		accessReviewer = rbac.NewPermissiveAccessReviewer()
+	}
+
 	if operator.HasRole(operator.NamespaceOperator, roles) {
 		if err = apmserver.Add(mgr, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "ApmServer")
@@ -315,11 +332,11 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "Kibana")
 			os.Exit(1)
 		}
-		if err = asesassn.Add(mgr, params); err != nil {
+		if err = asesassn.Add(mgr, accessReviewer, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
 			os.Exit(1)
 		}
-		if err = kbassn.Add(mgr, params); err != nil {
+		if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
 			os.Exit(1)
 		}

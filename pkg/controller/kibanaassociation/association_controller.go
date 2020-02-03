@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -71,8 +73,8 @@ var (
 
 // Add creates a new Association Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := newReconciler(mgr, params)
+func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+	r := newReconciler(mgr, accessReviewer, params)
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -81,14 +83,15 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAssociation {
+func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileAssociation{
-		Client:     client,
-		scheme:     mgr.GetScheme(),
-		watches:    watches.NewDynamicWatches(),
-		recorder:   mgr.GetEventRecorderFor(name),
-		Parameters: params,
+		Client:         client,
+		accessReviewer: accessReviewer,
+		scheme:         mgr.GetScheme(),
+		watches:        watches.NewDynamicWatches(),
+		recorder:       mgr.GetEventRecorderFor(name),
+		Parameters:     params,
 	}
 }
 
@@ -107,9 +110,10 @@ var _ reconcile.Reconciler = &ReconcileAssociation{}
 // ReconcileAssociation reconciles a Kibana resource for association with Elasticsearch
 type ReconcileAssociation struct {
 	k8s.Client
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
-	watches  watches.DynamicWatches
+	accessReviewer rbac.AccessReviewer
+	scheme         *runtime.Scheme
+	recorder       record.EventRecorder
+	watches        watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -156,8 +160,10 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
+	results := reconciler.Results{}
 	newStatus, err := r.reconcileInternal(&kibana)
 	if err != nil {
+		results.WithError(err)
 		k8s.EmitErrorEvent(r.recorder, err, &kibana, events.EventReconciliationError, "Reconciliation error: %v", err)
 	}
 
@@ -180,7 +186,11 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 			events.EventAssociationStatusChange,
 			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
 	}
-	return resultFromStatus(newStatus), err
+
+	return results.
+		WithResult(association.RequeueRbacCheck(r.accessReviewer)).
+		WithResult(resultFromStatus(newStatus)).
+		Aggregate()
 }
 
 func resultFromStatus(status commonv1.AssociationStatus) reconcile.Result {
@@ -264,6 +274,17 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 		return commonv1.AssociationFailed, err
 	}
 
+	// Check if reference to Elasticsearch is allowed to be established
+	if allowed, err := association.CheckAndUnbind(
+		r.accessReviewer,
+		kibana,
+		&es,
+		r,
+		r.recorder,
+	); err != nil || !allowed {
+		return commonv1.AssociationPending, err
+	}
+
 	if err := association.ReconcileEsUser(
 		r.Client,
 		r.scheme,
@@ -307,6 +328,17 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 	}
 
 	return commonv1.AssociationEstablished, nil
+}
+
+// Unbind removes the association resources
+func (r *ReconcileAssociation) Unbind(kibana commonv1.Associated) error {
+	kibanaKey := k8s.ExtractNamespacedName(kibana)
+	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
+	if err := user.DeleteUser(r.Client, NewUserLabelSelector(kibanaKey)); err != nil {
+		return err
+	}
+	// Also remove the association configuration
+	return association.RemoveAssociationConf(r.Client, kibana)
 }
 
 func (r *ReconcileAssociation) reconcileElasticsearchCA(kibana *kbv1.Kibana, es types.NamespacedName) (association.CASecret, error) {

@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -52,8 +54,8 @@ var (
 
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, params operator.Parameters) error {
-	r := newReconciler(mgr, params)
+func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+	r := newReconciler(mgr, accessReviewer, params)
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -62,14 +64,15 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServerElasticsearchAssociation {
+func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileApmServerElasticsearchAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServerElasticsearchAssociation{
-		Client:     client,
-		scheme:     mgr.GetScheme(),
-		watches:    watches.NewDynamicWatches(),
-		recorder:   mgr.GetEventRecorderFor(name),
-		Parameters: params,
+		Client:         client,
+		accessReviewer: accessReviewer,
+		scheme:         mgr.GetScheme(),
+		watches:        watches.NewDynamicWatches(),
+		recorder:       mgr.GetEventRecorderFor(name),
+		Parameters:     params,
 	}
 }
 
@@ -115,9 +118,10 @@ var _ reconcile.Reconciler = &ReconcileApmServerElasticsearchAssociation{}
 // ReconcileApmServerElasticsearchAssociation reconciles a ApmServerElasticsearchAssociation object
 type ReconcileApmServerElasticsearchAssociation struct {
 	k8s.Client
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
-	watches  watches.DynamicWatches
+	accessReviewer rbac.AccessReviewer
+	scheme         *runtime.Scheme
+	recorder       record.EventRecorder
+	watches        watches.DynamicWatches
 	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
@@ -167,7 +171,11 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		return reconcile.Result{}, err
 	}
 
+	results := reconciler.Results{}
 	newStatus, err := r.reconcileInternal(&apmServer)
+	if err != nil {
+		results.WithError(err)
+	}
 	oldStatus := apmServer.Status.Association
 	if !reflect.DeepEqual(oldStatus, newStatus) {
 		apmServer.Status.Association = newStatus
@@ -181,7 +189,11 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 			"Association status changed from [%s] to [%s]", oldStatus, newStatus)
 
 	}
-	return resultFromStatus(newStatus), err
+
+	return results.
+		WithResult(association.RequeueRbacCheck(r.accessReviewer)).
+		WithResult(resultFromStatus(newStatus)).
+		Aggregate()
 }
 
 func elasticsearchWatchName(assocKey types.NamespacedName) string {
@@ -252,6 +264,17 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		return commonv1.AssociationFailed, err
 	}
 
+	// Check if reference to Elasticsearch is allowed to be established
+	if allowed, err := association.CheckAndUnbind(
+		r.accessReviewer,
+		apmServer,
+		&es,
+		r,
+		r.recorder,
+	); err != nil || !allowed {
+		return commonv1.AssociationPending, err
+	}
+
 	if err := association.ReconcileEsUser(
 		r.Client,
 		r.scheme,
@@ -299,6 +322,17 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	return commonv1.AssociationEstablished, nil
+}
+
+// Unbind removes the association resources
+func (r *ReconcileApmServerElasticsearchAssociation) Unbind(apm commonv1.Associated) error {
+	apmKey := k8s.ExtractNamespacedName(apm)
+	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
+	if err := user.DeleteUser(r.Client, NewUserLabelSelector(apmKey)); err != nil {
+		return err
+	}
+	// Also remove the association configuration
+	return association.RemoveAssociationConf(r.Client, apm)
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(apm *apmv1.ApmServer, es types.NamespacedName) (association.CASecret, error) {
