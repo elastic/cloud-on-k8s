@@ -14,11 +14,6 @@ export SHELL := /bin/bash
 
 KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 
-REPOSITORY 	?= eck
-NAME       	?= eck-operator
-VERSION    	?= $(shell cat VERSION)
-SNAPSHOT   	?= true
-
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
@@ -41,7 +36,7 @@ endif
 
 ## -- Docker image
 
-# on GKE, use GCR and GCLOUD_PROJECT
+# for dev, on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
 else
@@ -49,11 +44,19 @@ else
 	REGISTRY ?= localhost:5000
 endif
 
-# suffix image name with current user name
-IMG_SUFFIX ?= -$(subst _,,$(USER))
-IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
-TAG ?= $(shell git rev-parse --short --verify HEAD)
-OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
+# for dev, suffix image name with current user name
+IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
+
+REPOSITORY  ?= eck
+NAME        ?= eck-operator
+SNAPSHOT    ?= true
+VERSION     ?= $(shell cat VERSION)
+TAG         ?= $(shell git rev-parse --short --verify HEAD)
+IMG_NAME    ?= $(NAME)$(IMG_SUFFIX)
+IMG_VERSION ?= $(VERSION)-$(TAG)
+
+BASE_IMG       := $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)
+OPERATOR_IMAGE ?= $(BASE_IMG):$(IMG_VERSION)
 
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/pkg/about.version=$(VERSION) \
@@ -339,8 +342,8 @@ endif
 endif
 
 purge-gcr-images:
-	@ for i in $(gcloud container images list-tags $(IMG) | tail +3 | awk '{print $$2}'); \
-		do gcloud container images untag $(IMG):$$i; \
+	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
+		do gcloud container images untag $(BASE_IMG):$$i; \
 	done
 
 
@@ -350,7 +353,7 @@ purge-gcr-images:
 
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
-E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
+E2E_IMG ?= $(BASE_IMG)-e2e-tests:$(TAG)
 STACK_VERSION ?= 7.5.0
 E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
