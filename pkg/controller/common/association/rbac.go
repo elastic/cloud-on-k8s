@@ -38,7 +38,7 @@ func CheckAndUnbind(
 			"associated_kind", associated.GetObjectKind().GroupVersionKind().Kind,
 			"associated_name", associated.GetName(),
 			"associated_namespace", associated.GetNamespace(),
-			"serviceAccount", associated.ServiceAccountName(),
+			"service_account", associated.ServiceAccountName(),
 			"remote_type", object.GetObjectKind().GroupVersionKind().Kind,
 			"remote_name", metaObject.GetNamespace(),
 			"remote_namespace", metaObject.GetName(),

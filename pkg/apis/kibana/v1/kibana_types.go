@@ -42,7 +42,7 @@ type KibanaSpec struct {
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
 	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
-	// Can only be used if ECK is configured for checking references RBAC.
+	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
