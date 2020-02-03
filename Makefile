@@ -454,9 +454,9 @@ bootstrap-kind:
 	@ echo "Run the following command to update your current context:"
 	@ echo "kubectl config set-context kind-${KIND_CLUSTER_NAME}"
 
-## Start a kind cluster with just the CRDs, e.g.:
-# "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a one node cluster
-# "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" to start a 1 master + 3 nodes cluster
+## Start a Kind cluster with just the CRDs, e.g.:
+# "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-node cluster
+# "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-master 3-nodes cluster
 kind-cluster-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-cluster-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-cluster-%: kind-node-variable-check
@@ -473,10 +473,9 @@ kind-with-operator-%: kind-node-variable-check docker-build
 		--nodes "${*}" \
 		make install-crds apply-operators
 
-## Run all the e2e tests in a Kind cluster
+## Run all e2e tests in a Kind cluster
 set-kind-e2e-image:
-ifneq ($(ECK_IMAGE),)
-	$(eval OPERATOR_IMAGE=$(ECK_IMAGE))
+ifneq ($(OPERATOR_IMAGE),)
 	@docker pull $(OPERATOR_IMAGE)
 else
 	$(MAKE) go-generate docker-build
