@@ -386,8 +386,7 @@ e2e-compile:
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
-LOCAL_E2E_CTX:=/tmp/e2e-local.json
-
+e2e-local: LOCAL_E2E_CTX := /tmp/e2e-local.json
 e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
