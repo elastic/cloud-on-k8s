@@ -68,6 +68,7 @@ write_deployer_config <<CFG
 id: gke-ci
 overrides:
   clusterName: eck-e2e-$BUILD_NUMBER
+  kubernetesVersions: $JKS_PARAM_K8S_VERSION
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
