@@ -1,6 +1,6 @@
 ---
 - job:
-    description: Job that runs e2e tests against Elastic Cloud on Kubernetes running in a dedicated k8s cluster in AKS. This Job is managed by JJB.
+    description: Run ECK E2E tests on AKS
     name: cloud-on-k8s-e2e-tests-aks
     project-type: pipeline
     triggers:

@@ -1,6 +1,6 @@
 ---
 - job:
-    description: Job that runs the pr Jenkinsfile on any PR of the Elastic Cloud on Kubernetes project. This Job is managed by JJB.
+    description: Run ECK tests (unit, integration and E2E smoke test), on every PR
     name: cloud-on-k8s-pr
     project-type: pipeline
     concurrent: true

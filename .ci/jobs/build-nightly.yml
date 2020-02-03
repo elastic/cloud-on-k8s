@@ -1,6 +1,6 @@
 ---
 - job:
-    description: Job that build nightly images of ECK. This Job is managed by JJB.
+    description: Build a nightly version of ECK
     name: cloud-on-k8s-nightly-build
     project-type: pipeline
     triggers:

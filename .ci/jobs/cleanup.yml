@@ -1,6 +1,6 @@
 ---
 - job:
-    description: Job that cleanup resources in cloud services. This Job is managed by JJB.
+    description: Cleanup orphaned GKE clusters
     name: cloud-on-k8s-e2e-cleanup
     project-type: pipeline
     parameters:

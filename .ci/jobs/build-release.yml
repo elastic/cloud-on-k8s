@@ -1,6 +1,6 @@
 ---
 - job:
-    description: Job that builds release version of ECK. This Job is managed by JJB.
+    description: Build a release version of ECK
     name: cloud-on-k8s-release-build
     project-type: multibranch
     prune-dead-branches: true

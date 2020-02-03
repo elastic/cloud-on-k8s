@@ -1,6 +1,6 @@
 ---
 - job:
-    description: Job that runs e2e tests against custom ECK image running in a dedicated k8s cluster in GKE. This Job is managed by JJB.
+    description: Run ECK E2E tests on GKE, for a given operator image and a given K8s version
     name: cloud-on-k8s-e2e-tests-custom-operator-image
     project-type: pipeline
     parameters:
