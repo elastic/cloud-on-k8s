@@ -7,15 +7,15 @@ package pod
 import (
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 )
 
 func Test_imageWithVersion(t *testing.T) {
@@ -240,6 +240,49 @@ func TestNewPodTemplateSpec(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewPodTemplateSpec(tt.kb, tt.keystore)
 			tt.assertions(got)
+		})
+	}
+}
+
+func Test_getDefaultContainerPorts(t *testing.T) {
+	tt := []struct {
+		name string
+		kb   kbv1.Kibana
+		want []corev1.ContainerPort
+	}{
+		{
+			name: "https",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					Version: "7.5.2",
+				},
+			},
+			want: []corev1.ContainerPort{
+				{Name: "https", HostPort: 0, ContainerPort: int32(HTTPPort), Protocol: "TCP", HostIP: ""},
+			},
+		},
+		{
+			name: "http",
+			kb: kbv1.Kibana{
+				Spec: kbv1.KibanaSpec{
+					HTTP: commonv1.HTTPConfig{
+						TLS: commonv1.TLSOptions{
+							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+								Disabled: true,
+							},
+						},
+					},
+				},
+			},
+			want: []corev1.ContainerPort{
+				{Name: "http", HostPort: 0, ContainerPort: int32(HTTPPort), Protocol: "TCP", HostIP: ""},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, getDefaultContainerPorts(tc.kb), tc.want)
 		})
 	}
 }

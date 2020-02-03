@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/go-test/deep"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -170,7 +171,7 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 					Name:  "elasticsearch",
 					Image: "docker.elastic.co/elasticsearch/elasticsearch:7.2.0",
 					Ports: []corev1.ContainerPort{
-						{Name: "http", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
+						{Name: "https", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
 						{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},
 					},
 					Env: append(
@@ -192,4 +193,45 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 
 	deep.MaxDepth = 25
 	require.Nil(t, deep.Equal(expected, actual))
+}
+
+func Test_getDefaultContainerPorts(t *testing.T) {
+	tt := []struct {
+		name string
+		es   esv1.Elasticsearch
+		want []corev1.ContainerPort
+	}{
+		{
+			name: "https",
+			es:   sampleES,
+			want: []corev1.ContainerPort{
+				{Name: "https", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
+				{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},
+			},
+		},
+		{
+			name: "http",
+			es: esv1.Elasticsearch{
+				Spec: esv1.ElasticsearchSpec{
+					HTTP: commonv1.HTTPConfig{
+						TLS: commonv1.TLSOptions{
+							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+								Disabled: true,
+							},
+						},
+					},
+				},
+			},
+			want: []corev1.ContainerPort{
+				{Name: "http", HostPort: 0, ContainerPort: 9200, Protocol: "TCP", HostIP: ""},
+				{Name: "transport", HostPort: 0, ContainerPort: 9300, Protocol: "TCP", HostIP: ""},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, getDefaultContainerPorts(tc.es), tc.want)
+		})
+	}
 }

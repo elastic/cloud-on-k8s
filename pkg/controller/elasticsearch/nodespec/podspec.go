@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -49,11 +50,12 @@ func BuildPodTemplateSpec(
 	if err != nil {
 		return corev1.PodTemplateSpec{}, err
 	}
+	defaultContainerPorts := getDefaultContainerPorts(es)
 
 	builder = builder.
 		WithResources(DefaultResources).
 		WithTerminationGracePeriod(DefaultTerminationGracePeriodSeconds).
-		WithPorts(DefaultContainerPorts).
+		WithPorts(defaultContainerPorts).
 		WithReadinessProbe(*NewReadinessProbe()).
 		WithAffinity(DefaultAffinity(es.Name)).
 		WithEnv(DefaultEnvVars(es.Spec.HTTP, HeadlessServiceName(esv1.StatefulSet(es.Name, nodeSet.Name)))...).
@@ -66,6 +68,13 @@ func BuildPodTemplateSpec(
 		WithInitContainerDefaults()
 
 	return builder.PodTemplate, nil
+}
+
+func getDefaultContainerPorts(es esv1.Elasticsearch) []corev1.ContainerPort {
+	return []corev1.ContainerPort{
+		{Name: es.Spec.HTTP.Protocol(), ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
+		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
+	}
 }
 
 func transportCertificatesVolume(esName string) volume.SecretVolume {
