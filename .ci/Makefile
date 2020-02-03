@@ -52,13 +52,24 @@ ci-build-image:
 		docker push push.$(CI_IMAGE) \
 	)
 
-# reads Elastic public key from Vault into license.key
+##  Build
+
+# read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
 get-elastic-public-key:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
 
+##  Test
+
+# read some test licenses from Vault for E2E license tests
 get-test-license:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=enterprise  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
 
+get-monitoring-secrets:
+	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=data -format=json secret/devops-ci/cloud-on-k8s/monitoring-cluster > monitoring-secrets.json
+
+##  Release
+
+# read docker password from Vault to push Docker images in the Elastic registry
 get-docker-creds:
 	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ${ROOT_DIR}/.env
 
@@ -77,5 +88,3 @@ endif
 		DOCKER_CMD="aws s3 ls $(YAML_DST) && echo OK: $(YAML_DST) already uploaded || aws s3 cp $(YAML_SRC) $(YAML_DST)" \
 		ci-internal
 
-get-monitoring-secrets:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=data -format=json secret/devops-ci/cloud-on-k8s/monitoring-cluster > monitoring-secrets.json
