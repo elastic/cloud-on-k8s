@@ -101,13 +101,15 @@ pipeline {
                 if (params.SEND_NOTIFICATIONS) {
                     Set<String> filter = new HashSet<>()
                     filter.addAll(failedTests)
-                    def msg = lib.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter)
 
-                    slackSend botUser: true,
+                    slackSend(
                         channel: '#cloud-k8s',
                         color: 'danger',
-                        message: msg,
-                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                        message: lib.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter),
+                        tokenCredentialId: 'cloud-ci-slack-integration-token',
+                        botUser: true,
+                        failOnError: false
+                    )
                 }
                 googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                     credentialsId: "devops-ci-gcs-plugin",

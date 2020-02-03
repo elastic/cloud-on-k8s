@@ -56,11 +56,14 @@ pipeline {
                 if (params.SEND_NOTIFICATIONS) {
                     def msg = testScript.generateSlackMessage("E2E tests failed!", env.BUILD_URL, failedTests)
 
-                    slackSend botUser: true,
+                    slackSend(
                         channel: '#cloud-k8s',
                         color: 'danger',
                         message: msg,
-                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                        tokenCredentialId: 'cloud-ci-slack-integration-token',
+                        botUser: true,
+                        failOnError: false
+                    )
                 }
             }
         }
