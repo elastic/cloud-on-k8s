@@ -87,6 +87,7 @@ write_env <<ENV
 OPERATOR_IMAGE = $IMAGE
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
+IMG_SUFFIX = -ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -117,7 +118,7 @@ write_env <<ENV
 OPERATOR_IMAGE = ${IMAGE}
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
-KIND_NODE_IMAGE = ${kindImage}
+IMG_SUFFIX = -ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -164,6 +165,7 @@ OPERATOR_IMAGE = ${IMAGE}
 STACK_VERSION = ${stackVersion}
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
+IMG_SUFFIX = -ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
