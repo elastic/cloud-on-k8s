@@ -12,6 +12,7 @@ pipeline {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
         VAULT_SECRET_ID = credentials('vault-secret-id')
+        GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
     }
 
     stages {
