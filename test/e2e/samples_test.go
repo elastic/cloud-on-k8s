@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -21,12 +22,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
+var (
+	ignoreAssociationsRbac = regexp.MustCompile(`/associations-rbac/.*\.yaml$`)
+)
+
 func TestSamples(t *testing.T) {
+	// We filter here the samples about associations and RBAC, dedicated e2e tests are tracked in https://github.com/elastic/cloud-on-k8s/issues/2503
 	sampleFiles, err := filepath.Glob("../../config/samples/*/*.yaml")
 	require.NoError(t, err, "Failed to find samples")
 
 	decoder := helper.NewYAMLDecoder()
 	for _, sample := range sampleFiles {
+		if ignoreAssociationsRbac.MatchString(sample) {
+			continue
+		}
 		builders := createBuilders(t, decoder, sample)
 		testName := mkTestName(t, sample)
 		t.Run(testName, func(t *testing.T) {
