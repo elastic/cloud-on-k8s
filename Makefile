@@ -324,6 +324,9 @@ docker-push:
 ifeq ($(REGISTRY), docker.elastic.co)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
+ifeq ($(REGISTRY), eu.gcr.io)
+	@ gcloud auth configure-docker --quiet
+endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
 	# use the minikube registry
 	@ hack/registry.sh port-forward start
