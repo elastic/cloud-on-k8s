@@ -86,12 +86,20 @@ rules:
       - persistentvolumeclaims
       - configmaps
       - events
+      - serviceaccounts
     verbs:
       - get
       - list
       - watch
       - delete
       - create
+      - update
+  - apiGroups:
+      - "security.openshift.io"
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - get
       - update
   - apiGroups:
       - "apps"
