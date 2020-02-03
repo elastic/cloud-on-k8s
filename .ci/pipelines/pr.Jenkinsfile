@@ -23,7 +23,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'make -C build/ci ci-build-image'
+                sh 'make -C .ci ci-build-image'
             }
         }
         stage('Run checks') {
@@ -34,10 +34,10 @@ pipeline {
             }
             steps {
                 echo "Running checks for Go sources..."
-                sh 'make -C build/ci TARGET=ci-check ci'
+                sh 'make -C .ci TARGET=ci-check ci'
 
                 echo "Validating Jenkins pipelines..."
-                sh 'make -C build/ci TARGET=validate-jenkins-pipelines ci'
+                sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
             }
         }
         stage('Run tests in parallel') {
@@ -55,7 +55,7 @@ pipeline {
                     steps {
                         script {
                             createConfig()
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci ci')
 
                             junit "unit-tests.xml"
                             junit "integration-tests.xml"
@@ -76,9 +76,9 @@ pipeline {
                             createConfig()
                             createDeployerConfig()
 
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci-e2e ci')
 
-                            sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+                            sh 'make -C .ci TARGET=e2e-generate-xml ci'
                             junit "e2e-tests.xml"
 
                             sh 'exit $SHELL_EXIT_CODE'

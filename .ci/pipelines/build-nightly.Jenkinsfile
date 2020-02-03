@@ -21,7 +21,7 @@ pipeline {
     stages {
         stage('Run checks') {
             steps {
-                sh 'make -C build/ci TARGET=ci-check ci'
+                sh 'make -C .ci TARGET=ci-check ci'
             }
         }
         stage('Run unit and integration tests') {
@@ -36,7 +36,7 @@ SNAPSHOT = true
 IMG_SUFFIX = -ci
 ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
-                    make -C build/ci TARGET=ci ci
+                    make -C .ci TARGET=ci ci
                 """
             }
         }
@@ -49,10 +49,10 @@ EOF
                     echo \$OPERATOR_IMAGE > eck_image.txt
                     cat >> .env <<EOF
 GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 OPERATOR_IMAGE = "\$OPERATOR_IMAGE"
 EOF
-                    make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
+                    make -C .ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
                 """
             }
         }

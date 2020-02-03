@@ -37,16 +37,16 @@ IMG_NAME = ${IMG_NAME}
 OPERATOR_IMAGE = ${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}
 SNAPSHOT = false
 GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 ELASTIC_DOCKER_LOGIN = eckadmin
 EOF
-                            make -C build/ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
+                            make -C .ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
                         """
                     }
                 }
                 stage('Upload yaml to S3') {
                     steps {
-                        sh 'make -C build/ci yaml-upload'
+                        sh 'make -C .ci yaml-upload'
                     }
                 }
                 stage('Send message to Slack') {

@@ -4,7 +4,7 @@
 
 # This Makefile is mostly used for continuous integration.
 
-ROOT_DIR = $(CURDIR)/../..
+ROOT_DIR := $(CURDIR)/..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 ALL_IN_ONE_OUTPUT_FILE ?= config/all-in-one.yaml
 
@@ -17,10 +17,10 @@ VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/appro
 else
 VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
-NOT_USED := $(shell test -e ../../deployer-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" ../../deployer-config.yml)
+NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" $(ROOT_DIR)/deployer-config.yml)
 endif
 
-CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/build/ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
+CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
 show-image:
 	@ echo $(CI_IMAGE)
@@ -45,7 +45,7 @@ ci-internal: ci-build-image
 # reads Docker password from Vault,
 # checks if Docker image exists by trying to pull it. If there is no image, then build and push it.
 ci-build-image:
-	@ docker pull $(CI_IMAGE) || (docker build -f $(ROOT_DIR)/build/ci/Dockerfile -t push.$(CI_IMAGE) \
+	@ docker pull $(CI_IMAGE) || (docker build -f $(ROOT_DIR)/.ci/Dockerfile -t push.$(CI_IMAGE) \
 		--label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && docker login -u eckadmin \
 		-p $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin) \
 		push.docker.elastic.co && docker push push.$(CI_IMAGE))
@@ -68,7 +68,7 @@ get-test-license:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=enterprise  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
 
 get-docker-creds:
-	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ../../.env
+	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ${ROOT_DIR}/.env
 
 get-monitoring-secrets:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=data -format=json secret/devops-ci/cloud-on-k8s/monitoring-cluster > monitoring-secrets.json

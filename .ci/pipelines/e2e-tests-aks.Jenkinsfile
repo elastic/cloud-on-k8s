@@ -22,7 +22,7 @@ pipeline {
         }
         stage('Run Checks') {
             steps {
-                sh 'make -C build/ci TARGET=ci-check ci'
+                sh 'make -C .ci TARGET=ci-check ci'
             }
         }
         stage("Run E2E tests") {
@@ -32,9 +32,9 @@ pipeline {
 REGISTRY = cloudonk8s.azurecr.io
 REPOSITORY = operators
 IMG_SUFFIX = -ci
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.json
+TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 E2E_JSON = true
 TEST_TIMEOUT = 10m
 EOF
@@ -49,9 +49,9 @@ overrides:
 EOF
                 """
                 script {
-                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
+                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
-                    sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+                    sh 'make -C .ci TARGET=e2e-generate-xml ci'
                     junit "e2e-tests.xml"
 
                     if (env.SHELL_EXIT_CODE != 0) {
@@ -82,7 +82,7 @@ overrides:
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
 EOF
-                    make -C build/ci TARGET=run-deployer ci
+                    make -C .ci TARGET=run-deployer ci
                 """
             }
             cleanWs()

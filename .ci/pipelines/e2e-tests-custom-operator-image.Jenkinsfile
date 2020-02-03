@@ -27,7 +27,7 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    testScript = load "build/ci/common/tests.groovy"
+                    testScript = load ".ci/common/tests.groovy"
                 }
             }
         }
@@ -42,9 +42,9 @@ REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 SKIP_DOCKER_COMMAND = true
 E2E_JSON = true
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.json
+TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
+export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 EOF
                     cat >deployer-config.yml <<EOF
 id: gke-ci
@@ -59,9 +59,9 @@ overrides:
 EOF
                 """
                 script {
-                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
+                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
-                    sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+                    sh 'make -C .ci TARGET=e2e-generate-xml ci'
                     junit "e2e-tests.xml"
 
                     if (env.SHELL_EXIT_CODE != 0) {
