@@ -1,26 +1,26 @@
-# Docker image aimed to run compilation and tests in CI
+# Docker image used for continuous integration
 FROM golang:1.13-stretch
 
+ENV GOLANGCILINT_VERSION=1.21.0
 ENV KUBEBUILDER_VERSION=2.0.0
 ENV GCLOUD_VERSION=277.0.0
 ENV KUBECTL_VERSION=1.14.7
 ENV DOCKER_VERSION=18.03.1-ce
-ENV GOLANGCILINT_VERSION=1.21.0
 ENV GOTESTSUM_VERSION=0.3.5
 ENV KIND_VERSION=0.7.0
 
-# Install golangci-lint
+# golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
-# Download kubebuilder release to get required tools (etcd, apiserver, etc.)
+# kubebuilder to get required tools (etcd, apiserver, etc.)
 ENV PATH=${PATH}:/usr/local/kubebuilder/bin
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
     tar -zxf kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
     mv kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64 /usr/local/kubebuilder && \
     rm kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz
 
-# Download gcloud for provisioning gke clusters
+# gcloud to provision GKE clusters
 ENV PATH=${PATH}:/usr/local/google-cloud-sdk/bin
 RUN curl -fsSLO https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz && \
     mkdir -p /usr/local/gcloud && \
@@ -31,40 +31,37 @@ RUN curl -fsSLO https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/googl
     gcloud components install beta --quiet && \
     rm google-cloud-sdk-${GCLOUD_VERSION}-linux-x86_64.tar.gz
 
-# Download kubectl for deploying the operator and running e2e tests
+# kubectl for deploying the operator and running e2e tests
 RUN curl -fsSLO https://storage.googleapis.com/kubernetes-release/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl && \
     mv kubectl /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
 
-# Install Docker client for building and pushing images
+# Docker client to build and push images
 RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz && \
     tar xzf docker-${DOCKER_VERSION}.tgz --strip 1 -C /usr/local/bin docker/docker && \
     rm docker-${DOCKER_VERSION}.tgz
 
-# Install AWS CLI
+# AWS CLI to upload YAML on S3
 RUN apt-get update && apt-get --no-install-recommends -y install \
     awscli && \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Download Azure CLI
+# Azure CLI to provision AKS clusters
 RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
 
-# Install gotestsum to generate xUnit compatible XML for tests
+# gotestsum to generate xUnit compatible XML for tests
 RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_VERSION}/gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \
     tar xzf gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz && \
     mv gotestsum /usr/local/bin/gotestsum && chmod +x /usr/local/bin/gotestsum && \
     rm gotestsum_${GOTESTSUM_VERSION}_linux_amd64.tar.gz
 
-# Install Kind to run k8s cluster locally in Docker
+# Kind to run k8s cluster locally in Docker
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64 && \
     mv kind-linux-amd64 /usr/local/bin/kind && chmod +x /usr/local/bin/kind
 
-# Add Go dependencies to Docker image
+# Cache ECK Go dependencies in this Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 COPY ["go.mod", "go.sum", "./"]
-RUN go mod download
-
-# Cleanup
-RUN rm /go/src/github.com/elastic/cloud-on-k8s/go.mod && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/go.sum
+RUN go mod download && \
+    rm /go/src/github.com/elastic/cloud-on-k8s/go.*
 WORKDIR /
