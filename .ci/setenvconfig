@@ -127,6 +127,7 @@ export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
+KIND_NODE_IMAGE = $kindNodeImage
 ENV
 ;;
 
@@ -165,7 +166,6 @@ clusterName=$2
 stackVersion=$3
 
 write_env <<ENV
-STACK_VERSION = ${stackVersion}
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
@@ -175,6 +175,7 @@ export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
+STACK_VERSION = $stackVersion
 ENV
 write_deployer_config <<CFG
 id: gke-ci
