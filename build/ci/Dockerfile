@@ -8,6 +8,7 @@ ENV DOCKER_VERSION=18.03.1-ce
 ENV GOLANGCILINT_VERSION=1.21.0
 ENV GOTESTSUM_VERSION=0.3.5
 ENV KIND_VERSION=0.7.0
+ENV OPENSHIFT_TOOLS_VERSION=4.3.0
 
 # Install golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
@@ -58,6 +59,18 @@ RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v$
 # Install Kind to run k8s cluster locally in Docker
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64 && \
     mv kind-linux-amd64 /usr/local/bin/kind && chmod +x /usr/local/bin/kind
+
+# Install openshift-install to deploy OpenShift clusters
+RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_TOOLS_VERSION}/openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
+    tar -zxf openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz openshift-install && \
+    mv openshift-install /usr/local/bin/openshift-install && \
+    rm openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz
+
+# Install openshift-client to deploy OpenShift clusters
+RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_TOOLS_VERSION}/openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
+    tar -zxf openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz oc && \
+    mv oc /usr/local/bin/oc && \
+    rm openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz
 
 # Add Go dependencies to Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
