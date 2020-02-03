@@ -1,19 +1,22 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
-# This script used to "bake" Docker images into base image for Jenkins nodes.
+# This script is used to pre-pull Docker images into the immutable image of Jenkins workers.
 
 set -eou pipefail
 
-DOCKER_CI_IMAGE=$(cd build/ci/ && make show-image)
+# ECK CI tooling image
+docker pull $(make -C build/ci --no-print-directory show-image)
 
-declare -a docker_images=("$DOCKER_CI_IMAGE" "kindest/node:v1.11.10" "kindest/node:v1.15.3" "kindest/node:v1.16.2" "docker.elastic.co/elasticsearch/elasticsearch:7.4.0" "docker.elastic.co/kibana/kibana:7.4.0" "docker.elastic.co/apm/apm-server:7.4.0")
+# Kind images (https://hub.docker.com/r/kindest/node/tags)
+docker pull kindest/node:v1.12.10
+docker pull kindest/node:v1.16.4
+docker pull kindest/node:v1.17.0
 
-# Pull all the required docker images
-for image in "${docker_images[@]}"
-do
-  docker pull "$image"
-done
+# Elastic Stack images
+docker pull docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+docker pull docker.elastic.co/kibana/kibana:7.4.0
+docker pull docker.elastic.co/apm/apm-server:7.4.0

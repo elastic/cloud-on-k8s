@@ -94,16 +94,15 @@ dependencies:
 ALL_CRDS=config/crds/all-crds.yaml
 generate: generate-crds generate-api-docs generate-notice-file
 
-generate-crds: controller-gen
+go-generate:
 	# we use this in pkg/controller/common/license
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
+
+generate-crds: go-generate controller-gen
 	$(CONTROLLER_GEN) webhook object:headerFile=./hack/boilerplate.go.txt paths=./pkg/apis/...
 	# Generate manifests e.g. CRD, RBAC etc.
-	# We generate CRDs with trivialVersions=true, to support pre-1.13 Kubernetes versions. This means the CRDs
-	# include validation for the latest version **only**. Older versions are still mentioned, but will be validated
-	# against the latest version schema.
-	$(CONTROLLER_GEN) crd:trivialVersions=true paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
-	# build a patched merged version of the CRDs
+	$(CONTROLLER_GEN) crd paths="./pkg/apis/..." output:crd:artifacts:config=config/crds/bases
+	# apply patches to work around some CRD generation issues, and merge them into a single file
 	kubectl kustomize config/crds/patches > $(ALL_CRDS)
 	# generate an all-in-one version including the operator manifests
 	$(MAKE) --no-print-directory generate-all-in-one
@@ -375,7 +374,8 @@ e2e-run:
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
-		--test-timeout=$(TEST_TIMEOUT)
+		--test-timeout=$(TEST_TIMEOUT) \
+		--monitoring-secrets=$(MONITORING_SECRETS)
 
 e2e-generate-xml:
 	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
@@ -479,7 +479,7 @@ ifneq ($(ECK_IMAGE),)
 	$(eval OPERATOR_IMAGE=$(ECK_IMAGE))
 	@docker pull $(OPERATOR_IMAGE)
 else
-	$(MAKE) docker-build
+	$(MAKE) go-generate docker-build
 endif
 
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e

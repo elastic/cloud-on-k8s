@@ -1,0 +1,120 @@
+# This file contains an example of Roles, RoleBindings and ServiceAccount which allow the associations to be established
+# between resources living in different namespaces if the access control between resources across namespaces is enabled.
+# This example is only valid if ECK is started with the related option.
+# See https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-operator-config.html.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kibana-ns
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elasticsearch-ns
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apmserver-ns
+---
+# Create a Role at the cluster level to access some Elasticsearch clusters.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elasticsearch-association
+rules:
+  - apiGroups:
+      - elasticsearch.k8s.elastic.co
+    resources:
+      - elasticsearches
+    # It is also possible to do some fine grain filtering with some per cluster roles
+    #  resourceNames:
+    #  - elasticsearch-sample
+    #  - an-other-elasticsearch-cluster
+    verbs:
+      - get # association is allowed if a resource can "get" the remote one
+---
+# This is the service account used by Kibana
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kibana-user
+  namespace: kibana-ns
+---
+# This RoleBinding gives the permission to Kibana to access the Elasticsearch cluster
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: allow-kibana-from-remote-namespace
+  namespace: elasticsearch-ns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elasticsearch-association
+subjects:
+  - kind: ServiceAccount
+    name: kibana-user
+    namespace: kibana-ns
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apmserver-user
+  namespace: apmserver-ns
+---
+# This RoleBinding gives the permission to ApmServer to access the Elasticsearch cluster
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: allow-apmserver-from-remote-namespace
+  namespace: elasticsearch-ns
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elasticsearch-association
+subjects:
+  - kind: ServiceAccount
+    name: apmserver-user
+    namespace: apmserver-ns
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+  namespace: elasticsearch-ns
+spec:
+  version: 7.5.2
+  nodeSets:
+    - name: default
+      count: 1
+      config:
+        node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana-sample
+  namespace: kibana-ns
+spec:
+  version: 7.5.2
+  count: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+    namespace: "elasticsearch-ns"
+  # Service account used by Kibana to get access to the Elasticsearch cluster
+  serviceAccountName: kibana-user
+---
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: apm-apm-sample
+  namespace: apmserver-ns
+spec:
+  version: 7.5.2
+  count: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+    namespace: "elasticsearch-ns"
+  # Service account used by the APM Server to get access to the Elasticsearch cluster
+  serviceAccountName: apmserver-user

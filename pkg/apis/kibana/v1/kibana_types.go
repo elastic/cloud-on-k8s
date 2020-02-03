@@ -16,7 +16,7 @@ const KibanaContainerName = "kibana"
 // KibanaSpec holds the specification of a Kibana instance.
 type KibanaSpec struct {
 	// Version of Kibana.
-	Version string `json:"version,omitempty"`
+	Version string `json:"version"`
 
 	// Image is the Kibana Docker image to deploy.
 	Image string `json:"image,omitempty"`
@@ -40,6 +40,11 @@ type KibanaSpec struct {
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
+
+	// ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+	// Can only be used if ECK is enforcing RBAC on references.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // KibanaHealth expresses the status of the Kibana instances.
@@ -75,6 +80,10 @@ func (k *Kibana) ElasticsearchRef() commonv1.ObjectSelector {
 
 func (k *Kibana) SecureSettings() []commonv1.SecretSource {
 	return k.Spec.SecureSettings
+}
+
+func (k *Kibana) ServiceAccountName() string {
+	return k.Spec.ServiceAccountName
 }
 
 func (k *Kibana) AssociationConf() *commonv1.AssociationConf {
