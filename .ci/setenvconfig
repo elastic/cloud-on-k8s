@@ -54,7 +54,6 @@ CFG
 ######################################
 
 write_env <<ENV
-GCLOUD_PROJECT = $GCLOUD_PROJECT
 OPERATOR_IMAGE = $IMAGE
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
@@ -85,7 +84,6 @@ clusterVersion=$2
 clusterName=$3
 
 write_env <<ENV
-GCLOUD_PROJECT = $GCLOUD_PROJECT
 OPERATOR_IMAGE = $IMAGE
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
@@ -117,7 +115,6 @@ kindNodeImage=$2
 
 write_env <<ENV
 OPERATOR_IMAGE = ${IMAGE}
-GCLOUD_PROJECT = $GCLOUD_PROJECT
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
 KIND_NODE_IMAGE = ${kindImage}
@@ -133,7 +130,6 @@ ENV
 ######################################
 
 write_env <<ENV
-GCLOUD_PROJECT = $GCLOUD_PROJECT
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
@@ -165,7 +161,6 @@ stackVersion=$3
 
 write_env <<ENV
 OPERATOR_IMAGE = ${IMAGE}
-GCLOUD_PROJECT = $GCLOUD_PROJECT
 STACK_VERSION = ${stackVersion}
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
