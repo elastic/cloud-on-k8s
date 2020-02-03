@@ -238,19 +238,18 @@ CFG
 
 # IMG_VERSION is generated
 
-VERSION=$(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD) 
-
 write_env <<ENV
-GCLOUD_PROJECT = $GCLOUD_PROJECT
 REGISTRY = docker.elastic.co
 REPOSITORY = eck-snapshots
 IMG_NAME = eck-operator
-SNAPSHOT = true
-IMG_SUFFIX = -ci
-ELASTIC_DOCKER_LOGIN = eckadmin
+
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-OPERATOR_IMAGE = ${REGISTRY}/${REPOSITORY}/${IMG_NAME}:$VERSION
+
+ELASTIC_DOCKER_LOGIN = eckadmin
+
+SNAPSHOT = true
+IMG_VERSION = $(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
 ENV
 
   else
@@ -260,15 +259,17 @@ ENV
 ###############
 
 write_env <<ENV
-VERSION = ${TAG_NAME}
-REGISTRY = ${REGISTRY}
-REPOSITORY = ${REPOSITORY}
-IMG_NAME = ${IMG_NAME}
-OPERATOR_IMAGE = ${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}
-SNAPSHOT = false
+REGISTRY = docker.elastic.co
+REPOSITORY = eck
+IMG_NAME = eck-operator
+
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
+
 ELASTIC_DOCKER_LOGIN = eckadmin
+
+SNAPSHOT = false
+IMG_VERSION = $TAG_NAME
 ENV
 
   fi
