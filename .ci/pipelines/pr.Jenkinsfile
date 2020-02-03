@@ -16,14 +16,14 @@ pipeline {
     }
 
     stages {
-        stage('Check if Docker image needs rebuilding') {
+        stage('Validate Jenkins pipelines') {
             when {
                 expression {
                     notOnlyDocs()
                 }
             }
             steps {
-                sh 'make -C .ci ci-build-image'
+                sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
             }
         }
         stage('Run checks') {
@@ -33,11 +33,7 @@ pipeline {
                 }
             }
             steps {
-                echo "Running checks for Go sources..."
                 sh 'make -C .ci TARGET=ci-check ci'
-
-                echo "Validating Jenkins pipelines..."
-                sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
             }
         }
         stage('Run tests in parallel') {
