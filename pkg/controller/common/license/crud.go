@@ -6,7 +6,6 @@ package license
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -66,7 +65,7 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, Enterp
 		return secret, EnterpriseLicense{}, err
 	}
 	if !license.IsTrial() {
-		return secret, EnterpriseLicense{}, fmt.Errorf("%v is not a trial license", nsn)
+		return secret, EnterpriseLicense{}, pkgerrors.Errorf("%v is not a trial license", nsn)
 	}
 	return secret, license, nil
 }

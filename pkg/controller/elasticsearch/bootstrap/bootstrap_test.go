@@ -120,7 +120,7 @@ func TestReconcileClusterUUID1(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.WrappedFakeClient(tt.args.cluster)
-			requeue, err := ReconcileClusterUUID(k8sClient, tt.args.cluster, tt.args.esClient, tt.args.esReachable)
+			requeue, err := ReconcileClusterUUID(context.Background(), k8sClient, tt.args.cluster, tt.args.esClient, tt.args.esReachable)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {

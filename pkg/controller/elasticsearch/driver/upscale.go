@@ -5,6 +5,8 @@
 package driver
 
 import (
+	"context"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -20,6 +22,7 @@ import (
 )
 
 type upscaleCtx struct {
+	parentCtx     context.Context
 	k8sClient     k8s.Client
 	es            esv1.Elasticsearch
 	scheme        *runtime.Scheme
@@ -52,7 +55,7 @@ func HandleUpscaleAndSpecChanges(
 		if err := settings.ReconcileConfig(ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
 			return nil, err
 		}
-		if _, err := common.ReconcileService(ctx.k8sClient, ctx.scheme, &res.HeadlessService, &ctx.es); err != nil {
+		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, ctx.scheme, &res.HeadlessService, &ctx.es); err != nil {
 			return nil, err
 		}
 		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.scheme, ctx.es, res.StatefulSet, ctx.expectations)

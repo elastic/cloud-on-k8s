@@ -5,12 +5,11 @@
 package driver
 
 import (
-	"fmt"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -67,7 +66,7 @@ func podsByStatefulSetName(pods []corev1.Pod) map[string][]corev1.Pod {
 		ssetName, exists := p.Labels[label.StatefulSetNameLabelName]
 		if !exists {
 			log.Error(
-				fmt.Errorf("expected label %s not set", label.StatefulSetNameLabelName),
+				pkgerrors.Errorf("expected label %s not set", label.StatefulSetNameLabelName),
 				"skipping forced upgrade",
 				"namespace", p.Namespace, "pod_name", p.Name)
 			continue

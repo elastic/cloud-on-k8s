@@ -5,9 +5,8 @@
 package version
 
 import (
-	"fmt"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	pkgerrors "github.com/pkg/errors"
 )
 
 // LowestHighestSupportedVersions expresses the wire-format compatibility range for a version.
@@ -41,7 +40,7 @@ func SupportedVersions(v version.Version) *LowestHighestSupportedVersions {
 // Supports compares a given with the supported version range and returns an error if out of bounds.
 func (lh LowestHighestSupportedVersions) Supports(v version.Version) error {
 	if !v.IsSameOrAfter(lh.LowestSupportedVersion) {
-		return fmt.Errorf(
+		return pkgerrors.Errorf(
 			"%s is unsupported, it is older than the oldest supported version %s",
 			v,
 			lh.LowestSupportedVersion,
@@ -49,7 +48,7 @@ func (lh LowestHighestSupportedVersions) Supports(v version.Version) error {
 	}
 
 	if !lh.HighestSupportedVersion.IsSameOrAfter(v) {
-		return fmt.Errorf(
+		return pkgerrors.Errorf(
 			"%s is unsupported, it is newer than the newest supported version %s",
 			v,
 			lh.HighestSupportedVersion,

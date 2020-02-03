@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"go.elastic.co/apm"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -20,6 +21,7 @@ var log = logf.Log.WithName("observer")
 type Settings struct {
 	ObservationInterval time.Duration
 	RequestTimeout      time.Duration
+	Tracer              *apm.Tracer
 }
 
 // Default values:
@@ -130,6 +132,12 @@ func (o *Observer) retrieveState(ctx context.Context) {
 	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
+
+	if o.settings.Tracer != nil {
+		tx := o.settings.Tracer.StartTransaction(o.cluster.String(), "elasticsearch_observer")
+		defer tx.End()
+		timeoutCtx = apm.ContextWithTransaction(timeoutCtx, tx)
+	}
 
 	newState := RetrieveState(timeoutCtx, o.cluster, o.esClient)
 

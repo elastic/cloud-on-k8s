@@ -5,6 +5,8 @@
 package driver
 
 import (
+	"context"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -21,6 +23,7 @@ type PredicateContext struct {
 	esState                ESState
 	shardLister            client.ShardLister
 	masterUpdateInProgress bool
+	ctx                    context.Context
 }
 
 // Predicate is a function that indicates if a Pod can be deleted (or not).
@@ -48,6 +51,7 @@ func groupByPredicates(fp failedPredicates) map[string][]string {
 }
 
 func NewPredicateContext(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	state ESState,
 	shardLister client.ShardLister,
@@ -64,6 +68,7 @@ func NewPredicateContext(
 		toUpdate:         podsToUpgrade,
 		esState:          state,
 		shardLister:      shardLister,
+		ctx:              ctx,
 	}
 }
 
@@ -199,7 +204,7 @@ var predicates = [...]Predicate{
 				return false, nil
 			}
 			// This candidate needs a version upgrade, check if the Shards are in a compatible state.
-			shards, err := context.shardLister.GetShards()
+			shards, err := context.shardLister.GetShards(context.ctx)
 			if err != nil {
 				return false, err
 			}
@@ -226,7 +231,7 @@ var predicates = [...]Predicate{
 			deletedPods []corev1.Pod,
 			maxUnavailableReached bool,
 		) (b bool, e error) {
-			allShards, err := context.shardLister.GetShards()
+			allShards, err := context.shardLister.GetShards(context.ctx)
 			if err != nil {
 				return false, err
 			}
@@ -390,7 +395,7 @@ var predicates = [...]Predicate{
 				return true, nil
 			}
 
-			shards, err := context.shardLister.GetShards()
+			shards, err := context.shardLister.GetShards(context.ctx)
 			if err != nil {
 				return true, err
 			}

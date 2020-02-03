@@ -13,13 +13,15 @@ import (
 	"strings"
 	"time"
 
-	// allow gcp authentication
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.elastic.co/apm"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
+	// allow gcp authentication
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -75,6 +77,8 @@ const (
 	WebhookPort              = 9443
 
 	DebugHTTPServerListenAddressFlag = "debug-http-listen"
+
+	EnableTracingFlag = "enable-tracing"
 )
 
 var (
@@ -166,6 +170,10 @@ func init() {
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
 	)
+	Cmd.Flags().Bool(
+		EnableTracingFlag,
+		false,
+		"Enable APM tracing in the operator. Endpoint, token etc are to be configured via environment variables. See https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html")
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -292,6 +300,10 @@ func execute() {
 		os.Exit(1)
 	}
 	log.Info("Setting up controllers", "roles", roles)
+	var tracer *apm.Tracer
+	if viper.GetBool(EnableTracingFlag) {
+		tracer = tracing.NewTracer("elastic-operator")
+	}
 	params := operator.Parameters{
 		Dialer:            dialer,
 		OperatorNamespace: operatorNamespace,
@@ -304,6 +316,7 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
+		Tracer: tracer,
 	}
 
 	if operator.HasRole(operator.WebhookServer, roles) {

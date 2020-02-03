@@ -9,7 +9,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
@@ -83,7 +82,7 @@ func InitTrial(c k8s.Client, operatorNamespace string, secret corev1.Secret, l *
 // populateTrialLicense adds missing fields to a trial license.
 func populateTrialLicense(l *EnterpriseLicense) error {
 	if !l.IsTrial() {
-		return fmt.Errorf("%s for %s is not a trial license", l.License.UID, l.License.IssuedTo)
+		return pkgerrors.Errorf("%s for %s is not a trial license", l.License.UID, l.License.IssuedTo)
 	}
 	if l.License.Issuer == "" {
 		l.License.Issuer = "Elastic k8s operator"

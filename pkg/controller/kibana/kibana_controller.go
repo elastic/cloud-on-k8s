@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"context"
 	"reflect"
 	"sync/atomic"
 
@@ -16,9 +17,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -128,10 +131,12 @@ type ReconcileKibana struct {
 // in the Kibana.Spec
 func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "kibana_name", &r.iteration)()
+	tx, ctx := tracing.NewTransaction(r.params.Tracer, request.NamespacedName, "kibana")
+	defer tracing.EndTransaction(tx)
 
 	// retrieve the kibana object
 	var kb kbv1.Kibana
-	if err := association.FetchWithAssociation(r.Client, request, &kb); err != nil {
+	if err := association.FetchWithAssociation(ctx, r.Client, request, &kb); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
@@ -139,7 +144,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 			})
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, err
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// skip reconciliation if paused
@@ -149,14 +154,14 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	// check for compatibility with the operator version
-	compatible, err := r.isCompatible(&kb)
+	compatible, err := r.isCompatible(ctx, &kb)
 	if err != nil || !compatible {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// Remove any previous Finalizers
 	if err := finalizer.RemoveAll(r.Client, &kb); err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// Kibana will be deleted nothing to do other than remove the watches
@@ -166,36 +171,35 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	// update controller version annotation if necessary
-	err = annotation.UpdateControllerVersion(r.Client, &kb, r.params.OperatorInfo.BuildInfo.Version)
+	err = annotation.UpdateControllerVersion(ctx, r.Client, &kb, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	// main reconciliation logic
-	return r.doReconcile(request, &kb)
+	return r.doReconcile(ctx, request, &kb)
 }
 
-func (r *ReconcileKibana) isCompatible(kb *kbv1.Kibana) (bool, error) {
+func (r *ReconcileKibana) isCompatible(ctx context.Context, kb *kbv1.Kibana) (bool, error) {
 	selector := map[string]string{label.KibanaNameLabelName: kb.Name}
-	compat, err := annotation.ReconcileCompatibility(r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
+	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
-
 	return compat, err
 }
 
-func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
+func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
 	driver, err := newDriver(r, r.scheme, r.dynamicWatches, r.recorder, kb)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
 	state := NewState(request, kb)
-	results := driver.Reconcile(&state, kb, r.params)
+	results := driver.Reconcile(ctx, &state, kb, r.params)
 
 	// update status
-	err = r.updateStatus(state)
+	err = r.updateStatus(ctx, state)
 	if err != nil && errors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{Requeue: true}, nil
@@ -206,7 +210,10 @@ func (r *ReconcileKibana) doReconcile(request reconcile.Request, kb *kbv1.Kibana
 	return res, err
 }
 
-func (r *ReconcileKibana) updateStatus(state State) error {
+func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
+	span, _ := apm.StartSpan(ctx, "update_status", tracing.SpanTypeApp)
+	defer span.End()
+
 	current := state.originalKibana
 	if reflect.DeepEqual(current.Status, state.Kibana.Status) {
 		return nil

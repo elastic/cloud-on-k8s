@@ -5,6 +5,7 @@
 package settings
 
 import (
+	"context"
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -139,7 +140,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := UpdateSeedHostsConfigMap(tt.args.c, tt.args.scheme, tt.args.es, tt.args.pods)
+			err := UpdateSeedHostsConfigMap(context.Background(), tt.args.c, tt.args.scheme, tt.args.es, tt.args.pods)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UpdateSeedHostsConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 				return

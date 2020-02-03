@@ -12,16 +12,16 @@ import (
 type AllocationSetter interface {
 	// ExcludeFromShardAllocation takes a comma-separated string of node names and
 	// configures transient allocation exclusions for the given nodes.
-	ExcludeFromShardAllocation(nodes string) error
+	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
 }
 
 // ShardLister captures Elasticsearch API calls around shards retrieval.
 type ShardLister interface {
-	GetShards() (Shards, error)
+	GetShards(ctx context.Context) (Shards, error)
 }
 
-func (c *clientV6) ExcludeFromShardAllocation(nodes string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
+	ctx, cancel := context.WithTimeout(ctx, DefaultReqTimeout)
 	defer cancel()
 	allocationSettings := ClusterRoutingAllocation{
 		Transient: AllocationSettings{
@@ -39,8 +39,8 @@ func (c *clientV6) ExcludeFromShardAllocation(nodes string) error {
 	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
 }
 
-func (c *clientV6) GetShards() (Shards, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+func (c *clientV6) GetShards(ctx context.Context) (Shards, error) {
+	ctx, cancel := context.WithTimeout(ctx, DefaultReqTimeout)
 	defer cancel()
 	var shards Shards
 	if err := c.get(ctx, "/_cat/shards?format=json", &shards); err != nil {

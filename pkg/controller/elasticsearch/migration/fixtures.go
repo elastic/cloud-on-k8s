@@ -5,6 +5,7 @@
 package migration
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
@@ -26,7 +27,7 @@ type fakeShardLister struct {
 	err    error
 }
 
-func (f *fakeShardLister) GetShards() (esclient.Shards, error) {
+func (f *fakeShardLister) GetShards(_ context.Context) (esclient.Shards, error) {
 	return f.shards, f.err
 }
 
@@ -49,7 +50,7 @@ type fakeAllocationSetter struct {
 	value string
 }
 
-func (f *fakeAllocationSetter) ExcludeFromShardAllocation(nodes string) error {
+func (f *fakeAllocationSetter) ExcludeFromShardAllocation(_ context.Context, nodes string) error {
 	f.value = nodes
 	return nil
 }
