@@ -5,6 +5,7 @@
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -125,7 +126,9 @@ func TestResultsAggregate(t *testing.T) {
 }
 
 func TestResultsHasError(t *testing.T) {
-	r := &Results{}
+	r := &Results{
+		ctx: context.Background(),
+	}
 	require.False(t, r.HasError())
 
 	r = r.WithError(nil)

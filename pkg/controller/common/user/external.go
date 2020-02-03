@@ -6,9 +6,9 @@ package user
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
+	pkgerrors "github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -35,19 +35,19 @@ type ExternalUser struct {
 func NewExternalUserFromSecret(secret v1.Secret) (ExternalUser, error) {
 	user := ExternalUser{}
 	if len(secret.Data) == 0 {
-		return user, fmt.Errorf("user secret %s/%s is empty", secret.Namespace, secret.Name)
+		return user, pkgerrors.Errorf("user secret %s/%s is empty", secret.Namespace, secret.Name)
 	}
 
 	if username, ok := secret.Data[UserName]; ok && len(username) > 0 {
 		user.name = string(username)
 	} else {
-		return user, fmt.Errorf(fieldNotFound, UserName, secret.Namespace, secret.Name)
+		return user, pkgerrors.Errorf(fieldNotFound, UserName, secret.Namespace, secret.Name)
 	}
 
 	if password, ok := secret.Data[PasswordHash]; ok && len(password) > 0 {
 		user.password = password
 	} else {
-		return user, fmt.Errorf(fieldNotFound, PasswordHash, secret.Namespace, secret.Name)
+		return user, pkgerrors.Errorf(fieldNotFound, PasswordHash, secret.Namespace, secret.Name)
 	}
 
 	if roles, ok := secret.Data[UserRoles]; ok && len(roles) > 0 {

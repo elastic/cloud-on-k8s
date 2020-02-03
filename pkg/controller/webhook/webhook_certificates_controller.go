@@ -5,7 +5,6 @@
 package webhook
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -13,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,7 +66,7 @@ func (r *ReconcileWebhookResources) reconcileInternal() *reconciler.Results {
 	serverCA := certificates.BuildCAFromSecret(*webhookServerSecret)
 	if serverCA == nil {
 		return res.WithError(
-			fmt.Errorf("cannot find CA in webhook secret %s/%s", r.webhookParams.Namespace, r.webhookParams.SecretName),
+			pkgerrors.Errorf("cannot find CA in webhook secret %s/%s", r.webhookParams.Namespace, r.webhookParams.SecretName),
 		)
 	}
 

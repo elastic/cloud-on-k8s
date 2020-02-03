@@ -70,6 +70,10 @@ PodTemplate provides customisation options (labels, annotations, affinity rules,
 *`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
+*`serviceAccountName`*  _string_::
+_(Optional)_
+ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+Can only be used if ECK is enforcing RBAC on references.
 |===
 
 [id="apm-k8s-elastic-co-v1-apmserverspec"]
@@ -120,6 +124,12 @@ _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
+| *`serviceAccountName`* +
+_string_
+|
+_(Optional)_
+ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+Can only be used if ECK is enforcing RBAC on references.
 |===
 [id="{p}-apm-k8s-elastic-co-v1beta1"]
 === apm.k8s.elastic.co/v1beta1
@@ -1119,6 +1129,10 @@ to the empty value (`{}` in YAML).
 *`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+*`serviceAccountName`*  _string_::
+_(Optional)_
+ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
+Can only be used if ECK is enforcing RBAC on references.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-changebudget"]
@@ -1197,6 +1211,12 @@ _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+| *`serviceAccountName`* +
+_string_
+|
+_(Optional)_
+ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
+Can only be used if ECK is enforcing RBAC on references.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-nodeset"]
@@ -1510,6 +1530,10 @@ PodTemplate provides customisation options (labels, annotations, affinity rules,
 *`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
+*`serviceAccountName`*  _string_::
+_(Optional)_
+ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+Can only be used if ECK is enforcing RBAC on references.
 |===
 
 [id="kibana-k8s-elastic-co-v1-kibanaspec"]
@@ -1560,6 +1584,12 @@ _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
+| *`serviceAccountName`* +
+_string_
+|
+_(Optional)_
+ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
+Can only be used if ECK is enforcing RBAC on references.
 |===
 [id="{p}-kibana-k8s-elastic-co-v1beta1"]
 === kibana.k8s.elastic.co/v1beta1

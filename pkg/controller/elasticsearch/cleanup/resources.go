@@ -5,8 +5,11 @@
 package cleanup
 
 import (
+	"context"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -36,7 +39,10 @@ func IsTooYoungForGC(object metav1.Object) bool {
 }
 
 // DeleteOrphanedSecrets cleans up secrets that are not needed anymore for the given es cluster.
-func DeleteOrphanedSecrets(c k8s.Client, es esv1.Elasticsearch) error {
+func DeleteOrphanedSecrets(ctx context.Context, c k8s.Client, es esv1.Elasticsearch) error {
+	span, _ := apm.StartSpan(ctx, "delete_orphaned_secrets", tracing.SpanTypeApp)
+	defer span.End()
+
 	var secrets corev1.SecretList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)

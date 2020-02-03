@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/ghodss/yaml"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -259,7 +260,7 @@ func getUsersRolesFileBytes(users []common.User) ([]byte, error) {
 	for _, user := range users {
 		for _, role := range user.Roles() {
 			if role == "" {
-				return nil, fmt.Errorf("role not defined for user `%s`", user.Id())
+				return nil, pkgerrors.Errorf("role not defined for user `%s`", user.Id())
 			}
 
 			roleUsers := rolesUsers[role]

@@ -6,8 +6,10 @@ package bootstrap
 
 import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 
 	"context"
 
@@ -30,7 +32,10 @@ func AnnotatedForBootstrap(cluster esv1.Elasticsearch) bool {
 
 // ReconcileClusterUUID attempts to set the ClusterUUID annotation on the Elasticsearch resource if not already set.
 // It returns a boolean indicating whether the reconciliation should be re-queued (ES not reachable).
-func ReconcileClusterUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
+func ReconcileClusterUUID(ctx context.Context, k8sClient k8s.Client, cluster *esv1.Elasticsearch, esClient client.Client, esReachable bool) (bool, error) {
+	span, ctx := apm.StartSpan(ctx, "reconcile_cluster_uuid", tracing.SpanTypeApp)
+	defer span.End()
+
 	if AnnotatedForBootstrap(*cluster) {
 		// already annotated, nothing to do.
 		return false, nil
@@ -39,7 +44,7 @@ func ReconcileClusterUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, esC
 		// retry later
 		return true, nil
 	}
-	clusterUUID, err := getClusterUUID(esClient)
+	clusterUUID, err := getClusterUUID(ctx, esClient)
 	if err != nil {
 		// There was an error while retrieving the UUID of the Elasticsearch cluster.
 		// For example, it could be the case with ES 6.x if the cluster does not have a master yet, in this case an
@@ -63,8 +68,8 @@ func ReconcileClusterUUID(k8sClient k8s.Client, cluster *esv1.Elasticsearch, esC
 }
 
 // getClusterUUID retrieves the cluster UUID using the given esClient.
-func getClusterUUID(esClient client.Client) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+func getClusterUUID(ctx context.Context, esClient client.Client) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
 	defer cancel()
 	info, err := esClient.GetClusterInfo(ctx)
 	if err != nil {

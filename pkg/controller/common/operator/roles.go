@@ -5,9 +5,8 @@
 package operator
 
 import (
-	"fmt"
-
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	pkgerrors "github.com/pkg/errors"
 )
 
 // Roles that an operator can assume
@@ -39,7 +38,7 @@ func ValidateRoles(roles []string) error {
 		}
 	}
 	if len(invalid) > 0 {
-		return fmt.Errorf("invalid roles %v", invalid)
+		return pkgerrors.Errorf("invalid roles %v", invalid)
 	}
 	return nil
 }
