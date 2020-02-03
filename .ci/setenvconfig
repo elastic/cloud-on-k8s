@@ -33,7 +33,6 @@ IMG_SUFFIX = -ci
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-E2E_JSON = true
 TEST_TIMEOUT = 10m
 ENV
 
@@ -58,7 +57,6 @@ OPERATOR_IMAGE = $IMAGE
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
-E2E_JSON = true
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -88,7 +86,6 @@ GCLOUD_PROJECT = $GCLOUD_PROJECT
 OPERATOR_IMAGE = $IMAGE
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
-E2E_JSON = true
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -119,7 +116,6 @@ OPERATOR_IMAGE = ${IMAGE}
 GCLOUD_PROJECT = $GCLOUD_PROJECT
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
-E2E_JSON = true
 KIND_NODE_IMAGE = ${kindImage}
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 GO_TAGS = release
@@ -139,7 +135,6 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 IMG_SUFFIX = -ci
-E2E_JSON = true
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 ENV
 write_deployer_config <<CFG
@@ -168,7 +163,6 @@ GCLOUD_PROJECT = $GCLOUD_PROJECT
 STACK_VERSION = ${stackVersion}
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
-E2E_JSON = true
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -196,7 +190,6 @@ REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
 TESTS_MATCH = TestSmoke
 IMG_SUFFIX = -ci
-E2E_JSON = true
 ENV
 write_deployer_config <<CFG
 id: gke-ci
