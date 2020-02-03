@@ -27,13 +27,8 @@ import (
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-<<<<<<< HEAD
-	"github.com/pkg/errors"
-
-=======
 	pkgerrors "github.com/pkg/errors"
 	"go.elastic.co/apm"
->>>>>>> master
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
