@@ -15,17 +15,7 @@ Before you start, install the following tools and packages:
 * sha1sum (for Mac `brew install md5sha1sum`)
 * [gcloud](https://cloud.google.com/sdk/gcloud/)
   * Install beta and docker-credential-gcr components:  `gcloud components install beta docker-credential-gcr`
-  * If it were not installed successfully, you'll get below error
-    ```
-    $ make bootstrap-k8s
-    ...
-    2020/02/03 14:56:10 Checking if cluster exists...
-    Error: exit status 1
-    exit status 1
-    make: *** [bootstrap-k8s] Error 1
-    ```
-  * Check if `beta` component installed successfully: `gcloud beta container clusters --project {GCloudProject} describe {ClusterName} --region {Region}`
-    * ex: gcloud beta container clusters --project elastic-cloud-dev describe jihuncho-dev-cluster --region europe-west1
+  * Run `gcloud components list --filter="id:(beta,docker-credential-gcr)"` and ensure that both are marked as Installed
 
 
 ### Get sources
