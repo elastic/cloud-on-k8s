@@ -5,6 +5,7 @@
 package association
 
 import (
+	"context"
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -60,7 +61,7 @@ func testFetchAPMServer(t *testing.T) {
 			client := k8s.WrappedFakeClient(tc.apmServer)
 
 			var got apmv1.ApmServer
-			err := FetchWithAssociation(client, tc.request, &got)
+			err := FetchWithAssociation(context.Background(), client, tc.request, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -134,7 +135,7 @@ func testFetchKibana(t *testing.T) {
 			client := k8s.WrappedFakeClient(tc.kibana)
 
 			var got kbv1.Kibana
-			err := FetchWithAssociation(client, tc.request, &got)
+			err := FetchWithAssociation(context.Background(), client, tc.request, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -185,7 +186,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	err := FetchWithAssociation(client, request, &got)
+	err := FetchWithAssociation(context.Background(), client, request, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -204,7 +205,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 	err = UpdateAssociationConf(client, &got, newAssocConf)
 	require.NoError(t, err)
 
-	err = FetchWithAssociation(client, request, &got)
+	err = FetchWithAssociation(context.Background(), client, request, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -227,7 +228,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	err := FetchWithAssociation(client, request, &got)
+	err := FetchWithAssociation(context.Background(), client, request, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -239,7 +240,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 	err = RemoveAssociationConf(client, &got)
 	require.NoError(t, err)
 
-	err = FetchWithAssociation(client, request, &got)
+	err = FetchWithAssociation(context.Background(), client, request, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)

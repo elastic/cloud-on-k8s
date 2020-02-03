@@ -26,11 +26,6 @@ const (
 	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
 
-// ports to set in the Kibana container
-var ports = []corev1.ContainerPort{
-	{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
-}
-
 var (
 	DefaultMemoryLimits = resource.MustParse("1Gi")
 	DefaultResources    = corev1.ResourceRequirements{
@@ -77,7 +72,7 @@ func imageWithVersion(image string, version string) string {
 func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
 	labels := label.NewLabels(kb.Name)
 	labels[label.KibanaVersionLabelName] = kb.Spec.Version
-
+	ports := getDefaultContainerPorts(kb)
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).
 		WithLabels(labels).
@@ -100,4 +95,8 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.Pod
 // GetKibanaContainer returns the Kibana container from the given podSpec.
 func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
 	return pod.ContainerByName(podSpec, kbv1.KibanaContainerName)
+}
+
+func getDefaultContainerPorts(kb kbv1.Kibana) []corev1.ContainerPort {
+	return []corev1.ContainerPort{{Name: kb.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP}}
 }

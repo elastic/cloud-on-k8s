@@ -28,6 +28,7 @@ func isTrial(l *esclient.License) bool {
 }
 
 func applyLinkedLicense(
+	ctx context.Context,
 	c k8s.Client,
 	esCluster types.NamespacedName,
 	current *esclient.License,
@@ -48,7 +49,7 @@ func applyLinkedLicense(
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// no license linked to this cluster. Revert to basic.
-			return startBasic(updater)
+			return startBasic(ctx, updater)
 		}
 		return err
 	}
@@ -63,11 +64,11 @@ func applyLinkedLicense(
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updateLicense(esCluster, updater, current, desired)
+	return updateLicense(ctx, esCluster, updater, current, desired)
 }
 
-func startBasic(updater esclient.LicenseClient) error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+func startBasic(ctx context.Context, updater esclient.LicenseClient) error {
+	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 	_, err := updater.StartBasic(ctx)
 	if err != nil && esclient.IsForbidden(err) {
@@ -79,6 +80,7 @@ func startBasic(updater esclient.LicenseClient) error {
 
 // updateLicense make the call to Elasticsearch to set the license. This function exists mainly to facilitate testing.
 func updateLicense(
+	ctx context.Context,
 	esCluster types.NamespacedName,
 	updater esclient.LicenseClient,
 	current *esclient.License,
@@ -92,11 +94,11 @@ func updateLicense(
 			desired,
 		},
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 
 	if isTrial(&desired) {
-		return pkgerrors.Wrap(startTrial(updater, esCluster), "failed to start trial")
+		return pkgerrors.Wrap(startTrial(ctx, updater, esCluster), "failed to start trial")
 	}
 
 	response, err := updater.UpdateLicense(ctx, request)
@@ -104,15 +106,15 @@ func updateLicense(
 		return pkgerrors.Wrap(err, fmt.Sprintf("failed to update license to %s", desired.Type))
 	}
 	if !response.IsSuccess() {
-		return fmt.Errorf("failed to apply license: %s", response.LicenseStatus)
+		return pkgerrors.Errorf("failed to apply license: %s", response.LicenseStatus)
 	}
 	return nil
 }
 
 // startTrial starts the trial license after checking that the trial is not yet activated by directly hitting the
 // Elasticsearch API.
-func startTrial(c esclient.LicenseClient, esCluster types.NamespacedName) error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+func startTrial(ctx context.Context, c esclient.LicenseClient, esCluster types.NamespacedName) error {
+	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 
 	// Let's start the trial

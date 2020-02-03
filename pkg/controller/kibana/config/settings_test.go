@@ -5,6 +5,7 @@
 package config
 
 import (
+	"context"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -228,7 +229,7 @@ func TestNewConfigSettings(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			kb := tt.args.kb()
 			v := version.From(7, 5, 0)
-			got, err := NewConfigSettings(tt.args.client, kb, v)
+			got, err := NewConfigSettings(context.Background(), tt.args.client, kb, v)
 			if tt.wantErr {
 				require.Error(t, err)
 			}
@@ -254,7 +255,7 @@ func TestNewConfigSettingsCreateEncryptionKey(t *testing.T) {
 	client := k8s.WrapClient(fake.NewFakeClient())
 	kb := mkKibana()
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(client, kb, v)
+	got, err := NewConfigSettings(context.Background(), client, kb, v)
 	require.NoError(t, err)
 	val, err := (*ucfg.Config)(got.CanonicalConfig).String(XpackSecurityEncryptionKey, -1, settings.Options...)
 	require.NoError(t, err)
@@ -275,7 +276,7 @@ func TestNewConfigSettingsExistingEncryptionKey(t *testing.T) {
 	}
 	client := k8s.WrapClient(fake.NewFakeClient(existingSecret))
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(client, kb, v)
+	got, err := NewConfigSettings(context.Background(), client, kb, v)
 	require.NoError(t, err)
 	var gotCfg map[string]interface{}
 	require.NoError(t, got.Unpack(&gotCfg))
@@ -295,7 +296,7 @@ func TestNewConfigSettingsExplicitEncryptionKey(t *testing.T) {
 	kb.Spec.Config = &cfg
 	client := k8s.WrapClient(fake.NewFakeClient())
 	v := version.MustParse(kb.Spec.Version)
-	got, err := NewConfigSettings(client, kb, v)
+	got, err := NewConfigSettings(context.Background(), client, kb, v)
 	require.NoError(t, err)
 	var gotCfg map[string]interface{}
 	require.NoError(t, got.Unpack(&gotCfg))

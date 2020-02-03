@@ -33,12 +33,12 @@ type MemoizingESState struct {
 }
 
 // NewMemoizingESState returns an initialized MemoizingESState.
-func NewMemoizingESState(esClient esclient.Client) ESState {
+func NewMemoizingESState(ctx context.Context, esClient esclient.Client) ESState {
 	return &MemoizingESState{
 		esClient:                         esClient,
-		memoizingNodes:                   &memoizingNodes{esClient: esClient},
-		memoizingShardsAllocationEnabled: &memoizingShardsAllocationEnabled{esClient: esClient},
-		memoizingHealth:                  &memoizingHealth{esClient: esClient},
+		memoizingNodes:                   &memoizingNodes{esClient: esClient, ctx: ctx},
+		memoizingShardsAllocationEnabled: &memoizingShardsAllocationEnabled{esClient: esClient, ctx: ctx},
+		memoizingHealth:                  &memoizingHealth{esClient: esClient, ctx: ctx},
 	}
 }
 
@@ -57,12 +57,13 @@ func initOnce(once *sync.Once, f func() error) error {
 type memoizingNodes struct {
 	once     sync.Once
 	esClient esclient.Client
+	ctx      context.Context
 	nodes    []string
 }
 
 // initialize requests Elasticsearch for nodes information, only once.
 func (n *memoizingNodes) initialize() error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(n.ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 	nodes, err := n.esClient.GetNodes(ctx)
 	if err != nil {
@@ -87,11 +88,12 @@ type memoizingShardsAllocationEnabled struct {
 	enabled  bool
 	once     sync.Once
 	esClient esclient.Client
+	ctx      context.Context
 }
 
 // initialize requests Elasticsearch for shards allocation information, only once.
 func (s *memoizingShardsAllocationEnabled) initialize() error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(s.ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 	allocationSettings, err := s.esClient.GetClusterRoutingAllocation(ctx)
 	if err != nil {
@@ -116,11 +118,12 @@ type memoizingHealth struct {
 	health   esv1.ElasticsearchHealth
 	once     sync.Once
 	esClient esclient.Client
+	ctx      context.Context
 }
 
 // initialize requests Elasticsearch for cluster health, only once.
 func (h *memoizingHealth) initialize() error {
-	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(h.ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 	health, err := h.esClient.GetClusterHealth(ctx)
 	if err != nil {

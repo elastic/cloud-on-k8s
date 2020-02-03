@@ -68,7 +68,7 @@ func buildGeneralNames(
 ) ([]certificates.GeneralName, error) {
 	podIP := net.ParseIP(pod.Status.PodIP)
 	if podIP == nil {
-		return nil, fmt.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
+		return nil, errors.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
 	}
 
 	commonName := buildCertificateCommonName(pod, cluster.Name, cluster.Namespace)

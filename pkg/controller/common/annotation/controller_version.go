@@ -5,9 +5,13 @@
 package annotation
 
 import (
+	"context"
+
+	tracing "github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,7 +28,10 @@ const (
 )
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
-func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version string) error {
+func UpdateControllerVersion(ctx context.Context, client k8s.Client, obj runtime.Object, version string) error {
+	span, _ := apm.StartSpan(ctx, "update_controller_version", tracing.SpanTypeApp)
+	defer span.End()
+
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
 	if err != nil {
@@ -64,7 +71,10 @@ func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version stri
 // controller versions 0.9.0+ cannot reconcile resources created with earlier controllers, so this lets our controller skip those resources until they can be manually recreated
 // if an object does not have an annotation, it will determine if it is a new object or if it has been previously reconciled by an older controller version, as this annotation
 // was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so
-func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector map[string]string, controllerVersion string) (bool, error) {
+func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.Object, selector map[string]string, controllerVersion string) (bool, error) {
+	span, ctx := apm.StartSpan(ctx, "reconcile_compatibility", tracing.SpanTypeApp)
+	defer span.End()
+
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
 	if err != nil {
@@ -93,11 +103,11 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector map[
 		}
 		if exist {
 			log.Info("Resource was previously reconciled by incompatible controller version and missing annotation, adding annotation", "controller_version", controllerVersion, "namespace", namespace, "name", name, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-			err = UpdateControllerVersion(client, obj, UnknownControllerVersion)
+			err = UpdateControllerVersion(ctx, client, obj, UnknownControllerVersion)
 			return false, err
 		}
 		// no annotation exists and there are no existing resources, so this has not previously been reconciled
-		err = UpdateControllerVersion(client, obj, controllerVersion)
+		err = UpdateControllerVersion(ctx, client, obj, controllerVersion)
 		return true, err
 	}
 

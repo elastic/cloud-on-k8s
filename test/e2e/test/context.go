@@ -92,6 +92,7 @@ type Context struct {
 	TestLicense           string            `json:"test_license"`
 	TestRegex             string            `json:"test_regex"`
 	TestRun               string            `json:"test_run"`
+	MonitoringSecrets     string            `json:"monitoring_secrets"`
 	TestTimeout           time.Duration     `json:"test_timeout"`
 	AutoPortForwarding    bool              `json:"auto_port_forwarding"`
 	Local                 bool              `json:"local"`

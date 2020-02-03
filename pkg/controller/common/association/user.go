@@ -6,7 +6,10 @@ package association
 
 import (
 	"bytes"
+	"context"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"go.elastic.co/apm"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,6 +72,7 @@ func ClearTextSecretKeySelector(associated commonv1.Associated, userSuffix strin
 
 // ReconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
 func ReconcileEsUser(
+	ctx context.Context,
 	c k8s.Client,
 	s *runtime.Scheme,
 	associated commonv1.Associated,
@@ -77,6 +81,9 @@ func ReconcileEsUser(
 	userObjectSuffix string,
 	es esv1.Elasticsearch,
 ) error {
+	span, _ := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
+	defer span.End()
+
 	pw := commonuser.RandomPasswordBytes()
 
 	secKey := secretKey(associated, userObjectSuffix)

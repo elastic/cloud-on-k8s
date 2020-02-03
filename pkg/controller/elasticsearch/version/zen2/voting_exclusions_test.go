@@ -85,7 +85,7 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			clientMock := &fakeVotingConfigExclusionsESClient{}
-			requeue, err := ClearVotingConfigExclusions(es, tt.c, clientMock, tt.actualStatefulSets)
+			requeue, err := ClearVotingConfigExclusions(context.Background(), es, tt.c, clientMock, tt.actualStatefulSets)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRequeue, requeue)
 			require.Equal(t, tt.wantCall, clientMock.called)

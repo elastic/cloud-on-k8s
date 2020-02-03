@@ -5,8 +5,11 @@
 package reconciler
 
 import (
+	"context"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"go.elastic.co/apm"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -38,6 +41,13 @@ type Results struct {
 	currResult reconcile.Result
 	currKind   resultKind
 	errors     []error
+	ctx        context.Context
+}
+
+func NewResult(ctx context.Context) *Results {
+	return &Results{
+		ctx: ctx,
+	}
 }
 
 // HasError returns true if Results contains one or more errors.
@@ -57,7 +67,7 @@ func (r *Results) WithResults(other *Results) *Results {
 // WithError adds an error to the results.
 func (r *Results) WithError(err error) *Results {
 	if err != nil {
-		r.errors = append(r.errors, err)
+		r.errors = append(r.errors, tracing.CaptureError(r.ctx, err))
 	}
 	return r
 }
@@ -86,8 +96,11 @@ func (r *Results) mergeResult(kind resultKind, res reconcile.Result) {
 
 // Apply applies the output of a reconciliation step to the results. The step outcome is implicitly considered
 // recoverable as we just record the results and continue.
-func (r *Results) Apply(step string, recoverableStep func() (reconcile.Result, error)) *Results {
-	result, err := recoverableStep()
+func (r *Results) Apply(step string, recoverableStep func(context.Context) (reconcile.Result, error)) *Results {
+	span, ctx := apm.StartSpan(r.ctx, step, tracing.SpanTypeApp)
+	defer span.End()
+
+	result, err := recoverableStep(ctx)
 	if err != nil {
 		log.Info("Recoverable error during step, continuing", "step", step, "error", err)
 	}

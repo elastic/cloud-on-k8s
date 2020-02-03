@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"context"
 	"crypto/x509"
 	"time"
 
@@ -13,9 +14,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -33,12 +36,16 @@ type CertificateResources struct {
 
 // reconcileGenericResources reconciles the expected generic resources of a cluster.
 func Reconcile(
+	ctx context.Context,
 	driver driver.Interface,
 	es esv1.Elasticsearch,
 	services []corev1.Service,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
 ) (*CertificateResources, *reconciler.Results) {
+	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
+	defer span.End()
+
 	results := &reconciler.Results{}
 
 	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))

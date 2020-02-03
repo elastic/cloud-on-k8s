@@ -67,6 +67,7 @@ func doRun(flags runFlags) error {
 			helper.createManagedNamespaces,
 			helper.deployGlobalOperator,
 			helper.deployNamespaceOperator,
+			helper.deployFilebeat,
 			helper.deployTestJob,
 			helper.runTestJob,
 		}
@@ -143,6 +144,7 @@ func (h *helper) initTestContext() error {
 		},
 		OperatorImage:         h.operatorImage,
 		TestLicense:           h.testLicense,
+		MonitoringSecrets:     h.monitoringSecrets,
 		TestRegex:             h.testRegex,
 		TestRun:               h.testRunName,
 		TestTimeout:           h.testTimeout,
@@ -181,6 +183,30 @@ func (h *helper) initTestSecrets() error {
 		h.testSecrets["test-license.json"] = string(bytes)
 		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
 	}
+
+	if h.monitoringSecrets != "" {
+		bytes, err := ioutil.ReadFile(h.monitoringSecrets)
+		if err != nil {
+			return err
+		}
+
+		monitoringSecrets := struct {
+			MonitoringIP   string `json:"monitoringIp"`
+			MonitoringUser string `json:"monitoringUser"`
+			MonitoringPass string `json:"monitoringPass"`
+			MonitoringCa   string `json:"monitoringCa"`
+		}{}
+
+		if err := json.Unmarshal(bytes, &monitoringSecrets); err != nil {
+			return err
+		}
+
+		h.testSecrets["monitoring-ip"] = monitoringSecrets.MonitoringIP
+		h.testSecrets["monitoring-user"] = monitoringSecrets.MonitoringUser
+		h.testSecrets["monitoring-pass"] = monitoringSecrets.MonitoringPass
+		h.testSecrets["monitoring-ca"] = monitoringSecrets.MonitoringCa
+	}
+
 	return nil
 }
 
@@ -218,6 +244,16 @@ func (h *helper) deployGlobalOperator() error {
 func (h *helper) deployNamespaceOperator() error {
 	log.Info("Deploying namespace operator")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/namespace_operator.yaml", h.testContext)
+}
+
+func (h *helper) deployFilebeat() error {
+	if h.monitoringSecrets == "" {
+		log.Info("No monitoring secrets provided, filebeat is not deployed")
+		return nil
+	}
+
+	log.Info("Deploying filebeat")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/filebeat.yaml", h.testContext)
 }
 
 func (h *helper) deployTestJob() error {

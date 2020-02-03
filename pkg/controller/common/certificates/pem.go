@@ -9,7 +9,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 
 	"github.com/pkg/errors"
 )
@@ -82,7 +81,7 @@ func parsePKCS8PrivateKey(block []byte) (*rsa.PrivateKey, error) {
 
 	rsaKey, ok := key.(*rsa.PrivateKey)
 	if !ok {
-		return nil, fmt.Errorf("expected an RSA private key but got %t", key)
+		return nil, errors.Errorf("expected an RSA private key but got %t", key)
 	}
 
 	return rsaKey, nil

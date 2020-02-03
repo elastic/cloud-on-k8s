@@ -213,7 +213,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require.NoError(t, tt.c.Create(&tt.es))
 			esClient := &fakeESClient{}
-			requeue, err := UpdateMinimumMasterNodes(tt.c, tt.es, esClient, tt.actualStatefulSets)
+			requeue, err := UpdateMinimumMasterNodes(context.Background(), tt.c, tt.es, esClient, tt.actualStatefulSets)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRequeue, requeue)
 			require.Equal(t, tt.wantCalled, esClient.called)

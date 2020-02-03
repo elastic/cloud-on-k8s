@@ -5,6 +5,7 @@
 package driver
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -48,6 +49,7 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 		scheme:       scheme.Scheme,
 		esState:      nil,
 		expectations: expectations.NewExpectations(k8sClient),
+		parentCtx:    context.Background(),
 	}
 	expectedResources := nodespec.ResourcesList{
 		{

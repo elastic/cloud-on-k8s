@@ -5,6 +5,7 @@
 package common
 
 import (
+	"context"
 	"testing"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -39,7 +40,7 @@ func TestReconcileService(t *testing.T) {
 	wantSvc.Labels["lbl3"] = "lblval3"
 	wantSvc.Annotations["ann3"] = "annval3"
 
-	haveSvc, err := ReconcileService(client, scheme, expectedSvc, owner)
+	haveSvc, err := ReconcileService(context.Background(), client, scheme, expectedSvc, owner)
 	require.NoError(t, err)
 	comparison.AssertEqual(t, wantSvc, haveSvc)
 }

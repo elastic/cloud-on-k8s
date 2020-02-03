@@ -20,7 +20,7 @@ var (
 )
 
 // AddToVotingConfigExclusions adds the given node names to exclude from voting config exclusions.
-func AddToVotingConfigExclusions(c k8s.Client, esClient client.Client, es esv1.Elasticsearch, excludeNodes []string) error {
+func AddToVotingConfigExclusions(ctx context.Context, c k8s.Client, esClient client.Client, es esv1.Elasticsearch, excludeNodes []string) error {
 	compatible, err := AllMastersCompatibleWithZen2(c, es)
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func AddToVotingConfigExclusions(c k8s.Client, esClient client.Client, es esv1.E
 		return nil
 	}
 	log.Info("Setting voting config exclusions", "namespace", es.Namespace, "nodes", excludeNodes)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
 	defer cancel()
 	if err := esClient.AddVotingConfigExclusions(ctx, excludeNodes, ""); err != nil {
 		return err
@@ -53,7 +53,7 @@ func canClearVotingConfigExclusions(c k8s.Client, actualStatefulSets sset.Statef
 
 // ClearVotingConfigExclusions resets the voting config exclusions if all excluded nodes are properly removed.
 // It returns true if this should be retried later (re-queued).
-func ClearVotingConfigExclusions(es esv1.Elasticsearch, c k8s.Client, esClient client.Client, actualStatefulSets sset.StatefulSetList) (bool, error) {
+func ClearVotingConfigExclusions(ctx context.Context, es esv1.Elasticsearch, c k8s.Client, esClient client.Client, actualStatefulSets sset.StatefulSetList) (bool, error) {
 	compatible, err := AllMastersCompatibleWithZen2(c, es)
 	if err != nil {
 		return false, err
@@ -72,7 +72,7 @@ func ClearVotingConfigExclusions(es esv1.Elasticsearch, c k8s.Client, esClient c
 		return true, nil // requeue
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
 	defer cancel()
 	log.Info("Ensuring no voting exclusions are set", "namespace", es.Namespace, "es_name", es.Name)
 	if err := esClient.DeleteVotingConfigExclusions(ctx, false); err != nil {

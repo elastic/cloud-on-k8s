@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -161,7 +162,7 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 	}
 
 	if len(secretSrc.Entries) == 0 {
-		return nil, false, fmt.Errorf("set is empty in secure settings secret %s", secretName)
+		return nil, false, pkgerrors.Errorf("set is empty in secure settings secret %s", secretName)
 	}
 
 	// Else if entries is defined, return only a subset of the user secret
@@ -171,7 +172,7 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 	}
 	for _, entry := range secretSrc.Entries {
 		if entry.Key == "" {
-			return nil, false, fmt.Errorf("key is empty in secure settings secret %s", secretName)
+			return nil, false, pkgerrors.Errorf("key is empty in secure settings secret %s", secretName)
 		}
 
 		newKey := entry.Path
@@ -181,7 +182,7 @@ func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore
 
 		value, ok := userSecret.Data[entry.Key]
 		if !ok {
-			return nil, false, fmt.Errorf("key %s not found in secure settings secret %s", entry.Key, secretName)
+			return nil, false, pkgerrors.Errorf("key %s not found in secure settings secret %s", entry.Key, secretName)
 		}
 
 		projectionSecret.Data[newKey] = value

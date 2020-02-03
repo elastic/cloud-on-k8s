@@ -9,6 +9,7 @@ import (
 	"net"
 	"reflect"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
@@ -35,6 +36,7 @@ type validation func(*Elasticsearch) field.ErrorList
 
 // validations are the validation funcs that apply to creates or updates
 var validations = []validation{
+	noUnknownFields,
 	validName,
 	hasMaster,
 	supportedVersion,
@@ -58,6 +60,11 @@ func (r *Elasticsearch) check(validations []validation) field.ErrorList {
 		}
 	}
 	return errs
+}
+
+// noUnknownFields checks whether the last applied config annotation contains json with unknown fields.
+func noUnknownFields(es *Elasticsearch) field.ErrorList {
+	return commonv1.NoUnknownFields(es, es.ObjectMeta)
 }
 
 // validName checks whether the name is valid.

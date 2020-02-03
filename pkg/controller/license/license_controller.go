@@ -6,11 +6,11 @@ package license
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -118,7 +118,7 @@ func add(mgr manager.Manager, r *ReconcileLicenses) error {
 			secret, ok := object.Object.(*corev1.Secret)
 			if !ok {
 				log.Error(
-					fmt.Errorf("unexpected object type %T in watch handler, expected Secret", object.Object),
+					pkgerrors.Errorf("unexpected object type %T in watch handler, expected Secret", object.Object),
 					"dropping watch event due to error in handler")
 				return nil
 			}

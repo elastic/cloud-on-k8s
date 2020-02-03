@@ -5,6 +5,7 @@
 package apmserverelasticsearchassociation
 
 import (
+	"context"
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -135,7 +136,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrappedFakeClient(tt.initialObjects...)
-			if err := deleteOrphanedResources(c, &tt.args); (err != nil) != tt.wantErr {
+			if err := deleteOrphanedResources(context.Background(), c, &tt.args); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

@@ -373,7 +373,8 @@ e2e-run:
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
-		--test-timeout=$(TEST_TIMEOUT)
+		--test-timeout=$(TEST_TIMEOUT) \
+		--monitoring-secrets=$(MONITORING_SECRETS)
 
 e2e-generate-xml:
 	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
@@ -486,7 +487,7 @@ kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
 		--nodes 3 \
-		make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
+		make clean e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 
 ## Cleanup
 delete-kind:

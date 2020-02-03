@@ -5,10 +5,10 @@
 package license
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	pkgerrors "github.com/pkg/errors"
 )
 
 // OperatorLicenseType is the type of operator level license a resource is describing.
@@ -94,7 +94,7 @@ func (l EnterpriseLicense) IsMissingFields() error {
 		missing = append(missing, "spec.uid")
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("required fields are missing: %v", missing)
+		return pkgerrors.Errorf("required fields are missing: %v", missing)
 	}
 	return nil
 }

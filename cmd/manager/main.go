@@ -13,13 +13,15 @@ import (
 	"strings"
 	"time"
 
-	// allow gcp authentication
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.elastic.co/apm"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+
+	// allow gcp authentication
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -48,6 +50,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -63,6 +66,8 @@ const (
 	CertValidityFlag       = "cert-validity"
 	CertRotateBeforeFlag   = "cert-rotate-before"
 
+	EnforceRbacOnRefs = "enforce-rbac-on-refs"
+
 	OperatorNamespaceFlag = "operator-namespace"
 
 	ManageWebhookCertsFlag   = "manage-webhook-certs"
@@ -72,6 +77,8 @@ const (
 	WebhookPort              = 9443
 
 	DebugHTTPServerListenAddressFlag = "debug-http-listen"
+
+	EnableTracingFlag = "enable-tracing"
 )
 
 var (
@@ -142,6 +149,11 @@ func init() {
 		"",
 		"K8s namespace the operator runs in",
 	)
+	Cmd.Flags().Bool(
+		EnforceRbacOnRefs,
+		false, // Set to false for backward compatibility
+		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
+	)
 	Cmd.Flags().String(
 		WebhookSecretFlag,
 		"",
@@ -158,6 +170,10 @@ func init() {
 		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
 	)
+	Cmd.Flags().Bool(
+		EnableTracingFlag,
+		false,
+		"Enable APM tracing in the operator. Endpoint, token etc are to be configured via environment variables. See https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html")
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -284,6 +300,10 @@ func execute() {
 		os.Exit(1)
 	}
 	log.Info("Setting up controllers", "roles", roles)
+	var tracer *apm.Tracer
+	if viper.GetBool(EnableTracingFlag) {
+		tracer = tracing.NewTracer("elastic-operator")
+	}
 	params := operator.Parameters{
 		Dialer:            dialer,
 		OperatorNamespace: operatorNamespace,
@@ -296,10 +316,20 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
+		Tracer: tracer,
 	}
 
 	if operator.HasRole(operator.WebhookServer, roles) {
 		setupWebhook(mgr, params.CertRotation, clientset)
+	}
+
+	enforceRbacOnRefs := viper.GetBool(EnforceRbacOnRefs)
+
+	var accessReviewer rbac.AccessReviewer
+	if enforceRbacOnRefs {
+		accessReviewer = rbac.NewSubjectAccessReviewer(clientset)
+	} else {
+		accessReviewer = rbac.NewPermissiveAccessReviewer()
 	}
 
 	if operator.HasRole(operator.NamespaceOperator, roles) {
@@ -315,11 +345,11 @@ func execute() {
 			log.Error(err, "unable to create controller", "controller", "Kibana")
 			os.Exit(1)
 		}
-		if err = asesassn.Add(mgr, params); err != nil {
+		if err = asesassn.Add(mgr, accessReviewer, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
 			os.Exit(1)
 		}
-		if err = kbassn.Add(mgr, params); err != nil {
+		if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
 			os.Exit(1)
 		}
