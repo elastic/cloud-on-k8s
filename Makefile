@@ -124,15 +124,15 @@ clean:
 unit: clean
 	go test ./pkg/... ./cmd/... -cover
 
-unit_xml: clean
+unit-xml: clean
 	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/...
 
 integration: GO_TAGS += integration
 integration: clean generate-crds
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover
 
-integration_xml: GO_TAGS += integration
-integration_xml: clean generate-crds
+integration-xml: GO_TAGS += integration
+integration-xml: clean generate-crds
 	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/...
 
 lint:
@@ -405,7 +405,7 @@ e2e-local:
 ##########################################
 ci-check: check-license-header lint generate check-local-changes
 
-ci: unit_xml integration_xml docker-build
+ci: unit-xml integration-xml docker-build
 
 # Run e2e tests in a dedicated cluster
 ci-e2e: E2E_JSON := true
