@@ -258,7 +258,7 @@ set-context-minikube:
 	$(eval KUBECTL_CLUSTER="minikube")
 
 bootstrap-minikube:
-	hack/minikube-cluster.sh
+	hack/dev/minikube-cluster.sh
 	$(MAKE) set-context-minikube cluster-bootstrap
 
 ## -- clouds
@@ -326,9 +326,9 @@ ifeq ($(REGISTRY), docker.elastic.co)
 endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
 	# use the minikube registry
-	@ hack/registry.sh port-forward start
+	@ hack/dev/registry.sh port-forward start
 	docker push $(OPERATOR_IMAGE)
-	@ hack/registry.sh port-forward stop
+	@ hack/dev/registry.sh port-forward stop
 else
 ifeq ($(REGISTRY), docker.elastic.co)
 	@ docker tag $(OPERATOR_IMAGE) push.$(OPERATOR_IMAGE)
@@ -422,10 +422,10 @@ ci-release: clean ci-check build-operator-image
 ##########################
 
 check-requisites:
-	@ hack/check-requisites.sh
+	@ hack/check/check-requisites.sh
 
 check-license-header:
-	./build/check-license-header.sh
+	@ hack/check/check-license-header.sh
 
 # Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
