@@ -5,8 +5,8 @@
     project-type: pipeline
     parameters:
       - string:
-          name: GKE_CLUSTER
-          description: "Name of K8s cluster in GKE to delete"
+          name: JKS_PARAM_GKE_CLUSTER
+          description: "Name of the GKE cluster to delete"
     concurrent: true
     pipeline-scm:
       scm:

@@ -5,8 +5,8 @@
     project-type: pipeline
     parameters:
       - string:
-          name: IMAGE
-          description: "Docker image with ECK"
+          name: JKS_PARAM_OPERATOR_IMAGE
+          description: "ECK Docker image"
       - bool:
           name: SEND_NOTIFICATIONS
           default: true

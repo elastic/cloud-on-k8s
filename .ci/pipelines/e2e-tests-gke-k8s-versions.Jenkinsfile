@@ -86,7 +86,7 @@ pipeline {
                 clusters = ["eck-gke13-${BUILD_NUMBER}-e2e", "eck-gke14-${BUILD_NUMBER}-e2e", "eck-gke15-${BUILD_NUMBER}-e2e"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
+                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: clusters[i])],
                         wait: false
                 }
             }

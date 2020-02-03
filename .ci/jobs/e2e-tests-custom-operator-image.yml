@@ -5,10 +5,10 @@
     project-type: pipeline
     parameters:
       - string:
-          name: IMAGE
-          description: "Docker image with ECK"
+          name: JKS_PARAM_OPERATOR_IMAGE
+          description: "ECK Docker image"
       - string:
-          name: VERSION
+          name: JKS_PARAM_K8S_VERSION
           default: 1.13
           description: "Kubernetes version, default is 1.13"
       - bool:

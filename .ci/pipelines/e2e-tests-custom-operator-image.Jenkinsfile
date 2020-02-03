@@ -66,7 +66,7 @@ pipeline {
         }
         cleanup {
             build job: 'cloud-on-k8s-e2e-cleanup',
-                parameters: [string(name: 'GKE_CLUSTER', value: "eck-e2e-${BUILD_NUMBER}")],
+                parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-e2e-${BUILD_NUMBER}")],
                 wait: false
             cleanWs()
         }

@@ -54,7 +54,6 @@ CFG
 ######################################
 
 write_env <<ENV
-OPERATOR_IMAGE = $IMAGE
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
@@ -62,6 +61,8 @@ IMG_SUFFIX = -ci
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+
+OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -84,7 +85,6 @@ clusterVersion=$2
 clusterName=$3
 
 write_env <<ENV
-OPERATOR_IMAGE = $IMAGE
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
@@ -92,6 +92,8 @@ IMG_SUFFIX = -ci
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+
+OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -115,7 +117,6 @@ CFG
 kindNodeImage=$2
 
 write_env <<ENV
-OPERATOR_IMAGE = ${IMAGE}
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
@@ -123,6 +124,8 @@ IMG_SUFFIX = -ci
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+
+OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 ENV
 ;;
 
@@ -161,7 +164,6 @@ clusterName=$2
 stackVersion=$3
 
 write_env <<ENV
-OPERATOR_IMAGE = ${IMAGE}
 STACK_VERSION = ${stackVersion}
 REGISTRY = eu.gcr.io
 REPOSITORY = $GCLOUD_PROJECT
@@ -170,6 +172,8 @@ IMG_SUFFIX = -ci
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+
+OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -275,7 +279,7 @@ write_deployer_config <<CFG
 id: gke-ci
 overrides:
   operation: delete
-  clusterName: $GKE_CLUSTER
+  clusterName: $JKS_PARAM_GKE_CLUSTER
   vaultInfo:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
