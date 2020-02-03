@@ -1,7 +1,7 @@
 ---
 - job:
     description: Job that runs e2e tests against custom ECK image running in a dedicated k8s cluster in GKE. This Job is managed by JJB.
-    name: cloud-on-k8s-e2e-tests-custom
+    name: cloud-on-k8s-e2e-tests-custom-operator-image
     project-type: pipeline
     parameters:
       - string:
@@ -23,5 +23,5 @@
             branches:
               - master
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
-      script-path: build/ci/e2e/custom_operator_image.jenkinsfile
+      script-path: .ci/pipelines/e2e-tests-custom-operator-image.Jenkinsfile
       lightweight-checkout: true
