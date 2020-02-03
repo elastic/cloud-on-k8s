@@ -21,21 +21,8 @@ pipeline {
                 retry(3)
             }
             steps {
-                sh """
-                    cat >deployer-config.yml <<EOF
-id: gke-ci
-overrides:
-  operation: delete
-  clusterName: $GKE_CLUSTER
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-                    make -C .ci TARGET=run-deployer ci
-                """
+                sh '.ci/setenvconfig cleanup'
+                sh 'make -C .ci TARGET=run-deployer ci'
             }
         }
     }

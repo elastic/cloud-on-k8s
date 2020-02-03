@@ -27,15 +27,6 @@ pipeline {
         stage('Run unit and integration tests') {
             steps {
                 sh """
-                    cat > .env <<EOF
-GCLOUD_PROJECT = $GCLOUD_PROJECT
-REGISTRY = docker.elastic.co
-REPOSITORY = eck-snapshots
-IMG_NAME = eck-operator
-SNAPSHOT = true
-IMG_SUFFIX = -ci
-ELASTIC_DOCKER_LOGIN = eckadmin
-EOF
                     make -C .ci TARGET=ci ci
                 """
             }
@@ -43,15 +34,7 @@ EOF
         stage('Build and push Docker image') {
             steps {
                 sh """
-                    export VERSION=\$(cat $WORKSPACE/VERSION)-\$(date +%F)-\$(git rev-parse --short --verify HEAD)
-                    export REGISTRY=${REGISTRY}
-                    export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     echo \$OPERATOR_IMAGE > eck_image.txt
-                    cat >> .env <<EOF
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-OPERATOR_IMAGE = "\$OPERATOR_IMAGE"
-EOF
                     make -C .ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
                 """
             }

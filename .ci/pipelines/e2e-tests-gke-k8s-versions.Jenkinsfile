@@ -96,34 +96,8 @@ pipeline {
 }
 
 def runWith(lib, failedTests, clusterVersion, clusterName) {
-    sh """#!/bin/bash
-
-        cat >.env <<EOF
-GCLOUD_PROJECT = $GCLOUD_PROJECT
-OPERATOR_IMAGE = $IMAGE
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
-SKIP_DOCKER_COMMAND = true
-E2E_JSON = true
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-EOF
-    cat >deployer-config.yml <<EOF
-id: gke-ci
-overrides:
-  operation: create
-  kubernetesVersion: "${clusterVersion}"
-  clusterName: ${clusterName}
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-    """
     script {
+        sh '.ci/setenvconfig e2e/gke-k8s-versions $clusterVersion $clusterName'
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
         sh 'make -C .ci TARGET=e2e-generate-xml ci'

@@ -27,28 +27,8 @@ pipeline {
         }
         stage("Run E2E tests") {
             steps {
-                sh """
-                    cat >.env <<EOF
-REGISTRY = cloudonk8s.azurecr.io
-REPOSITORY = operators
-IMG_SUFFIX = -ci
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-E2E_JSON = true
-TEST_TIMEOUT = 10m
-EOF
-                    cat >deployer-config.yml <<EOF
-id: aks-ci
-overrides:
-  clusterName: $BUILD_TAG
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-EOF
-                """
                 script {
+                    sh '.ci/setenvconfig e2e/aks'
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
                     sh 'make -C .ci TARGET=e2e-generate-xml ci'

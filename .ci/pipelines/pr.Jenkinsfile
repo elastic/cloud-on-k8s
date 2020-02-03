@@ -54,7 +54,6 @@ pipeline {
                     }
                     steps {
                         script {
-                            createConfig()
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci ci')
 
                             junit "unit-tests.xml"
@@ -73,9 +72,7 @@ pipeline {
                     }
                     steps {
                         script {
-                            createConfig()
-                            createDeployerConfig()
-
+                            sh '.ci/setenvconfig pr'
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci-e2e ci')
 
                             sh 'make -C .ci TARGET=e2e-generate-xml ci'
@@ -120,33 +117,4 @@ def notOnlyDocs() {
         script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
     	returnStatus: true
     ) == 0
-}
-
-void createConfig() {
-    sh """
-        cat >.env <<EOF
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
-TESTS_MATCH = TestSmoke
-SKIP_DOCKER_COMMAND = false
-IMG_SUFFIX = -ci
-E2E_JSON = true
-EOF
-    """
-}
-
-def createDeployerConfig() {
-    sh """
-        cat >deployer-config.yml <<EOF
-id: gke-ci
-overrides:
-  clusterName: eck-pr-$BUILD_NUMBER
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-    """
 }

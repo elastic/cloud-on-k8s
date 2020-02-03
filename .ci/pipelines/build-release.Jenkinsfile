@@ -29,17 +29,6 @@ pipeline {
                 stage('Build and push release image') {
                     steps {
                         sh """
-                            cat >.env <<EOF
-VERSION = ${TAG_NAME}
-REGISTRY = ${REGISTRY}
-REPOSITORY = ${REPOSITORY}
-IMG_NAME = ${IMG_NAME}
-OPERATOR_IMAGE = ${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}
-SNAPSHOT = false
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-ELASTIC_DOCKER_LOGIN = eckadmin
-EOF
                             make -C .ci get-docker-creds get-elastic-public-key TARGET=ci-release ci
                         """
                     }

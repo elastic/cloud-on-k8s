@@ -48,32 +48,8 @@ pipeline {
                 }
             }
             steps {
-                sh """
-                    cat >.env <<EOF
-GCLOUD_PROJECT = $GCLOUD_PROJECT
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
-SKIP_DOCKER_COMMAND = false
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-IMG_SUFFIX = -ci
-E2E_JSON = true
-MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
-EOF
-                    cat >deployer-config.yml <<EOF
-id: gke-ci
-overrides:
-  clusterName: eck-e2e-$BUILD_NUMBER
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-                """
                 script {
+                    sh '.ci/setenvconfig e2e/master'
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
                     sh 'make -C .ci TARGET=e2e-generate-xml ci'
