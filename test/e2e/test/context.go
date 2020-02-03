@@ -76,6 +76,7 @@ func defaultContext() Context {
 			ManagedNamespaces: []string{"mercury", "venus"},
 		},
 		TestRun: "e2e-default",
+		OcpCluster: false,
 	}
 }
 
@@ -97,6 +98,7 @@ type Context struct {
 	AutoPortForwarding    bool              `json:"auto_port_forwarding"`
 	Local                 bool              `json:"local"`
 	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
+	OcpCluster            bool              `json:"ocp_cluster"`
 }
 
 // ManagedNamespace returns the nth managed namespace.

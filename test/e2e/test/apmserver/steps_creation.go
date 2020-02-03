@@ -5,7 +5,12 @@
 package apmserver
 
 import (
+	"fmt"
 	"testing"
+
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	secv1client "github.com/openshift/client-go/security/clientset/versioned/typed/security/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -23,6 +28,27 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 					err := k.Client.Create(obj)
 					require.NoError(t, err)
 				}
+			},
+		},
+		{
+			Name: "Add apm-server service account to anyuid (OpenShift Only)",
+			Test: func(t *testing.T) {
+				if !test.Ctx().OcpCluster {
+					return
+				}
+
+				cfg, err := config.GetConfig()
+				require.NoError(t, err)
+
+				secClient := secv1client.NewForConfigOrDie(cfg)
+				require.NoError(t, err)
+
+				scc, err := secClient.SecurityContextConstraints().Get("anyuid", metav1.GetOptions{})
+				require.NoError(t, err)
+
+				scc.Users = append(scc.Users, fmt.Sprintf("system:serviceaccount:%s:%s", b.ServiceAccount.GetNamespace(), b.ServiceAccount.GetName()))
+				scc, err = secClient.SecurityContextConstraints().Update(scc)
+				require.NoError(t, err)
 			},
 		},
 		{
