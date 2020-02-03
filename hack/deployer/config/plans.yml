@@ -64,6 +64,7 @@ plans:
   ocp:
     region: europe-west2
     nodeCount: 3
+    overwriteDefaultKubeconfig: true
 - id: ocp-dev
   operation: create
   clusterName: dev
