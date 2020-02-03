@@ -75,7 +75,7 @@ func defaultContext() Context {
 			},
 			ManagedNamespaces: []string{"mercury", "venus"},
 		},
-		TestRun: "e2e-default",
+		TestRun:    "e2e-default",
 		OcpCluster: false,
 	}
 }

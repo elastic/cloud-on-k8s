@@ -25,7 +25,7 @@ func DefaultSecurityContext() *corev1.PodSecurityContext {
 	return dscc
 }
 
-// It's currently not possible to run APM using OpenShift's 
+// It's currently not possible to run APM using OpenShift's
 // restricted SCC. Therefore, we are forcing the required UID
 // and fsGroup for APM's security context. A dedicated ServiceAccount
 // with special permissions is created by APM test's builder
@@ -35,7 +35,7 @@ func APMDefaultSecurityContext() *corev1.PodSecurityContext {
 
 	return &corev1.PodSecurityContext{
 		RunAsNonRoot: BoolPtr(true),
-		RunAsUser: &defaultUserID,
-		FSGroup: &defaultUserID,
+		RunAsUser:    &defaultUserID,
+		FSGroup:      &defaultUserID,
 	}
 }

@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"testing"
 
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	secv1client "github.com/openshift/client-go/security/clientset/versioned/typed/security/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -47,7 +47,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 				require.NoError(t, err)
 
 				scc.Users = append(scc.Users, fmt.Sprintf("system:serviceaccount:%s:%s", b.ServiceAccount.GetNamespace(), b.ServiceAccount.GetName()))
-				scc, err = secClient.SecurityContextConstraints().Update(scc)
+				_, err = secClient.SecurityContextConstraints().Update(scc)
 				require.NoError(t, err)
 			},
 		},

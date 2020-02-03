@@ -16,7 +16,7 @@ import (
 
 // Builder to create APM Servers
 type Builder struct {
-	ApmServer apmv1.ApmServer
+	ApmServer      apmv1.ApmServer
 	ServiceAccount corev1.ServiceAccount
 }
 
@@ -58,7 +58,7 @@ func newBuilder(name, randSuffix string) Builder {
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						ServiceAccountName: name,
-						SecurityContext: test.APMDefaultSecurityContext(),
+						SecurityContext:    test.APMDefaultSecurityContext(),
 					},
 				},
 			},
@@ -70,7 +70,7 @@ func (b Builder) WithSuffix(suffix string) Builder {
 	if suffix != "" {
 		b.ApmServer.ObjectMeta.Name = b.ApmServer.ObjectMeta.Name + "-" + suffix
 		b.ServiceAccount.ObjectMeta.Name = b.ApmServer.ObjectMeta.GetName()
-		b.ApmServer.Spec.PodTemplate.Spec.ServiceAccountName = b.ServiceAccount.GetName() 
+		b.ApmServer.Spec.PodTemplate.Spec.ServiceAccountName = b.ServiceAccount.GetName()
 	}
 	return b
 }
