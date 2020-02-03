@@ -64,9 +64,6 @@ GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
 	-X github.com/elastic/cloud-on-k8s/pkg/about.buildSnapshot=$(SNAPSHOT)
 
-# Setting for CI, if set to true will prevent building and using local Docker image
-SKIP_DOCKER_COMMAND ?= false
-
 ## -- Namespaces
 
 # namespace in which the global operator is deployed (see config/global-operator)
@@ -181,9 +178,9 @@ go-debug:
 		--manage-webhook-certs=false)
 
 build-operator-image:
-ifeq ($(SKIP_DOCKER_COMMAND), false)
-	$(MAKE) docker-build docker-push
-endif
+	@ docker pull $(OPERATOR_IMAGE) \
+	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
+	|| $(MAKE) docker-build docker-push
 
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
@@ -359,8 +356,8 @@ E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
 
 # Run e2e tests as a k8s batch job
-# clean between operator build and e2e build to remove irrelevant/build-breaking generated public keys
-e2e: build-operator-image clean e2e-docker-build e2e-docker-push e2e-run
+# clean before e2e build to remove irrelevant/build-breaking generated public keys
+e2e: clean e2e-docker-build e2e-docker-push e2e-run
 
 e2e-docker-build:
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
