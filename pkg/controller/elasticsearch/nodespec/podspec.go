@@ -75,7 +75,6 @@ func getDefaultContainerPorts(es esv1.Elasticsearch) []corev1.ContainerPort {
 		{Name: es.Spec.HTTP.Protocol(), ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
 	}
-
 }
 
 func transportCertificatesVolume(esName string) volume.SecretVolume {
