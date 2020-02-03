@@ -270,6 +270,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		apmServer,
 		&es,
 		r,
+		r.recorder,
 	); err != nil || !allowed {
 		return commonv1.AssociationPending, err
 	}
@@ -323,7 +324,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	return commonv1.AssociationEstablished, nil
 }
 
-// Unbind remove the association resources
+// Unbind removes the association resources
 func (r *ReconcileApmServerElasticsearchAssociation) Unbind(apm commonv1.Associated) error {
 	apmKey := k8s.ExtractNamespacedName(apm)
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access

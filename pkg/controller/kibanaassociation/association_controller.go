@@ -280,6 +280,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 		kibana,
 		&es,
 		r,
+		r.recorder,
 	); err != nil || !allowed {
 		return commonv1.AssociationPending, err
 	}
@@ -329,7 +330,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana *kbv1.Kibana) (commonv1.
 	return commonv1.AssociationEstablished, nil
 }
 
-// Unbind remove the association resources
+// Unbind removes the association resources
 func (r *ReconcileAssociation) Unbind(kibana commonv1.Associated) error {
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access

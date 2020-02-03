@@ -75,8 +75,8 @@ func (s *SubjectAccessReviewer) AccessAllowed(serviceAccount string, sourceNames
 		return false, err
 	}
 	log.V(1).Info(
-		"Access review", "result",
-		sar.Status, "service_account", serviceAccount,
+		"Access review", "result", sar.Status,
+		"service_account", serviceAccount,
 		"source_namespace", sourceNamespace,
 		"remote_kind", object.GetObjectKind().GroupVersionKind().Kind,
 		"remote_namespace", metaObject.GetNamespace(),

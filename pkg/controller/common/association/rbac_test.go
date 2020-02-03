@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/record"
 )
 
 type fakeAccessReviewer struct {
@@ -34,6 +35,17 @@ func (f *fakeUnbinder) Unbind(associated commonv1.Associated) error {
 	f.called = true
 	return nil
 }
+
+var (
+	fetchEvent = func(recorder *record.FakeRecorder) string {
+		select {
+		case event := <-recorder.Events:
+			return event
+		default:
+			return ""
+		}
+	}
+)
 
 func TestCheckAndUnbind(t *testing.T) {
 	apmServer := &apmv1.ApmServer{
@@ -55,11 +67,12 @@ func TestCheckAndUnbind(t *testing.T) {
 		associated     commonv1.Associated
 		object         runtime.Object
 		unbinder       fakeUnbinder
+		recorder       *record.FakeRecorder
 	}
 	tests := []struct {
-		name                                  string
-		args                                  args
-		want, wantErr, wantFakeUnbinderCalled bool
+		name                                             string
+		args                                             args
+		want, wantErr, wantEvent, wantFakeUnbinderCalled bool
 	}{
 		{
 			name: "Association not allowed, ensure unbinder is called",
@@ -70,8 +83,10 @@ func TestCheckAndUnbind(t *testing.T) {
 					allowed: false,
 				},
 				unbinder: fakeUnbinder{},
+				recorder: record.NewFakeRecorder(10),
 			},
 			wantFakeUnbinderCalled: true,
+			wantEvent:              true,
 			want:                   false,
 		},
 		{
@@ -83,14 +98,16 @@ func TestCheckAndUnbind(t *testing.T) {
 					allowed: true,
 				},
 				unbinder: fakeUnbinder{},
+				recorder: record.NewFakeRecorder(10),
 			},
 			wantFakeUnbinderCalled: false,
+			wantEvent:              false,
 			want:                   true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CheckAndUnbind(tt.args.accessReviewer, tt.args.associated, tt.args.object, &tt.args.unbinder)
+			got, err := CheckAndUnbind(tt.args.accessReviewer, tt.args.associated, tt.args.object, &tt.args.unbinder, tt.args.recorder)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CheckAndUnbind() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -101,6 +118,11 @@ func TestCheckAndUnbind(t *testing.T) {
 			if tt.args.unbinder.called != tt.wantFakeUnbinderCalled {
 				t.Errorf("fakeUnbinder.called = %v, want %v", tt.args.unbinder.called, tt.wantFakeUnbinderCalled)
 			}
+			event := fetchEvent(tt.args.recorder)
+			if len(event) > 0 != tt.wantEvent {
+				t.Errorf("emitted event = %v, want %v", len(event) > 0, tt.wantEvent)
+			}
+
 		})
 	}
 }

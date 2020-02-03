@@ -63,7 +63,7 @@ metadata:
   name: apmserver-user
   namespace: apmserver-ns
 ---
-# This RoleBinding gives the permission to Kibana to access the Elasticsearch cluster
+# This RoleBinding gives the permission to ApmServer to access the Elasticsearch cluster
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

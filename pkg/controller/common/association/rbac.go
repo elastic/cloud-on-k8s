@@ -8,9 +8,12 @@ import (
 	"time"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -18,19 +21,20 @@ type Unbinder interface {
 	Unbind(associated commonv1.Associated) error
 }
 
-// CheckAndUnbind checks if a reference is allowed and unbind the association if it is not the case
+// CheckAndUnbind checks if a reference is allowed and unbinds the association if it is not the case
 func CheckAndUnbind(
 	accessReviewer rbac.AccessReviewer,
 	associated commonv1.Associated,
-	object runtime.Object,
+	referencedObject runtime.Object,
 	unbinder Unbinder,
+	eventRecorder record.EventRecorder,
 ) (bool, error) {
-	allowed, err := accessReviewer.AccessAllowed(associated.ServiceAccountName(), associated.GetNamespace(), object)
+	allowed, err := accessReviewer.AccessAllowed(associated.ServiceAccountName(), associated.GetNamespace(), referencedObject)
 	if err != nil {
 		return false, err
 	}
 	if !allowed {
-		metaObject, err := meta.Accessor(object)
+		metaObject, err := meta.Accessor(referencedObject)
 		if err != nil {
 			return false, nil
 		}
@@ -39,9 +43,16 @@ func CheckAndUnbind(
 			"associated_name", associated.GetName(),
 			"associated_namespace", associated.GetNamespace(),
 			"service_account", associated.ServiceAccountName(),
-			"remote_type", object.GetObjectKind().GroupVersionKind().Kind,
-			"remote_name", metaObject.GetNamespace(),
-			"remote_namespace", metaObject.GetName(),
+			"remote_type", referencedObject.GetObjectKind().GroupVersionKind().Kind,
+			"remote_namespace", metaObject.GetNamespace(),
+			"remote_name", metaObject.GetName(),
+		)
+		eventRecorder.Eventf(
+			associated,
+			corev1.EventTypeWarning,
+			events.EventAssociationError,
+			"Association not allowed: %s/%s to %s/%s",
+			associated.GetNamespace(), associated.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
 		)
 		return false, unbinder.Unbind(associated)
 	}
