@@ -35,6 +35,7 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 
 	// Step 2: Apply predicates
 	predicateContext := NewPredicateContext(
+		ctx.parentCtx,
 		ctx.ES,
 		ctx.esState,
 		ctx.shardLister,
@@ -141,6 +142,7 @@ func (ctx *rollingUpgradeCtx) handleMasterScaleChange(pod corev1.Pod) error {
 	masterScaleDown := label.IsMasterNode(pod) && !stringsutil.StringInSlice(pod.Name, ctx.expectedMasters)
 	if masterScaleDown {
 		if err := updateZenSettingsForDownscale(
+			ctx.parentCtx,
 			ctx.client,
 			ctx.esClient,
 			ctx.ES,

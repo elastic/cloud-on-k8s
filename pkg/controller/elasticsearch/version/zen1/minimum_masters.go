@@ -86,6 +86,7 @@ func SetupMinimumMasterNodesConfig(
 // based on nodes currently running in the cluster.
 // It returns true if this should be retried later (re-queued).
 func UpdateMinimumMasterNodes(
+	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	esClient client.Client,
@@ -125,13 +126,14 @@ func UpdateMinimumMasterNodes(
 		return true, nil
 	}
 
-	return false, UpdateMinimumMasterNodesTo(es, c, esClient, minimumMasterNodes)
+	return false, UpdateMinimumMasterNodesTo(ctx, es, c, esClient, minimumMasterNodes)
 }
 
 // UpdateMinimumMasterNodesTo calls the ES API to update the value of zen1 minimum_master_nodes
 // to the given value, if the cluster is using zen1.
 // Should only be called it there are some Zen1 compatible masters
 func UpdateMinimumMasterNodesTo(
+	ctx context.Context,
 	es esv1.Elasticsearch,
 	c k8s.Client,
 	esClient client.Client,
@@ -148,7 +150,7 @@ func UpdateMinimumMasterNodesTo(
 		"es_name", es.Name,
 		"minimum_master_nodes", minimumMasterNodes,
 	)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
 	defer cancel()
 	if err := esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes); err != nil {
 		return nil

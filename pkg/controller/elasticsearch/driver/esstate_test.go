@@ -46,19 +46,19 @@ type fakeESClient struct { //nolint:maligned
 	GetClusterHealthCalledCount int
 }
 
-func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, n int) error {
+func (f *fakeESClient) SetMinimumMasterNodes(_ context.Context, n int) error {
 	f.SetMinimumMasterNodesCalled = true
 	f.SetMinimumMasterNodesCalledWith = n
 	return nil
 }
 
-func (f *fakeESClient) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+func (f *fakeESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []string, timeout string) error {
 	f.AddVotingConfigExclusionsCalled = true
 	f.AddVotingConfigExclusionsCalledWith = append(f.AddVotingConfigExclusionsCalledWith, nodeNames...)
 	return nil
 }
 
-func (f *fakeESClient) ExcludeFromShardAllocation(nodes string) error {
+func (f *fakeESClient) ExcludeFromShardAllocation(_ context.Context, nodes string) error {
 	f.ExcludeFromShardAllocationCalled = true
 	f.ExcludeFromShardAllocationCalledWith = nodes
 	return nil
@@ -79,17 +79,17 @@ func (f *fakeESClient) SyncedFlush(_ context.Context) error {
 	return nil
 }
 
-func (f *fakeESClient) GetNodes(ctx context.Context) (esclient.Nodes, error) {
+func (f *fakeESClient) GetNodes(_ context.Context) (esclient.Nodes, error) {
 	f.GetNodesCallCount++
 	return f.nodes, nil
 }
 
-func (f *fakeESClient) GetClusterRoutingAllocation(ctx context.Context) (esclient.ClusterRoutingAllocation, error) {
+func (f *fakeESClient) GetClusterRoutingAllocation(_ context.Context) (esclient.ClusterRoutingAllocation, error) {
 	f.GetClusterRoutingAllocationCallCount++
 	return f.clusterRoutingAllocation, nil
 }
 
-func (f *fakeESClient) GetClusterHealth(ctx context.Context) (esclient.Health, error) {
+func (f *fakeESClient) GetClusterHealth(_ context.Context) (esclient.Health, error) {
 	f.GetClusterHealthCalledCount++
 	return f.health, nil
 }
@@ -100,7 +100,7 @@ func Test_memoizingNodes_NodesInCluster(t *testing.T) {
 	esClient := &fakeESClient{
 		nodes: esclient.Nodes{Nodes: map[string]esclient.Node{"a": {Name: "a"}, "b": {Name: "b"}, "c": {Name: "c"}}},
 	}
-	memoizingNodes := &memoizingNodes{esClient: esClient}
+	memoizingNodes := &memoizingNodes{esClient: esClient, ctx: context.Background()}
 
 	inCluster, err := memoizingNodes.NodesInCluster([]string{"a", "b", "c"})
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func Test_memoizingNodes_NodesInCluster(t *testing.T) {
 func Test_memoizingShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T) {
 	// with cluster routing allocation enabled (by default)
 	esClient := &fakeESClient{}
-	s := &memoizingShardsAllocationEnabled{esClient: esClient}
+	s := &memoizingShardsAllocationEnabled{esClient: esClient, ctx: context.Background()}
 
 	enabled, err := s.ShardAllocationsEnabled()
 	require.NoError(t, err)
@@ -145,7 +145,7 @@ func Test_memoizingShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T)
 	clusterRoutingAllocation := esclient.ClusterRoutingAllocation{}
 	clusterRoutingAllocation.Transient.Cluster.Routing.Allocation.Enable = "none"
 	esClient = &fakeESClient{clusterRoutingAllocation: clusterRoutingAllocation}
-	s = &memoizingShardsAllocationEnabled{esClient: esClient}
+	s = &memoizingShardsAllocationEnabled{esClient: esClient, ctx: context.Background()}
 	enabled, err = s.ShardAllocationsEnabled()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterRoutingAllocationCallCount)
@@ -154,7 +154,7 @@ func Test_memoizingShardsAllocationEnabled_ShardAllocationsEnabled(t *testing.T)
 
 func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 	esClient := &fakeESClient{health: esclient.Health{Status: esv1.ElasticsearchGreenHealth}}
-	h := &memoizingHealth{esClient: esClient}
+	h := &memoizingHealth{esClient: esClient, ctx: context.Background()}
 
 	health, err := h.Health()
 	require.NoError(t, err)
@@ -169,7 +169,7 @@ func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 
 	// simulate yellow health
 	esClient = &fakeESClient{health: esclient.Health{Status: esv1.ElasticsearchYellowHealth}}
-	h = &memoizingHealth{esClient: esClient}
+	h = &memoizingHealth{esClient: esClient, ctx: context.Background()}
 	health, err = h.Health()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
@@ -179,7 +179,7 @@ func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 func TestNewMemoizingESState(t *testing.T) {
 	esClient := &fakeESClient{}
 	// just make sure everything is initialized correctly (no panic for nil pointers)
-	s := NewMemoizingESState(esClient)
+	s := NewMemoizingESState(context.Background(), esClient)
 	_, err := s.Health()
 	require.NoError(t, err)
 	_, err = s.ShardAllocationsEnabled()

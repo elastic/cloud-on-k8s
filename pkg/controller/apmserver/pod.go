@@ -64,10 +64,6 @@ func readinessProbe(tls bool) corev1.Probe {
 	}
 }
 
-var ports = []corev1.ContainerPort{
-	{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
-}
-
 var command = []string{
 	"apm-server",
 	"run",
@@ -110,6 +106,8 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 		},
 	})
 
+	ports := getDefaultContainerPorts(*as)
+
 	builder := defaults.NewPodTemplateBuilder(
 		p.PodTemplate, apmv1.ApmServerContainerName).
 		WithResources(DefaultResources).
@@ -133,4 +131,8 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 	}
 
 	return builder.PodTemplate
+}
+
+func getDefaultContainerPorts(as apmv1.ApmServer) []corev1.ContainerPort {
+	return []corev1.ContainerPort{{Name: as.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP}}
 }

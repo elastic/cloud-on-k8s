@@ -5,6 +5,7 @@
 package association
 
 import (
+	"context"
 	"testing"
 
 	"k8s.io/client-go/kubernetes/scheme"
@@ -253,6 +254,7 @@ func Test_reconcileEsUser(t *testing.T) {
 		c := k8s.WrappedFakeClient(tt.args.initialObjects...)
 		t.Run(tt.name, func(t *testing.T) {
 			if err := ReconcileEsUser(
+				context.Background(),
 				c,
 				scheme.Scheme,
 				&tt.args.kibana,

@@ -1,5 +1,5 @@
 def failedTests = []
-def testScript
+def lib
 
 pipeline {
 
@@ -22,7 +22,7 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    testScript = load ".ci/common/tests.groovy"
+                    lib = load "build/ci/common/tests.groovy"
                 }
             }
         }
@@ -32,7 +32,9 @@ pipeline {
                 stage("1.12.10") {
                     steps {
                         checkout scm
-                        runTests("kindest/node:v1.12.10")
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.12.10")
+                        }
                     }
                 }
                 stage("1.16.4") {
@@ -41,7 +43,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runTests("kindest/node:v1.16.4")
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.16.4")
+                        }
                     }
                 }
                 stage("1.17.0") {
@@ -50,7 +54,9 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        runTests("kindest/node:v1.17.0")
+                        script {
+                            runTests(lib, failedTests, "kindest/node:v1.17.0")
+                        }
                     }
                 }
             }
@@ -83,7 +89,7 @@ pipeline {
 
 }
 
-def runTests(kindNodeImage) {
+def runTests(lib, failedTests, kindNodeImage) {
     sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage"
     script {
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=kind-e2e ci')
@@ -92,7 +98,12 @@ def runTests(kindNodeImage) {
         junit "e2e-tests.xml"
 
         if (env.SHELL_EXIT_CODE != 0) {
-            failedTests.addAll(testScript.getListOfFailedTests())
+            failedTests.addAll(lib.getListOfFailedTests())
+            googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
+                credentialsId: "devops-ci-gcs-plugin",
+                pattern: "*.tgz",
+                sharedPublicly: true,
+                showInline: true
         }
 
         sh 'exit $SHELL_EXIT_CODE'

@@ -6,18 +6,15 @@ This page explains you how to set up your development environment.
 
 Before you start, install the following tools and packages:
 
-* [go](https://golang.org/dl/) (>= 1.11)
+* [go](https://golang.org/dl/) (>= 1.13)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
-* [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
-* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+* [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) (>= 2.0.0)
 * [docker](https://docs.docker.com/)
-* sha1sum (for Mac `brew install md5sha1sum`)
-* [gcloud](https://cloud.google.com/sdk/gcloud/) 
-  * Install beta and docker-credential-gcr components:  `gcloud components install beta docker-credential-gcr`
+* Kubernetes distribution such as [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [kind](https://kind.sigs.k8s.io), or access to a hosted Kubernetes service such as [GKE](https://cloud.google.com/kubernetes-engine)
 
 
-### Get sources 
+### Get sources
 
 ```bash
 git clone https://github.com/elastic/cloud-on-k8s.git
@@ -41,21 +38,21 @@ Run `make check-requisites` to check that all dependencies are installed.
       # Sets up a Minikube cluster with required resources
       ```
 
-    [GKE](https://cloud.google.com/kubernetes-engine/)
-
-      Make sure that container registry authentication is correctly configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication).
-
-      ```bash
-      export GCLOUD_PROJECT=my-project-id
-      make bootstrap-cloud
-      # Sets up GKE cluster (by default) with required resources
-      ```
-
     [Kind](https://kind.sigs.k8s.io/)
 
       ```bash
       make bootstrap-kind
       # Sets up a kind cluster with required resources
+      ```
+
+    [GKE](https://cloud.google.com/kubernetes-engine/)
+
+      Make sure that container registry authentication is correctly configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication). When installing the `gcloud` tool, make sure to install the beta components by running `gcloud components install beta`.
+
+      ```bash
+      export GCLOUD_PROJECT=my-project-id
+      make bootstrap-cloud
+      # Sets up GKE cluster (by default) with required resources
       ```
 
 3. Deploy the operator.

@@ -5,6 +5,7 @@
 package driver
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
 	"time"
@@ -48,7 +49,7 @@ var (
 // Driver orchestrates the reconciliation of an Elasticsearch resource.
 // Its lifecycle is bound to a single reconciliation attempt.
 type Driver interface {
-	Reconcile() *reconciler.Results
+	Reconcile(context.Context) *reconciler.Results
 }
 
 // NewDefaultDriver returns the default driver implementation.
@@ -109,24 +110,25 @@ func (d *defaultDriver) Recorder() record.EventRecorder {
 var _ commondriver.Interface = &defaultDriver{}
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
-func (d *defaultDriver) Reconcile() *reconciler.Results {
-	results := &reconciler.Results{}
+func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
+	results := reconciler.NewResult(ctx)
 
 	// garbage collect secrets attached to this cluster that we don't need anymore
-	if err := cleanup.DeleteOrphanedSecrets(d.Client, d.ES); err != nil {
+	if err := cleanup.DeleteOrphanedSecrets(ctx, d.Client, d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	if err := configmap.ReconcileScriptsConfigMap(d.Client, d.Scheme(), d.ES); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.Scheme(), d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	externalService, err := common.ReconcileService(d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
+	externalService, err := common.ReconcileService(ctx, d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	certificateResources, res := certificates.Reconcile(
+		ctx,
 		d,
 		d.ES,
 		[]corev1.Service{*externalService},
@@ -137,7 +139,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results
 	}
 
-	internalUsers, err := user.ReconcileUsers(d.Client, d.Scheme(), d.ES)
+	internalUsers, err := user.ReconcileUsers(ctx, d.Client, d.Scheme(), d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -163,7 +165,8 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 			internalUsers.ControllerUser,
 			*min,
 			certificateResources.TrustedHTTPCertificates,
-		))
+		),
+	)
 
 	// always update the elasticsearch state bits
 	d.ReconcileState.UpdateElasticsearchState(*resourcesState, observedState)
@@ -188,17 +191,19 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 
 	results.Apply(
 		"reconcile-cluster-license",
-		func() (controller.Result, error) {
+		func(ctx context.Context) (controller.Result, error) {
 			if !esReachable {
 				return defaultRequeue, nil
 			}
 
 			err := license.Reconcile(
+				ctx,
 				d.Client,
 				d.ES,
 				esClient,
 				observedState.ClusterLicense,
 			)
+
 			if err != nil {
 				d.ReconcileState.AddEvent(
 					corev1.EventTypeWarning,
@@ -212,7 +217,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	)
 
 	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
 
@@ -229,7 +234,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// set an annotation with the ClusterUUID, if bootstrapped
-	requeue, err := bootstrap.ReconcileClusterUUID(d.Client, &d.ES, esClient, esReachable)
+	requeue, err := bootstrap.ReconcileClusterUUID(ctx, d.Client, &d.ES, esClient, esReachable)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -238,7 +243,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	res = d.reconcileNodeSpecs(esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
+	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, certificateResources)
 	results = results.WithResults(res)
 
 	if res.HasError() {

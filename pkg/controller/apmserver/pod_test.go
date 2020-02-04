@@ -8,12 +8,13 @@ import (
 	"reflect"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewPodSpec(t *testing.T) {
@@ -89,7 +90,7 @@ func TestNewPodSpec(t *testing.T) {
 								},
 							},
 							ReadinessProbe: &probe,
-							Ports:          ports,
+							Ports:          []corev1.ContainerPort{{Name: "https", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP}},
 							Command:        command,
 							VolumeMounts: []corev1.VolumeMount{
 								configSecretVol.VolumeMount(), configVolume.VolumeMount(),
@@ -106,6 +107,49 @@ func TestNewPodSpec(t *testing.T) {
 			if got := newPodSpec(&tt.as, tt.p); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewPodSpec() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_getDefaultContainerPorts(t *testing.T) {
+	tt := []struct {
+		name string
+		as   apmv1.ApmServer
+		want []corev1.ContainerPort
+	}{
+		{
+			name: "https",
+			as: apmv1.ApmServer{
+				Spec: apmv1.ApmServerSpec{
+					Version: "7.5.2",
+				},
+			},
+			want: []corev1.ContainerPort{
+				{Name: "https", HostPort: 0, ContainerPort: int32(HTTPPort), Protocol: "TCP", HostIP: ""},
+			},
+		},
+		{
+			name: "http",
+			as: apmv1.ApmServer{
+				Spec: apmv1.ApmServerSpec{
+					HTTP: commonv1.HTTPConfig{
+						TLS: commonv1.TLSOptions{
+							SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+								Disabled: true,
+							},
+						},
+					},
+				},
+			},
+			want: []corev1.ContainerPort{
+				{Name: "http", HostPort: 0, ContainerPort: int32(HTTPPort), Protocol: "TCP", HostIP: ""},
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, getDefaultContainerPorts(tc.as), tc.want)
 		})
 	}
 }

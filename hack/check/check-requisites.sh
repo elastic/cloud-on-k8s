@@ -22,13 +22,32 @@ function check {
     printf "\n"
 }
 
+function check_oneof {
+    local found_one=false
+
+    for exec_name in $@
+    do
+        printf "Checking for (optional) $exec_name... "
+        if ! command -v $exec_name >/dev/null 2>&1; then
+            printf "not found."
+        else
+            printf "found."
+            found_one=true
+        fi
+        printf "\n"
+    done
+
+    if [[ "$found_one" != "true" ]]; then
+        echo "At least one of [$@] must be installed."
+        all_found=false
+    fi
+}
+
 check go
 check golangci-lint
 check kubectl
 check kubebuilder
-check minikube
-check gcloud
-check sha1sum
+check_oneof gcloud minikube kind
 
 echo
 if [[ "$all_found" != "true" ]]; then
@@ -37,4 +56,3 @@ if [[ "$all_found" != "true" ]]; then
 else
     echo "All tools are present."
 fi
-    

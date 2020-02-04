@@ -5,9 +5,9 @@
 package settings
 
 import (
-	"fmt"
 	"reflect"
 
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -50,11 +50,11 @@ func GetESConfigContent(client k8s.Client, namespace string, ssetName string) (C
 		return CanonicalConfig{}, err
 	}
 	if len(secret.Data) == 0 {
-		return CanonicalConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(ssetName))
+		return CanonicalConfig{}, pkgerrors.Errorf("no configuration found in secret %s", ConfigSecretName(ssetName))
 	}
 	content := secret.Data[ConfigFileName]
 	if len(content) == 0 {
-		return CanonicalConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(ssetName))
+		return CanonicalConfig{}, pkgerrors.Errorf("no configuration found in secret %s", ConfigSecretName(ssetName))
 	}
 
 	cfg, err := common.ParseConfig(content)
