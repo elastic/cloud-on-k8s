@@ -69,7 +69,7 @@ pipeline {
                     steps {
                         sh '.ci/setenvconfig pr'
                         script {
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET="build-operator-image ci-e2e" ci')
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci-build-operator-e2e-run ci')
 
                             sh 'make -C .ci TARGET=e2e-generate-xml ci'
                             junit "e2e-tests.xml"

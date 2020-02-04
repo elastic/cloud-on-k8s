@@ -314,7 +314,7 @@ switch-ocp:
 ##  --    Docker images    --  ##
 #################################
 
-docker-build:
+docker-build: go-generate
 	docker build . \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
@@ -355,11 +355,8 @@ STACK_VERSION ?= 7.5.0
 E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
 
-# Run e2e tests as a k8s batch job
-# clean before e2e build to remove irrelevant/build-breaking generated public keys
-e2e: clean e2e-docker-build e2e-docker-push e2e-run
 
-e2e-docker-build:
+e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
@@ -403,13 +400,19 @@ e2e-local:
 ##########################################
 ##  --    Continuous integration    --  ##
 ##########################################
+
 ci-check: check-license-header lint generate check-local-changes
 
 ci: unit-xml integration-xml docker-build
 
-# Run e2e tests in a dedicated cluster
+# Note: e2e-docker-push gets access to the gcr docker registry through run-deployer
+setup-e2e: e2e-compile run-deployer install-crds apply-psp e2e-docker-build e2e-docker-push
+
 ci-e2e: E2E_JSON := true
-ci-e2e: e2e-compile run-deployer install-crds apply-psp e2e
+ci-e2e: setup-e2e e2e-run
+
+ci-build-operator-e2e-run: E2E_JSON := true
+ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
