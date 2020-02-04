@@ -84,8 +84,8 @@ pipeline {
 }
 
 def runTests(kindNodeImage) {
+    sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage"
     script {
-        sh '.ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage'
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=kind-e2e ci')
 
         sh 'make -C .ci TARGET=e2e-generate-xml ci'

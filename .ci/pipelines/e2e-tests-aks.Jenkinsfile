@@ -27,8 +27,8 @@ pipeline {
         }
         stage("Run E2E tests") {
             steps {
+                sh '.ci/setenvconfig e2e/aks'
                 script {
-                    sh '.ci/setenvconfig e2e/aks'
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
                     sh 'make -C .ci TARGET=e2e-generate-xml ci'

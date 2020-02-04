@@ -48,8 +48,8 @@ pipeline {
                 }
             }
             steps {
+                sh '.ci/setenvconfig e2e/master'
                 script {
-                    sh '.ci/setenvconfig e2e/master'
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET="build-operator-image ci-e2e" ci')
 
                     sh 'make -C .ci TARGET=e2e-generate-xml ci'

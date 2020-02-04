@@ -67,8 +67,8 @@ pipeline {
                         }
                     }
                     steps {
+                        sh '.ci/setenvconfig pr'
                         script {
-                            sh '.ci/setenvconfig pr'
                             env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET="build-operator-image ci-e2e" ci')
 
                             sh 'make -C .ci TARGET=e2e-generate-xml ci'
