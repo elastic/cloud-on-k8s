@@ -16,6 +16,7 @@ The goal of this document is to provide a high-level overview on how you can get
     - [Submit your changes](#submit-your-changes)
       - [Sign the CLA](#sign-the-cla)
       - [Prepare a Pull Request](#prepare-a-pull-request)
+  - [Contribute to ECK documentation](#contribute-to-eck-documentation)
   - [Design documents](#design-documents)
 
 ## Report your bugs
@@ -97,6 +98,31 @@ Here are some good practices for a good pull request:
 - Run and pass unit and integration tests with `make unit` and `make integration`.
 - Write a short and self-explanatory title.
 - Write a clear description to make the code reviewer understand what the PR is about.
+
+## Contribute to ECK documentation
+
+Whether it’s a new or existing feature, make sure you document it.
+Before you start, pull the latest files from these repos:
+* [elastic/cloud-on-k8s](https://github.com/elastic/cloud-on-k8s): Contains the docs source files for Elastic Cloud on Kubernetes.
+* [elastic/docs](https://github.com/elastic/docs): Has the tools to publish locally your changes before committing them.
+
+To update existing content, find the right file in the [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/master/docs) repo and make your change.
+
+To create new content in a new file, add the file to [cloud-on-k8s/docs/](https://github.com/elastic/cloud-on-k8s/tree/master/docs), and include it in the [index.asciidoc](https://github.com/elastic/cloud-on-k8s/blob/master/docs/index.asciidoc).
+
+NOTE: For searchability purposes, the file name should match the first top-level section ID of the document. For example:
+ * File name: `apm-server.asciidoc`
+ * Section ID: `[id="{p}-apm-server"]`
+
+Test the doc build locally:
+
+1. Move to the directory where the [elastic/docs](https://github.com/elastic/docs) repository has been pulled
+1. Run the following command:
+
+   `./build_docs --asciidoctor --doc $GOPATH/src/github.com/elastic/cloud-on-k8s --chunk 1 --open`
+   
+Push a PR for review and add the label `>docs`.
+
 
 ## Design documents
 
