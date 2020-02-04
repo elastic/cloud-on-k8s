@@ -355,9 +355,6 @@ STACK_VERSION ?= 7.5.0
 E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
 
-# Run e2e tests as a k8s batch job
-e2e: e2e-docker-build e2e-docker-push e2e-run
-
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
