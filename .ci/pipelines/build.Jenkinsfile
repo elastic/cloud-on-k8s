@@ -72,15 +72,19 @@ pipeline {
             script {
                 def operatorImage = readFromEnvFile("OPERATOR_IMAGE")
 
-                build job: 'cloud-on-k8s-e2e-tests-custom',
+                build job: 'cloud-on-k8s-e2e-tests-stack-versions',
                     parameters: [string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage)],
                     wait: false
 
-                build job: 'cloud-on-k8s-stack',
+                build job: 'cloud-on-k8s-e2e-tests-gke-k8s-versions',
                     parameters: [string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage)],
                     wait: false
 
-                build job: 'cloud-on-k8s-versions-gke',
+                build job: 'cloud-on-k8s-e2e-tests-aks',
+                    parameters: [string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage)],
+                    wait: false
+
+                build job: 'cloud-on-k8s-e2e-tests-kind-k8s-versions',
                     parameters: [string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage)],
                     wait: false
             }
