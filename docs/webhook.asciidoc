@@ -169,7 +169,6 @@ spec:
 
 
 [float]
-[id="{p}-webhook-troubleshooting"]
 === Troubleshooting
 
 See the <<{p}-webhook-troubleshooting,Webhook troubleshooting>> section of the <<{p}-troubleshooting,Troubleshooting guide>>.
