@@ -108,7 +108,7 @@ pipeline {
                         message: lib.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter),
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
                         botUser: true,
-                        failOnError: false
+                        failOnError: true
                     )
                 }
                 googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",

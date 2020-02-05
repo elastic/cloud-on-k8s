@@ -63,5 +63,6 @@ RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIN
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s
 COPY ["go.mod", "go.sum", "./"]
 RUN go mod download && \
-    rm /go/src/github.com/elastic/cloud-on-k8s/go.*
+    rm /go/src/github.com/elastic/cloud-on-k8s/go.mod && \
+    rm /go/src/github.com/elastic/cloud-on-k8s/go.sum
 WORKDIR /

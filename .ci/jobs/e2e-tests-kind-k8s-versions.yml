@@ -1,6 +1,6 @@
 ---
 - job:
-    description: Run ECK E2E tests on Kind
+    description: Run ECK E2E tests on Kind, to verify different k8s versions
     name: cloud-on-k8s-e2e-tests-kind-k8s-versions
     project-type: pipeline
     parameters:

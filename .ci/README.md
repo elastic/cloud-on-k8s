@@ -26,7 +26,8 @@ export VAULT_ADDR=YOUR_VAULT_INSTANCE_ADDRESS
 export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 ``` 
 
-Per repro, depending on the job, set up .env and deployer-config.yml files by looking at [setenvconfig](setenvconfig):
+Per repro, depending on the job, set up .env and deployer-config.yml files by using [setenvconfig](setenvconfig) invocation from the respective Jenkinsfile. For example:
+
 ```
 cat >.env <<EOF
 GCLOUD_PROJECT = "$GCLOUD_PROJECT"
@@ -52,7 +53,7 @@ EOF
 make -C .ci TARGET=ci-e2e ci
 ```
 
-The CI Makefile will take care of setting up correct credentials in the `.env` and `deployer-config.yml` file.
+The CI Makefile will take care of setting up correct credentials in the `deployer-config.yml` file.
 
 This will run e2e tests using the same:
 1. container

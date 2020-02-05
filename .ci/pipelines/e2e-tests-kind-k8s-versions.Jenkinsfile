@@ -77,7 +77,7 @@ pipeline {
                         message: msg,
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
                         botUser: true,
-                        failOnError: false
+                        failOnError: true
                     )
                 }
             }

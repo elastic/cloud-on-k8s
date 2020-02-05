@@ -64,6 +64,7 @@ get-elastic-public-key:
 get-test-license:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=enterprise  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
 
+# read connection info and credentials to the E2E tests monitoring Elasticsearch cluster, to be used during E2E tests
 get-monitoring-secrets:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=data -format=json secret/devops-ci/cloud-on-k8s/monitoring-cluster > monitoring-secrets.json
 
