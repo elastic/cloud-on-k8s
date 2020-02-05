@@ -103,7 +103,61 @@ EOF
 NOTE: This example assumes that you have installed the operator in the `elastic-system` namespace.
 
 [float]
+[id="{p}-webhook-network-policies"]
+=== Network Policies
+
+Webhooks require network connectivity between the Kubernetes API server and the operator. If the creation of an Elasticsearch resource times out with an error message similar to the following, then the Kubernetes API server might be unable to connect to the webhook to validate the manifest.
+
+....
+Error from server (Timeout): error when creating "elasticsearch.yaml": Timeout: request did not complete within requested timeout 30s
+....
+
+One possible reason for the above error is that a link:https://kubernetes.io/docs/concepts/services-networking/network-policies/[network policy] might be blocking any incoming requests to the webhook server. Consult your system administrator to determine whether that is the case and create an appropriate policy to allow communication between the Kubernetes API server and the webhook server. For example, the following network policy simply opens up the webhook port to the world:
+
+
+[source,yaml,subs="attributes"]
+----
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: allow-webhook-access-from-any
+  namespace: elastic-system
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: elastic-operator
+  ingress:
+  - from: []
+    ports:
+      - port: 9443
+----
+
+You may want to restrict webhook access to just the Kubernetes API server. Currently this requires knowing the IP address of the API server -- which can be obtained through the command `kubectl cluster-info | grep master`.
+
+Assuming that the API server IP address is `10.1.0.1`, the following policy restrticts webhook access to just the API server.
+
+[source,yaml,subs="attributes"]
+----
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: allow-webhook-access-from-apiserver
+  namespace: elastic-system
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: elastic-operator
+  ingress:
+  - from:
+      - ipBlock:
+          cidr: 10.1.0.1/32
+    ports:
+      - port: 9443
+----
+
+
+[float]
+[id="{p}-webhook-troubleshooting"]
 === Troubleshooting
 
-Webhooks require network connectivity between the Kubernetes API server and the operator.
-See <<{p}-webhook-troubleshooting,Webhook troubleshooting>> for more information about some known problems with some Kubernetes providers.
+See the <<{p}-webhook-troubleshooting,Webhook troubleshooting>> section of the <<{p}-troubleshooting,Troubleshooting guide>>.
