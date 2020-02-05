@@ -112,7 +112,14 @@ Webhooks require network connectivity between the Kubernetes API server and the 
 Error from server (Timeout): error when creating "elasticsearch.yaml": Timeout: request did not complete within requested timeout 30s
 ....
 
-One possible reason for the above error is that a link:https://kubernetes.io/docs/concepts/services-networking/network-policies/[network policy] might be blocking any incoming requests to the webhook server. Consult your system administrator to determine whether that is the case and create an appropriate policy to allow communication between the Kubernetes API server and the webhook server. For example, the following network policy simply opens up the webhook port to the world:
+If you encounter the above error, try re-running the command with a higher request timeout as follows:
+
+[source,sh,subs="attributes"]
+----
+kubectl --request-timeout=1m apply -f elasticsearch.yaml
+----
+
+As the default link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook is `Ignore`, the above command should succeed after about 30 seconds. This is an indication that the API server cannot contact the webhook server and has foregone validation when creating the resource. One possible reason for this is that a link:https://kubernetes.io/docs/concepts/services-networking/network-policies/[network policy] might be blocking any incoming requests to the webhook server. Consult your system administrator to determine whether that is the case and create an appropriate policy to allow communication between the Kubernetes API server and the webhook server. For example, the following network policy simply opens up the webhook port to the world:
 
 
 [source,yaml,subs="attributes"]
@@ -132,7 +139,12 @@ spec:
       - port: 9443
 ----
 
-You may want to restrict webhook access to just the Kubernetes API server. Currently this requires knowing the IP address of the API server -- which can be obtained through the command `kubectl cluster-info | grep master`.
+You may want to restrict webhook access to just the Kubernetes API server. Currently this requires knowing the IP address of the API server -- which can be obtained through the command:
+
+[source,sh,subs="attributes"]
+----
+kubectl cluster-info | grep master
+----
 
 Assuming that the API server IP address is `10.1.0.1`, the following policy restrticts webhook access to just the API server.
 
