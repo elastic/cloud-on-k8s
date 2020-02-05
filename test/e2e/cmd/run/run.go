@@ -540,9 +540,9 @@ func (h *helper) dumpEventLog() {
 func (h *helper) dumpK8sData() {
 	operatorNs := h.testContext.GlobalOperator.Namespace + "," + h.testContext.NamespaceOperator.Namespace
 	managedNs := strings.Join(h.testContext.NamespaceOperator.ManagedNamespaces, ",")
-	cmd := exec.Command("hack/diagnostics-utility/eck-dump.sh", "-N", operatorNs, "-n", managedNs, "-o", h.testContext.TestRun, "-z")
+	cmd := exec.Command("hack/diagnostics/eck-dump.sh", "-N", operatorNs, "-n", managedNs, "-o", h.testContext.TestRun, "-z")
 	err := cmd.Run()
 	if err != nil {
-		log.Error(err, "Failed to run hack/diagnostics-utility/eck-dump.sh")
+		log.Error(err, "Failed to run hack/diagnostics/eck-dump.sh")
 	}
 }
