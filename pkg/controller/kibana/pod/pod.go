@@ -5,6 +5,9 @@
 package pod
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -17,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -49,6 +51,7 @@ func readinessProbe(useTLS bool) corev1.Probe {
 	if useTLS {
 		scheme = corev1.URISchemeHTTPS
 	}
+	protocol := strings.ToLower(fmt.Sprintf("%s", scheme))
 	return corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 10,
@@ -56,10 +59,10 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
-				Path:   "/login",
-				Scheme: scheme,
+			Exec: &corev1.ExecAction{
+				Command: []string{"bash", "-c",
+					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/login -k -s`, protocol, HTTPPort),
+				},
 			},
 		},
 	}

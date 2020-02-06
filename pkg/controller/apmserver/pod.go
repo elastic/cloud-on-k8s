@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -43,11 +43,13 @@ var (
 	}
 )
 
+// readinessProbe is the readiness probe for the APM Server container
 func readinessProbe(tls bool) corev1.Probe {
 	scheme := corev1.URISchemeHTTP
 	if tls {
 		scheme = corev1.URISchemeHTTPS
 	}
+	protocol := strings.ToLower(fmt.Sprintf("%s", scheme))
 	return corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 10,
@@ -55,10 +57,10 @@ func readinessProbe(tls bool) corev1.Probe {
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
-				Path:   "/",
-				Scheme: scheme,
+			Exec: &corev1.ExecAction{
+				Command: []string{"bash", "-c",
+					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/ -k -s`, protocol, HTTPPort),
+				},
 			},
 		},
 	}
