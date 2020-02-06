@@ -51,7 +51,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				}
 				webhookEndpoints := &corev1.Endpoints{}
 				if err := k.Client.Get(types.NamespacedName{
-					Namespace: test.Ctx().GlobalOperator.Namespace,
+					Namespace: test.Ctx().Operator.Namespace,
 					Name:      webhook.WebhookServiceName,
 				}, webhookEndpoints); err != nil {
 					return err

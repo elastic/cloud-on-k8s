@@ -66,11 +66,9 @@ SKIP_DOCKER_COMMAND ?= false
 
 ## -- Namespaces
 
-# namespace in which the global operator is deployed (see config/global-operator)
-GLOBAL_OPERATOR_NAMESPACE ?= elastic-system
-# namespace in which the namespace operator is deployed (see config/namespace-operator)
-NAMESPACE_OPERATOR_NAMESPACE ?= elastic-namespace-operators
-# comma separated list of namespaces in which the namespace operator should watch resources
+# namespace in which the operator is deployed (see config/global-operator)
+OPERATOR_NAMESPACE ?= elastic-system
+# comma separated list of namespaces in which the operator should watch resources
 MANAGED_NAMESPACES ?=
 
 ## -- Security
@@ -191,14 +189,11 @@ endif
 endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds build-operator-image apply-operators
+deploy: check-gke install-crds build-operator-image apply-namespaced-operator
 
-apply-operators:
+apply-namespaced-operator:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) --no-print-directory -sC config/operator generate-global | kubectl apply -f -
-	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-	NAMESPACE=$(NAMESPACE_OPERATOR_NAMESPACE) \
+	NAMESPACE=$(OPERATOR_NAMESPACE) \
 	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
 
@@ -211,7 +206,7 @@ ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 generate-all-in-one:
 	cp -f $(ALL_CRDS) $(ALL_IN_ONE_OUTPUT_FILE)
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-		NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		NAMESPACE=$(OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $(ALL_IN_ONE_OUTPUT_FILE)
 
 # Deploy an all in one operator against the current k8s cluster
@@ -219,11 +214,8 @@ deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: docker-build docker-push
 	kubectl apply -f $(ALL_IN_ONE_OUTPUT_FILE)
 
-logs-namespace-operator:
-	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
-
-logs-global-operator:
-	@ kubectl --namespace=$(GLOBAL_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-global-operator
+logs-operator:
+	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-operator
 
 samples:
 	@ echo "-> Pushing samples to Kubernetes cluster..."
@@ -242,7 +234,7 @@ cluster-bootstrap: install-crds
 
 clean-k8s-cluster:
 	kubectl delete --ignore-not-found=true  ValidatingWebhookConfiguration validating-webhook-configuration
-	for ns in $(NAMESPACE_OPERATOR_NAMESPACE) $(GLOBAL_OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
+	for ns in $(OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
 		echo "Deleting resources in $$ns"; \
 		kubectl delete statefulsets -n $$ns --all; \
 		kubectl delete deployments -n $$ns --all; \
@@ -471,7 +463,7 @@ kind-with-operator-%: kind-node-variable-check docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
-		make install-crds apply-operators
+		make install-crds apply-namespaced-operator
 
 ## Run all the e2e tests in a Kind cluster
 set-kind-e2e-image:

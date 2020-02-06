@@ -1,5 +1,5 @@
 {{- $testRun := .TestRun -}}
-{{- range .NamespaceOperator.ManagedNamespaces }}
+{{- range .Operator.ManagedNamespaces }}
 ---
 apiVersion: v1
 kind: Namespace

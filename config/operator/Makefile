@@ -24,15 +24,6 @@ generate-all-in-one:
 		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
 		-e "s|<NAMESPACE>|$$NAMESPACE|g"
 
-generate-global:
-	@ for yaml in $$(LC_COLLATE=C ls global/*yaml); do \
-		printf "\n---\n" && cat $$yaml ; \
-	done | \
-	sed \
-		-e "/# /d" \
-		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
-		-e "s|<NAMESPACE>|$$NAMESPACE|g"
-
 generate-namespace:
 ifndef MANAGED_NAMESPACES
 	$(error MANAGED_NAMESPACES not set)

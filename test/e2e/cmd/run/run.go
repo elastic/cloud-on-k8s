@@ -65,8 +65,7 @@ func doRun(flags runFlags) error {
 			helper.installCRDs,
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
-			helper.deployGlobalOperator,
-			helper.deployNamespaceOperator,
+			helper.deployOperator,
 			helper.deployFilebeat,
 			helper.deployTestJob,
 			helper.runTestJob,
@@ -129,16 +128,12 @@ func (h *helper) initTestContext() error {
 		E2ENamespace:        h.testRunName,
 		E2EServiceAccount:   h.testRunName,
 		ElasticStackVersion: h.elasticStackVersion,
-		GlobalOperator: test.ClusterResource{
-			Name:      fmt.Sprintf("%s-global-operator", h.testRunName),
-			Namespace: fmt.Sprintf("%s-elastic-system", h.testRunName),
-		},
-		Local:        h.local,
-		LogVerbosity: h.logVerbosity,
-		NamespaceOperator: test.NamespaceOperator{
+		Local:               h.local,
+		LogVerbosity:        h.logVerbosity,
+		Operator: test.NamespaceOperator{
 			ClusterResource: test.ClusterResource{
-				Name:      fmt.Sprintf("%s-ns-operator", h.testRunName),
-				Namespace: fmt.Sprintf("%s-ns-operators", h.testRunName),
+				Name:      fmt.Sprintf("%s-operator", h.testRunName),
+				Namespace: fmt.Sprintf("%s-elastic-system", h.testRunName),
 			},
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 		},
@@ -152,7 +147,7 @@ func (h *helper) initTestContext() error {
 	}
 
 	for i, ns := range h.managedNamespaces {
-		h.testContext.NamespaceOperator.ManagedNamespaces[i] = fmt.Sprintf("%s-%s", h.testRunName, ns)
+		h.testContext.Operator.ManagedNamespaces[i] = fmt.Sprintf("%s-%s", h.testRunName, ns)
 	}
 
 	// write the test context if required
@@ -236,14 +231,9 @@ func (h *helper) createManagedNamespaces() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/managed_namespaces.yaml", h.testContext)
 }
 
-func (h *helper) deployGlobalOperator() error {
+func (h *helper) deployOperator() error {
 	log.Info("Deploying global operator")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/global_operator.yaml", h.testContext)
-}
-
-func (h *helper) deployNamespaceOperator() error {
-	log.Info("Deploying namespace operator")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/namespace_operator.yaml", h.testContext)
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator.yaml", h.testContext)
 }
 
 func (h *helper) deployFilebeat() error {
@@ -538,8 +528,8 @@ func (h *helper) dumpEventLog() {
 }
 
 func (h *helper) dumpK8sData() {
-	operatorNs := h.testContext.GlobalOperator.Namespace + "," + h.testContext.NamespaceOperator.Namespace
-	managedNs := strings.Join(h.testContext.NamespaceOperator.ManagedNamespaces, ",")
+	operatorNs := h.testContext.Operator.Namespace
+	managedNs := strings.Join(h.testContext.Operator.ManagedNamespaces, ",")
 	cmd := exec.Command("hack/eck-dump.sh", "-N", operatorNs, "-n", managedNs, "-o", h.testContext.TestRun, "-z")
 	err := cmd.Run()
 	if err != nil {
