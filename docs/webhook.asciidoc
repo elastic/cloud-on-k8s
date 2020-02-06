@@ -146,7 +146,7 @@ You may want to restrict webhook access to just the Kubernetes API server. Curre
 kubectl cluster-info | grep master
 ----
 
-Assuming that the API server IP address is `10.1.0.1`, the following policy restrticts webhook access to just the API server.
+Assuming that the API server IP address is `10.1.0.1`, the following policy restricts webhook access to just the API server.
 
 [source,yaml,subs="attributes"]
 ----
