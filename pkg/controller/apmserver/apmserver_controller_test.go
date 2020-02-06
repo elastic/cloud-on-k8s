@@ -175,7 +175,7 @@ func expectedDeploymentParams() testParams {
 							Handler: corev1.Handler{
 								Exec: &corev1.ExecAction{
 									Command: []string{"bash", "-c",
-										`curl -o /dev/null -w "%{http_code}" https://127.0.0.1:8200/ -k -s`,
+										`curl -o /dev/null -w "%{http_code}" HTTPS://127.0.0.1:8200/ -k -s`,
 									},
 								},
 							},

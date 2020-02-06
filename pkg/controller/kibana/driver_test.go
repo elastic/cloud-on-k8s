@@ -251,7 +251,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				params := expectedDeploymentParams()
 				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:3]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:3]
-				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.Exec.Command[2] = `curl -o /dev/null -w "%{http_code}" http://127.0.0.1:5601/login -k -s`
+				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.Exec.Command[2] = `curl -o /dev/null -w "%{http_code}" HTTP://127.0.0.1:5601/login -k -s`
 				params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
 				return params
 			}(),
@@ -524,7 +524,7 @@ func expectedDeploymentParams() deployment.Params {
 						Handler: corev1.Handler{
 							Exec: &corev1.ExecAction{
 								Command: []string{"bash", "-c",
-									`curl -o /dev/null -w "%{http_code}" https://127.0.0.1:5601/login -k -s`,
+									`curl -o /dev/null -w "%{http_code}" HTTPS://127.0.0.1:5601/login -k -s`,
 								},
 							},
 						},

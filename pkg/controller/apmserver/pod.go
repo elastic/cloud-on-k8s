@@ -49,7 +49,6 @@ func readinessProbe(tls bool) corev1.Probe {
 	if tls {
 		scheme = corev1.URISchemeHTTPS
 	}
-	protocol := strings.ToLower(fmt.Sprintf("%s", scheme))
 	return corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 10,
@@ -59,7 +58,7 @@ func readinessProbe(tls bool) corev1.Probe {
 		Handler: corev1.Handler{
 			Exec: &corev1.ExecAction{
 				Command: []string{"bash", "-c",
-					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/ -k -s`, protocol, HTTPPort),
+					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/ -k -s`, scheme, HTTPPort),
 				},
 			},
 		},
