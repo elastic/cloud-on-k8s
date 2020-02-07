@@ -194,7 +194,7 @@ deploy: check-gke install-crds build-operator-image apply-namespaced-operator
 apply-namespaced-operator:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
 	NAMESPACE=$(OPERATOR_NAMESPACE) \
-	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
+	MANAGED_NAMESPACES=$(MANAGED_NAMESPACES) \
 		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
 
 apply-psp:
@@ -234,7 +234,7 @@ cluster-bootstrap: install-crds
 
 clean-k8s-cluster:
 	kubectl delete --ignore-not-found=true  ValidatingWebhookConfiguration validating-webhook-configuration
-	for ns in $(OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
+	for ns in $(OPERATOR_NAMESPACE) $(MANAGED_NAMESPACES); do \
 		echo "Deleting resources in $$ns"; \
 		kubectl delete statefulsets -n $$ns --all; \
 		kubectl delete deployments -n $$ns --all; \

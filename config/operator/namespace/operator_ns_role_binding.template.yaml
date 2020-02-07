@@ -10,5 +10,5 @@ roleRef:
   name: elastic-operator
 subjects:
 - kind: ServiceAccount
-  name: elastic-namespace-operator
+  name: <OPERATOR_NAME>
   namespace: <NAMESPACE>

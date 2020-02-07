@@ -3,15 +3,15 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: elastic-namespace-operator
+  name: <OPERATOR_NAME>
   namespace: <NAMESPACE>
   labels:
-    control-plane: elastic-namespace-operator
+    control-plane: <OPERATOR_NAME>
 spec:
   selector:
     matchLabels:
-      control-plane: elastic-namespace-operator
-  serviceName: elastic-namespace-operator
+      control-plane: <OPERATOR_NAME>
+  serviceName: <OPERATOR_NAME>
   template:
     metadata:
       annotations:
@@ -19,9 +19,9 @@ spec:
         # This is to avoid a conflict with the ECS "error" and "source" documents.
         "co.elastic.logs/raw": "[{\"type\":\"container\",\"json.keys_under_root\":true,\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
       labels:
-        control-plane: elastic-namespace-operator
+        control-plane: <OPERATOR_NAME>
     spec:
-      serviceAccountName: elastic-namespace-operator
+      serviceAccountName: <OPERATOR_NAME>
       containers:
       - image: <OPERATOR_IMAGE>
         name: manager
