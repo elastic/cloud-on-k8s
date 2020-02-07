@@ -55,30 +55,9 @@ import (
 )
 
 const (
-	MetricsPortFlag   = "metrics-port"
-	DefaultMetricPort = 0 // disabled
-
-	AutoPortForwardFlagName = "auto-port-forward"
-	NamespacesFlag          = "namespaces"
-
-	CACertValidityFlag     = "ca-cert-validity"
-	CACertRotateBeforeFlag = "ca-cert-rotate-before"
-	CertValidityFlag       = "cert-validity"
-	CertRotateBeforeFlag   = "cert-rotate-before"
-
-	EnforceRbacOnRefs = "enforce-rbac-on-refs"
-
-	OperatorNamespaceFlag = "operator-namespace"
-
-	ManageWebhookCertsFlag   = "manage-webhook-certs"
-	WebhookSecretFlag        = "webhook-secret"
-	WebhookCertDirFlag       = "webhook-cert-dir"
+	DefaultMetricPort        = 0 // disabled
 	WebhookConfigurationName = "elastic-webhook.k8s.elastic.co"
 	WebhookPort              = 9443
-
-	DebugHTTPServerListenAddressFlag = "debug-http-listen"
-
-	EnableTracingFlag = "enable-tracing"
 )
 
 var (
@@ -97,83 +76,82 @@ var (
 )
 
 func init() {
-
-	Cmd.Flags().StringSlice(
-		NamespacesFlag,
-		nil,
-		"comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
-	)
 	Cmd.Flags().Bool(
-		AutoPortForwardFlagName,
+		operator.AutoPortForwardFlag,
 		false,
 		"enables automatic port-forwarding "+
 			"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
 	)
-	Cmd.Flags().Int(
-		MetricsPortFlag,
-		DefaultMetricPort,
-		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
-	)
-	Cmd.Flags().StringSlice(
-		operator.RoleFlag,
-		[]string{operator.All},
-		"Roles this operator should assume (either namespace, global, webhook or all)",
-	)
 	Cmd.Flags().Duration(
-		CACertValidityFlag,
-		certificates.DefaultCertValidity,
-		"Duration representing how long before a newly created CA cert expires",
-	)
-	Cmd.Flags().Duration(
-		CACertRotateBeforeFlag,
+		operator.CACertRotateBeforeFlag,
 		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration CA certificates should be reissued",
 	)
 	Cmd.Flags().Duration(
-		CertValidityFlag,
+		operator.CACertValidityFlag,
 		certificates.DefaultCertValidity,
-		"Duration representing how long before a newly created TLS certificate expires",
+		"Duration representing how long before a newly created CA cert expires",
 	)
 	Cmd.Flags().Duration(
-		CertRotateBeforeFlag,
+		operator.CertRotateBeforeFlag,
 		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration TLS certificates should be reissued",
 	)
-	Cmd.Flags().Bool(
-		ManageWebhookCertsFlag,
-		true,
-		"Enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
+	Cmd.Flags().Duration(
+		operator.CertValidityFlag,
+		certificates.DefaultCertValidity,
+		"Duration representing how long before a newly created TLS certificate expires",
 	)
 	Cmd.Flags().String(
-		OperatorNamespaceFlag,
-		"",
-		"K8s namespace the operator runs in",
+		operator.DebugHTTPListenFlag,
+		"localhost:6060",
+		"Listen address for debug HTTP server (only available in development mode)",
 	)
 	Cmd.Flags().Bool(
-		EnforceRbacOnRefs,
+		operator.EnforceRBACOnRefsFlag,
 		false, // Set to false for backward compatibility
 		"Restrict cross-namespace resource association through RBAC (eg. referencing Elasticsearch from Kibana)",
 	)
-	Cmd.Flags().String(
-		WebhookSecretFlag,
-		"",
-		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", WebhookCertDirFlag),
+	Cmd.Flags().Bool(
+		operator.EnableTracingFlag,
+		false,
+		"Enable APM tracing in the operator. Endpoint, token etc are to be configured via environment variables. See https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html")
+	Cmd.Flags().Bool(
+		operator.ManageWebhookCertsFlag,
+		true,
+		"Enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
+	)
+	Cmd.Flags().Int(
+		operator.MetricsPortFlag,
+		DefaultMetricPort,
+		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
+	)
+	Cmd.Flags().StringSlice(
+		operator.NamespacesFlag,
+		nil,
+		"comma-separated list of namespaces in which this operator should manage resources (defaults to all namespaces)",
 	)
 	Cmd.Flags().String(
-		WebhookCertDirFlag,
+		operator.OperatorNamespaceFlag,
+		"",
+		"K8s namespace the operator runs in",
+	)
+	Cmd.Flags().StringSlice(
+		operator.OperatorRolesFlag,
+		[]string{operator.All},
+		"Roles this operator should assume (either namespace, global, webhook or all)",
+	)
+	Cmd.Flags().String(
+		operator.WebhookCertDirFlag,
 		// this is controller-runtime's own default, copied here for making the default explicit when using `--help`
 		filepath.Join(os.TempDir(), "k8s-webhook-server", "serving-certs"),
 		"Path to the directory that contains the webhook server key and certificate",
 	)
 	Cmd.Flags().String(
-		DebugHTTPServerListenAddressFlag,
-		"localhost:6060",
-		"Listen address for debug HTTP server (only available in development mode)",
+		operator.WebhookSecretFlag,
+		"",
+		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
 	)
-	Cmd.Flags().Bool(
-		EnableTracingFlag,
-		false,
-		"Enable APM tracing in the operator. Endpoint, token etc are to be configured via environment variables. See https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html")
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -197,7 +175,7 @@ func execute() {
 		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 		pprofServer := http.Server{
-			Addr:    viper.GetString(DebugHTTPServerListenAddressFlag),
+			Addr:    viper.GetString(operator.DebugHTTPListenFlag),
 			Handler: mux,
 		}
 		log.Info("Starting debug HTTP server", "addr", pprofServer.Addr)
@@ -209,19 +187,19 @@ func execute() {
 	}
 
 	var dialer net.Dialer
-	autoPortForward := viper.GetBool(AutoPortForwardFlagName)
+	autoPortForward := viper.GetBool(operator.AutoPortForwardFlag)
 	if !dev.Enabled && autoPortForward {
 		panic(fmt.Sprintf(
-			"Enabling %s without enabling development mode not allowed", AutoPortForwardFlagName,
+			"Enabling %s without enabling development mode not allowed", operator.AutoPortForwardFlag,
 		))
 	} else if autoPortForward {
 		log.Info("Warning: auto-port-forwarding is enabled, which is intended for development only")
 		dialer = portforward.NewForwardingDialer()
 	}
 
-	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
+	operatorNamespace := viper.GetString(operator.OperatorNamespaceFlag)
 	if operatorNamespace == "" {
-		log.Error(fmt.Errorf("%s is a required flag", OperatorNamespaceFlag),
+		log.Error(fmt.Errorf("%s is a required flag", operator.OperatorNamespaceFlag),
 			"required configuration missing")
 		os.Exit(1)
 	}
@@ -245,11 +223,11 @@ func execute() {
 	log.Info("Setting up manager")
 	opts := ctrl.Options{
 		Scheme:  clientgoscheme.Scheme,
-		CertDir: viper.GetString(WebhookCertDirFlag),
+		CertDir: viper.GetString(operator.WebhookCertDirFlag),
 	}
 
 	// configure the manager cache based on the number of managed namespaces
-	managedNamespaces := viper.GetStringSlice(NamespacesFlag)
+	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
 	switch len(managedNamespaces) {
 	case 0:
 		log.Info("Operator configured to manage all namespaces")
@@ -262,7 +240,7 @@ func execute() {
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
-	metricsPort := viper.GetInt(MetricsPortFlag)
+	metricsPort := viper.GetInt(operator.MetricsPortFlag)
 	if metricsPort != 0 {
 		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
 	}
@@ -276,11 +254,11 @@ func execute() {
 	}
 
 	// Verify cert validity options
-	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(CACertValidityFlag, CACertRotateBeforeFlag)
-	certValidity, certRotateBefore := ValidateCertExpirationFlags(CertValidityFlag, CertRotateBeforeFlag)
+	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(operator.CACertValidityFlag, operator.CACertRotateBeforeFlag)
+	certValidity, certRotateBefore := ValidateCertExpirationFlags(operator.CertValidityFlag, operator.CertRotateBeforeFlag)
 
 	// Setup all Controllers
-	roles := viper.GetStringSlice(operator.RoleFlag)
+	roles := viper.GetStringSlice(operator.OperatorRolesFlag)
 	err = operator.ValidateRoles(roles)
 	if err != nil {
 		log.Error(err, "invalid roles specified")
@@ -301,7 +279,7 @@ func execute() {
 	}
 	log.Info("Setting up controllers", "roles", roles)
 	var tracer *apm.Tracer
-	if viper.GetBool(EnableTracingFlag) {
+	if viper.GetBool(operator.EnableTracingFlag) {
 		tracer = tracing.NewTracer("elastic-operator")
 	}
 	params := operator.Parameters{
@@ -323,7 +301,7 @@ func execute() {
 		setupWebhook(mgr, params.CertRotation, clientset)
 	}
 
-	enforceRbacOnRefs := viper.GetBool(EnforceRbacOnRefs)
+	enforceRbacOnRefs := viper.GetBool(operator.EnforceRBACOnRefsFlag)
 
 	var accessReviewer rbac.AccessReviewer
 	if enforceRbacOnRefs {
@@ -411,13 +389,13 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 }
 
 func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
-	manageWebhookCerts := viper.GetBool(ManageWebhookCertsFlag)
+	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
 		// Ensure that all the certificates needed by the webhook server are already created
 		webhookParams := webhook.Params{
-			Namespace:                viper.GetString(OperatorNamespaceFlag),
-			SecretName:               viper.GetString(WebhookSecretFlag),
+			Namespace:                viper.GetString(operator.OperatorNamespaceFlag),
+			SecretName:               viper.GetString(operator.WebhookSecretFlag),
 			WebhookConfigurationName: WebhookConfigurationName,
 			Rotation:                 certRotation,
 		}
