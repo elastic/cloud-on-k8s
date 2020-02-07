@@ -50,8 +50,8 @@ check_oneof() {
 }
 
 check_go_version() {
-    local major=$(go version | sed -r "s|.* go([1-9]).[0-9]*[0-9.]* .*|\1|")
-    local minor=$(go version | sed -r "s|.* go[1-9].([0-9]*)[0-9.]* .*|\1|")
+    local major=$(go version | sed -E "s|.* go([1-9]).[0-9]*[0-9.]* .*|\1|")
+    local minor=$(go version | sed -E "s|.* go[1-9].([0-9]*)[0-9.]* .*|\1|")
 
     printf "Checking for go >= 1.$MIN_GO_VERSION... "
     if [[ "$major" -gt 1 ]] || [[ "$minor" -ge $MIN_GO_VERSION ]]; then
@@ -64,8 +64,8 @@ check_go_version() {
 }
 
 check_kubectl_version() {
-    local major=$(kubectl --client=true version | grep -Eo 'Major:"[0-9]*' | grep -o '[0-9]*')
-    local minor=$(kubectl --client=true version | grep -Eo 'Minor:"[0-9]*' | grep -o '[0-9]*')
+    local major=$(kubectl --client=true version | grep -Eo 'Major:"[0-9]*' | grep -Eo '[0-9]*')
+    local minor=$(kubectl --client=true version | grep -Eo 'Minor:"[0-9]*' | grep -Eo '[0-9]*')
 
     printf "Checking for kubectl >= 1.$MIN_KUBECTL_VERSION... "
     if [[ "$major" -gt 1 ]] || [[ "$minor" -ge $MIN_KUBECTL_VERSION ]]; then
