@@ -14,8 +14,9 @@ endif
 ifndef OPERATOR_IMAGE
 $(error OPERATOR_IMAGE not set)
 endif
-
-OPERATOR_NAME ?= elastic-operator
+ifndef OPERATOR_NAME
+$(error OPERATOR_NAME not set)
+endif
 
 generate-all-in-one:
 	@ for yaml in $$(LC_COLLATE=C ls all-in-one/*yaml); do \
@@ -24,6 +25,7 @@ generate-all-in-one:
 	sed \
 		-e "/# /d" \
 		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
+		-e "s|<OPERATOR_NAME>|$$OPERATOR_NAME|g" \
 		-e "s|<NAMESPACE>|$$NAMESPACE|g"
 
 generate-namespace:

@@ -68,6 +68,8 @@ SKIP_DOCKER_COMMAND ?= false
 
 # namespace in which the operator is deployed (see config/global-operator)
 OPERATOR_NAMESPACE ?= elastic-system
+# name of the operator statefulset and related resources
+OPERATOR_NAME ?= elastic-operator
 # comma separated list of namespaces in which the operator should watch resources
 MANAGED_NAMESPACES ?=
 
@@ -193,6 +195,7 @@ deploy: check-gke install-crds build-operator-image apply-namespaced-operator
 
 apply-namespaced-operator:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	OPERATOR_NAME=$(OPERATOR_NAME) \
 	NAMESPACE=$(OPERATOR_NAMESPACE) \
 	MANAGED_NAMESPACES=$(MANAGED_NAMESPACES) \
 		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
@@ -206,6 +209,7 @@ ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 generate-all-in-one:
 	cp -f $(ALL_CRDS) $(ALL_IN_ONE_OUTPUT_FILE)
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+		OPERATOR_NAME=$(OPERATOR_NAME) \
 		NAMESPACE=$(OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $(ALL_IN_ONE_OUTPUT_FILE)
 
@@ -215,7 +219,7 @@ deploy-all-in-one: docker-build docker-push
 	kubectl apply -f $(ALL_IN_ONE_OUTPUT_FILE)
 
 logs-operator:
-	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-operator
+	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/$(OPERATOR_NAME)
 
 samples:
 	@ echo "-> Pushing samples to Kubernetes cluster..."
