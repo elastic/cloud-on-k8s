@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
@@ -31,6 +32,11 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
 	transportCertificatesVolume := transportCertificatesVolume(esName)
+	remoteCertificateAuthoritiesVolume := volume.NewSecretVolumeWithMountPath(
+		remoteca.SecretName(esName),
+		esvolume.RemoteCertificateAuthoritiesSecretVolumeName,
+		esvolume.RemoteCertificateAuthoritiesSecretVolumeMountPath,
+	)
 	unicastHostsVolume := volume.NewConfigMapVolume(
 		esv1.UnicastHostsConfigMap(esName), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 	)
@@ -68,6 +74,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 			unicastHostsVolume.Volume(),
 			probeSecret.Volume(),
 			transportCertificatesVolume.Volume(),
+			remoteCertificateAuthoritiesVolume.Volume(),
 			httpCertificatesVolume.Volume(),
 			scriptsVolume.Volume(),
 			configVolume.Volume(),
@@ -85,6 +92,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		unicastHostsVolume.VolumeMount(),
 		probeSecret.VolumeMount(),
 		transportCertificatesVolume.VolumeMount(),
+		remoteCertificateAuthoritiesVolume.VolumeMount(),
 		httpCertificatesVolume.VolumeMount(),
 		scriptsVolume.VolumeMount(),
 		configVolume.VolumeMount(),

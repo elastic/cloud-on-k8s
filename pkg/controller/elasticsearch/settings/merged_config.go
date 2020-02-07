@@ -94,6 +94,7 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, certResources
 		),
 		esv1.XPackSecurityTransportSslCertificateAuthorities: []string{
 			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
+			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
 		},
 	}
 

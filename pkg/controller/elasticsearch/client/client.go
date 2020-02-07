@@ -87,6 +87,8 @@ type Client interface {
 	GetNodesStats(ctx context.Context) (NodesStats, error)
 	// ClusterBootstrappedForZen2 returns true if the cluster is relying on zen2 orchestration.
 	ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
+	// UpdateSettings updates the settings of a cluster.
+	UpdateSettings(ctx context.Context, settings Settings) error
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	//
 	// If timeout is the empty string, the default is used.

@@ -18,6 +18,7 @@ const (
 	configSecretSuffix                = "config"
 	secureSettingsSecretSuffix        = "secure-settings"
 	httpServiceSuffix                 = "http"
+	transportServiceSuffix            = "transport"
 	elasticUserSecretSuffix           = "elastic-user"
 	xpackFileRealmSecretSuffix        = "xpack-file-realm"
 	internalUsersSecretSuffix         = "internal-users"
@@ -100,6 +101,10 @@ func SecureSettingsSecret(esName string) string {
 
 func TransportCertificatesSecret(esName string) string {
 	return ESNamer.Suffix(esName, transportCertificatesSecretSuffix)
+}
+
+func TransportService(esName string) string {
+	return ESNamer.Suffix(esName, transportServiceSuffix)
 }
 
 func HTTPService(esName string) string {

@@ -6859,6 +6859,32 @@ spec:
                         type: object
                     type: object
                 type: object
+              remoteClusters:
+                description: RemoteClusters allow specifying some remote clusters.
+                  It makes it easy to establish a trusted and secured association
+                  with them. It can be used for Cross Cluster Replication or Cross
+                  Cluster Replication.
+                properties:
+                  k8sLocal:
+                    items:
+                      properties:
+                        elasticsearchRef:
+                          description: ElasticsearchRef is a reference to an Elasticsearch
+                            cluster running in the same Kubernetes cluster.
+                          properties:
+                            name:
+                              description: Name of the Kubernetes object.
+                              type: string
+                            namespace:
+                              description: Namespace of the Kubernetes object. If
+                                empty, defaults to the current namespace.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                      type: object
+                    type: array
+                type: object
               secureSettings:
                 description: 'SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Elasticsearch.

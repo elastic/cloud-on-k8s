@@ -41,6 +41,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
@@ -351,6 +352,11 @@ func execute() {
 		}
 		if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
 			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+			os.Exit(1)
+		}
+
+		if err = remoteca.Add(mgr, accessReviewer, params); err != nil {
+			log.Error(err, "unable to create controller", "controller", "RemoteCA")
 			os.Exit(1)
 		}
 

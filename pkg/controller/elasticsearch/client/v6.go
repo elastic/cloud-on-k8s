@@ -84,6 +84,10 @@ func (c *clientV6) GetNodesStats(ctx context.Context) (NodesStats, error) {
 	return nodesStats, c.get(ctx, "/_nodes/_all/stats/os", &nodesStats)
 }
 
+func (c *clientV6) UpdateSettings(ctx context.Context, settings Settings) error {
+	return c.put(ctx, "/_cluster/settings", &settings, nil)
+}
+
 func (c *clientV6) GetLicense(ctx context.Context) (License, error) {
 	var license LicenseResponse
 	return license.License, c.get(ctx, "/_xpack/license", &license)
