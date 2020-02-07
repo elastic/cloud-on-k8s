@@ -11,6 +11,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -20,7 +21,9 @@ func NoUnknownFields(dest interface{}, meta metav1.ObjectMeta) field.ErrorList {
 	if cfg, ok := meta.Annotations[v1.LastAppliedConfigAnnotation]; ok {
 		d := json.NewDecoder(strings.NewReader(cfg))
 		d.DisallowUnknownFields()
-		if err := d.Decode(&dest); err != nil {
+		// copy the resource to be validated to avoid mutation if the object in the annotation is different
+		destCopy := dest.(runtime.Object).DeepCopyObject()
+		if err := d.Decode(destCopy); err != nil {
 			errString := err.Error()
 			unknownPrefix := "json: unknown field "
 			if strings.HasPrefix(errString, unknownPrefix) {
