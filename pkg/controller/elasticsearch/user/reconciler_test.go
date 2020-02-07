@@ -56,13 +56,13 @@ func Test_aggregateAllUsers(t *testing.T) {
 				},
 			},
 			assertions: func(users []user.User) {
-				assert.Equal(t, len(users), 5)
+				assert.Equal(t, len(users), 4)
 				containsAllNames(
 					t,
 					[]string{
 						"kibana-user",
 						ExternalUserName,
-						InternalControllerUserName, InternalProbeUserName, InternalKeystoreUserName,
+						InternalControllerUserName, InternalProbeUserName,
 					},
 					users,
 				)
