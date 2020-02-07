@@ -1,0 +1,18 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.0.1]]
+== {n} version 1.0.1
+
+[[enhancement-1.0.1]]
+[float]
+=== Enhancements
+
+* Increase memory of prepare-fs init container to 50MB {pull}2492[#2492] (issue: {issue}2306[#2306])
+* Add log for cert timeout {pull}2477[#2477]
+
+[[bug-1.0.1]]
+[float]
+=== Bug fixes
+
+* Fix License model in Elasticsearch client for 7.6 {pull}2441[#2441]
