@@ -74,7 +74,7 @@ func setLogger(v *int) {
 		encoderConf.MessageKey = "message"
 		encoderConf.TimeKey = "@timestamp"
 		encoderConf.LevelKey = "log.level"
-		encoderConf.NameKey = "log.logger"
+		encoderConf.NameKey = "event.dataset"
 		encoderConf.StacktraceKey = "error.stack_trace"
 		encoderConf.EncodeTime = zapcore.ISO8601TimeEncoder
 		encoder = zapcore.NewJSONEncoder(encoderConf)
