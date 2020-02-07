@@ -20,7 +20,7 @@ check() {
     local exec_name="$@"
     printf "Checking for $exec_name... "
     if ! command -v $exec_name >/dev/null 2>&1; then
-        printf "${red}missing${reset}"
+        printf "${red}not found${reset}"
         all_found=false
     else
         printf "${green}found${reset}"
@@ -35,7 +35,7 @@ check_oneof() {
     do
         printf "Checking for (optional) $exec_name... "
         if ! command -v $exec_name >/dev/null 2>&1; then
-            printf "${red}missing${reset}"
+            printf "${red}not found${reset}"
         else
             printf "${green}found${reset}"
             found_one=true
@@ -87,7 +87,7 @@ check_kubectl_version
 
 echo
 if [[ "$all_found" != "true" ]]; then
-    printf "${red}Error${reset}: requirements could not be met.\n" >&2
+    printf "${red}Error${reset}: some requirements not satified.\n" >&2
     exit 1
 else
     printf "${green}OK${reset}: all requirements met.\n"
