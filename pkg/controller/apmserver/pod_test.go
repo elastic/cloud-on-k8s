@@ -10,6 +10,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +66,7 @@ func TestNewPodSpec(t *testing.T) {
 					Containers: []corev1.Container{
 						{
 							Name:  apmv1.ApmServerContainerName,
-							Image: imageWithVersion(defaultImageRepositoryAndName, "7.0.1"),
+							Image: container.ImageRepository(container.APMServerImage, "7.0.1"),
 							Env: []corev1.EnvVar{
 								{
 									Name: settings.EnvPodIP,

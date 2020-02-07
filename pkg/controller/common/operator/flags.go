@@ -10,6 +10,7 @@ const (
 	CACertValidityFlag     = "ca-cert-validity"
 	CertRotateBeforeFlag   = "cert-rotate-before"
 	CertValidityFlag       = "cert-validity"
+	ContainerRegistryFlag  = "container-registry"
 	DebugHTTPListenFlag    = "debug-http-listen"
 	EnableTracingFlag      = "enable-tracing"
 	EnforceRBACOnRefsFlag  = "enforce-rbac-on-refs"

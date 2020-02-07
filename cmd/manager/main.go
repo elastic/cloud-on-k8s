@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -101,6 +102,11 @@ func init() {
 		operator.CertValidityFlag,
 		certificates.DefaultCertValidity,
 		"Duration representing how long before a newly created TLS certificate expires",
+	)
+	Cmd.Flags().String(
+		operator.ContainerRegistryFlag,
+		container.DefaultContainerRegistry,
+		"Container registry to use when downloading Elastic stack container images",
 	)
 	Cmd.Flags().String(
 		operator.DebugHTTPListenFlag,
@@ -203,6 +209,11 @@ func execute() {
 			"required configuration missing")
 		os.Exit(1)
 	}
+
+	// set the default container registry
+	containerRegistry := viper.GetString(operator.ContainerRegistryFlag)
+	log.Info("Setting default container registry", "registry", containerRegistry)
+	container.SetContainerRegistry(containerRegistry)
 
 	// Get a config to talk to the apiserver
 	log.Info("Setting up client for manager")
