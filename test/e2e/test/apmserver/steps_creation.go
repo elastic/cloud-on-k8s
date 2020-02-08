@@ -8,15 +8,14 @@ import (
 	"fmt"
 	"testing"
 
-	secv1client "github.com/openshift/client-go/security/clientset/versioned/typed/security/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
@@ -31,6 +30,9 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			},
 		},
 		{
+			// The APM Server docker image can't run with a random user id, this step adds the SA to the anyuid SCC
+			// For more context see https://github.com/elastic/beats/issues/12686
+			// TODO: Must be removed when APM Server docker image is fixed
 			Name: "Add apm-server service account to anyuid (OpenShift Only)",
 			Test: func(t *testing.T) {
 				if !test.Ctx().OcpCluster {
@@ -39,16 +41,26 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 
 				cfg, err := config.GetConfig()
 				require.NoError(t, err)
-
-				secClient := secv1client.NewForConfigOrDie(cfg)
+				k8sClient, err := kubernetes.NewForConfig(cfg)
 				require.NoError(t, err)
 
-				scc, err := secClient.SecurityContextConstraints().Get("anyuid", metav1.GetOptions{})
-				require.NoError(t, err)
+				// Build the user from the service account
+				user := fmt.Sprintf(`"system:serviceaccount:%s:%s"`, b.ServiceAccount.Namespace, b.ServiceAccount.Name)
 
-				scc.Users = append(scc.Users, fmt.Sprintf("system:serviceaccount:%s:%s", b.ServiceAccount.GetNamespace(), b.ServiceAccount.GetName()))
-				_, err = secClient.SecurityContextConstraints().Update(scc)
-				require.NoError(t, err)
+				// The patch below adds the service account user in the 'users' fields of a SCC
+				patch := []byte(`{ "users": [` + user + `]}`)
+
+				// We want to patch the anyuid SCC. In term of url it means that we need to send a patch request to:
+				// https://<Openshift URL>/apis/security.openshift.io/v1/securitycontextconstraints/anyuid
+				patchClient := k8sClient.RESTClient().
+					Patch(types.MergePatchType).
+					Prefix("apis", "security.openshift.io", "v1").
+					Resource("securitycontextconstraints").
+					Name("anyuid").
+					Body(patch)
+
+				result := patchClient.Do()
+				require.NoError(t, result.Error())
 			},
 		},
 		{
