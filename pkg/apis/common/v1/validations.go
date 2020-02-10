@@ -21,7 +21,7 @@ func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorLis
 	if cfg, ok := meta.Annotations[v1.LastAppliedConfigAnnotation]; ok {
 		d := json.NewDecoder(strings.NewReader(cfg))
 		d.DisallowUnknownFields()
-		// copy the resource to be validated to avoid mutation if the object in the annotation is different
+		// decode in a copy of the resource to be validated to avoid mutation if the object in the annotation is different
 		if err := d.Decode(dest.DeepCopyObject()); err != nil {
 			errString := err.Error()
 			unknownPrefix := "json: unknown field "
