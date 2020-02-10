@@ -26,31 +26,17 @@ export VAULT_ADDR=YOUR_VAULT_INSTANCE_ADDRESS
 export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 ``` 
 
-Per repro, depending on the job, set up .env and deployer-config.yml files by using [setenvconfig](setenvconfig) invocation from the respective Jenkinsfile. For example:
+Per repro, depending on the job, set up `.env` and `deployer-config.yml` files by using [setenvconfig](setenvconfig) invocation from the respective Jenkinsfile. For example:
 
-```
-cat >.env <<EOF
-GCLOUD_PROJECT = "$GCLOUD_PROJECT"
-REGISTRY = eu.gcr.io
-REPOSITORY = "$GCLOUD_PROJECT"
-SKIP_DOCKER_COMMAND = false
-IMG_SUFFIX = -ci
-EOF
+```sh
+# Test the cloud-on-k8s-e2e-tests-master job
+> .ci/setenvvonfig e2e/master
+> make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET=ci-build-operator-e2e-run ci
 
-cat >deployer-config.yml <<EOF
-id: gke-ci
-overrides:
-  kubernetesVersion: "1.13"
-  clusterName: $BUILD_TAG
-  vaultInfo:
-    address:  $VAULT_ADDR
-    roleId:   $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-
-make -C .ci TARGET=ci-e2e ci
+# Test the cloud-on-k8s-e2e-tests-stack-versions
+> JKS_PARAM_OPERATOR_IMAGE=docker.elastic.co/eck-snapshots/eck-operator:1.0.1-SNAPSHOT-2020-02-05-7892889 \
+	.ci/setenvconfig e2e/stack-versions eck-75-dev-e2e 7.5.1
+> make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci
 ```
 
 The CI Makefile will take care of setting up correct credentials in the `deployer-config.yml` file.
