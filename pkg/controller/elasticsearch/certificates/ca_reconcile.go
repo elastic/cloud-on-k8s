@@ -77,7 +77,7 @@ func Reconcile(
 		es.Spec.HTTP.TLS,
 		labels,
 		services,
-		caRotation,
+		certRotation,
 	)
 	if err != nil {
 		return nil, results.WithError(err)

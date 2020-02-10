@@ -266,7 +266,9 @@ func execute() {
 
 	// Verify cert validity options
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(operator.CACertValidityFlag, operator.CACertRotateBeforeFlag)
+	log.V(1).Info("Using certificate authority rotation parameters", operator.CACertValidityFlag, caCertValidity, operator.CACertRotateBeforeFlag, caCertRotateBefore)
 	certValidity, certRotateBefore := ValidateCertExpirationFlags(operator.CertValidityFlag, operator.CertRotateBeforeFlag)
+	log.V(1).Info("Using certificate rotation parameters", operator.CertValidityFlag, certValidity, operator.CertRotateBeforeFlag, certRotateBefore)
 
 	// Setup all Controllers
 	roles := viper.GetStringSlice(operator.OperatorRolesFlag)
