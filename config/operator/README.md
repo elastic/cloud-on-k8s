@@ -1,6 +1,6 @@
 # Operator deployment resources
 
-The Elastic Operator can be deployed in 2 different modes. Either watching all namespaces or a subset of namepspaces with restricted RBAC permissions. Furthermore it is possible, even if not recommended, to deploy the operator into the same namespace as the workloads it is managing:
+The Elastic Operator can be deployed in 2 different modes. Either watching all namespaces or a subset of namespaces with restricted RBAC permissions. Furthermore it is possible to deploy the operator into the same namespace as the workloads it is managing:
 
 * `--operator-namespace`: namespace the operator runs in
 * `--namespaces`: comma-separated list of namespaces in which resources should be watched (defaults to all namespaces)
@@ -21,7 +21,7 @@ OPERATOR_IMAGE=<?> NAMESPACE=<?> make generate-all-in-one | kubectl apply -f -
 One or more operators managing resources in a given set of of namespaces.
 
 ```bash
-OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACES=<?> make generate-namespace | kubectl apply -f -
+OPERATOR_NAME=<?> OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACES=<?> make generate-namespace | kubectl apply -f -
 ```
 
 ## Role of each YAML file

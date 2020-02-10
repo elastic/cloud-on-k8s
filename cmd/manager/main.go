@@ -152,7 +152,7 @@ func init() {
 	Cmd.Flags().Bool(
 		EnableWebhookFlag,
 		false,
-		"Enables a validating webhook server in the operator process. ",
+		"Enables a validating webhook server in the operator process.",
 	)
 	Cmd.Flags().Bool(
 		EnforceRbacOnRefs,
