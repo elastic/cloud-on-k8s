@@ -22,7 +22,7 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    lib = load "build/ci/common/tests.groovy"
+                    lib = load ".ci/common/tests.groovy"
                 }
             }
         }
