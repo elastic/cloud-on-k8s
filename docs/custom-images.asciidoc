@@ -65,6 +65,7 @@ When creating Elasticsearch, Kibana, or APM Server resources, the operator defau
 
 The operator expects container images to be located at specific paths in the default container registry. Make sure that your container images are stored at the right path and are tagged correctly with the stack version number. For example, if your private registry is `my.registry` and you wish to deploy components from stack version {version}, the following image paths should exist:
 
-- `my.registry/elasticsearch/elasticsearch:pass:[{version}]`
-- `my.registry/kibana/kibana:pass:[{version}]`
-- `my.registry/apm/apm-server:pass:[{version}]`
+
+* +my.registry/elasticsearch/elasticsearch:{version}+
+* +my.registry/kibana/kibana:{version}+
+* +my.registry/apm/apm-server:{version}+
