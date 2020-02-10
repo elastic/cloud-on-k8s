@@ -232,7 +232,7 @@ func (h *helper) createManagedNamespaces() error {
 }
 
 func (h *helper) deployOperator() error {
-	log.Info("Deploying global operator")
+	log.Info("Deploying operator")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator.yaml", h.testContext)
 }
 
