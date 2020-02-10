@@ -16,13 +16,13 @@ import (
 )
 
 // NoUnknownFields checks whether the last applied config annotation contains json with unknown fields.
-func NoUnknownFields(dest interface{}, meta metav1.ObjectMeta) field.ErrorList {
+func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorList {
 	var errs field.ErrorList
 	if cfg, ok := meta.Annotations[v1.LastAppliedConfigAnnotation]; ok {
 		d := json.NewDecoder(strings.NewReader(cfg))
 		d.DisallowUnknownFields()
 		// copy the resource to be validated to avoid mutation if the object in the annotation is different
-		destCopy := dest.(runtime.Object).DeepCopyObject()
+		destCopy := dest.DeepCopyObject()
 		if err := d.Decode(destCopy); err != nil {
 			errString := err.Error()
 			unknownPrefix := "json: unknown field "
