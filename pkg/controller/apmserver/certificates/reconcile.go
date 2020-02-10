@@ -27,7 +27,8 @@ func Reconcile(
 	driver driver.Interface,
 	as *apmv1.ApmServer,
 	services []corev1.Service,
-	rotation certificates.RotationParams,
+	caRotation certificates.RotationParams,
+	certRotation certificates.RotationParams,
 ) *reconciler.Results {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
@@ -48,7 +49,7 @@ func Reconcile(
 		as,
 		labels,
 		certificates.HTTPCAType,
-		rotation,
+		caRotation,
 	)
 	if err != nil {
 		return results.WithError(err)
@@ -56,7 +57,7 @@ func Reconcile(
 
 	// handle CA expiry via requeue
 	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, rotation.RotateBefore),
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// discover and maybe reconcile for the http certificates to use
@@ -68,7 +69,7 @@ func Reconcile(
 		as.Spec.HTTP.TLS,
 		labels,
 		services,
-		rotation, // todo correct rotation
+		certRotation,
 	)
 	if err != nil {
 		return results.WithError(err)
