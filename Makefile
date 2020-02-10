@@ -355,10 +355,10 @@ E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
 
 # Run e2e tests as a k8s batch job
-# clean between operator build and e2e build to remove irrelevant/build-breaking generated public keys
-e2e: build-operator-image clean e2e-docker-build e2e-docker-push e2e-run
+e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
 
-e2e-docker-build:
+# clean to remove irrelevant/build-breaking generated public keys
+e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
@@ -487,7 +487,7 @@ kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE),$(E2E_IMG) \
 		--nodes 3 \
-		make clean e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
+		make e2e-run OPERATOR_IMAGE=$(OPERATOR_IMAGE)
 
 ## Cleanup
 delete-kind:

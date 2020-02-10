@@ -1,0 +1,6 @@
+[[release-highlights-1.0.1]]
+== 1.0.1 release highlights
+
+This release addresses an issue when using an Enterprise licence with the version 7.6 of the Elastic stack.
+
+For a more complete list of the bug fixes and enhancements included in this release, see <<release-notes-1.0.1>>

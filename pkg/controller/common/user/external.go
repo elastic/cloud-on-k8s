@@ -26,9 +26,9 @@ const (
 // ExternalUser represents a user that is not created or managed by Elasticsearch.
 // For example in the case of Kibana a user with the right role is provided by the Kibana association controller.
 type ExternalUser struct {
-	name     string
-	password []byte
-	roles    []string
+	name  string
+	hash  []byte
+	roles []string
 }
 
 // NewExternalUserFromSecret reads an external user from a secret.
@@ -44,8 +44,8 @@ func NewExternalUserFromSecret(secret v1.Secret) (ExternalUser, error) {
 		return user, pkgerrors.Errorf(fieldNotFound, UserName, secret.Namespace, secret.Name)
 	}
 
-	if password, ok := secret.Data[PasswordHash]; ok && len(password) > 0 {
-		user.password = password
+	if hash, ok := secret.Data[PasswordHash]; ok && len(hash) > 0 {
+		user.hash = hash
 	} else {
 		return user, pkgerrors.Errorf(fieldNotFound, PasswordHash, secret.Namespace, secret.Name)
 	}
@@ -62,14 +62,14 @@ func (u ExternalUser) Id() string {
 	return u.name
 }
 
-// PasswordHash is the password hash and returns it or error.
+// PasswordHash returns the password hash.
 func (u ExternalUser) PasswordHash() ([]byte, error) {
-	return u.password, nil
+	return u.hash, nil
 }
 
-// PasswordMatches compares the given hash with the password of this user.
+// PasswordMatches compares the user password hash with the given one.
 func (u *ExternalUser) PasswordMatches(hash []byte) bool {
-	return bytes.Equal(u.password, hash)
+	return bytes.Equal(u.hash, hash)
 }
 
 // Roles are any Elasticsearch roles associated with this user

@@ -9,6 +9,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/stretchr/testify/assert"
@@ -17,33 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func Test_imageWithVersion(t *testing.T) {
-	type args struct {
-		image   string
-		version string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			args: args{image: "someimage", version: "6.4.2"},
-			want: "someimage:6.4.2",
-		},
-		{
-			args: args{image: "differentimage", version: "6.4.1"},
-			want: "differentimage:6.4.1",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := imageWithVersion(tt.args.image, tt.args.version)
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
 
 func TestNewPodTemplateSpec(t *testing.T) {
 	tests := []struct {
@@ -68,7 +42,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				kibanaContainer := GetKibanaContainer(pod.Spec)
 				require.NotNil(t, kibanaContainer)
 				assert.Equal(t, 1, len(kibanaContainer.VolumeMounts))
-				assert.Equal(t, imageWithVersion(defaultImageRepositoryAndName, "7.1.0"), kibanaContainer.Image)
+				assert.Equal(t, container.ImageRepository(container.KibanaImage, "7.1.0"), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
 			},

@@ -16,7 +16,7 @@ data:
           hints.default_config:
             type: container
             paths:
-              - /var/lib/docker/containers/${data.kubernetes.container.id}/*.log
+              - /var/log/containers/*${data.kubernetes.container.id}.log
 
     processors:
       - add_cloud_metadata:
@@ -100,6 +100,12 @@ spec:
             - name: varlibdockercontainers
               mountPath: /var/lib/docker/containers
               readOnly: true
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: varlogcontainers
+              mountPath: /var/log/containers
+              readOnly: true
             - name: monitoring-ca
               mountPath: /mnt/elastic/monitoring-ca.crt
               readOnly: true
@@ -112,6 +118,12 @@ spec:
         - name: varlibdockercontainers
           hostPath:
             path: /var/lib/docker/containers
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
         # data folder stores a registry of read status for all files, so we don't send everything again on a Filebeat pod restart
         - name: data
           hostPath:

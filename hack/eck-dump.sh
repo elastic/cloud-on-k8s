@@ -97,6 +97,7 @@ main() {
     get_resources $ns configmaps
     get_resources $ns events
     get_resources $ns networkpolicies
+    get_resources $ns controllerrevisions
     get_logs $ns
   done
 
@@ -112,6 +113,7 @@ main() {
     get_resources $ns configmaps
     get_resources $ns events
     get_resources $ns networkpolicies
+    get_resources $ns controllerrevisions
     list_resources $ns secrets
     
     local types="kibana,elasticsearch,apmserver"

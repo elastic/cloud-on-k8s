@@ -5,7 +5,10 @@
 package pod
 
 import (
+	"fmt"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -14,16 +17,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
 	// HTTPPort is the (default) port used by Kibana
-	HTTPPort                             = 5601
-	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
+	HTTPPort = 5601
 )
 
 var (
@@ -56,17 +56,13 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
-				Path:   "/login",
-				Scheme: scheme,
+			Exec: &corev1.ExecAction{
+				Command: []string{"bash", "-c",
+					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/login -k -s`, scheme, HTTPPort),
+				},
 			},
 		},
 	}
-}
-
-func imageWithVersion(image string, version string) string {
-	return stringsutil.Concat(image, ":", version)
 }
 
 func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
@@ -77,7 +73,7 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.Pod
 		WithResources(DefaultResources).
 		WithLabels(labels).
 		WithAnnotations(DefaultAnnotations).
-		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
+		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
 		WithVolumes(volume.KibanaDataVolume.Volume()).
