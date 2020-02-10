@@ -106,7 +106,7 @@ func init() {
 	Cmd.Flags().String(
 		operator.ContainerRegistryFlag,
 		container.DefaultContainerRegistry,
-		"Container registry to use when downloading Elastic stack container images",
+		"Container registry to use when downloading Elastic Stack container images",
 	)
 	Cmd.Flags().String(
 		operator.DebugHTTPListenFlag,
