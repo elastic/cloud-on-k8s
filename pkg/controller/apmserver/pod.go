@@ -11,10 +11,10 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -22,8 +22,6 @@ import (
 const (
 	// HTTPPort is the (default) port used by ApmServer
 	HTTPPort = config.DefaultHTTPPort
-
-	defaultImageRepositoryAndName string = "docker.elastic.co/apm/apm-server"
 
 	SecretTokenKey string = "secret-token"
 
@@ -86,10 +84,6 @@ type PodSpecParams struct {
 	keystoreResources *keystore.Resources
 }
 
-func imageWithVersion(image string, version string) string {
-	return stringsutil.Concat(image, ":", version)
-}
-
 func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 	configSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ConfigSecret.Name,
@@ -112,7 +106,7 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 	builder := defaults.NewPodTemplateBuilder(
 		p.PodTemplate, apmv1.ApmServerContainerName).
 		WithResources(DefaultResources).
-		WithDockerImage(p.CustomImageName, imageWithVersion(defaultImageRepositoryAndName, p.Version)).
+		WithDockerImage(p.CustomImageName, container.ImageRepository(container.APMServerImage, p.Version)).
 		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
 		WithCommand(command).
