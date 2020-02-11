@@ -285,7 +285,6 @@ func (d *OcpDriver) uploadCredentials() error {
 func (d *OcpDriver) GetCredentials() error {
 	log.Printf("Getting credentials")
 	kubeConfig := filepath.Join(d.ctx["ClusterStateDir"].(string), "auth", "kubeconfig")
-	log.Printf("%s", kubeConfig)
 
 	copyKubeconfig := func() error {
 		if d.ctx["OverwriteDefaultKubeconfig"] == true {
@@ -304,8 +303,12 @@ func (d *OcpDriver) GetCredentials() error {
 	// The second time is further down in this function and it's
 	// done when the rsync succeeds
 	if _, err := os.Stat(kubeConfig); !os.IsNotExist(err) {
-		_ = copyKubeconfig()
-		log.Printf("kubeconfig file exits and it's been copied under ~/.kube")
+		err = copyKubeconfig()
+		if err != nil {
+			return err
+		}
+
+		log.Printf("OpenShift's kubeconfig file exits and it's been copied under ~/.kube")
 		return nil
 	}
 
