@@ -17,9 +17,10 @@ reset="\e[39m"
 all_found=true
 
 check() {
-    local exec_name="$@"
-    printf "Checking for $exec_name... "
-    if ! command -v $exec_name >/dev/null 2>&1; then
+    # local exec_name="$@"
+    local exec_name=$*
+    printf "Checking for %s..." "$exec_name"
+    if ! command -v "$exec_name" >/dev/null 2>&1; then
         printf "${red}not found${reset}"
         all_found=false
     else

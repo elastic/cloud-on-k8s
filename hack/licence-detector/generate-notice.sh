@@ -13,15 +13,15 @@ PROJECT_DIR=${SCRIPT_DIR}/../..
 
 build_licence_detector() {
     (
-        cd $SCRIPT_DIR
+        cd "$SCRIPT_DIR"
         go build -v github.com/elastic/cloud-on-k8s/hack/licence-detector
     )
 }
 
 generate_notice() {
     (
-        cd $PROJECT_DIR
-        go list -m -json all | ${SCRIPT_DIR}/licence-detector -template=${SCRIPT_DIR}/NOTICE.txt.tmpl -out=${PROJECT_DIR}/NOTICE.txt
+        cd "$PROJECT_DIR"
+        go list -m -json all | "${SCRIPT_DIR}"/licence-detector -template="${SCRIPT_DIR}"/NOTICE.txt.tmpl -out="${PROJECT_DIR}"/NOTICE.txt
     )
 }
 

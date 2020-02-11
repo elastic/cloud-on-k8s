@@ -9,7 +9,7 @@
 set -eou pipefail
 
 # ECK CI tooling image
-docker pull $(make -C build/ci --no-print-directory show-image)
+docker pull "$(make -C build/ci --no-print-directory show-image)"
 
 # Kind images (https://hub.docker.com/r/kindest/node/tags)
 docker pull kindest/node:v1.12.10
