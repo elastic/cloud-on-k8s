@@ -138,6 +138,9 @@ integration_xml: clean generate-crds
 lint:
 	golangci-lint run
 
+shell-check:
+	find . -type f -name "*.sh" | xargs shellcheck
+
 #############################
 ##  --       Run       --  ##
 #############################
