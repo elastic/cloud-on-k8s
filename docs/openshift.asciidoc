@@ -59,7 +59,7 @@ By default the operator watches and creates resources in the `default` namespace
 +
 [source,shell]
 ----
-kubectl patch statefulset/elastic-operator \
+oc patch statefulset/elastic-operator \
   -n elastic-system \
   --type='json' \
   --patch '[{"op":"add","path":"/spec/template/spec/containers/0/env/-","value": {"name": "NAMESPACE", "value": "elastic"}}]'
