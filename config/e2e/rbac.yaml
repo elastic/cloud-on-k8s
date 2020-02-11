@@ -101,6 +101,7 @@ rules:
     verbs:
       - get
       - update
+      - patch
   - apiGroups:
       - "apps"
     resources:

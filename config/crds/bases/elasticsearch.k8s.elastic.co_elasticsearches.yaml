@@ -254,25 +254,6 @@ spec:
                                     type: integer
                                 type: object
                             type: object
-                          topologyKeys:
-                            description: topologyKeys is a preference-order list of
-                              topology keys which implementations of services should
-                              use to preferentially sort endpoints when accessing
-                              this Service, it can not be used at the same time as
-                              externalTrafficPolicy=Local. Topology keys must be valid
-                              label keys and at most 16 keys may be specified. Endpoints
-                              are chosen based on the first topology key with available
-                              backends. If this field is specified and all entries
-                              have no backends that match the topology of the client,
-                              the service has no backends for that client and connections
-                              should fail. The special value "*" may be used to mean
-                              "any topology". This catch-all value, if used, only
-                              makes sense as the last value in the list. If this is
-                              not specified or empty, no topology constraints will
-                              be applied.
-                            items:
-                              type: string
-                            type: array
                           type:
                             description: 'type determines how the Service is exposed.
                               Defaults to ClusterIP. Valid options are ExternalName,
@@ -1169,7 +1150,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP, status.podIPs.'
+                                                status.hostIP, status.podIP.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -1990,9 +1971,10 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is beta-level
-                                              and may be disabled with the WindowsRunAsUserName
-                                              feature flag.
+                                              takes precedence. This field is alpha-level
+                                              and it is only honored by servers that
+                                              enable the WindowsRunAsUserName feature
+                                              flag.
                                             type: string
                                         type: object
                                     type: object
@@ -2244,7 +2226,8 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive.
+                                            and SubPath are mutually exclusive. This
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -2423,7 +2406,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP, status.podIPs.'
+                                                status.hostIP, status.podIP.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -3230,9 +3213,10 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is beta-level
-                                              and may be disabled with the WindowsRunAsUserName
-                                              feature flag.
+                                              takes precedence. This field is alpha-level
+                                              and it is only honored by servers that
+                                              enable the WindowsRunAsUserName feature
+                                              flag.
                                             type: string
                                         type: object
                                     type: object
@@ -3483,7 +3467,8 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive.
+                                            and SubPath are mutually exclusive. This
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -3663,7 +3648,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP, status.podIPs.'
+                                                status.hostIP, status.podIP.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -4484,9 +4469,10 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is beta-level
-                                              and may be disabled with the WindowsRunAsUserName
-                                              feature flag.
+                                              takes precedence. This field is alpha-level
+                                              and it is only honored by servers that
+                                              enable the WindowsRunAsUserName feature
+                                              flag.
                                             type: string
                                         type: object
                                     type: object
@@ -4738,7 +4724,8 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive.
+                                            and SubPath are mutually exclusive. This
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -4982,9 +4969,9 @@ spec:
                                         unspecified. May also be set in PodSecurityContext.
                                         If set in both SecurityContext and PodSecurityContext,
                                         the value specified in SecurityContext takes
-                                        precedence. This field is beta-level and may
-                                        be disabled with the WindowsRunAsUserName
-                                        feature flag.
+                                        precedence. This field is alpha-level and
+                                        it is only honored by servers that enable
+                                        the WindowsRunAsUserName feature flag.
                                       type: string
                                   type: object
                               type: object
@@ -5005,7 +4992,8 @@ spec:
                                 containers in the same pod, and the first process
                                 in each container will not be assigned PID 1. HostPID
                                 and ShareProcessNamespace cannot both be set. Optional:
-                                Default to false.'
+                                Default to false. This field is beta-level and may
+                                be disabled with the PodShareProcessNamespace feature.'
                               type: boolean
                             subdomain:
                               description: If specified, the fully qualified Pod hostname
@@ -7180,25 +7168,6 @@ spec:
                                     type: integer
                                 type: object
                             type: object
-                          topologyKeys:
-                            description: topologyKeys is a preference-order list of
-                              topology keys which implementations of services should
-                              use to preferentially sort endpoints when accessing
-                              this Service, it can not be used at the same time as
-                              externalTrafficPolicy=Local. Topology keys must be valid
-                              label keys and at most 16 keys may be specified. Endpoints
-                              are chosen based on the first topology key with available
-                              backends. If this field is specified and all entries
-                              have no backends that match the topology of the client,
-                              the service has no backends for that client and connections
-                              should fail. The special value "*" may be used to mean
-                              "any topology". This catch-all value, if used, only
-                              makes sense as the last value in the list. If this is
-                              not specified or empty, no topology constraints will
-                              be applied.
-                            items:
-                              type: string
-                            type: array
                           type:
                             description: 'type determines how the Service is exposed.
                               Defaults to ClusterIP. Valid options are ExternalName,
@@ -8095,7 +8064,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP, status.podIPs.'
+                                                status.hostIP, status.podIP.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -8916,9 +8885,10 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is beta-level
-                                              and may be disabled with the WindowsRunAsUserName
-                                              feature flag.
+                                              takes precedence. This field is alpha-level
+                                              and it is only honored by servers that
+                                              enable the WindowsRunAsUserName feature
+                                              flag.
                                             type: string
                                         type: object
                                     type: object
@@ -9170,7 +9140,8 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive.
+                                            and SubPath are mutually exclusive. This
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -9349,7 +9320,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP, status.podIPs.'
+                                                status.hostIP, status.podIP.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -10156,9 +10127,10 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is beta-level
-                                              and may be disabled with the WindowsRunAsUserName
-                                              feature flag.
+                                              takes precedence. This field is alpha-level
+                                              and it is only honored by servers that
+                                              enable the WindowsRunAsUserName feature
+                                              flag.
                                             type: string
                                         type: object
                                     type: object
@@ -10409,7 +10381,8 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive.
+                                            and SubPath are mutually exclusive. This
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -10589,7 +10562,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP, status.podIPs.'
+                                                status.hostIP, status.podIP.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -11410,9 +11383,10 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is beta-level
-                                              and may be disabled with the WindowsRunAsUserName
-                                              feature flag.
+                                              takes precedence. This field is alpha-level
+                                              and it is only honored by servers that
+                                              enable the WindowsRunAsUserName feature
+                                              flag.
                                             type: string
                                         type: object
                                     type: object
@@ -11664,7 +11638,8 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive.
+                                            and SubPath are mutually exclusive. This
+                                            field is beta in 1.15.
                                           type: string
                                       required:
                                       - mountPath
@@ -11908,9 +11883,9 @@ spec:
                                         unspecified. May also be set in PodSecurityContext.
                                         If set in both SecurityContext and PodSecurityContext,
                                         the value specified in SecurityContext takes
-                                        precedence. This field is beta-level and may
-                                        be disabled with the WindowsRunAsUserName
-                                        feature flag.
+                                        precedence. This field is alpha-level and
+                                        it is only honored by servers that enable
+                                        the WindowsRunAsUserName feature flag.
                                       type: string
                                   type: object
                               type: object
@@ -11931,7 +11906,8 @@ spec:
                                 containers in the same pod, and the first process
                                 in each container will not be assigned PID 1. HostPID
                                 and ShareProcessNamespace cannot both be set. Optional:
-                                Default to false.'
+                                Default to false. This field is beta-level and may
+                                be disabled with the PodShareProcessNamespace feature.'
                               type: boolean
                             subdomain:
                               description: If specified, the fully qualified Pod hostname
