@@ -10,7 +10,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var log = logf.Log.WithName("remotecluster-rbac")
