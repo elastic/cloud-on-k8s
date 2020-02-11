@@ -93,7 +93,7 @@ function setup_kind_cluster() {
 
   # persist kubeconfig for reliabililty in following kubectl commands
   TMPKUBECONFIG=$(mktemp)
-  kind --name=${CLUSTER_NAME} get kubeconfig > ${TMPKUBECONFIG}
+  kind --name="${CLUSTER_NAME}" get kubeconfig > "${TMPKUBECONFIG}"
 
   # setup storage
   kubectl --kubeconfig="${TMPKUBECONFIG}" delete storageclass standard || true

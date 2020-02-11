@@ -136,14 +136,14 @@ main() {
 # get_resources lists resources in a specified namespace in JSON output format
 get_resources() {
   local ns=$1 resources=$2
-  kubectl get -n "$ns" "$resources" -o json | to_stdin_or_file $ns/$resources.json
+  kubectl get -n "$ns" "$resources" -o json | to_stdin_or_file "$ns"/"$resources".json
 }
 
 # list_resources lists resources in a specified namespace in human readable plain-text
 # Useful to list secrets without their content.
 list_resources() {
   local ns=$1 resources=$2
-  kubectl get -n "$ns" "$resources" | to_stdin_or_file $ns/$resources.txt
+  kubectl get -n "$ns" "$resources" | to_stdin_or_file "$ns"/"$resources".txt
 }
 
 # get_logs retrieves logs for all pods in a specified namespace
@@ -173,7 +173,7 @@ to_stdin_or_file() {
     >&2 echo "$OUTPUT_DIR/$filepath"
   fi
   if [[ -n $OUTPUT_DIR ]]; then
-    mkdir -p $(dirname "$OUTPUT_DIR"/"$filepath")
+    mkdir -p "$(dirname "$OUTPUT_DIR"/"$filepath")"
     cat /dev/stdin > "$OUTPUT_DIR"/"$filepath"
   else
     cat /dev/stdin
