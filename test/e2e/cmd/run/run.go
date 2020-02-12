@@ -149,6 +149,7 @@ func (h *helper) initTestContext() error {
 		TestRun:               h.testRunName,
 		TestTimeout:           h.testTimeout,
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
+		OcpCluster:            h.kubectl("get", "clusterversion") == nil,
 	}
 
 	for i, ns := range h.managedNamespaces {

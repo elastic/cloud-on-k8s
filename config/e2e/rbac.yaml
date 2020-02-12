@@ -86,6 +86,7 @@ rules:
       - persistentvolumeclaims
       - configmaps
       - events
+      - serviceaccounts
     verbs:
       - get
       - list
@@ -93,6 +94,14 @@ rules:
       - delete
       - create
       - update
+  - apiGroups:
+      - "security.openshift.io"
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - get
+      - update
+      - patch
   - apiGroups:
       - "apps"
     resources:
