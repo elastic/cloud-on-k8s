@@ -346,9 +346,6 @@ func execute() {
 		os.Exit(1)
 	}
 
-	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
-	garbageCollectUsers(cfg, managedNamespaces)
-
 	if err = license.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "License")
 		os.Exit(1)
@@ -357,6 +354,9 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "LicenseTrial")
 		os.Exit(1)
 	}
+
+	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
+	garbageCollectUsers(cfg, managedNamespaces)
 
 	go func() {
 		time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start

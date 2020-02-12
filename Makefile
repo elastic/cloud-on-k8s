@@ -66,7 +66,7 @@ SKIP_DOCKER_COMMAND ?= false
 
 ## -- Namespaces
 
-# namespace in which the operator is deployed (see config/global-operator)
+# namespace in which the operator is deployed (see config/operator)
 OPERATOR_NAMESPACE ?= elastic-system
 # name of the operator statefulset and related resources
 OPERATOR_NAME ?= elastic-operator
@@ -150,13 +150,13 @@ install-crds: generate-crds
 run: install-crds go-run
 
 go-run:
-	# Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
+	# Run the operator locally with debug logs and operator image set to latest
 	AUTO_PORT_FORWARD=true \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
 			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
-				--development --operator-roles=global,namespace \
+				--development \
 				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default \
@@ -169,7 +169,6 @@ go-debug:
 		-- \
 		manager \
 		--development \
-		--operator-roles=global,namespace \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--ca-cert-validity=10h \
 		--ca-cert-rotate-before=1h \
@@ -190,10 +189,10 @@ ifndef GCLOUD_PROJECT
 endif
 endif
 
-# Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds build-operator-image apply-namespaced-operator
+# Deploy the operator against the current k8s cluster
+deploy: check-gke install-crds build-operator-image apply-operator
 
-apply-namespaced-operator:
+apply-operator:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
 	OPERATOR_NAME=$(OPERATOR_NAME) \
 	NAMESPACE=$(OPERATOR_NAMESPACE) \
@@ -467,7 +466,7 @@ kind-with-operator-%: kind-node-variable-check docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
-		make install-crds apply-namespaced-operator
+		make install-crds apply-operator
 
 ## Run all the e2e tests in a Kind cluster
 set-kind-e2e-image:

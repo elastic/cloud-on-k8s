@@ -162,8 +162,6 @@ change the `args` array as follows:
     containers:
     - args:
       - manager
-      - --operator-roles
-      - all
       - --log-verbosity=1
 ----
 

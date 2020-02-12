@@ -77,7 +77,7 @@ func defaultContext() Context {
 
 // Context encapsulates data about a specific test run
 type Context struct {
-	Operator              NamespaceOperator `json:"global_operator"`
+	Operator              NamespaceOperator `json:"operator"`
 	E2EImage              string            `json:"e2e_image"`
 	E2ENamespace          string            `json:"e2e_namespace"`
 	E2EServiceAccount     string            `json:"e2e_service_account"`

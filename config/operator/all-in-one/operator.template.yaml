@@ -1,5 +1,3 @@
-# Very similar to a global operator, but with
-# a different service account and different run arguments
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
