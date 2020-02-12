@@ -17,7 +17,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const defaultElasticStackVersion = "7.4.0"
+const defaultElasticStackVersion = "7.6.0"
 
 var (
 	testContextPath = flag.String("testContextPath", "", "Path to the test context file")
