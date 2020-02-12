@@ -332,6 +332,7 @@ ObjectSelector defines a reference to a Kubernetes object.
 .Appears in:
 ****
 - xref:apm-k8s-elastic-co-v1-apmserverspec[$$ApmServerSpec$$], 
+- xref:elasticsearch-k8s-elastic-co-v1-k8slocalremotecluster[$$K8sLocalRemoteCluster$$], 
 - xref:kibana-k8s-elastic-co-v1-kibanaspec[$$KibanaSpec$$]
 ****
 [cols="20a,80a", options="header"]
@@ -1133,6 +1134,10 @@ See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings
 _(Optional)_
 ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
 Can only be used if ECK is enforcing RBAC on references.
+*`remoteClusters`* _xref:elasticsearch-k8s-elastic-co-v1-remoteclusters[$$RemoteClusters$$]_::
+_(Optional)_
+RemoteClusters allow specifying some remote clusters. It makes it easy to establish a trusted and secured association
+with them. It can be used for Cross Cluster Replication or Cross Cluster Replication.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-changebudget"]
@@ -1217,6 +1222,33 @@ _string_
 _(Optional)_
 ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
 Can only be used if ECK is enforcing RBAC on references.
+| *`remoteClusters`* +
+_xref:elasticsearch-k8s-elastic-co-v1-remoteclusters[$$RemoteClusters$$]_
+|
+_(Optional)_
+RemoteClusters allow specifying some remote clusters. It makes it easy to establish a trusted and secured association
+with them. It can be used for Cross Cluster Replication or Cross Cluster Replication.
+|===
+
+[id="elasticsearch-k8s-elastic-co-v1-k8slocalremotecluster"]
+[float]
+==== K8sLocalRemoteCluster
+
+
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1-remoteclusters[$$RemoteClusters$$]
+****
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`elasticsearchRef`* +
+_xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_
+|
+ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-nodeset"]
@@ -1257,6 +1289,27 @@ VolumeClaimTemplates is a list of persistent volume claims to be used by each Po
 Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
 Items defined here take precedence over any default claims added by the operator with the same name.
 See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
+|===
+
+[id="elasticsearch-k8s-elastic-co-v1-remoteclusters"]
+[float]
+==== RemoteClusters
+
+RemoteClusters defines some remote Elasticsearch clusters.
+
+
+.Appears in:
+****
+- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
+[cols="20a,80a", options="header"]
+|===
+|Field |Description
+
+| *`k8sLocal`* +
+_xref:elasticsearch-k8s-elastic-co-v1-k8slocalremotecluster[$$[]K8sLocalRemoteCluster$$]_
+|
+---
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-updatestrategy"]
