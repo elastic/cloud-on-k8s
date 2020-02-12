@@ -60,14 +60,12 @@ RUN curl -fsSLO https://github.com/gotestyourself/gotestsum/releases/download/v$
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64 && \
     mv kind-linux-amd64 /usr/local/bin/kind && chmod +x /usr/local/bin/kind
 
-# Install openshift-install to deploy OpenShift clusters
+# Install openshift-install and the openshift-client to deploy and manage OpenShift clusters
 RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_TOOLS_VERSION}/openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
     tar -zxf openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz openshift-install && \
     mv openshift-install /usr/local/bin/openshift-install && \
-    rm openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz
-
-# Install openshift-client to deploy OpenShift clusters
-RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_TOOLS_VERSION}/openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
+    rm openshift-install-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
+    curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPENSHIFT_TOOLS_VERSION}/openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz && \
     tar -zxf openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz oc && \
     mv oc /usr/local/bin/oc && \
     rm openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz

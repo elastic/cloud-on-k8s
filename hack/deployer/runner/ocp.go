@@ -77,6 +77,17 @@ type OcpDriver struct {
 
 func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
 	baseDomain := plan.Ocp.BaseDomain
+
+	// Domains used for the OCP deployment must be
+	// pre-configured on the destination cloud. A zone
+	// for these domains must exist and it has to be
+	// reachable from the internet as `openshift-installer`
+	// interacts with the deployed OCP cluster to monitor
+	// and complete the deployment.
+	//
+	// The default `eck-ocp.elastic.dev` subdomain is configured
+	// on AWS as an NS record and points to a zone configured in
+	// the `elastic-cloud-dev` project on GCP.
 	if baseDomain == "" {
 		baseDomain = "eck-ocp.elastic.dev"
 	}
@@ -252,12 +263,7 @@ func (d *OcpDriver) create() error {
 	// this way we can run a delete operation even on failed
 	// deployments to clean all the resources on GCP.
 	_ = d.uploadCredentials()
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (d *OcpDriver) uploadCredentials() error {
@@ -308,7 +314,7 @@ func (d *OcpDriver) GetCredentials() error {
 			return err
 		}
 
-		log.Printf("OpenShift's kubeconfig file exits and it's been copied under ~/.kube")
+		log.Printf("OpenShift's kubeconfig file exists and it's been copied under ~/.kube")
 		return nil
 	}
 

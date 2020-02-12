@@ -74,6 +74,7 @@ plans:
   ocp:
     region: europe-west1
     nodeCount: 3
+    overwriteDefaultKubeconfig: false
 - id: e2e-monitor
   operation: create
   clusterName: e2e-monitor
