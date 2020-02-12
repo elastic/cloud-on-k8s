@@ -166,11 +166,11 @@ func (d *OcpDriver) Execute() error {
 			return err
 		}
 
-		if err := createStorageClass(DefaultStorageClass); err != nil {
+		if err := d.GetCredentials(); err != nil {
 			return err
 		}
 
-		if err := d.GetCredentials(); err != nil {
+		if err := createStorageClass(DefaultStorageClass); err != nil {
 			return err
 		}
 
