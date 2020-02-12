@@ -39,9 +39,9 @@ func TestNewExternalUserFromSecret(t *testing.T) {
 				},
 			},
 			want: ExternalUser{
-				name:     "ns2-kibana-sample-kibana-user",
-				password: []byte("$2a$10$D6q/zdYfGJsJxipsZ4Jioul8tWIcL.o.Mhx/as1nlNdOX6EgqRRRS"),
-				roles:    []string{"kibana_system"},
+				name:  "ns2-kibana-sample-kibana-user",
+				hash:  []byte("$2a$10$D6q/zdYfGJsJxipsZ4Jioul8tWIcL.o.Mhx/as1nlNdOX6EgqRRRS"),
+				roles: []string{"kibana_system"},
 			},
 		},
 		{
@@ -61,9 +61,9 @@ func TestNewExternalUserFromSecret(t *testing.T) {
 				},
 			},
 			want: ExternalUser{
-				name:     "ns2-kibana-sample-kibana-user",
-				password: []byte("$2a$10$D6q/zdYfGJsJxipsZ4Jioul8tWIcL.o.Mhx/as1nlNdOX6EgqRRRS"),
-				roles:    []string{"kibana_system1", "kibana_system2", "kibana_system3"},
+				name:  "ns2-kibana-sample-kibana-user",
+				hash:  []byte("$2a$10$D6q/zdYfGJsJxipsZ4Jioul8tWIcL.o.Mhx/as1nlNdOX6EgqRRRS"),
+				roles: []string{"kibana_system1", "kibana_system2", "kibana_system3"},
 			},
 		},
 		{

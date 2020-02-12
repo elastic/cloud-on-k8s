@@ -44,7 +44,6 @@ require (
 	github.com/tsenart/vegeta v12.7.0+incompatible
 	go.elastic.co/apm v1.7.0
 	go.elastic.co/apm/module/apmelasticsearch v1.7.0
-	go.elastic.co/apm/module/apmhttp v1.7.0
 	go.uber.org/zap v1.12.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/net v0.0.0-20191011234655-491137f69257 // indirect
@@ -53,6 +52,7 @@ require (
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	gopkg.in/yaml.v3 v3.0.0-20191120175047-4206685974f2
+	gotest.tools v2.2.0+incompatible
 	k8s.io/api v0.0.0-20191114100352-16d7abae0d2a
 	k8s.io/apimachinery v0.0.0-20191028221656-72ed19daf4bb
 	k8s.io/client-go v0.0.0-20191114101535-6c5935290e33
