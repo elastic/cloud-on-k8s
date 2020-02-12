@@ -99,13 +99,13 @@ func TestVersionUpgradeSingle710To730(t *testing.T) {
 	RunESMutation(t, initial, mutated)
 }
 
-func TestVersionUpgradeSingle740To750(t *testing.T) {
-	initial := elasticsearch.NewBuilder("test-version-up-1-742-to-750").
+func TestVersionUpgradeSingle740To760(t *testing.T) {
+	initial := elasticsearch.NewBuilder("test-version-up-1-742-to-760").
 		WithVersion("7.4.2").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion("7.5.0").
+		WithVersion("7.6.0").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
