@@ -60,7 +60,7 @@ var Cmd = &cobra.Command{
 		err = checkClaimsNotFound(c, expectedClaims)
 		exitOnErr(err)
 
-		releasedPVs, err := findReleasedPVs(c, es)
+		releasedPVs, err := findReleasedPVs(c)
 		exitOnErr(err)
 
 		matches, err := matchPVsWithClaim(releasedPVs, expectedClaims)
@@ -72,7 +72,7 @@ var Cmd = &cobra.Command{
 		err = createAndBindClaims(c, matches, dryRun)
 		exitOnErr(err)
 
-		es, err = createElasticsearch(c, es, dryRun)
+		err = createElasticsearch(c, es, dryRun)
 		exitOnErr(err)
 	},
 }
@@ -194,7 +194,7 @@ func expectedVolumeClaims(es esv1.Elasticsearch) map[types.NamespacedName]v1.Per
 }
 
 // findReleasedPVs returns the list of Released PersistentVolumes.
-func findReleasedPVs(c k8s.Client, es esv1.Elasticsearch) ([]v1.PersistentVolume, error) {
+func findReleasedPVs(c k8s.Client) ([]v1.PersistentVolume, error) {
 	var pvs v1.PersistentVolumeList
 	if err := c.List(&pvs); err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func findReleasedPVs(c k8s.Client, es esv1.Elasticsearch) ([]v1.PersistentVolume
 		}
 	}
 	fmt.Printf("Found %d released PersistentVolumes\n", len(pvs.Items))
-	return pvs.Items, nil
+	return released, nil
 }
 
 // pvBackupFilepath injects a timestamp in the default PV backup file.
@@ -228,12 +228,12 @@ func backupPVs(matches []MatchingVolumeClaim, toFile string) error {
 	for _, match := range matches {
 		pvs = append(pvs, match.volume)
 	}
-	asJson, err := json.Marshal(pvs)
+	asJSON, err := json.Marshal(pvs)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Creating a backup of released PersistentVolumes in %s\n", toFile)
-	return ioutil.WriteFile(toFile, asJson, 0644)
+	return ioutil.WriteFile(toFile, asJSON, 0644)
 }
 
 // MatchingVolumeClaim matches an existing PersistentVolume with a new PersistentVolumeClaim.
@@ -244,7 +244,7 @@ type MatchingVolumeClaim struct {
 
 // matchPVsWithClaim iterates over existing pvs to match them to an expected pvc.
 func matchPVsWithClaim(pvs []v1.PersistentVolume, claims map[types.NamespacedName]v1.PersistentVolumeClaim) ([]MatchingVolumeClaim, error) {
-	var matches []MatchingVolumeClaim
+	matches := make([]MatchingVolumeClaim, 0, len(pvs))
 	for _, pv := range pvs {
 		if pv.Spec.ClaimRef == nil {
 			continue
@@ -290,12 +290,12 @@ func createAndBindClaims(c k8s.Client, volumeClaims []MatchingVolumeClaim, dryRu
 }
 
 // createElasticsearch creates the given Elasticsearch resource.
-func createElasticsearch(c k8s.Client, es esv1.Elasticsearch, dryRun bool) (esv1.Elasticsearch, error) {
+func createElasticsearch(c k8s.Client, es esv1.Elasticsearch, dryRun bool) error {
 	fmt.Printf("Creating Elasticsearch %s\n", es.Name)
 	if dryRun {
-		return es, nil
+		return nil
 	}
-	return es, c.Create(&es, &client.CreateOptions{})
+	return c.Create(&es, &client.CreateOptions{})
 }
 
 // exitOnErr prints the given error then exits with status code 1
