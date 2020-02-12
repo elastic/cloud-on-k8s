@@ -28,7 +28,7 @@ type expectedRemoteClusterConfiguration struct {
 }
 
 // getCurrentRemoteClusters returns a map with the current configuration hash of the remote clusters declared in Elasticsearch.
-// A map is returned here because it will be used quickly compare with the ones that are new or missing.
+// A map is returned here because it allows to quickly compare with the ones that are new or missing.
 func getCurrentRemoteClusters(es esv1.Elasticsearch) (map[string]string, error) {
 	serializedRemoteClusters, ok := es.Annotations[RemoteClustersAnnotationName]
 	if !ok {
@@ -67,7 +67,7 @@ func annotateWithRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClust
 	if es.Annotations == nil {
 		es.Annotations = make(map[string]string)
 	}
-	// Convert remoteClusters to JSon
+
 	es.Annotations[RemoteClustersAnnotationName] = string(serializedRemoteClusters)
 	return c.Update(&es)
 }

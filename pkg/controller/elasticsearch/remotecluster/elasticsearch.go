@@ -45,7 +45,7 @@ func UpdateRemoteCluster(
 			log.Info("Add or update remote cluster",
 				"namespace", es.Namespace,
 				"es_name", es.Name,
-				"remoteCluster", remoteCluster.Name,
+				"remote_cluster", remoteCluster.Name,
 				"seeds", seedHosts,
 			)
 			if err := updateRemoteCluster(esClient, persistentSettings); err != nil {
@@ -62,7 +62,7 @@ func UpdateRemoteCluster(
 			log.Info("Remove remote cluster",
 				"namespace", es.Namespace,
 				"es_name", es.Name,
-				"remoteCluster", name,
+				"remote_cluster", name,
 			)
 			err := updateRemoteCluster(esClient, persistentSettings)
 			if err != nil {

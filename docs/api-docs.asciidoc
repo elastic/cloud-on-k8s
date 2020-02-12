@@ -1137,7 +1137,7 @@ Can only be used if ECK is enforcing RBAC on references.
 *`remoteClusters`* _xref:elasticsearch-k8s-elastic-co-v1-remoteclusters[$$RemoteClusters$$]_::
 _(Optional)_
 RemoteClusters allow specifying some remote clusters. It makes it easy to establish a trusted and secured association
-with them. It can be used for Cross Cluster Replication or Cross Cluster Replication.
+with them. It can be used for Cross Cluster Replication or Cross Cluster Search.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-changebudget"]
@@ -1227,14 +1227,14 @@ _xref:elasticsearch-k8s-elastic-co-v1-remoteclusters[$$RemoteClusters$$]_
 |
 _(Optional)_
 RemoteClusters allow specifying some remote clusters. It makes it easy to establish a trusted and secured association
-with them. It can be used for Cross Cluster Replication or Cross Cluster Replication.
+with them. It can be used for Cross Cluster Replication or Cross Cluster Search.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-k8slocalremotecluster"]
 [float]
 ==== K8sLocalRemoteCluster
 
-
+K8sLocalRemoteCluster is a set of remote clusters running in the same Kubernetes cluster.
 
 
 .Appears in:

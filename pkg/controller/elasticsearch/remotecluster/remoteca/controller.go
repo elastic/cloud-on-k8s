@@ -54,8 +54,7 @@ var (
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 )
 
-// Add creates a new RemoteCluster Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
+// Add creates a new RemoteCa Controller and adds it to the manager with default RBAC.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := newReconciler(mgr, accessReviewer, params)
 	c, err := add(mgr, r)
@@ -91,7 +90,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 var _ reconcile.Reconciler = &ReconcileRemoteCa{}
 
-// ReconcileRemoteCa reconciles a RemoteCluster object.
+// ReconcileRemoteCa reconciles remote CA Secrets.
 type ReconcileRemoteCa struct {
 	k8s.Client
 	operator.Parameters
@@ -105,8 +104,8 @@ type ReconcileRemoteCa struct {
 	iteration uint64
 }
 
-// Reconcile reads that state of the cluster for a RemoteCluster object and makes changes based on the state read
-// and what is in the RemoteCluster.Spec
+// Reconcile reads that state of the cluster for the expected remote clusters in this Kubernetes cluster.
+// It copies the remote CA Secrets so they can be trusted by every peer Elasticsearch clusters.
 func (r *ReconcileRemoteCa) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "es_name", &r.iteration)()
 	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "remoteca")

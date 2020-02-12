@@ -52,7 +52,7 @@ type ElasticsearchSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// RemoteClusters allow specifying some remote clusters. It makes it easy to establish a trusted and secured association
-	// with them. It can be used for Cross Cluster Replication or Cross Cluster Replication.
+	// with them. It can be used for Cross Cluster Replication or Cross Cluster Search.
 	// +optional
 	RemoteClusters RemoteClusters `json:"remoteClusters,omitempty"`
 }
@@ -62,6 +62,7 @@ type RemoteClusters struct {
 	K8sLocal []K8sLocalRemoteCluster `json:"k8sLocal,omitempty"`
 }
 
+// K8sLocalRemoteCluster is a set of remote clusters running in the same Kubernetes cluster.
 type K8sLocalRemoteCluster struct {
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`

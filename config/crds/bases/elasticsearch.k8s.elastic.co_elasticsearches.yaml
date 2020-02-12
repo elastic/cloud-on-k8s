@@ -6863,10 +6863,12 @@ spec:
                 description: RemoteClusters allow specifying some remote clusters.
                   It makes it easy to establish a trusted and secured association
                   with them. It can be used for Cross Cluster Replication or Cross
-                  Cluster Replication.
+                  Cluster Search.
                 properties:
                   k8sLocal:
                     items:
+                      description: K8sLocalRemoteCluster is a set of remote clusters
+                        running in the same Kubernetes cluster.
                       properties:
                         elasticsearchRef:
                           description: ElasticsearchRef is a reference to an Elasticsearch
