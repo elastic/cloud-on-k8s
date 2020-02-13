@@ -1,6 +1,6 @@
 # Reattach-PV
 
-This tool can be used to recreate an Elasticsearch cluster by reusing existing PersistentVolumes, that belonged to that cluster before it was deleted.
+This tool can be used to recreate an Elasticsearch cluster by reusing orphaned PersistentVolumes that used to belong to that cluster before it was deleted.
 
 ## Expectations
 
