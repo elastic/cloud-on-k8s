@@ -8,7 +8,7 @@ This tool can only be used when the following conditions are met:
 
 * The Elasticsearch resource to re-create does not exist in Kubernetes.
 * All PersistentVolumeClaims of the previous cluster do not exist anymore.
-* All PersistentVolumes of the previous cluster still exist. Their status report they are `Released`.
+* All PersistentVolumes of the previous cluster still exist with the status `Released`.
 * The Elasticsearch resource to re-create has the exact same specs as the deleted one. Same cluster name, same node sets, same count, etc.
 * The current default kubectl context targets the desired Kubernetes cluster.
 
