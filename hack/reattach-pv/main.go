@@ -112,12 +112,15 @@ func esFromFile(path string) (esv1.Elasticsearch, error) {
 	if err != nil {
 		return esv1.Elasticsearch{}, err
 	}
-	es := *obj.(*esv1.Elasticsearch)
+	es, ok := obj.(*esv1.Elasticsearch)
+	if !ok {
+		return esv1.Elasticsearch{}, fmt.Errorf("cannot serialize content of %s into an Elasticsearch object", path)
+	}
 	if es.Namespace == "" {
 		fmt.Println("Setting Elasticsearch namespace to 'default'")
 		es.Namespace = "default"
 	}
-	return es, nil
+	return *es, nil
 }
 
 // createClient creates a Kubernetes client targeting the current default K8s cluster.
