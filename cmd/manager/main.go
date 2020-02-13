@@ -123,6 +123,11 @@ func init() {
 		false,
 		"Enable APM tracing in the operator. Endpoint, token etc are to be configured via environment variables. See https://www.elastic.co/guide/en/apm/agent/go/1.x/configuration.html")
 	Cmd.Flags().Bool(
+		operator.EnableWebhookFlag,
+		false,
+		"Enables a validating webhook server in the operator process.",
+	)
+	Cmd.Flags().Bool(
 		operator.ManageWebhookCertsFlag,
 		true,
 		"Enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
@@ -141,11 +146,6 @@ func init() {
 		operator.OperatorNamespaceFlag,
 		"",
 		"K8s namespace the operator runs in",
-	)
-	Cmd.Flags().StringSlice(
-		operator.OperatorRolesFlag,
-		[]string{operator.All},
-		"Roles this operator should assume (either namespace, global, webhook or all)",
 	)
 	Cmd.Flags().String(
 		operator.WebhookCertDirFlag,
@@ -268,14 +268,6 @@ func execute() {
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(operator.CACertValidityFlag, operator.CACertRotateBeforeFlag)
 	certValidity, certRotateBefore := ValidateCertExpirationFlags(operator.CertValidityFlag, operator.CertRotateBeforeFlag)
 
-	// Setup all Controllers
-	roles := viper.GetStringSlice(operator.OperatorRolesFlag)
-	err = operator.ValidateRoles(roles)
-	if err != nil {
-		log.Error(err, "invalid roles specified")
-		os.Exit(1)
-	}
-
 	// Setup a client to set the operator uuid config map
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -283,12 +275,12 @@ func execute() {
 		os.Exit(1)
 	}
 
-	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace, roles)
+	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace)
 	if err != nil {
 		log.Error(err, "unable to get operator info")
 		os.Exit(1)
 	}
-	log.Info("Setting up controllers", "roles", roles)
+	log.Info("Setting up controllers")
 	var tracer *apm.Tracer
 	if viper.GetBool(operator.EnableTracingFlag) {
 		tracer = tracing.NewTracer("elastic-operator")
@@ -308,7 +300,7 @@ func execute() {
 		Tracer: tracer,
 	}
 
-	if operator.HasRole(operator.WebhookServer, roles) {
+	if viper.GetBool(operator.EnableWebhookFlag) {
 		setupWebhook(mgr, params.CertRotation, clientset)
 	}
 
@@ -321,48 +313,46 @@ func execute() {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
 	}
 
-	if operator.HasRole(operator.NamespaceOperator, roles) {
-		if err = apmserver.Add(mgr, params); err != nil {
-			log.Error(err, "unable to create controller", "controller", "ApmServer")
-			os.Exit(1)
-		}
-		if err = elasticsearch.Add(mgr, params); err != nil {
-			log.Error(err, "unable to create controller", "controller", "Elasticsearch")
-			os.Exit(1)
-		}
-		if err = kibana.Add(mgr, params); err != nil {
-			log.Error(err, "unable to create controller", "controller", "Kibana")
-			os.Exit(1)
-		}
-		if err = asesassn.Add(mgr, accessReviewer, params); err != nil {
-			log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
-			os.Exit(1)
-		}
-		if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
-			log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
-			os.Exit(1)
-		}
-
-		// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
-		garbageCollectUsers(cfg, managedNamespaces)
+	if err = apmserver.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "ApmServer")
+		os.Exit(1)
 	}
-	if operator.HasRole(operator.GlobalOperator, roles) {
-		if err = license.Add(mgr, params); err != nil {
-			log.Error(err, "unable to create controller", "controller", "License")
-			os.Exit(1)
-		}
-		if err = licensetrial.Add(mgr, params); err != nil {
-			log.Error(err, "unable to create controller", "controller", "LicenseTrial")
-			os.Exit(1)
-		}
-
-		go func() {
-			time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
-			mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
-			r := licensing.NewResourceReporter(mgr.GetClient())
-			r.Start(operatorNamespace, licensing.ResourceReporterFrequency)
-		}()
+	if err = elasticsearch.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "Elasticsearch")
+		os.Exit(1)
 	}
+	if err = kibana.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "Kibana")
+		os.Exit(1)
+	}
+	if err = asesassn.Add(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
+		os.Exit(1)
+	}
+	if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+		os.Exit(1)
+	}
+
+	if err = license.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "License")
+		os.Exit(1)
+	}
+	if err = licensetrial.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "LicenseTrial")
+		os.Exit(1)
+	}
+
+	// Garbage collect any orphaned user Secrets leftover from deleted resources while the operator was not running.
+	garbageCollectUsers(cfg, managedNamespaces)
+
+	go func() {
+		time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
+		mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
+		r := licensing.NewResourceReporter(mgr.GetClient())
+		r.Start(operatorNamespace, licensing.ResourceReporterFrequency)
+	}()
+
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,

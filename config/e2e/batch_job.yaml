@@ -39,10 +39,12 @@ spec:
         test-run: {{ .Context.TestRun }}
     spec:
       securityContext:
-        fsGroup: 101
         runAsNonRoot: true
+{{ if not .Context.OcpCluster }}
+        fsGroup: 101
         runAsUser: 101
         runAsGroup: 101
+{{ end }}
       serviceAccountName: {{ .Context.E2EServiceAccount }}
       containers:
         - name: e2e

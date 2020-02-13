@@ -57,11 +57,8 @@ subjects:
     name: system:serviceaccounts
     namespace: kube-system
   - kind: ServiceAccount
-    name: {{ .GlobalOperator.Name }}
-    namespace: {{ .GlobalOperator.Namespace }}
-  - kind: ServiceAccount
-    name: {{ .NamespaceOperator.Name }}
-    namespace: {{ .NamespaceOperator.Namespace }}
+    name: {{ .Operator.Name }}
+    namespace: {{ .Operator.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -86,6 +83,7 @@ rules:
       - persistentvolumeclaims
       - configmaps
       - events
+      - serviceaccounts
     verbs:
       - get
       - list
@@ -93,6 +91,14 @@ rules:
       - delete
       - create
       - update
+  - apiGroups:
+      - "security.openshift.io"
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - get
+      - update
+      - patch
   - apiGroups:
       - "apps"
     resources:

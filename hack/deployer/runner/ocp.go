@@ -77,24 +77,36 @@ type OcpDriver struct {
 
 func (gdf *OcpDriverFactory) Create(plan Plan) (Driver, error) {
 	baseDomain := plan.Ocp.BaseDomain
+
+	// Domains used for the OCP deployment must be
+	// pre-configured on the destination cloud. A zone
+	// for these domains must exist and it has to be
+	// reachable from the internet as `openshift-installer`
+	// interacts with the deployed OCP cluster to monitor
+	// and complete the deployment.
+	//
+	// The default `eck-ocp.elastic.dev` subdomain is configured
+	// on AWS as an NS record and points to a zone configured in
+	// the `elastic-cloud-dev` project on GCP.
 	if baseDomain == "" {
-		baseDomain = "ocp.elastic.dev"
+		baseDomain = "eck-ocp.elastic.dev"
 	}
 	return &OcpDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
-			"GCloudProject":     plan.Ocp.GCloudProject,
-			"ClusterName":       plan.ClusterName,
-			"Region":            plan.Ocp.Region,
-			"AdminUsername":     plan.Ocp.AdminUsername,
-			"KubernetesVersion": plan.KubernetesVersion,
-			"MachineType":       plan.MachineType,
-			"LocalSsdCount":     plan.Ocp.LocalSsdCount,
-			"NodeCount":         plan.Ocp.NodeCount,
-			"BaseDomain":        baseDomain,
-			"WorkDir":           plan.Ocp.WorkDir,
-			"OcpStateBucket":    OcpStateBucket,
-			"PullSecret":        plan.Ocp.PullSecret,
+			"GCloudProject":              plan.Ocp.GCloudProject,
+			"ClusterName":                plan.ClusterName,
+			"Region":                     plan.Ocp.Region,
+			"AdminUsername":              plan.Ocp.AdminUsername,
+			"KubernetesVersion":          plan.KubernetesVersion,
+			"MachineType":                plan.MachineType,
+			"LocalSsdCount":              plan.Ocp.LocalSsdCount,
+			"NodeCount":                  plan.Ocp.NodeCount,
+			"BaseDomain":                 baseDomain,
+			"WorkDir":                    plan.Ocp.WorkDir,
+			"OcpStateBucket":             OcpStateBucket,
+			"PullSecret":                 plan.Ocp.PullSecret,
+			"OverwriteDefaultKubeconfig": plan.Ocp.OverwriteDefaultKubeconfig,
 		},
 	}, nil
 }
@@ -121,7 +133,7 @@ func (d *OcpDriver) Execute() error {
 		return err
 	}
 
-	if d.ctx["PullSecret"] == nil {
+	if d.ctx["PullSecret"] == nil || d.ctx["PullSecret"] == "" {
 		client, err := NewClient(*d.plan.VaultInfo)
 		if err != nil {
 			return err
@@ -158,6 +170,10 @@ func (d *OcpDriver) Execute() error {
 			return err
 		}
 
+		if err := createStorageClass(DefaultStorageClass); err != nil {
+			return err
+		}
+
 	default:
 		err = fmt.Errorf("unknown operation %s", d.plan.Operation)
 	}
@@ -166,6 +182,8 @@ func (d *OcpDriver) Execute() error {
 }
 
 func (d *OcpDriver) auth() error {
+	_ = NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run()
+
 	if d.plan.ServiceAccount {
 		log.Println("Authenticating as service account...")
 
@@ -174,12 +192,13 @@ func (d *OcpDriver) auth() error {
 			return err
 		}
 
-		keyFileName := "gke_service_account_key.json"
-		defer os.Remove(keyFileName)
+		gcpDir := filepath.Join(os.Getenv("HOME"), ".gcp")
+		keyFileName := filepath.Join(os.Getenv("HOME"), ".gcp", "osServiceAccount.json")
+		_ = os.MkdirAll(gcpDir, os.ModePerm)
+
 		if err := client.ReadIntoFile(keyFileName, OcpVaultPath, OcpServiceAccountVaultFieldName); err != nil {
 			return err
 		}
-
 		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
 	}
 
@@ -237,31 +256,30 @@ func (d *OcpDriver) create() error {
 		return err
 	}
 
-	err = NewCommand("openshift-install create cluster --dir {{.ClusterStateDir}}").
-		AsTemplate(d.ctx).
-		Run()
+	cmd := NewCommand("openshift-install create cluster --dir {{.ClusterStateDir}}")
+	err = cmd.AsTemplate(d.ctx).Run()
 
-	if err != nil {
-		return err
-	}
-
-	return d.uploadCredentials()
+	// We want to *always* upload the state of the cluster
+	// this way we can run a delete operation even on failed
+	// deployments to clean all the resources on GCP.
+	_ = d.uploadCredentials()
+	return err
 }
 
 func (d *OcpDriver) uploadCredentials() error {
-	// We do this check twice to avoid re-downloading files
-	// from the bucket when we already have them locally.
-	// The second time is further down in this function and it's
-	// done when the rsync succeeds
+	// Let's check that the cluster dir exists
+	// before we attempt an upload.
 	if _, err := os.Stat(d.ctx["ClusterStateDir"].(string)); os.IsNotExist(err) {
 		log.Printf("clusterStateDir %s not present", d.ctx["ClusterStateDir"])
 		return nil
 	}
 
 	cmd := "gsutil mb gs://{{.OcpStateBucket}}"
-	exists, err := NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("already exists")
+	exists, err := NewCommand(cmd).AsTemplate(d.ctx).OutputContainsAny("already exists")
 
 	if !exists && err != nil {
+		log.Printf("error creating bucket gs://%s", d.ctx["OcpStateBucket"])
+		log.Printf("%s", err)
 		return err
 	}
 
@@ -271,18 +289,39 @@ func (d *OcpDriver) uploadCredentials() error {
 }
 
 func (d *OcpDriver) GetCredentials() error {
+	log.Printf("Getting credentials")
 	kubeConfig := filepath.Join(d.ctx["ClusterStateDir"].(string), "auth", "kubeconfig")
 
+	copyKubeconfig := func() error {
+		if d.ctx["OverwriteDefaultKubeconfig"] == true {
+			log.Printf("copying %s to ~/.kube/config", kubeConfig)
+			if err := os.MkdirAll(filepath.Join(os.Getenv("HOME"), ".kube"), os.ModePerm); err != nil {
+				return err
+			}
+			cmd := fmt.Sprintf("cp %s ~/.kube/config", kubeConfig)
+			return NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().Run()
+		}
+
+		return nil
+	}
 	// We do this check twice to avoid re-downloading files
 	// from the bucket when we already have them locally.
 	// The second time is further down in this function and it's
 	// done when the rsync succeeds
 	if _, err := os.Stat(kubeConfig); !os.IsNotExist(err) {
+		err = copyKubeconfig()
+		if err != nil {
+			return err
+		}
+
+		log.Printf("OpenShift's kubeconfig file exists and it's been copied under ~/.kube")
 		return nil
 	}
 
 	cmd := "gsutil rsync -r -d gs://{{.OcpStateBucket}}/{{.ClusterName}} {{.ClusterStateDir}}"
 	exists, err := NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().OutputContainsAny("BucketNotFoundException")
+
+	_ = copyKubeconfig()
 
 	// Let's assume the rsync succeeded and go straight to
 	// checking whether the kubeconfig file exists. If it doesn't
@@ -306,16 +345,14 @@ func (d *OcpDriver) GetCredentials() error {
 func (d *OcpDriver) delete() error {
 	log.Println("Deleting cluster...")
 
-	err := NewCommand("openshift-install destroy cluster --dir {{.ClusterStateDir}}").
-		AsTemplate(d.ctx).
-		Run()
+	cmd := NewCommand("openshift-install destroy cluster --dir {{.ClusterStateDir}}")
+	err := cmd.AsTemplate(d.ctx).Run()
 
 	if err != nil {
 		return err
 	}
 
 	// No need to check whether this `rb` command succeeds
-	cmd := "gsutil rb gs://{{.OcpStateBucket}}"
-	_ = NewCommand(cmd).AsTemplate(d.ctx).WithoutStreaming().Run()
+	_ = NewCommand("gsutil rb gs://{{.OcpStateBucket}}").AsTemplate(d.ctx).WithoutStreaming().Run()
 	return nil
 }

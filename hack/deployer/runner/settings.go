@@ -61,14 +61,15 @@ type AksSettings struct {
 
 // GkeSettings encapsulates settings specific to GKE
 type OcpSettings struct {
-	BaseDomain    string `yaml:"baseDomain"`
-	GCloudProject string `yaml:"gCloudProject"`
-	Region        string `yaml:"region"`
-	AdminUsername string `yaml:"adminUsername"`
-	WorkDir       string `yaml:"workDir"`
-	PullSecret    string `yaml:"pullSecret"`
-	LocalSsdCount int    `yaml:"localSsdCount"`
-	NodeCount     int    `yaml:"nodeCount"`
+	BaseDomain                 string `yaml:"baseDomain"`
+	GCloudProject              string `yaml:"gCloudProject"`
+	Region                     string `yaml:"region"`
+	AdminUsername              string `yaml:"adminUsername"`
+	WorkDir                    string `yaml:"workDir"`
+	PullSecret                 string `yaml:"pullSecret"`
+	OverwriteDefaultKubeconfig bool   `yaml:"overwriteDefaultKubeconfig"`
+	LocalSsdCount              int    `yaml:"localSsdCount"`
+	NodeCount                  int    `yaml:"nodeCount"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
