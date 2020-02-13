@@ -18,7 +18,7 @@ OPERATOR_IMAGE=<?> NAMESPACE=<?> make generate-all-in-one | kubectl apply -f -
 
 ### Namespaced
 
-One or more operators managing resources in a given set of of namespaces.
+One or more operators managing resources in a given set of namespaces.
 
 ```bash
 OPERATOR_NAME=<?> OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACES=<?> make generate-namespace | kubectl apply -f -
