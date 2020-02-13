@@ -29,11 +29,11 @@ func TestVersionUpgradeTwoNodes68xTo73x(t *testing.T) {
 	// due to minimum_master_nodes=2, the cluster is unavailable while the first master is upgraded
 	initial := elasticsearch.NewBuilder("test-version-up-2-68x-to-73x").
 		WithVersion("6.8.5").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
 		WithVersion("7.3.2").
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
