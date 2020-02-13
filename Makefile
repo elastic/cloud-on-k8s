@@ -83,7 +83,7 @@ PSP ?= 0
 ##  --       Development       --  ##
 #####################################
 
-all: dependencies lint check-license-header unit integration e2e-compile elastic-operator
+all: dependencies lint check-license-header unit integration e2e-compile elastic-operator reattach-pv
 
 ## -- build
 
@@ -118,6 +118,10 @@ elastic-operator: generate
 
 clean:
 	rm -f pkg/controller/common/license/zz_generated.pubkey.go
+
+reattach-pv:
+	# just check that reattach-pv still compiles
+	go build -o /dev/null hack/reattach-pv/main.go
 
 ## -- tests
 
@@ -404,7 +408,7 @@ e2e-local:
 ##########################################
 ci-check: check-license-header lint generate check-local-changes
 
-ci: unit_xml integration_xml docker-build
+ci: unit_xml integration_xml docker-build reattach-pv
 
 # Run e2e tests in a dedicated cluster.
 ci-e2e: e2e-compile run-deployer install-crds apply-psp e2e

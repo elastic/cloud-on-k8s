@@ -1,0 +1,41 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: mycluster
+spec:
+  version: 7.5.0
+  nodeSets:
+    - name: master-nodes
+      count: 3
+      config:
+        node.master: true
+        node.data: false
+        node.store.allow_mmap: false
+        xpack.monitoring.collection.enabled: true
+      volumeClaimTemplates:
+      - metadata:
+          name: elasticsearch-data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+          storageClassName: integ-test-gke-storage-class
+    - name: data-nodes
+      count: 3
+      config:
+        node.master: false
+        node.data: true
+        node.store.allow_mmap: false
+        xpack.monitoring.collection.enabled: true
+      volumeClaimTemplates:
+        - metadata:
+            name: elasticsearch-data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+            storageClassName: integ-test-gke-storage-class
