@@ -8,10 +8,14 @@ rules:
   - ""
   resources:
   - configmaps
+  - secrets
   verbs:
   - get
   - list
+  - watch
   - create
+  - update
+  - patch
   - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -82,19 +86,6 @@ rules:
   - kibanas
   - kibanas/status
   - kibanas/finalizers
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - associations.k8s.elastic.co
-  resources:
-  - apmserverelasticsearchassociations
-  - apmserverelasticsearchassociations/status
   verbs:
   - get
   - list

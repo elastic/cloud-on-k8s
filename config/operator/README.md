@@ -1,10 +1,10 @@
 # Operator deployment resources
 
-The Elastic Operator can be deployed in 2 different modes using the following arguments:
+The Elastic Operator can be deployed in 2 different modes. Either watching all namespaces or a subset of namespaces with restricted RBAC permissions. Furthermore it is possible to deploy the operator into the same namespace as the workloads it is managing:
 
-* `--operator-roles`: namespace, global, webhook or all
 * `--operator-namespace`: namespace the operator runs in
 * `--namespaces`: comma-separated list of namespaces in which resources should be watched (defaults to all namespaces)
+
 
 ## Deployment mode
 
@@ -16,25 +16,12 @@ A single operator with all roles, that manages resources in all namespaces.
 OPERATOR_IMAGE=<?> NAMESPACE=<?> make generate-all-in-one | kubectl apply -f -
 ```
 
-### Global and Namespace
+### Namespaced
 
-One global operator for high-level cross-cluster features and one namespace operator per namespace.
-
-#### Global
-
-A global operator with the webhook server (optional) that acts across namespaces and is not related to a specific deployment of the Elastic stack.
-The global operator deployed cluster-wide is responsible for high-level cross-cluster features (CCR, CCS, enterprise licenses).
+One or more operators managing resources in a given set of namespaces.
 
 ```bash
-OPERATOR_IMAGE=<?> NAMESPACE=<?> make generate-global | kubectl apply -f -
-```
-
-#### Namespace
-
-A namespace operator that manages resources in a given namespace.
-
-```bash
-OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACES=<?> make generate-namespace | kubectl apply -f -
+OPERATOR_NAME=<?> OPERATOR_IMAGE=<?> NAMESPACE=<?> MANAGED_NAMESPACES=<?> make generate-namespace | kubectl apply -f -
 ```
 
 ## Role of each YAML file

@@ -54,7 +54,7 @@ If you need to set resource requests and limits, see link:k8s-managing-compute-r
 
 Or if you want to install additional plugins, see <<{p}-init-containers-plugin-downloads>>.
 
-You might want to set environment variables to configure Elasticsearch. For example, to set the minimum and maximum JVM heap size to `2g` and `4g` respectively, you can modify the environment variables of the `elasticsearch` container as follows:
+You might want to set environment variables to configure Elasticsearch. For example, to set the JVM heap size to `4g`, you can modify the environment variables of the `elasticsearch` container as follows:
 
 [source,yaml]
 ----
@@ -68,7 +68,7 @@ spec:
         - name: elasticsearch
           env:
           - name: ES_JAVA_OPTS
-            value: "-Xms2g -Xmx4g"
+            value: "-Xms4g -Xmx4g"
 ----
 
 For more information on Pod templates, see the Kubernetes documentation:
