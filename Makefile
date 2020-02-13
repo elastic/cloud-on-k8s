@@ -66,11 +66,11 @@ SKIP_DOCKER_COMMAND ?= false
 
 ## -- Namespaces
 
-# namespace in which the global operator is deployed (see config/global-operator)
-GLOBAL_OPERATOR_NAMESPACE ?= elastic-system
-# namespace in which the namespace operator is deployed (see config/namespace-operator)
-NAMESPACE_OPERATOR_NAMESPACE ?= elastic-namespace-operators
-# comma separated list of namespaces in which the namespace operator should watch resources
+# namespace in which the operator is deployed (see config/operator)
+OPERATOR_NAMESPACE ?= elastic-system
+# name of the operator statefulset and related resources
+OPERATOR_NAME ?= elastic-operator
+# comma separated list of namespaces in which the operator should watch resources
 MANAGED_NAMESPACES ?=
 
 ## -- Security
@@ -150,13 +150,13 @@ install-crds: generate-crds
 run: install-crds go-run
 
 go-run:
-	# Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
+	# Run the operator locally with debug logs and operator image set to latest
 	AUTO_PORT_FORWARD=true \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
 			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
-				--development --operator-roles=global,namespace \
+				--development \
 				--log-verbosity=$(LOG_VERBOSITY) \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default \
@@ -169,7 +169,6 @@ go-debug:
 		-- \
 		manager \
 		--development \
-		--operator-roles=global,namespace \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--ca-cert-validity=10h \
 		--ca-cert-rotate-before=1h \
@@ -190,16 +189,14 @@ ifndef GCLOUD_PROJECT
 endif
 endif
 
-# Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds build-operator-image apply-operators
+# Deploy the operator against the current k8s cluster
+deploy: check-gke install-crds build-operator-image apply-operator
 
-apply-operators:
+apply-operator:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) --no-print-directory -sC config/operator generate-global | kubectl apply -f -
-	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-	NAMESPACE=$(NAMESPACE_OPERATOR_NAMESPACE) \
-	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
+	OPERATOR_NAME=$(OPERATOR_NAME) \
+	NAMESPACE=$(OPERATOR_NAMESPACE) \
+	MANAGED_NAMESPACES=$(MANAGED_NAMESPACES) \
 		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
 
 apply-psp:
@@ -211,7 +208,8 @@ ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 generate-all-in-one:
 	cp -f $(ALL_CRDS) $(ALL_IN_ONE_OUTPUT_FILE)
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-		NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		OPERATOR_NAME=$(OPERATOR_NAME) \
+		NAMESPACE=$(OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> $(ALL_IN_ONE_OUTPUT_FILE)
 
 # Deploy an all in one operator against the current k8s cluster
@@ -219,11 +217,8 @@ deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: docker-build docker-push
 	kubectl apply -f $(ALL_IN_ONE_OUTPUT_FILE)
 
-logs-namespace-operator:
-	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
-
-logs-global-operator:
-	@ kubectl --namespace=$(GLOBAL_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-global-operator
+logs-operator:
+	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/$(OPERATOR_NAME)
 
 samples:
 	@ echo "-> Pushing samples to Kubernetes cluster..."
@@ -242,7 +237,7 @@ cluster-bootstrap: install-crds
 
 clean-k8s-cluster:
 	kubectl delete --ignore-not-found=true  ValidatingWebhookConfiguration validating-webhook-configuration
-	for ns in $(NAMESPACE_OPERATOR_NAMESPACE) $(GLOBAL_OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
+	for ns in $(OPERATOR_NAMESPACE) $(MANAGED_NAMESPACES); do \
 		echo "Deleting resources in $$ns"; \
 		kubectl delete statefulsets -n $$ns --all; \
 		kubectl delete deployments -n $$ns --all; \
@@ -474,7 +469,7 @@ kind-with-operator-%: kind-node-variable-check docker-build
 	./hack/kind/kind.sh \
 		--load-images $(OPERATOR_IMAGE) \
 		--nodes "${*}" \
-		make install-crds apply-operators
+		make install-crds apply-operator
 
 ## Run all the e2e tests in a Kind cluster
 set-kind-e2e-image:
