@@ -110,7 +110,7 @@ func esFromFile(path string) (esv1.Elasticsearch, error) {
 	}
 	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(data, nil, nil)
 	if err != nil {
-		return esv1.Elasticsearch{}, nil
+		return esv1.Elasticsearch{}, err
 	}
 	es := *obj.(*esv1.Elasticsearch)
 	if es.Namespace == "" {
