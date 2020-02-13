@@ -2,6 +2,8 @@
 
 This tool can be used to recreate an Elasticsearch cluster by reusing orphaned PersistentVolumes that used to belong to that cluster before it was deleted.
 
+**Warning**: to be used at your own risk. This tool has not been tested extensively with multiple Kubernetes distributions and PersistentVolume providers. You may want to backup data from existing volumes first. Also make sure you perform a dry-run first.
+
 ## Expectations
 
 This tool can only be used when the following conditions are met:
