@@ -141,7 +141,7 @@ func checkElasticsearchNotFound(c k8s.Client, es esv1.Elasticsearch) error {
 	var retrieved esv1.Elasticsearch
 	err := c.Get(k8s.ExtractNamespacedName(&es), &retrieved)
 	if err == nil {
-		return fmt.Errorf("elasticsearch resource %s exists in the apiserver: it should be deleted first", es.Name)
+		return fmt.Errorf("elasticsearch resource %s exists in the apiserver; this tool can only recover clusters that don't exist anymore", es.Name)
 	}
 	if !apierrors.IsNotFound(err) {
 		return err
