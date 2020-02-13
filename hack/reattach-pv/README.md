@@ -24,7 +24,6 @@ Flags:
       --dry-run                         do not apply any Kubernetes resource change
       --elasticsearch-manifest string   path pointing to the Elasticsearch yaml manifest
   -h, --help                            help for reattach-pv
-      --pv-backup-path string           path to the file where a backup of existing PersistentVolumes will be stored before update, set empty to disable (default "pv_backup_{timestamp}.json")
 ```
 
 Example:
@@ -32,7 +31,6 @@ Example:
 ```
 # perform a dry run first
 ./reattach-pv --elasticsearch-manifest elasticsearch.yml --dry-run
-# inspect stdout, and notice a backup of existing volumes has been created in the current directory
 # then, execute again without the dry-run flag
 ./reattach-pv --elasticsearch-manifest elasticsearch.yml
 ```

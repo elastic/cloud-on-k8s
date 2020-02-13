@@ -5,12 +5,10 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -29,10 +27,8 @@ import (
 )
 
 const (
-	esManifestFlag      = "elasticsearch-manifest"
-	dryRunFlag          = "dry-run"
-	pvBackupFlag        = "pv-backup-path"
-	defaultPVBackupPath = "pv_backup_{timestamp}.json"
+	esManifestFlag = "elasticsearch-manifest"
+	dryRunFlag     = "dry-run"
 )
 
 var Cmd = &cobra.Command{
@@ -66,9 +62,6 @@ var Cmd = &cobra.Command{
 		matches, err := matchPVsWithClaim(releasedPVs, expectedClaims)
 		exitOnErr(err)
 
-		err = backupPVs(matches, pvBackupFilepath(viper.GetString(pvBackupFlag)))
-		exitOnErr(err)
-
 		err = createAndBindClaims(c, matches, dryRun)
 		exitOnErr(err)
 
@@ -87,11 +80,6 @@ func init() {
 		dryRunFlag,
 		false,
 		"do not apply any Kubernetes resource change",
-	)
-	Cmd.Flags().String(
-		pvBackupFlag,
-		defaultPVBackupPath,
-		"path to the file where a backup of existing PersistentVolumes will be stored before update, set empty to disable",
 	)
 	exitOnErr(viper.BindPFlags(Cmd.Flags()))
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -210,33 +198,6 @@ func findReleasedPVs(c k8s.Client) ([]v1.PersistentVolume, error) {
 	}
 	fmt.Printf("Found %d released PersistentVolumes\n", len(pvs.Items))
 	return released, nil
-}
-
-// pvBackupFilepath injects a timestamp in the default PV backup file.
-func pvBackupFilepath(flagValue string) string {
-	if flagValue == defaultPVBackupPath {
-		// set the current timestamp
-		return strings.Replace(flagValue, "{timestamp}", fmt.Sprintf("%d", time.Now().Unix()), 1)
-	}
-	return flagValue
-}
-
-// backupPVs stores a JSON backup of the given PersistentVolumes in toFile.
-func backupPVs(matches []MatchingVolumeClaim, toFile string) error {
-	if toFile == "" {
-		fmt.Println("Skipping PV backup file creation")
-		return nil
-	}
-	pvs := make([]v1.PersistentVolume, 0, len(matches))
-	for _, match := range matches {
-		pvs = append(pvs, match.volume)
-	}
-	asJSON, err := json.Marshal(pvs)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("Creating a backup of released PersistentVolumes in %s\n", toFile)
-	return ioutil.WriteFile(toFile, asJSON, 0644)
 }
 
 // MatchingVolumeClaim matches an existing PersistentVolume with a new PersistentVolumeClaim.
