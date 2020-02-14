@@ -52,7 +52,6 @@ func Reconcile(
 	})
 
 	for _, remoteCA := range remoteCAList.Items {
-		// TODO: sort list by remoteNs/remoteEs
 		remoteCertificateAuthorities = append(remoteCertificateAuthorities, remoteCA.Data[certificates.CAFileName]...)
 	}
 
