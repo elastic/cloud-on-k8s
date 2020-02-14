@@ -6,6 +6,7 @@ package remoteca
 
 import (
 	"reflect"
+	"sort"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -39,11 +40,17 @@ func Reconcile(
 	if err := c.List(
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
-		remoteca.GetRemoteCAMatchingLabel(es.Name),
+		remoteca.GetRemoteCaMatchingLabel(es.Name),
 	); err != nil {
 		return err
 	}
 	remoteCertificateAuthorities := []byte{}
+	// We sort the remote certificate authorities to have a stable comparison with the reconciled data
+	sort.SliceStable(remoteCAList.Items, func(i, j int) bool {
+		// We don't need to compare the namespace because they are all in the same one
+		return remoteCAList.Items[i].Name < remoteCAList.Items[j].Name
+	})
+
 	for _, remoteCA := range remoteCAList.Items {
 		// TODO: sort list by remoteNs/remoteEs
 		remoteCertificateAuthorities = append(remoteCertificateAuthorities, remoteCA.Data[certificates.CAFileName]...)

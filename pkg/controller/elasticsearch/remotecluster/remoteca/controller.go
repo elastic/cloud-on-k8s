@@ -434,7 +434,7 @@ func getCurrentRemoteCertificateAuthorities(
 	if err := c.List(
 		&remoteCAList,
 		client.InNamespace(associatedEs.Namespace),
-		GetRemoteCAMatchingLabel(associatedEs.Name),
+		GetRemoteCaMatchingLabel(associatedEs.Name),
 	); err != nil {
 		return nil, err
 	}

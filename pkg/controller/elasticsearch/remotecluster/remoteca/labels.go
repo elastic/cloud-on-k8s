@@ -54,7 +54,7 @@ func remoteCASecretName(
 	)
 }
 
-func GetRemoteCAMatchingLabel(esName string) client.MatchingLabels {
+func GetRemoteCaMatchingLabel(esName string) client.MatchingLabels {
 	return map[string]string{
 		label.ClusterNameLabelName: esName,
 		common.TypeLabelName:       TypeLabelValue,

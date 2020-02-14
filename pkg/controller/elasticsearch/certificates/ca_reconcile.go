@@ -49,7 +49,7 @@ func Reconcile(
 
 	results := &reconciler.Results{}
 
-	// reconcile remote clusters certificates
+	// reconcile remote clusters certificate authorities
 	if err := remoteca.Reconcile(driver.K8sClient(), es); err != nil {
 		results.WithError(err)
 	}
