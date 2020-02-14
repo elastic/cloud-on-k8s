@@ -23,7 +23,8 @@ spec:
       containers:
       - image: <OPERATOR_IMAGE>
         name: manager
-        args: ["manager", "--namespaces", "<MANAGED_NAMESPACE_LIST>"]
+        # namespaces the k8s client can access objects in should include the managed namespaces and the namespace the operator resides in, to be able to fetch internal secrets
+        args: ["manager", "--namespaces", "<MANAGED_NAMESPACE_LIST>,<NAMESPACE>"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
