@@ -180,7 +180,7 @@ spec:
       - image: {{ .OperatorImage }}
         imagePullPolicy: IfNotPresent
         name: manager
-        args: ["manager", "--namespaces", "{{ .Operator.ManagedNamespaces | join "," }}", "--enable-webhook", "--log-verbosity=1"]
+        args: ["manager", "--namespaces", "{{ .Operator.ManagedNamespaces | join "," }},{{.Operator.Namespace}}", "--enable-webhook", "--log-verbosity=1"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
