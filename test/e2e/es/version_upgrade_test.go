@@ -120,11 +120,11 @@ func TestVersionUpgradeTwoNodes7xTo7x(t *testing.T) {
 
 	initial := elasticsearch.NewBuilder("test-version-up-2-7x-to-7x").
 		WithVersion(test.Ctx().ElasticStackVersion).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
 		WithVersion(test.LatestVersion7x).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
