@@ -11,9 +11,11 @@ import (
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"go.elastic.co/apm"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -21,10 +23,13 @@ var log = logf.Log.WithName("remotecluster")
 
 // UpdateRemoteCluster updates the remote clusters in the persistent settings by calling the Elasticsearch API.
 func UpdateRemoteCluster(
+	ctx context.Context,
 	c k8s.Client,
 	esClient esclient.Client,
 	es esv1.Elasticsearch,
 ) error {
+	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
+	defer span.End()
 
 	currentRemoteClusters, err := getCurrentRemoteClusters(es)
 	if err != nil {

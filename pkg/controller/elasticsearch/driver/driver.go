@@ -222,7 +222,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 
 	if esReachable {
-		err = remotecluster.UpdateRemoteCluster(d.Client, esClient, d.ES)
+		err = remotecluster.UpdateRemoteCluster(ctx, d.Client, esClient, d.ES)
 		if err != nil {
 			msg := "Could not update remote clusters in Elasticsearch settings"
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)

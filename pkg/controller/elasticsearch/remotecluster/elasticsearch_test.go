@@ -92,7 +92,6 @@ func newEsWithRemoteClusters(esNamespace, esName string, remoteClusters ...esv1.
 
 func TestUpdateRemoteCluster(t *testing.T) {
 	type args struct {
-		c        k8s.Client
 		esClient *fakeESClient
 		es       *esv1.Elasticsearch
 	}
@@ -156,7 +155,7 @@ func TestUpdateRemoteCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.args.es)
-			if err := UpdateRemoteCluster(client, tt.args.esClient, *tt.args.es); (err != nil) != tt.wantErr {
+			if err := UpdateRemoteCluster(context.Background(), client, tt.args.esClient, *tt.args.es); (err != nil) != tt.wantErr {
 				t.Errorf("UpdateRemoteCluster() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// Check the settings
