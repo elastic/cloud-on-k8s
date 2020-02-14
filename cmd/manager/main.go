@@ -247,7 +247,7 @@ func execute() {
 		opts.Namespace = managedNamespaces[0]
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
-		// always include the operator namespace into the manger cache so that we can work with operator-internal resources in there
+		// always include the operator namespace into the manager cache so that we can work with operator-internal resources in there
 		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace))
 	}
 
