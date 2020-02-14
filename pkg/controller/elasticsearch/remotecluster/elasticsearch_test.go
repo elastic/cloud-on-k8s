@@ -4,11 +4,15 @@
 package remotecluster
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -61,43 +65,104 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 	}
 }
 
-func Test_newRemoteClusterSetting(t *testing.T) {
-	type args struct {
-		name      string
-		seedHosts []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want esclient.Settings
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := newRemoteClusterSetting(tt.args.name, tt.args.seedHosts); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("newRemoteClusterSetting() = %v, want %v", got, tt.want)
-			}
-		})
+type fakeESClient struct {
+	esclient.Client
+	settings esclient.Settings
+	called   bool
+}
+
+func (f *fakeESClient) UpdateSettings(_ context.Context, settings esclient.Settings) error {
+	f.settings = settings
+	f.called = true
+	return nil
+}
+func newEsWithRemoteClusters(esNamespace, esName string, remoteClusters ...esv1.K8sLocalRemoteCluster) *esv1.Elasticsearch {
+	return &esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es1",
+			Namespace: "ns1",
+		},
+		Spec: esv1.ElasticsearchSpec{
+			RemoteClusters: esv1.RemoteClusters{
+				K8sLocal: remoteClusters,
+			},
+		},
 	}
 }
 
-func Test_updateRemoteCluster(t *testing.T) {
+func TestUpdateRemoteCluster(t *testing.T) {
 	type args struct {
-		esClient           esclient.Client
-		persistentSettings esclient.Settings
+		c        k8s.Client
+		esClient *fakeESClient
+		es       *esv1.Elasticsearch
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name         string
+		args         args
+		wantErr      bool
+		wantEsCalled bool
+		wantSettings esclient.Settings
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Create a new remote cluster",
+			args: args{
+				esClient: &fakeESClient{},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					esv1.K8sLocalRemoteCluster{
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name:      "es2",
+							Namespace: "ns2",
+						},
+					}),
+			},
+			wantEsCalled: true,
+			wantSettings: esclient.Settings{
+				PersistentSettings: &esclient.SettingsGroup{
+					Cluster: esclient.Cluster{
+						RemoteClusters: map[string]esclient.RemoteCluster{
+							"ns2-es2": {Seeds: []string{"es2-es-transport.ns2.svc:9300"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Create a new remote cluster with no namespace",
+			args: args{
+				esClient: &fakeESClient{},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					esv1.K8sLocalRemoteCluster{
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name: "es2",
+						},
+					}),
+			},
+			wantEsCalled: true,
+			wantSettings: esclient.Settings{
+				PersistentSettings: &esclient.SettingsGroup{
+					Cluster: esclient.Cluster{
+						RemoteClusters: map[string]esclient.RemoteCluster{
+							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := updateRemoteCluster(tt.args.esClient, tt.args.persistentSettings); (err != nil) != tt.wantErr {
-				t.Errorf("updateRemoteCluster() error = %v, wantErr %v", err, tt.wantErr)
+			client := k8s.WrappedFakeClient(tt.args.es)
+			if err := UpdateRemoteCluster(client, tt.args.esClient, *tt.args.es); (err != nil) != tt.wantErr {
+				t.Errorf("UpdateRemoteCluster() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			// Check the settings
+			assert.Equal(t, tt.wantEsCalled, tt.args.esClient.called)
+			if tt.wantEsCalled {
+				assert.Equal(t, tt.wantSettings, tt.args.esClient.settings)
 			}
 		})
 	}

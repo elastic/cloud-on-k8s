@@ -92,8 +92,8 @@ func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteC
 		if !remoteCluster.IsDefined() {
 			continue
 		}
-		esRef := remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)
-		remoteClusterName := getRemoteClusterKey(esRef)
+		remoteCluster.ElasticsearchRef = remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)
+		remoteClusterName := getRemoteClusterKey(remoteCluster.ElasticsearchRef)
 		remoteClusters[remoteClusterName] = expectedRemoteClusterConfiguration{
 			remoteClusterState: remoteClusterState{
 				Name:       remoteClusterName,
