@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package rbac
+package remoteca
 
 import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -15,8 +15,8 @@ import (
 
 var log = logf.Log.WithName("remotecluster-rbac")
 
-// IsAssociationAllowed checks if a bi-directional association is allowed between 2 clusters.
-func IsAssociationAllowed(
+// isRemoteClusterAssociationAllowed checks if a bi-directional association is allowed between 2 clusters.
+func isRemoteClusterAssociationAllowed(
 	accessReviewer rbac.AccessReviewer,
 	localEs, remoteEs *esv1.Elasticsearch,
 	eventRecorder record.EventRecorder,

@@ -21,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	remoteclusterrbac "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster/rbac"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -36,7 +35,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -50,7 +48,7 @@ const (
 )
 
 var (
-	log            = logf.Log.WithName(name)
+	//log            = logf.Log.WithName(name)
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 )
 
@@ -189,7 +187,7 @@ func doReconcile(
 			// Remote cluster does not exist, skip it
 			continue
 		}
-		accessAllowed, err := remoteclusterrbac.IsAssociationAllowed(r.accessReviewer, localEs, remoteEs, r.recorder)
+		accessAllowed, err := isRemoteClusterAssociationAllowed(r.accessReviewer, localEs, remoteEs, r.recorder)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
