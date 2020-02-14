@@ -17,7 +17,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const defaultElasticStackVersion = "7.4.0"
+const defaultElasticStackVersion = "7.6.0"
 
 var (
 	testContextPath = flag.String("testContextPath", "", "Path to the test context file")
@@ -64,25 +64,21 @@ func defaultContext() Context {
 		AutoPortForwarding:    false,
 		ElasticStackVersion:   defaultElasticStackVersion,
 		IgnoreWebhookFailures: false,
-		GlobalOperator: ClusterResource{
-			Name:      "elastic-global-operator",
-			Namespace: "elastic-system",
-		},
-		NamespaceOperator: NamespaceOperator{
+		Operator: NamespaceOperator{
 			ClusterResource: ClusterResource{
-				Name:      "elastic-ns-operator",
-				Namespace: "elastic-ns-operators",
+				Name:      "elastic-operator",
+				Namespace: "elastic-system",
 			},
 			ManagedNamespaces: []string{"mercury", "venus"},
 		},
-		TestRun: "e2e-default",
+		TestRun:    "e2e-default",
+		OcpCluster: false,
 	}
 }
 
 // Context encapsulates data about a specific test run
 type Context struct {
-	GlobalOperator        ClusterResource   `json:"global_operator"`
-	NamespaceOperator     NamespaceOperator `json:"namespace_operator"`
+	Operator              NamespaceOperator `json:"operator"`
 	E2EImage              string            `json:"e2e_image"`
 	E2ENamespace          string            `json:"e2e_namespace"`
 	E2EServiceAccount     string            `json:"e2e_service_account"`
@@ -97,11 +93,12 @@ type Context struct {
 	AutoPortForwarding    bool              `json:"auto_port_forwarding"`
 	Local                 bool              `json:"local"`
 	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
+	OcpCluster            bool              `json:"ocp_cluster"`
 }
 
 // ManagedNamespace returns the nth managed namespace.
 func (c Context) ManagedNamespace(n int) string {
-	return c.NamespaceOperator.ManagedNamespaces[n]
+	return c.Operator.ManagedNamespaces[n]
 }
 
 // ClusterResource is a generic cluster resource.

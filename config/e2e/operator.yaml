@@ -2,18 +2,16 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .GlobalOperator.Name }}
-  namespace: {{ .GlobalOperator.Namespace }}
+  name: {{ .Operator.Name }}
+  namespace: {{ .Operator.Namespace }}
   labels:
     test-run: {{ .TestRun }}
 ---
-# The global operator has cluster-wide permissions on all required resources.
-# Same resources as the namespace operator, except for the addition of:
-# - enterpriselicenses
+# The operator has cluster-wide permissions on all required resources.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: elastic-global-operator
+  name: elastic-operator
   labels:
     test-run: {{ .TestRun }}
 rules:
@@ -40,6 +38,18 @@ rules:
   resources:
   - deployments
   - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
   verbs:
   - get
   - list
@@ -122,39 +132,39 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: elastic-global-operator
+  name: elastic-operator
   labels:
     test-run: {{ .TestRun }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: elastic-global-operator
+  name: elastic-operator
 subjects:
 - kind: ServiceAccount
-  name: {{ .GlobalOperator.Name }}
-  namespace: {{ .GlobalOperator.Namespace }}
+  name: {{ .Operator.Name }}
+  namespace: {{ .Operator.Namespace }}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
   name: webhook-server-secret
-  namespace: {{ .GlobalOperator.Namespace }}
+  namespace: {{ .Operator.Namespace }}
   labels:
     test-run: {{ .TestRun }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ .GlobalOperator.Name }}
-  namespace: {{ .GlobalOperator.Namespace }}
+  name: {{ .Operator.Name }}
+  namespace: {{ .Operator.Namespace }}
   labels:
-    control-plane: {{ .GlobalOperator.Name }}
+    control-plane: {{ .Operator.Name }}
     test-run: {{ .TestRun }}
 spec:
   selector:
     matchLabels:
-      control-plane: {{ .GlobalOperator.Name }}
-  serviceName: {{ .GlobalOperator.Name }}
+      control-plane: {{ .Operator.Name }}
+  serviceName: {{ .Operator.Name }}
   template:
     metadata:
       annotations:
@@ -162,15 +172,15 @@ spec:
         # This is to avoid a conflict with the ECS "error" and "source" documents.
         "co.elastic.logs/raw": "[{\"type\":\"container\",\"json.keys_under_root\":true,\"paths\":[\"/var/log/containers/*${data.kubernetes.container.id}.log\"],\"processors\":[{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"error\",\"to\":\"_error\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_error\",\"to\":\"error.message\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"source\",\"to\":\"_source\"}]}},{\"convert\":{\"mode\":\"rename\",\"ignore_missing\":true,\"fields\":[{\"from\":\"_source\",\"to\":\"event.source\"}]}}]}]"
       labels:
-        control-plane: {{ .GlobalOperator.Name }}
+        control-plane: {{ .Operator.Name }}
         test-run: {{ .TestRun }}
     spec:
-      serviceAccountName: {{ .GlobalOperator.Name }}
+      serviceAccountName: {{ .Operator.Name }}
       containers:
       - image: {{ .OperatorImage }}
         imagePullPolicy: IfNotPresent
         name: manager
-        args: ["manager", "--operator-roles", "global,webhook", "--log-verbosity=1"]
+        args: ["manager", "--namespaces", "{{ .Operator.ManagedNamespaces | join "," }}", "--enable-webhook", "--log-verbosity=1"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
@@ -179,7 +189,7 @@ spec:
           - name: WEBHOOK_SECRET
             value: webhook-server-secret
           - name: WEBHOOK_PODS_LABEL
-            value: {{ .GlobalOperator.Name }}
+            value: {{ .Operator.Name }}
           - name: OPERATOR_IMAGE
             value: {{ .OperatorImage }}
         resources:
@@ -208,13 +218,13 @@ apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: elastic-webhook.k8s.elastic.co
-  namespace: {{ .GlobalOperator.Namespace }}
+  namespace: {{ .Operator.Namespace }}
 webhooks:
   - clientConfig:
       caBundle: Cg==
       service:
         name: elastic-webhook-server
-        namespace: {{ .GlobalOperator.Namespace }}
+        namespace: {{ .Operator.Namespace }}
         # this is the path controller-runtime automatically generates
         path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
     failurePolicy: {{ if .IgnoreWebhookFailures }}Ignore{{ else }}Fail{{ end }}
@@ -233,7 +243,7 @@ webhooks:
       caBundle: Cg==
       service:
         name: elastic-webhook-server
-        namespace: {{ .GlobalOperator.Namespace }}
+        namespace: {{ .Operator.Namespace }}
         # this is the path controller-runtime automatically generates
         path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
     failurePolicy: {{ if .IgnoreWebhookFailures }}Ignore{{ else }}Fail{{ end }}
@@ -253,10 +263,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: elastic-webhook-server
-  namespace: {{ .GlobalOperator.Namespace }}
+  namespace: {{ .Operator.Namespace }}
 spec:
   ports:
     - port: 443
       targetPort: 9443
   selector:
-    control-plane: {{ .GlobalOperator.Name }}
+    control-plane: {{ .Operator.Name }}
