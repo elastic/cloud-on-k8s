@@ -124,7 +124,7 @@ func findLicenceFile(root string, licenceRegex *regexp.Regexp) (string, error) {
 			}
 			return nil
 		},
-		Unsorted: true,
+		Unsorted: false,
 	})
 
 	if err != nil {
