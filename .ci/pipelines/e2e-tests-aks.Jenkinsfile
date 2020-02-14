@@ -51,19 +51,8 @@ pipeline {
     post {
         cleanup {
             script {
-                sh """
-                    cat >deployer-config.yml <<EOF
-id: aks-ci
-overrides:
-  operation: delete
-  clusterName: $BUILD_TAG
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-EOF
-                    make -C .ci TARGET=run-deployer ci
-                """
+                sh '.ci/setenvconfig cleanup/aks'
+                sh 'make -C .ci TARGET=run-deployer ci'
             }
             cleanWs()
         }

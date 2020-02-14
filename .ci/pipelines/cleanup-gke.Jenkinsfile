@@ -21,7 +21,7 @@ pipeline {
                 retry(3)
             }
             steps {
-                sh '.ci/setenvconfig cleanup'
+                sh '.ci/setenvconfig cleanup/gke'
                 sh 'make -C .ci TARGET=run-deployer ci'
             }
         }

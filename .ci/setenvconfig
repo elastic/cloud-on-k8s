@@ -44,7 +44,6 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 
 TEST_TIMEOUT = 10m
 ENV
-
 write_deployer_config <<CFG
 id: aks-ci
 overrides:
@@ -310,7 +309,7 @@ ENV
 ;;
 
 ######################################
-  cleanup)
+  cleanup/gke)
 ######################################
 
 write_deployer_config <<CFG
@@ -323,6 +322,42 @@ overrides:
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
   gke:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+;;
+
+######################################
+  cleanup/aks)
+######################################
+
+write_deployer_config <<CFG
+id: aks-ci
+overrides:
+  operation: delete
+  clusterName: $BUILD_TAG
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  gke:
+    gCloudProject: $GCLOUD_PROJECT
+CFG
+;;
+
+######################################
+  cleanup/ocp)
+######################################
+
+write_deployer_config <<CFG
+id: ocp-ci
+overrides:
+  operation: delete
+  clusterName: $BUILD_TAG
+  vaultInfo:
+    address: $VAULT_ADDR
+    roleId: $VAULT_ROLE_ID
+    secretId: $VAULT_SECRET_ID
+  ocp:
     gCloudProject: $GCLOUD_PROJECT
 CFG
 ;;
