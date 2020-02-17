@@ -11,6 +11,7 @@ import (
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
@@ -26,10 +27,23 @@ func UpdateRemoteCluster(
 	ctx context.Context,
 	c k8s.Client,
 	esClient esclient.Client,
+	licenseChecker license.Checker,
 	es esv1.Elasticsearch,
 ) error {
 	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
 	defer span.End()
+
+	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		log.Info(
+			"Remote cluster is an enterprise feature. Enterprise features are disabled",
+			"namespace", es.Namespace, "es_name", es.Name,
+		)
+		return nil
+	}
 
 	currentRemoteClusters, err := getCurrentRemoteClusters(es)
 	if err != nil {

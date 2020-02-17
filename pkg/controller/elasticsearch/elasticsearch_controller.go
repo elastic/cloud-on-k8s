@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -65,10 +66,11 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	observerSettings := observer.DefaultSettings
 	observerSettings.Tracer = params.Tracer
 	return &ReconcileElasticsearch{
-		Client:      client,
-		scheme:      mgr.GetScheme(),
-		recorder:    mgr.GetEventRecorderFor(name),
-		esObservers: observer.NewManager(observerSettings),
+		Client:         client,
+		scheme:         mgr.GetScheme(),
+		recorder:       mgr.GetEventRecorderFor(name),
+		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
+		esObservers:    observer.NewManager(observerSettings),
 
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
@@ -159,8 +161,9 @@ var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
+	scheme         *runtime.Scheme
+	recorder       record.EventRecorder
+	licenseChecker license.Checker
 
 	esObservers *observer.Manager
 
@@ -309,6 +312,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
+		LicenseChecker:     r.licenseChecker,
 	}).Reconcile(ctx)
 }
 

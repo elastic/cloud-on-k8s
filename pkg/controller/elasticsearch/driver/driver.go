@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -74,6 +75,9 @@ type DefaultDriverParameters struct {
 	Client   k8s.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+
+	// LicenseChecker is used for some features to check if an appropriate license is deployed
+	LicenseChecker commonlicense.Checker
 
 	// State holds the accumulated state during the reconcile loop
 	ReconcileState *reconcile.State
@@ -222,7 +226,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 
 	if esReachable {
-		err = remotecluster.UpdateRemoteCluster(ctx, d.Client, esClient, d.ES)
+		err = remotecluster.UpdateRemoteCluster(ctx, d.Client, esClient, d.LicenseChecker, d.ES)
 		if err != nil {
 			msg := "Could not update remote clusters in Elasticsearch settings"
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)

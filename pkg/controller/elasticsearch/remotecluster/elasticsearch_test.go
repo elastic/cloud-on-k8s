@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -95,10 +97,27 @@ func newEsWithRemoteClusters(
 	}
 }
 
+type fakeLicenseChecker struct {
+	enterpriseFeaturesEnabled bool
+}
+
+func (fakeLicenseChecker) CurrentEnterpriseLicense() (*license.EnterpriseLicense, error) {
+	return nil, nil
+}
+
+func (f *fakeLicenseChecker) EnterpriseFeaturesEnabled() (bool, error) {
+	return f.enterpriseFeaturesEnabled, nil
+}
+
+func (fakeLicenseChecker) Valid(_ license.EnterpriseLicense) (bool, error) {
+	return true, nil
+}
+
 func TestUpdateRemoteCluster(t *testing.T) {
 	type args struct {
-		esClient *fakeESClient
-		es       *esv1.Elasticsearch
+		esClient       *fakeESClient
+		es             *esv1.Elasticsearch
+		licenseChecker license.Checker
 	}
 	tests := []struct {
 		name         string
@@ -110,7 +129,8 @@ func TestUpdateRemoteCluster(t *testing.T) {
 		{
 			name: "Create a new remote cluster",
 			args: args{
-				esClient: &fakeESClient{},
+				esClient:       &fakeESClient{},
+				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -136,7 +156,8 @@ func TestUpdateRemoteCluster(t *testing.T) {
 		{
 			name: "Create a new remote cluster with no namespace",
 			args: args{
-				esClient: &fakeESClient{},
+				esClient:       &fakeESClient{},
+				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -161,7 +182,8 @@ func TestUpdateRemoteCluster(t *testing.T) {
 		{
 			name: "Remote cluster already exists, do not make an API call",
 			args: args{
-				esClient: &fakeESClient{},
+				esClient:       &fakeESClient{},
+				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -179,7 +201,8 @@ func TestUpdateRemoteCluster(t *testing.T) {
 		{
 			name: "Remote cluster already exists but has been updated, we should make an API call",
 			args: args{
-				esClient: &fakeESClient{},
+				esClient:       &fakeESClient{},
+				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -206,7 +229,8 @@ func TestUpdateRemoteCluster(t *testing.T) {
 		{
 			name: "Remove existing cluster",
 			args: args{
-				esClient: &fakeESClient{},
+				esClient:       &fakeESClient{},
+				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
@@ -230,11 +254,29 @@ func TestUpdateRemoteCluster(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "No valid license to create a new remote cluster",
+			args: args{
+				esClient:       &fakeESClient{},
+				licenseChecker: &fakeLicenseChecker{false},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					nil,
+					esv1.K8sLocalRemoteCluster{
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name:      "es2",
+							Namespace: "ns2",
+						},
+					}),
+			},
+			wantEsCalled: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.args.es)
-			if err := UpdateRemoteCluster(context.Background(), client, tt.args.esClient, *tt.args.es); (err != nil) != tt.wantErr {
+			if err := UpdateRemoteCluster(context.Background(), client, tt.args.esClient, tt.args.licenseChecker, *tt.args.es); (err != nil) != tt.wantErr {
 				t.Errorf("UpdateRemoteCluster() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// Check the settings
