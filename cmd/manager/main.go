@@ -15,6 +15,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm"
@@ -324,6 +326,10 @@ func execute() {
 	}
 	if err = kibana.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "Kibana")
+		os.Exit(1)
+	}
+	if err = enterprisesearch.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "EnterpriseSearch")
 		os.Exit(1)
 	}
 	if err = asesassn.Add(mgr, accessReviewer, params); err != nil {
