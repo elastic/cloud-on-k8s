@@ -20,39 +20,27 @@ trap cleanup EXIT
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR}/../.."
 DOCS_DIR="${SCRIPT_DIR}/../../docs"
-REFDOCS_REPO="https://github.com/elastic/gen-crd-api-reference-docs.git"
-REFDOCS_VER="master"
+REFDOCS_REPO="github.com/elastic/crd-ref-docs"
+REFDOCS_VER="v0.0.3"
 
 log() {
     echo ">> $1"
 }
 
 build_docs() {
-    local INSTALL_DIR=$SCRATCH_DIR
+    local BIN_DIR=${SCRATCH_DIR}/bin
     (
-        log "Building refdoc binary..."
-        cd $INSTALL_DIR
-        git clone -q --depth 1 --branch $REFDOCS_VER --single-branch $REFDOCS_REPO
-        cd gen-crd-api-reference-docs
-        go mod edit --replace=github.com/elastic/cloud-on-k8s@latest=$REPO_ROOT
-        go build
-    )
+        log "Installing crd-ref-docs $REFDOCS_VER"
+        cd $SCRATCH_DIR
+        mkdir -p $BIN_DIR
+        go mod init github.com/elastic/cloud-on-k8s-docs && GOBIN=$BIN_DIR go get -u "${REFDOCS_REPO}@${REFDOCS_VER}"
 
-    local REFDOCS_BIN=${INSTALL_DIR}/gen-crd-api-reference-docs/gen-crd-api-reference-docs
-    local TEMP_OUT_FILE="${SCRATCH_DIR}/api-docs.asciidoc"
-    (
         log "Generating API reference documentation..."
-        cd $REPO_ROOT
-        $REFDOCS_BIN -api-dir=./pkg/apis \
-            -template-dir="${SCRIPT_DIR}/templates" \
-            -out-file=$TEMP_OUT_FILE \
-            -config="${SCRIPT_DIR}/config.json" \
-            -log_dir=$SCRATCH_DIR \
-            -alsologtostderr=false \
-            -logtostderr=false \
-            -stderrthreshold=ERROR
-        cp $TEMP_OUT_FILE "${DOCS_DIR}/api-docs.asciidoc"
-        log "API reference documentation generated successfully."
+        ${BIN_DIR}/crd-ref-docs --source-path=${REPO_ROOT}/pkg/apis \
+            --config=${SCRIPT_DIR}/config.yaml \
+            --renderer=asciidoctor \
+            --templates-dir=${SCRIPT_DIR}/templates \
+            --output-path=${DOCS_DIR}/api-docs.asciidoc
     )
 }
 
