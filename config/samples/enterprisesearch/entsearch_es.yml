@@ -1,0 +1,27 @@
+# This sample sets up an Elasticsearch cluster and a Enterprise Search instance preconfigured for that cluster
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: 7.6.0
+  nodeSets:
+    - name: default
+      count: 1
+      config:
+        # This setting could have performance implications for production clusters.
+        # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+        node.store.allow_mmap: false
+---
+apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+kind: EnterpriseSearch
+metadata:
+  name: entsearch-sample
+  annotations:
+    association.k8s.elastic.co/es-conf: '{"caSecretName":"elasticsearch-sample-es-http-certs-public","url":"https://elasticsearch-sample-es-http.default.svc:9200","authSecretName":"todo","authSecretKey":"todo","caCertProvided":true}'
+spec:
+  version: 7.6.0
+  image: eu.gcr.io/elastic-cloud-dev/enterprise-search:35723f7615a8a13a22f8118e4c72fc02edf16c4f
+  count: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
