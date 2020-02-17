@@ -76,11 +76,16 @@ func (f *fakeESClient) UpdateSettings(_ context.Context, settings esclient.Setti
 	f.called = true
 	return nil
 }
-func newEsWithRemoteClusters(esNamespace, esName string, remoteClusters ...esv1.K8sLocalRemoteCluster) *esv1.Elasticsearch {
+func newEsWithRemoteClusters(
+	esNamespace, esName string,
+	annotations map[string]string,
+	remoteClusters ...esv1.K8sLocalRemoteCluster,
+) *esv1.Elasticsearch {
 	return &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "es1",
-			Namespace: "ns1",
+			Name:        esName,
+			Namespace:   esNamespace,
+			Annotations: annotations,
 		},
 		Spec: esv1.ElasticsearchSpec{
 			RemoteClusters: esv1.RemoteClusters{
@@ -109,6 +114,7 @@ func TestUpdateRemoteCluster(t *testing.T) {
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
+					nil,
 					esv1.K8sLocalRemoteCluster{
 						ElasticsearchRef: commonv1.ObjectSelector{
 							Name:      "es2",
@@ -134,6 +140,7 @@ func TestUpdateRemoteCluster(t *testing.T) {
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
+					nil,
 					esv1.K8sLocalRemoteCluster{
 						ElasticsearchRef: commonv1.ObjectSelector{
 							Name: "es2",
@@ -146,6 +153,78 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					Cluster: esclient.Cluster{
 						RemoteClusters: map[string]esclient.RemoteCluster{
 							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Remote cluster already exists, do not make an API call",
+			args: args{
+				esClient: &fakeESClient{},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{
+						"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"ns1-es2","configHash":"1038652962"}]`,
+					},
+					esv1.K8sLocalRemoteCluster{
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name: "es2",
+						},
+					}),
+			},
+			wantEsCalled: false,
+		},
+		{
+			name: "Remote cluster already exists but has been updated, we should make an API call",
+			args: args{
+				esClient: &fakeESClient{},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{
+						"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"ns1-es2","configHash":"8851644973"}]`,
+					},
+					esv1.K8sLocalRemoteCluster{
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name: "es2",
+						},
+					}),
+			},
+			wantEsCalled: true,
+			wantSettings: esclient.Settings{
+				PersistentSettings: &esclient.SettingsGroup{
+					Cluster: esclient.Cluster{
+						RemoteClusters: map[string]esclient.RemoteCluster{
+							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Remove existing cluster",
+			args: args{
+				esClient: &fakeESClient{},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{
+						"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"to-be-deleted","configHash":"8538658922"},{"name":"ns1-es2","configHash":"1038652962"}]`,
+					},
+					esv1.K8sLocalRemoteCluster{
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name: "es2",
+						},
+					}),
+			},
+			wantEsCalled: true,
+			wantSettings: esclient.Settings{
+				PersistentSettings: &esclient.SettingsGroup{
+					Cluster: esclient.Cluster{
+						RemoteClusters: map[string]esclient.RemoteCluster{
+							"to-be-deleted": {Seeds: nil},
 						},
 					},
 				},
