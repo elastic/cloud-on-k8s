@@ -1,41 +1,35 @@
 {{- define "type" -}}
-[id="{{ anchorIDForType . | safeIdentifier }}"]
-[float]
-==== {{ .Name.Name }} {{- if eq .Kind "Alias" -}}(`{{.Underlying}}` alias){{ end }}
+{{- $type := . -}}
+{{- if asciidocShouldRenderType $type -}}
 
-{{ safe (renderComments .CommentLines) }}
+[id="{{ asciidocTypeID $type | asciidocRenderAnchorID }}"]
+==== {{ $type.Name  }} {{ if $type.IsAlias }}({{ asciidocRenderTypeLink $type.UnderlyingType  }}) {{ end }}
 
+{{ $type.Doc }}
 
-{{ with (typeReferences .) -}}
-{{ if . -}}
-.Appears in:
+{{ if $type.References -}}
+.Appears In:
 ****
-{{- $prev := "" }}
-{{- range . }}
-{{- if $prev }}, {{ end -}}
-{{- $prev = . }}
-- {{ template "link_template" . }}
+{{- range $type.SortedReferences }}
+- {{ asciidocRenderTypeLink . }}
 {{- end }}
 ****
 {{- end }}
-{{- end }}
 
-
-{{- if .Members }}
-[cols="20a,80a", options="header"]
+{{ if $type.Members -}}
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
+| Field | Description
+{{ if $type.GVK -}}
+| *`apiVersion`* __string__ | `{{ $type.GVK.Group }}/{{ $type.GVK.Version }}`
+| *`kind`* __string__ | `{{ $type.GVK.Kind }}`
+{{ end -}}
 
-{{- if isExportedType . }}
-| *`apiVersion`*  +
-_string_
-| `{{ apiGroup . }}`
-
-| *`kind`*  +
-_string_
-| `{{ .Name.Name }}`
-{{- end }}
-{{ template "members" .}}
+{{ range $type.Members -}}
+| *`{{ .Name  }}`* __{{ asciidocRenderType .Type }}__ | {{ template "type_members" . }}
+{{ end -}}
 |===
-{{- end }}
-{{- end }}
+{{ end -}}
+
+{{- end -}}
+{{- end -}}
