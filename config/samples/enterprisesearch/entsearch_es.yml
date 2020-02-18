@@ -18,7 +18,7 @@ kind: EnterpriseSearch
 metadata:
   name: entsearch-sample
   annotations:
-    association.k8s.elastic.co/es-conf: '{"caSecretName":"elasticsearch-sample-es-http-certs-public","url":"https://elasticsearch-sample-es-http.default.svc:9200","authSecretName":"todo","authSecretKey":"todo","caCertProvided":true}'
+    association.k8s.elastic.co/es-conf: '{"caSecretName":"elasticsearch-sample-es-http-certs-public","url":"https://elasticsearch-sample-es-http.default.svc:9200","authSecretName":"elasticsearch-sample-es-elastic-user","authSecretKey":"elastic","caCertProvided":true}'
 spec:
   version: 7.6.0
   image: eu.gcr.io/elastic-cloud-dev/enterprise-search:35723f7615a8a13a22f8118e4c72fc02edf16c4f

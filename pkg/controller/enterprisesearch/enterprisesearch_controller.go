@@ -55,7 +55,6 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, reconciler)
 }
 
-
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEnterpriseSearch {
 	client := k8s.WrapClient(mgr.GetClient())
@@ -204,10 +203,18 @@ func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *ents
 
 func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request reconcile.Request, ents entsv1beta1.EnterpriseSearch) (reconcile.Result, error) {
 	state := NewState(request, &ents)
+
 	svc, err := common.ReconcileService(ctx, r.Client, r.scheme, NewService(ents), &ents)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+
+	_, err = ReconcileConfig(r.K8sClient(), r.Scheme(), ents)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO: hash
 	// TODO: certs
 	//results := apmcerts.Reconcile(ctx, r, as, []corev1.Service{*svc}, r.CACertRotation)
 	//if results.HasError() {
