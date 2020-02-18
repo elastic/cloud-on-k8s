@@ -39,6 +39,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
+	entsassn "github.com/elastic/cloud-on-k8s/pkg/controller/entsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -338,6 +339,10 @@ func execute() {
 	}
 	if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+		os.Exit(1)
+	}
+	if err = entsassn.Add(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "EnterpriseSearchAssociation")
 		os.Exit(1)
 	}
 

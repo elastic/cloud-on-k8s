@@ -47,31 +47,31 @@ type EnterpriseSearchSpec struct {
 func (ents *EnterpriseSearch) ServiceAccountName() string {
 	return ents.Spec.ServiceAccountName
 }
-//
-//// En expresses the status of the Apm Server instances.
-//type ApmServerHealth string
-//
-//const (
-//	// ApmServerRed means no instance is currently available.
-//	ApmServerRed ApmServerHealth = "red"
-//	// ApmServerGreen means at least one instance is available.
-//	ApmServerGreen ApmServerHealth = "green"
-//)
+
+// EnterpriseSearchHealth expresses the health of the EnterpriseSearchHealth instances.
+type EnterpriseSearchHealth string
+
+const (
+	// EnterpriseSearchRed means no instance is currently available.
+	EnterpriseSearchRed EnterpriseSearchHealth = "red"
+	// EnterpriseSearchGreen means at least one instance is available.
+	EnterpriseSearchGreen EnterpriseSearchHealth = "green"
+)
 
 // EnterpriseSearchStatus defines the observed state of EnterpriseSearch
 type EnterpriseSearchStatus struct {
 	commonv1.ReconcilerStatus `json:",inline"`
-	//Health                         ApmServerHealth `json:"health,omitempty"`
+	Health                         EnterpriseSearchHealth `json:"health,omitempty"`
 	// ExternalService is the name of the service associated to the Enterprise Search Pods.
 	ExternalService string `json:"service,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
 	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 //
-//// IsDegraded returns true if the current status is worse than the previous.
-//func (as ApmServerStatus) IsDegraded(prev ApmServerStatus) bool {
-//	return prev.Health == ApmServerGreen && as.Health != ApmServerGreen
-//}
+// IsDegraded returns true if the current status is worse than the previous.
+func (ents EnterpriseSearchStatus) IsDegraded(prev EnterpriseSearchStatus) bool {
+	return prev.Health == EnterpriseSearchGreen && ents.Health != EnterpriseSearchRed
+}
 
 // +kubebuilder:object:root=true
 
@@ -82,6 +82,7 @@ type EnterpriseSearchStatus struct {
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Enterprise Search version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:storageversion
 type EnterpriseSearch struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
