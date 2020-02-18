@@ -66,5 +66,9 @@ func SetupV1beta1Scheme() error {
 		return err
 	}
 	err = kbv1beta1.AddToScheme(clientgoscheme.Scheme)
+	if err != nil {
+		return err
+	}
+	err = entsv1beta1.AddToScheme(clientgoscheme.Scheme)
 	return err
 }

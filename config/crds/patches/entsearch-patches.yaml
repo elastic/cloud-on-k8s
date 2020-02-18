@@ -19,3 +19,8 @@
 # that would maybe not match the user's k8s version.
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/podTemplate/properties
+# Move the status subresource at the top level
+# TODO: why???
+- op: move
+  from: /spec/versions/0/subresources
+  path: /spec/subresources

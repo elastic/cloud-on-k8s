@@ -6165,10 +6165,13 @@ spec:
               availableNodes:
                 format: int32
                 type: integer
+              health:
+                description: EnterpriseSearchHealth expresses the health of the EnterpriseSearchHealth
+                  instances.
+                type: string
               service:
-                description: Health                         ApmServerHealth `json:"health,omitempty"`
-                  ExternalService is the name of the service associated to the Enterprise
-                  Search Pods.
+                description: ExternalService is the name of the service associated
+                  to the Enterprise Search Pods.
                 type: string
             type: object
         type: object
