@@ -30,7 +30,7 @@ var (
 	}
 
 	DefaultEnv = []corev1.EnvVar{
-		{Name: "JAVA_OPTS", Value: "-Xms3500m -Xmx3500m"},
+		{Name: "JAVA_OPTS", Value: DefaultJavaOpts},
 		{Name: "ENT_SEARCH_CONFIG_PATH", Value: filepath.Join(ConfigMountPath, ConfigFilename)},
 	}
 )
