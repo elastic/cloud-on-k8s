@@ -11,8 +11,7 @@ Before you start, install the following tools and packages:
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.14)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) (>= 2.0.0)
 * [docker](https://docs.docker.com/)
-* Kubernetes distribution such as [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [kind](https://kind.sigs.k8s.io), or access to a hosted Kubernetes service such as [GKE](https://cloud.google.com/kubernetes-engine)
-
+* Kubernetes distribution such as [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/) or [kind](https://kind.sigs.k8s.io), or access to a hosted Kubernetes service such as [GKE](https://cloud.google.com/kubernetes-engine) or [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/)
 
 ### Get sources
 
@@ -28,37 +27,31 @@ Run `make check-requisites` to check that all dependencies are installed.
 ## Development
 
 1. Run `make dependencies` to download the Go libraries needed to compile the project.
+1. Get a working development Kubernetes cluster. You can use:
 
-2. Get a working development Kubernetes cluster. You can use:
+* [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube)
 
-    [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube)
+  ```bash
+  make bootstrap-minikube
+  ```
 
-      ```bash
-      make bootstrap-minikube
-      # Sets up a Minikube cluster with required resources
-      ```
+* [Kind](https://kind.sigs.k8s.io/)
 
-    [Kind](https://kind.sigs.k8s.io/)
+  ```bash
+  make bootstrap-kind
+  ```
 
-      ```bash
-      make bootstrap-kind
-      # Sets up a kind cluster with required resources
-      ```
+* Cloud providers
 
-    [GKE](https://cloud.google.com/kubernetes-engine/)
+  Use [deployer](/hack/deployer/README.md) (note that some [one time configuration](/hack/deployer/README.md#typical-usage) is required):
 
-      Make sure that container registry authentication is correctly configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication). When installing the `gcloud` tool, make sure to install the beta components by running `gcloud components install beta`.
-
-      ```bash
-      export GCLOUD_PROJECT=my-project-id
-      make bootstrap-cloud
-      # Sets up GKE cluster (by default) with required resources
-      ```
+  * [GKE](https://cloud.google.com/kubernetes-engine/): `make switch-gke bootstrap-cloud`
+  * [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/): `make switch-aks bootstrap-cloud`
 
 3. Deploy the operator.
 
-   * `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
-   * `make samples` to apply a sample stack resource.
+  * `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
+  * `make samples` to apply a sample stack resource.
 
 ### Running E2E tests
 
