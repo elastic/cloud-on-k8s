@@ -6,6 +6,8 @@ package enterprisesearch
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -209,12 +211,16 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	_, err = ReconcileConfig(r.K8sClient(), r.Scheme(), ents)
+	configSecret, err := ReconcileConfig(r.K8sClient(), r.Scheme(), ents)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// TODO: hash
+	configHash := sha256.New224()
+	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
+
+	// TODO: hash ES certs for rotation
+
 	// TODO: certs
 	//results := apmcerts.Reconcile(ctx, r, as, []corev1.Service{*svc}, r.CACertRotation)
 	//if results.HasError() {
@@ -223,7 +229,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	//	return res, err
 	//}
 
-	state, err = r.reconcileDeployment(ctx, state, ents)
+	state, err = r.reconcileDeployment(ctx, state, ents, fmt.Sprintf("%x", configHash.Sum(nil)))
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")

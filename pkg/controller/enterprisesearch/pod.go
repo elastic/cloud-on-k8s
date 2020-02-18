@@ -15,6 +15,7 @@ import (
 const (
 	HTTPPort = 3002
 	DefaultJavaOpts = "-Xms3500m -Xmx3500m"
+	ConfigHashLabelName = "enterprisesearch.k8s.elastic.co/config-hash"
 )
 
 var (
@@ -34,7 +35,7 @@ var (
 	}
 )
 
-func newPodSpec(ents entsv1beta1.EnterpriseSearch) corev1.PodTemplateSpec {
+func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
 	cfgVolume := ConfigSecretVolume(ents)
 
 	builder := defaults.NewPodTemplateBuilder(
@@ -47,7 +48,9 @@ func newPodSpec(ents entsv1beta1.EnterpriseSearch) corev1.PodTemplateSpec {
 		}).
 		WithVolumes(cfgVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount()).
-		WithEnv(DefaultEnv...)
+		WithEnv(DefaultEnv...).
+		// ensure the Pod gets rotated on config change
+		WithLabels(map[string]string{ConfigHashLabelName: configHash})
 
 	builder = withESCertsVolume(builder, ents)
 

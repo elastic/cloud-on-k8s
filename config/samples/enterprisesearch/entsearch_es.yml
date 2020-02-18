@@ -17,10 +17,11 @@ apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
 kind: EnterpriseSearch
 metadata:
   name: entsearch-sample
-  annotations:
 spec:
   version: 7.6.0
   image: eu.gcr.io/elastic-cloud-dev/enterprise-search:35723f7615a8a13a22f8118e4c72fc02edf16c4f
   count: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
+#  config:
+#    ent_search.external_url: http://my-dns.com:3002

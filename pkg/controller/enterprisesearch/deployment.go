@@ -17,17 +17,12 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	ctx context.Context,
 	state State,
 	ents entsv1beta1.EnterpriseSearch,
+	configHash string,
 ) (State, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	// TODO: config
-	//reconciledConfigSecret, err := config.Reconcile(r.Client, r.scheme, as)
-	//if err != nil {
-	//	return state, err
-	//}
-
-	params, err := r.deploymentParams(ents)
+	params, err := r.deploymentParams(ents, configHash)
 	if err != nil {
 		return state, err
 	}
@@ -42,16 +37,9 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 }
 
 
-func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.EnterpriseSearch) (deployment.Params, error) {
-	podSpec := newPodSpec(ents)
+func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.EnterpriseSearch, configHash string) (deployment.Params, error) {
+	podSpec := newPodSpec(ents, configHash)
 	podLabels := NewLabels(ents.Name)
-
-	//// Build a checksum of the configuration, add it to the pod labels so a change triggers a rolling update
-	//configChecksum := sha256.New224()
-	//_, _ = configChecksum.Write(params.ConfigSecret.Data[config.ApmCfgSecretKey])
-	//if params.keystoreResources != nil {
-	//	_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
-	//}
 
 	//if ents.AssociationConf().CAIsConfigured() {
 	//	esCASecretName := ents.AssociationConf().GetCASecretName()
