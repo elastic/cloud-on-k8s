@@ -30,8 +30,8 @@ build_docs() {
 
     (
         echo "Installing crd-ref-docs $REFDOCS_VER to $BIN_DIR"
-        cd $SCRATCH_DIR
         mkdir -p $BIN_DIR
+        cd $SCRATCH_DIR
         go mod init github.com/elastic/cloud-on-k8s-docs && GOBIN=$BIN_DIR go get -u "${REFDOCS_REPO}@${REFDOCS_VER}"
 
         echo "Generating API reference documentation"
