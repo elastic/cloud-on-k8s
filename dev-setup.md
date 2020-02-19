@@ -50,8 +50,8 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 3. Deploy the operator.
 
-  * `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
-  * `make samples` to apply a sample stack resource.
+* `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
+* `make samples` to apply a sample stack resource.
 
 ### Running E2E tests
 

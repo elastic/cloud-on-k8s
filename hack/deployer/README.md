@@ -2,9 +2,9 @@
 
 Deployer is the provisioning tool that aims to be the interface to multiple Kubernetes providers. Currently, it supports GKE and AKS.
 
-# Typical usage
+## Typical usage
 
-## Provision
+### Provision
 
 * GKE
 
@@ -13,6 +13,7 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
   * Make sure that container registry authentication is correctly configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication)
   * Set `GCLOUD_PROJECT` to the name of the GCloud project you wish to use
   * Run from the [project root](/):
+
     ```bash
     make switch-gke bootstrap-cloud
     ```
@@ -23,17 +24,18 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
   * Set `RESOURCE_GROUP` to the name of the Resource Group you wish to deploy in
   * Set `ACR_NAME` to the name of Azure Container Registry you wish to use
   * Run from the [project root](/):
+
     ```bash
     make switch-aks bootstrap-cloud
     ```
 
-## Deprovision
+### Deprovision
 
 ```bash
 make delete-cloud
 ```
 
-# Advanced usage
+## Advanced usage
 
 Deployer uses two config files:
 
