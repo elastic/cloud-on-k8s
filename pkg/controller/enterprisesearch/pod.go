@@ -1,6 +1,7 @@
 package enterprisesearch
 
 import (
+	"fmt"
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +17,8 @@ const (
 	HTTPPort = 3002
 	DefaultJavaOpts = "-Xms3500m -Xmx3500m"
 	ConfigHashLabelName = "enterprisesearch.k8s.elastic.co/config-hash"
+	// TODO: support https
+	Protocol = "http"
 )
 
 var (
@@ -28,11 +31,25 @@ var (
 			corev1.ResourceMemory: DefaultMemoryLimits,
 		},
 	}
-
 	DefaultEnv = []corev1.EnvVar{
 		{Name: "JAVA_OPTS", Value: DefaultJavaOpts},
 		{Name: "ENT_SEARCH_CONFIG_PATH", Value: filepath.Join(ConfigMountPath, ConfigFilename)},
 	}
+	ReadinessProbe = corev1.Probe{
+		FailureThreshold:    3,
+		InitialDelaySeconds: 60, // initial startup is pretty slow
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		TimeoutSeconds:      5,
+		Handler: corev1.Handler{
+			Exec: &corev1.ExecAction{
+				Command: []string{"bash", "-c",
+					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/swiftype-app-version -k -s`, Protocol, HTTPPort),
+				},
+			},
+		},
+	}
+
 )
 
 func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
@@ -46,6 +63,7 @@ func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.Pod
 		WithPorts([]corev1.ContainerPort{
 			{Name: ents.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 		}).
+		WithReadinessProbe(ReadinessProbe).
 		WithVolumes(cfgVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount()).
 		WithEnv(DefaultEnv...).
