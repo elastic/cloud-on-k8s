@@ -66,9 +66,8 @@ func newEventLogger(client *kubernetes.Clientset, testCtx test.Context, logFileP
 	// add all namespaces to interesting namespaces
 	s := struct{}{}
 	el.interestingNamespaces[testCtx.E2ENamespace] = s
-	el.interestingNamespaces[testCtx.GlobalOperator.Namespace] = s
-	el.interestingNamespaces[testCtx.NamespaceOperator.Namespace] = s
-	for _, ns := range testCtx.NamespaceOperator.ManagedNamespaces {
+	el.interestingNamespaces[testCtx.Operator.Namespace] = s
+	for _, ns := range testCtx.Operator.ManagedNamespaces {
 		el.interestingNamespaces[ns] = s
 	}
 

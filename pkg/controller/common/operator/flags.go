@@ -13,12 +13,12 @@ const (
 	ContainerRegistryFlag  = "container-registry"
 	DebugHTTPListenFlag    = "debug-http-listen"
 	EnableTracingFlag      = "enable-tracing"
+	EnableWebhookFlag      = "enable-webhook"
 	EnforceRBACOnRefsFlag  = "enforce-rbac-on-refs"
 	ManageWebhookCertsFlag = "manage-webhook-certs"
 	MetricsPortFlag        = "metrics-port"
 	NamespacesFlag         = "namespaces"
 	OperatorNamespaceFlag  = "operator-namespace"
-	OperatorRolesFlag      = "operator-roles"
 	WebhookCertDirFlag     = "webhook-cert-dir"
 	WebhookSecretFlag      = "webhook-secret"
 )

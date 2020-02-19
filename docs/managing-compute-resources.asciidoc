@@ -77,7 +77,7 @@ spec:
             memory: 2Gi
 ----
 
-For the container name, you can use `apm-server` for `kibana` as appropriate.
+For the container name, you can use `apm-server` or `kibana` as appropriate.
 
 [float]
 [id="{p}-default-behavior"]
