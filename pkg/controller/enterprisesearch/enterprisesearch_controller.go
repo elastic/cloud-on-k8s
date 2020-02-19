@@ -39,11 +39,11 @@ import (
 
 
 const (
-	name = "enterprisesearch-controller"
+	controllerName = "enterprisesearch-controller"
 )
 
 var (
-	log = logf.Log.WithName(name)
+	log = logf.Log.WithName(controllerName)
 )
 
 // Add creates a new EnterpriseSearch Controller and adds it to the Manager with default RBAC.
@@ -63,7 +63,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	return &ReconcileEnterpriseSearch{
 		Client:         client,
 		scheme:         mgr.GetScheme(),
-		recorder:       mgr.GetEventRecorderFor(name),
+		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
@@ -105,7 +105,7 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	return controller.New(name, mgr, controller.Options{Reconciler: r})
+	return controller.New(controllerName, mgr, controller.Options{Reconciler: r})
 }
 
 var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}
@@ -208,6 +208,10 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 
 	svc, err := common.ReconcileService(ctx, r.Client, r.scheme, NewService(ents), &ents)
 	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if err := ReconcileDefaultUser(r.K8sClient(), ents, r.Scheme()); err != nil {
 		return reconcile.Result{}, err
 	}
 

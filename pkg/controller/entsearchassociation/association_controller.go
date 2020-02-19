@@ -44,7 +44,7 @@ import (
 
 const (
 	name = "entsearch-es-association-controller"
-	entSearchUserSuffix               = "entsearch-user"
+	entSearchUserSuffix               = "entsearch-es-user"
 	elasticsearchCASecretSuffix = "entsearch-es-ca" // nolint
 )
 

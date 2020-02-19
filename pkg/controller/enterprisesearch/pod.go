@@ -66,7 +66,7 @@ func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.Pod
 		WithReadinessProbe(ReadinessProbe).
 		WithVolumes(cfgVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount()).
-		WithEnv(DefaultEnv...).
+		WithEnv(append(DefaultEnv, DefaultUserEnvVar(ents))...).
 		// ensure the Pod gets rotated on config change
 		WithLabels(map[string]string{ConfigHashLabelName: configHash})
 
@@ -89,4 +89,3 @@ func withESCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.En
 		WithVolumes(vol.Volume()).
 		WithVolumeMounts(vol.VolumeMount())
 }
-
