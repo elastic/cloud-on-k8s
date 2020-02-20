@@ -5,6 +5,7 @@
 package test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -22,7 +23,7 @@ const (
 func SkipInvalidUpgrade(t *testing.T, srcVersion string, dstVersion string) {
 	isValid, err := isValidUpgrade(srcVersion, dstVersion)
 	if err != nil {
-		t.Fatal("Fail to parse Elastic Stack version", "err", err.Error())
+		t.Fatalf("Failed to determine the validity of the upgrade path: %v", err)
 	}
 	if !isValid {
 		t.SkipNow()
@@ -33,11 +34,11 @@ func SkipInvalidUpgrade(t *testing.T, srcVersion string, dstVersion string) {
 func isValidUpgrade(from string, to string) (bool, error) {
 	srcVer, err := version.Parse(from)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to parse version '%s': %w", from, err)
 	}
 	dstVer, err := version.Parse(to)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to parse version '%s': %w", from, err)
 	}
 	// major digits must be equal or differ by only 1
 	validMajorDigit := dstVer.Major == srcVer.Major || dstVer.Major == srcVer.Major+1
