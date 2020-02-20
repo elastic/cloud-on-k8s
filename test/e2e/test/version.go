@@ -38,7 +38,7 @@ func isValidUpgrade(from string, to string) (bool, error) {
 	}
 	dstVer, err := version.Parse(to)
 	if err != nil {
-		return false, fmt.Errorf("failed to parse version '%s': %w", from, err)
+		return false, fmt.Errorf("failed to parse version '%s': %w", to, err)
 	}
 	// major digits must be equal or differ by only 1
 	validMajorDigit := dstVer.Major == srcVer.Major || dstVer.Major == srcVer.Major+1
