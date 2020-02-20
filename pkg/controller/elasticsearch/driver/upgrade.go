@@ -10,9 +10,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -45,7 +43,7 @@ func (d *defaultDriver) handleRollingUpgrades(
 	if err != nil {
 		return results.WithError(err)
 	}
-	podsToUpgrade, err := podsToUpgrade(d.ES, d.Client, statefulSets)
+	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -176,15 +174,9 @@ func healthyPods(
 }
 
 func podsToUpgrade(
-	es esv1.Elasticsearch,
 	client k8s.Client,
 	statefulSets sset.StatefulSetList,
 ) ([]corev1.Pod, error) {
-	esVersion, err := version.Parse(es.Spec.Version)
-	if err != nil {
-		return nil, err
-	}
-
 	var toUpgrade []corev1.Pod
 	for _, statefulSet := range statefulSets {
 		if statefulSet.Status.UpdateRevision == "" {
@@ -207,16 +199,7 @@ func podsToUpgrade(
 				// Pod does not exist, continue the loop as the absence will be accounted by the deletion driver
 				continue
 			}
-			// We consider a Pod for an upgrade if at least one of the following conditions is met:
-			// 1. The update revision of the Pod does not match the one in the status of the StatefulSet
-			// 2. The Elasticsearch version run by the Pod does not match the expected one in the Elasticsearch object
-			// Relying only on Pod revision is not enough since it might not be propagated consistently across all the StatefulSets.
-			// See https://github.com/elastic/cloud-on-k8s/issues/2393#issuecomment-572951884
-			podVersion, err := label.ExtractVersion(pod.Labels)
-			if err != nil {
-				return toUpgrade, err
-			}
-			if sset.PodRevision(pod) != statefulSet.Status.UpdateRevision || !podVersion.IsSame(*esVersion) {
+			if sset.PodRevision(pod) != statefulSet.Status.UpdateRevision {
 				toUpgrade = append(toUpgrade, pod)
 			}
 		}
