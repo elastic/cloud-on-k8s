@@ -15,7 +15,7 @@ import (
 
 func (d *defaultDriver) MaybeForceUpgrade(statefulSets sset.StatefulSetList) (bool, error) {
 	// Get the pods to upgrade
-	podsToUpgrade, err := podsToUpgrade(d.ES, d.Client, statefulSets)
+	podsToUpgrade, err := podsToUpgrade(d.Client, statefulSets)
 	if err != nil {
 		return false, err
 	}
