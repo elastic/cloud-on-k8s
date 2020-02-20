@@ -23,16 +23,16 @@ pipeline {
         }
         stage('Run Checks') {
             steps {
-                sh 'make -C build/ci TARGET=ci-check ci'
+                sh 'make -C .ci TARGET=ci-check ci'
             }
         }
         stage("Run E2E tests") {
             steps {
                 sh '.ci/setenvconfig e2e/ocp'
                 script {
-                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
+                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
-                    sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+                    sh 'make -C .ci TARGET=e2e-generate-xml ci'
                     junit "e2e-tests.xml"
 
                     if (env.SHELL_EXIT_CODE != 0) {
