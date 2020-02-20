@@ -1,0 +1,13 @@
+processor:
+  ignoreTypes:
+    - "(Elasticsearch|Kibana|ApmServer)List$"
+    - "(Elasticsearch|Kibana|ApmServer)Health$"
+    - "(Elasticsearch|Kibana|ApmServer|Reconciler)Status$"
+    - "ElasticsearchSettings$"
+    - "Associa(ted|tor|tionStatus|tionConf)$"
+  ignoreFields:
+    - "status$"
+    - "TypeMeta$"
+
+render:
+  kubernetesVersion: 1.17

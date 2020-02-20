@@ -239,15 +239,16 @@ func execute() {
 
 	// configure the manager cache based on the number of managed namespaces
 	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
-	switch len(managedNamespaces) {
-	case 0:
+	switch {
+	case len(managedNamespaces) == 0:
 		log.Info("Operator configured to manage all namespaces")
-	case 1:
-		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0])
+	case len(managedNamespaces) == 1 && managedNamespaces[0] == operatorNamespace:
+		log.Info("Operator configured to manage a single namespace", "namespace", managedNamespaces[0], "operator_namespace", operatorNamespace)
 		opts.Namespace = managedNamespaces[0]
 	default:
-		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces)
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(managedNamespaces)
+		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
+		// always include the operator namespace into the manager cache so that we can work with operator-internal resources in there
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace))
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
