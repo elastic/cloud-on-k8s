@@ -18,28 +18,27 @@ For debugging and development purposes it's possible to run CI jobs from dev box
 
 Once, run:
 ```
-export BUILD_TAG=local-ci-$(USER//_)
-
 # fill out:
-export GCLOUD_PROJECT=YOUR_GCLOUD_PROJECT
 export VAULT_ADDR=YOUR_VAULT_INSTANCE_ADDRESS
 export GITHUB_TOKEN=YOUR_PERSONAL_ACCESS_TOKEN
 ``` 
 
-Per repro, depending on the job, set up `.env` and `deployer-config.yml` files by using [setenvconfig](setenvconfig) invocation from the respective Jenkinsfile. For example:
+Per repro, depending on the job, set up `.env` and `deployer-config.yml` files by using [setenvconfig](setenvconfig) invocation from the respective Jenkinsfile. The script will prompt for any missing environment variables that are required for a given job. See examples below. 
 
+Test the `cloud-on-k8s-e2e-tests-master` job:
 ```sh
-# Test the cloud-on-k8s-e2e-tests-master job
-> .ci/setenvvonfig e2e/master
-> make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET=ci-build-operator-e2e-run ci
-
-# Test the cloud-on-k8s-e2e-tests-stack-versions
-> JKS_PARAM_OPERATOR_IMAGE=docker.elastic.co/eck-snapshots/eck-operator:1.0.1-SNAPSHOT-2020-02-05-7892889 \
-	.ci/setenvconfig e2e/stack-versions eck-75-dev-e2e 7.5.1
-> make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci
+.ci/setenvconfig e2e/master
+make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET=ci-build-operator-e2e-run ci
 ```
 
-The CI Makefile will take care of setting up correct credentials in the `deployer-config.yml` file.
+Test the `cloud-on-k8s-e2e-tests-stack-versions` job:
+```sh
+JKS_PARAM_OPERATOR_IMAGE=docker.elastic.co/eck-snapshots/eck-operator:1.0.1-SNAPSHOT-2020-02-05-7892889 \
+  .ci/setenvconfig e2e/stack-versions eck-75-dev-e2e 7.5.1
+make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci
+```
+
+The CI Makefile will take care of setting up correct credentials in the `deployer-config.yml` file. For more details about settings in this file, see [deployer](/hack/deployer/README.md#advanced-usage).
 
 This will run e2e tests using the same:
 1. container
