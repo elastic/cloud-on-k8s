@@ -13,58 +13,70 @@ import (
 )
 
 func TestVersionUpgradeSingleNode68xTo7x(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
+	srcVersion := test.MinVersion68x
+	dstVersion := test.Ctx().ElasticStackVersion
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	// covers the case where the existing zen1 master needs to be upgraded/restarted to a zen2 master
 	initial := elasticsearch.NewBuilder("test-version-up-1-68x-to-7x").
-		WithVersion(test.MinVersion68x).
+		WithVersion(srcVersion).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion(test.Ctx().ElasticStackVersion).
+		WithVersion(dstVersion).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
 
 func TestVersionUpgradeTwoNodes68xTo7x(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
+	srcVersion := test.MinVersion68x
+	dstVersion := test.Ctx().ElasticStackVersion
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	// covers the case where 2 existing zen1 masters get upgraded/restarted to zen2 masters
 	// due to minimum_master_nodes=2, the cluster is unavailable while the first master is upgraded
 	initial := elasticsearch.NewBuilder("test-version-up-2-68x-to-7x").
-		WithVersion(test.MinVersion68x).
+		WithVersion(srcVersion).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion(test.Ctx().ElasticStackVersion).
+		WithVersion(dstVersion).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
 
 func TestVersionUpgrade3Nodes68xTo7x(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
+	srcVersion := test.MinVersion68x
+	dstVersion := test.Ctx().ElasticStackVersion
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	// covers the case where 3 existing zen1 masters get upgraded/restarted to zen2 masters (standard rolling upgrade)
 	initial := elasticsearch.NewBuilder("test-version-up-3-68x-to-7x").
-		WithVersion(test.MinVersion68x).
+		WithVersion(srcVersion).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion(test.Ctx().ElasticStackVersion).
+		WithVersion(dstVersion).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
 
 func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
+	srcVersion := test.MinVersion68x
+	dstVersion := test.Ctx().ElasticStackVersion
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	// covers the case where the existing zen1 master get upgraded/restarted to a zen2 master
 	// but the new one is specified in a different NodeSet, hence gets created before the old one is removed
 	initial := elasticsearch.NewBuilder("test-version-up-68x-to-new-7x").
-		WithVersion(test.MinVersion68x).
+		WithVersion(srcVersion).
 		WithNodeSet(esv1.NodeSet{
 			Name:        "master68x",
 			Count:       int32(1),
@@ -72,7 +84,7 @@ func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
 		})
 
 	mutated := initial.WithNoESTopology().
-		WithVersion(test.Ctx().ElasticStackVersion).
+		WithVersion(dstVersion).
 		WithNodeSet(esv1.NodeSet{
 			Name:        "master7x",
 			Count:       int32(1),
@@ -83,47 +95,53 @@ func TestVersionUpgradeSingleMaster68xToNewNodeSet7x(t *testing.T) {
 }
 
 func TestVersionUpgradeSingleMaster68xToMore7x(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
-	test.SkipIfFrom7xTo7x(t)
+	srcVersion := test.MinVersion68x
+	dstVersion := test.Ctx().ElasticStackVersion
+
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
 
 	// covers the case where the existing zen1 master get upgraded/restarted to a zen2 master
 	// but the user defines an additional zen2 master that gets created before the old one is upgraded
 	initial := elasticsearch.NewBuilder("test-version-up-1-68x-more-7x").
-		WithVersion(test.MinVersion68x).
+		WithVersion(srcVersion).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion(test.Ctx().ElasticStackVersion).
+		WithVersion(dstVersion).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
 
-func TestVersionUpgradeSingle7xTo7x(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
-	test.SkipIfFrom7xTo7x(t)
+func TestVersionUpgradeSingleToLatest7x(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestVersion7x
 
-	initial := elasticsearch.NewBuilder("test-version-up-1-7x-to-7x").
-		WithVersion(test.Ctx().ElasticStackVersion).
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	initial := elasticsearch.NewBuilder("test-version-up-1-to-7x").
+		WithVersion(srcVersion).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion(test.LatestVersion7x).
+		WithVersion(dstVersion).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)
 }
 
-func TestVersionUpgradeTwoNodes7xTo7x(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
-	test.SkipIfFrom7xTo7x(t)
+func TestVersionUpgradeTwoNodesToLatest7x(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestVersion7x
 
-	initial := elasticsearch.NewBuilder("test-version-up-2-7x-to-7x").
-		WithVersion(test.Ctx().ElasticStackVersion).
+	test.SkipInvalidUpgrade(t, srcVersion, dstVersion)
+
+	initial := elasticsearch.NewBuilder("test-version-up-2-to-7x").
+		WithVersion(dstVersion).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	mutated := initial.WithNoESTopology().
-		WithVersion(test.LatestVersion7x).
+		WithVersion(dstVersion).
 		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
 	RunESMutation(t, initial, mutated)

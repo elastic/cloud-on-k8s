@@ -6,27 +6,40 @@ package test
 
 import (
 	"testing"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 )
 
 // Elastic Stack versions used in the E2E tests
-var (
+const (
 	// Minimum version for 6.8.x tested with the operator
 	MinVersion68x = "6.8.5"
-	// Minimum version for 7.x tested with the operator
-	MinVersion7x = "7.1.1"
 	// Current latest version for 7.x
 	LatestVersion7x = "7.6.0" // version to synchronize with the latest release of the Elastic Stack
 )
 
-func SkipIfMinVersion68x(t *testing.T) {
-	if Ctx().ElasticStackVersion == MinVersion68x {
+// SkipInvalidUpgrade skips a test that would do an invalid upgrade.
+func SkipInvalidUpgrade(t *testing.T, srcVersion string, dstVersion string) {
+	isValid, err := isValidUpgrade(srcVersion, dstVersion)
+	if err != nil {
+		t.Fatal("Fail to parse Elastic Stack version", "err", err.Error())
+	}
+	if !isValid {
 		t.SkipNow()
 	}
 }
 
-func SkipIfFrom7xTo7x(t *testing.T) {
-	v := Ctx().ElasticStackVersion
-	if v == MinVersion7x || v == LatestVersion7x {
-		t.SkipNow()
+// isValidUpgrade reports whether an upgrade from one version to another version is valid.
+func isValidUpgrade(from string, to string) (bool, error) {
+	srcVer, err := version.Parse(from)
+	if err != nil {
+		return false, err
 	}
+	dstVer, err := version.Parse(to)
+	if err != nil {
+		return false, err
+	}
+	// major digits must be equal or differ by only 1
+	validMajorDigit := dstVer.Major == srcVer.Major || dstVer.Major == srcVer.Major+1
+	return validMajorDigit && !srcVer.IsSameOrAfter(*dstVer), nil
 }

@@ -19,22 +19,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestVersionUpgrade(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
-	test.SkipIfFrom7xTo7x(t)
+func TestVersionUpgradeToLatest7x(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestVersion7x
 
-	fromVersion7x := test.Ctx().ElasticStackVersion
-	toVersion7x := test.LatestVersion7x
+	test.SkipInvalidUpgrade(t, srcVersion, srcVersion)
 
-	name := "test-version-upgrade"
+	name := "test-version-upgrade-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithVersion(toVersion7x)
+		WithVersion(dstVersion)
 
 	kbBuilder := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(3).
-		WithVersion(fromVersion7x)
+		WithVersion(srcVersion)
 
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder.Kibana.Namespace),
@@ -51,32 +50,31 @@ func TestVersionUpgrade(t *testing.T) {
 	test.RunMutationsWhileWatching(
 		t,
 		[]test.Builder{esBuilder, kbBuilder},
-		[]test.Builder{esBuilder, kbBuilder.WithVersion(toVersion7x).WithMutatedFrom(&kbBuilder)},
+		[]test.Builder{esBuilder, kbBuilder.WithVersion(dstVersion).WithMutatedFrom(&kbBuilder)},
 		[]test.Watcher{NewReadinessWatcher(opts...), NewVersionWatcher(opts...)},
 	)
 }
 
-func TestVersionUpgradeAndRespec(t *testing.T) {
-	test.SkipIfMinVersion68x(t)
-	test.SkipIfFrom7xTo7x(t)
+func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
+	srcVersion := test.Ctx().ElasticStackVersion
+	dstVersion := test.LatestVersion7x
 
-	fromVersion7x := test.Ctx().ElasticStackVersion
-	toVersion7x := test.LatestVersion7x
+	test.SkipInvalidUpgrade(t, srcVersion, srcVersion)
 
-	name := "test-upgrade-and-respec"
+	name := "test-upgrade-and-respec-to-7x"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
-		WithVersion(toVersion7x)
+		WithVersion(dstVersion)
 
 	kbBuilder1 := kibana.NewBuilder(name).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithNodeCount(3).
-		WithVersion(fromVersion7x)
+		WithVersion(srcVersion)
 
 	// perform a Kibana version upgrade immediately followed by a Kibana configuration change.
 	// we want to make sure that the second upgrade will be done in rolling upgrade fashion instead of terminating
 	// and recreating all the pods at once.
-	kbBuilder2 := kbBuilder1.WithMutatedFrom(&kbBuilder1).WithVersion(toVersion7x)
+	kbBuilder2 := kbBuilder1.WithMutatedFrom(&kbBuilder1).WithVersion(dstVersion)
 	kbBuilder3 := kbBuilder2.WithMutatedFrom(&kbBuilder2).WithLabel("some", "label")
 
 	opts := []client.ListOption{
