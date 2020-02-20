@@ -1,10 +1,12 @@
 ---
 - job:
-    description: Job that runs e2e tests against Elastic Cloud on Kubernetes running in a dedicated k8s cluster in AKS. This Job is managed by JJB.
-    name: cloud-on-k8s-e2e-tests-aks
+    description: Cleanup orphaned GKE clusters
+    name: cloud-on-k8s-e2e-cleanup
     project-type: pipeline
-    triggers:
-      - github
+    parameters:
+      - string:
+          name: JKS_PARAM_GKE_CLUSTER
+          description: "Name of the GKE cluster to delete"
     concurrent: true
     pipeline-scm:
       scm:
@@ -13,5 +15,5 @@
             branches:
               - master
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
-      script-path: build/ci/e2e/Jenkinsfile-aks
+      script-path: .ci/pipelines/cleanup-gke.Jenkinsfile
       lightweight-checkout: true

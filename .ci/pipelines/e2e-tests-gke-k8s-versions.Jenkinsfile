@@ -4,7 +4,7 @@ def lib
 pipeline {
 
     agent {
-        label 'eck'
+        label 'linux'
     }
 
     options {
@@ -22,40 +22,42 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    lib = load "build/ci/common/tests.groovy"
+                    lib = load ".ci/common/tests.groovy"
                 }
             }
         }
-        stage('Run tests on different versions of vanilla K8s') {
-            // Do not forget to keep in sync the kind node image versions in `.ci/packer_cache.sh`.
+        stage('Run tests for different k8s versions in GKE') {
             parallel {
-                stage("1.12.10") {
+                stage("1.13") {
+                    agent {
+                        label 'linux'
+                    }
                     steps {
                         checkout scm
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.12.10")
+                            runWith(lib, failedTests, '1.13', "eck-gke13-${BUILD_NUMBER}-e2e")
                         }
                     }
                 }
-                stage("1.16.4") {
+                stage("1.14") {
                     agent {
-                        label 'eck'
+                        label 'linux'
                     }
                     steps {
                         checkout scm
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.16.4")
+                            runWith(lib, failedTests, '1.14', "eck-gke14-${BUILD_NUMBER}-e2e")
                         }
                     }
                 }
-                stage("1.17.0") {
+                stage("1.15") {
                     agent {
-                        label 'eck'
+                        label 'linux'
                     }
                     steps {
                         checkout scm
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.17.0")
+                            runWith(lib, failedTests, '1.15', "eck-gke15-${BUILD_NUMBER}-e2e")
                         }
                     }
                 }
@@ -69,42 +71,39 @@ pipeline {
                 if (params.SEND_NOTIFICATIONS) {
                     Set<String> filter = new HashSet<>()
                     filter.addAll(failedTests)
-                    def msg = testScript.generateSlackMessage("E2E tests for different versions of vanilla K8s failed!", env.BUILD_URL, filter)
+                    def msg = lib.generateSlackMessage("E2E tests for different k8s versions in GKE failed!", env.BUILD_URL, filter)
 
-                    slackSend botUser: true,
+                    slackSend(
                         channel: '#cloud-k8s',
                         color: 'danger',
                         message: msg,
-                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                        tokenCredentialId: 'cloud-ci-slack-integration-token',
+                        botUser: true,
+                        failOnError: true
+                    )
                 }
             }
         }
         cleanup {
+            script {
+                clusters = ["eck-gke13-${BUILD_NUMBER}-e2e", "eck-gke14-${BUILD_NUMBER}-e2e", "eck-gke15-${BUILD_NUMBER}-e2e"]
+                for (int i = 0; i < clusters.size(); i++) {
+                    build job: 'cloud-on-k8s-e2e-cleanup',
+                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: clusters[i])],
+                        wait: false
+                }
+            }
             cleanWs()
         }
     }
-
 }
 
-def runTests(lib, failedTests, kindImage) {
-    sh """
-        cat >.env <<EOF
-OPERATOR_IMAGE = ${IMAGE}
-GCLOUD_PROJECT = $GCLOUD_PROJECT
-SKIP_DOCKER_COMMAND = true
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
-E2E_JSON = true
-KIND_NODE_IMAGE = ${kindImage}
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.json
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
-EOF
-    """
+def runWith(lib, failedTests, clusterVersion, clusterName) {
+    sh ".ci/setenvconfig e2e/gke-k8s-versions $clusterVersion $clusterName"
     script {
-        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci get-test-license get-elastic-public-key TARGET=kind-e2e ci')
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
-        sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+        sh 'make -C .ci TARGET=e2e-generate-xml ci'
         junit "e2e-tests.xml"
 
         if (env.SHELL_EXIT_CODE != 0) {

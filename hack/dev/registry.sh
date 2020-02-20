@@ -26,7 +26,7 @@ kubectl-in-docker() {
 
   # Build the image if it does not exist
   if [[ "$(docker images -q $build_tools_image 2> /dev/null)" == "" ]]; then
-    local dockerfile_path=../build/build-tools-image
+    local dockerfile_path=hack/dev/kubectl-image
     docker build -t $build_tools_image -f $dockerfile_path/Dockerfile $dockerfile_path
   fi
 

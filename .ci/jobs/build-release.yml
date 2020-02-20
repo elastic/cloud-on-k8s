@@ -1,10 +1,11 @@
 ---
 - job:
-    description: Job that builds release version of ECK. This Job is managed by JJB.
-    name: cloud-on-k8s-release
+    description: Build a release version of ECK
+    name: cloud-on-k8s-release-build
     project-type: multibranch
     prune-dead-branches: true
-    script-path: 'build/ci/release/Jenkinsfile'
+    # Jenkinsfile shared with the nightly build job
+    script-path: .ci/pipelines/build.Jenkinsfile
     scm:
       - github:
           repo: 'cloud-on-k8s'

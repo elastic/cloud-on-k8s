@@ -16,14 +16,14 @@ pipeline {
     }
 
     stages {
-        stage('Check if Docker image needs rebuilding') {
+        stage('Validate Jenkins pipelines') {
             when {
                 expression {
                     notOnlyDocs()
                 }
             }
             steps {
-                sh 'make -C build/ci ci-build-image'
+                sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
             }
         }
         stage('Run checks') {
@@ -33,11 +33,7 @@ pipeline {
                 }
             }
             steps {
-                echo "Running checks for Go sources..."
-                sh 'make -C build/ci TARGET=ci-check ci'
-
-                echo "Validating Jenkins pipelines..."
-                sh 'make -C build/ci TARGET=validate-jenkins-pipelines ci'
+                sh 'make -C .ci TARGET=ci-check ci'
             }
         }
         stage('Run tests in parallel') {
@@ -54,8 +50,7 @@ pipeline {
                     }
                     steps {
                         script {
-                            createConfig()
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci ci')
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci ci')
 
                             junit "unit-tests.xml"
                             junit "integration-tests.xml"
@@ -72,13 +67,11 @@ pipeline {
                         }
                     }
                     steps {
+                        sh '.ci/setenvconfig pr'
                         script {
-                            createConfig()
-                            createDeployerConfig()
+                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci TARGET=ci-build-operator-e2e-run ci')
 
-                            env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci TARGET=ci-e2e ci')
-
-                            sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+                            sh 'make -C .ci TARGET=e2e-generate-xml ci'
                             junit "e2e-tests.xml"
 
                             sh 'exit $SHELL_EXIT_CODE'
@@ -105,7 +98,7 @@ pipeline {
             script {
                 if (notOnlyDocs()) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'GKE_CLUSTER', value: "eck-pr-${BUILD_NUMBER}")],
+                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-pr-${BUILD_NUMBER}")],
                         wait: false
                 }
             }
@@ -120,33 +113,4 @@ def notOnlyDocs() {
         script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
     	returnStatus: true
     ) == 0
-}
-
-void createConfig() {
-    sh """
-        cat >.env <<EOF
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
-TESTS_MATCH = TestSmoke
-SKIP_DOCKER_COMMAND = false
-IMG_SUFFIX = -ci
-E2E_JSON = true
-EOF
-    """
-}
-
-def createDeployerConfig() {
-    sh """
-        cat >deployer-config.yml <<EOF
-id: gke-ci
-overrides:
-  clusterName: eck-pr-$BUILD_NUMBER
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-    """
 }

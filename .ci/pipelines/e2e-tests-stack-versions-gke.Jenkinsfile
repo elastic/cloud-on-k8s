@@ -22,7 +22,7 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    lib = load "build/ci/common/tests.groovy"
+                    lib = load ".ci/common/tests.groovy"
                 }
             }
         }
@@ -101,13 +101,15 @@ pipeline {
                 if (params.SEND_NOTIFICATIONS) {
                     Set<String> filter = new HashSet<>()
                     filter.addAll(failedTests)
-                    def msg = lib.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter)
 
-                    slackSend botUser: true,
+                    slackSend(
                         channel: '#cloud-k8s',
                         color: 'danger',
-                        message: msg,
-                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                        message: lib.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter),
+                        tokenCredentialId: 'cloud-ci-slack-integration-token',
+                        botUser: true,
+                        failOnError: true
+                    )
                 }
                 googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                     credentialsId: "devops-ci-gcs-plugin",
@@ -128,7 +130,7 @@ pipeline {
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
+                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: clusters[i])],
                         wait: false
                 }
             }
@@ -139,36 +141,11 @@ pipeline {
 }
 
 def runWith(lib, failedTests, clusterName, stackVersion) {
-    sh """
-        cat >.env <<EOF
-OPERATOR_IMAGE = ${IMAGE}
-GCLOUD_PROJECT = $GCLOUD_PROJECT
-STACK_VERSION = ${stackVersion}
-SKIP_DOCKER_COMMAND = true
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
-E2E_JSON = true
-TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/build/ci/test-license.json
-GO_TAGS = release
-export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/build/ci/license.key
-EOF
-        cat >deployer-config.yml <<EOF
-id: gke-ci
-overrides:
-  operation: create
-  clusterName: ${clusterName}
-  vaultInfo:
-    address: $VAULT_ADDR
-    roleId: $VAULT_ROLE_ID
-    secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
-EOF
-    """
+    sh ".ci/setenvconfig e2e/stack-versions $clusterName $stackVersion"
     script {
-        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C build/ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
-        sh 'make -C build/ci TARGET=e2e-generate-xml ci'
+        sh 'make -C .ci TARGET=e2e-generate-xml ci'
         junit "e2e-tests.xml"
 
         if (env.SHELL_EXIT_CODE != 0) {

@@ -1,21 +1,16 @@
 ---
 - job:
-    description: Job that runs e2e tests against custom ECK image running in a dedicated k8s cluster in GKE. This Job is managed by JJB.
-    name: cloud-on-k8s-e2e-tests-custom
+    description: Run ECK E2E tests on GKE, to verify different k8s versions
+    name: cloud-on-k8s-e2e-tests-gke-k8s-versions
     project-type: pipeline
     parameters:
       - string:
-          name: IMAGE
-          description: "Docker image with ECK"
-      - string:
-          name: VERSION
-          default: 1.13
-          description: "Kubernetes version, default is 1.13"
+          name: JKS_PARAM_OPERATOR_IMAGE
+          description: "ECK Docker image"
       - bool:
           name: SEND_NOTIFICATIONS
           default: true
           description: "Specified if job should send notifications to Slack. Enabled by default."
-    concurrent: true
     pipeline-scm:
       scm:
         - git:
@@ -23,5 +18,5 @@
             branches:
               - master
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
-      script-path: build/ci/e2e/custom_operator_image.jenkinsfile
+      script-path: .ci/pipelines/e2e-tests-gke-k8s-versions.Jenkinsfile
       lightweight-checkout: true

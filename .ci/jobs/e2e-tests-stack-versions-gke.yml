@@ -1,12 +1,12 @@
 ---
 - job:
-    description: Job that runs ECK e2e tests against different versions of vanilla k8s with Kind. This Job is managed by JJB.
-    name: cloud-on-k8s-versions-vanilla
+    description: Run ECK E2E tests on GKE, to verify different Elastic Stack versions
+    name: cloud-on-k8s-e2e-tests-stack-versions
     project-type: pipeline
     parameters:
       - string:
-          name: IMAGE
-          description: "Docker image with ECK"
+          name: JKS_PARAM_OPERATOR_IMAGE
+          description: "ECK Docker image"
       - bool:
           name: SEND_NOTIFICATIONS
           default: true
@@ -18,5 +18,5 @@
             branches:
               - master
             credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
-      script-path: build/ci/e2e/vanilla_k8s.jenkinsfile
+      script-path: .ci/pipelines/e2e-tests-stack-versions-gke.Jenkinsfile
       lightweight-checkout: true
