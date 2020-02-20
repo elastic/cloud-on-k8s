@@ -70,7 +70,7 @@ pipeline {
     post {
         success {
             script {
-                def operatorImage = readFromEnvFile("OPERATOR_IMAGE")
+                def operatorImage = sh(returnStdout: true, script: 'make show-operator-image').trim()
 
                 build job: 'cloud-on-k8s-e2e-tests-stack-versions',
                     parameters: [string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage)],
