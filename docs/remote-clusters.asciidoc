@@ -79,7 +79,7 @@ spec:
         - name: remote-certs
           secret:
             secretName: remote-certs
-  version: 7.6.0
+  version: {version}
 ----
 
 Repeat the above steps to add the CA of `cluster_two` to `cluster_one` as well.
