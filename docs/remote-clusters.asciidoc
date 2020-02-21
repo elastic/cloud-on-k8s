@@ -57,7 +57,7 @@ Use this secret to configure `cluster_one`'s CA as a trusted CA in `cluster_two`
 
 [source,yaml,subs="attributes"]
 ----
-apiVersion: elasticsearch.k8s.elastic.co/{eck}
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
 metadata:
   name: cluster_two
