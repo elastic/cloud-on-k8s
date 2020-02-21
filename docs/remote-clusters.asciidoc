@@ -82,7 +82,7 @@ spec:
   version: 7.6.0
 ----
 
-Repeat the steps with reversed roles adding the CA of `cluster_two` to `cluster_one`.
+Repeat the above steps to add the CA of `cluster_two` to `cluster_one` as well.
 
 ===== Configure the remote cluster connection via the Elasticsearch REST API
 
