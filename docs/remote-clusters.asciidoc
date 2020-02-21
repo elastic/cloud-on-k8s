@@ -105,7 +105,7 @@ spec:
     targetPort: 9300
 ----
 
-Finally configure `cluster_one` as a remote cluster in `cluster_two` via the Elasticsearch REST API:
+Finally, configure `cluster_one` as a remote cluster in `cluster_two` using the Elasticsearch REST API:
 
 [source,sh]
 ----
