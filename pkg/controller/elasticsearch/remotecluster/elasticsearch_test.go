@@ -272,6 +272,42 @@ func TestUpdateRemoteCluster(t *testing.T) {
 			},
 			wantEsCalled: false,
 		},
+		{
+			name: "Multiple changes in one call: remote cluster already exists but has been updated, one is added and a last one is removed.",
+			args: args{
+				esClient:       &fakeESClient{},
+				licenseChecker: &fakeLicenseChecker{true},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{
+						"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"ns1-es2","configHash":"8851644973"},{"name":"ns1-es5","configHash":"8851644973"}]`,
+					},
+					esv1.K8sLocalRemoteCluster{ // Updated cluster
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name: "es2",
+						},
+					},
+					esv1.K8sLocalRemoteCluster{ // New cluster
+						ElasticsearchRef: commonv1.ObjectSelector{
+							Name: "es4",
+						},
+					},
+				),
+			},
+			wantEsCalled: true,
+			wantSettings: esclient.Settings{
+				PersistentSettings: &esclient.SettingsGroup{
+					Cluster: esclient.Cluster{
+						RemoteClusters: map[string]esclient.RemoteCluster{
+							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
+							"ns1-es5": {Seeds: nil},
+							"ns1-es4": {Seeds: []string{"es4-es-transport.ns1.svc:9300"}},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

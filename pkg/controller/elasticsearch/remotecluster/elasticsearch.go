@@ -54,46 +54,42 @@ func UpdateRemoteCluster(
 	}
 	expectedRemoteClusters := getExpectedRemoteClusters(es)
 
-	updated := false
+	remoteClusters := make(map[string]esclient.RemoteCluster)
 	// RemoteClusters to add or update
 	for name, remoteCluster := range expectedRemoteClusters {
 		if currentConfigHash, ok := currentRemoteClusters[name]; !ok || currentConfigHash != remoteCluster.ConfigHash {
 			// Declare remote cluster in ES
 			seedHosts := []string{services.ExternalTransportServiceHostname(remoteCluster.ElasticsearchRef.NamespacedName())}
-			persistentSettings := newRemoteClusterSetting(name, seedHosts)
 			log.Info("Add or update remote cluster",
 				"namespace", es.Namespace,
 				"es_name", es.Name,
 				"remote_cluster", remoteCluster.Name,
 				"seeds", seedHosts,
 			)
-			if err := updateRemoteCluster(esClient, persistentSettings); err != nil {
-				return err
-			}
-			updated = true
+			remoteClusters[name] = esclient.RemoteCluster{Seeds: seedHosts}
 		}
 	}
 
 	// RemoteClusters to remove
 	for name := range currentRemoteClusters {
 		if _, ok := expectedRemoteClusters[name]; !ok {
-			persistentSettings := newRemoteClusterSetting(name, nil)
 			log.Info("Remove remote cluster",
 				"namespace", es.Namespace,
 				"es_name", es.Name,
 				"remote_cluster", name,
 			)
-			err := updateRemoteCluster(esClient, persistentSettings)
-			if err != nil {
-				return err
-			}
-			updated = true
+			remoteClusters[name] = esclient.RemoteCluster{Seeds: nil}
 			delete(currentRemoteClusters, name)
 		}
 	}
 
 	// Save the current list of remote clusters in an annotation
-	if updated {
+	if len(remoteClusters) > 0 {
+		// Apply the settings
+		if err := updateSettings(esClient, remoteClusters); err != nil {
+			return err
+		}
+		// Update the annotation
 		return annotateWithRemoteClusters(c, es, expectedRemoteClusters)
 	}
 	return nil
@@ -124,24 +120,15 @@ func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteC
 	return remoteClusters
 }
 
-// newRemoteClusterSetting creates a persistent setting to add or remove a remote cluster.
-func newRemoteClusterSetting(name string, seedHosts []string) esclient.Settings {
-	return esclient.Settings{
-		PersistentSettings: &esclient.SettingsGroup{
-			Cluster: esclient.Cluster{
-				RemoteClusters: map[string]esclient.RemoteCluster{
-					name: {
-						Seeds: seedHosts,
-					},
-				},
-			},
-		},
-	}
-}
-
-// updateRemoteCluster makes a call to an Elasticsearch cluster to apply a persistent setting.
-func updateRemoteCluster(esClient esclient.Client, persistentSettings esclient.Settings) error {
+// updateSettings makes a call to an Elasticsearch cluster to apply a persistent setting.
+func updateSettings(esClient esclient.Client, remoteClusters map[string]esclient.RemoteCluster) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
-	return esClient.UpdateSettings(ctx, persistentSettings)
+	return esClient.UpdateSettings(ctx, esclient.Settings{
+		PersistentSettings: &esclient.SettingsGroup{
+			Cluster: esclient.Cluster{
+				RemoteClusters: remoteClusters,
+			},
+		},
+	})
 }
