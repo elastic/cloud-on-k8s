@@ -46,8 +46,14 @@ func Test_defaultDriver_expectationSatisfied(t *testing.T) {
 	satisfied, err = d.expectationsSatisfied()
 	require.NoError(t, err)
 	require.False(t, satisfied)
-	// satisfied now
+	// satisfied now, but not from the StatefulSet controller point of view (status.observedGeneration)
 	statefulSet.Generation = 123
+	require.NoError(t, client.Update(&statefulSet))
+	satisfied, err = d.expectationsSatisfied()
+	require.NoError(t, err)
+	require.False(t, satisfied)
+	// satisfied now, with matching status.observedGeneration
+	statefulSet.Status.ObservedGeneration = 123
 	require.NoError(t, client.Update(&statefulSet))
 	satisfied, err = d.expectationsSatisfied()
 	require.NoError(t, err)
