@@ -76,7 +76,7 @@ spec:
         volumes:
         - name: remote-certs
           secret:
-            secretName: remote-ca
+            secretName: remote-certs
   version: 7.6.0
 ----
 
