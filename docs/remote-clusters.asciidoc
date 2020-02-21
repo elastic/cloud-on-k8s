@@ -18,7 +18,7 @@ TBD
 [id="{p}-remote-clusters-connect-external"]
 ==== Connect from an Elasticsearch cluster running outside the Kubernetes cluster
 
-NOTE: While it is technically possible to configure a remote cluster connection to an Elasticsearch cluster residing in Kubernetes in earlier versions, this guide only covers the setup for Elasticsearch 7.6 and later.  Elasticsearch 7.6 introduces improved support for the indirection introduced by Kubernetes services which significantly simplifies the setup.
+NOTE: While it is technically possible to configure remote cluster connections using older versions of Elasticsearch, this guide only covers the setup for Elasticsearch 7.6 and later. The setup process is significantly simplified in Elasticsearch 7.6 due to improved support for the indirection introduced by Kubernetes services.
 
 You can configure a remote cluster connection to an Elasticsearch cluster managed by ECK from another cluster outside of Kubernetes or hosted in a different Kubernetes cluster as follows.
 
