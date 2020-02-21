@@ -159,6 +159,20 @@ func (l StatefulSetList) PodReconciliationDone(c k8s.Client) (bool, error) {
 	return true, nil
 }
 
+// StatusReconciliationDone returns true if status.observedGeneration matches the metadata.generation
+// in all StatefulSets.
+// The status is automatically updated by the StatefulSet controller: if the observedGeneration does not match
+// the metadata generation, it means the resource has not been processed by the StatefulSet controller yet.
+// When that happens, other fields in the StatefulSet status (eg. "updateRevision") may not be up to date.
+func (l StatefulSetList) StatusReconciliationDone() bool {
+	for _, s := range l {
+		if s.Generation != s.Status.ObservedGeneration {
+			return false
+		}
+	}
+	return true
+}
+
 // DeepCopy returns a copy of the StatefulSetList with no reference to the original StatefulSetList.
 func (l StatefulSetList) DeepCopy() StatefulSetList {
 	result := make(StatefulSetList, 0, len(l))
