@@ -339,8 +339,6 @@ overrides:
     address: $VAULT_ADDR
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
-  gke:
-    gCloudProject: $GCLOUD_PROJECT
 CFG
 ;;
 
