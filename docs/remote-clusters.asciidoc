@@ -10,7 +10,8 @@ The link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules
 
 When using remote cluster connections with ECK the necessary setup depends on where the remote cluster is deployed.
 
-==== Both clusters are in the same Kubernetes cluster
+[id="{p}-remote-clusters-connect-internal"]
+==== Connect from an Elasticsearch cluster running in the same Kubernetes cluster
 
 TBD
 
