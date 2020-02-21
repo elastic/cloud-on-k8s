@@ -22,7 +22,7 @@ NOTE: While it is technically possible to configure remote cluster connections u
 
 You can configure a remote cluster connection to an ECK-managed Elasticsearch cluster from another cluster running outside the Kubernetes cluster as follows:
 
-. Ensure that both clusters trust each others certificate authority.
+. Ensure that both clusters trust each other's certificate authority.
 . Configure the remote cluster connection via the Elasticsearch REST API.
 
 For the purposes of this guide we use the following running example:
