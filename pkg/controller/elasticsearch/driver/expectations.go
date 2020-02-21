@@ -25,10 +25,15 @@ func (d *defaultDriver) expectationsSatisfied() (bool, error) {
 		log.V(1).Info("Cache expectations are not satisfied yet, re-queueing", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 		return false, nil
 	}
-	// make sure pods have been reconciled by the StatefulSet controller
 	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&d.ES))
 	if err != nil {
 		return false, err
 	}
+	// make sure StatefulSet statuses have been reconciled by the StatefulSet controller
+	if !actualStatefulSets.StatusReconciliationDone() {
+		log.V(1).Info("StatefulSets observedGeneration is not reconciled yet, re-queueing", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+		return false, nil
+	}
+	// make sure pods have been reconciled by the StatefulSet controller
 	return actualStatefulSets.PodReconciliationDone(d.Client)
 }

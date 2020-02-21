@@ -1,1727 +1,877 @@
 // Generated documentation. Please do not edit.
+:anchor_prefix: k8s-api
+
 [id="{p}-api-reference"]
 == API Reference
 
 .Packages
-* xref:{p}-apm-k8s-elastic-co-v1[apm.k8s.elastic.co/v1]
-* xref:{p}-apm-k8s-elastic-co-v1beta1[apm.k8s.elastic.co/v1beta1]
-* xref:{p}-common-k8s-elastic-co-v1[common.k8s.elastic.co/v1]
-* xref:{p}-common-k8s-elastic-co-v1beta1[common.k8s.elastic.co/v1beta1]
-* xref:{p}-elasticsearch-k8s-elastic-co-v1[elasticsearch.k8s.elastic.co/v1]
-* xref:{p}-elasticsearch-k8s-elastic-co-v1beta1[elasticsearch.k8s.elastic.co/v1beta1]
-* xref:{p}-kibana-k8s-elastic-co-v1[kibana.k8s.elastic.co/v1]
-* xref:{p}-kibana-k8s-elastic-co-v1beta1[kibana.k8s.elastic.co/v1beta1]
-
-'''
+- xref:{anchor_prefix}-apm-k8s-elastic-co-v1[$$apm.k8s.elastic.co/v1$$]
+- xref:{anchor_prefix}-apm-k8s-elastic-co-v1beta1[$$apm.k8s.elastic.co/v1beta1$$]
+- xref:{anchor_prefix}-common-k8s-elastic-co-v1[$$common.k8s.elastic.co/v1$$]
+- xref:{anchor_prefix}-common-k8s-elastic-co-v1beta1[$$common.k8s.elastic.co/v1beta1$$]
+- xref:{anchor_prefix}-elasticsearch-k8s-elastic-co-v1[$$elasticsearch.k8s.elastic.co/v1$$]
+- xref:{anchor_prefix}-elasticsearch-k8s-elastic-co-v1beta1[$$elasticsearch.k8s.elastic.co/v1beta1$$]
+- xref:{anchor_prefix}-kibana-k8s-elastic-co-v1[$$kibana.k8s.elastic.co/v1$$]
+- xref:{anchor_prefix}-kibana-k8s-elastic-co-v1beta1[$$kibana.k8s.elastic.co/v1beta1$$]
 
 
-[id="{p}-apm-k8s-elastic-co-v1"]
+[id="{anchor_prefix}-apm-k8s-elastic-co-v1"]
 === apm.k8s.elastic.co/v1
+
 Package v1 contains API schema definitions for managing APM Server resources.
 
 .Resource Types
---
-- xref:apm-k8s-elastic-co-v1-apmserver[$$ApmServer$$]
---
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserver[$$ApmServer$$]
 
-[id="apm-k8s-elastic-co-v1-apmserver"]
-[float]
-==== ApmServer
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserver"]
+==== ApmServer 
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
 
 
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `apm.k8s.elastic.co/v1`
+| Field | Description
+| *`apiVersion`* __string__ | `apm.k8s.elastic.co/v1`
+| *`kind`* __string__ | `ApmServer`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`kind`*  +
-_string_
-| `ApmServer`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_xref:apm-k8s-elastic-co-v1-apmserverspec[$$ApmServerSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version of the APM Server.
-*`image`*  _string_::
-Image is the APM Server Docker image to deploy.
-*`count`*  _int32_::
-Count of APM Server instances to deploy.
-*`config`* _xref:common-k8s-elastic-co-v1-config[$$Config$$]_::
-Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
-*`http`* _xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds the HTTP layer configuration for the APM Server resource.
-*`elasticsearchRef`* _xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_::
-ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
-*`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
-*`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
-*`serviceAccountName`*  _string_::
-_(Optional)_
-ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
-Can only be used if ECK is enforcing RBAC on references.
+| *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]__ | 
 |===
 
-[id="apm-k8s-elastic-co-v1-apmserverspec"]
-[float]
-==== ApmServerSpec
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec"]
+==== ApmServerSpec 
 
 ApmServerSpec holds the specification of an APM Server.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:apm-k8s-elastic-co-v1-apmserver[$$ApmServer$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserver[$$ApmServer$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`version`* +
-_string_
-|
-Version of the APM Server.
-| *`image`* +
-_string_
-|
-Image is the APM Server Docker image to deploy.
-| *`count`* +
-_int32_
-|
-Count of APM Server instances to deploy.
-| *`config`* +
-_xref:common-k8s-elastic-co-v1-config[$$Config$$]_
-|
-Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
-| *`http`* +
-_xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP holds the HTTP layer configuration for the APM Server resource.
-| *`elasticsearchRef`* +
-_xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_
-|
-ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
-| *`secureSettings`* +
-_xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
-| *`serviceAccountName`* +
-_string_
-|
-_(Optional)_
-ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
-Can only be used if ECK is enforcing RBAC on references.
+[cols="25a,75a", options="header"]
 |===
-[id="{p}-apm-k8s-elastic-co-v1beta1"]
+| Field | Description
+| *`version`* __string__ | Version of the APM Server.
+| *`image`* __string__ | Image is the APM Server Docker image to deploy.
+| *`count`* __integer__ | Count of APM Server instances to deploy.
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+| *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for the APM Server resource.
+| *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+|===
+
+
+
+[id="{anchor_prefix}-apm-k8s-elastic-co-v1beta1"]
 === apm.k8s.elastic.co/v1beta1
+
 Package v1beta1 contains API schema definitions for managing APM Server resources.
 
 .Resource Types
---
-- xref:apm-k8s-elastic-co-v1beta1-apmserver[$$ApmServer$$]
---
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserver[$$ApmServer$$]
 
-[id="apm-k8s-elastic-co-v1beta1-apmserver"]
-[float]
-==== ApmServer
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserver"]
+==== ApmServer 
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
 
 
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `apm.k8s.elastic.co/v1beta1`
+| Field | Description
+| *`apiVersion`* __string__ | `apm.k8s.elastic.co/v1beta1`
+| *`kind`* __string__ | `ApmServer`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`kind`*  +
-_string_
-| `ApmServer`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version of the APM Server.
-*`image`*  _string_::
-Image is the APM Server Docker image to deploy.
-*`count`*  _int32_::
-Count of APM Server instances to deploy.
-*`config`* _xref:common-k8s-elastic-co-v1beta1-config[$$Config$$]_::
-Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
-*`http`* _xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds the HTTP layer configuration for the APM Server resource.
-*`elasticsearchRef`* _xref:common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_::
-ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
-*`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
-*`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
+| *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserverspec[$$ApmServerSpec$$]__ | 
 |===
 
-[id="apm-k8s-elastic-co-v1beta1-apmserverspec"]
-[float]
-==== ApmServerSpec
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserverspec"]
+==== ApmServerSpec 
 
 ApmServerSpec holds the specification of an APM Server.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:apm-k8s-elastic-co-v1beta1-apmserver[$$ApmServer$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserver[$$ApmServer$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`version`* +
-_string_
-|
-Version of the APM Server.
-| *`image`* +
-_string_
-|
-Image is the APM Server Docker image to deploy.
-| *`count`* +
-_int32_
-|
-Count of APM Server instances to deploy.
-| *`config`* +
-_xref:common-k8s-elastic-co-v1beta1-config[$$Config$$]_
-|
-Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
-| *`http`* +
-_xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP holds the HTTP layer configuration for the APM Server resource.
-| *`elasticsearchRef`* +
-_xref:common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_
-|
-ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
-| *`secureSettings`* +
-_xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
+[cols="25a,75a", options="header"]
 |===
-[id="{p}-common-k8s-elastic-co-v1"]
+| Field | Description
+| *`version`* __string__ | Version of the APM Server.
+| *`image`* __string__ | Image is the APM Server Docker image to deploy.
+| *`count`* __integer__ | Count of APM Server instances to deploy.
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-config[$$Config$$]__ | Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
+| *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for the APM Server resource.
+| *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
+|===
+
+
+
+[id="{anchor_prefix}-common-k8s-elastic-co-v1"]
 === common.k8s.elastic.co/v1
+
 Package v1 contains API schema definitions for common types used by all resources.
 
-.Resource Types
---
---
 
-[id="common-k8s-elastic-co-v1-config"]
-[float]
-==== Config
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config"]
+==== Config 
 
 Config represents untyped YAML configuration.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:apm-k8s-elastic-co-v1-apmserverspec[$$ApmServerSpec$$], 
-- xref:kibana-k8s-elastic-co-v1-kibanaspec[$$KibanaSpec$$], 
-- xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$NodeSet$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`Data`* +
-_map[string]interface{}_
-|
-Data holds the configuration keys and values.
-This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/issues/528
-|===
 
-[id="common-k8s-elastic-co-v1-httpconfig"]
-[float]
-==== HTTPConfig
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig"]
+==== HTTPConfig 
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
+****
 
-.Appears in:
-****
-- xref:apm-k8s-elastic-co-v1-apmserverspec[$$ApmServerSpec$$], 
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$], 
-- xref:kibana-k8s-elastic-co-v1-kibanaspec[$$KibanaSpec$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`service`* +
-_xref:common-k8s-elastic-co-v1-servicetemplate[$$ServiceTemplate$$]_
-|
-Service defines the template for the associated Kubernetes Service object.
-| *`tls`* +
-_xref:common-k8s-elastic-co-v1-tlsoptions[$$TLSOptions$$]_
-|
-TLS defines options for configuring TLS for HTTP.
+| Field | Description
+| *`service`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-servicetemplate[$$ServiceTemplate$$]__ | Service defines the template for the associated Kubernetes Service object.
+| *`tls`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions[$$TLSOptions$$]__ | TLS defines options for configuring TLS for HTTP.
 |===
 
-[id="common-k8s-elastic-co-v1-keytopath"]
-[float]
-==== KeyToPath
 
-KeyToPath defines how to map a key in a Secret object to a filesystem path.
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-keytopath"]
+==== KeyToPath 
 
 
-.Appears in:
+
+.Appears In:
 ****
-- xref:common-k8s-elastic-co-v1-secretsource[$$SecretSource$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]
 ****
-[cols="20a,80a", options="header"]
+
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`key`* +
-_string_
-|
-Key is the key contained in the secret.
-| *`path`* +
-_string_
-|
-Path is the relative file path to map the key to.
-Path must not be an absolute file path and must not contain any ".." components.
+| Field | Description
+| *`key`* __string__ | Key is the key contained in the secret.
+| *`path`* __string__ | Path is the relative file path to map the key to. Path must not be an absolute file path and must not contain any ".." components.
 |===
 
-[id="common-k8s-elastic-co-v1-objectselector"]
-[float]
-==== ObjectSelector
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector"]
+==== ObjectSelector 
 
 ObjectSelector defines a reference to a Kubernetes object.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
+****
 
-.Appears in:
-****
-- xref:apm-k8s-elastic-co-v1-apmserverspec[$$ApmServerSpec$$], 
-- xref:kibana-k8s-elastic-co-v1-kibanaspec[$$KibanaSpec$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`name`* +
-_string_
-|
-Name of the Kubernetes object.
-| *`namespace`* +
-_string_
-|
-Namespace of the Kubernetes object. If empty, defaults to the current namespace.
+| Field | Description
+| *`name`* __string__ | Name of the Kubernetes object.
+| *`namespace`* __string__ | Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 |===
 
-[id="common-k8s-elastic-co-v1-poddisruptionbudgettemplate"]
-[float]
-==== PodDisruptionBudgetTemplate
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-poddisruptionbudgettemplate"]
+==== PodDisruptionBudgetTemplate 
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
 
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
+| Field | Description
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
-ObjectMeta is the metadata of the PDB.
-The name and namespace provided here are managed by ECK and will be ignored.
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#poddisruptionbudgetspec-v1beta1-policy[$$Kubernetes policy/v1beta1.PodDisruptionBudgetSpec$$]_
-|
-Spec is the specification of the PDB.
-
-*`minAvailable`*  _Kubernetes intstr.IntOrString_::
-_(Optional)_
-An eviction is allowed if at least "minAvailable" pods selected by
-"selector" will still be available after the eviction, i.e. even in the
-absence of the evicted pod.  So for example you can prevent all voluntary
-evictions by specifying "100%".
-*`selector`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#labelselector-v1-meta[$$Kubernetes meta/v1.LabelSelector$$]_::
-_(Optional)_
-Label query over pods whose evictions are managed by the disruption
-budget.
-*`maxUnavailable`*  _Kubernetes intstr.IntOrString_::
-_(Optional)_
-An eviction is allowed if at most "maxUnavailable" pods selected by
-"selector" are unavailable after the eviction, i.e. even in absence of
-the evicted pod. For example, one can prevent all voluntary evictions
-by specifying 0. This is a mutually exclusive setting with "minAvailable".
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#poddisruptionbudgetspec-v1beta1-policy[$$PodDisruptionBudgetSpec$$]__ | Spec is the specification of the PDB.
 |===
 
-[id="common-k8s-elastic-co-v1-secretref"]
-[float]
-==== SecretRef
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref"]
+==== SecretRef 
 
 SecretRef is a reference to a secret that exists in the same namespace.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions[$$TLSOptions$$]
+****
 
-.Appears in:
-****
-- xref:common-k8s-elastic-co-v1-tlsoptions[$$TLSOptions$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`secretName`* +
-_string_
-|
-SecretName is the name of the secret.
+| Field | Description
+| *`secretName`* __string__ | SecretName is the name of the secret.
 |===
 
-[id="common-k8s-elastic-co-v1-secretsource"]
-[float]
-==== SecretSource
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource"]
+==== SecretSource 
 
 SecretSource defines a data source based on a Kubernetes Secret.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
+****
 
-.Appears in:
-****
-- xref:apm-k8s-elastic-co-v1-apmserverspec[$$ApmServerSpec$$], 
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$], 
-- xref:kibana-k8s-elastic-co-v1-kibanaspec[$$KibanaSpec$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`secretName`* +
-_string_
-|
-SecretName is the name of the secret.
-| *`entries`* +
-_xref:common-k8s-elastic-co-v1-keytopath[$$[]KeyToPath$$]_
-|
-Entries define how to project each key-value pair in the secret to filesystem paths.
-If not defined, all keys will be projected to similarly named paths in the filesystem.
-If defined, only the specified keys will be projected to the corresponding paths.
+| Field | Description
+| *`secretName`* __string__ | SecretName is the name of the secret.
+| *`entries`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-keytopath[$$KeyToPath$$] array__ | Entries define how to project each key-value pair in the secret to filesystem paths. If not defined, all keys will be projected to similarly named paths in the filesystem. If defined, only the specified keys will be projected to the corresponding paths.
 |===
 
-[id="common-k8s-elastic-co-v1-selfsignedcertificate"]
-[float]
-==== SelfSignedCertificate
 
-SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-selfsignedcertificate"]
+==== SelfSignedCertificate 
 
 
-.Appears in:
+
+.Appears In:
 ****
-- xref:common-k8s-elastic-co-v1-tlsoptions[$$TLSOptions$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions[$$TLSOptions$$]
 ****
-[cols="20a,80a", options="header"]
+
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`subjectAltNames`* +
-_xref:common-k8s-elastic-co-v1-subjectalternativename[$$[]SubjectAlternativeName$$]_
-|
-SubjectAlternativeNames is a list of SANs to include in the generated HTTP TLS certificate.
-| *`disabled`* +
-_bool_
-|
-Disabled indicates that the provisioning of the self-signed certifcate should be disabled.
+| Field | Description
+| *`subjectAltNames`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-subjectalternativename[$$SubjectAlternativeName$$] array__ | SubjectAlternativeNames is a list of SANs to include in the generated HTTP TLS certificate.
+| *`disabled`* __boolean__ | Disabled indicates that the provisioning of the self-signed certifcate should be disabled.
 |===
 
-[id="common-k8s-elastic-co-v1-servicetemplate"]
-[float]
-==== ServiceTemplate
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-servicetemplate"]
+==== ServiceTemplate 
 
 ServiceTemplate defines the template for a Kubernetes Service.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]
+****
 
-.Appears in:
-****
-- xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
+| Field | Description
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
-ObjectMeta is the metadata of the service.
-The name and namespace provided here are managed by ECK and will be ignored.
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#servicespec-v1-core[$$Kubernetes core/v1.ServiceSpec$$]_
-|
-Spec is the specification of the service.
-
-*`ports`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#serviceport-v1-core[$$[]Kubernetes core/v1.ServicePort$$]_::
-The list of ports that are exposed by this service.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
-*`selector`*  _map[string]string_::
-_(Optional)_
-Route service traffic to pods with label keys and values matching this
-selector. If empty or not present, the service is assumed to have an
-external process managing its endpoints, which Kubernetes will not
-modify. Only applies to types ClusterIP, NodePort, and LoadBalancer.
-Ignored if type is ExternalName.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/
-*`clusterIP`*  _string_::
-_(Optional)_
-clusterIP is the IP address of the service and is usually assigned
-randomly by the master. If an address is specified manually and is not in
-use by others, it will be allocated to the service; otherwise, creation
-of the service will fail. This field can not be changed through updates.
-Valid values are "None", empty string (""), or a valid IP address. "None"
-can be specified for headless services when proxying is not required.
-Only applies to types ClusterIP, NodePort, and LoadBalancer. Ignored if
-type is ExternalName.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
-*`type`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#servicetype-v1-core[$$Kubernetes core/v1.ServiceType$$]_::
-_(Optional)_
-type determines how the Service is exposed. Defaults to ClusterIP. Valid
-options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
-"ExternalName" maps to the specified externalName.
-"ClusterIP" allocates a cluster-internal IP address for load-balancing to
-endpoints. Endpoints are determined by the selector or if that is not
-specified, by manual construction of an Endpoints object. If clusterIP is
-"None", no virtual IP is allocated and the endpoints are published as a
-set of endpoints rather than a stable IP.
-"NodePort" builds on ClusterIP and allocates a port on every node which
-routes to the clusterIP.
-"LoadBalancer" builds on NodePort and creates an
-external load-balancer (if supported in the current cloud) which routes
-to the clusterIP.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-*`externalIPs`*  _[]string_::
-_(Optional)_
-externalIPs is a list of IP addresses for which nodes in the cluster
-will also accept traffic for this service.  These IPs are not managed by
-Kubernetes.  The user is responsible for ensuring that traffic arrives
-at a node with this IP.  A common example is external load-balancers
-that are not part of the Kubernetes system.
-*`sessionAffinity`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#serviceaffinity-v1-core[$$Kubernetes core/v1.ServiceAffinity$$]_::
-_(Optional)_
-Supports "ClientIP" and "None". Used to maintain session affinity.
-Enable client IP based session affinity.
-Must be ClientIP or None.
-Defaults to None.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
-*`loadBalancerIP`*  _string_::
-_(Optional)_
-Only applies to Service Type: LoadBalancer
-LoadBalancer will get created with the IP specified in this field.
-This feature depends on whether the underlying cloud-provider supports specifying
-the loadBalancerIP when a load balancer is created.
-This field will be ignored if the cloud-provider does not support the feature.
-*`loadBalancerSourceRanges`*  _[]string_::
-_(Optional)_
-If specified and supported by the platform, this will restrict traffic through the cloud-provider
-load-balancer will be restricted to the specified client IPs. This field will be ignored if the
-cloud-provider does not support the feature."
-More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/
-*`externalName`*  _string_::
-_(Optional)_
-externalName is the external reference that kubedns or equivalent will
-return as a CNAME record for this service. No proxying will be involved.
-Must be a valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-and requires Type to be ExternalName.
-*`externalTrafficPolicy`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#serviceexternaltrafficpolicytype-v1-core[$$Kubernetes core/v1.ServiceExternalTrafficPolicyType$$]_::
-_(Optional)_
-externalTrafficPolicy denotes if this Service desires to route external
-traffic to node-local or cluster-wide endpoints. "Local" preserves the
-client source IP and avoids a second hop for LoadBalancer and Nodeport
-type services, but risks potentially imbalanced traffic spreading.
-"Cluster" obscures the client source IP and may cause a second hop to
-another node, but should have good overall load-spreading.
-*`healthCheckNodePort`*  _int32_::
-_(Optional)_
-healthCheckNodePort specifies the healthcheck nodePort for the service.
-If not specified, HealthCheckNodePort is created by the service api
-backend with the allocated nodePort. Will use user-specified nodePort value
-if specified by the client. Only effects when Type is set to LoadBalancer
-and ExternalTrafficPolicy is set to Local.
-*`publishNotReadyAddresses`*  _bool_::
-_(Optional)_
-publishNotReadyAddresses, when set to true, indicates that DNS implementations
-must publish the notReadyAddresses of subsets for the Endpoints associated with
-the Service. The default value is false.
-The primary use case for setting this field is to use a StatefulSet's Headless Service
-to propagate SRV records for its Pods without respect to their readiness for purpose
-of peer discovery.
-*`sessionAffinityConfig`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#sessionaffinityconfig-v1-core[$$Kubernetes core/v1.SessionAffinityConfig$$]_::
-_(Optional)_
-sessionAffinityConfig contains the configurations of session affinity.
-*`ipFamily`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#ipfamily-v1-core[$$Kubernetes core/v1.IPFamily$$]_::
-_(Optional)_
-ipFamily specifies whether this Service has a preference for a particular IP family (e.g. IPv4 vs.
-IPv6).  If a specific IP family is requested, the clusterIP field will be allocated from that family, if it is
-available in the cluster.  If no IP family is requested, the cluster's primary IP family will be used.
-Other IP fields (loadBalancerIP, loadBalancerSourceRanges, externalIPs) and controllers which
-allocate external load-balancers should use the same IP family.  Endpoints for this Service will be of
-this family.  This field is immutable after creation. Assigning a ServiceIPFamily not available in the
-cluster (e.g. IPv6 in IPv4 only cluster) is an error condition and will fail during clusterIP assignment.
-*`topologyKeys`*  _[]string_::
-_(Optional)_
-topologyKeys is a preference-order list of topology keys which
-implementations of services should use to preferentially sort endpoints
-when accessing this Service, it can not be used at the same time as
-externalTrafficPolicy=Local.
-Topology keys must be valid label keys and at most 16 keys may be specified.
-Endpoints are chosen based on the first topology key with available backends.
-If this field is specified and all entries have no backends that match
-the topology of the client, the service has no backends for that client
-and connections should fail.
-The special value "*" may be used to mean "any topology". This catch-all
-value, if used, only makes sense as the last value in the list.
-If this is not specified or empty, no topology constraints will be applied.
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#servicespec-v1-core[$$ServiceSpec$$]__ | Spec is the specification of the service.
 |===
 
-[id="common-k8s-elastic-co-v1-subjectalternativename"]
-[float]
-==== SubjectAlternativeName
 
-SubjectAlternativeName represents a SAN entry in a x509 certificate.
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-subjectalternativename"]
+==== SubjectAlternativeName 
 
 
-.Appears in:
+
+.Appears In:
 ****
-- xref:common-k8s-elastic-co-v1-selfsignedcertificate[$$SelfSignedCertificate$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-selfsignedcertificate[$$SelfSignedCertificate$$]
 ****
-[cols="20a,80a", options="header"]
+
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`dns`* +
-_string_
-|
-DNS is the DNS name of the subject.
-| *`ip`* +
-_string_
-|
-IP is the IP address of the subject.
+| Field | Description
+| *`dns`* __string__ | DNS is the DNS name of the subject.
+| *`ip`* __string__ | IP is the IP address of the subject.
 |===
 
-[id="common-k8s-elastic-co-v1-tlsoptions"]
-[float]
-==== TLSOptions
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions"]
+==== TLSOptions 
 
 TLSOptions holds TLS configuration options.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`selfSignedCertificate`* +
-_xref:common-k8s-elastic-co-v1-selfsignedcertificate[$$SelfSignedCertificate$$]_
-|
-SelfSignedCertificate allows configuring the self-signed certificate generated by the operator.
-| *`certificate`* +
-_xref:common-k8s-elastic-co-v1-secretref[$$SecretRef$$]_
-|
-Certificate is a reference to a Kubernetes secret that contains the certificate and private key for enabling TLS.
-The referenced secret should contain the following:
-
-- `ca.crt`: The certificate authority (optional).
-- `tls.crt`: The certificate (or a chain).
-- `tls.key`: The private key to the first certificate in the certificate chain.
+[cols="25a,75a", options="header"]
 |===
-[id="{p}-common-k8s-elastic-co-v1beta1"]
+| Field | Description
+| *`selfSignedCertificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-selfsignedcertificate[$$SelfSignedCertificate$$]__ | SelfSignedCertificate allows configuring the self-signed certificate generated by the operator.
+| *`certificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | Certificate is a reference to a Kubernetes secret that contains the certificate and private key for enabling TLS. The referenced secret should contain the following: 
+ - `ca.crt`: The certificate authority (optional). - `tls.crt`: The certificate (or a chain). - `tls.key`: The private key to the first certificate in the certificate chain.
+|===
+
+
+
+[id="{anchor_prefix}-common-k8s-elastic-co-v1beta1"]
 === common.k8s.elastic.co/v1beta1
+
 Package v1beta1 contains API schema definitions for common types used by all resources.
 
-.Resource Types
---
---
 
-[id="common-k8s-elastic-co-v1beta1-config"]
-[float]
-==== Config
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-config"]
+==== Config 
 
 Config represents untyped YAML configuration.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
-- xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$], 
-- xref:elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$NodeSet$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibanaspec[$$KibanaSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-nodeset[$$NodeSet$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`Data`* +
-_map[string]interface{}_
-|
-Data holds the configuration keys and values.
-This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/issues/528
-|===
 
-[id="common-k8s-elastic-co-v1beta1-httpconfig"]
-[float]
-==== HTTPConfig
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-httpconfig"]
+==== HTTPConfig 
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibanaspec[$$KibanaSpec$$]
+****
 
-.Appears in:
-****
-- xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
-- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$], 
-- xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`service`* +
-_xref:common-k8s-elastic-co-v1beta1-servicetemplate[$$ServiceTemplate$$]_
-|
-Service defines the template for the associated Kubernetes Service object.
-| *`tls`* +
-_xref:common-k8s-elastic-co-v1beta1-tlsoptions[$$TLSOptions$$]_
-|
-TLS defines options for configuring TLS for HTTP.
+| Field | Description
+| *`service`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-servicetemplate[$$ServiceTemplate$$]__ | Service defines the template for the associated Kubernetes Service object.
+| *`tls`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-tlsoptions[$$TLSOptions$$]__ | TLS defines options for configuring TLS for HTTP.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-keytopath"]
-[float]
-==== KeyToPath
 
-KeyToPath defines how to map a key in a Secret object to a filesystem path.
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-keytopath"]
+==== KeyToPath 
 
 
-.Appears in:
+
+.Appears In:
 ****
-- xref:common-k8s-elastic-co-v1beta1-secretsource[$$SecretSource$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretsource[$$SecretSource$$]
 ****
-[cols="20a,80a", options="header"]
+
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`key`* +
-_string_
-|
-Key is the key contained in the secret.
-| *`path`* +
-_string_
-|
-Path is the relative file path to map the key to.
-Path must not be an absolute file path and must not contain any ".." components.
+| Field | Description
+| *`key`* __string__ | Key is the key contained in the secret.
+| *`path`* __string__ | Path is the relative file path to map the key to. Path must not be an absolute file path and must not contain any ".." components.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-objectselector"]
-[float]
-==== ObjectSelector
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-objectselector"]
+==== ObjectSelector 
 
 ObjectSelector defines a reference to a Kubernetes object.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibanaspec[$$KibanaSpec$$]
+****
 
-.Appears in:
-****
-- xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
-- xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`name`* +
-_string_
-|
-Name of the Kubernetes object.
-| *`namespace`* +
-_string_
-|
-Namespace of the Kubernetes object. If empty, defaults to the current namespace.
+| Field | Description
+| *`name`* __string__ | Name of the Kubernetes object.
+| *`namespace`* __string__ | Namespace of the Kubernetes object. If empty, defaults to the current namespace.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate"]
-[float]
-==== PodDisruptionBudgetTemplate
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-poddisruptionbudgettemplate"]
+==== PodDisruptionBudgetTemplate 
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
 
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
+| Field | Description
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
-ObjectMeta is the metadata of the PDB.
-The name and namespace provided here are managed by ECK and will be ignored.
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#poddisruptionbudgetspec-v1beta1-policy[$$Kubernetes policy/v1beta1.PodDisruptionBudgetSpec$$]_
-|
-Spec is the specification of the PDB.
-
-*`minAvailable`*  _Kubernetes intstr.IntOrString_::
-_(Optional)_
-An eviction is allowed if at least "minAvailable" pods selected by
-"selector" will still be available after the eviction, i.e. even in the
-absence of the evicted pod.  So for example you can prevent all voluntary
-evictions by specifying "100%".
-*`selector`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#labelselector-v1-meta[$$Kubernetes meta/v1.LabelSelector$$]_::
-_(Optional)_
-Label query over pods whose evictions are managed by the disruption
-budget.
-*`maxUnavailable`*  _Kubernetes intstr.IntOrString_::
-_(Optional)_
-An eviction is allowed if at most "maxUnavailable" pods selected by
-"selector" are unavailable after the eviction, i.e. even in absence of
-the evicted pod. For example, one can prevent all voluntary evictions
-by specifying 0. This is a mutually exclusive setting with "minAvailable".
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#poddisruptionbudgetspec-v1beta1-policy[$$PodDisruptionBudgetSpec$$]__ | Spec is the specification of the PDB.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-secretref"]
-[float]
-==== SecretRef
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretref"]
+==== SecretRef 
 
 SecretRef is a reference to a secret that exists in the same namespace.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-tlsoptions[$$TLSOptions$$]
+****
 
-.Appears in:
-****
-- xref:common-k8s-elastic-co-v1beta1-tlsoptions[$$TLSOptions$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`secretName`* +
-_string_
-|
-SecretName is the name of the secret.
+| Field | Description
+| *`secretName`* __string__ | SecretName is the name of the secret.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-secretsource"]
-[float]
-==== SecretSource
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretsource"]
+==== SecretSource 
 
 SecretSource defines a data source based on a Kubernetes Secret.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibanaspec[$$KibanaSpec$$]
+****
 
-.Appears in:
-****
-- xref:apm-k8s-elastic-co-v1beta1-apmserverspec[$$ApmServerSpec$$], 
-- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$], 
-- xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`secretName`* +
-_string_
-|
-SecretName is the name of the secret.
-| *`entries`* +
-_xref:common-k8s-elastic-co-v1beta1-keytopath[$$[]KeyToPath$$]_
-|
-Entries define how to project each key-value pair in the secret to filesystem paths.
-If not defined, all keys will be projected to similarly named paths in the filesystem.
-If defined, only the specified keys will be projected to the corresponding paths.
+| Field | Description
+| *`secretName`* __string__ | SecretName is the name of the secret.
+| *`entries`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-keytopath[$$KeyToPath$$] array__ | Entries define how to project each key-value pair in the secret to filesystem paths. If not defined, all keys will be projected to similarly named paths in the filesystem. If defined, only the specified keys will be projected to the corresponding paths.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-selfsignedcertificate"]
-[float]
-==== SelfSignedCertificate
 
-SelfSignedCertificate holds configuration for the self-signed certificate generated by the operator.
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-selfsignedcertificate"]
+==== SelfSignedCertificate 
 
 
-.Appears in:
+
+.Appears In:
 ****
-- xref:common-k8s-elastic-co-v1beta1-tlsoptions[$$TLSOptions$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-tlsoptions[$$TLSOptions$$]
 ****
-[cols="20a,80a", options="header"]
+
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`subjectAltNames`* +
-_xref:common-k8s-elastic-co-v1beta1-subjectalternativename[$$[]SubjectAlternativeName$$]_
-|
-SubjectAlternativeNames is a list of SANs to include in the generated HTTP TLS certificate.
-| *`disabled`* +
-_bool_
-|
-Disabled indicates that the provisioning of the self-signed certifcate should be disabled.
+| Field | Description
+| *`subjectAltNames`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-subjectalternativename[$$SubjectAlternativeName$$] array__ | SubjectAlternativeNames is a list of SANs to include in the generated HTTP TLS certificate.
+| *`disabled`* __boolean__ | Disabled indicates that the provisioning of the self-signed certifcate should be disabled.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-servicetemplate"]
-[float]
-==== ServiceTemplate
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-servicetemplate"]
+==== ServiceTemplate 
 
 ServiceTemplate defines the template for a Kubernetes Service.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-httpconfig[$$HTTPConfig$$]
+****
 
-.Appears in:
-****
-- xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
+| Field | Description
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
-ObjectMeta is the metadata of the service.
-The name and namespace provided here are managed by ECK and will be ignored.
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#servicespec-v1-core[$$Kubernetes core/v1.ServiceSpec$$]_
-|
-Spec is the specification of the service.
-
-*`ports`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#serviceport-v1-core[$$[]Kubernetes core/v1.ServicePort$$]_::
-The list of ports that are exposed by this service.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
-*`selector`*  _map[string]string_::
-_(Optional)_
-Route service traffic to pods with label keys and values matching this
-selector. If empty or not present, the service is assumed to have an
-external process managing its endpoints, which Kubernetes will not
-modify. Only applies to types ClusterIP, NodePort, and LoadBalancer.
-Ignored if type is ExternalName.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/
-*`clusterIP`*  _string_::
-_(Optional)_
-clusterIP is the IP address of the service and is usually assigned
-randomly by the master. If an address is specified manually and is not in
-use by others, it will be allocated to the service; otherwise, creation
-of the service will fail. This field can not be changed through updates.
-Valid values are "None", empty string (""), or a valid IP address. "None"
-can be specified for headless services when proxying is not required.
-Only applies to types ClusterIP, NodePort, and LoadBalancer. Ignored if
-type is ExternalName.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
-*`type`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#servicetype-v1-core[$$Kubernetes core/v1.ServiceType$$]_::
-_(Optional)_
-type determines how the Service is exposed. Defaults to ClusterIP. Valid
-options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
-"ExternalName" maps to the specified externalName.
-"ClusterIP" allocates a cluster-internal IP address for load-balancing to
-endpoints. Endpoints are determined by the selector or if that is not
-specified, by manual construction of an Endpoints object. If clusterIP is
-"None", no virtual IP is allocated and the endpoints are published as a
-set of endpoints rather than a stable IP.
-"NodePort" builds on ClusterIP and allocates a port on every node which
-routes to the clusterIP.
-"LoadBalancer" builds on NodePort and creates an
-external load-balancer (if supported in the current cloud) which routes
-to the clusterIP.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-*`externalIPs`*  _[]string_::
-_(Optional)_
-externalIPs is a list of IP addresses for which nodes in the cluster
-will also accept traffic for this service.  These IPs are not managed by
-Kubernetes.  The user is responsible for ensuring that traffic arrives
-at a node with this IP.  A common example is external load-balancers
-that are not part of the Kubernetes system.
-*`sessionAffinity`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#serviceaffinity-v1-core[$$Kubernetes core/v1.ServiceAffinity$$]_::
-_(Optional)_
-Supports "ClientIP" and "None". Used to maintain session affinity.
-Enable client IP based session affinity.
-Must be ClientIP or None.
-Defaults to None.
-More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies
-*`loadBalancerIP`*  _string_::
-_(Optional)_
-Only applies to Service Type: LoadBalancer
-LoadBalancer will get created with the IP specified in this field.
-This feature depends on whether the underlying cloud-provider supports specifying
-the loadBalancerIP when a load balancer is created.
-This field will be ignored if the cloud-provider does not support the feature.
-*`loadBalancerSourceRanges`*  _[]string_::
-_(Optional)_
-If specified and supported by the platform, this will restrict traffic through the cloud-provider
-load-balancer will be restricted to the specified client IPs. This field will be ignored if the
-cloud-provider does not support the feature."
-More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/
-*`externalName`*  _string_::
-_(Optional)_
-externalName is the external reference that kubedns or equivalent will
-return as a CNAME record for this service. No proxying will be involved.
-Must be a valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-and requires Type to be ExternalName.
-*`externalTrafficPolicy`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#serviceexternaltrafficpolicytype-v1-core[$$Kubernetes core/v1.ServiceExternalTrafficPolicyType$$]_::
-_(Optional)_
-externalTrafficPolicy denotes if this Service desires to route external
-traffic to node-local or cluster-wide endpoints. "Local" preserves the
-client source IP and avoids a second hop for LoadBalancer and Nodeport
-type services, but risks potentially imbalanced traffic spreading.
-"Cluster" obscures the client source IP and may cause a second hop to
-another node, but should have good overall load-spreading.
-*`healthCheckNodePort`*  _int32_::
-_(Optional)_
-healthCheckNodePort specifies the healthcheck nodePort for the service.
-If not specified, HealthCheckNodePort is created by the service api
-backend with the allocated nodePort. Will use user-specified nodePort value
-if specified by the client. Only effects when Type is set to LoadBalancer
-and ExternalTrafficPolicy is set to Local.
-*`publishNotReadyAddresses`*  _bool_::
-_(Optional)_
-publishNotReadyAddresses, when set to true, indicates that DNS implementations
-must publish the notReadyAddresses of subsets for the Endpoints associated with
-the Service. The default value is false.
-The primary use case for setting this field is to use a StatefulSet's Headless Service
-to propagate SRV records for its Pods without respect to their readiness for purpose
-of peer discovery.
-*`sessionAffinityConfig`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#sessionaffinityconfig-v1-core[$$Kubernetes core/v1.SessionAffinityConfig$$]_::
-_(Optional)_
-sessionAffinityConfig contains the configurations of session affinity.
-*`ipFamily`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#ipfamily-v1-core[$$Kubernetes core/v1.IPFamily$$]_::
-_(Optional)_
-ipFamily specifies whether this Service has a preference for a particular IP family (e.g. IPv4 vs.
-IPv6).  If a specific IP family is requested, the clusterIP field will be allocated from that family, if it is
-available in the cluster.  If no IP family is requested, the cluster's primary IP family will be used.
-Other IP fields (loadBalancerIP, loadBalancerSourceRanges, externalIPs) and controllers which
-allocate external load-balancers should use the same IP family.  Endpoints for this Service will be of
-this family.  This field is immutable after creation. Assigning a ServiceIPFamily not available in the
-cluster (e.g. IPv6 in IPv4 only cluster) is an error condition and will fail during clusterIP assignment.
-*`topologyKeys`*  _[]string_::
-_(Optional)_
-topologyKeys is a preference-order list of topology keys which
-implementations of services should use to preferentially sort endpoints
-when accessing this Service, it can not be used at the same time as
-externalTrafficPolicy=Local.
-Topology keys must be valid label keys and at most 16 keys may be specified.
-Endpoints are chosen based on the first topology key with available backends.
-If this field is specified and all entries have no backends that match
-the topology of the client, the service has no backends for that client
-and connections should fail.
-The special value "*" may be used to mean "any topology". This catch-all
-value, if used, only makes sense as the last value in the list.
-If this is not specified or empty, no topology constraints will be applied.
+| *`spec`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#servicespec-v1-core[$$ServiceSpec$$]__ | Spec is the specification of the service.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-subjectalternativename"]
-[float]
-==== SubjectAlternativeName
 
-SubjectAlternativeName represents a SAN entry in a x509 certificate.
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-subjectalternativename"]
+==== SubjectAlternativeName 
 
 
-.Appears in:
+
+.Appears In:
 ****
-- xref:common-k8s-elastic-co-v1beta1-selfsignedcertificate[$$SelfSignedCertificate$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-selfsignedcertificate[$$SelfSignedCertificate$$]
 ****
-[cols="20a,80a", options="header"]
+
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`dns`* +
-_string_
-|
-DNS is the DNS name of the subject.
-| *`ip`* +
-_string_
-|
-IP is the IP address of the subject.
+| Field | Description
+| *`dns`* __string__ | DNS is the DNS name of the subject.
+| *`ip`* __string__ | IP is the IP address of the subject.
 |===
 
-[id="common-k8s-elastic-co-v1beta1-tlsoptions"]
-[float]
-==== TLSOptions
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-tlsoptions"]
+==== TLSOptions 
 
 TLSOptions holds TLS configuration options.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-httpconfig[$$HTTPConfig$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`selfSignedCertificate`* +
-_xref:common-k8s-elastic-co-v1beta1-selfsignedcertificate[$$SelfSignedCertificate$$]_
-|
-SelfSignedCertificate allows configuring the self-signed certificate generated by the operator.
-| *`certificate`* +
-_xref:common-k8s-elastic-co-v1beta1-secretref[$$SecretRef$$]_
-|
-Certificate is a reference to a Kubernetes secret that contains the certificate and private key for enabling TLS.
-The referenced secret should contain the following:
-
-- `ca.crt`: The certificate authority (optional).
-- `tls.crt`: The certificate (or a chain).
-- `tls.key`: The private key to the first certificate in the certificate chain.
+[cols="25a,75a", options="header"]
 |===
-[id="{p}-elasticsearch-k8s-elastic-co-v1"]
+| Field | Description
+| *`selfSignedCertificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-selfsignedcertificate[$$SelfSignedCertificate$$]__ | SelfSignedCertificate allows configuring the self-signed certificate generated by the operator.
+| *`certificate`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretref[$$SecretRef$$]__ | Certificate is a reference to a Kubernetes secret that contains the certificate and private key for enabling TLS. The referenced secret should contain the following: 
+ - `ca.crt`: The certificate authority (optional). - `tls.crt`: The certificate (or a chain). - `tls.key`: The private key to the first certificate in the certificate chain.
+|===
+
+
+
+[id="{anchor_prefix}-elasticsearch-k8s-elastic-co-v1"]
 === elasticsearch.k8s.elastic.co/v1
+
 Package v1 contains API schema definitions for managing Elasticsearch resources.
 
 .Resource Types
---
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearch[$$Elasticsearch$$]
---
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearch[$$Elasticsearch$$]
 
-[id="elasticsearch-k8s-elastic-co-v1-elasticsearch"]
-[float]
-==== Elasticsearch
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-changebudget"]
+==== ChangeBudget 
+
+ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-updatestrategy[$$UpdateStrategy$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`maxUnavailable`* __integer__ | MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to circumstances under the control of the operator. Setting a negative value will disable this restriction. Defaults to 1 if not specified.
+| *`maxSurge`* __integer__ | MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will disable the restriction. Defaults to unbounded if not specified.
+|===
+
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearch"]
+==== Elasticsearch 
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
 
 
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `elasticsearch.k8s.elastic.co/v1`
+| Field | Description
+| *`apiVersion`* __string__ | `elasticsearch.k8s.elastic.co/v1`
+| *`kind`* __string__ | `Elasticsearch`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`kind`*  +
-_string_
-| `Elasticsearch`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version of Elasticsearch.
-*`image`*  _string_::
-Image is the Elasticsearch Docker image to deploy.
-*`http`* _xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds HTTP layer settings for Elasticsearch.
-*`nodeSets`* _xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$[]NodeSet$$]_::
-NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
-*`updateStrategy`* _xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]_::
-UpdateStrategy specifies how updates to the cluster should be performed.
-*`podDisruptionBudget`* _xref:common-k8s-elastic-co-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
-PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
-to the empty value (`{}` in YAML).
-*`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
-*`serviceAccountName`*  _string_::
-_(Optional)_
-ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
-Can only be used if ECK is enforcing RBAC on references.
+| *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]__ | 
 |===
 
-[id="elasticsearch-k8s-elastic-co-v1-changebudget"]
-[float]
-==== ChangeBudget
 
-ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
-
-
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]
-****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`maxUnavailable`* +
-_int32_
-|
-MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to
-circumstances under the control of the operator. Setting a negative value will disable this restriction.
-Defaults to 1 if not specified.
-| *`maxSurge`* +
-_int32_
-|
-MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in
-the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will
-disable the restriction. Defaults to unbounded if not specified.
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1-elasticsearchspec"]
-[float]
-==== ElasticsearchSpec
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec"]
+==== ElasticsearchSpec 
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearch[$$Elasticsearch$$]
+****
 
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearch[$$Elasticsearch$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`version`* +
-_string_
-|
-Version of Elasticsearch.
-| *`image`* +
-_string_
-|
-Image is the Elasticsearch Docker image to deploy.
-| *`http`* +
-_xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP holds HTTP layer settings for Elasticsearch.
-| *`nodeSets`* +
-_xref:elasticsearch-k8s-elastic-co-v1-nodeset[$$[]NodeSet$$]_
-|
-NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
-| *`updateStrategy`* +
-_xref:elasticsearch-k8s-elastic-co-v1-updatestrategy[$$UpdateStrategy$$]_
-|
-UpdateStrategy specifies how updates to the cluster should be performed.
-| *`podDisruptionBudget`* +
-_xref:common-k8s-elastic-co-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_
-|
-PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
-to the empty value (`{}` in YAML).
-| *`secureSettings`* +
-_xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
-| *`serviceAccountName`* +
-_string_
-|
-_(Optional)_
-ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace.
-Can only be used if ECK is enforcing RBAC on references.
+| Field | Description
+| *`version`* __string__ | Version of Elasticsearch.
+| *`image`* __string__ | Image is the Elasticsearch Docker image to deploy.
+| *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds HTTP layer settings for Elasticsearch.
+| *`nodeSets`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$] array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
+| *`updateStrategy`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-updatestrategy[$$UpdateStrategy$$]__ | UpdateStrategy specifies how updates to the cluster should be performed.
+| *`podDisruptionBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]__ | PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster. The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. a remote Elasticsearch cluster) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
 
-[id="elasticsearch-k8s-elastic-co-v1-nodeset"]
-[float]
-==== NodeSet
-
-NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
 
 
-.Appears in:
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-nodeset"]
+==== NodeSet 
+
+
+
+.Appears In:
 ****
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
 ****
-[cols="20a,80a", options="header"]
+
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`name`* +
-_string_
-|
-Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
-| *`config`* +
-_xref:common-k8s-elastic-co-v1-config[$$Config$$]_
-|
-Config holds the Elasticsearch configuration.
-| *`count`* +
-_int32_
-|
-Count of Elasticsearch nodes to deploy.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
-| *`volumeClaimTemplates`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaim-v1-core[$$[]Kubernetes core/v1.PersistentVolumeClaim$$]_
-|
-VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
-Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
-Items defined here take precedence over any default claims added by the operator with the same name.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
+| Field | Description
+| *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Elasticsearch configuration.
+| *`count`* __integer__ | Count of Elasticsearch nodes to deploy.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+| *`volumeClaimTemplates`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaim-v1-core[$$PersistentVolumeClaim$$] array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet. Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate. Items defined here take precedence over any default claims added by the operator with the same name. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
 |===
 
-[id="elasticsearch-k8s-elastic-co-v1-updatestrategy"]
-[float]
-==== UpdateStrategy
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-updatestrategy"]
+==== UpdateStrategy 
 
 UpdateStrategy specifies how updates to the cluster should be performed.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:elasticsearch-k8s-elastic-co-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`changeBudget`* +
-_xref:elasticsearch-k8s-elastic-co-v1-changebudget[$$ChangeBudget$$]_
-|
-ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+[cols="25a,75a", options="header"]
 |===
-[id="{p}-elasticsearch-k8s-elastic-co-v1beta1"]
+| Field | Description
+| *`changeBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-changebudget[$$ChangeBudget$$]__ | ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+|===
+
+
+
+
+
+[id="{anchor_prefix}-elasticsearch-k8s-elastic-co-v1beta1"]
 === elasticsearch.k8s.elastic.co/v1beta1
+
 Package v1beta1 contains API schema definitions for managing Elasticsearch resources.
 
 .Resource Types
---
-- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearch[$$Elasticsearch$$]
---
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearch[$$Elasticsearch$$]
 
-[id="elasticsearch-k8s-elastic-co-v1beta1-elasticsearch"]
-[float]
-==== Elasticsearch
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-changebudget"]
+==== ChangeBudget 
+
+ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-updatestrategy[$$UpdateStrategy$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`maxUnavailable`* __integer__ | MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to circumstances under the control of the operator. Setting a negative value will disable this restriction. Defaults to 1 if not specified.
+| *`maxSurge`* __integer__ | MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will disable the restriction. Defaults to unbounded if not specified.
+|===
+
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearch"]
+==== Elasticsearch 
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
 
 
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `elasticsearch.k8s.elastic.co/v1beta1`
+| Field | Description
+| *`apiVersion`* __string__ | `elasticsearch.k8s.elastic.co/v1beta1`
+| *`kind`* __string__ | `Elasticsearch`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`kind`*  +
-_string_
-| `Elasticsearch`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version of Elasticsearch.
-*`image`*  _string_::
-Image is the Elasticsearch Docker image to deploy.
-*`http`* _xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds HTTP layer settings for Elasticsearch.
-*`nodeSets`* _xref:elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$[]NodeSet$$]_::
-NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
-*`updateStrategy`* _xref:elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]_::
-UpdateStrategy specifies how updates to the cluster should be performed.
-*`podDisruptionBudget`* _xref:common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_::
-PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
-to the empty value (`{}` in YAML).
-*`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+| *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]__ | 
 |===
 
-[id="elasticsearch-k8s-elastic-co-v1beta1-changebudget"]
-[float]
-==== ChangeBudget
 
-ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
-
-
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]
-****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
-
-| *`maxUnavailable`* +
-_int32_
-|
-MaxUnavailable is the maximum number of pods that can be unavailable (not ready) during the update due to
-circumstances under the control of the operator. Setting a negative value will disable this restriction.
-Defaults to 1 if not specified.
-| *`maxSurge`* +
-_int32_
-|
-MaxSurge is the maximum number of new pods that can be created exceeding the original number of pods defined in
-the specification. MaxSurge is only taken into consideration when scaling up. Setting a negative value will
-disable the restriction. Defaults to unbounded if not specified.
-|===
-
-[id="elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec"]
-[float]
-==== ElasticsearchSpec
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec"]
+==== ElasticsearchSpec 
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearch[$$Elasticsearch$$]
+****
 
-.Appears in:
-****
-- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearch[$$Elasticsearch$$]
-****
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`version`* +
-_string_
-|
-Version of Elasticsearch.
-| *`image`* +
-_string_
-|
-Image is the Elasticsearch Docker image to deploy.
-| *`http`* +
-_xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP holds HTTP layer settings for Elasticsearch.
-| *`nodeSets`* +
-_xref:elasticsearch-k8s-elastic-co-v1beta1-nodeset[$$[]NodeSet$$]_
-|
-NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
-| *`updateStrategy`* +
-_xref:elasticsearch-k8s-elastic-co-v1beta1-updatestrategy[$$UpdateStrategy$$]_
-|
-UpdateStrategy specifies how updates to the cluster should be performed.
-| *`podDisruptionBudget`* +
-_xref:common-k8s-elastic-co-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]_
-|
-PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster.
-The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget`
-to the empty value (`{}` in YAML).
-| *`secureSettings`* +
-_xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
+| Field | Description
+| *`version`* __string__ | Version of Elasticsearch.
+| *`image`* __string__ | Image is the Elasticsearch Docker image to deploy.
+| *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-httpconfig[$$HTTPConfig$$]__ | HTTP holds HTTP layer settings for Elasticsearch.
+| *`nodeSets`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-nodeset[$$NodeSet$$] array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
+| *`updateStrategy`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-updatestrategy[$$UpdateStrategy$$]__ | UpdateStrategy specifies how updates to the cluster should be performed.
+| *`podDisruptionBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]__ | PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster. The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 |===
 
-[id="elasticsearch-k8s-elastic-co-v1beta1-nodeset"]
-[float]
-==== NodeSet
-
-NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
 
 
-.Appears in:
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-nodeset"]
+==== NodeSet 
+
+
+
+.Appears In:
 ****
-- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
 ****
-[cols="20a,80a", options="header"]
+
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-
-| *`name`* +
-_string_
-|
-Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
-| *`config`* +
-_xref:common-k8s-elastic-co-v1beta1-config[$$Config$$]_
-|
-Config holds the Elasticsearch configuration.
-| *`count`* +
-_int32_
-|
-Count of Elasticsearch nodes to deploy.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
-| *`volumeClaimTemplates`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#persistentvolumeclaim-v1-core[$$[]Kubernetes core/v1.PersistentVolumeClaim$$]_
-|
-VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet.
-Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate.
-Items defined here take precedence over any default claims added by the operator with the same name.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
+| Field | Description
+| *`name`* __string__ | Name of this set of nodes. Becomes a part of the Elasticsearch node.name setting.
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-config[$$Config$$]__ | Config holds the Elasticsearch configuration.
+| *`count`* __integer__ | Count of Elasticsearch nodes to deploy.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Pods belonging to this NodeSet.
+| *`volumeClaimTemplates`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaim-v1-core[$$PersistentVolumeClaim$$] array__ | VolumeClaimTemplates is a list of persistent volume claims to be used by each Pod in this NodeSet. Every claim in this list must have a matching volumeMount in one of the containers defined in the PodTemplate. Items defined here take precedence over any default claims added by the operator with the same name. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-volume-claim-templates.html
 |===
 
-[id="elasticsearch-k8s-elastic-co-v1beta1-updatestrategy"]
-[float]
-==== UpdateStrategy
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-updatestrategy"]
+==== UpdateStrategy 
 
 UpdateStrategy specifies how updates to the cluster should be performed.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:elasticsearch-k8s-elastic-co-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec[$$ElasticsearchSpec$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`changeBudget`* +
-_xref:elasticsearch-k8s-elastic-co-v1beta1-changebudget[$$ChangeBudget$$]_
-|
-ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+[cols="25a,75a", options="header"]
 |===
-[id="{p}-kibana-k8s-elastic-co-v1"]
+| Field | Description
+| *`changeBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-changebudget[$$ChangeBudget$$]__ | ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
+|===
+
+
+
+
+
+[id="{anchor_prefix}-kibana-k8s-elastic-co-v1"]
 === kibana.k8s.elastic.co/v1
+
 Package v1 contains API schema definitions for managing Kibana resources.
 
 .Resource Types
---
-- xref:kibana-k8s-elastic-co-v1-kibana[$$Kibana$$]
---
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibana[$$Kibana$$]
 
-[id="kibana-k8s-elastic-co-v1-kibana"]
-[float]
-==== Kibana
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibana"]
+==== Kibana 
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
 
 
 
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `kibana.k8s.elastic.co/v1`
+| Field | Description
+| *`apiVersion`* __string__ | `kibana.k8s.elastic.co/v1`
+| *`kind`* __string__ | `Kibana`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`kind`*  +
-_string_
-| `Kibana`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_xref:kibana-k8s-elastic-co-v1-kibanaspec[$$KibanaSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version of Kibana.
-*`image`*  _string_::
-Image is the Kibana Docker image to deploy.
-*`count`*  _int32_::
-Count of Kibana instances to deploy.
-*`elasticsearchRef`* _xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_::
-ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-*`config`* _xref:common-k8s-elastic-co-v1-config[$$Config$$]_::
-Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
-*`http`* _xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds the HTTP layer configuration for Kibana.
-*`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
-*`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
-*`serviceAccountName`*  _string_::
-_(Optional)_
-ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
-Can only be used if ECK is enforcing RBAC on references.
+| *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]__ | 
 |===
 
-[id="kibana-k8s-elastic-co-v1-kibanaspec"]
-[float]
-==== KibanaSpec
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec"]
+==== KibanaSpec 
 
 KibanaSpec holds the specification of a Kibana instance.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:kibana-k8s-elastic-co-v1-kibana[$$Kibana$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibana[$$Kibana$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`version`* +
-_string_
-|
-Version of Kibana.
-| *`image`* +
-_string_
-|
-Image is the Kibana Docker image to deploy.
-| *`count`* +
-_int32_
-|
-Count of Kibana instances to deploy.
-| *`elasticsearchRef`* +
-_xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_
-|
-ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-| *`config`* +
-_xref:common-k8s-elastic-co-v1-config[$$Config$$]_
-|
-Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
-| *`http`* +
-_xref:common-k8s-elastic-co-v1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP holds the HTTP layer configuration for Kibana.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
-| *`secureSettings`* +
-_xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
-| *`serviceAccountName`* +
-_string_
-|
-_(Optional)_
-ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace.
-Can only be used if ECK is enforcing RBAC on references.
+[cols="25a,75a", options="header"]
 |===
-[id="{p}-kibana-k8s-elastic-co-v1beta1"]
+| Field | Description
+| *`version`* __string__ | Version of Kibana.
+| *`image`* __string__ | Image is the Kibana Docker image to deploy.
+| *`count`* __integer__ | Count of Kibana instances to deploy.
+| *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+| *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Kibana.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+|===
+
+
+
+[id="{anchor_prefix}-kibana-k8s-elastic-co-v1beta1"]
 === kibana.k8s.elastic.co/v1beta1
+
 Package v1beta1 contains API schema definitions for managing Kibana resources.
 
 .Resource Types
---
-- xref:kibana-k8s-elastic-co-v1beta1-kibana[$$Kibana$$]
---
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibana[$$Kibana$$]
 
-[id="kibana-k8s-elastic-co-v1beta1-kibana"]
-[float]
-==== Kibana
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibana"]
+==== Kibana 
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
 
 
 
-[cols="20a,80a", options="header"]
+[cols="25a,75a", options="header"]
 |===
-|Field |Description
-| *`apiVersion`*  +
-_string_
-| `kibana.k8s.elastic.co/v1beta1`
+| Field | Description
+| *`apiVersion`* __string__ | `kibana.k8s.elastic.co/v1beta1`
+| *`kind`* __string__ | `Kibana`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
-| *`kind`*  +
-_string_
-| `Kibana`
-
-| *`metadata`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#objectmeta-v1-meta[$$Kubernetes meta/v1.ObjectMeta$$]_
-|
----
-Refer to the Kubernetes API documentation for the fields of the `metadata` field.
-| *`spec`* +
-_xref:kibana-k8s-elastic-co-v1beta1-kibanaspec[$$KibanaSpec$$]_
-|
----
-
-*`version`*  _string_::
-Version of Kibana.
-*`image`*  _string_::
-Image is the Kibana Docker image to deploy.
-*`count`*  _int32_::
-Count of Kibana instances to deploy.
-*`elasticsearchRef`* _xref:common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_::
-ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-*`config`* _xref:common-k8s-elastic-co-v1beta1-config[$$Config$$]_::
-Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
-*`http`* _xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_::
-HTTP holds the HTTP layer configuration for Kibana.
-*`podTemplate`* _link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_::
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
-*`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
+| *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibanaspec[$$KibanaSpec$$]__ | 
 |===
 
-[id="kibana-k8s-elastic-co-v1beta1-kibanaspec"]
-[float]
-==== KibanaSpec
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibanaspec"]
+==== KibanaSpec 
 
 KibanaSpec holds the specification of a Kibana instance.
 
-
-.Appears in:
+.Appears In:
 ****
-- xref:kibana-k8s-elastic-co-v1beta1-kibana[$$Kibana$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibana[$$Kibana$$]
 ****
-[cols="20a,80a", options="header"]
-|===
-|Field |Description
 
-| *`version`* +
-_string_
-|
-Version of Kibana.
-| *`image`* +
-_string_
-|
-Image is the Kibana Docker image to deploy.
-| *`count`* +
-_int32_
-|
-Count of Kibana instances to deploy.
-| *`elasticsearchRef`* +
-_xref:common-k8s-elastic-co-v1beta1-objectselector[$$ObjectSelector$$]_
-|
-ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-| *`config`* +
-_xref:common-k8s-elastic-co-v1beta1-config[$$Config$$]_
-|
-Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
-| *`http`* +
-_xref:common-k8s-elastic-co-v1beta1-httpconfig[$$HTTPConfig$$]_
-|
-HTTP holds the HTTP layer configuration for Kibana.
-| *`podTemplate`* +
-_link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.13/#podtemplatespec-v1-core[$$Kubernetes core/v1.PodTemplateSpec$$]_
-|
-PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
-| *`secureSettings`* +
-_xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
-|
-SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
+[cols="25a,75a", options="header"]
 |===
+| Field | Description
+| *`version`* __string__ | Version of Kibana.
+| *`image`* __string__ | Image is the Kibana Docker image to deploy.
+| *`count`* __integer__ | Count of Kibana instances to deploy.
+| *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-config[$$Config$$]__ | Config holds the Kibana configuration. See: https://www.elastic.co/guide/en/kibana/current/settings.html
+| *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Kibana.
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
+| *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
+|===
+
+
