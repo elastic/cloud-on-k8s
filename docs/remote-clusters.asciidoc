@@ -124,4 +124,4 @@ PUT _cluster/settings
 }
 ----
 <1> setup the remote connection in "proxy" mode as `cluster_two` will connect to `cluster_one` only through the Kubernetes service abstraction and not to individual nodes directly.
-<2> `${LOADBALANCER_IP}` will be the IP address assigned to the `LoadBalancer` configured in the transport service above or it can also be a DNS name depending on your setup.
+<2> Replace `${LOADBALANCER_IP}` with the IP address assigned to the `LoadBalancer` configured above. if you have configured a DNS entry for the service, you can use the DNS name instead of the IP address as well.
