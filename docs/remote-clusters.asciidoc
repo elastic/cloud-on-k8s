@@ -35,7 +35,7 @@ To configure `cluster_one` as a remote cluster in `cluster_two`:
 
 ===== Ensure both clusters trust each others certificate authority
 
-The certificate authority used by ECK to issue certificates for the Elasticsearch transport layer is stored in a secret named `<cluster_name>-es-transport-certs-public`. Extract the certificate for `cluster_one` as follows:
+The certificate authority (CA) used by ECK to issue certificates for the Elasticsearch transport layer is stored in a secret named `<cluster_name>-es-transport-certs-public`. Extract the certificate for `cluster_one` as follows:
 
 [source,sh]
 ----
