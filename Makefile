@@ -18,11 +18,7 @@ KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 LOG_VERBOSITY ?= 1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq ($(shell go env GOBIN 2>/dev/null),)
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
+GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
 # find or download controller-gen
 # note this does not validate the version
