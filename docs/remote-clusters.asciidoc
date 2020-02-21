@@ -8,7 +8,7 @@ endif::[]
 
 The link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-remote-clusters.html[remote clusters module] in Elasticsearch enables you to establish uni-directional connections to a remote cluster. This functionality is used in cross-cluster replication and cross-cluster search.
 
-When using remote cluster connections with ECK the necessary setup depends on where the remote cluster is deployed.
+When using remote cluster connections with ECK, the necessary setup depends on where the remote cluster is deployed.
 
 [id="{p}-remote-clusters-connect-internal"]
 ==== Connect from an Elasticsearch cluster running in the same Kubernetes cluster
