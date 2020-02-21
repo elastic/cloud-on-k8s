@@ -86,7 +86,7 @@ Repeat the steps with reversed roles adding the CA of `cluster_two` to `cluster_
 
 ===== Configure the remote cluster connection via the Elasticsearch REST API
 
-Expose the transport layer of `cluster_one` to `cluster_two` which is residing outside of `cluster_one`'s Kubernetes cluster.
+Expose the transport layer of `cluster_one`.
 
 [source,yaml]
 ----
