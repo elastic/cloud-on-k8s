@@ -29,6 +29,7 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
 - <<{p}-orchestration>>
 - <<{p}-snapshots,Create automated snapshots>>
+- <<{p}-remote-clusters,Remote clusters>>
 - <<{p}-readiness>>
 - <<{p}-prestop>>
 
@@ -547,6 +548,7 @@ spec:
 include::orchestration.asciidoc[]
 include::advanced-node-scheduling.asciidoc[]
 include::snapshots.asciidoc[]
+include::remote-clusters.asciidoc[]
 
 
 [id="{p}-readiness"]

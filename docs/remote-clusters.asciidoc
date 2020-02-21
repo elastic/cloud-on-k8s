@@ -1,0 +1,125 @@
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-remote-clusters.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-remote-clusters"]
+=== Remote clusters
+
+The link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-remote-clusters.html[remote clusters module] in Elasticsearch enables you to establish uni-directional connections to a remote cluster. This functionality is used in cross-cluster replication and cross-cluster search.
+
+When using remote cluster connections with ECK the necessary setup depends on where the remote cluster is deployed.
+
+==== Both clusters are in the same Kubernetes cluster
+
+TBD
+
+==== One of the clusters is not in the same Kubernetes cluster
+
+NOTE: While it is technically possible to configure a remote cluster connection to an Elasticsearch cluster residing in Kubernetes in earlier versions, this guide only covers the setup for Elasticsearch 7.6 and later.  Elasticsearch 7.6 introduces improved support for the indirection introduced by Kubernetes services which significantly simplifies the setup.
+
+You can configure a remote cluster connection to an Elasticsearch cluster managed by ECK from another cluster outside of Kubernetes or hosted in a different Kubernetes cluster as follows.
+
+. Ensure that both clusters trust each others certificate authority.
+. Configure the remote cluster connection via the Elasticsearch REST API.
+
+For the purposes of this guide we use the following running example:
+
+* `cluster_one` resides inside Kubernetes and is managed by ECK
+* `cluster_two` is not hosted inside the same Kubernetes cluster as `cluster_one` and may even not be managed by an ECK instance
+
+We will configure `cluster_one` as a remote cluster in `cluster_two`.
+
+
+===== Ensure both clusters trust each others certificate authority
+
+The certificate authority used by ECK to issue certificates for the Elasticsearch transport layer is stored in a secret named `<cluster_name>-es-transport-certs-public`. Extract the certificate for `cluster_one` as follows:
+
+[source,sh]
+----
+kubectl get secret cluster_one-es-transport-certs-public \
+-o go-template='{{index .data "ca.crt" | base64decode}}' > remote.ca.crt
+----
+
+You then need to configure the CA as one of the trusted CAs in `cluster_two`. If that cluster is hosted outside of Kubernetes simply add the CA you extracted to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`]
+
+If `cluster_two` cluster is also managed by an ECK instance, proceed as follows:
+
+Create a secret with the CA certificate you just extracted:
+[source,sh]
+----
+kubectl create secret generic remote-certs --from-file=remote.ca.crt
+----
+
+Use this secret to configure `cluster_one`'s CA as a trusted CA in `cluster_two`:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck}
+kind: Elasticsearch
+metadata:
+  name: cluster_two
+spec:
+  nodeSets:
+  - config:
+      xpack.security.transport.ssl.certificate_authorities:
+      - /usr/share/elasticsearch/config/other/remote.ca.crt
+    count: 3
+    name: default
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          volumeMounts:
+          - mountPath: /usr/share/elasticsearch/config/other
+            name: remote-certs
+        volumes:
+        - name: remote-certs
+          secret:
+            secretName: remote-ca
+  version: 7.6.0
+----
+
+Repeat the steps with reversed roles adding the CA of `cluster_two` to `cluster_one`.
+
+===== Configure the remote cluster connection via the Elasticsearch REST API
+
+Expose the transport layer of `cluster_one` to `cluster_two` which is residing outside of `cluster_one`'s Kubernetes cluster.
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Service
+metadata:
+  name: cluster_one-es-transport
+spec:
+  selector:
+    common.k8s.elastic.co/type: elasticsearch
+    elasticsearch.k8s.elastic.co/cluster-name: cluster_one
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 9300
+    targetPort: 9300
+----
+
+Finally configure `cluster_one` as a remote cluster in `cluster_two` via the Elasticsearch REST API:
+
+[source,sh]
+----
+PUT _cluster/settings
+{
+  "persistent": {
+    "cluster": {
+      "remote": {
+        "cluster_one": {
+          "mode": "proxy", <1>
+          "proxy_address": "${LOADBALANCER_IP}:9300" <2>
+        }
+      }
+    }
+  }
+}
+----
+<1> setup the remote connection in "proxy" mode as `cluster_two` will connect to `cluster_one` only through the Kubernetes service abstraction and not to individual nodes directly.
+<2> `${LOADBALANCER_IP}` will be the IP address assigned to the `LoadBalancer` configured in the transport service above or it can also be a DNS name depending on your setup.
