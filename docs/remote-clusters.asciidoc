@@ -28,7 +28,7 @@ You can configure a remote cluster connection to an ECK-managed Elasticsearch cl
 For the purposes of this guide we use the following running example:
 
 * `cluster_one` resides inside Kubernetes and is managed by ECK
-* `cluster_two` is not hosted inside the same Kubernetes cluster as `cluster_one` and may even not be managed by an ECK instance
+* `cluster_two` is not hosted inside the same Kubernetes cluster as `cluster_one` and may not even be managed by ECK 
 
 We will configure `cluster_one` as a remote cluster in `cluster_two`.
 
