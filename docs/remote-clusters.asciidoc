@@ -43,7 +43,7 @@ kubectl get secret cluster_one-es-transport-certs-public \
 -o go-template='{{index .data "ca.crt" | base64decode}}' > remote.ca.crt
 ----
 
-You then need to configure the CA as one of the trusted CAs in `cluster_two`. If that cluster is hosted outside of Kubernetes simply add the CA you extracted to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`]
+You then need to configure the CA as one of the trusted CAs in `cluster_two`. If that cluster is hosted outside of Kubernetes, simply add the CA certificate extracted in the above step to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`]
 
 If `cluster_two` is also managed by an ECK instance, proceed as follows:
 
