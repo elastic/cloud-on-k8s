@@ -19,7 +19,7 @@ VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/appro
 else
 VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
-NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed -i '' -e "s;roleId: dev;token: $(GITHUB_TOKEN);g" $(ROOT_DIR)/deployer-config.yml)
+NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;token: $(GITHUB_TOKEN);g" $(ROOT_DIR)/deployer-config.yml > tmp && mv tmp deployer-config.yml)
 endif
 endif
 
