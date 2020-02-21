@@ -33,7 +33,7 @@ type ObjectSelector struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
-// WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set
+// WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
 func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSelector {
 	if len(o.Namespace) > 0 {
 		return o

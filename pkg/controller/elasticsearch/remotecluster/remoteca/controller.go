@@ -48,7 +48,6 @@ const (
 )
 
 var (
-	//log            = logf.Log.WithName(name)
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 )
 
@@ -425,6 +424,7 @@ func getCurrentRemoteCertificateAuthorities(
 ) (map[types.NamespacedName]struct{}, error) {
 	span, _ := apm.StartSpan(ctx, "get_current_remote_ca", tracing.SpanTypeApp)
 	defer span.End()
+
 	currentRemoteClusters := make(map[types.NamespacedName]struct{})
 
 	// Get the remoteCA in the current namespace

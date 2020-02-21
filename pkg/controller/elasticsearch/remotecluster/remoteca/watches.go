@@ -34,7 +34,7 @@ func addWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 		return err
 	}
 
-	// Dynamically the certificate authorities involved in a cluster relationship
+	// Dynamically watches the certificate authorities involved in a cluster relationship
 	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}

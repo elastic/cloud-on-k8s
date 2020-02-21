@@ -1136,8 +1136,7 @@ ServiceAccountName is used to check access from the current resource to a resour
 Can only be used if ECK is enforcing RBAC on references.
 *`remoteClusters`* _xref:elasticsearch-k8s-elastic-co-v1-remoteclusters[$$RemoteClusters$$]_::
 _(Optional)_
-RemoteClusters allow specifying some remote clusters. It makes it easy to establish a trusted and secured association
-with them. It can be used for Cross Cluster Replication or Cross Cluster Search.
+RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-changebudget"]
@@ -1226,15 +1225,14 @@ Can only be used if ECK is enforcing RBAC on references.
 _xref:elasticsearch-k8s-elastic-co-v1-remoteclusters[$$RemoteClusters$$]_
 |
 _(Optional)_
-RemoteClusters allow specifying some remote clusters. It makes it easy to establish a trusted and secured association
-with them. It can be used for Cross Cluster Replication or Cross Cluster Search.
+RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-k8slocalremotecluster"]
 [float]
 ==== K8sLocalRemoteCluster
 
-K8sLocalRemoteCluster is a set of remote clusters running in the same Kubernetes cluster.
+K8sLocalRemoteCluster is a set of remote clusters running within the same k8s cluster.
 
 
 .Appears in:
@@ -1248,7 +1246,7 @@ K8sLocalRemoteCluster is a set of remote clusters running in the same Kubernetes
 | *`elasticsearchRef`* +
 _xref:common-k8s-elastic-co-v1-objectselector[$$ObjectSelector$$]_
 |
-ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
 |===
 
 [id="elasticsearch-k8s-elastic-co-v1-nodeset"]
