@@ -30,7 +30,7 @@ For illustration purposes, consider the following example:
 * `cluster_one` resides inside Kubernetes and is managed by ECK
 * `cluster_two` is not hosted inside the same Kubernetes cluster as `cluster_one` and may not even be managed by ECK 
 
-We will configure `cluster_one` as a remote cluster in `cluster_two`.
+To configure `cluster_one` as a remote cluster in `cluster_two`:
 
 
 ===== Ensure both clusters trust each others certificate authority
