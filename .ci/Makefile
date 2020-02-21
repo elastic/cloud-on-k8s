@@ -25,7 +25,7 @@ endif
 
 CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
-show-image:
+print-ci-image:
 	@ echo $(CI_IMAGE)
 
 # runs $TARGET in context of CI container and dev makefile
