@@ -110,6 +110,7 @@ main() {
     get_resources $ns persistentvolumes
     get_resources $ns persistentvolumeclaims
     get_resources $ns services
+    get_resources $ns endpoints
     get_resources $ns configmaps
     get_resources $ns events
     get_resources $ns networkpolicies
