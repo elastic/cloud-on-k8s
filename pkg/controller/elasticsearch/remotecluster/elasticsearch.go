@@ -8,7 +8,6 @@ import (
 	"context"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -104,7 +103,7 @@ func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteC
 		remoteCluster.ElasticsearchRef = remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)
 		remoteClusters[remoteCluster.Name] = expectedRemoteClusterConfiguration{
 			RemoteCluster: remoteCluster,
-			ConfigHash:    hash.HashObject(remoteCluster),
+			ConfigHash:    remoteCluster.ConfigHash(),
 		}
 	}
 	return remoteClusters

@@ -650,7 +650,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`name`* __string__ | Name is the name of the remote cluster as it is set in the Elasticsearch settings.
+| *`name`* __string__ | Name is the name of the remote cluster as it is set in the Elasticsearch settings. The name is expected to be unique for each remote clusters.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
 |===
 

@@ -5,6 +5,7 @@
 package v1
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -59,6 +60,7 @@ type ElasticsearchSpec struct {
 // RemoteClusters defines some remote Elasticsearch clusters.
 type RemoteCluster struct {
 	// Name is the name of the remote cluster as it is set in the Elasticsearch settings.
+	// The name is expected to be unique for each remote clusters.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
@@ -68,6 +70,10 @@ type RemoteCluster struct {
 
 	// TODO: Allow the user to specify some options (transport.compress, transport.ping_schedule)
 
+}
+
+func (r RemoteCluster) ConfigHash() string {
+	return hash.HashObject(r)
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster

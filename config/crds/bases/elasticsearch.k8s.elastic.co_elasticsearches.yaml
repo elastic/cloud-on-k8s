@@ -6881,7 +6881,8 @@ spec:
                       type: object
                     name:
                       description: Name is the name of the remote cluster as it is
-                        set in the Elasticsearch settings.
+                        set in the Elasticsearch settings. The name is expected to
+                        be unique for each remote clusters.
                       minLength: 1
                       type: string
                   required:

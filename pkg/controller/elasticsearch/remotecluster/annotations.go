@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 )
@@ -43,7 +42,7 @@ func annotateWithRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClust
 	// Store a map with the configuration hash for every remote cluster
 	remoteClusterConfigurations := make(map[string]string, len(remoteClusters))
 	for _, remoteCluster := range remoteClusters {
-		remoteClusterConfigurations[remoteCluster.Name] = hash.HashObject(remoteCluster.RemoteCluster)
+		remoteClusterConfigurations[remoteCluster.Name] = remoteCluster.RemoteCluster.ConfigHash()
 	}
 
 	// serialize the remote clusters list and update the object
