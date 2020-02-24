@@ -44,7 +44,6 @@ const (
 
 	EventReasonLocalCaCertNotFound = "LocalClusterCaNotFound"
 	EventReasonRemoteCaCertMissing = "RemoteClusterCaNotFound"
-	CaCertMissingError             = "Cannot find CA certificate for %s cluster %s/%s"
 )
 
 var (
@@ -135,7 +134,6 @@ func (r *ReconcileRemoteCa) Reconcile(request reconcile.Request) (reconcile.Resu
 		return reconcile.Result{}, nil
 	}
 
-	// Use the driver to create the remote cluster
 	return doReconcile(ctx, r, &es)
 }
 
@@ -144,12 +142,12 @@ func deleteAllRemoteCa(ctx context.Context, r *ReconcileRemoteCa, es types.Names
 	span, _ := apm.StartSpan(ctx, "delete_all_remote_ca", tracing.SpanTypeApp)
 	defer span.End()
 
-	currentRemoteClusters, err := getCurrentRemoteCertificateAuthorities(ctx, r.Client, es)
+	actualRemoteCertificateAuthorities, err := getActualRemoteCertificateAuthorities(ctx, r.Client, es)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	results := &reconciler.Results{}
-	for remoteCluster := range currentRemoteClusters {
+	for remoteCluster := range actualRemoteCertificateAuthorities {
 		if err := deleteCertificateAuthorities(ctx, r, es, remoteCluster); err != nil {
 			results.WithError(err)
 		}
@@ -164,7 +162,7 @@ func doReconcile(
 ) (reconcile.Result, error) {
 	localClusterKey := k8s.ExtractNamespacedName(localEs)
 	// Get current clusters according to the existing remote CAs
-	currentRemoteCertificateAuthorities, err := getCurrentRemoteCertificateAuthorities(ctx, r.Client, localClusterKey)
+	actualRemoteCertificateAuthorities, err := getActualRemoteCertificateAuthorities(ctx, r.Client, localClusterKey)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -180,20 +178,21 @@ func doReconcile(
 		// Get the remote Elasticsearch cluster associated with this remote CA
 		remoteEs := &esv1.Elasticsearch{}
 		if err := r.Client.Get(remoteEsKey, remoteEs); err != nil {
-			if !errors.IsNotFound(err) {
-				return reconcile.Result{}, err
+			if errors.IsNotFound(err) {
+				// Remote cluster does not exist, skip it
+				continue
 			}
-			// Remote cluster does not exist, skip it
-			continue
+			return reconcile.Result{}, err
 		}
 		accessAllowed, err := isRemoteClusterAssociationAllowed(r.accessReviewer, localEs, remoteEs, r.recorder)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		// if the remote CA exists but isn't allowed anymore, it will be deleted next
 		if !accessAllowed {
 			continue
 		}
-		delete(currentRemoteCertificateAuthorities, remoteEsKey)
+		delete(actualRemoteCertificateAuthorities, remoteEsKey)
 		results.WithResults(createOrUpdateCertificateAuthorities(ctx, r, localEs, remoteEs))
 		if results.HasError() {
 			return results.Aggregate()
@@ -201,17 +200,16 @@ func doReconcile(
 	}
 
 	// Delete existing but not expected remote CA
-	for toDelete := range currentRemoteCertificateAuthorities {
-		log.V(1).Info("Delete remote CA",
-			"localNamespace", localEs.Namespace,
-			"localName", localEs.Name,
-			"remoteNamespace", toDelete.Namespace,
-			"remoteName", toDelete.Name,
+	for toDelete := range actualRemoteCertificateAuthorities {
+		log.V(1).Info("Deleting remote CA",
+			"local_namespace", localEs.Namespace,
+			"local_name", localEs.Name,
+			"remote_namespace", toDelete.Namespace,
+			"remote_name", toDelete.Name,
 		)
 		results.WithError(deleteCertificateAuthorities(ctx, r, localClusterKey, toDelete))
 	}
 	return results.WithResult(association.RequeueRbacCheck(r.accessReviewer)).Aggregate()
-
 }
 
 func deleteCertificateAuthorities(
@@ -330,7 +328,7 @@ func createOrUpdateCertificateAuthorities(
 	return nil
 }
 
-// reconcileRemoteCA copies certificates authorities across 2 clusters
+// reconcileRemoteCA copies the certificate authority from a remote cluster.
 func reconcileRemoteCA(
 	ctx context.Context,
 	c k8s.Client,
@@ -341,7 +339,7 @@ func reconcileRemoteCA(
 	span, _ := apm.StartSpan(ctx, "reconcile_remote_ca", tracing.SpanTypeApp)
 	defer span.End()
 
-	// Define the desired remote CA object, it lives in the remote namespace.
+	// Define the expected remote CA object, it lives in the owner namespace with the content of the remote cluster CA
 	expected := corev1.Secret{
 		ObjectMeta: remoteCAObjectMeta(remoteCASecretName(owner.Name, remote), owner, remote),
 		Data: map[string][]byte{
@@ -368,7 +366,7 @@ func reconcileRemoteCA(
 
 func caCertMissingError(location string, cluster types.NamespacedName) string {
 	return fmt.Sprintf(
-		CaCertMissingError,
+		"Cannot find CA certificate for %s cluster %s/%s",
 		location,
 		cluster.Namespace,
 		cluster.Name,
@@ -416,8 +414,10 @@ func getExpectedRemoteCertificateAuthorities(
 	return expectedRemoteClusters, nil
 }
 
-// getCurrentRemoteCertificateAuthorities returns all the remote cluster keys for which a remote ca exists
-func getCurrentRemoteCertificateAuthorities(
+// getActualRemoteCertificateAuthorities returns all the Elasticsearch keys for which the remote certificate authorities have been copied.
+// In order to get all of them we first list all the remote CA copied locally for a given, associated, Elasticsearch cluster.
+// Then we list all the Elasticsearch clusters for which the CA of the associated cluster has been copied.
+func getActualRemoteCertificateAuthorities(
 	ctx context.Context,
 	c k8s.Client,
 	associatedEs types.NamespacedName,
@@ -427,19 +427,16 @@ func getCurrentRemoteCertificateAuthorities(
 
 	currentRemoteClusters := make(map[types.NamespacedName]struct{})
 
-	// Get the remoteCA in the current namespace
+	// 1. Get the remoteCA in the current namespace
 	var remoteCAList corev1.SecretList
 	if err := c.List(
 		&remoteCAList,
 		client.InNamespace(associatedEs.Namespace),
-		GetRemoteCaMatchingLabel(associatedEs.Name),
+		LabelSelector(associatedEs.Name),
 	); err != nil {
 		return nil, err
 	}
 	for _, remoteCA := range remoteCAList.Items {
-		if remoteCA.Labels == nil {
-			continue
-		}
 		remoteNs := remoteCA.Labels[RemoteClusterNamespaceLabelName]
 		remoteEs := remoteCA.Labels[RemoteClusterNameLabelName]
 		currentRemoteClusters[types.NamespacedName{
@@ -448,7 +445,7 @@ func getCurrentRemoteCertificateAuthorities(
 		}] = struct{}{}
 	}
 
-	// Get the remoteCA where this cluster is involved in other namespaces
+	// 2. Get the remoteCA where this cluster is involved in other namespaces
 	if err := c.List(
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{
@@ -460,9 +457,6 @@ func getCurrentRemoteCertificateAuthorities(
 		return nil, err
 	}
 	for _, remoteCA := range remoteCAList.Items {
-		if remoteCA.Labels == nil {
-			continue
-		}
 		remoteEs := remoteCA.Labels[label.ClusterNameLabelName]
 		currentRemoteClusters[types.NamespacedName{
 			Namespace: remoteCA.Namespace,

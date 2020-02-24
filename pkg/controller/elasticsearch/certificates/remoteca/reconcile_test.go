@@ -32,7 +32,7 @@ func TestReconcile(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Certificate should be sorted",
+			name: "Certificates should be sorted",
 			args: args{
 				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
 				secrets: []runtime.Object{

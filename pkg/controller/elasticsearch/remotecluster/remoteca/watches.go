@@ -88,6 +88,8 @@ func watchName(local types.NamespacedName, remote types.NamespacedName) string {
 }
 
 // addCertificatesAuthorityWatches sets some watches on all secrets containing the certificate of a CA involved in a association.
+// The local CA is watched to update the trusted certificates in the remote clusters.
+// The remote CAs are watched to update the trusted certificates of the local cluster.
 func addCertificatesAuthorityWatches(
 	reconcileClusterAssociation *ReconcileRemoteCa,
 	local, remote types.NamespacedName) error {

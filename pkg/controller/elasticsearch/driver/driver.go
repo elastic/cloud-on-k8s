@@ -76,7 +76,7 @@ type DefaultDriverParameters struct {
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 
-	// LicenseChecker is used for some features to check if an appropriate license is deployed
+	// LicenseChecker is used for some features to check if an appropriate license is setup
 	LicenseChecker commonlicense.Checker
 
 	// State holds the accumulated state during the reconcile loop
@@ -226,7 +226,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	)
 
 	if esReachable {
-		err = remotecluster.UpdateRemoteCluster(ctx, d.Client, esClient, d.LicenseChecker, d.ES)
+		err = remotecluster.UpdateSettings(ctx, d.Client, esClient, d.LicenseChecker, d.ES)
 		if err != nil {
 			msg := "Could not update remote clusters in Elasticsearch settings"
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)

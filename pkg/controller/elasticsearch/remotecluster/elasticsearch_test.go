@@ -110,7 +110,7 @@ func (fakeLicenseChecker) Valid(_ license.EnterpriseLicense) (bool, error) {
 	return true, nil
 }
 
-func TestUpdateRemoteCluster(t *testing.T) {
+func TestUpdateSettings(t *testing.T) {
 	type args struct {
 		esClient       *fakeESClient
 		es             *esv1.Elasticsearch
@@ -300,8 +300,8 @@ func TestUpdateRemoteCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.args.es)
-			if err := UpdateRemoteCluster(context.Background(), client, tt.args.esClient, tt.args.licenseChecker, *tt.args.es); (err != nil) != tt.wantErr {
-				t.Errorf("UpdateRemoteCluster() error = %v, wantErr %v", err, tt.wantErr)
+			if err := UpdateSettings(context.Background(), client, tt.args.esClient, tt.args.licenseChecker, *tt.args.es); (err != nil) != tt.wantErr {
+				t.Errorf("UpdateSettings() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// Check the settings
 			assert.Equal(t, tt.wantEsCalled, tt.args.esClient.called)

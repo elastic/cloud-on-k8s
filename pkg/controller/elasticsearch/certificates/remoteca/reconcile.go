@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	// SecretNameSuffix is the secret that contains the concatenation of all the remote CAs
+	// SecretNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
 	SecretNameSuffix string = "remote-ca"
 )
 
@@ -40,7 +40,7 @@ func Reconcile(
 	if err := c.List(
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
-		remoteca.GetRemoteCaMatchingLabel(es.Name),
+		remoteca.LabelSelector(es.Name),
 	); err != nil {
 		return err
 	}

@@ -30,7 +30,7 @@ func TransportServiceName(esName string) string {
 }
 
 // NewTransportService returns the transport service associated with the given cluster.
-// It is used by Elasticsearch nodes to talk to each other.
+// It is used by Elasticsearch nodes to talk to remote cluster nodes.
 func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 	return &corev1.Service{
@@ -64,8 +64,8 @@ func ExternalServiceName(esName string) string {
 	return esv1.HTTPService(esName)
 }
 
-// ExternalTransportServiceHostname returns the hostname used to reach Elasticsearch's transport endpoint.
-func ExternalTransportServiceHostname(es types.NamespacedName) string {
+// ExternalTransportServiceHost returns the hostname and the port used to reach Elasticsearch's transport endpoint.
+func ExternalTransportServiceHost(es types.NamespacedName) string {
 	return stringsutil.Concat(TransportServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.TransportPort))
 }
 

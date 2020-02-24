@@ -19,8 +19,8 @@ import (
 
 var log = logf.Log.WithName("remotecluster")
 
-// UpdateRemoteCluster updates the remote clusters in the persistent settings by calling the Elasticsearch API.
-func UpdateRemoteCluster(
+// UpdateSettings updates the remote clusters in the persistent settings by calling the Elasticsearch API.
+func UpdateSettings(
 	ctx context.Context,
 	c k8s.Client,
 	esClient esclient.Client,
@@ -56,8 +56,8 @@ func UpdateRemoteCluster(
 	for name, remoteCluster := range expectedRemoteClusters {
 		if currentConfigHash, ok := currentRemoteClusters[name]; !ok || currentConfigHash != remoteCluster.ConfigHash {
 			// Declare remote cluster in ES
-			seedHosts := []string{services.ExternalTransportServiceHostname(remoteCluster.ElasticsearchRef.NamespacedName())}
-			log.Info("Add or update remote cluster",
+			seedHosts := []string{services.ExternalTransportServiceHost(remoteCluster.ElasticsearchRef.NamespacedName())}
+			log.Info("Adding or updating remote cluster",
 				"namespace", es.Namespace,
 				"es_name", es.Name,
 				"remote_cluster", remoteCluster.Name,
@@ -70,7 +70,7 @@ func UpdateRemoteCluster(
 	// RemoteClusters to remove
 	for name := range currentRemoteClusters {
 		if _, ok := expectedRemoteClusters[name]; !ok {
-			log.Info("Remove remote cluster",
+			log.Info("Removing remote cluster",
 				"namespace", es.Namespace,
 				"es_name", es.Name,
 				"remote_cluster", name,
@@ -80,7 +80,6 @@ func UpdateRemoteCluster(
 		}
 	}
 
-	// Save the current list of remote clusters in an annotation
 	if len(remoteClusters) > 0 {
 		// Apply the settings
 		if err := updateSettings(esClient, remoteClusters); err != nil {

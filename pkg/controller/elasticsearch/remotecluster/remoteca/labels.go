@@ -22,8 +22,8 @@ const (
 	RemoteClusterNameLabelName = "remotecluster.k8s.elastic.co/name"
 	// TypeLabelValue is a type used to identify a Secret which contains the CA of a remote cluster.
 	TypeLabelValue = "remote-ca"
-	// certsInternalSecretName is the suffix added to the aforementioned Secret.
-	certsInternalSecretName = "remote-ca"
+	// remoteCASecretSuffix is the suffix added to the aforementioned Secret.
+	remoteCASecretSuffix = "remote-ca"
 )
 
 func remoteCAObjectMeta(
@@ -50,11 +50,11 @@ func remoteCASecretName(
 ) string {
 	return esv1.ESNamer.Suffix(
 		fmt.Sprintf("%s-%s-%s", localClusterName, remoteCluster.Namespace, remoteCluster.Name),
-		certsInternalSecretName,
+		remoteCASecretSuffix,
 	)
 }
 
-func GetRemoteCaMatchingLabel(esName string) client.MatchingLabels {
+func LabelSelector(esName string) client.MatchingLabels {
 	return map[string]string{
 		label.ClusterNameLabelName: esName,
 		common.TypeLabelName:       TypeLabelValue,
