@@ -265,3 +265,88 @@ func TestStatefulSetList_WithStatefulSet(t *testing.T) {
 		})
 	}
 }
+
+func TestStatefulSetList_StatusReconciliationDone(t *testing.T) {
+	tests := []struct {
+		name string
+		l    StatefulSetList
+		want bool
+	}{
+		{
+			name: "no StatefulSets",
+			l:    nil,
+			want: true,
+		},
+		{
+			name: "status.observedGeneration == metadata.generation",
+			l: StatefulSetList{
+				appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 1,
+					},
+					Status: appsv1.StatefulSetStatus{
+						ObservedGeneration: 1,
+					},
+				},
+				appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 3,
+					},
+					Status: appsv1.StatefulSetStatus{
+						ObservedGeneration: 3,
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "status.observedGeneration != metadata.generation",
+			l: StatefulSetList{
+				appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 1,
+					},
+					Status: appsv1.StatefulSetStatus{
+						ObservedGeneration: 1,
+					},
+				},
+				appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 3,
+					},
+					Status: appsv1.StatefulSetStatus{
+						ObservedGeneration: 2, // lagging behind
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "status.observedGeneration not set yet",
+			l: StatefulSetList{
+				appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 1,
+					},
+					Status: appsv1.StatefulSetStatus{
+						ObservedGeneration: 1,
+					},
+				},
+				appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Generation: 3,
+					},
+					Status: appsv1.StatefulSetStatus{}, // empty status
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.l.StatusReconciliationDone(); got != tt.want {
+				t.Errorf("StatusReconciliationDone() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -353,6 +353,6 @@ func (d *OcpDriver) delete() error {
 	}
 
 	// No need to check whether this `rb` command succeeds
-	_ = NewCommand("gsutil rb gs://{{.OcpStateBucket}}").AsTemplate(d.ctx).WithoutStreaming().Run()
+	_ = NewCommand("gsutil rm -r gs://{{.OcpStateBucket}}/{{.ClusterName}}").AsTemplate(d.ctx).WithoutStreaming().Run()
 	return nil
 }

@@ -1,0 +1,19 @@
+---
+- job:
+    description: Cleanup orphaned GKE clusters
+    name: cloud-on-k8s-e2e-cleanup
+    project-type: pipeline
+    parameters:
+      - string:
+          name: JKS_PARAM_GKE_CLUSTER
+          description: "Name of the GKE cluster to delete"
+    concurrent: true
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/elastic/cloud-on-k8s
+            branches:
+              - master
+            credentials-id: 'f6c7695a-671e-4f4f-a331-acdce44ff9ba'
+      script-path: .ci/pipelines/cleanup-gke.Jenkinsfile
+      lightweight-checkout: true
