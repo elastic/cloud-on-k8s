@@ -1063,6 +1063,13 @@ spec:
                     required:
                     - name
                     type: object
+                  name:
+                    description: Name is the name of the remote cluster as it is set
+                      in the Elasticsearch settings.
+                    minLength: 1
+                    type: string
+                required:
+                - name
                 type: object
               type: array
             secureSettings:

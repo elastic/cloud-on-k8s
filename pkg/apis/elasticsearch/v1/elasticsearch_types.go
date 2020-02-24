@@ -58,6 +58,11 @@ type ElasticsearchSpec struct {
 
 // RemoteClusters defines some remote Elasticsearch clusters.
 type RemoteCluster struct {
+	// Name is the name of the remote cluster as it is set in the Elasticsearch settings.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 

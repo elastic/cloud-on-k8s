@@ -80,12 +80,8 @@ func (f *fakeESClient) UpdateSettings(_ context.Context, settings esclient.Setti
 func newEsWithRemoteClusters(
 	esNamespace, esName string,
 	annotations map[string]string,
-	remoteClusterReferences ...commonv1.ObjectSelector,
+	remoteClusters ...esv1.RemoteCluster,
 ) *esv1.Elasticsearch {
-	remoteClusters := make([]esv1.RemoteCluster, len(remoteClusterReferences))
-	for i, remoteClusterReference := range remoteClusterReferences {
-		remoteClusters[i] = esv1.RemoteCluster{ElasticsearchRef: remoteClusterReference}
-	}
 	return &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        esName,
@@ -136,7 +132,11 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					nil,
-					commonv1.ObjectSelector{Name: "es2", Namespace: "ns2"}),
+					esv1.RemoteCluster{
+						Name:             "ns2-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2", Namespace: "ns2"},
+					},
+				),
 			},
 			wantEsCalled: true,
 			wantSettings: esclient.Settings{
@@ -158,7 +158,10 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					nil,
-					commonv1.ObjectSelector{Name: "es2"}),
+					esv1.RemoteCluster{
+						Name:             "ns1-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+					}),
 			},
 			wantEsCalled: true,
 			wantSettings: esclient.Settings{
@@ -180,9 +183,12 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"935120939"}`,
+						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"2221154215"}`,
 					},
-					commonv1.ObjectSelector{Name: "es2"}),
+					esv1.RemoteCluster{
+						Name:             "ns1-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+					}),
 			},
 			wantEsCalled: false,
 		},
@@ -197,7 +203,10 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					map[string]string{
 						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"8851644973"}`,
 					},
-					commonv1.ObjectSelector{Name: "es2"}),
+					esv1.RemoteCluster{
+						Name:             "ns1-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+					}),
 			},
 			wantEsCalled: true,
 			wantSettings: esclient.Settings{
@@ -219,9 +228,12 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `{"to-be-deleted":"8538658922","ns1-es2":"935120939"}`,
+						"elasticsearch.k8s.elastic.co/remote-clusters": `{"to-be-deleted":"8538658922","ns1-es2":"2221154215"}`,
 					},
-					commonv1.ObjectSelector{Name: "es2"}),
+					esv1.RemoteCluster{
+						Name:             "ns1-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+					}),
 			},
 			wantEsCalled: true,
 			wantSettings: esclient.Settings{
@@ -243,7 +255,10 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					nil,
-					commonv1.ObjectSelector{Name: "es2", Namespace: "ns2"}),
+					esv1.RemoteCluster{
+						Name:             "es2-ns2",
+						ElasticsearchRef: commonv1.ObjectSelector{Namespace: "ns2", Name: "es2"},
+					}),
 			},
 			wantEsCalled: false,
 		},
@@ -258,8 +273,14 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					map[string]string{
 						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"8851644973","ns1-es5":"8851644973"}`,
 					},
-					commonv1.ObjectSelector{Name: "es2"},
-					commonv1.ObjectSelector{Name: "es4"},
+					esv1.RemoteCluster{
+						Name:             "ns1-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+					},
+					esv1.RemoteCluster{
+						Name:             "ns1-es4",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es4"},
+					},
 				),
 			},
 			wantEsCalled: true,

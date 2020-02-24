@@ -6,9 +6,7 @@ package remotecluster
 
 import (
 	"context"
-	"fmt"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
@@ -95,10 +93,6 @@ func UpdateRemoteCluster(
 	return nil
 }
 
-func getRemoteClusterKey(remoteCluster v1.ObjectSelector) string {
-	return fmt.Sprintf("%s-%s", remoteCluster.Namespace, remoteCluster.Name)
-}
-
 // getExpectedRemoteClusters returns a map with the expected remote clusters
 // A map is returned here because it will be used to quickly compare with the ones that are new or missing.
 func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteClusterConfiguration {
@@ -108,13 +102,9 @@ func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteC
 			continue
 		}
 		remoteCluster.ElasticsearchRef = remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)
-		remoteClusterName := getRemoteClusterKey(remoteCluster.ElasticsearchRef)
-		remoteClusters[remoteClusterName] = expectedRemoteClusterConfiguration{
-			remoteClusterState: remoteClusterState{
-				Name:       remoteClusterName,
-				ConfigHash: hash.HashObject(remoteCluster),
-			},
+		remoteClusters[remoteCluster.Name] = expectedRemoteClusterConfiguration{
 			RemoteCluster: remoteCluster,
+			ConfigHash:    hash.HashObject(remoteCluster),
 		}
 	}
 	return remoteClusters

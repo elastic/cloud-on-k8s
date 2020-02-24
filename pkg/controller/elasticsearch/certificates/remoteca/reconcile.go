@@ -44,13 +44,13 @@ func Reconcile(
 	); err != nil {
 		return err
 	}
-	remoteCertificateAuthorities := []byte{}
 	// We sort the remote certificate authorities to have a stable comparison with the reconciled data
 	sort.SliceStable(remoteCAList.Items, func(i, j int) bool {
 		// We don't need to compare the namespace because they are all in the same one
 		return remoteCAList.Items[i].Name < remoteCAList.Items[j].Name
 	})
 
+	var remoteCertificateAuthorities []byte
 	for _, remoteCA := range remoteCAList.Items {
 		remoteCertificateAuthorities = append(remoteCertificateAuthorities, remoteCA.Data[certificates.CAFileName]...)
 	}

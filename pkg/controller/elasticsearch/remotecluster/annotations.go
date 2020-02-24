@@ -17,14 +17,11 @@ const (
 	RemoteClustersAnnotationName = "elasticsearch.k8s.elastic.co/remote-clusters"
 )
 
-type remoteClusterState struct {
-	Name       string `json:"name"`
-	ConfigHash string `json:"configHash"`
-}
-
 type expectedRemoteClusterConfiguration struct {
-	remoteClusterState
 	esv1.RemoteCluster
+
+	// ConfigHash is the hash of the remote cluster configuration. It is used to detect when the settings must be updated.
+	ConfigHash string `json:"configHash"`
 }
 
 // getCurrentRemoteClusters returns a map with the current configuration hash of the remote clusters declared in Elasticsearch.
@@ -46,7 +43,7 @@ func annotateWithRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClust
 	// Store a map with the configuration hash for every remote cluster
 	remoteClusterConfigurations := make(map[string]string, len(remoteClusters))
 	for _, remoteCluster := range remoteClusters {
-		remoteClusterConfigurations[getRemoteClusterKey(remoteCluster.ElasticsearchRef)] = hash.HashObject(remoteCluster.RemoteCluster)
+		remoteClusterConfigurations[remoteCluster.Name] = hash.HashObject(remoteCluster.RemoteCluster)
 	}
 
 	// serialize the remote clusters list and update the object
