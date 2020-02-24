@@ -8,7 +8,7 @@ endif::[]
 
 The link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-remote-clusters.html[remote clusters module] in Elasticsearch enables you to establish uni-directional connections to a remote cluster. This functionality is used in cross-cluster replication and cross-cluster search.
 
-When using remote cluster connections with ECK, the necessary setup depends on where the remote cluster is deployed.
+When using remote cluster connections with ECK, the setup process depends on where the remote cluster is deployed.
 
 [id="{p}-remote-clusters-connect-internal"]
 ==== Connect from an Elasticsearch cluster running in the same Kubernetes cluster
@@ -18,7 +18,7 @@ TBD
 [id="{p}-remote-clusters-connect-external"]
 ==== Connect from an Elasticsearch cluster running outside the Kubernetes cluster
 
-NOTE: While it is technically possible to configure remote cluster connections using older versions of Elasticsearch, this guide only covers the setup for Elasticsearch 7.6 and later. The setup process is significantly simplified in Elasticsearch 7.6 due to improved support for the indirection introduced by Kubernetes services.
+NOTE: While it is technically possible to configure remote cluster connections using older versions of Elasticsearch, this guide only covers the setup for Elasticsearch 7.6 and later. The setup process is significantly simplified in Elasticsearch 7.6 due to improved support for the indirection of Kubernetes services.
 
 You can configure a remote cluster connection to an ECK-managed Elasticsearch cluster from another cluster running outside the Kubernetes cluster as follows:
 
@@ -43,7 +43,7 @@ kubectl get secret cluster-one-es-transport-certs-public \
 -o go-template='{{index .data "ca.crt" | base64decode}}' > remote.ca.crt
 ----
 
-You then need to configure the CA as one of the trusted CAs in `cluster-two`. If that cluster is hosted outside of Kubernetes, simply add the CA certificate extracted in the above step to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`]
+You then need to configure the CA as one of the trusted CAs in `cluster-two`. If that cluster is hosted outside of Kubernetes, simply add the CA certificate extracted in the above step to the list of CAs in link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#_pem_encoded_files_3[`xpack.security.transport.ssl.certificate_authorities`].
 
 If `cluster-two` is also managed by an ECK instance, proceed as follows:
 
@@ -98,12 +98,13 @@ spec:
   selector:
     common.k8s.elastic.co/type: elasticsearch
     elasticsearch.k8s.elastic.co/cluster-name: cluster-one
-  type: LoadBalancer
+  type: LoadBalancer <1>
   ports:
   - protocol: TCP
     port: 9300
     targetPort: 9300
 ----
+<1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively expose the service via a Kubernetes link:https://kubernetes.io/docs/concepts/services-networking/ingress/[Ingress].
 
 Finally, configure `cluster-one` as a remote cluster in `cluster-two` using the Elasticsearch REST API:
 
