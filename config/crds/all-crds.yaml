@@ -1046,29 +1046,25 @@ spec:
             remoteClusters:
               description: RemoteClusters enables you to establish uni-directional
                 connections to a remote Elasticsearch cluster.
-              properties:
-                k8sLocal:
-                  items:
-                    description: K8sLocalRemoteCluster is a set of remote clusters
-                      running within the same k8s cluster.
+              items:
+                description: RemoteClusters defines some remote Elasticsearch clusters.
+                properties:
+                  elasticsearchRef:
+                    description: ElasticsearchRef is a reference to an Elasticsearch
+                      cluster running within the same k8s cluster.
                     properties:
-                      elasticsearchRef:
-                        description: ElasticsearchRef is a reference to an Elasticsearch
-                          cluster running within the same k8s cluster.
-                        properties:
-                          name:
-                            description: Name of the Kubernetes object.
-                            type: string
-                          namespace:
-                            description: Namespace of the Kubernetes object. If empty,
-                              defaults to the current namespace.
-                            type: string
-                        required:
-                        - name
-                        type: object
+                      name:
+                        description: Name of the Kubernetes object.
+                        type: string
+                      namespace:
+                        description: Namespace of the Kubernetes object. If empty,
+                          defaults to the current namespace.
+                        type: string
+                    required:
+                    - name
                     type: object
-                  type: array
-              type: object
+                type: object
+              type: array
             secureSettings:
               description: 'SecureSettings is a list of references to Kubernetes secrets
                 containing sensitive configuration options for Elasticsearch. See:

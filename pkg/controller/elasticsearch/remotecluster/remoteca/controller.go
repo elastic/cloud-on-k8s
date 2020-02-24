@@ -386,8 +386,8 @@ func getExpectedRemoteCertificateAuthorities(
 	expectedRemoteClusters := make(map[types.NamespacedName]struct{})
 
 	// Add remote clusters declared in the Spec
-	for _, remoteCluster := range associatedEs.Spec.RemoteClusters.K8sLocal {
-		if !remoteCluster.IsDefined() {
+	for _, remoteCluster := range associatedEs.Spec.RemoteClusters {
+		if !remoteCluster.ElasticsearchRef.IsDefined() {
 			continue
 		}
 		esRef := remoteCluster.ElasticsearchRef.WithDefaultNamespace(associatedEs.Namespace)
@@ -401,8 +401,8 @@ func getExpectedRemoteCertificateAuthorities(
 
 	// Seek for Elasticsearch resources where this cluster is declared as a remote cluster
 	for _, es := range list.Items {
-		for _, remoteCluster := range es.Spec.RemoteClusters.K8sLocal {
-			if !remoteCluster.IsDefined() {
+		for _, remoteCluster := range es.Spec.RemoteClusters {
+			if !remoteCluster.ElasticsearchRef.IsDefined() {
 				continue
 			}
 			esRef := remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)

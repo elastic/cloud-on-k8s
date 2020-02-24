@@ -49,10 +49,10 @@ func (cb *clusterBuilder) withRemoteCluster(namespace, name string) *clusterBuil
 }
 
 func (cb *clusterBuilder) build() *esv1.Elasticsearch {
-	remoteClusters := make([]esv1.K8sLocalRemoteCluster, len(cb.remoteClusters))
+	remoteClusters := make([]esv1.RemoteCluster, len(cb.remoteClusters))
 	i := 0
 	for _, remoteCluster := range cb.remoteClusters {
-		remoteClusters[i] = esv1.K8sLocalRemoteCluster{
+		remoteClusters[i] = esv1.RemoteCluster{
 			ElasticsearchRef: commonv1.ObjectSelector{
 				Name:      remoteCluster.Name,
 				Namespace: remoteCluster.Namespace,
@@ -66,7 +66,7 @@ func (cb *clusterBuilder) build() *esv1.Elasticsearch {
 			Name:      cb.name,
 		},
 		Spec: esv1.ElasticsearchSpec{
-			RemoteClusters: esv1.RemoteClusters{K8sLocal: remoteClusters},
+			RemoteClusters: remoteClusters,
 		},
 	}
 }

@@ -53,24 +53,16 @@ type ElasticsearchSpec struct {
 
 	// RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 	// +optional
-	RemoteClusters RemoteClusters `json:"remoteClusters,omitempty"`
+	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
 }
 
 // RemoteClusters defines some remote Elasticsearch clusters.
-type RemoteClusters struct {
-	K8sLocal []K8sLocalRemoteCluster `json:"k8sLocal,omitempty"`
-}
-
-// K8sLocalRemoteCluster is a set of remote clusters running within the same k8s cluster.
-type K8sLocalRemoteCluster struct {
+type RemoteCluster struct {
 	// ElasticsearchRef is a reference to an Elasticsearch cluster running within the same k8s cluster.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// TODO: Allow the user to specify some options (transport.compress, transport.ping_schedule)
-}
 
-func (k *K8sLocalRemoteCluster) IsDefined() bool {
-	return k != nil && k.ElasticsearchRef.IsDefined()
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster

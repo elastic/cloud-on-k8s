@@ -24,7 +24,7 @@ type remoteClusterState struct {
 
 type expectedRemoteClusterConfiguration struct {
 	remoteClusterState
-	esv1.K8sLocalRemoteCluster
+	esv1.RemoteCluster
 }
 
 // getCurrentRemoteClusters returns a map with the current configuration hash of the remote clusters declared in Elasticsearch.
@@ -54,7 +54,7 @@ func annotateWithRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClust
 	for _, remoteCluster := range remoteClusters {
 		remoteClustersList[i] = remoteClusterState{
 			Name:       getRemoteClusterKey(remoteCluster.ElasticsearchRef),
-			ConfigHash: hash.HashObject(remoteCluster.K8sLocalRemoteCluster),
+			ConfigHash: hash.HashObject(remoteCluster.RemoteCluster),
 		}
 		i++
 	}

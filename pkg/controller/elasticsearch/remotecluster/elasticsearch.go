@@ -103,8 +103,8 @@ func getRemoteClusterKey(remoteCluster v1.ObjectSelector) string {
 // A map is returned here because it will be used to quickly compare with the ones that are new or missing.
 func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteClusterConfiguration {
 	remoteClusters := make(map[string]expectedRemoteClusterConfiguration)
-	for _, remoteCluster := range es.Spec.RemoteClusters.K8sLocal {
-		if !remoteCluster.IsDefined() {
+	for _, remoteCluster := range es.Spec.RemoteClusters {
+		if !remoteCluster.ElasticsearchRef.IsDefined() {
 			continue
 		}
 		remoteCluster.ElasticsearchRef = remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)
@@ -114,7 +114,7 @@ func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteC
 				Name:       remoteClusterName,
 				ConfigHash: hash.HashObject(remoteCluster),
 			},
-			K8sLocalRemoteCluster: remoteCluster,
+			RemoteCluster: remoteCluster,
 		}
 	}
 	return remoteClusters
