@@ -34,7 +34,7 @@ type CertificateResources struct {
 	HTTPCACertProvided bool
 }
 
-// reconcileGenericResources reconciles the expected generic resources of a cluster.
+// Reconcile reconciles the certificates of a cluster.
 func Reconcile(
 	ctx context.Context,
 	driver driver.Interface,
@@ -83,6 +83,14 @@ func Reconcile(
 		return nil, results.WithError(err)
 	}
 
+	primaryCert, err := certificates.GetPrimaryCertificate(httpCertificates.CertPem())
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+	results.WithResult(reconcile.Result{
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore),
+	})
+
 	// reconcile http public certs secret:
 	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &es, esv1.ESNamer, httpCertificates); err != nil {
 		return nil, results.WithError(err)
@@ -105,20 +113,23 @@ func Reconcile(
 		RequeueAfter: certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
-	// reconcile transport public certs secret:
+	// reconcile transport public certs secret
+	// TODO sabo have this return the cert, why doesnt this need the cert rotation param?
+	// this just updates the cert
 	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), driver.Scheme(), es, transportCA); err != nil {
 		return nil, results.WithError(err)
 	}
 
 	// reconcile transport certificates
-	result, err := transport.ReconcileTransportCertificatesSecrets(
+	transportResults := transport.ReconcileTransportCertificatesSecrets(
 		driver.K8sClient(),
 		driver.Scheme(),
 		transportCA,
 		es,
 		certRotation,
 	)
-	if results.WithResult(result).WithError(err).HasError() {
+
+	if results.WithResults(transportResults).HasError() {
 		return nil, results
 	}
 

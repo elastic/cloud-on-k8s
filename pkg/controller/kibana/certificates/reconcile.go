@@ -74,6 +74,15 @@ func Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	primaryCert, err := certificates.GetPrimaryCertificate(httpCertificates.CertPem())
+	if err != nil {
+		return results.WithError(err)
+	}
+	results.WithResult(reconcile.Result{
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore),
+	})
+
 	// reconcile http public cert secret
 	results.WithError(http.ReconcileHTTPCertsPublicSecret(d.K8sClient(), d.Scheme(), &kb, name.KBNamer, httpCertificates))
 	return &results
