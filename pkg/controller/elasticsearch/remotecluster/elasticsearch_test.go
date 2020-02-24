@@ -44,7 +44,7 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "ns1",
 					Namespace:   "es1",
-					Annotations: map[string]string{"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"ns2-cluster-2","configHash":"3795207740"}]`},
+					Annotations: map[string]string{"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns2-cluster-2":"3795207740"}`},
 				},
 			}},
 			want: map[string]string{
@@ -180,7 +180,7 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"ns1-es2","configHash":"935120939"}]`,
+						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"935120939"}`,
 					},
 					commonv1.ObjectSelector{Name: "es2"}),
 			},
@@ -195,7 +195,7 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"ns1-es2","configHash":"8851644973"}]`,
+						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"8851644973"}`,
 					},
 					commonv1.ObjectSelector{Name: "es2"}),
 			},
@@ -219,7 +219,7 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"to-be-deleted","configHash":"8538658922"},{"name":"ns1-es2","configHash":"935120939"}]`,
+						"elasticsearch.k8s.elastic.co/remote-clusters": `{"to-be-deleted":"8538658922","ns1-es2":"935120939"}`,
 					},
 					commonv1.ObjectSelector{Name: "es2"}),
 			},
@@ -256,7 +256,7 @@ func TestUpdateRemoteCluster(t *testing.T) {
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `[{"name":"ns1-es2","configHash":"8851644973"},{"name":"ns1-es5","configHash":"8851644973"}]`,
+						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"8851644973","ns1-es5":"8851644973"}`,
 					},
 					commonv1.ObjectSelector{Name: "es2"},
 					commonv1.ObjectSelector{Name: "es4"},

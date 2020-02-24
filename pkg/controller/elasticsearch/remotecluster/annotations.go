@@ -34,32 +34,23 @@ func getCurrentRemoteClusters(es esv1.Elasticsearch) (map[string]string, error) 
 	if !ok {
 		return nil, nil
 	}
-	var remoteClustersArray []remoteClusterState
-	if err := json.Unmarshal([]byte(serializedRemoteClusters), &remoteClustersArray); err != nil {
-		return nil, err
-	}
-
 	remoteClusters := make(map[string]string)
-	for _, remoteCluster := range remoteClustersArray {
-		remoteClusters[remoteCluster.Name] = remoteCluster.ConfigHash
+	if err := json.Unmarshal([]byte(serializedRemoteClusters), &remoteClusters); err != nil {
+		return nil, err
 	}
 
 	return remoteClusters, nil
 }
 
 func annotateWithRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClusters map[string]expectedRemoteClusterConfiguration) error {
-	// We don't need to store the map in the annotation
-	remoteClustersList := make([]remoteClusterState, len(remoteClusters))
-	i := 0
+	// Store a map with the configuration hash for every remote cluster
+	remoteClusterConfigurations := make(map[string]string, len(remoteClusters))
 	for _, remoteCluster := range remoteClusters {
-		remoteClustersList[i] = remoteClusterState{
-			Name:       getRemoteClusterKey(remoteCluster.ElasticsearchRef),
-			ConfigHash: hash.HashObject(remoteCluster.RemoteCluster),
-		}
-		i++
+		remoteClusterConfigurations[getRemoteClusterKey(remoteCluster.ElasticsearchRef)] = hash.HashObject(remoteCluster.RemoteCluster)
 	}
+
 	// serialize the remote clusters list and update the object
-	serializedRemoteClusters, err := json.Marshal(remoteClustersList)
+	serializedRemoteClusters, err := json.Marshal(remoteClusterConfigurations)
 	if err != nil {
 		return errors.Wrapf(err, "failed to serialize configuration")
 	}
