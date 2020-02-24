@@ -34,7 +34,13 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	clusterName         = "cluster-name"
+	clusterName = "cluster-name"
+	es          = esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: "ns",
+		},
+	}
 	ssetMaster3Replicas = sset.TestSset{
 		Name:      "ssetMaster3Replicas",
 		Namespace: "ns",
@@ -118,7 +124,7 @@ var (
 			Ready:           true,
 		}.Build(),
 	}
-	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
+	runtimeObjs = []runtime.Object{&es, &ssetMaster3Replicas, &ssetData4Replicas,
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
@@ -147,13 +153,8 @@ func TestHandleDownscale(t *testing.T) {
 				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 			},
 		),
-		esClient: esClient,
-		es: esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      clusterName,
-				Namespace: "ns",
-			},
-		},
+		esClient:  esClient,
+		es:        es,
 		parentCtx: context.Background(),
 	}
 
