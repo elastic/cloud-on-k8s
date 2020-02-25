@@ -5,6 +5,7 @@
 package remoteca
 
 import (
+	"bytes"
 	"reflect"
 	"sort"
 
@@ -50,9 +51,11 @@ func Reconcile(
 		return remoteCAList.Items[i].Name < remoteCAList.Items[j].Name
 	})
 
-	var remoteCertificateAuthorities []byte
+	remoteCertificateAuthorities := make([][]byte, len(remoteCAList.Items))
+	i := 0
 	for _, remoteCA := range remoteCAList.Items {
-		remoteCertificateAuthorities = append(remoteCertificateAuthorities, remoteCA.Data[certificates.CAFileName]...)
+		remoteCertificateAuthorities[i] = remoteCA.Data[certificates.CAFileName]
+		i++
 	}
 
 	expected := v1.Secret{
@@ -64,7 +67,7 @@ func Reconcile(
 			},
 		},
 		Data: map[string][]byte{
-			certificates.CAFileName: remoteCertificateAuthorities,
+			certificates.CAFileName: bytes.Join(remoteCertificateAuthorities, nil),
 		},
 	}
 
