@@ -28,6 +28,9 @@ const (
 	scriptsConfigMapSuffix            = "scripts"
 	transportCertificatesSecretSuffix = "transport-certificates"
 
+	// SecretNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
+	remoteCaNameSuffix string = "remote-ca"
+
 	controllerRevisionHashLen = 10
 )
 
@@ -47,6 +50,7 @@ var (
 		defaultPodDisruptionBudget,
 		scriptsConfigMapSuffix,
 		transportCertificatesSecretSuffix,
+		remoteCaNameSuffix,
 	}
 )
 
@@ -138,4 +142,8 @@ func LicenseSecretName(esName string) string {
 
 func DefaultPodDisruptionBudget(esName string) string {
 	return ESNamer.Suffix(esName, defaultPodDisruptionBudget)
+}
+
+func RemoteCaSecretName(esName string) string {
+	return ESNamer.Suffix(esName, remoteCaNameSuffix)
 }

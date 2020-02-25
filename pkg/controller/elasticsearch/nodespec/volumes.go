@@ -9,7 +9,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
@@ -33,7 +32,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 	)
 	transportCertificatesVolume := transportCertificatesVolume(esName)
 	remoteCertificateAuthoritiesVolume := volume.NewSecretVolumeWithMountPath(
-		remoteca.SecretName(esName),
+		esv1.RemoteCaSecretName(esName),
 		esvolume.RemoteCertificateAuthoritiesSecretVolumeName,
 		esvolume.RemoteCertificateAuthoritiesSecretVolumeMountPath,
 	)

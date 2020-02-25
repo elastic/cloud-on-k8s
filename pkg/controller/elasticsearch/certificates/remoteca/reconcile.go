@@ -22,15 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	// SecretNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
-	SecretNameSuffix string = "remote-ca"
-)
-
-func SecretName(esName string) string {
-	return esv1.ESNamer.Suffix(esName, SecretNameSuffix)
-}
-
 // Reconcile fetches the list of remote certificate authorities and concatenates them into a single Secret
 func Reconcile(
 	c k8s.Client,
@@ -60,7 +51,7 @@ func Reconcile(
 
 	expected := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      SecretName(es.Name),
+			Name:      esv1.RemoteCaSecretName(es.Name),
 			Namespace: es.Namespace,
 			Labels: map[string]string{
 				label.ClusterNameLabelName: es.Name,
