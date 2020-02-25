@@ -34,7 +34,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -50,18 +49,8 @@ var (
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 )
 
-// Add creates a new RemoteCa Controller and adds it to the manager with default RBAC.
-func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
-	r := newReconciler(mgr, accessReviewer, params)
-	c, err := add(mgr, r)
-	if err != nil {
-		return err
-	}
-	return addWatches(c, r)
-}
-
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileRemoteCa {
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileRemoteCa {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileRemoteCa{
 		Client:         c,
@@ -72,16 +61,6 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		licenseChecker: license.NewLicenseChecker(c, params.OperatorNamespace),
 		Parameters:     params,
 	}
-}
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	// Create a new controller
-	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return c, err
-	}
-	return c, nil
 }
 
 var _ reconcile.Reconciler = &ReconcileRemoteCa{}

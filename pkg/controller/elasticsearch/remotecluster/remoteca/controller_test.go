@@ -122,10 +122,10 @@ func remoteCa(localNamespace, localName, remoteNamespace, remoteName string) *co
 			Namespace: localNamespace,
 			Name:      remoteCASecretName(localName, remoteNamespacedName),
 			Labels: map[string]string{
-				"common.k8s.elastic.co/type":                "remote-ca",
-				"elasticsearch.k8s.elastic.co/cluster-name": localName,
-				"remotecluster.k8s.elastic.co/name":         remoteName,
-				"remotecluster.k8s.elastic.co/namespace":    remoteNamespace,
+				"common.k8s.elastic.co/type":                            "remote-ca",
+				"elasticsearch.k8s.elastic.co/cluster-name":             localName,
+				"elasticsearch.k8s.elastic.co/remote-cluster-name":      remoteName,
+				"elasticsearch.k8s.elastic.co/remote-cluster-namespace": remoteNamespace,
 			},
 		},
 		Data: map[string][]byte{

@@ -20,8 +20,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// addWatches set watches on objects needed to manage the association between a local and a remote cluster.
-func addWatches(c controller.Controller, r *ReconcileRemoteCa) error {
+// AddWatches set watches on objects needed to manage the association between a local and a remote cluster.
+func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 	// Watch for changes to RemoteCluster
 	if err := c.Watch(&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err

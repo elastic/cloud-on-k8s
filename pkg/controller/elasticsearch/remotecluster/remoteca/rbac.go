@@ -13,7 +13,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var log = logf.Log.WithName("remotecluster-rbac")
+var log = logf.Log.WithName("remotecluster-remoteca")
 
 // isRemoteClusterAssociationAllowed checks if a bi-directional association is allowed between 2 clusters.
 func isRemoteClusterAssociationAllowed(
