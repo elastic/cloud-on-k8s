@@ -114,8 +114,6 @@ func Reconcile(
 	})
 
 	// reconcile transport public certs secret
-	// TODO sabo have this return the cert, why doesnt this need the cert rotation param?
-	// this just updates the cert
 	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), driver.Scheme(), es, transportCA); err != nil {
 		return nil, results.WithError(err)
 	}
