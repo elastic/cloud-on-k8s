@@ -17,9 +17,9 @@ import (
 
 const (
 	// RemoteClusterNamespaceLabelName used to represent the namespace of the RemoteCluster in a TrustRelationship.
-	RemoteClusterNamespaceLabelName = "remotecluster.k8s.elastic.co/namespace"
+	RemoteClusterNamespaceLabelName = "elasticsearch.k8s.elastic.co/remote-cluster-namespace"
 	// RemoteClusterNameLabelName used to represent the name of the RemoteCluster in a TrustRelationship.
-	RemoteClusterNameLabelName = "remotecluster.k8s.elastic.co/name"
+	RemoteClusterNameLabelName = "elasticsearch.k8s.elastic.co/remote-cluster-name"
 	// TypeLabelValue is a type used to identify a Secret which contains the CA of a remote cluster.
 	TypeLabelValue = "remote-ca"
 	// remoteCASecretSuffix is the suffix added to the aforementioned Secret.
