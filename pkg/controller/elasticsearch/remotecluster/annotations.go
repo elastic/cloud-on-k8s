@@ -42,6 +42,7 @@ func annotateWithRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClust
 	// Store a map with the configuration hash for every remote cluster
 	remoteClusterConfigurations := make(map[string]string, len(remoteClusters))
 	for _, remoteCluster := range remoteClusters {
+		// remoteCluster.Name is set by the user, it is supposed to be unique
 		remoteClusterConfigurations[remoteCluster.Name] = remoteCluster.RemoteCluster.ConfigHash()
 	}
 
