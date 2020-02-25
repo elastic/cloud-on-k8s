@@ -21,7 +21,10 @@ build_licence_detector() {
 generate_notice() {
     (
         cd $PROJECT_DIR
-        go list -m -json all | ${SCRIPT_DIR}/licence-detector -template=${SCRIPT_DIR}/NOTICE.txt.tmpl -out=${PROJECT_DIR}/NOTICE.txt
+        go list -m -json all | ${SCRIPT_DIR}/licence-detector \
+            -template=${SCRIPT_DIR}/NOTICE.txt.tmpl \
+            -out=${PROJECT_DIR}/NOTICE.txt \
+            -includeIndirect
     )
 }
 

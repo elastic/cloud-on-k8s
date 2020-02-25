@@ -19,13 +19,13 @@ VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/appro
 else
 VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/github/login token=$(GITHUB_TOKEN))
 # we use roleId as a string that has to be there for authn/z for CI, but it's empty and not needed for local execution
-NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed -i -e "s;roleId:;token: $(GITHUB_TOKEN);g" $(ROOT_DIR)/deployer-config.yml)
+NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;token: $(GITHUB_TOKEN);g" $(ROOT_DIR)/deployer-config.yml > tmp && mv tmp deployer-config.yml)
 endif
 endif
 
 CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
-show-image:
+print-ci-image:
 	@ echo $(CI_IMAGE)
 
 # runs $TARGET in context of CI container and dev makefile
