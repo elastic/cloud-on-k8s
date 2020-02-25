@@ -1,10 +1,18 @@
 Licence Detector
 ================
 
-Parses the output of `go list -m -json all` and attempts to detect licences of direct and indirect dependencies.
+This directory contains the scripts to generate licence notice and dependency information documentation.
 
-Usage
------
+- `generate-notice.sh`: Invoked by `make generate-notice-file` to automatically generate `NOTICE.txt` and `docs/dependencies.asciidoc`.
+- `generate-image-deps.sh`: Manually invoked script to update the container image dependency information in `docs/container-image-dependencies.csv`.
+
+
+generate-notice.sh
+-------------------
+
+This script invokes the `licence-detector` application which parses the output of `go list -m -json all` to produce the notice and dependency list.
+
+### Usage
 
 ```
 licence-detector [FLAGS]
@@ -28,8 +36,7 @@ Flags:
     	Path to the file containing override directives
 ```
 
-Adding Overrides
-----------------
+### Adding Overrides
 
 In some cases, the licence-detector will not be able to detect the licence type or infer the correct URL for a dependency. When there are issues with licences (no licence file or unknown licence type), the application will fail with an error message instructing the user to add an override to continue. The overrides file is a file containing newline-delimited JSON where each line contains a JSON object bearing the following format:
 
@@ -46,7 +53,22 @@ Example overrides file:
 {"name": "github.com/russross/blackfriday/v2", "url": "https://gopkg.in/russross/blackfriday.v2"}
 ```
 
-Updating the licence database
------------------------------
+Current overrides file can be found in the `overrides` directory. Follow the existing directory layout (`licences/<domain>/<pkg>/LICENCE`) when adding new licence text overrides.
+
+### Updating the licence database
 
 The licence database file `licence.db` contains all the currently known licence types found in https://github.com/google/licenseclassifier/tree/master/licenses. In the rare case that entirely new licence types have been introduced to the codebase, follow the instructions at https://github.com/google/licenseclassifier to execute the `licence_serializer` tool.
+
+
+generate-image-deps.sh
+-----------------------
+
+This script generates licence information for the contents of the ECK container image. As the container base image is rarely ever changed and the tool used ([Tern](https://github.com/vmware/tern)) is slow to run, this script is not invoked automatically by the build process.
+
+To generate the dependency list (`docs/container-image-dependencies.csv`) for a particular image tag, invoke the script as follows:
+
+```shell
+IMAGE_TAG=1.0.1 ./generate-image-deps.sh
+```
+
+This script requires Docker, Python, and jq to be installed on the machine.
