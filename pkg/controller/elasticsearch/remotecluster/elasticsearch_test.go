@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/client-go/tools/record"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
@@ -36,7 +38,7 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 			}},
-			want: nil,
+			want: map[string]string{},
 		},
 		{
 			name: "Decode annotation into a list of remote cluster",
@@ -301,7 +303,14 @@ func TestUpdateSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.args.es)
-			if err := UpdateSettings(context.Background(), client, tt.args.esClient, tt.args.licenseChecker, *tt.args.es); (err != nil) != tt.wantErr {
+			if err := UpdateSettings(
+				context.Background(),
+				client,
+				tt.args.esClient,
+				record.NewFakeRecorder(100),
+				tt.args.licenseChecker,
+				*tt.args.es,
+			); (err != nil) != tt.wantErr {
 				t.Errorf("UpdateSettings() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// Check the settings

@@ -27,10 +27,10 @@ type expectedRemoteClusterConfiguration struct {
 // A map is returned here to quickly compare with the ones that are new or missing.
 func getCurrentRemoteClusters(es esv1.Elasticsearch) (map[string]string, error) {
 	serializedRemoteClusters, ok := es.Annotations[RemoteClustersAnnotationName]
-	if !ok {
-		return nil, nil
-	}
 	remoteClusters := make(map[string]string)
+	if !ok {
+		return remoteClusters, nil
+	}
 	if err := json.Unmarshal([]byte(serializedRemoteClusters), &remoteClusters); err != nil {
 		return nil, err
 	}

@@ -8,22 +8,28 @@ import (
 	"context"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var log = logf.Log.WithName("remotecluster")
+
+const enterpriseFeaturesDisabledMsg = "Remote cluster is an enterprise feature. Enterprise features are disabled"
 
 // UpdateSettings updates the remote clusters in the persistent settings by calling the Elasticsearch API.
 func UpdateSettings(
 	ctx context.Context,
 	c k8s.Client,
 	esClient esclient.Client,
+	eventRecorder record.EventRecorder,
 	licenseChecker license.Checker,
 	es esv1.Elasticsearch,
 ) error {
@@ -36,9 +42,10 @@ func UpdateSettings(
 	}
 	if !enabled {
 		log.Info(
-			"Remote cluster is an enterprise feature. Enterprise features are disabled",
+			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,
 		)
+		eventRecorder.Eventf(&es, corev1.EventTypeWarning, events.EventAssociationError, enterpriseFeaturesDisabledMsg)
 		return nil
 	}
 
