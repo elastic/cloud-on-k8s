@@ -7,31 +7,24 @@ package remoteca
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -41,8 +34,7 @@ import (
 const (
 	name = "remoteca-controller"
 
-	EventReasonLocalCaCertNotFound = "LocalClusterCaNotFound"
-	EventReasonRemoteCaCertMissing = "RemoteClusterCaNotFound"
+	EventReasonClusterCaCertNotFound = "LocalClusterCaNotFound"
 )
 
 var (
@@ -140,13 +132,16 @@ func doReconcile(
 	localEs *esv1.Elasticsearch,
 ) (reconcile.Result, error) {
 	localClusterKey := k8s.ExtractNamespacedName(localEs)
-	// Get current clusters according to the existing remote CAs
-	actualRemoteCertificateAuthorities, err := getActualRemoteCertificateAuthorities(ctx, r.Client, localClusterKey)
+
+	expectedRemoteCertificateAuthorities, err := getExpectedRemoteCertificateAuthorities(ctx, r.Client, localEs)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	expectedRemoteCertificateAuthorities, err := getExpectedRemoteCertificateAuthorities(ctx, r.Client, localEs)
+	// Get other clusters to which the reconciled cluster is connected according to the existing remote CAs.
+	// actualRemoteCertificateAuthorities is used to delete the CA certificates and cancel any trust relationships
+	// that nay have been existed in the past but should not exist anymore.
+	actualRemoteCertificateAuthorities, err := getActualRemoteCertificateAuthorities(ctx, r.Client, localClusterKey)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -191,168 +186,12 @@ func doReconcile(
 	return results.WithResult(association.RequeueRbacCheck(r.accessReviewer)).Aggregate()
 }
 
-func deleteCertificateAuthorities(
-	ctx context.Context,
-	r *ReconcileRemoteCa,
-	local, remote types.NamespacedName,
-) error {
-	span, _ := apm.StartSpan(ctx, "delete_certificate_authorities", tracing.SpanTypeApp)
-	defer span.End()
-	// Delete local secret
-	if err := r.Client.Delete(&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: local.Namespace,
-			Name:      remoteCASecretName(local.Name, remote),
-		},
-	}); err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-	// Delete remote secret
-	if err := r.Client.Delete(&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: remote.Namespace,
-			Name:      remoteCASecretName(remote.Name, local),
-		},
-	}); err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-
-	// Remove watches
-	r.watches.Secrets.RemoveHandlerForKey(watchName(local, remote))
-	r.watches.Secrets.RemoveHandlerForKey(watchName(remote, local))
-
-	return nil
-}
-
-// createOrUpdateCertificateAuthorities creates the Secrets that contains the remote certificate authorities
-func createOrUpdateCertificateAuthorities(
-	ctx context.Context,
-	r *ReconcileRemoteCa,
-	local, remote *esv1.Elasticsearch,
-) *reconciler.Results {
-	span, _ := apm.StartSpan(ctx, "create_or_update_remote_ca", tracing.SpanTypeApp)
-	defer span.End()
-	results := &reconciler.Results{}
-
-	localClusterKey := k8s.ExtractNamespacedName(local)
-	remoteClusterKey := k8s.ExtractNamespacedName(remote)
-
-	// Add watches on the CA secret of the local cluster.
-	if err := addCertificatesAuthorityWatches(r, remoteClusterKey, localClusterKey); err != nil {
-		return results.WithError(err)
-	}
-
-	// Add watches on the CA secret of the remote cluster.
-	if err := addCertificatesAuthorityWatches(r, localClusterKey, remoteClusterKey); err != nil {
-		return results.WithError(err)
-	}
-
-	log.V(1).Info(
-		"Setting up remote CA",
-		"local_namespace", localClusterKey.Namespace,
-		"local_name", localClusterKey.Namespace,
-		"remote_namespace", remote.Namespace,
-		"remote_name", remote.Name,
-	)
-
-	// Check if local CA exists
-	localCA := &corev1.Secret{}
-	if err := r.Client.Get(transport.PublicCertsSecretRef(localClusterKey), localCA); err != nil {
-		if !errors.IsNotFound(err) {
-			return results.WithError(err)
-		}
-		results.WithResult(defaultRequeue)
-	}
-
-	if len(localCA.Data[certificates.CAFileName]) == 0 {
-		log.Info(
-			"Cannot find local CA cert",
-			"local_namespace", localClusterKey.Namespace,
-			"local_name", localClusterKey.Namespace,
-		)
-		r.recorder.Event(local, v1.EventTypeWarning, EventReasonLocalCaCertNotFound, caCertMissingError("local", localClusterKey))
-		// CA secrets are watched, we don't need to requeue.
-		// If CA is created later it will trigger a new reconciliation.
-		return nil
-	}
-
-	// Check if remote CA exists
-	remoteCA := &corev1.Secret{}
-	if err := r.Client.Get(transport.PublicCertsSecretRef(remoteClusterKey), remoteCA); err != nil {
-		if !errors.IsNotFound(err) {
-			return results.WithError(err)
-		}
-		results.WithResult(defaultRequeue)
-	}
-
-	if len(remoteCA.Data[certificates.CAFileName]) == 0 {
-		log.Info("Cannot find remote CA cert",
-			"remote_namespace", remote.Namespace,
-			"remote_name", remote.Name,
-		)
-		r.recorder.Event(local, corev1.EventTypeWarning, EventReasonRemoteCaCertMissing, caCertMissingError("remote", remoteClusterKey))
-		return nil
-	}
-
-	// Create local relationship
-	if err := reconcileRemoteCA(ctx, r.Client, local, remoteClusterKey, remoteCA.Data[certificates.CAFileName]); err != nil {
-		return results.WithError(err)
-	}
-
-	// Create remote relationship
-	if err := reconcileRemoteCA(ctx, r.Client, remote, localClusterKey, localCA.Data[certificates.CAFileName]); err != nil {
-		return results.WithError(err)
-	}
-
-	return nil
-}
-
-// reconcileRemoteCA copies the certificate authority from a remote cluster.
-func reconcileRemoteCA(
-	ctx context.Context,
-	c k8s.Client,
-	owner *esv1.Elasticsearch,
-	remote types.NamespacedName,
-	remoteCA []byte,
-) error {
-	span, _ := apm.StartSpan(ctx, "reconcile_remote_ca", tracing.SpanTypeApp)
-	defer span.End()
-
-	// Define the expected remote CA object, it lives in the owner namespace with the content of the remote cluster CA
-	expected := corev1.Secret{
-		ObjectMeta: remoteCAObjectMeta(remoteCASecretName(owner.Name, remote), owner, remote),
-		Data: map[string][]byte{
-			certificates.CAFileName: remoteCA,
-		},
-	}
-
-	var reconciled corev1.Secret
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Scheme:     scheme.Scheme,
-		Owner:      owner,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			return !maps.IsSubset(expected.Labels, reconciled.Labels) || !reflect.DeepEqual(expected.Data, reconciled.Data)
-		},
-		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Data = expected.Data
-		},
-	})
-}
-
-func caCertMissingError(location string, cluster types.NamespacedName) string {
-	return fmt.Sprintf(
-		"Cannot find CA certificate for %s cluster %s/%s",
-		location,
-		cluster.Namespace,
-		cluster.Name,
-	)
+func caCertMissingError(cluster types.NamespacedName) string {
+	return fmt.Sprintf("Cannot find CA certificate cluster %s/%s", cluster.Namespace, cluster.Name)
 }
 
 // getExpectedRemoteCertificateAuthorities returns all the remote cluster keys for which a remote ca should created
+// The CA certificates must be copied from the remote cluster to the local one and and reciprocally
 func getExpectedRemoteCertificateAuthorities(
 	ctx context.Context,
 	c k8s.Client,
