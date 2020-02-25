@@ -241,7 +241,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	results := apmcerts.Reconcile(ctx, r, as, []corev1.Service{*svc}, r.CACertRotation)
+	results := apmcerts.Reconcile(ctx, r, as, []corev1.Service{*svc}, r.CACertRotation, r.CertRotation)
 	if results.HasError() {
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
