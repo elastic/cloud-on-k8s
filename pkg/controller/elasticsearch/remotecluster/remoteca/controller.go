@@ -34,7 +34,7 @@ import (
 const (
 	name = "remoteca-controller"
 
-	EventReasonClusterCaCertNotFound = "LocalClusterCaNotFound"
+	EventReasonClusterCaCertNotFound = "ClusterCaCertNotFound"
 )
 
 var (
