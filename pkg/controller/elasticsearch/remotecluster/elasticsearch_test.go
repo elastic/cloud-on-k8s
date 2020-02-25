@@ -44,11 +44,12 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "ns1",
 					Namespace:   "es1",
-					Annotations: map[string]string{"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns2-cluster-2":"3795207740"}`},
+					Annotations: map[string]string{"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns2-cluster-2":"3795207740","ns5-cluster-8":"XXXXXXXXXX"}`},
 				},
 			}},
 			want: map[string]string{
 				"ns2-cluster-2": "3795207740",
+				"ns5-cluster-8": "XXXXXXXXXX",
 			},
 		},
 	}

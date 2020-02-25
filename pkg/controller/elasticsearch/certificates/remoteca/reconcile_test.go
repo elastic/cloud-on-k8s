@@ -62,6 +62,48 @@ func TestReconcile(t *testing.T) {
 			},
 			want: []byte("cert2\ncert1\n"),
 		},
+		{
+			name: "Only include Secrets with the right label",
+			args: args{
+				es: esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "es1", Namespace: "ns1"}},
+				secrets: []runtime.Object{
+					&v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "b",
+							Namespace: "ns1",
+							Labels: map[string]string{
+								label.ClusterNameLabelName: "es1",
+								common.TypeLabelName:       remoteca.TypeLabelValue,
+							},
+						},
+						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
+					},
+					&v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "c",
+							Namespace: "ns1",
+							Labels: map[string]string{
+								label.ClusterNameLabelName: "es1",
+								common.TypeLabelName:       "foo",
+							},
+						},
+						Data: map[string][]byte{certificates.CAFileName: []byte("cert3\n")},
+					},
+					&v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "a",
+							Namespace: "ns1",
+							Labels: map[string]string{
+								label.ClusterNameLabelName: "es1",
+								common.TypeLabelName:       remoteca.TypeLabelValue,
+							},
+						},
+						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
+					},
+				},
+			},
+			want: []byte("cert2\ncert1\n"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
