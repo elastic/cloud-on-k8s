@@ -138,9 +138,9 @@ func doReconcile(
 		return reconcile.Result{}, err
 	}
 
-	// Get other clusters to which the reconciled cluster is connected according to the existing remote CAs.
+	// Get all the clusters to which this reconciled cluster is connected to according to the existing remote CAs.
 	// actualRemoteCertificateAuthorities is used to delete the CA certificates and cancel any trust relationships
-	// that nay have been existed in the past but should not exist anymore.
+	// may have been existed in the past but should not exist anymore.
 	actualRemoteCertificateAuthorities, err := getActualRemoteCertificateAuthorities(ctx, r.Client, localClusterKey)
 	if err != nil {
 		return reconcile.Result{}, err
