@@ -140,7 +140,7 @@ func doReconcile(
 
 	// Get all the clusters to which this reconciled cluster is connected to according to the existing remote CAs.
 	// actualRemoteCertificateAuthorities is used to delete the CA certificates and cancel any trust relationships
-	// may have been existed in the past but should not exist anymore.
+	// that may have been existed in the past but should not exist anymore.
 	actualRemoteCertificateAuthorities, err := getActualRemoteCertificateAuthorities(ctx, r.Client, localClusterKey)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -232,13 +232,16 @@ func getExpectedRemoteCertificateAuthorities(
 	return expectedRemoteClusters, nil
 }
 
-// getActualRemoteCertificateAuthorities returns all the Elasticsearch keys for which the remote certificate authorities have been copied.
-// In order to get all of them we first list all the remote CA copied locally for a given, associated, Elasticsearch cluster.
-// Then we list all the Elasticsearch clusters for which the CA of the associated cluster has been copied.
+// getActualRemoteCertificateAuthorities returns for a given Elasticsearch cluster all the Elasticsearch keys for which
+// the remote certificate authorities have been copied, i.e. all the other Elasticsearch clusters for which this cluster
+// has been involved in a remote cluster association.
+// In order to get all of them we:
+// 1. List all the remote CA copied locally.
+// 2 .List all the other Elasticsearch clusters for which the CA of the given cluster has been copied.
 func getActualRemoteCertificateAuthorities(
 	ctx context.Context,
 	c k8s.Client,
-	associatedEs types.NamespacedName,
+	es types.NamespacedName,
 ) (map[types.NamespacedName]struct{}, error) {
 	span, _ := apm.StartSpan(ctx, "get_current_remote_ca", tracing.SpanTypeApp)
 	defer span.End()
@@ -249,8 +252,8 @@ func getActualRemoteCertificateAuthorities(
 	var remoteCAList corev1.SecretList
 	if err := c.List(
 		&remoteCAList,
-		client.InNamespace(associatedEs.Namespace),
-		LabelSelector(associatedEs.Name),
+		client.InNamespace(es.Namespace),
+		LabelSelector(es.Name),
 	); err != nil {
 		return nil, err
 	}
@@ -268,8 +271,8 @@ func getActualRemoteCertificateAuthorities(
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{
 			common.TypeLabelName:            TypeLabelValue,
-			RemoteClusterNamespaceLabelName: associatedEs.Namespace,
-			RemoteClusterNameLabelName:      associatedEs.Name,
+			RemoteClusterNamespaceLabelName: es.Namespace,
+			RemoteClusterNameLabelName:      es.Name,
 		}),
 	); err != nil {
 		return nil, err
