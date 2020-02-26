@@ -484,6 +484,7 @@ else
 	$(MAKE) go-generate docker-build
 endif
 
+kind-e2e: export E2E_JSON := true
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build
