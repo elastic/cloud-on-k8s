@@ -23,6 +23,9 @@ NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;
 endif
 endif
 
+# are we running any e2e tests in this build against SNAPSHOT versions of the stack?
+SNAPSHOT_TEST_TARGET ?= $(findstring -SNAPSHOT,$(STACK_VERSION))
+
 CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
 print-ci-image:
@@ -57,14 +60,16 @@ ci-build-image:
 ##  Build
 
 # read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
+get-elastic-public-key: FIELD = $(if $(SNAPSHOT_TEST_TARGET),dev-pubkey,pubkey)
 get-elastic-public-key:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
 
 ##  Test
 
 # read some test licenses from Vault for E2E license tests
+get-test-license: FIELD = $(if $(SNAPSHOT_TEST_TARGET),dev-enterprise,enterprise)
 get-test-license:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=enterprise  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
+	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=$(FIELD)  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
 
 # read connection info and credentials to the E2E tests monitoring Elasticsearch cluster, to be used during E2E tests
 get-monitoring-secrets:
