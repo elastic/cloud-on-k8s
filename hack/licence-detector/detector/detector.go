@@ -159,7 +159,7 @@ func mkDepInfo(mod *module, overrides dependency.Overrides) dependency.Info {
 		Dir:             coalesce(override.Dir, m.Dir),
 		Version:         coalesce(override.Version, m.Version),
 		VersionTime:     coalesce(override.VersionTime, m.Time.Format(time.RFC3339)),
-		URL:             coalesce(override.URL, "https://"+m.Path),
+		URL:             determineURL(override.URL, m.Path),
 		LicenceFile:     override.LicenceFile,
 		LicenceType:     override.LicenceType,
 		LicenceTextFile: override.LicenceTextFile,
@@ -172,6 +172,27 @@ func coalesce(a, b string) string {
 	}
 
 	return b
+}
+
+func determineURL(overrideURL, modulePath string) string {
+	if overrideURL != "" {
+		return overrideURL
+	}
+
+	parts := strings.Split(modulePath, "/")
+	switch parts[0] {
+	case "github.com":
+		// GitHub URLs that have more than two path elements will return a 404 (e.g. https://github.com/elazarl/goproxy/ext).
+		// We strip out the extra path elements from the end to come up with a valid URL like https://github.com/elazarl/goproxy/.
+		if len(parts) > 3 {
+			return "https://" + strings.Join(parts[:3], "/")
+		}
+		return "https://" + modulePath
+	case "k8s.io":
+		return "https://github.com/kubernetes/" + parts[1]
+	default:
+		return "https://" + modulePath
+	}
 }
 
 func buildLicenceRegex() *regexp.Regexp {

@@ -34,6 +34,8 @@ Flags:
     	Path to the NOTICE template file (default "templates/NOTICE.txt.tmpl")
   -overrides string
     	Path to the file containing override directives
+  -validate
+    	Validate results (slow)
 ```
 
 ### Adding Overrides
@@ -57,7 +59,7 @@ Current overrides file can be found in the `overrides` directory. Follow the exi
 
 ### Updating the licence database
 
-The licence database file `licence.db` contains all the currently known licence types found in https://github.com/google/licenseclassifier/tree/master/licenses. In the rare case that entirely new licence types have been introduced to the codebase, follow the instructions at https://github.com/google/licenseclassifier to execute the `licence_serializer` tool.
+The licence database file `licence.db` contains all the currently known licence types found in https://github.com/google/licenseclassifier/tree/master/licenses. In the rare case that entirely new licence types have been introduced to the codebase, follow the instructions at https://github.com/google/licenseclassifier to execute the `license_serializer` tool.
 
 
 generate-image-deps.sh

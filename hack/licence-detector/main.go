@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/hack/licence-detector/dependency"
 	"github.com/elastic/cloud-on-k8s/hack/licence-detector/detector"
 	"github.com/elastic/cloud-on-k8s/hack/licence-detector/render"
+	"github.com/elastic/cloud-on-k8s/hack/licence-detector/validate"
 )
 
 var (
@@ -25,6 +26,7 @@ var (
 	noticeTemplateFlag  = flag.String("noticeTemplate", "templates/NOTICE.txt.tmpl", "Path to the NOTICE template file")
 	noticeOutFlag       = flag.String("noticeOut", "NOTICE.txt", "Path to output the notice")
 	overridesFlag       = flag.String("overrides", "", "Path to the file containing override directives")
+	validateFlag        = flag.Bool("validate", false, "Validate results (slow)")
 )
 
 func main() {
@@ -52,6 +54,12 @@ func main() {
 	dependencies, err := detector.Detect(depInput, classifier, overrides, *includeIndirectFlag)
 	if err != nil {
 		log.Fatalf("Failed to detect licences: %v", err)
+	}
+
+	if *validateFlag {
+		if err := validate.Validate(dependencies); err != nil {
+			log.Fatalf("Validation failed: %v", err)
+		}
 	}
 
 	if err := render.Template(dependencies, *noticeTemplateFlag, *noticeOutFlag); err != nil {

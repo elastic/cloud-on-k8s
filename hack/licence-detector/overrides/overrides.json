@@ -3,3 +3,6 @@
 {"name": "github.com/kr/logfmt", "licenceTextFile": "licences/github.com/kr/logfmt/LICENCE"}
 {"name": "github.com/munnerz/goautoneg", "licenceTextFile": "licences/github.com/munnerz/goautoneg/LICENCE"}
 {"name": "github.com/pascaldekloe/goe", "licenceType": "Public Domain"}
+{"name": "gonum.org/v1/gonum", "url": "https://github.com/gonum/gonum"}
+{"name": "gonum.org/v1/netlib", "url": "https://github.com/gonum/netlib"}
+{"name": "howett.net/plist", "url": "https://gitlab.howett.net/go/plist"}

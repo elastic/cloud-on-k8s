@@ -9,5 +9,6 @@ require (
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/stretchr/testify v1.4.0
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	gopkg.in/yaml.v2 v2.2.5 // indirect
 )

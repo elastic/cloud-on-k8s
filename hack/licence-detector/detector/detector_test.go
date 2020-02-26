@@ -151,7 +151,50 @@ func mkDirectDeps() []dependency.Info {
 			Dir:         "testdata/github.com/russross/blackfriday/v2@v2.0.1",
 			LicenceType: "BSD-2-Clause",
 			LicenceFile: "testdata/github.com/russross/blackfriday/v2@v2.0.1/LICENSE.rst",
-			URL:         "https://github.com/russross/blackfriday/v2",
+			URL:         "https://github.com/russross/blackfriday",
 		},
+	}
+}
+
+func TestDetermineURL(t *testing.T) {
+	testCases := []struct {
+		name     string
+		override string
+		modPath  string
+		want     string
+	}{
+		{
+			name:     "WithOverride",
+			override: "https://go.elast.co/dep",
+			modPath:  "github.com/elastic/dep/path",
+			want:     "https://go.elast.co/dep",
+		},
+		{
+			name:    "WithNonGitHubPath",
+			modPath: "go.uber.org/zap",
+			want:    "https://go.uber.org/zap",
+		},
+		{
+			name:    "WithValidGitHubPath",
+			modPath: "github.com/elastic/cloud-on-k8s",
+			want:    "https://github.com/elastic/cloud-on-k8s",
+		},
+		{
+			name:    "WithInvalidGitHubPath",
+			modPath: "github.com/elastic/cloud-on-k8s/api/v1/elasticsearch",
+			want:    "https://github.com/elastic/cloud-on-k8s",
+		},
+		{
+			name:    "WithK8sPath",
+			modPath: "k8s.io/apimachinery",
+			want:    "https://github.com/kubernetes/apimachinery",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			have := determineURL(tc.override, tc.modPath)
+			require.Equal(t, tc.want, have)
+		})
 	}
 }
