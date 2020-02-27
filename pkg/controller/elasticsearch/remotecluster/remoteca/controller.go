@@ -237,7 +237,7 @@ func getExpectedRemoteCertificateAuthorities(
 // has been involved in a remote cluster association.
 // In order to get all of them we:
 // 1. List all the remote CA copied locally.
-// 2 .List all the other Elasticsearch clusters for which the CA of the given cluster has been copied.
+// 2. List all the other Elasticsearch clusters for which the CA of the given cluster has been copied.
 func getActualRemoteCertificateAuthorities(
 	ctx context.Context,
 	c k8s.Client,
