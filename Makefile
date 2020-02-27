@@ -360,6 +360,9 @@ e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
+ifeq ($(REGISTRY), eu.gcr.io)
+	@ gcloud auth configure-docker --quiet
+endif
 	docker push $(E2E_IMG)
 
 e2e-run:
