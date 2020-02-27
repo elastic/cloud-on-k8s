@@ -1,4 +1,10 @@
-[id="{p}-glossary"]
+:page_id: glossary
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
 == Glossary
 
 This glossary supplements the link:https://kubernetes.io/docs/reference/glossary/[Kubernetes glossary] and covers terms used in the Elastic Cloud on Kubernetes (ECK) documentation.

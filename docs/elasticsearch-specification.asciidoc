@@ -1,9 +1,10 @@
+:page_id: elasticsearch-specification
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-elasticsearch-specification.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-elasticsearch-specification"]
+[id="{p}-{page_id}"]
 == Running Elasticsearch on ECK
 
 Before you deploy and run ECK, take some time to look at the basic and advanced settings available on this page. These settings are related both to Elasticsearch and Kubernetes.

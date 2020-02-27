@@ -1,4 +1,10 @@
-[id="{p}-kibana"]
+:page_id: kibana
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
 == Running Kibana on ECK
 
 The <<{p}-deploy-kibana,quickstart>> is a good starting point to quickly setup a Kibana instance with ECK.

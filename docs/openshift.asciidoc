@@ -1,9 +1,10 @@
+:page_id: openshift
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-openshift.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-openshift"]
+[id="{p}-{page_id}"]
 == Deploying ECK on OpenShift
 
 This page shows how to run ECK on OpenShift.

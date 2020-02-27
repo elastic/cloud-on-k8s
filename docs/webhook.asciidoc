@@ -1,4 +1,5 @@
-[id="{p}-webhook"]
+:page_id: webhook
+[id="{p}-{page_id}"]
 === Validating webhook
 
 A validating webhook provides additional validation of Elasticsearch resources: it provides immediate feedback on the Elasticsearch manifests you submit, allowing you to catch errors right away before ECK even tries to fulfill your request.

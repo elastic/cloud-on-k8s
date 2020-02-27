@@ -1,4 +1,10 @@
-[id="{p}-licensing"]
+:page_id: licensing
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
 == Managing licenses in ECK
 
 When you install the default distribution of ECK, you receive a Basic license. Any Elastic stack application you manage through ECK will also be Basic licensed. Go to https://www.elastic.co/subscriptions to see which features are included in the Basic license for free.

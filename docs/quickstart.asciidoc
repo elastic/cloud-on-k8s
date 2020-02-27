@@ -1,9 +1,10 @@
+:page_id: quickstart
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-quickstart.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-quickstart"]
+[id="{p}-{page_id}"]
 == Quickstart
 
 With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your Elasticsearch cluster, and much more.

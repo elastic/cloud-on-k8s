@@ -1,9 +1,10 @@
+:page_id: apm-server
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-apm-server.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-apm-server"]
+[id="{p}-{page_id}"]
 == Running APM Server on ECK
 
 This section describes how to deploy, configure and access an APM Server with ECK.

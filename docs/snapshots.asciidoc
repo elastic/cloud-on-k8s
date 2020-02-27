@@ -1,9 +1,10 @@
+:page_id: snapshots
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-snapshots.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-snapshots"]
+[id="{p}-{page_id}"]
 === Create automated snapshots
 
 To set up automated snapshots for Elasticsearch on Kubernetes you have to:

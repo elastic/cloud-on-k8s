@@ -1,9 +1,10 @@
+:page_id: accessing-elastic-services
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-accessing-elastic-services.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-accessing-elastic-services"]
+[id="{p}-{page_id}"]
 == Accessing Elastic Stack services
 
 To access the Elastic Stack services, you will need to retrieve:

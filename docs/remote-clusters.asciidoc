@@ -1,9 +1,10 @@
+:page_id: remote-clusters
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-remote-clusters.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-remote-clusters"]
+[id="{p}-{page_id}"]
 === Remote clusters
 
 The link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-remote-clusters.html[remote clusters module] in Elasticsearch enables you to establish uni-directional connections to a remote cluster. This functionality is used in cross-cluster replication and cross-cluster search.

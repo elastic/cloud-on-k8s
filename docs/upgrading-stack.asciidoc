@@ -1,9 +1,10 @@
+:page_id: upgrading-stack
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-upgrading-stack.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-upgrading-stack"]
+[id="{p}-{page_id}"]
 == Upgrading the Elastic Stack version
 
 The operator can safely perform upgrades to newer versions of the various Elastic Stack resources.

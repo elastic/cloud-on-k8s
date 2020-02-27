@@ -1,13 +1,14 @@
+:page_id: service-meshes
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-service-meshes.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
 
 :istio_version: 1.4.3
 :linkerd_version: 2.7.0
 
-[id="{p}-service-meshes"]
+[id="{p}-{page_id}"]
 == Service meshes
 
 These sections contain information about connecting ECK and managed Elastic Stack applications to some of the most popular link:https://www.cncf.io/blog/2017/04/26/service-mesh-critical-component-cloud-native-stack/[service mesh] implementations in the Kubernetes ecosystem.

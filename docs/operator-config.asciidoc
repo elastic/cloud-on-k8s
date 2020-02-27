@@ -1,9 +1,10 @@
+:page_id: operator-config
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-operator-config.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-operator-config"]
+[id="{p}-{page_id}"]
 == Configuring ECK
 
 ECK can be configured using either command line flags or environment variables.
