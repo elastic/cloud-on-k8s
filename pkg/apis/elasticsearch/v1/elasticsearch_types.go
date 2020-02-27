@@ -57,7 +57,7 @@ type ElasticsearchSpec struct {
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
 }
 
-// RemoteClusters defines some remote Elasticsearch clusters.
+// RemoteCluster declares a remote Elasticsearch cluster connection.
 type RemoteCluster struct {
 	// Name is the name of the remote cluster as it is set in the Elasticsearch settings.
 	// The name is expected to be unique for each remote clusters.

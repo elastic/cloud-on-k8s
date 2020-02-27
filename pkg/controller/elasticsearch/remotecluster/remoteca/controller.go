@@ -191,7 +191,7 @@ func caCertMissingError(cluster types.NamespacedName) string {
 }
 
 // getExpectedRemoteCertificateAuthorities returns all the remote cluster keys for which a remote ca should created
-// The CA certificates must be copied from the remote cluster to the local one and and reciprocally
+// The CA certificates must be copied from the remote cluster to the local one and vice versa
 func getExpectedRemoteCertificateAuthorities(
 	ctx context.Context,
 	c k8s.Client,
