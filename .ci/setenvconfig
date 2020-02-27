@@ -199,6 +199,7 @@ CFG
 
 clusterName=$2
 stackVersion=$3
+snapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
 
 write_env <<ENV
 REGISTRY = eu.gcr.io
@@ -211,6 +212,7 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 STACK_VERSION = ${stackVersion}
+SNAPSHOT_TEST_TARGET = $snapshotVersion
 ENV
 write_deployer_config <<CFG
 id: gke-ci

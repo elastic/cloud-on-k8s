@@ -9,6 +9,8 @@ GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 ALL_IN_ONE_OUTPUT_FILE ?= config/all-in-one.yaml
 S3_ECK_DIR             ?= s3://download.elasticsearch.org/downloads/eck
 
+-include $(ROOT_DIR)/.env
+
 # This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
 VAULT_CLIENT_TIMEOUT = 120
 
@@ -22,9 +24,6 @@ VAULT_TOKEN = $(shell vault write -address=$(VAULT_ADDR) -field=token auth/githu
 NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;token: $(GITHUB_TOKEN);g" $(ROOT_DIR)/deployer-config.yml > tmp && mv tmp deployer-config.yml)
 endif
 endif
-
-# are we running any e2e tests in this build against SNAPSHOT versions of the stack?
-SNAPSHOT_TEST_TARGET ?= $(findstring -SNAPSHOT,$(STACK_VERSION))
 
 CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
 
