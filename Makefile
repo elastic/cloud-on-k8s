@@ -321,6 +321,7 @@ docker-push:
 ifeq ($(REGISTRY), docker.elastic.co)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
+# this is used by the cloud-on-k8s-e2e-tests-ocp job
 ifeq ($(REGISTRY), eu.gcr.io)
 	@ gcloud auth configure-docker --quiet
 endif
@@ -360,6 +361,10 @@ e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
+ifeq ($(REGISTRY), eu.gcr.io)
+	# this is used by the cloud-on-k8s-e2e-tests-ocp job
+	@ gcloud auth configure-docker --quiet
+endif
 	docker push $(E2E_IMG)
 
 e2e-run:
