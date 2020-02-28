@@ -74,7 +74,7 @@ func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 	certificateTemplate := x509.Certificate{
 		SerialNumber:          serial,
 		Subject:               options.Subject,
-		NotBefore:             time.Now().Add(-1 * time.Minute),
+		NotBefore:             time.Now().Add(-10 * time.Minute),
 		NotAfter:              notAfter,
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		IsCA:                  true,

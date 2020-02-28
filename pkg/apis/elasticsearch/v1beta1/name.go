@@ -54,8 +54,14 @@ func validateNames(es *Elasticsearch) error {
 	if len(es.Name) > common_name.MaxResourceNameLength {
 		return errors.Errorf("name exceeds maximum allowed length of %d", common_name.MaxResourceNameLength)
 	}
+	nodeSetNames := map[string]struct{}{}
 	// validate ssets
 	for _, nodeSet := range es.Spec.NodeSets {
+		if _, ok := nodeSetNames[nodeSet.Name]; ok {
+			return errors.Errorf("duplicated nodeSet name: '%s'", nodeSet.Name)
+		}
+
+		nodeSetNames[nodeSet.Name] = struct{}{}
 		if errs := apimachineryvalidation.NameIsDNSSubdomain(nodeSet.Name, false); len(errs) > 0 {
 			return errors.Errorf("invalid nodeSet name '%s': [%s]", nodeSet.Name, strings.Join(errs, ","))
 		}
