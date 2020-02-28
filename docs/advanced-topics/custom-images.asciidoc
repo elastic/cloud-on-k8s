@@ -5,7 +5,7 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-== Creating custom images
+= Create custom images
 
 You can create your own custom Elasticsearch or Kibana image instead of using the base image provided by Elastic. You might want to do this to preload plugins in the image rather than having to link:k8s-init-containers-plugin-downloads.html[install them via init container] each time a pod starts. To do this, you must use the official image as the base for it to function properly. For example, if you want to create an Elasticsearch {version} image with the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin], you can do the following:
 
@@ -47,9 +47,9 @@ NOTE: Providing the correct version is always required as ECK reasons about APIs
 The steps are similar for https://docs.microsoft.com/en-us/azure/aks/tutorial-kubernetes-prepare-acr[Azure Kubernetes Service] and https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-basics.html#use-ecr[AWS Elastic Container Registry].
 
 For more information, you can check the following references:
-[float]
+
 [id="{p}-references"]
-=== References
+== References
 
 - https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_c_customized_image[Elasticsearch doc on creating custom images]
 - https://cloud.google.com/container-registry/docs/how-to[Google Container Registry docs]
@@ -58,9 +58,8 @@ For more information, you can check the following references:
 - https://docs.openshift.com/container-platform/4.1/registry/architecture-component-imageregistry.html[OpenShift Container Platform registry docs]
 
 
-[float]
 [id="{p}-container-registry-override"]
-=== Overriding the default container registry
+== Override the default container registry
 
 When creating Elasticsearch, Kibana, or APM Server resources, the operator defaults to using container images pulled from the `docker.elastic.co` registry. If you are in an environment where external network access is restricted, you could configure the operator to use a different default container registry by starting the operator with the `--container-registry` command-line flag. (See <<{p}-operator-config>> for more information about how to configure the operator using command-line flags and environment variables).
 
