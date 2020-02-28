@@ -56,19 +56,21 @@ ci-build-image:
 		docker push push.$(CI_IMAGE) \
 	)
 
+ifneq (,$(findstring -SNAPSHOT,$(STACK_VERSION)))
+       SECRET_FIELD_PREFIX ?= dev-
+endif
+
 ##  Build
 
 # read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
-get-elastic-public-key: FIELD = $(if $(SNAPSHOT_TEST_TARGET),dev-pubkey,pubkey)
 get-elastic-public-key:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=$(FIELD) secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
+	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
 
 ##  Test
 
 # read some test licenses from Vault for E2E license tests
-get-test-license: FIELD = $(if $(SNAPSHOT_TEST_TARGET),dev-enterprise,enterprise)
 get-test-license:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=$(FIELD)  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
+	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)enterprise  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
 
 # read connection info and credentials to the E2E tests monitoring Elasticsearch cluster, to be used during E2E tests
 get-monitoring-secrets:
