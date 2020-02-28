@@ -147,7 +147,7 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:    "user-provided Elasticsearch config overrides should have precedence over ECK config",
 			version: "7.6.0",
 			cfgData: map[string]interface{}{
-				esv1.NetworkHost:        "1.2.3.4",
+				esv1.NetworkHost: "1.2.3.4",
 			},
 			assert: func(cfg CanonicalConfig) {
 				cfgBytes, err := cfg.Render()
