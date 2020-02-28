@@ -5,7 +5,7 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-== Configuring ECK
+= Configure ECK
 
 ECK can be configured using either command line flags or environment variables.
 
@@ -49,5 +49,3 @@ Duration values should be specified as numeric values suffixed by the time unit.
 
 
 Edit the `elastic-operator` StatefulSet to change any of the flag values. <<{p}-eck-debug-logs>> illustrates how to change the log level of the operator using this method.
-
-include::webhook.asciidoc[]

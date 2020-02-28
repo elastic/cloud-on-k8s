@@ -5,11 +5,10 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-== Upgrading ECK
+= Upgrade ECK
 
-[float]
 [id="{p}-ga-upgrade"]
-=== Upgrading to ECK 1.0.0 from previous versions
+== Upgrade to ECK 1.0.0 from previous versions
 
 ECK 1.0.0 is largely compatible with the beta version of the operator (see <<{p}-ga-openshift,the exceptions for earlier Kubernetes and OpenShift versions>>). There is not a direct upgrade path from the alpha version.
 
@@ -19,9 +18,8 @@ After the upgrade, use the `v1` API version for all Elastic manifests.
 
 See the <<release-highlights-1.0.0>> for more information on new features.
 
-[float]
 [id="{p}-ga-openshift"]
-=== Upgrades in earlier Kubernetes and OpenShift versions
+== Upgrades in earlier Kubernetes and OpenShift versions
 
 Upgrading from ECK 1.0.0-beta1 to 1.0.0 has some special considerations for users running either:
 - Kubernetes versions < 1.13

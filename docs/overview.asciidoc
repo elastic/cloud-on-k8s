@@ -5,7 +5,7 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-== Overview
+= Overview
 
 Built on the Kubernetes Operator pattern, Elastic Cloud on Kubernetes (ECK) extends the basic Kubernetes orchestration capabilities to support the setup and management of Elasticsearch, Kibana and APM Server on Kubernetes.
 

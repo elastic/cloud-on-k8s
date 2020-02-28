@@ -5,7 +5,7 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-== Troubleshooting
+= Troubleshoot ECK
 
 When things don't work as expected, you can investigate by taking the following actions:
 
@@ -21,9 +21,8 @@ When things don't work as expected, you can investigate by taking the following 
 - <<{p}-webhook-troubleshooting,Webhook troubleshooting>>
 - <<{p}-ask-for-help,Ask for help>>
 
-[float]
 [id="{p}-get-resources"]
-=== Get the list of resources
+== Get a list of resources
 
 To deploy and manage the Elastic stack, ECK creates several resources in the namespace where the main resource is deployed.
 
@@ -52,9 +51,8 @@ elasticsearch-sample-es-http   ClusterIP   10.19.248.93    <none>        9200/TC
 kibana-sample-kb-http          ClusterIP   10.19.246.116   <none>        5601/TCP   3d
 ----
 
-[float]
 [id="{p}-describe-failing-resources"]
-=== Describe failing resources
+== Describe failing resources
 
 If an Elasticsearch node does not start up, it is probably because Kubernetes cannot schedule the associated Pod.
 
@@ -99,9 +97,8 @@ Events:
 
 If you see an error with unbound persistent volume claims (PVCs), it means there is not currently a persistent volume that can satisfy the claim. If you are using automatically provisioned storage (e.g. Amazon EBS provisioner), sometimes the storage provider can take a few minutes to provision a volume, so this may resolve itself in a few minutes. You can also check the status by running `kubectl describe persistentvolumeclaims` to see events of the PVCs.
 
-[float]
 [id="{p}-get-elasticsearch-logs"]
-=== Get Elasticsearch logs
+== Get Elasticsearch logs
 
 Each Elasticsearch node name is mapped to the corresponding Pod name.
 To get the logs of a particular Elasticsearch node, just fetch the Pod logs:
@@ -117,18 +114,16 @@ kubectl logs -f elasticsearch-sample-es-lgphkv9p67
 
 You can run the same command for Kibana and APM Server.
 
-[float]
 [id="{p}-get-init-container-logs"]
-=== Get init container logs
+== Get init container logs
 
 An Elasticsearch Pod runs a few init containers to prepare the file system of the main Elasticsearch container.
 In some scenarios, the Pod may fail to run (`Status: Error` or `Status: CrashloopBackOff`) because one of the init containers is failing to run.
 Look at the link:https://kubernetes.io/docs/tasks/debug-application-cluster/debug-init-containers/[init container statuses and logs] to get more details.
 
 
-[float]
 [id="{p}-get-eck-logs"]
-=== Get ECK logs
+== Get ECK logs
 
 Since the ECK operator is just a standard Pod running in the Kubernetes cluster, you can fetch its logs as you would for any other Pod:
 
@@ -144,9 +139,8 @@ Logs with `ERROR` level indicate something is not going as expected.
 Due to link:https://github.com/eBay/Kubernetes/blob/master/docs/devel/api-conventions.md#concurrency-control-and-consistency[optimistic locking],
 you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, which will happen almost immediately.
 
-[float]
 [id="{p}-eck-debug-logs"]
-=== Enable ECK debug logs
+== Enable ECK debug logs
 
 To enable `DEBUG` level logs on the operator, edit the `elastic-operator` StatefulSet and set the `--log-verbosity` flag to `1` as illustrated below. Once your change is saved, the operator will be automatically restarted by the StatefulSet controller to apply the new settings.
 
@@ -167,9 +161,8 @@ change the `args` array as follows:
 ----
 
 
-[float]
 [id="{p}-pause-controllers"]
-=== Pause ECK controllers
+== Pause ECK controllers
 
 When debugging Elasticsearch, you night need to "pause" the operator reconciliations, so that no resource gets modified or created in the meantime.
 To do this, set the annotation `common.k8s.elastic.co/pause` to `true` to any resource controlled by the operator:
@@ -192,9 +185,8 @@ Or in one line:
 kubectl annotate elasticsearch quickstart --overwrite common.k8s.elastic.co/pause=true
 ----
 
-[float]
 [id="{p}-get-k8s-events"]
-=== Get Kubernetes events
+== Get Kubernetes events
 
 ECK will emit events when:
 
@@ -227,9 +219,8 @@ LAST SEEN   FIRST SEEN   COUNT     NAME                                    KIND 
 You can set filters for Kibana and APM Server too.
 Note that the default TTL for events in Kubernetes is 1h, so unless your cluster settings have been modified you will not see events older than 1h.
 
-[float]
 [id="{p}-exec-into-containers"]
-=== Exec into containers
+== Exec into containers
 
 To troubleshoot a filesystem, configuration or a network issue, you can run Shell commands directly in the Elasticsearch container. You can do this with kubectl:
 
@@ -240,9 +231,8 @@ kubectl exec -ti elasticsearch-sample-es-p45nrjch29 bash
 
 This can also be done for Kibana and APM Server.
 
-[float]
 [id="{p}-webhook-troubleshooting"]
-=== Webhook troubleshooting
+== Troubleshoot webhook
 
 On startup, the operator deploys an https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/[admission webhook] that points to the operator's service. If this is inaccessible, you may see errors in your Kubernetes API server logs indicating that it cannot reach the service. A common cause may be that the operator pods are failing to start for some reason, or that the control plane is isolated from the operator pod by some mechanism (for instance via network policies or running the control plane externally as in https://github.com/elastic/cloud-on-k8s/issues/896#issuecomment-507224945[issue #869] and https://github.com/elastic/cloud-on-k8s/issues/1369[issue #1369]).
 
@@ -260,9 +250,8 @@ admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request: 
 ```
 
 
-[float]
 [id="{p}-ask-for-help"]
-=== Ask for help
+== Ask for help
 
 * link:https://discuss.elastic.co/c/eck[ECK Discuss forums] to ask any question
 * link:https://github.com/elastic/cloud-on-k8s/issues[Github issues] for bugs and feature requests
