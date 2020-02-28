@@ -65,12 +65,14 @@ The licence database file `licence.db` contains all the currently known licence 
 generate-image-deps.sh
 -----------------------
 
-This script generates licence information for the contents of the ECK container image. As the container base image is rarely ever changed and the tool used ([Tern](https://github.com/vmware/tern)) is slow to run, this script is not invoked automatically by the build process.
+This script generates licence information for the contents of the ECK container base image. As the container base image is rarely ever changed and the tool used ([Tern](https://github.com/vmware/tern)) is slow to run, this script is not invoked automatically by the build process.
 
 To generate the dependency list (`docs/container-image-dependencies.csv`) for a particular image tag, invoke the script as follows:
 
 ```shell
 IMAGE_TAG=1.0.1 ./generate-image-deps.sh
 ```
+
+Note that Tern requires sudo access to mount the procfs file system and inspect the container layers. The script will prompt for the sudo password when needed.
 
 This script requires Docker, Python, and jq to be installed on the machine.
