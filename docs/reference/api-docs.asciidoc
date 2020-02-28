@@ -1,8 +1,15 @@
 // Generated documentation. Please do not edit.
+:page_id: api-reference
 :anchor_prefix: k8s-api
 
-[id="{p}-api-reference"]
-== API Reference
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-{page_id}"]
+= API Reference
 
 .Packages
 - xref:{anchor_prefix}-apm-k8s-elastic-co-v1[$$apm.k8s.elastic.co/v1$$]
@@ -16,7 +23,7 @@
 
 
 [id="{anchor_prefix}-apm-k8s-elastic-co-v1"]
-=== apm.k8s.elastic.co/v1
+== apm.k8s.elastic.co/v1
 
 Package v1 contains API schema definitions for managing APM Server resources.
 
@@ -26,7 +33,7 @@ Package v1 contains API schema definitions for managing APM Server resources.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserver"]
-==== ApmServer 
+=== ApmServer 
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
@@ -44,7 +51,7 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec"]
-==== ApmServerSpec 
+=== ApmServerSpec 
 
 ApmServerSpec holds the specification of an APM Server.
 
@@ -70,7 +77,7 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 [id="{anchor_prefix}-apm-k8s-elastic-co-v1beta1"]
-=== apm.k8s.elastic.co/v1beta1
+== apm.k8s.elastic.co/v1beta1
 
 Package v1beta1 contains API schema definitions for managing APM Server resources.
 
@@ -80,7 +87,7 @@ Package v1beta1 contains API schema definitions for managing APM Server resource
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserver"]
-==== ApmServer 
+=== ApmServer 
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
@@ -98,7 +105,7 @@ ApmServer represents an APM Server resource in a Kubernetes cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1beta1-apmserverspec"]
-==== ApmServerSpec 
+=== ApmServerSpec 
 
 ApmServerSpec holds the specification of an APM Server.
 
@@ -123,14 +130,14 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 [id="{anchor_prefix}-common-k8s-elastic-co-v1"]
-=== common.k8s.elastic.co/v1
+== common.k8s.elastic.co/v1
 
 Package v1 contains API schema definitions for common types used by all resources.
 
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config"]
-==== Config 
+=== Config 
 
 Config represents untyped YAML configuration.
 
@@ -144,7 +151,7 @@ Config represents untyped YAML configuration.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig"]
-==== HTTPConfig 
+=== HTTPConfig 
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
@@ -164,7 +171,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-keytopath"]
-==== KeyToPath 
+=== KeyToPath 
 
 
 
@@ -182,7 +189,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector"]
-==== ObjectSelector 
+=== ObjectSelector 
 
 ObjectSelector defines a reference to a Kubernetes object.
 
@@ -201,7 +208,7 @@ ObjectSelector defines a reference to a Kubernetes object.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-poddisruptionbudgettemplate"]
-==== PodDisruptionBudgetTemplate 
+=== PodDisruptionBudgetTemplate 
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 
@@ -220,7 +227,7 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref"]
-==== SecretRef 
+=== SecretRef 
 
 SecretRef is a reference to a secret that exists in the same namespace.
 
@@ -237,7 +244,7 @@ SecretRef is a reference to a secret that exists in the same namespace.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource"]
-==== SecretSource 
+=== SecretSource 
 
 SecretSource defines a data source based on a Kubernetes Secret.
 
@@ -257,7 +264,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-selfsignedcertificate"]
-==== SelfSignedCertificate 
+=== SelfSignedCertificate 
 
 
 
@@ -275,7 +282,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-servicetemplate"]
-==== ServiceTemplate 
+=== ServiceTemplate 
 
 ServiceTemplate defines the template for a Kubernetes Service.
 
@@ -294,7 +301,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-subjectalternativename"]
-==== SubjectAlternativeName 
+=== SubjectAlternativeName 
 
 
 
@@ -312,7 +319,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions"]
-==== TLSOptions 
+=== TLSOptions 
 
 TLSOptions holds TLS configuration options.
 
@@ -332,14 +339,14 @@ TLSOptions holds TLS configuration options.
 
 
 [id="{anchor_prefix}-common-k8s-elastic-co-v1beta1"]
-=== common.k8s.elastic.co/v1beta1
+== common.k8s.elastic.co/v1beta1
 
 Package v1beta1 contains API schema definitions for common types used by all resources.
 
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-config"]
-==== Config 
+=== Config 
 
 Config represents untyped YAML configuration.
 
@@ -353,7 +360,7 @@ Config represents untyped YAML configuration.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-httpconfig"]
-==== HTTPConfig 
+=== HTTPConfig 
 
 HTTPConfig holds the HTTP layer configuration for resources.
 
@@ -373,7 +380,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-keytopath"]
-==== KeyToPath 
+=== KeyToPath 
 
 
 
@@ -391,7 +398,7 @@ HTTPConfig holds the HTTP layer configuration for resources.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-objectselector"]
-==== ObjectSelector 
+=== ObjectSelector 
 
 ObjectSelector defines a reference to a Kubernetes object.
 
@@ -410,7 +417,7 @@ ObjectSelector defines a reference to a Kubernetes object.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-poddisruptionbudgettemplate"]
-==== PodDisruptionBudgetTemplate 
+=== PodDisruptionBudgetTemplate 
 
 PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBudget.
 
@@ -429,7 +436,7 @@ PodDisruptionBudgetTemplate defines the template for creating a PodDisruptionBud
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretref"]
-==== SecretRef 
+=== SecretRef 
 
 SecretRef is a reference to a secret that exists in the same namespace.
 
@@ -446,7 +453,7 @@ SecretRef is a reference to a secret that exists in the same namespace.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-secretsource"]
-==== SecretSource 
+=== SecretSource 
 
 SecretSource defines a data source based on a Kubernetes Secret.
 
@@ -466,7 +473,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-selfsignedcertificate"]
-==== SelfSignedCertificate 
+=== SelfSignedCertificate 
 
 
 
@@ -484,7 +491,7 @@ SecretSource defines a data source based on a Kubernetes Secret.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-servicetemplate"]
-==== ServiceTemplate 
+=== ServiceTemplate 
 
 ServiceTemplate defines the template for a Kubernetes Service.
 
@@ -503,7 +510,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-subjectalternativename"]
-==== SubjectAlternativeName 
+=== SubjectAlternativeName 
 
 
 
@@ -521,7 +528,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1beta1-tlsoptions"]
-==== TLSOptions 
+=== TLSOptions 
 
 TLSOptions holds TLS configuration options.
 
@@ -541,7 +548,7 @@ TLSOptions holds TLS configuration options.
 
 
 [id="{anchor_prefix}-elasticsearch-k8s-elastic-co-v1"]
-=== elasticsearch.k8s.elastic.co/v1
+== elasticsearch.k8s.elastic.co/v1
 
 Package v1 contains API schema definitions for managing Elasticsearch resources.
 
@@ -551,7 +558,7 @@ Package v1 contains API schema definitions for managing Elasticsearch resources.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-changebudget"]
-==== ChangeBudget 
+=== ChangeBudget 
 
 ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 
@@ -571,7 +578,7 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearch"]
-==== Elasticsearch 
+=== Elasticsearch 
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
@@ -589,7 +596,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec"]
-==== ElasticsearchSpec 
+=== ElasticsearchSpec 
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
@@ -615,7 +622,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-nodeset"]
-==== NodeSet 
+=== NodeSet 
 
 
 
@@ -636,7 +643,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-updatestrategy"]
-==== UpdateStrategy 
+=== UpdateStrategy 
 
 UpdateStrategy specifies how updates to the cluster should be performed.
 
@@ -656,7 +663,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 
 
 [id="{anchor_prefix}-elasticsearch-k8s-elastic-co-v1beta1"]
-=== elasticsearch.k8s.elastic.co/v1beta1
+== elasticsearch.k8s.elastic.co/v1beta1
 
 Package v1beta1 contains API schema definitions for managing Elasticsearch resources.
 
@@ -666,7 +673,7 @@ Package v1beta1 contains API schema definitions for managing Elasticsearch resou
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-changebudget"]
-==== ChangeBudget 
+=== ChangeBudget 
 
 ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 
@@ -686,7 +693,7 @@ ChangeBudget defines the constraints to consider when applying changes to the El
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearch"]
-==== Elasticsearch 
+=== Elasticsearch 
 
 Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
@@ -704,7 +711,7 @@ Elasticsearch represents an Elasticsearch resource in a Kubernetes cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-elasticsearchspec"]
-==== ElasticsearchSpec 
+=== ElasticsearchSpec 
 
 ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
@@ -729,7 +736,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-nodeset"]
-==== NodeSet 
+=== NodeSet 
 
 
 
@@ -750,7 +757,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-updatestrategy"]
-==== UpdateStrategy 
+=== UpdateStrategy 
 
 UpdateStrategy specifies how updates to the cluster should be performed.
 
@@ -770,7 +777,7 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 
 
 [id="{anchor_prefix}-kibana-k8s-elastic-co-v1"]
-=== kibana.k8s.elastic.co/v1
+== kibana.k8s.elastic.co/v1
 
 Package v1 contains API schema definitions for managing Kibana resources.
 
@@ -780,7 +787,7 @@ Package v1 contains API schema definitions for managing Kibana resources.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibana"]
-==== Kibana 
+=== Kibana 
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
 
@@ -798,7 +805,7 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec"]
-==== KibanaSpec 
+=== KibanaSpec 
 
 KibanaSpec holds the specification of a Kibana instance.
 
@@ -824,7 +831,7 @@ KibanaSpec holds the specification of a Kibana instance.
 
 
 [id="{anchor_prefix}-kibana-k8s-elastic-co-v1beta1"]
-=== kibana.k8s.elastic.co/v1beta1
+== kibana.k8s.elastic.co/v1beta1
 
 Package v1beta1 contains API schema definitions for managing Kibana resources.
 
@@ -834,7 +841,7 @@ Package v1beta1 contains API schema definitions for managing Kibana resources.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibana"]
-==== Kibana 
+=== Kibana 
 
 Kibana represents a Kibana resource in a Kubernetes cluster.
 
@@ -852,7 +859,7 @@ Kibana represents a Kibana resource in a Kubernetes cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1beta1-kibanaspec"]
-==== KibanaSpec 
+=== KibanaSpec 
 
 KibanaSpec holds the specification of a Kibana instance.
 

@@ -4,7 +4,6 @@
 
 A validating webhook provides additional validation of Elasticsearch resources: it provides immediate feedback on the Elasticsearch manifests you submit, allowing you to catch errors right away before ECK even tries to fulfill your request.
 
-[float]
 == Architecture
 The webhook is composed of 4 main components. Here is a brief description of each of them to understand how they interact, their naming, and how they are managed.
 
@@ -15,7 +14,6 @@ The webhook is composed of 4 main components. Here is a brief description of eac
 Like the ValidatingWebhookConfiguration, it must be created before starting the operator, even if it is empty. By default its name is `elastic-webhook-server-cert`.
 The content of this Secret and the lifecycle of the certificates are automatically managed for you. ECK generates a dedicated and separate certificate authority and ensures that all components are rotated before the expiration date. The certificate authority is also used to configure the `caBundle` field of the `ValidatingWebhookConfiguration`. You can disable this feature if you want to manage the certificates yourself or with https://github.com/jetstack/cert-manager[cert-manager]. See an example of the latter below.
 
-[float]
 == Managing the webhook certificate with cert-manager
 
 If ECK is currently running you first must ensure that the automatic certificate management feature is disabled. This can be done by updating the operator deployment manifest and adding the `--manage-webhook-certs=false` flag.
@@ -103,7 +101,6 @@ EOF
 
 NOTE: This example assumes that you have installed the operator in the `elastic-system` namespace.
 
-[float]
 [id="{p}-webhook-network-policies"]
 == Network Policies
 
@@ -169,7 +166,6 @@ spec:
 ----
 
 
-[float]
 == Troubleshooting
 
 See the <<{p}-webhook-troubleshooting,Webhook troubleshooting>> section of the <<{p}-troubleshooting,Troubleshooting guide>>.
