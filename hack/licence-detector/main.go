@@ -40,7 +40,7 @@ func main() {
 	defer depInput.Close()
 
 	// create licence classifier
-	classifier, err := detector.MkClassifier(*licenceDataFlag)
+	classifier, err := detector.NewClassifier(*licenceDataFlag)
 	if err != nil {
 		log.Fatalf("Failed to create licence classifier: %v", err)
 	}

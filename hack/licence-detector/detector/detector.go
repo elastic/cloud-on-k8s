@@ -40,8 +40,8 @@ type module struct {
 	Replace  *module    // replace directive
 }
 
-// MkClassifier creates a new instance of the licence classifier.
-func MkClassifier(dataPath string) (*licenseclassifier.License, error) {
+// NewClassifier creates a new instance of the licence classifier.
+func NewClassifier(dataPath string) (*licenseclassifier.License, error) {
 	absPath, err := filepath.Abs(dataPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine absolute path of licence data file: %w", err)
@@ -155,14 +155,14 @@ func mkDepInfo(mod *module, overrides dependency.Overrides) dependency.Info {
 	}
 
 	return dependency.Info{
-		Name:            m.Path,
-		Dir:             coalesce(override.Dir, m.Dir),
-		Version:         coalesce(override.Version, m.Version),
-		VersionTime:     coalesce(override.VersionTime, m.Time.Format(time.RFC3339)),
-		URL:             determineURL(override.URL, m.Path),
-		LicenceFile:     override.LicenceFile,
-		LicenceType:     override.LicenceType,
-		LicenceTextFile: override.LicenceTextFile,
+		Name:                    m.Path,
+		Dir:                     coalesce(override.Dir, m.Dir),
+		Version:                 coalesce(override.Version, m.Version),
+		VersionTime:             coalesce(override.VersionTime, m.Time.Format(time.RFC3339)),
+		URL:                     determineURL(override.URL, m.Path),
+		LicenceFile:             override.LicenceFile,
+		LicenceType:             override.LicenceType,
+		LicenceTextOverrideFile: override.LicenceTextOverrideFile,
 	}
 }
 

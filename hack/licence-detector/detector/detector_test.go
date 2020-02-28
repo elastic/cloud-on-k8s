@@ -80,7 +80,7 @@ func TestDetect(t *testing.T) {
 	}
 
 	// create classifier
-	classifier, err := MkClassifier("testdata/licence.db")
+	classifier, err := NewClassifier("testdata/licence.db")
 	require.NoError(t, err)
 
 	for _, tc := range testCases {

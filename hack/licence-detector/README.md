@@ -44,13 +44,13 @@ In some cases, the licence-detector will not be able to detect the licence type 
 
 - `name`: Required. Module name to apply the override to.
 - `licenceType`: Optional. Type of licence (Apache-2.0, ISC etc.). Provide a [SPDX](https://spdx.org/licenses/) identifier.
-- `licenceTextFile`: Optional. Path to a file containing the licence text for this module. Path must be relative to the `overrides.json` file.
+- `licenceTextOverrideFile`: Optional. Path to a file containing the licence text for this module. Path must be relative to the `overrides.json` file.
 - `url`: Optional. URL to the dependency website.
 
 Example overrides file:
 
 ```json
-{"name": "github.com/bmizerany/perks", "licenceTextFile": "licences/github.com/bmizerany/perks/LICENCE"}
+{"name": "github.com/bmizerany/perks", "licenceTextOverrideFile": "licences/github.com/bmizerany/perks/LICENCE"}
 {"name": "github.com/dgryski/go-gk", "licenceType": "MIT"}
 {"name": "github.com/russross/blackfriday/v2", "url": "https://gopkg.in/russross/blackfriday.v2"}
 ```

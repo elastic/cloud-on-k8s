@@ -71,7 +71,7 @@ func LicenceText(depInfo dependency.Info) string {
 	}
 
 	var buf bytes.Buffer
-	if depInfo.LicenceTextFile != "" {
+	if depInfo.LicenceTextOverrideFile != "" {
 		buf.WriteString("Contents of provided licence file")
 	} else {
 		buf.WriteString("Contents of probable licence file ")

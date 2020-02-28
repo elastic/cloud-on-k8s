@@ -20,6 +20,9 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// maxErrors is the number of errors after which the validation loop will short-circuit.
+// In practice, the number of errors encountered should be very low. If we are seeing a lot of errors, something is
+// terribly broken (e.g. no network) and there's no point in continuing.
 const maxErrors = 12
 
 // Validate runs validation checks against the discovered dependencies.
@@ -33,8 +36,8 @@ func validateURLs(deps *dependency.List) error {
 
 	var errorCount uint32
 	depsChan := make(chan dependency.Info, 64)
-	numWorkers := runtime.NumCPU() + 2
-	client := buildHTTPClient()
+	numWorkers := runtime.NumCPU() + 2 // Rule of thumb for short-lived IO work. Feel free to tweak as necessary.
+	client := newHTTPClient()
 	group, ctx := errgroup.WithContext(ctx)
 
 	// start workers
@@ -80,7 +83,7 @@ func validateURLs(deps *dependency.List) error {
 	return nil
 }
 
-func buildHTTPClient() *http.Client {
+func newHTTPClient() *http.Client {
 	defaultTransport := http.DefaultTransport.(*http.Transport)
 	transport := *defaultTransport
 	transport.MaxConnsPerHost = 5
@@ -89,7 +92,7 @@ func buildHTTPClient() *http.Client {
 
 	return &http.Client{
 		Transport: &transport,
-		Timeout:   20 * time.Second,
+		Timeout:   30 * time.Second,
 	}
 }
 
