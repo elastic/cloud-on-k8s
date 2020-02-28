@@ -1,14 +1,15 @@
+:parent_page_id: elasticsearch-specification
 :page_id: orchestration
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
 ****
 endif::[]
 [id="{p}-{page_id}"]
-=== Nodes orchestration
+= Nodes orchestration
 
 [id="{p}-nodesets"]
-==== NodeSets overview
+== NodeSets overview
 
 The Elasticsearch cluster is specified using a list of `NodeSets`. Each `NodeSet` represents a group of Elasticsearch nodes sharing the same specification (both Elasticsearch configuration and Kubernetes Pod configuration).
 
@@ -56,7 +57,7 @@ spec:
 The Elasticsearch resource above defines two `NodeSets`: one for master nodes, using 10Gi volumes, and one for data nodes, using 1000Gi volumes. The Elasticsearch cluster is composed of 13 nodes: 3 master nodes and 10 data nodes.
 
 [id="{p}-upgrading"]
-==== Upgrading the cluster
+== Upgrading the cluster
 
 ECK handles smooth upgrades from one cluster specification to another. You can apply a new Elasticsearch specification at any time.
 
@@ -74,7 +75,7 @@ ECK orchestrates `NodeSet` changes with no downtime and makes sure that:
 - Rolling upgrades are performed safely, reusing the `PersistentVolumes` of the upgraded Elasticsearch nodes.
 
 [id="{p}-statefulsets"]
-==== StatefulSets orchestration
+== StatefulSets orchestration
 
 Behind the scenes, ECK translates each `NodeSet` specified in the Elasticsearch resource into a link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/[StatefulSet in Kubernetes]. The StatefulSet specification is based on the `NodeSet` specification:
 
@@ -87,7 +88,7 @@ The actual `Pod` creation is handled by the `StatefulSet` controller in Kubernet
 When a `Pod` is removed and recreated (maybe with a newer revision), the `StatefulSet` controller makes sure that the `PersistentVolumes` attached to the original `Pod` are then attached to the new `Pod`.
 
 [id="{p}-upgrade-patterns"]
-==== Cluster upgrade patterns
+== Cluster upgrade patterns
 
 Depending on how the `NodeSets` are updated, ECK handles the Kubernetes resources reconciliation in various ways.
 
@@ -101,7 +102,7 @@ Depending on how the `NodeSets` are updated, ECK handles the Kubernetes resource
 In all these cases, ECK handles `StatefulSet` operations according to the Elasticsearch orchestration best practices, by adjusting the orchestration settings `discovery.seed_hosts`, `cluster.initial_master_nodes`, `discovery.zen.minimum_master_nodes`, and `_cluster/voting_config_exclusions` accordingly.
 
 [id="{p}-orchestration-limitations"]
-==== Limitations
+== Limitations
 
 Based on how Kubernetes and `StatefulSets` operate, ECK orchestration has the following limitations:
 

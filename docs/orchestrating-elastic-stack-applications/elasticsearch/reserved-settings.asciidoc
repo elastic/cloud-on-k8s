@@ -1,0 +1,30 @@
+:parent_page_id: elasticsearch-specification
+:page_id: reserved-settings
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Settings managed by ECK
+
+The following Elasticsearch settings are managed by ECK:
+
+* `cluster.name`
+* `discovery.zen.minimum_master_nodes` deprecated[7.0]
+* `cluster.initial_master_nodes` added[7.0]
+* `network.host`
+* `network.publish_host`
+* `path.data`
+* `path.logs`
+* `xpack.security.authc.reserved_realm.enabled`
+* `xpack.security.enabled`
+* `xpack.security.http.ssl.certificate`
+* `xpack.security.http.ssl.enabled`
+* `xpack.security.http.ssl.key`
+* `xpack.security.transport.ssl.certificate`
+* `xpack.security.transport.ssl.enabled`
+* `xpack.security.transport.ssl.key`
+* `xpack.security.transport.ssl.verification_mode`
+
+CAUTION: While ECK does not prevent you from setting any of these settings yourself, you are strongly discouraged from doing so and we cannot offer support for any user provided Elasticsearch configuration that does use any of these settings.

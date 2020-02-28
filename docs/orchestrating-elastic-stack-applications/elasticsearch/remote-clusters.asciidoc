@@ -1,23 +1,24 @@
+:parent_page_id: elasticsearch-specification
 :page_id: remote-clusters
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
 ****
 endif::[]
 [id="{p}-{page_id}"]
-=== Remote clusters
+= Remote clusters
 
 The link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-remote-clusters.html[remote clusters module] in Elasticsearch enables you to establish uni-directional connections to a remote cluster. This functionality is used in cross-cluster replication and cross-cluster search.
 
 When using remote cluster connections with ECK, the setup process depends on where the remote cluster is deployed.
 
 [id="{p}-remote-clusters-connect-internal"]
-==== Connect from an Elasticsearch cluster running in the same Kubernetes cluster
+== Connect from an Elasticsearch cluster running in the same Kubernetes cluster
 
 TBD
 
 [id="{p}-remote-clusters-connect-external"]
-==== Connect from an Elasticsearch cluster running outside the Kubernetes cluster
+== Connect from an Elasticsearch cluster running outside the Kubernetes cluster
 
 NOTE: While it is technically possible to configure remote cluster connections using older versions of Elasticsearch, this guide only covers the setup for Elasticsearch 7.6 and later. The setup process is significantly simplified in Elasticsearch 7.6 due to improved support for the indirection of Kubernetes services.
 
@@ -29,12 +30,12 @@ You can configure a remote cluster connection to an ECK-managed Elasticsearch cl
 For illustration purposes, consider the following example:
 
 * `cluster-one` resides inside Kubernetes and is managed by ECK
-* `cluster-two` is not hosted inside the same Kubernetes cluster as `cluster-one` and may not even be managed by ECK 
+* `cluster-two` is not hosted inside the same Kubernetes cluster as `cluster-one` and may not even be managed by ECK
 
 To configure `cluster-one` as a remote cluster in `cluster-two`:
 
 
-===== Ensure both clusters trust each others certificate authority
+=== Ensure both clusters trust each others certificate authority
 
 The certificate authority (CA) used by ECK to issue certificates for the Elasticsearch transport layer is stored in a secret named `<cluster_name>-es-transport-certs-public`. Extract the certificate for `cluster-one` as follows:
 
@@ -85,7 +86,7 @@ spec:
 
 Repeat the above steps to add the CA of `cluster-two` to `cluster-one` as well.
 
-===== Configure the remote cluster connection via the Elasticsearch REST API
+=== Configure the remote cluster connection via the Elasticsearch REST API
 
 Expose the transport layer of `cluster-one`.
 
