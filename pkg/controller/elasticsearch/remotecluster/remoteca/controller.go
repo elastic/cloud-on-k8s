@@ -113,12 +113,12 @@ func deleteAllRemoteCa(ctx context.Context, r *ReconcileRemoteCa, es types.Names
 	span, _ := apm.StartSpan(ctx, "delete_all_remote_ca", tracing.SpanTypeApp)
 	defer span.End()
 
-	actualRemoteCertificateAuthorities, err := getActualRemoteCertificateAuthorities(ctx, r.Client, es)
+	remoteClusters, err := remoteClustersInvolvedWith(ctx, r.Client, es)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	results := &reconciler.Results{}
-	for remoteCluster := range actualRemoteCertificateAuthorities {
+	for remoteCluster := range remoteClusters {
 		if err := deleteCertificateAuthorities(ctx, r, es, remoteCluster); err != nil {
 			results.WithError(err)
 		}
@@ -133,22 +133,22 @@ func doReconcile(
 ) (reconcile.Result, error) {
 	localClusterKey := k8s.ExtractNamespacedName(localEs)
 
-	expectedRemoteCertificateAuthorities, err := getExpectedRemoteCertificateAuthorities(ctx, r.Client, localEs)
+	expectedRemoteClusters, err := getExpectedRemoteClusters(ctx, r.Client, localEs)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	// Get all the clusters to which this reconciled cluster is connected to according to the existing remote CAs.
-	// actualRemoteCertificateAuthorities is used to delete the CA certificates and cancel any trust relationships
-	// that may have been existed in the past but should not exist anymore.
-	actualRemoteCertificateAuthorities, err := getActualRemoteCertificateAuthorities(ctx, r.Client, localClusterKey)
+	// remoteClustersInvolved is used to delete the CA certificates and cancel any trust relationships
+	// that may have existed in the past but should not exist anymore.
+	remoteClustersInvolved, err := remoteClustersInvolvedWith(ctx, r.Client, localClusterKey)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	results := &reconciler.Results{}
 	// Create or update expected remote CA
-	for remoteEsKey := range expectedRemoteCertificateAuthorities {
+	for remoteEsKey := range expectedRemoteClusters {
 		// Get the remote Elasticsearch cluster associated with this remote CA
 		remoteEs := &esv1.Elasticsearch{}
 		if err := r.Client.Get(remoteEsKey, remoteEs); err != nil {
@@ -166,7 +166,7 @@ func doReconcile(
 		if !accessAllowed {
 			continue
 		}
-		delete(actualRemoteCertificateAuthorities, remoteEsKey)
+		delete(remoteClustersInvolved, remoteEsKey)
 		results.WithResults(createOrUpdateCertificateAuthorities(ctx, r, localEs, remoteEs))
 		if results.HasError() {
 			return results.Aggregate()
@@ -174,7 +174,7 @@ func doReconcile(
 	}
 
 	// Delete existing but not expected remote CA
-	for toDelete := range actualRemoteCertificateAuthorities {
+	for toDelete := range remoteClustersInvolved {
 		log.V(1).Info("Deleting remote CA",
 			"local_namespace", localEs.Namespace,
 			"local_name", localEs.Name,
@@ -190,9 +190,9 @@ func caCertMissingError(cluster types.NamespacedName) string {
 	return fmt.Sprintf("Cannot find CA certificate cluster %s/%s", cluster.Namespace, cluster.Name)
 }
 
-// getExpectedRemoteCertificateAuthorities returns all the remote cluster keys for which a remote ca should created
+// getExpectedRemoteClusters returns all the remote cluster keys for which a remote ca should created
 // The CA certificates must be copied from the remote cluster to the local one and vice versa
-func getExpectedRemoteCertificateAuthorities(
+func getExpectedRemoteClusters(
 	ctx context.Context,
 	c k8s.Client,
 	associatedEs *esv1.Elasticsearch,
@@ -232,13 +232,13 @@ func getExpectedRemoteCertificateAuthorities(
 	return expectedRemoteClusters, nil
 }
 
-// getActualRemoteCertificateAuthorities returns for a given Elasticsearch cluster all the Elasticsearch keys for which
+// remoteClustersInvolvedWith returns for a given Elasticsearch cluster all the Elasticsearch keys for which
 // the remote certificate authorities have been copied, i.e. all the other Elasticsearch clusters for which this cluster
 // has been involved in a remote cluster association.
 // In order to get all of them we:
 // 1. List all the remote CA copied locally.
 // 2. List all the other Elasticsearch clusters for which the CA of the given cluster has been copied.
-func getActualRemoteCertificateAuthorities(
+func remoteClustersInvolvedWith(
 	ctx context.Context,
 	c k8s.Client,
 	es types.NamespacedName,
@@ -248,7 +248,7 @@ func getActualRemoteCertificateAuthorities(
 
 	currentRemoteClusters := make(map[types.NamespacedName]struct{})
 
-	// 1. Get the remoteCA in the current namespace
+	// 1. Get clusters whose CA has been copied into the local namespace.
 	var remoteCAList corev1.SecretList
 	if err := c.List(
 		&remoteCAList,
@@ -266,7 +266,7 @@ func getActualRemoteCertificateAuthorities(
 		}] = struct{}{}
 	}
 
-	// 2. Get the remoteCA where this cluster is involved in other namespaces
+	// 2. Get clusters for which the CA of the local cluster has been copied.
 	if err := c.List(
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{

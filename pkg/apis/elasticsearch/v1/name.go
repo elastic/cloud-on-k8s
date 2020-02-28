@@ -28,8 +28,8 @@ const (
 	scriptsConfigMapSuffix            = "scripts"
 	transportCertificatesSecretSuffix = "transport-certificates"
 
-	// SecretNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
-	remoteCaNameSuffix string = "remote-ca"
+	// remoteCaNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
+	remoteCaNameSuffix = "remote-ca"
 
 	controllerRevisionHashLen = 10
 )

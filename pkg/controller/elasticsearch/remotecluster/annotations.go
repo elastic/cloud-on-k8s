@@ -25,6 +25,7 @@ type expectedRemoteClusterConfiguration struct {
 
 // getCurrentRemoteClusters returns a map with the current configuration hash of the remote clusters declared in Elasticsearch.
 // A map is returned here to quickly compare with the ones that are new or missing.
+// If there's no remote clusters the map is empty but not nil.
 func getCurrentRemoteClusters(es esv1.Elasticsearch) (map[string]string, error) {
 	serializedRemoteClusters, ok := es.Annotations[RemoteClustersAnnotationName]
 	remoteClusters := make(map[string]string)

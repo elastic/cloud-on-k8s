@@ -43,10 +43,8 @@ func Reconcile(
 	})
 
 	remoteCertificateAuthorities := make([][]byte, len(remoteCAList.Items))
-	i := 0
-	for _, remoteCA := range remoteCAList.Items {
+	for i, remoteCA := range remoteCAList.Items {
 		remoteCertificateAuthorities[i] = remoteCA.Data[certificates.CAFileName]
-		i++
 	}
 
 	expected := v1.Secret{

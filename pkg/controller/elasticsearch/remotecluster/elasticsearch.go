@@ -53,9 +53,6 @@ func UpdateSettings(
 	if err != nil {
 		return err
 	}
-	if currentRemoteClusters == nil {
-		currentRemoteClusters = make(map[string]string)
-	}
 	expectedRemoteClusters := getExpectedRemoteClusters(es)
 
 	remoteClusters := make(map[string]esclient.RemoteCluster)

@@ -230,7 +230,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		if err != nil {
 			msg := "Could not update remote clusters in Elasticsearch settings"
 			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg)
+			log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			results.WithResult(defaultRequeue)
 		}
 	}
