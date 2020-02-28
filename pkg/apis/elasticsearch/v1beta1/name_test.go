@@ -47,7 +47,7 @@ func TestValidate(t *testing.T) {
 			wantErrMsg:    "invalid nodeSet name",
 		},
 		{
-			name:          "duplidated names in nodeSpec name",
+			name:          "duplicated nodeSet names",
 			esName:        "test-es",
 			nodeSpecNames: []string{"default", "default"},
 			wantErr:       true,
