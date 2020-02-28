@@ -83,7 +83,6 @@ func UpdateSettings(
 				"remote_cluster", name,
 			)
 			remoteClusters[name] = esclient.RemoteCluster{Seeds: nil}
-			delete(currentRemoteClusters, name)
 		}
 	}
 
@@ -119,9 +118,9 @@ func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteC
 func updateSettings(esClient esclient.Client, remoteClusters map[string]esclient.RemoteCluster) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
-	return esClient.UpdateSettings(ctx, esclient.Settings{
+	return esClient.UpdateRemoteClusterSettings(ctx, esclient.RemoteClustersSettings{
 		PersistentSettings: &esclient.SettingsGroup{
-			Cluster: esclient.Cluster{
+			Cluster: esclient.RemoteClusters{
 				RemoteClusters: remoteClusters,
 			},
 		},

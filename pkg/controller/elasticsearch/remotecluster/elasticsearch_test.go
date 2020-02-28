@@ -71,11 +71,11 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 
 type fakeESClient struct {
 	esclient.Client
-	settings esclient.Settings
+	settings esclient.RemoteClustersSettings
 	called   bool
 }
 
-func (f *fakeESClient) UpdateSettings(_ context.Context, settings esclient.Settings) error {
+func (f *fakeESClient) UpdateRemoteClusterSettings(_ context.Context, settings esclient.RemoteClustersSettings) error {
 	f.settings = settings
 	f.called = true
 	return nil
@@ -124,7 +124,7 @@ func TestUpdateSettings(t *testing.T) {
 		args         args
 		wantErr      bool
 		wantEsCalled bool
-		wantSettings esclient.Settings
+		wantSettings esclient.RemoteClustersSettings
 	}{
 		{
 			name: "Create a new remote cluster",
@@ -142,9 +142,9 @@ func TestUpdateSettings(t *testing.T) {
 				),
 			},
 			wantEsCalled: true,
-			wantSettings: esclient.Settings{
+			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
-					Cluster: esclient.Cluster{
+					Cluster: esclient.RemoteClusters{
 						RemoteClusters: map[string]esclient.RemoteCluster{
 							"ns2-es2": {Seeds: []string{"es2-es-transport.ns2.svc:9300"}},
 						},
@@ -167,9 +167,9 @@ func TestUpdateSettings(t *testing.T) {
 					}),
 			},
 			wantEsCalled: true,
-			wantSettings: esclient.Settings{
+			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
-					Cluster: esclient.Cluster{
+					Cluster: esclient.RemoteClusters{
 						RemoteClusters: map[string]esclient.RemoteCluster{
 							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
 						},
@@ -212,9 +212,9 @@ func TestUpdateSettings(t *testing.T) {
 					}),
 			},
 			wantEsCalled: true,
-			wantSettings: esclient.Settings{
+			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
-					Cluster: esclient.Cluster{
+					Cluster: esclient.RemoteClusters{
 						RemoteClusters: map[string]esclient.RemoteCluster{
 							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
 						},
@@ -239,9 +239,9 @@ func TestUpdateSettings(t *testing.T) {
 					}),
 			},
 			wantEsCalled: true,
-			wantSettings: esclient.Settings{
+			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
-					Cluster: esclient.Cluster{
+					Cluster: esclient.RemoteClusters{
 						RemoteClusters: map[string]esclient.RemoteCluster{
 							"to-be-deleted": {Seeds: nil},
 						},
@@ -287,9 +287,9 @@ func TestUpdateSettings(t *testing.T) {
 				),
 			},
 			wantEsCalled: true,
-			wantSettings: esclient.Settings{
+			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
-					Cluster: esclient.Cluster{
+					Cluster: esclient.RemoteClusters{
 						RemoteClusters: map[string]esclient.RemoteCluster{
 							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
 							"ns1-es5": {Seeds: nil},
@@ -311,7 +311,7 @@ func TestUpdateSettings(t *testing.T) {
 				tt.args.licenseChecker,
 				*tt.args.es,
 			); (err != nil) != tt.wantErr {
-				t.Errorf("UpdateSettings() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("UpdateRemoteClusterSettings() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// Check the settings
 			assert.Equal(t, tt.wantEsCalled, tt.args.esClient.called)

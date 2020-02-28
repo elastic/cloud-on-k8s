@@ -84,7 +84,7 @@ func (c *clientV6) GetNodesStats(ctx context.Context) (NodesStats, error) {
 	return nodesStats, c.get(ctx, "/_nodes/_all/stats/os", &nodesStats)
 }
 
-func (c *clientV6) UpdateSettings(ctx context.Context, settings Settings) error {
+func (c *clientV6) UpdateRemoteClusterSettings(ctx context.Context, settings RemoteClustersSettings) error {
 	return c.put(ctx, "/_cluster/settings", &settings, nil)
 }
 
