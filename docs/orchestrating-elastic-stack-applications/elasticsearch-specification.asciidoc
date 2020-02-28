@@ -5,7 +5,7 @@ link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View
 ****
 endif::[]
 [id="{p}-{page_id}"]
-== Running Elasticsearch on ECK
+= Run Elasticsearch on ECK
 
 Before you deploy and run ECK, take some time to look at the basic and advanced settings available on this page. These settings are related both to Elasticsearch and Kubernetes.
 
@@ -35,7 +35,7 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-prestop>>
 
 [id="{p}-pod-template"]
-=== Pod Template
+== Pod Template
 
 Pod templates are the same you know and love from stateful sets and deployments. You can provide your own to add new settings, or merge settings with our defaults. For example, if you want to add new labels to your Pods, you can apply a Pod template as follows:
 
@@ -80,7 +80,7 @@ For more information on Pod templates, see the Kubernetes documentation:
 
 
 [id="{p}-jvm-heap-size"]
-=== JVM heap size
+== JVM heap size
 
 To change the heap size of Elasticsearch, set the `ES_JAVA_OPTS` environment variable in the `podTemplate`. It is also highly recommended to set the resource `requests` and `limits` at the same time to ensure that the pod gets enough resources allocated within the Kubernetes cluster. See <<{p}-compute-resources-elasticsearch>> for an example and more information.
 
@@ -90,7 +90,7 @@ See also: link:https://www.elastic.co/guide/en/elasticsearch/reference/current/h
 
 
 [id="{p}-node-configuration"]
-=== Node configuration
+== Node configuration
 
 Any setting defined in the `elasticsearch.yml` configuration file can also be defined for set of Elasticsearch nodes in the `spec.nodeSets[?].config` section.
 
@@ -120,7 +120,7 @@ spec:
 For more information on Elasticsearch settings, see https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].
 
 [id="{p}-volume-claim-templates"]
-=== Volume claim templates
+== Volume claim templates
 
 By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each pod in an Elasticsearch cluster to prevent data loss in case of accidental pod deletion. For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. The name of the volume claim must always be `elasticsearch-data`.
 
@@ -165,7 +165,7 @@ CAUTION: Using `emptyDir` is not recommended due to the high likelihood of perma
 
 
 [id="{p}-http-settings-tls-sans"]
-=== HTTP settings & TLS SANs
+== HTTP settings & TLS SANs
 
 In the `spec.http.service.spec` section, you can change the Kubernetes service used to expose Elasticsearch:
 
@@ -194,7 +194,7 @@ spec:
 ----
 
 [id="{p}-virtual-memory"]
-=== Virtual memory
+== Virtual memory
 
 By default, Elasticsearch uses memory mapping (`mmap`) to efficiently access indices.
 Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out-of-memory exceptions. This is why link:k8s-quickstart.html[the quickstart example] disables `mmap` via the `node.store.allow_mmap: false` setting. For production workloads, it is strongly recommended to increase the kernel setting `vm.max_map_count` to `262144` and leave `node.store.allow_mmap` unset.
@@ -245,7 +245,7 @@ spec:
 ----
 
 [id="{p}-custom-http-certificate"]
-=== Custom HTTP certificate
+== Custom HTTP certificate
 
 You can provide your own CA and certificates instead of the self-signed certificate to connect to Elasticsearch via HTTPS using a Kubernetes secret.
 The certificate must be stored under `tls.crt` and the private key must be stored under `tls.key`. If your certificate was not issued by a well-known CA, you must include the trust chain under `ca.crt` as well.
@@ -262,7 +262,7 @@ spec:
 ----
 
 [float]
-==== Custom self-signed certificate using OpenSSL
+=== Custom self-signed certificate using OpenSSL
 
 This example illustrates how to create your own self-signed certificate for the <<{p}-deploy-elasticsearch,quickstart Elasticsearch cluster>> using the OpenSSL command line utility. Note the subject alternative name (SAN) entry for `quickstart-es-http.default.svc`.
 
@@ -273,7 +273,7 @@ $ kubectl create secret generic quickstart-es-cert --from-file=ca.crt=tls.crt --
 ----
 
 [float]
-==== Custom self-signed certificate using cert-manager
+=== Custom self-signed certificate using cert-manager
 
 This example illustrates how to issue a self-signed certificate for the <<{p}-deploy-elasticsearch,quickstart Elasticsearch cluster>> using a link:https://cert-manager.io[cert-manager] self-signed issuer.
 
@@ -305,7 +305,7 @@ spec:
 
 
 [id="{p}-reserved-settings"]
-=== Settings managed by ECK
+== Settings managed by ECK
 
 The following Elasticsearch settings are managed by ECK:
 
@@ -330,7 +330,7 @@ CAUTION: While ECK does not prevent you from setting any of these settings yours
 
 
 [id="{p}-es-secure-settings"]
-=== Secure settings
+== Secure settings
 
 You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with Kubernetes secrets.
 The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch.
@@ -359,7 +359,7 @@ spec:
 See <<{p}-snapshots,How to create automated snapshots>> for an example use case.
 
 [id="{p}-bundles-plugins"]
-=== Custom configuration files and plugins
+== Custom configuration files and plugins
 
 To run Elasticsearch with specific plugins or configuration files installed on ECK you have two options:
 
@@ -421,7 +421,7 @@ spec:
 <2> Assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s)
 
 [id="{p}-init-containers-plugin-downloads"]
-=== Init containers for plugin downloads
+== Init containers for plugin downloads
 
 You can install custom plugins before the Elasticsearch container starts with an `initContainer`. For example:
 
@@ -447,7 +447,7 @@ You can also override the Elasticsearch container image to use your own image wi
 The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It also inherits the Pod name and IP address environment variables.
 
 [id="{p}-update-strategy"]
-=== Update strategy
+== Update strategy
 
 You can use the `updateStrategy` specification to limit the number of simultaneous changes, like for example in the following cases:
 
@@ -470,14 +470,14 @@ The operator only tries to apply these constraints when a new specification is b
 
 For example, if a new specification defines a larger cluster with `maxUnavailable: 0`, the operator creates the missing Pods according to the best practices. Similarly, if a new specification defines a smaller cluster with `maxSurge: 0`, the operator safely removes the unnecessary Pods.
 
-==== Specifying changeBudget
+=== Specifying changeBudget
 For both `maxSurge` and `maxUnavailable` you can specify the following values:
 
 * `null` - The default value is used.
 * non-negative - The value is used as is.
 * negative - The value is unbounded.
 
-==== Default behavior
+=== Default behavior
 When `updateStrategy` is not present in the specification, it defaults to the following:
 
 [source,yaml]
@@ -492,7 +492,7 @@ spec:
 `maxSurge` is unbounded: This means that all the required Pods are created immediately.
 `maxUnavailable` defaults to `1`: This ensures that the cluster has no more than one unavailable Pod at any given point in time.
 
-==== Caveats
+=== Caveats
 * With both `maxSurge` and `maxUnavailable` set to `0`, the operator cannot bring down an existing Pod nor create a new Pod.
 * Due to the safety measures employed by the operator, certain `changeBudget`s might prevent the operator from making any progress . For example, with `maxSurge` set to 0, you cannot remove the last data node from one `nodeSet` and add a data node to a different `nodeSet`. In this case, the operator cannot create the new node because `maxSurge` is 0, and it cannot remove the old node because there are no other data nodes to migrate the data to.
 * For certain complex configurations, the operator might not be able to deduce the optimal order of operations necessary to achieve the desired outcome. If progress is blocked,  you may need to update the `maxSurge` setting to a higher value than the theoretical best to help the operator make progress in that case.
@@ -500,7 +500,7 @@ spec:
 If any of the above occurs, the operator generates logs to indicate that upscaling or downscaling are limited by `maxSurge` or `maxUnavailable` settings.
 
 [id="{p}-pod-disruption-budget"]
-=== Pod disruption budget
+== Pod disruption budget
 
 A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of Pods while the Kubernetes cluster administrator manages Kubernetes nodes.
 Elasticsearch makes sure some indices don't become unavailable.
@@ -553,7 +553,7 @@ include::remote-clusters.asciidoc[]
 
 
 [id="{p}-readiness"]
-=== Readiness probe
+== Readiness probe
 
 By default, the readiness probe checks that the pod can successfully respond to HTTP requests within a three second timeout. This is acceptable in most cases. In some cases (such as when the cluster is under heavy load), it may be helpful to increase the timeout. This allows the pod to stay in a `Ready` state and thus be part of the Elasticsearch service even if it is responding slowly. To adjust the timeout, set the `READINESS_PROBE_TIMEOUT` environment variable in the pod template. The readiness probe configuration also must be updated with the new timeout. For example, to increase the API call timeout to ten seconds and the overall check time to twelve seconds:
 
@@ -589,7 +589,7 @@ spec:
 Note that this will require restarting the pods.
 
 [id="{p}-prestop"]
-=== Pod PreStop hook
+== Pod PreStop hook
 
 When an Elasticsearch `Pod` is terminated, its `Endpoint` is removed from the `Service` and the Elasticsearch process is terminated. As these two operations happen in parallel, a race condition exists. If the Elasticsearch process is already shut down, but the `Endpoint` is still a part of the `Service`, any new connection might fail. For more information, see link:https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods[Termination of pods].
 
