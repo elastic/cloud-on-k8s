@@ -17,6 +17,9 @@ const (
 	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
 	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs"
 
+	RemoteCertificateAuthoritiesSecretVolumeName      = "elastic-internal-remote-certificate-authorities"
+	RemoteCertificateAuthoritiesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-remote-certs/"
+
 	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
 	HTTPCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/http-certs"
 

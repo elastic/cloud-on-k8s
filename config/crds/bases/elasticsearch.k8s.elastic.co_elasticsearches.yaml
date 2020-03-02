@@ -6859,6 +6859,37 @@ spec:
                         type: object
                     type: object
                 type: object
+              remoteClusters:
+                description: RemoteClusters enables you to establish uni-directional
+                  connections to a remote Elasticsearch cluster.
+                items:
+                  description: RemoteCluster declares a remote Elasticsearch cluster
+                    connection.
+                  properties:
+                    elasticsearchRef:
+                      description: ElasticsearchRef is a reference to an Elasticsearch
+                        cluster running within the same k8s cluster.
+                      properties:
+                        name:
+                          description: Name of the Kubernetes object.
+                          type: string
+                        namespace:
+                          description: Namespace of the Kubernetes object. If empty,
+                            defaults to the current namespace.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    name:
+                      description: Name is the name of the remote cluster as it is
+                        set in the Elasticsearch settings. The name is expected to
+                        be unique for each remote clusters.
+                      minLength: 1
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               secureSettings:
                 description: 'SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Elasticsearch.
