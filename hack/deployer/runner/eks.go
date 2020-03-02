@@ -43,8 +43,8 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
-	awsAccessKey       = "AWS_ACCESS_KEY"
-	awsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
+	awsAccessKey       = "AWS_ACCESS_KEY"        // nolint
+	awsSecretAccessKey = "AWS_SECRET_ACCESS_KEY" // nolint
 )
 
 func init() {
