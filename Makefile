@@ -21,10 +21,9 @@ LOG_VERBOSITY ?= 1
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
 # find or download controller-gen
-# note this does not validate the version
 controller-gen:
-ifeq ($(shell command -v controller-gen),)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1)
+ifneq ($(shell controller-gen --version), Version: v0.2.5)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
