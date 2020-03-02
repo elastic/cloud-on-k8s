@@ -107,7 +107,7 @@ kind: DestinationRule
 metadata:
   name: elastic-istio
 spec:
-  host: "elastic-istio-es-http.default.svc.local"
+  host: "elastic-istio-es-http.default.svc.cluster.local"
   trafficPolicy:
     tls:
       mode: ISTIO_MUTUAL
