@@ -1,0 +1,8 @@
+{"name": "github.com/bmizerany/perks", "licenceTextOverrideFile": "licences/github.com/bmizerany/perks/LICENCE"}
+{"name": "github.com/dgryski/go-gk", "licenceType": "UNKNOWN"}
+{"name": "github.com/kr/logfmt", "licenceTextOverrideFile": "licences/github.com/kr/logfmt/LICENCE"}
+{"name": "github.com/munnerz/goautoneg", "licenceTextOverrideFile": "licences/github.com/munnerz/goautoneg/LICENCE"}
+{"name": "github.com/pascaldekloe/goe", "licenceType": "Public Domain"}
+{"name": "gonum.org/v1/gonum", "url": "https://github.com/gonum/gonum"}
+{"name": "gonum.org/v1/netlib", "url": "https://github.com/gonum/netlib"}
+{"name": "howett.net/plist", "url": "https://gitlab.howett.net/go/plist"}
