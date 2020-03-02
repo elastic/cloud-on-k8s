@@ -27,7 +27,9 @@ type DriverFactory interface {
 
 // Driver allows executing a plan
 type Driver interface {
+	// Execute runs the plan configured during driver creation.
 	Execute() error
+	// GetCredentials updates a kubeconfig file with appropriate credentials for the current environment.
 	GetCredentials() error
 }
 

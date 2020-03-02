@@ -9,6 +9,7 @@ ENV DOCKER_VERSION=18.03.1-ce
 ENV GOTESTSUM_VERSION=0.3.5
 ENV KIND_VERSION=0.7.0
 ENV OPENSHIFT_TOOLS_VERSION=4.3.0
+ENV EKSCTL_VERSION=0.14.0
 
 # golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
@@ -69,6 +70,11 @@ RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPEN
     tar -zxf openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz oc && \
     mv oc /usr/local/bin/oc && \
     rm openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz
+
+RUN curl -fsSLO "https://github.com/weaveworks/eksctl/releases/download/${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" && \
+    tar xzf eksctl_Linux_amd64.tar.gz && \
+    mv eksctl /usr/local/bin/eksctl && \
+    rm eksctl_Linux_amd64.tar.gz
 
 # Cache ECK Go dependencies in this Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s

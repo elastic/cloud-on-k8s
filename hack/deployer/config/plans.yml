@@ -75,6 +75,16 @@ plans:
     region: europe-west1
     nodeCount: 3
     overwriteDefaultKubeconfig: false
+- id: eks-dev
+  operation: create
+  clusterName: dev
+  provider: eks
+  machineType: c5d.xlarge
+  serviceAccount: false
+  eks:
+    region: eu-west-2
+    nodeCount: 3
+    nodeAMI: static
 - id: e2e-monitor
   operation: create
   clusterName: e2e-monitor

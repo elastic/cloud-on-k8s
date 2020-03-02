@@ -307,6 +307,9 @@ switch-aks:
 switch-ocp:
 	@ echo "ocp" > hack/deployer/config/provider
 
+switch-eks:
+	@ echo "eks" > hack/deployer/config/provider
+
 #################################
 ##  --    Docker images    --  ##
 #################################

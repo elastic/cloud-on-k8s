@@ -75,6 +75,22 @@ func CreateCommand() *cobra.Command {
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
 				}
+			case runner.EKSDriverID:
+				token, err := GetEnvVar("GHTOKEN")
+				if err != nil {
+					return err
+				}
+
+				vaultAddr, err := GetEnvVar("VAULT_ADDR")
+				if err != nil {
+					return err
+				}
+
+				data := fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
+				fullPath := path.Join(filePath, runner.EKSConfigFileName)
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
+					return err
+				}
 			default:
 				return fmt.Errorf("unknown provider %s", provider)
 			}
