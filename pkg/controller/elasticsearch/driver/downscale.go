@@ -51,10 +51,7 @@ func HandleDownscale(
 	// migrate data away from nodes that should be removed
 	// if leavingNodes is empty, it clears any existing settings
 	leavingNodes := leavingNodeNames(downscales)
-	if len(leavingNodes) != 0 {
-		log.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
-	}
-	if err := migration.MigrateData(downscaleCtx.parentCtx, downscaleCtx.esClient, leavingNodes); err != nil {
+	if err := migration.MigrateData(downscaleCtx.parentCtx, downscaleCtx.k8sClient, downscaleCtx.es, downscaleCtx.esClient, leavingNodes); err != nil {
 		return results.WithError(err)
 	}
 
