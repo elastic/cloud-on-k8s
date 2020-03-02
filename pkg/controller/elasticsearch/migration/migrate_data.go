@@ -88,7 +88,7 @@ func IsMigratingData(ctx context.Context, shardLister esclient.ShardLister, podN
 	return nodeIsMigratingData(podName, shards, excludedNodes), nil
 }
 
-// AllocationExcludeAnnotationName returns the allocation exclude value stored in an annotation.
+// allocationExcludeFromAnnotation returns the allocation exclude value stored in an annotation.
 // May be empty if not set.
 func allocationExcludeFromAnnotation(es esv1.Elasticsearch) string {
 	return es.Annotations[AllocationExcludeAnnotationName]
