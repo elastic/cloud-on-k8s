@@ -7,6 +7,7 @@ endif::[]
 [id="{p}-{page_id}"]
 = Upgrade ECK
 
+[float]
 [id="{p}-ga-upgrade"]
 == Upgrade to ECK 1.0.0 from previous versions
 
@@ -18,6 +19,7 @@ After the upgrade, use the `v1` API version for all Elastic manifests.
 
 See the <<release-highlights-1.0.0>> for more information on new features.
 
+[float]
 [id="{p}-ga-openshift"]
 == Upgrades in earlier Kubernetes and OpenShift versions
 
