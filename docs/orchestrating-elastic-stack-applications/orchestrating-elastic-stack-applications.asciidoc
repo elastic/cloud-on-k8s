@@ -1,0 +1,25 @@
+:page_id: orchestrating-elastic-stack-applications
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Orchestrating Elastic Stack applications
+
+[partintro]
+--
+- <<{p}-elasticsearch-specification>>
+- <<{p}-kibana>>
+- <<{p}-apm-server>>
+- <<{p}-accessing-elastic-services>>
+- <<{p}-managing-compute-resources>>
+- <<{p}-upgrading-stack>>
+--
+
+include::elasticsearch-specification.asciidoc[leveloffset=+1]
+include::kibana.asciidoc[leveloffset=+1]
+include::apm-server.asciidoc[leveloffset=+1]
+include::accessing-elastic-services.asciidoc[leveloffset=+1]
+include::managing-compute-resources.asciidoc[leveloffset=+1]
+include::upgrading-stack.asciidoc[leveloffset=+1]

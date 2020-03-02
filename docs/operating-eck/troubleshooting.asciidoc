@@ -1,0 +1,257 @@
+:page_id: troubleshooting
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Troubleshoot ECK
+
+When things don't work as expected, you can investigate by taking the following actions:
+
+- <<{p}-get-resources,Get the list of resources>>
+- <<{p}-describe-failing-resources,Describe failing resources>>
+- <<{p}-get-elasticsearch-logs,Get Elasticsearch logs>>
+- <<{p}-get-init-container-logs,Get init container logs>>
+- <<{p}-get-eck-logs,Get ECK logs>>
+- <<{p}-eck-debug-logs,Enable ECK debug logs>>
+- <<{p}-pause-controllers,Pause ECK controllers>>
+- <<{p}-get-k8s-events,Get Kubernetes events>>
+- <<{p}-exec-into-containers,Exec into containers>>
+- <<{p}-webhook-troubleshooting,Webhook troubleshooting>>
+- <<{p}-ask-for-help,Ask for help>>
+
+[id="{p}-get-resources"]
+== Get a list of resources
+
+To deploy and manage the Elastic stack, ECK creates several resources in the namespace where the main resource is deployed.
+
+For example, each Elasticsearch node and Kibana instance has a dedicated Pod.
+Check the status of the running Pods, and compare it with the expected instances:
+
+[source,sh]
+----
+kubectl get pods
+
+NAME                                 READY     STATUS    RESTARTS   AGE
+elasticsearch-sample-es-66sv6dvt7g   0/1       Pending   0          3s
+elasticsearch-sample-es-9xzzhmgd4h   1/1       Running   0          27m
+elasticsearch-sample-es-lgphkv9p67   0/1       Pending   0          3s
+kibana-sample-kb-5468b8685d-c7mdp    0/1       Running   0          4s
+----
+
+Check the services:
+
+[source,sh]
+----
+kubectl get services
+
+NAME                           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+elasticsearch-sample-es-http   ClusterIP   10.19.248.93    <none>        9200/TCP   2d
+kibana-sample-kb-http          ClusterIP   10.19.246.116   <none>        5601/TCP   3d
+----
+
+[id="{p}-describe-failing-resources"]
+== Describe failing resources
+
+If an Elasticsearch node does not start up, it is probably because Kubernetes cannot schedule the associated Pod.
+
+First, check the StatefulSets to see if the current number of replicas match the desired number of replicas.
+
+[source,sh]
+----
+kubectl get statefulset
+
+NAME                              DESIRED   CURRENT   AGE
+elasticsearch-sample-es-default   1         1         4s
+----
+
+Then, check the Pod status. If a Pod fails to reach the `Running` status after a few seconds, something is preventing it from being scheduled or starting up:
+
+[source,sh]
+----
+kubectl get pods -l elasticsearch.k8s.elastic.co/statefulset-name=elasticsearch-sample-es-default
+
+NAME                                 READY     STATUS    RESTARTS   AGE
+elasticsearch-sample-es-66sv6dvt7g   0/1       Pending   0          3s
+elasticsearch-sample-es-9xzzhmgd4h   1/1       Running   0          42s
+elasticsearch-sample-es-lgphkv9p67   0/1       Pending   0          3s
+kibana-sample-kb-5468b8685d-c7mdp    0/1       Running   0          4s
+----
+
+Pod `elasticsearch-sample-es-lgphkv9p67` isn't scheduled. Run this command to get more insights:
+
+[source,sh]
+----
+kubectl describe pod elasticsearch-sample-es-lgphkv9p67
+
+(...)
+Events:
+  Type     Reason             Age               From                Message
+  ----     ------             ----              ----                -------
+  Warning  FailedScheduling   1m (x6 over 1m)   default-scheduler   pod has unbound immediate PersistentVolumeClaims (repeated 2 times)
+  Warning  FailedScheduling   1m (x6 over 1m)   default-scheduler   pod has unbound immediate PersistentVolumeClaims
+  Warning  FailedScheduling   1m (x11 over 1m)  default-scheduler   0/3 nodes are available: 1 node(s) had no available volume zone, 2 Insufficient memory.
+  Normal   NotTriggerScaleUp  4s (x11 over 1m)  cluster-autoscaler  pod didn't trigger scale-up (it wouldn't fit if a new node is added)
+----
+
+If you see an error with unbound persistent volume claims (PVCs), it means there is not currently a persistent volume that can satisfy the claim. If you are using automatically provisioned storage (e.g. Amazon EBS provisioner), sometimes the storage provider can take a few minutes to provision a volume, so this may resolve itself in a few minutes. You can also check the status by running `kubectl describe persistentvolumeclaims` to see events of the PVCs.
+
+[id="{p}-get-elasticsearch-logs"]
+== Get Elasticsearch logs
+
+Each Elasticsearch node name is mapped to the corresponding Pod name.
+To get the logs of a particular Elasticsearch node, just fetch the Pod logs:
+
+[source,sh]
+----
+kubectl logs -f elasticsearch-sample-es-lgphkv9p67
+
+(...)
+{"type": "server", "timestamp": "2019-07-22T08:48:10,859+0000", "level": "INFO", "component": "o.e.c.s.ClusterApplierService", "cluster.name": "elasticsearch-sample", "node.name": "elasticsearch-sample-es-lgphkv9p67", "cluster.uuid": "cX9uCx3uQrej9hMLGPhV0g", "node.id": "R_OcheBlRGeqme1IZzE4_Q",  "message": "added {{elasticsearch-sample-es-kqz4jmvj9p}{UGy5IX0UQcaKlztAoh4sLA}{3o_EUuZvRKW7R1C8b1zzzg}{10.16.2.232}{10.16.2.232:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},{elasticsearch-sample-es-stzz78k64p}{Sh_AzQcxRzeuIoOQWgru1w}{cwPoTFNnRAWtqsXWQtWbGA}{10.16.2.233}{10.16.2.233:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},}, term: 1, version: 164, reason: ApplyCommitRequest{term=1, version=164, sourceNode={elasticsearch-sample-es-9xzzhmgd4h}{tAi_bCPcSaO1OkLap4wmhQ}{E6VcWWWtSB2oo-2zmj9DMQ}{10.16.1.150}{10.16.1.150:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true}}"  }
+{"type": "server", "timestamp": "2019-07-22T08:48:22,224+0000", "level": "INFO", "component": "o.e.c.s.ClusterApplierService", "cluster.name": "elasticsearch-sample", "node.name": "elasticsearch-sample-es-lgphkv9p67", "cluster.uuid": "cX9uCx3uQrej9hMLGPhV0g", "node.id": "R_OcheBlRGeqme1IZzE4_Q",  "message": "added {{elasticsearch-sample-es-fn9wvxw6sh}{_tbAciHTStaAlUO6GtD9LA}{1g7_qsXwR0qjjfom05VwMA}{10.16.1.154}{10.16.1.154:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},}, term: 1, version: 169, reason: ApplyCommitRequest{term=1, version=169, sourceNode={elasticsearch-sample-es-9xzzhmgd4h}{tAi_bCPcSaO1OkLap4wmhQ}{E6VcWWWtSB2oo-2zmj9DMQ}{10.16.1.150}{10.16.1.150:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true}}"  }
+----
+
+You can run the same command for Kibana and APM Server.
+
+[id="{p}-get-init-container-logs"]
+== Get init container logs
+
+An Elasticsearch Pod runs a few init containers to prepare the file system of the main Elasticsearch container.
+In some scenarios, the Pod may fail to run (`Status: Error` or `Status: CrashloopBackOff`) because one of the init containers is failing to run.
+Look at the link:https://kubernetes.io/docs/tasks/debug-application-cluster/debug-init-containers/[init container statuses and logs] to get more details.
+
+
+[id="{p}-get-eck-logs"]
+== Get ECK logs
+
+Since the ECK operator is just a standard Pod running in the Kubernetes cluster, you can fetch its logs as you would for any other Pod:
+
+[source,sh]
+----
+kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
+----
+
+The operator constantly attempts to reconcile Kubernetes resources to match the desired state.
+Logs with `INFO` level provide some insights about what is going on.
+Logs with `ERROR` level indicate something is not going as expected.
+
+Due to link:https://github.com/eBay/Kubernetes/blob/master/docs/devel/api-conventions.md#concurrency-control-and-consistency[optimistic locking],
+you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, which will happen almost immediately.
+
+[id="{p}-eck-debug-logs"]
+== Enable ECK debug logs
+
+To enable `DEBUG` level logs on the operator, edit the `elastic-operator` StatefulSet and set the `--log-verbosity` flag to `1` as illustrated below. Once your change is saved, the operator will be automatically restarted by the StatefulSet controller to apply the new settings.
+
+[source,sh]
+----
+kubectl edit statefulset.apps -n elastic-system elastic-operator
+----
+
+change the `args` array as follows:
+
+[source,yaml]
+----
+  spec:
+    containers:
+    - args:
+      - manager
+      - --log-verbosity=1
+----
+
+
+[id="{p}-pause-controllers"]
+== Pause ECK controllers
+
+When debugging Elasticsearch, you night need to "pause" the operator reconciliations, so that no resource gets modified or created in the meantime.
+To do this, set the annotation `common.k8s.elastic.co/pause` to `true` to any resource controlled by the operator:
+
+- Elasticsearch
+- Kibana
+- ApmServer
+
+[source,yaml]
+----
+metadata:
+  annotations:
+    common.k8s.elastic.co/pause: "true"
+----
+
+Or in one line:
+
+[source,sh]
+----
+kubectl annotate elasticsearch quickstart --overwrite common.k8s.elastic.co/pause=true
+----
+
+[id="{p}-get-k8s-events"]
+== Get Kubernetes events
+
+ECK will emit events when:
+
+* important operations are performed (example: a new Elasticsearch Pod was created)
+* something is wrong, and the user must be notified
+
+Fetch Kubernetes events:
+
+[source,sh]
+----
+kubectl get events
+
+(...)
+28s       25m       58        elasticsearch-sample-es-p45nrjch29.15b3ae4cc4f7c00d   Pod                             Warning   FailedScheduling    default-scheduler                                         0/3 nodes are available: 1 node(s) had no available volume zone, 2 Insufficient memory.
+28s       25m       52        elasticsearch-sample-es-wxpnzfhqbt.15b3ae4d86bc269f   Pod                             Warning   FailedScheduling    default-scheduler                                         0/3 nodes are available: 1 node(s) had no available volume zone, 2 Insufficient memory.
+----
+
+You can filter the events to show only those that are relevant to a particular Elasticsearch cluster:
+
+[source,sh]
+----
+kubectl get event --namespace default --field-selector involvedObject.name=elasticsearch-sample
+
+LAST SEEN   FIRST SEEN   COUNT     NAME                                    KIND            SUBOBJECT   TYPE      REASON    SOURCE                     MESSAGE
+30m         30m          1         elasticsearch-sample.15b3ae303baa93c0   Elasticsearch               Normal    Created   elasticsearch-controller   Created pod elasticsearch-sample-es-4q7q2k8cl7
+30m         30m          1         elasticsearch-sample.15b3ae303bab4f40   Elasticsearch               Normal    Created   elasticsearch-controller   Created pod elasticsearch-sample-es-jg7dsfkcp8
+30m         30m          1         elasticsearch-sample.15b3ae303babdfc8   Elasticsearch               Normal    Created   elasticsearch-controller   Created pod elasticsearch-sample-es-xrxsp54jd5
+----
+
+You can set filters for Kibana and APM Server too.
+Note that the default TTL for events in Kubernetes is 1h, so unless your cluster settings have been modified you will not see events older than 1h.
+
+[id="{p}-exec-into-containers"]
+== Exec into containers
+
+To troubleshoot a filesystem, configuration or a network issue, you can run Shell commands directly in the Elasticsearch container. You can do this with kubectl:
+
+[source,sh]
+----
+kubectl exec -ti elasticsearch-sample-es-p45nrjch29 bash
+----
+
+This can also be done for Kibana and APM Server.
+
+[id="{p}-webhook-troubleshooting"]
+== Troubleshoot webhook
+
+On startup, the operator deploys an https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/[admission webhook] that points to the operator's service. If this is inaccessible, you may see errors in your Kubernetes API server logs indicating that it cannot reach the service. A common cause may be that the operator pods are failing to start for some reason, or that the control plane is isolated from the operator pod by some mechanism (for instance via network policies or running the control plane externally as in https://github.com/elastic/cloud-on-k8s/issues/896#issuecomment-507224945[issue #869] and https://github.com/elastic/cloud-on-k8s/issues/1369[issue #1369]).
+
+For troubleshooting, you can change the https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook configuration to `Fail`, which will cause creations and updates to error out if there is an error contacting the webhook.
+
+On link:https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept[GKE private clusters], you may see requests creating or updating Elastic resources take a long time to complete or timeout. If so, you will need to add a firewall rule allowing port 9443 from the API server so that it can contact the webhook. See the link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[GKE documentation on adding rules] and the link:https://github.com/kubernetes/kubernetes/issues/79739[Kubernetes issue] for more detail.
+
+Refer to <<{p}-webhook-network-policies>> for more information about network policies that might be preventing communication between the Kubernetes API server and the webhook server.
+
+=== Validation failures
+If the validation webhook is preventing you from making changes due to the unknown fields validation like below, you can force the webhook to ignore it by removing the`kubectl.kubernetes.io/last-applied-configuration` annotation from your resource.
+
+```
+admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request: Elasticsearch.elasticsearch.k8s.elastic.co "quickstart" is invalid: some-misspelled-field: Invalid value: "some-misspelled-field": some-misspelled-field field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown
+```
+
+
+[id="{p}-ask-for-help"]
+== Ask for help
+
+* link:https://discuss.elastic.co/c/eck[ECK Discuss forums] to ask any question
+* link:https://github.com/elastic/cloud-on-k8s/issues[Github issues] for bugs and feature requests

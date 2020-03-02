@@ -33,18 +33,29 @@ type ObjectSelector struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
+// WithDefaultNamespace adds a default namespace to a given ObjectSelector if none is set.
+func (o ObjectSelector) WithDefaultNamespace(defaultNamespace string) ObjectSelector {
+	if len(o.Namespace) > 0 {
+		return o
+	}
+	return ObjectSelector{
+		Namespace: defaultNamespace,
+		Name:      o.Name,
+	}
+}
+
 // NamespacedName is a convenience method to turn an ObjectSelector into a NamespacedName.
-func (s ObjectSelector) NamespacedName() types.NamespacedName {
+func (o ObjectSelector) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{
-		Name:      s.Name,
-		Namespace: s.Namespace,
+		Name:      o.Name,
+		Namespace: o.Namespace,
 	}
 }
 
 // IsDefined checks if the object selector is not nil and has a name.
 // Namespace is not mandatory as it may be inherited by the parent object.
-func (s *ObjectSelector) IsDefined() bool {
-	return s != nil && s.Name != ""
+func (o *ObjectSelector) IsDefined() bool {
+	return o != nil && o.Name != ""
 }
 
 // HTTPConfig holds the HTTP layer configuration for resources.

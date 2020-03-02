@@ -1,11 +1,14 @@
+:page_id: overview
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-overview.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-overview"]
-== Overview
+[id="{p}-{page_id}"]
+= Overview
 
+[partintro]
+--
 Built on the Kubernetes Operator pattern, Elastic Cloud on Kubernetes (ECK) extends the basic Kubernetes orchestration capabilities to support the setup and management of Elasticsearch, Kibana and APM Server on Kubernetes.
 
 With Elastic Cloud on Kubernetes you can streamline all those critical operations, such as:
@@ -16,13 +19,13 @@ With Elastic Cloud on Kubernetes you can streamline all those critical operation
 . Scheduling backups
 . Securing clusters with TLS certificates
 . Setting up hot-warm-cold architectures with availability zone awareness
-
-Supported versions:
 --
+
+== Supported versions
+
 include::supported-versions.asciidoc[]
---
 
-Learn more about ECK:
+== Learn more about ECK
 
 - link:https://www.elastic.co/elasticsearch-kubernetes[Orchestrate Elasticsearch on Kubernetes]
 - link:https://www.elastic.co/blog/introducing-elastic-cloud-on-kubernetes-the-elasticsearch-operator-and-beyond?elektra=products&storm=sub1[ECK post on the Elastic Blog]

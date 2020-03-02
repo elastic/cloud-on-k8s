@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -47,6 +48,11 @@ func Reconcile(
 	defer span.End()
 
 	results := &reconciler.Results{}
+
+	// reconcile remote clusters certificate authorities
+	if err := remoteca.Reconcile(driver.K8sClient(), es); err != nil {
+		results.WithError(err)
+	}
 
 	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
