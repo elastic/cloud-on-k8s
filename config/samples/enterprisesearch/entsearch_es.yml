@@ -19,9 +19,21 @@ metadata:
   name: entsearch-sample
 spec:
   version: 7.6.0
-  image: eu.gcr.io/elastic-cloud-dev/enterprise-search:35723f7615a8a13a22f8118e4c72fc02edf16c4f
+  image: $DOCKER_IMAGE
   count: 1
   elasticsearchRef:
-    name: "elasticsearch-sample"
-#  config:
-#    ent_search.external_url: http://my-dns.com:3002
+    name: mycluster
+    namespace: es-namespace
+  config:
+    ent_search.external_url: http://public-ip:3002
+  # http:
+  #   service:
+  #     spec:
+  #       type: LoadBalancer
+  # podTemplate:
+  #   spec:
+  #     containers:
+  #       - name: enterprise-search
+  #         resources:
+  #           requests:
+  #             cpu: 4
