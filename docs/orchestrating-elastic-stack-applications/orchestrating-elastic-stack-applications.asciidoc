@@ -7,12 +7,15 @@ endif::[]
 [id="{p}-{page_id}"]
 = Orchestrating Elastic Stack applications
 
+[partintro]
+--
 - <<{p}-elasticsearch-specification>>
 - <<{p}-kibana>>
 - <<{p}-apm-server>>
 - <<{p}-accessing-elastic-services>>
 - <<{p}-managing-compute-resources>>
 - <<{p}-upgrading-stack>>
+--
 
 include::elasticsearch-specification.asciidoc[leveloffset=+1]
 include::kibana.asciidoc[leveloffset=+1]

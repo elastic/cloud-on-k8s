@@ -7,6 +7,8 @@ endif::[]
 [id="{p}-{page_id}"]
 = Quickstart
 
+[partintro]
+--
 With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your Elasticsearch cluster, and much more.
 
 Eager to get started? This quick guide shows you how to:
@@ -19,11 +21,11 @@ Eager to get started? This quick guide shows you how to:
 * <<{p}-check-samples,Check out the samples>>
 
 **Supported versions**
---
+
 include::supported-versions.asciidoc[]
+
 --
 
-[float]
 [id="{p}-deploy-eck"]
 == Deploy ECK in your Kubernetes cluster
 
@@ -47,7 +49,6 @@ kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-
 kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 ----
 
-[float]
 [id="{p}-deploy-elasticsearch"]
 == Deploy an Elasticsearch cluster
 
@@ -178,7 +179,6 @@ NOTE: Disabling certificate verification using the `-k` flag is not recommended 
 }
 ----
 
-[float]
 [id="{p}-deploy-kibana"]
 == Deploy a Kibana instance
 
@@ -242,7 +242,6 @@ Login as the `elastic` user. The password can be obtained with the following com
 kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
 ----
 
-[float]
 [id="{p}-upgrade-deployment"]
 == Upgrade your deployment
 
@@ -270,14 +269,12 @@ spec:
 EOF
 ----
 
-[float]
 [id="{p}-persistent-storage"]
 == Use persistent storage
 
 The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for production workloads. Refer to <<{p}-volume-claim-templates>> for more information.
 
 
-[float]
 [id="{p}-check-samples"]
 == Check out the samples
 

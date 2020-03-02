@@ -7,12 +7,15 @@ endif::[]
 [id="{p}-{page_id}"]
 = Operating ECK
 
+[partintro]
+--
 - <<{p}-operator-config>>
 - <<{p}-webhook>>
 - <<{p}-licensing>>
 - <<{p}-troubleshooting>>
 - <<{p}-upgrading-eck>>
 - <<{p}-uninstalling-eck>>
+--
 
 include::operator-config.asciidoc[leveloffset=+1]
 include::webhook.asciidoc[leveloffset=+1]
