@@ -34,7 +34,13 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	clusterName         = "cluster-name"
+	clusterName = "cluster-name"
+	es          = esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: "ns",
+		},
+	}
 	ssetMaster3Replicas = sset.TestSset{
 		Name:      "ssetMaster3Replicas",
 		Namespace: "ns",
@@ -118,7 +124,7 @@ var (
 			Ready:           true,
 		}.Build(),
 	}
-	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
+	runtimeObjs = []runtime.Object{&es, &ssetMaster3Replicas, &ssetData4Replicas,
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
@@ -147,13 +153,8 @@ func TestHandleDownscale(t *testing.T) {
 				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 			},
 		),
-		esClient: esClient,
-		es: esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      clusterName,
-				Namespace: "ns",
-			},
-		},
+		esClient:  esClient,
+		es:        es,
 		parentCtx: context.Background(),
 	}
 
@@ -802,8 +803,8 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	ssetMasters := sset.TestSset{
 		Name:        "masters",
-		Namespace:   "ns",
-		ClusterName: "es",
+		Namespace:   es.Namespace,
+		ClusterName: es.Name,
 		Version:     "7.1.0",
 		Replicas:    3,
 		Master:      true,
@@ -811,8 +812,8 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	}.Build()
 	ssetData := sset.TestSset{
 		Name:        "datas",
-		Namespace:   "ns",
-		ClusterName: "es",
+		Namespace:   es.Namespace,
+		ClusterName: es.Name,
 		Version:     "7.1.0",
 		Replicas:    3,
 		Master:      false,
@@ -847,12 +848,6 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: ssetMasters.Namespace,
-					Name:      "es",
-				},
-			}
 			// simulate an existing v7 master for zen2 to be called
 			v7Pod := corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -865,7 +860,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 					},
 				},
 			}
-			k8sClient := k8s.WrappedFakeClient(&ssetMasters, &ssetData, &v7Pod)
+			k8sClient := k8s.WrappedFakeClient(es.DeepCopy(), &ssetMasters, &ssetData, &v7Pod)
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,
