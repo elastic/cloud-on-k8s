@@ -10,7 +10,7 @@ endif::[]
 The <<{p}-deploy-kibana,quickstart>> is a good starting point to quickly setup a Kibana instance with ECK.
 The following sections describe how to customize a Kibana deployment to suit your requirements.
 
-* <<{p}-kibana-eck-managed-es,Use an Elasticsearch cluster managed by ECK>>
+* <<{p}-kibana-eck-managed-es,Connect to an Elasticsearch cluster managed by ECK>>
 * <<{p}-kibana-external-es,Connect to an Elasticsearch cluster not managed by ECK>>
 * <<{p}-kibana-advanced-configuration,Advanced configuration>>
 ** <<{p}-kibana-pod-configuration,Pod Configuration>>
@@ -23,8 +23,11 @@ The following sections describe how to customize a Kibana deployment to suit you
 ** <<{p}-kibana-http-disable-tls,Disable TLS>>
 
 
+[id="{p}-kibana-connect-to-es"]
+== Connect to an Elasticsearch cluster
+
 [id="{p}-kibana-eck-managed-es"]
-== Use an Elasticsearch cluster managed by ECK
+=== Connect to an Elasticsearch cluster managed by ECK
 
 It is quite straightforward to connect a Kibana instance to an Elasticsearch cluster managed by ECK:
 
@@ -49,7 +52,7 @@ NOTE: Any Kibana can reference (and thus access) any Elasticsearch instance as l
 The Kibana configuration file is automatically setup by ECK to establish a secure connection to Elasticsearch.
 
 [id="{p}-kibana-external-es"]
-== Connect to an Elasticsearch cluster not managed by ECK
+=== Connect to an Elasticsearch cluster not managed by ECK
 
 It is also possible to configure Kibana to connect to an Elasticsearch cluster that is being managed by a different installation of ECK or running outside the Kubernetes cluster. In this case, you need to know the IP address or URL of the Elasticsearch cluster and a valid username and password pair to access the cluster.
 
@@ -181,7 +184,7 @@ spec:
 ----
 
 [id="{p}-kibana-scaling"]
-== Scale out a Kibana deployment
+=== Scale out a Kibana deployment
 
 You may want to deploy more than one instance of Kibana. In this case all the instances must share the same encryption key. If you do not set one, the operator will generate one for you. If you would like to set your own encryption key, this can be done by setting the `xpack.security.encryptionKey` property using a secure setting as described in the next section.
 
