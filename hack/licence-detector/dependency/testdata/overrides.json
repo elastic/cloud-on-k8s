@@ -1,0 +1,4 @@
+{"name": "my.pkg/v1", "licenceType": "Apache-2.0"}
+{"name": "my.otherpkg/v1", "URL": "https://me.example.com/pkg"}
+{"name": "my.securepkg/v1", "licenceFile":"/etc/passwd", "licenceTextOverrideFile": "my/securepkg/v1/licence.txt"}
+{"name": "my.insecurepkg/v1", "licenceTextOverrideFile": "/etc/passwd"}

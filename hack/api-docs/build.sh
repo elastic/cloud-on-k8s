@@ -39,7 +39,7 @@ build_docs() {
             --config=${SCRIPT_DIR}/config.yaml \
             --renderer=asciidoctor \
             --templates-dir=${SCRIPT_DIR}/templates \
-            --output-path=${DOCS_DIR}/api-docs.asciidoc
+            --output-path=${DOCS_DIR}/reference/api-docs.asciidoc
     )
 }
 

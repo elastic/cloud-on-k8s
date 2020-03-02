@@ -102,6 +102,17 @@ pipeline {
                         }
                     }
                 }
+                stage("7.7.0-SNAPSHOT") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+                        script {
+                            runWith(lib, failedTests, "eck-77-${BUILD_NUMBER}-e2e", "7.7.0-SNAPSHOT")
+                        }
+                    }
+                }
             }
         }
     }
@@ -138,7 +149,8 @@ pipeline {
                     "eck-73-${BUILD_NUMBER}-e2e",
                     "eck-74-${BUILD_NUMBER}-e2e",
                     "eck-75-${BUILD_NUMBER}-e2e",
-                    "eck-76-${BUILD_NUMBER}-e2e"
+                    "eck-76-${BUILD_NUMBER}-e2e",
+                    "eck-77-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
@@ -155,7 +167,7 @@ pipeline {
 def runWith(lib, failedTests, clusterName, stackVersion) {
     sh ".ci/setenvconfig e2e/stack-versions $clusterName $stackVersion"
     script {
-        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: "make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci")
 
         sh 'make -C .ci TARGET=e2e-generate-xml ci'
         junit "e2e-tests.xml"

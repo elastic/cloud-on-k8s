@@ -1,0 +1,171 @@
+:page_id: webhook
+[id="{p}-{page_id}"]
+= Configure validating webhook
+
+A validating webhook provides additional validation of Elasticsearch resources: it provides immediate feedback on the Elasticsearch manifests you submit, allowing you to catch errors right away before ECK even tries to fulfill your request.
+
+== Architecture
+The webhook is composed of 4 main components. Here is a brief description of each of them to understand how they interact, their naming, and how they are managed.
+
+. A `ValidatingWebhookConfiguration` object that defines the validating webhook, targeting the right webhook path and resource. It must be created before starting the operator. The `caBundle` field can be automatically managed as part of the automatic certificate management _(see below)_.
+. A Kubernetes Service is used to expose the validating server, named `elastic-webhook-server`. It is in the same Namespace as the webhook server.
+. A webhook server that actually validates the submitted resources. In ECK it is the operator itself when it is configured with the `webhook` enabled. See <<{p}-operator-config,Configuring ECK>> for more information about the `enable-webhook` flag.
+. A Secret containing the required certificates to secure the connection between the API server and the webhook server.
+Like the ValidatingWebhookConfiguration, it must be created before starting the operator, even if it is empty. By default its name is `elastic-webhook-server-cert`.
+The content of this Secret and the lifecycle of the certificates are automatically managed for you. ECK generates a dedicated and separate certificate authority and ensures that all components are rotated before the expiration date. The certificate authority is also used to configure the `caBundle` field of the `ValidatingWebhookConfiguration`. You can disable this feature if you want to manage the certificates yourself or with https://github.com/jetstack/cert-manager[cert-manager]. See an example of the latter below.
+
+== Managing the webhook certificate with cert-manager
+
+If ECK is currently running you first must ensure that the automatic certificate management feature is disabled. This can be done by updating the operator deployment manifest and adding the `--manage-webhook-certs=false` flag.
+
+Then, cert-manager v0.11+ must be installed as described in the https://docs.cert-manager.io/en/latest/getting-started/install/[cert-manager documentation].
+
+The following example shows how to create all the resources that a webhook requires to function.
+
+[source,yaml,subs="attributes,+macros"]
+----
+cat $$<<$$EOF | kubectl apply -f -
+---
+# this configures
+# - a self signed cert-manager issuer
+# - a service to point to the webhook
+# - a self signed certificate for the webhook service
+# - a validating webhook configuration
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: elastic-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: elastic-webhook
+  namespace: elastic-system
+spec:
+  commonName: elastic-webhook.elastic-system.svc
+  dnsNames:
+  - elastic-webhook.elastic-system.svc.cluster.local
+  - elastic-webhook.elastic-system.svc
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: elastic-webhook-server-cert
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elastic-webhook-server
+  namespace: elastic-system
+spec:
+  ports:
+  - port: 443
+    protocol: TCP
+    targetPort: 9443
+  selector:
+    control-plane: elastic-operator
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: elastic-webhook.k8s.elastic.co
+  annotations:
+    cert-manager.io/inject-ca-from: elastic-system/elastic-webhook
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: elastic-webhook
+      namespace: elastic-system
+      # this is the path controller-runtime automatically generates
+      path: /validate-elasticsearch-k8s-elastic-co-{eck_crd_version}-elasticsearch
+  failurePolicy: Ignore
+  name: elastic-es-validation-{eck_crd_version}.k8s.elastic.co
+  sideEffects: None
+  rules:
+  - apiGroups:
+    - elasticsearch.k8s.elastic.co
+    apiVersions:
+    - {eck_crd_version}
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - elasticsearches
+EOF
+----
+
+NOTE: This example assumes that you have installed the operator in the `elastic-system` namespace.
+
+[id="{p}-webhook-network-policies"]
+== Network Policies
+
+Webhooks require network connectivity between the Kubernetes API server and the operator. If the creation of an Elasticsearch resource times out with an error message similar to the following, then the Kubernetes API server might be unable to connect to the webhook to validate the manifest.
+
+....
+Error from server (Timeout): error when creating "elasticsearch.yaml": Timeout: request did not complete within requested timeout 30s
+....
+
+If you encounter the above error, try re-running the command with a higher request timeout as follows:
+
+[source,sh,subs="attributes"]
+----
+kubectl --request-timeout=1m apply -f elasticsearch.yaml
+----
+
+As the default link:https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook is `Ignore`, the above command should succeed after about 30 seconds. This is an indication that the API server cannot contact the webhook server and has foregone validation when creating the resource. One possible reason for this is that a link:https://kubernetes.io/docs/concepts/services-networking/network-policies/[network policy] might be blocking any incoming requests to the webhook server. Consult your system administrator to determine whether that is the case and create an appropriate policy to allow communication between the Kubernetes API server and the webhook server. For example, the following network policy simply opens up the webhook port to the world:
+
+
+[source,yaml,subs="attributes"]
+----
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: allow-webhook-access-from-any
+  namespace: elastic-system
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: elastic-operator
+  ingress:
+  - from: []
+    ports:
+      - port: 9443
+----
+
+You may want to restrict webhook access to just the Kubernetes API server. Currently this requires knowing the IP address of the API server -- which can be obtained through the command:
+
+[source,sh,subs="attributes"]
+----
+kubectl cluster-info | grep master
+----
+
+Assuming that the API server IP address is `10.1.0.1`, the following policy restricts webhook access to just the API server.
+
+[source,yaml,subs="attributes"]
+----
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: allow-webhook-access-from-apiserver
+  namespace: elastic-system
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: elastic-operator
+  ingress:
+  - from:
+      - ipBlock:
+          cidr: 10.1.0.1/32
+    ports:
+      - port: 9443
+----
+
+
+== Troubleshooting
+
+See the <<{p}-webhook-troubleshooting,Webhook troubleshooting>> section of the <<{p}-troubleshooting,Troubleshooting guide>>.

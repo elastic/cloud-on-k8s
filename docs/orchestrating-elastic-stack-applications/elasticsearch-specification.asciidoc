@@ -1,0 +1,56 @@
+:page_id: elasticsearch-specification
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Run Elasticsearch on ECK
+
+Before you deploy and run ECK, take some time to look at the basic and advanced settings available on this page. These settings are related both to Elasticsearch and Kubernetes.
+
+**Basic settings**
+
+- <<{p}-pod-template>>
+- <<{p}-jvm-heap-size>>
+- <<{p}-node-configuration>>
+- <<{p}-volume-claim-templates>>
+- <<{p}-http-settings-tls-sans>>
+
+**Advanced settings**
+
+- <<{p}-virtual-memory>>
+- <<{p}-custom-http-certificate>>
+- <<{p}-reserved-settings>>
+- <<{p}-es-secure-settings>>
+- <<{p}-bundles-plugins>>
+- <<{p}-init-containers-plugin-downloads>>
+- <<{p}-update-strategy>>
+- <<{p}-pod-disruption-budget>>
+- <<{p}-advanced-node-scheduling,Advanced Elasticsearch node scheduling>>
+- <<{p}-orchestration>>
+- <<{p}-snapshots,Create automated snapshots>>
+- <<{p}-remote-clusters,Remote clusters>>
+- <<{p}-readiness>>
+- <<{p}-prestop>>
+
+include::elasticsearch/pod-template.asciidoc[leveloffset=+1]
+include::elasticsearch/jvm-heap-size.asciidoc[leveloffset=+1]
+include::elasticsearch/node-configuration.asciidoc[leveloffset=+1]
+include::elasticsearch/volume-claim-templates.asciidoc[leveloffset=+1]
+include::elasticsearch/http-settings-tls-sans.asciidoc[leveloffset=+1]
+
+include::elasticsearch/virtual-memory.asciidoc[leveloffset=+1]
+include::elasticsearch/custom-http-certificate.asciidoc[leveloffset=+1]
+include::elasticsearch/reserved-settings.asciidoc[leveloffset=+1]
+include::elasticsearch/es-secure-settings.asciidoc[leveloffset=+1]
+include::elasticsearch/bundles-plugins.asciidoc[leveloffset=+1]
+include::elasticsearch/init-containers-plugin-downloads.asciidoc[leveloffset=+1]
+include::elasticsearch/update-strategy.asciidoc[leveloffset=+1]
+include::elasticsearch/pod-disruption-budget.asciidoc[leveloffset=+1]
+include::elasticsearch/orchestration.asciidoc[leveloffset=+1]
+include::elasticsearch/advanced-node-scheduling.asciidoc[leveloffset=+1]
+include::elasticsearch/snapshots.asciidoc[leveloffset=+1]
+include::elasticsearch/remote-clusters.asciidoc[leveloffset=+1]
+include::elasticsearch/readiness.asciidoc[leveloffset=+1]
+include::elasticsearch/prestop.asciidoc[leveloffset=+1]
