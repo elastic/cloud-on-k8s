@@ -138,6 +138,10 @@ func versioned(b *baseClient, v version.Version) Client {
 		return &clientV7{
 			clientV6: v6,
 		}
+	case 8:
+		return &clientV8{
+			clientV7: clientV7{clientV6: v6},
+		}
 	default:
 		return &v6
 	}

@@ -249,7 +249,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	results.WithResults(kbcerts.Reconcile(ctx, d, *kb, []corev1.Service{*svc}, params.CACertRotation))
+	results.WithResults(kbcerts.Reconcile(ctx, d, *kb, []corev1.Service{*svc}, params.CACertRotation, params.CertRotation))
 	if results.HasError() {
 		return results
 	}

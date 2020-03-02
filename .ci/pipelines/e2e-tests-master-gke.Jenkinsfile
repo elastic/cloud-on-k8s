@@ -1,5 +1,5 @@
 def failedTests = []
-def testScript
+def lib
 
 pipeline {
 
@@ -27,7 +27,7 @@ pipeline {
         stage('Load common scripts') {
             steps {
                 script {
-                    testScript = load ".ci/common/tests.groovy"
+                    lib = load ".ci/common/tests.groovy"
                 }
             }
         }
@@ -56,7 +56,7 @@ pipeline {
                     junit "e2e-tests.xml"
 
                     if (env.SHELL_EXIT_CODE != 0) {
-                        failedTests = testScript.getListOfFailedTests()
+                        failedTests = lib.getListOfFailedTests()
                     }
 
                     sh 'exit $SHELL_EXIT_CODE'
@@ -68,7 +68,7 @@ pipeline {
     post {
         unsuccessful {
             script {
-                def msg = testScript.generateSlackMessage("E2E tests failed!", env.BUILD_URL, failedTests)
+                def msg = lib.generateSlackMessage("E2E tests failed!", env.BUILD_URL, failedTests)
 
                 slackSend(
                       channel: '#cloud-k8s',

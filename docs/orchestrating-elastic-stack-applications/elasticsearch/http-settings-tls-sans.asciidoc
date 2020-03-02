@@ -1,0 +1,35 @@
+:parent_page_id: elasticsearch-specification
+:page_id: http-settings-tls-sans
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= HTTP settings and TLS SANs
+
+In the `spec.http.service.spec` section, you can change the Kubernetes service used to expose Elasticsearch:
+
+[source,yaml]
+----
+spec:
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+----
+
+Check the https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[Kubernetes Publishing Services (ServiceTypes)] that are currently available.
+
+You can add an IP or a DNS name in the SAN of the self-signed certificate configured by default to secure the HTTP layer with TLS in the `spec.http.tls.selfSignedCertificate` section.
+
+[source,yaml]
+----
+spec:
+  http:
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+        - ip: 1.2.3.4
+        - dns: hulk.example.com
+----

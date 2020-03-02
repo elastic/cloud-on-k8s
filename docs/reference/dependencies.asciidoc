@@ -1,0 +1,305 @@
+// Generated documentation. Please do not edit.
+:page_id: dependencies
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-{page_id}"]
+= Third-party dependencies
+
+This page lists the third-party dependencies used to build {n}.
+
+[float]
+[id="{p}-dependencies-direct"]
+== Direct dependencies
+
+[options="header"]
+|===
+| Name | Version | Licence
+
+| link:https://github.com/Masterminds/sprig[$$github.com/Masterminds/sprig$$] | v2.20.0+incompatible | MIT
+| link:https://github.com/davecgh/go-spew[$$github.com/davecgh/go-spew$$] | v1.1.1 | ISC
+| link:https://github.com/elastic/go-ucfg[$$github.com/elastic/go-ucfg$$] | v0.7.0 | Apache-2.0
+| link:https://github.com/ghodss/yaml[$$github.com/ghodss/yaml$$] | v1.0.0 | MIT
+| link:https://github.com/go-logr/logr[$$github.com/go-logr/logr$$] | v0.1.0 | Apache-2.0
+| link:https://github.com/go-test/deep[$$github.com/go-test/deep$$] | v1.0.3 | MIT
+| link:https://github.com/gobuffalo/flect[$$github.com/gobuffalo/flect$$] | v0.1.5 | MIT
+| link:https://github.com/google/go-cmp[$$github.com/google/go-cmp$$] | v0.3.1 | BSD-3-Clause
+| link:https://github.com/hashicorp/go-multierror[$$github.com/hashicorp/go-multierror$$] | v1.0.0 | MPL-2.0
+| link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/api$$] | v1.0.4 | MPL-2.0
+| link:https://github.com/imdario/mergo[$$github.com/imdario/mergo$$] | v0.3.8 | BSD-3-Clause
+| link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.1 | BSD-2-Clause
+| link:https://github.com/pkg/errors[$$github.com/pkg/errors$$] | v0.8.1 | BSD-2-Clause
+| link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v0.0.5 | Apache-2.0
+| link:https://github.com/spf13/pflag[$$github.com/spf13/pflag$$] | v1.0.5 | BSD-3-Clause
+| link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.4.0 | MIT
+| link:https://github.com/stretchr/testify[$$github.com/stretchr/testify$$] | v1.4.0 | MIT
+| link:https://github.com/tsenart/vegeta[$$github.com/tsenart/vegeta$$] | v12.7.0+incompatible | MIT
+| link:https://go.elastic.co/apm[$$go.elastic.co/apm$$] | v1.7.0 | Apache-2.0
+| link:https://go.elastic.co/apm/module/apmelasticsearch[$$go.elastic.co/apm/module/apmelasticsearch$$] | v1.7.0 | Apache-2.0
+| link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.12.0 | MIT
+| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.0.0-20191011191535-87dc89f01550 | BSD-3-Clause
+| link:https://gopkg.in/yaml.v2[$$gopkg.in/yaml.v2$$] | v2.2.4 | Apache-2.0
+| link:https://gopkg.in/yaml.v3[$$gopkg.in/yaml.v3$$] | v3.0.0-20191120175047-4206685974f2 | MIT
+| link:https://gotest.tools[$$gotest.tools$$] | v2.2.0+incompatible | Apache-2.0
+| link:https://github.com/kubernetes/api[$$k8s.io/api$$] | v0.0.0-20191114100352-16d7abae0d2a | Apache-2.0
+| link:https://github.com/kubernetes/apimachinery[$$k8s.io/apimachinery$$] | v0.0.0-20191028221656-72ed19daf4bb | Apache-2.0
+| link:https://github.com/kubernetes/client-go[$$k8s.io/client-go$$] | v0.0.0-20191114101535-6c5935290e33 | Apache-2.0
+| link:https://github.com/kubernetes/klog[$$k8s.io/klog$$] | v1.0.0 | Apache-2.0
+| link:https://sigs.k8s.io/controller-runtime[$$sigs.k8s.io/controller-runtime$$] | v0.4.0 | Apache-2.0
+| link:https://sigs.k8s.io/controller-tools[$$sigs.k8s.io/controller-tools$$] | v0.2.4 | Apache-2.0
+|===
+
+
+[float]
+[id="{p}-dependencies-indirect"]
+== Indirect dependencies
+
+[options="header"]
+|===
+| Name | Version | Licence
+
+| link:https://cloud.google.com/go[$$cloud.google.com/go$$] | v0.38.0 | Apache-2.0
+| link:https://github.com/Azure/go-ansiterm[$$github.com/Azure/go-ansiterm$$] | v0.0.0-20170929234023-d6e3b3328b78 | MIT
+| link:https://github.com/Azure/go-autorest[$$github.com/Azure/go-autorest/autorest$$] | v0.9.0 | Apache-2.0
+| link:https://github.com/Azure/go-autorest[$$github.com/Azure/go-autorest/autorest/adal$$] | v0.5.0 | Apache-2.0
+| link:https://github.com/Azure/go-autorest[$$github.com/Azure/go-autorest/autorest/date$$] | v0.1.0 | Apache-2.0
+| link:https://github.com/Azure/go-autorest[$$github.com/Azure/go-autorest/autorest/mocks$$] | v0.2.0 | Apache-2.0
+| link:https://github.com/Azure/go-autorest[$$github.com/Azure/go-autorest/logger$$] | v0.1.0 | Apache-2.0
+| link:https://github.com/Azure/go-autorest[$$github.com/Azure/go-autorest/tracing$$] | v0.5.0 | Apache-2.0
+| link:https://github.com/BurntSushi/toml[$$github.com/BurntSushi/toml$$] | v0.3.1 | MIT
+| link:https://github.com/BurntSushi/xgb[$$github.com/BurntSushi/xgb$$] | v0.0.0-20160522181843-27f122750802 | BSD-3-Clause
+| link:https://github.com/DATA-DOG/godog[$$github.com/DATA-DOG/godog$$] | v0.7.13 | BSD-3-Clause
+| link:https://github.com/Masterminds/goutils[$$github.com/Masterminds/goutils$$] | v1.1.0 | Apache-2.0
+| link:https://github.com/Masterminds/semver[$$github.com/Masterminds/semver$$] | v1.4.2 | MIT
+| link:https://github.com/NYTimes/gziphandler[$$github.com/NYTimes/gziphandler$$] | v0.0.0-20170623195520-56545f4a5d46 | Apache-2.0
+| link:https://github.com/OneOfOne/xxhash[$$github.com/OneOfOne/xxhash$$] | v1.2.2 | Apache-2.0
+| link:https://github.com/PuerkitoBio/purell[$$github.com/PuerkitoBio/purell$$] | v1.1.1 | BSD-3-Clause
+| link:https://github.com/PuerkitoBio/urlesc[$$github.com/PuerkitoBio/urlesc$$] | v0.0.0-20170810143723-de5bf2ad4578 | BSD-3-Clause
+| link:https://github.com/alecthomas/template[$$github.com/alecthomas/template$$] | v0.0.0-20190718012654-fb15b899a751 | BSD-3-Clause
+| link:https://github.com/alecthomas/units[$$github.com/alecthomas/units$$] | v0.0.0-20190717042225-c3de453c63f4 | MIT
+| link:https://github.com/armon/consul-api[$$github.com/armon/consul-api$$] | v0.0.0-20180202201655-eb2c6b5be1b6 | MPL-2.0
+| link:https://github.com/armon/go-metrics[$$github.com/armon/go-metrics$$] | v0.0.0-20180917152333-f0300d1749da | MIT
+| link:https://github.com/armon/go-radix[$$github.com/armon/go-radix$$] | v1.0.0 | MIT
+| link:https://github.com/asaskevich/govalidator[$$github.com/asaskevich/govalidator$$] | v0.0.0-20190424111038-f61b66f89f4a | MIT
+| link:https://github.com/beorn7/perks[$$github.com/beorn7/perks$$] | v1.0.1 | MIT
+| link:https://github.com/bgentry/speakeasy[$$github.com/bgentry/speakeasy$$] | v0.1.0 | MIT
+| link:https://github.com/blang/semver[$$github.com/blang/semver$$] | v3.5.0+incompatible | MIT
+| link:https://github.com/bmizerany/perks[$$github.com/bmizerany/perks$$] | v0.0.0-20141205001514-d9a9656a3a4b | MIT
+| link:https://github.com/cespare/xxhash[$$github.com/cespare/xxhash$$] | v1.1.0 | MIT
+| link:https://github.com/client9/misspell[$$github.com/client9/misspell$$] | v0.3.4 | MIT
+| link:https://github.com/coreos/bbolt[$$github.com/coreos/bbolt$$] | v1.3.2 | MIT
+| link:https://github.com/coreos/etcd[$$github.com/coreos/etcd$$] | v3.3.15+incompatible | Apache-2.0
+| link:https://github.com/coreos/go-etcd[$$github.com/coreos/go-etcd$$] | v2.0.0+incompatible | Apache-2.0
+| link:https://github.com/coreos/go-oidc[$$github.com/coreos/go-oidc$$] | v2.1.0+incompatible | Apache-2.0
+| link:https://github.com/coreos/go-semver[$$github.com/coreos/go-semver$$] | v0.3.0 | Apache-2.0
+| link:https://github.com/coreos/go-systemd[$$github.com/coreos/go-systemd$$] | v0.0.0-20190321100706-95778dfbb74e | Apache-2.0
+| link:https://github.com/coreos/pkg[$$github.com/coreos/pkg$$] | v0.0.0-20180928190104-399ea9e2e55f | Apache-2.0
+| link:https://github.com/cpuguy83/go-md2man[$$github.com/cpuguy83/go-md2man$$] | v1.0.10 | MIT
+| link:https://github.com/dgrijalva/jwt-go[$$github.com/dgrijalva/jwt-go$$] | v3.2.0+incompatible | MIT
+| link:https://github.com/dgryski/go-gk[$$github.com/dgryski/go-gk$$] | v0.0.0-20140819190930-201884a44051 | UNKNOWN
+| link:https://github.com/dgryski/go-sip13[$$github.com/dgryski/go-sip13$$] | v0.0.0-20181026042036-e10d5fee7954 | MIT
+| link:https://github.com/docker/docker[$$github.com/docker/docker$$] | v0.7.3-0.20190327010347-be7ac8be2ae0 | Apache-2.0
+| link:https://github.com/docker/go-units[$$github.com/docker/go-units$$] | v0.3.3 | Apache-2.0
+| link:https://github.com/docker/spdystream[$$github.com/docker/spdystream$$] | v0.0.0-20181023171402-6480d4af844c | Apache-2.0
+| link:https://github.com/docopt/docopt-go[$$github.com/docopt/docopt-go$$] | v0.0.0-20180111231733-ee0de3bc6815 | MIT
+| link:https://github.com/elastic/go-sysinfo[$$github.com/elastic/go-sysinfo$$] | v1.1.1 | Apache-2.0
+| link:https://github.com/elastic/go-windows[$$github.com/elastic/go-windows$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/elazarl/goproxy[$$github.com/elazarl/goproxy$$] | v0.0.0-20190711103511-473e67f1d7d2 | BSD-3-Clause
+| link:https://github.com/elazarl/goproxy[$$github.com/elazarl/goproxy/ext$$] | v0.0.0-20190711103511-473e67f1d7d2 | BSD-3-Clause
+| link:https://github.com/emicklei/go-restful[$$github.com/emicklei/go-restful$$] | v2.9.5+incompatible | MIT
+| link:https://github.com/evanphx/json-patch[$$github.com/evanphx/json-patch$$] | v4.5.0+incompatible | BSD-3-Clause
+| link:https://github.com/fatih/color[$$github.com/fatih/color$$] | v1.7.0 | MIT
+| link:https://github.com/fatih/structs[$$github.com/fatih/structs$$] | v1.1.0 | MIT
+| link:https://github.com/fsnotify/fsnotify[$$github.com/fsnotify/fsnotify$$] | v1.4.7 | BSD-3-Clause
+| link:https://github.com/globalsign/mgo[$$github.com/globalsign/mgo$$] | v0.0.0-20181015135952-eeefdecb41b8 | BSD-2-Clause
+| link:https://github.com/go-kit/kit[$$github.com/go-kit/kit$$] | v0.9.0 | MIT
+| link:https://github.com/go-ldap/ldap[$$github.com/go-ldap/ldap$$] | v3.0.2+incompatible | MIT
+| link:https://github.com/go-logfmt/logfmt[$$github.com/go-logfmt/logfmt$$] | v0.4.0 | MIT
+| link:https://github.com/go-logr/zapr[$$github.com/go-logr/zapr$$] | v0.1.0 | Apache-2.0
+| link:https://github.com/go-openapi/analysis[$$github.com/go-openapi/analysis$$] | v0.19.2 | Apache-2.0
+| link:https://github.com/go-openapi/errors[$$github.com/go-openapi/errors$$] | v0.19.2 | Apache-2.0
+| link:https://github.com/go-openapi/jsonpointer[$$github.com/go-openapi/jsonpointer$$] | v0.19.2 | Apache-2.0
+| link:https://github.com/go-openapi/jsonreference[$$github.com/go-openapi/jsonreference$$] | v0.19.2 | Apache-2.0
+| link:https://github.com/go-openapi/loads[$$github.com/go-openapi/loads$$] | v0.19.2 | Apache-2.0
+| link:https://github.com/go-openapi/runtime[$$github.com/go-openapi/runtime$$] | v0.19.0 | Apache-2.0
+| link:https://github.com/go-openapi/spec[$$github.com/go-openapi/spec$$] | v0.19.2 | Apache-2.0
+| link:https://github.com/go-openapi/strfmt[$$github.com/go-openapi/strfmt$$] | v0.19.0 | Apache-2.0
+| link:https://github.com/go-openapi/swag[$$github.com/go-openapi/swag$$] | v0.19.2 | Apache-2.0
+| link:https://github.com/go-openapi/validate[$$github.com/go-openapi/validate$$] | v0.19.2 | Apache-2.0
+| link:https://github.com/go-stack/stack[$$github.com/go-stack/stack$$] | v1.8.0 | MIT
+| link:https://github.com/gogo/protobuf[$$github.com/gogo/protobuf$$] | v1.3.1 | BSD-3-Clause
+| link:https://github.com/golang/glog[$$github.com/golang/glog$$] | v0.0.0-20160126235308-23def4e6c14b | Apache-2.0
+| link:https://github.com/golang/groupcache[$$github.com/golang/groupcache$$] | v0.0.0-20191002201903-404acd9df4cc | Apache-2.0
+| link:https://github.com/golang/mock[$$github.com/golang/mock$$] | v1.2.0 | Apache-2.0
+| link:https://github.com/golang/protobuf[$$github.com/golang/protobuf$$] | v1.3.2 | BSD-3-Clause
+| link:https://github.com/golang/snappy[$$github.com/golang/snappy$$] | v0.0.1 | BSD-3-Clause
+| link:https://github.com/google/btree[$$github.com/google/btree$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/google/gofuzz[$$github.com/google/gofuzz$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/google/martian[$$github.com/google/martian$$] | v2.1.0+incompatible | Apache-2.0
+| link:https://github.com/google/pprof[$$github.com/google/pprof$$] | v0.0.0-20181206194817-3ea8567a2e57 | Apache-2.0
+| link:https://github.com/google/renameio[$$github.com/google/renameio$$] | v0.1.0 | Apache-2.0
+| link:https://github.com/google/uuid[$$github.com/google/uuid$$] | v1.1.1 | BSD-3-Clause
+| link:https://github.com/googleapis/gax-go[$$github.com/googleapis/gax-go/v2$$] | v2.0.4 | BSD-3-Clause
+| link:https://github.com/googleapis/gnostic[$$github.com/googleapis/gnostic$$] | v0.3.1 | Apache-2.0
+| link:https://github.com/gophercloud/gophercloud[$$github.com/gophercloud/gophercloud$$] | v0.1.0 | Apache-2.0
+| link:https://github.com/gorilla/websocket[$$github.com/gorilla/websocket$$] | v1.4.0 | BSD-2-Clause
+| link:https://github.com/gregjones/httpcache[$$github.com/gregjones/httpcache$$] | v0.0.0-20170728041850-787624de3eb7 | MIT
+| link:https://github.com/grpc-ecosystem/go-grpc-middleware[$$github.com/grpc-ecosystem/go-grpc-middleware$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/grpc-ecosystem/go-grpc-prometheus[$$github.com/grpc-ecosystem/go-grpc-prometheus$$] | v1.2.0 | Apache-2.0
+| link:https://github.com/grpc-ecosystem/grpc-gateway[$$github.com/grpc-ecosystem/grpc-gateway$$] | v1.9.0 | BSD-3-Clause
+| link:https://github.com/hashicorp/errwrap[$$github.com/hashicorp/errwrap$$] | v1.0.0 | MPL-2.0
+| link:https://github.com/hashicorp/go-cleanhttp[$$github.com/hashicorp/go-cleanhttp$$] | v0.5.1 | MPL-2.0
+| link:https://github.com/hashicorp/go-hclog[$$github.com/hashicorp/go-hclog$$] | v0.8.0 | MIT
+| link:https://github.com/hashicorp/go-immutable-radix[$$github.com/hashicorp/go-immutable-radix$$] | v1.0.0 | MPL-2.0
+| link:https://github.com/hashicorp/go-plugin[$$github.com/hashicorp/go-plugin$$] | v1.0.1 | MPL-2.0
+| link:https://github.com/hashicorp/go-retryablehttp[$$github.com/hashicorp/go-retryablehttp$$] | v0.5.4 | MPL-2.0
+| link:https://github.com/hashicorp/go-rootcerts[$$github.com/hashicorp/go-rootcerts$$] | v1.0.1 | MPL-2.0
+| link:https://github.com/hashicorp/go-sockaddr[$$github.com/hashicorp/go-sockaddr$$] | v1.0.2 | MPL-2.0
+| link:https://github.com/hashicorp/go-uuid[$$github.com/hashicorp/go-uuid$$] | v1.0.1 | MPL-2.0
+| link:https://github.com/hashicorp/go-version[$$github.com/hashicorp/go-version$$] | v1.1.0 | MPL-2.0
+| link:https://github.com/hashicorp/golang-lru[$$github.com/hashicorp/golang-lru$$] | v0.5.3 | MPL-2.0
+| link:https://github.com/hashicorp/hcl[$$github.com/hashicorp/hcl$$] | v1.0.0 | MPL-2.0
+| link:https://github.com/hashicorp/vault[$$github.com/hashicorp/vault/sdk$$] | v0.1.13 | MPL-2.0
+| link:https://github.com/hashicorp/yamux[$$github.com/hashicorp/yamux$$] | v0.0.0-20181012175058-2f1d1f20f75d | MPL-2.0
+| link:https://github.com/hpcloud/tail[$$github.com/hpcloud/tail$$] | v1.0.0 | MIT
+| link:https://github.com/huandu/xstrings[$$github.com/huandu/xstrings$$] | v1.2.0 | MIT
+| link:https://github.com/inconshreveable/mousetrap[$$github.com/inconshreveable/mousetrap$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/influxdata/tdigest[$$github.com/influxdata/tdigest$$] | v0.0.1 | Apache-2.0
+| link:https://github.com/jessevdk/go-flags[$$github.com/jessevdk/go-flags$$] | v1.4.0 | BSD-3-Clause
+| link:https://github.com/joeshaw/multierror[$$github.com/joeshaw/multierror$$] | v0.0.0-20140124173710-69b34d4ec901 | MIT
+| link:https://github.com/jonboulle/clockwork[$$github.com/jonboulle/clockwork$$] | v0.1.0 | Apache-2.0
+| link:https://github.com/json-iterator/go[$$github.com/json-iterator/go$$] | v1.1.7 | MIT
+| link:https://github.com/jstemmer/go-junit-report[$$github.com/jstemmer/go-junit-report$$] | v0.0.0-20190106144839-af01ea7f8024 | MIT
+| link:https://github.com/julienschmidt/httprouter[$$github.com/julienschmidt/httprouter$$] | v1.2.0 | BSD-3-Clause
+| link:https://github.com/kisielk/errcheck[$$github.com/kisielk/errcheck$$] | v1.2.0 | MIT
+| link:https://github.com/kisielk/gotool[$$github.com/kisielk/gotool$$] | v1.0.0 | BSD-3-Clause
+| link:https://github.com/konsorten/go-windows-terminal-sequences[$$github.com/konsorten/go-windows-terminal-sequences$$] | v1.0.1 | MIT
+| link:https://github.com/kr/logfmt[$$github.com/kr/logfmt$$] | v0.0.0-20140226030751-b84e30acd515 | MIT
+| link:https://github.com/kr/pretty[$$github.com/kr/pretty$$] | v0.1.0 | MIT
+| link:https://github.com/kr/pty[$$github.com/kr/pty$$] | v1.1.5 | MIT
+| link:https://github.com/kr/text[$$github.com/kr/text$$] | v0.1.0 | MIT
+| link:https://github.com/mailru/easyjson[$$github.com/mailru/easyjson$$] | v0.0.0-20190614124828-94de47d64c63 | MIT
+| link:https://github.com/mattn/go-colorable[$$github.com/mattn/go-colorable$$] | v0.1.2 | MIT
+| link:https://github.com/mattn/go-isatty[$$github.com/mattn/go-isatty$$] | v0.0.8 | MIT
+| link:https://github.com/matttproud/golang_protobuf_extensions[$$github.com/matttproud/golang_protobuf_extensions$$] | v1.0.1 | Apache-2.0
+| link:https://github.com/mitchellh/cli[$$github.com/mitchellh/cli$$] | v1.0.0 | MPL-2.0
+| link:https://github.com/mitchellh/copystructure[$$github.com/mitchellh/copystructure$$] | v1.0.0 | MIT
+| link:https://github.com/mitchellh/go-homedir[$$github.com/mitchellh/go-homedir$$] | v1.1.0 | MIT
+| link:https://github.com/mitchellh/go-testing-interface[$$github.com/mitchellh/go-testing-interface$$] | v1.0.0 | MIT
+| link:https://github.com/mitchellh/go-wordwrap[$$github.com/mitchellh/go-wordwrap$$] | v1.0.0 | MIT
+| link:https://github.com/mitchellh/mapstructure[$$github.com/mitchellh/mapstructure$$] | v1.1.2 | MIT
+| link:https://github.com/mitchellh/reflectwalk[$$github.com/mitchellh/reflectwalk$$] | v1.0.0 | MIT
+| link:https://github.com/modern-go/concurrent[$$github.com/modern-go/concurrent$$] | v0.0.0-20180306012644-bacd9c7ef1dd | Apache-2.0
+| link:https://github.com/modern-go/reflect2[$$github.com/modern-go/reflect2$$] | v1.0.1 | Apache-2.0
+| link:https://github.com/munnerz/goautoneg[$$github.com/munnerz/goautoneg$$] | v0.0.0-20120707110453-a547fc61f48d | BSD-3-Clause
+| link:https://github.com/mwitkow/go-conntrack[$$github.com/mwitkow/go-conntrack$$] | v0.0.0-20161129095857-cc309e4a2223 | Apache-2.0
+| link:https://github.com/mxk/go-flowrate[$$github.com/mxk/go-flowrate$$] | v0.0.0-20140419014527-cca7078d478f | BSD-3-Clause
+| link:https://github.com/oklog/run[$$github.com/oklog/run$$] | v1.0.0 | Apache-2.0
+| link:https://github.com/oklog/ulid[$$github.com/oklog/ulid$$] | v1.3.1 | Apache-2.0
+| link:https://github.com/onsi/ginkgo[$$github.com/onsi/ginkgo$$] | v1.10.1 | MIT
+| link:https://github.com/onsi/gomega[$$github.com/onsi/gomega$$] | v1.7.0 | MIT
+| link:https://github.com/pascaldekloe/goe[$$github.com/pascaldekloe/goe$$] | v0.1.0 | Public Domain
+| link:https://github.com/pborman/uuid[$$github.com/pborman/uuid$$] | v1.2.0 | BSD-3-Clause
+| link:https://github.com/pelletier/go-toml[$$github.com/pelletier/go-toml$$] | v1.4.0 | MIT
+| link:https://github.com/peterbourgon/diskv[$$github.com/peterbourgon/diskv$$] | v2.0.1+incompatible | MIT
+| link:https://github.com/pierrec/lz4[$$github.com/pierrec/lz4$$] | v2.0.5+incompatible | BSD-3-Clause
+| link:https://github.com/pmezard/go-difflib[$$github.com/pmezard/go-difflib$$] | v1.0.0 | BSD-3-Clause
+| link:https://github.com/posener/complete[$$github.com/posener/complete$$] | v1.1.1 | MIT
+| link:https://github.com/pquerna/cachecontrol[$$github.com/pquerna/cachecontrol$$] | v0.0.0-20171018203845-0dec1b30a021 | Apache-2.0
+| link:https://github.com/prometheus/client_golang[$$github.com/prometheus/client_golang$$] | v1.1.0 | Apache-2.0
+| link:https://github.com/prometheus/client_model[$$github.com/prometheus/client_model$$] | v0.0.0-20190812154241-14fe0d1b01d4 | Apache-2.0
+| link:https://github.com/prometheus/common[$$github.com/prometheus/common$$] | v0.7.0 | Apache-2.0
+| link:https://github.com/prometheus/procfs[$$github.com/prometheus/procfs$$] | v0.0.5 | Apache-2.0
+| link:https://github.com/prometheus/tsdb[$$github.com/prometheus/tsdb$$] | v0.7.1 | Apache-2.0
+| link:https://github.com/remyoudompheng/bigfft[$$github.com/remyoudompheng/bigfft$$] | v0.0.0-20170806203942-52369c62f446 | BSD-3-Clause
+| link:https://github.com/rogpeppe/fastuuid[$$github.com/rogpeppe/fastuuid$$] | v0.0.0-20150106093220-6724a57986af | BSD-3-Clause
+| link:https://github.com/rogpeppe/go-charset[$$github.com/rogpeppe/go-charset$$] | v0.0.0-20180617210344-2471d30d28b4 | BSD-2-Clause
+| link:https://github.com/rogpeppe/go-internal[$$github.com/rogpeppe/go-internal$$] | v1.3.0 | BSD-3-Clause
+| link:https://github.com/russross/blackfriday[$$github.com/russross/blackfriday$$] | v1.5.2 | BSD-2-Clause
+| link:https://github.com/ryanuber/columnize[$$github.com/ryanuber/columnize$$] | v2.1.0+incompatible | MIT
+| link:https://github.com/ryanuber/go-glob[$$github.com/ryanuber/go-glob$$] | v1.0.0 | MIT
+| link:https://github.com/santhosh-tekuri/jsonschema[$$github.com/santhosh-tekuri/jsonschema$$] | v1.2.4 | BSD-3-Clause
+| link:https://github.com/sirupsen/logrus[$$github.com/sirupsen/logrus$$] | v1.4.2 | MIT
+| link:https://github.com/soheilhy/cmux[$$github.com/soheilhy/cmux$$] | v0.1.4 | Apache-2.0
+| link:https://github.com/spaolacci/murmur3[$$github.com/spaolacci/murmur3$$] | v0.0.0-20180118202830-f09979ecbc72 | BSD-3-Clause
+| link:https://github.com/spf13/afero[$$github.com/spf13/afero$$] | v1.2.2 | Apache-2.0
+| link:https://github.com/spf13/cast[$$github.com/spf13/cast$$] | v1.3.0 | MIT
+| link:https://github.com/spf13/jwalterweatherman[$$github.com/spf13/jwalterweatherman$$] | v1.1.0 | MIT
+| link:https://github.com/streadway/quantile[$$github.com/streadway/quantile$$] | v0.0.0-20150917103942-b0c588724d25 | BSD-2-Clause
+| link:https://github.com/stretchr/objx[$$github.com/stretchr/objx$$] | v0.2.0 | MIT
+| link:https://github.com/tmc/grpc-websocket-proxy[$$github.com/tmc/grpc-websocket-proxy$$] | v0.0.0-20190109142713-0ad062ec5ee5 | MIT
+| link:https://github.com/ugorji/go[$$github.com/ugorji/go$$] | v1.1.4 | MIT
+| link:https://github.com/ugorji/go[$$github.com/ugorji/go/codec$$] | v0.0.0-20181204163529-d75b2dcb6bc8 | MIT
+| link:https://github.com/xiang90/probing[$$github.com/xiang90/probing$$] | v0.0.0-20190116061207-43a291ad63a2 | MIT
+| link:https://github.com/xordataexchange/crypt[$$github.com/xordataexchange/crypt$$] | v0.0.3-0.20170626215501-b2862e3d0a77 | MIT
+| link:https://go.elastic.co/apm/module/apmhttp[$$go.elastic.co/apm/module/apmhttp$$] | v1.7.0 | Apache-2.0
+| link:https://go.elastic.co/fastjson[$$go.elastic.co/fastjson$$] | v1.0.0 | MIT
+| link:https://go.etcd.io/bbolt[$$go.etcd.io/bbolt$$] | v1.3.2 | MIT
+| link:https://go.opencensus.io[$$go.opencensus.io$$] | v0.21.0 | Apache-2.0
+| link:https://go.uber.org/atomic[$$go.uber.org/atomic$$] | v1.5.0 | MIT
+| link:https://go.uber.org/multierr[$$go.uber.org/multierr$$] | v1.3.0 | MIT
+| link:https://go.uber.org/tools[$$go.uber.org/tools$$] | v0.0.0-20190618225709-2cfd321de3ee | MIT
+| link:https://golang.org/x/exp[$$golang.org/x/exp$$] | v0.0.0-20190312203227-4b39c73a6495 | BSD-3-Clause
+| link:https://golang.org/x/image[$$golang.org/x/image$$] | v0.0.0-20190227222117-0694c2d4d067 | BSD-3-Clause
+| link:https://golang.org/x/lint[$$golang.org/x/lint$$] | v0.0.0-20190930215403-16217165b5de | BSD-3-Clause
+| link:https://golang.org/x/mobile[$$golang.org/x/mobile$$] | v0.0.0-20190312151609-d3739f865fa6 | BSD-3-Clause
+| link:https://golang.org/x/mod[$$golang.org/x/mod$$] | v0.0.0-20190513183733-4bf6d317e70e | BSD-3-Clause
+| link:https://golang.org/x/net[$$golang.org/x/net$$] | v0.0.0-20191011234655-491137f69257 | BSD-3-Clause
+| link:https://golang.org/x/oauth2[$$golang.org/x/oauth2$$] | v0.0.0-20190604053449-0f29369cfe45 | BSD-3-Clause
+| link:https://golang.org/x/sync[$$golang.org/x/sync$$] | v0.0.0-20190911185100-cd5d95a43a6e | BSD-3-Clause
+| link:https://golang.org/x/sys[$$golang.org/x/sys$$] | v0.0.0-20191204072324-ce4227a45e2e | BSD-3-Clause
+| link:https://golang.org/x/text[$$golang.org/x/text$$] | v0.3.2 | BSD-3-Clause
+| link:https://golang.org/x/time[$$golang.org/x/time$$] | v0.0.0-20190921001708-c4c64cad1fd0 | BSD-3-Clause
+| link:https://golang.org/x/tools[$$golang.org/x/tools$$] | v0.0.0-20191029190741-b9c20aec41a5 | BSD-3-Clause
+| link:https://golang.org/x/xerrors[$$golang.org/x/xerrors$$] | v0.0.0-20191011141410-1b5146add898 | BSD-3-Clause
+| link:https://gomodules.xyz/jsonpatch/v2[$$gomodules.xyz/jsonpatch/v2$$] | v2.0.1 | Apache-2.0
+| link:https://github.com/gonum/gonum[$$gonum.org/v1/gonum$$] | v0.0.0-20190331200053-3d26580ed485 | BSD-3-Clause
+| link:https://github.com/gonum/netlib[$$gonum.org/v1/netlib$$] | v0.0.0-20190331212654-76723241ea4e | BSD-3-Clause
+| link:https://google.golang.org/api[$$google.golang.org/api$$] | v0.4.0 | BSD-3-Clause
+| link:https://google.golang.org/appengine[$$google.golang.org/appengine$$] | v1.6.5 | Apache-2.0
+| link:https://google.golang.org/genproto[$$google.golang.org/genproto$$] | v0.0.0-20190502173448-54afdca5d873 | Apache-2.0
+| link:https://google.golang.org/grpc[$$google.golang.org/grpc$$] | v1.23.0 | Apache-2.0
+| link:https://gopkg.in/alecthomas/kingpin.v2[$$gopkg.in/alecthomas/kingpin.v2$$] | v2.2.6 | MIT
+| link:https://gopkg.in/asn1-ber.v1[$$gopkg.in/asn1-ber.v1$$] | v1.0.0-20181015200546-f715ec2f112d | MIT
+| link:https://gopkg.in/check.v1[$$gopkg.in/check.v1$$] | v1.0.0-20190902080502-41f04d3bba15 | BSD-2-Clause
+| link:https://gopkg.in/errgo.v2[$$gopkg.in/errgo.v2$$] | v2.1.0 | BSD-3-Clause
+| link:https://gopkg.in/fsnotify.v1[$$gopkg.in/fsnotify.v1$$] | v1.4.7 | BSD-3-Clause
+| link:https://gopkg.in/inf.v0[$$gopkg.in/inf.v0$$] | v0.9.1 | BSD-3-Clause
+| link:https://gopkg.in/natefinch/lumberjack.v2[$$gopkg.in/natefinch/lumberjack.v2$$] | v2.0.0 | MIT
+| link:https://gopkg.in/resty.v1[$$gopkg.in/resty.v1$$] | v1.12.0 | MIT
+| link:https://gopkg.in/square/go-jose.v2[$$gopkg.in/square/go-jose.v2$$] | v2.3.1 | Apache-2.0
+| link:https://gopkg.in/tomb.v1[$$gopkg.in/tomb.v1$$] | v1.0.0-20141024135613-dd632973f1e7 | BSD-3-Clause
+| link:https://honnef.co/go/tools[$$honnef.co/go/tools$$] | v0.0.1-2019.2.3 | MIT
+| link:https://gitlab.howett.net/go/plist[$$howett.net/plist$$] | v0.0.0-20181124034731-591f970eefbb | BSD-2-Clause
+| link:https://github.com/kubernetes/apiextensions-apiserver[$$k8s.io/apiextensions-apiserver$$] | v0.0.0-20190918161926-8f644eb6e783 | Apache-2.0
+| link:https://github.com/kubernetes/apiserver[$$k8s.io/apiserver$$] | v0.0.0-20190918160949-bfa5e2e684ad | Apache-2.0
+| link:https://github.com/kubernetes/code-generator[$$k8s.io/code-generator$$] | v0.0.0-20190912054826-cd179ad6a269 | Apache-2.0
+| link:https://github.com/kubernetes/component-base[$$k8s.io/component-base$$] | v0.0.0-20190918160511-547f6c5d7090 | Apache-2.0
+| link:https://github.com/kubernetes/gengo[$$k8s.io/gengo$$] | v0.0.0-20190822140433-26a664648505 | Apache-2.0
+| link:https://github.com/kubernetes/kube-openapi[$$k8s.io/kube-openapi$$] | v0.0.0-20190918143330-0270cf2f1c1d | Apache-2.0
+| link:https://github.com/kubernetes/utils[$$k8s.io/utils$$] | v0.0.0-20191010214722-8d271d903fe4 | Apache-2.0
+| link:https://modernc.org/cc[$$modernc.org/cc$$] | v1.0.0 | BSD-2-Clause
+| link:https://modernc.org/golex[$$modernc.org/golex$$] | v1.0.0 | BSD-2-Clause
+| link:https://modernc.org/mathutil[$$modernc.org/mathutil$$] | v1.0.0 | BSD-2-Clause
+| link:https://modernc.org/strutil[$$modernc.org/strutil$$] | v1.0.0 | BSD-2-Clause
+| link:https://modernc.org/xc[$$modernc.org/xc$$] | v1.0.0 | BSD-2-Clause
+| link:https://sigs.k8s.io/structured-merge-diff[$$sigs.k8s.io/structured-merge-diff$$] | v0.0.0-20190817042607-6149e4549fca | Apache-2.0
+| link:https://sigs.k8s.io/testing_frameworks[$$sigs.k8s.io/testing_frameworks$$] | v0.1.2 | Apache-2.0
+| link:https://sigs.k8s.io/yaml[$$sigs.k8s.io/yaml$$] | v1.1.0 | MIT
+|===
+
+
+[float]
+[id="{p}-dependencies-image"]
+== Container image dependencies
+
+Dependencies included in the {n} container image.
+
+[options="header",format="csv"]
+|===
+Name, Version, Licence, URL
+include::container-image-dependencies.csv[]
+|===

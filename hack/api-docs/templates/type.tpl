@@ -3,7 +3,7 @@
 {{- if asciidocShouldRenderType $type -}}
 
 [id="{{ asciidocTypeID $type | asciidocRenderAnchorID }}"]
-==== {{ $type.Name  }} {{ if $type.IsAlias }}({{ asciidocRenderTypeLink $type.UnderlyingType  }}) {{ end }}
+=== {{ $type.Name  }} {{ if $type.IsAlias }}({{ asciidocRenderTypeLink $type.UnderlyingType  }}) {{ end }}
 
 {{ $type.Doc }}
 

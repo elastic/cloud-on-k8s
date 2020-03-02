@@ -111,6 +111,9 @@ generate-api-docs:
 generate-notice-file:
 	@hack/licence-detector/generate-notice.sh
 
+generate-image-dependencies:
+	@hack/licence-detector/generate-image-deps.sh
+
 elastic-operator: generate
 	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
@@ -321,6 +324,7 @@ docker-push:
 ifeq ($(REGISTRY), docker.elastic.co)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
+# this is used by the cloud-on-k8s-e2e-tests-ocp job
 ifeq ($(REGISTRY), eu.gcr.io)
 	@ gcloud auth configure-docker --quiet
 endif
@@ -360,6 +364,10 @@ e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
+ifeq ($(REGISTRY), eu.gcr.io)
+	# this is used by the cloud-on-k8s-e2e-tests-ocp job
+	@ gcloud auth configure-docker --quiet
+endif
 	docker push $(E2E_IMG)
 
 e2e-run:
@@ -484,6 +492,7 @@ else
 	$(MAKE) go-generate docker-build
 endif
 
+kind-e2e: export E2E_JSON := true
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build

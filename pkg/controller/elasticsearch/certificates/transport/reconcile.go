@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"reflect"
 	"strings"
+	"time"
+
+	"github.com/pkg/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -33,21 +36,21 @@ func ReconcileTransportCertificatesSecrets(
 	ca *certificates.CA,
 	es esv1.Elasticsearch,
 	rotationParams certificates.RotationParams,
-) (reconcile.Result, error) {
+) *reconciler.Results {
+	results := &reconciler.Results{}
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)
 	ns := client.InNamespace(es.Namespace)
 	if err := c.List(&pods, matchLabels, ns); err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(errors.WithStack(err))
 	}
 
 	secret, err := ensureTransportCertificatesSecretExists(c, scheme, es)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err)
 	}
 	// defensive copy of the current secret so we can check whether we need to update later on
 	currentTransportCertificatesSecret := secret.DeepCopy()
-
 	for _, pod := range pods.Items {
 		if pod.Status.PodIP == "" {
 			log.Info("Skipping pod because it has no IP yet", "namespace", pod.Namespace, "pod_name", pod.Name)
@@ -57,8 +60,17 @@ func ReconcileTransportCertificatesSecrets(
 		if err := ensureTransportCertificatesSecretContentsForPod(
 			es, secret, pod, ca, rotationParams,
 		); err != nil {
-			return reconcile.Result{}, err
+			return results.WithError(err)
 		}
+		certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
+		cert := extractTransportCert(*secret, pod, certCommonName)
+		if cert == nil {
+			return results.WithError(errors.New("No certificate found for pod"))
+		}
+		// handle cert expiry via requeue
+		results.WithResult(reconcile.Result{
+			RequeueAfter: certificates.ShouldRotateIn(time.Now(), cert.NotAfter, rotationParams.RotateBefore),
+		})
 	}
 
 	// remove certificates and keys for deleted pods
@@ -95,14 +107,14 @@ func ReconcileTransportCertificatesSecrets(
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
 		if err := c.Update(secret); err != nil {
-			return reconcile.Result{}, err
+			return results.WithError(err)
 		}
 		for _, pod := range pods.Items {
 			annotation.MarkPodAsUpdated(c, pod)
 		}
 	}
 
-	return reconcile.Result{}, nil
+	return results
 }
 
 // ensureTransportCertificatesSecretExists ensures the existence and Labels of the Secret that at a later point

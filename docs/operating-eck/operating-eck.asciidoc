@@ -1,0 +1,25 @@
+:page_id: operating-eck
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Operating ECK
+
+[partintro]
+--
+- <<{p}-operator-config>>
+- <<{p}-webhook>>
+- <<{p}-licensing>>
+- <<{p}-troubleshooting>>
+- <<{p}-upgrading-eck>>
+- <<{p}-uninstalling-eck>>
+--
+
+include::operator-config.asciidoc[leveloffset=+1]
+include::webhook.asciidoc[leveloffset=+1]
+include::licensing.asciidoc[leveloffset=+1]
+include::troubleshooting.asciidoc[leveloffset=+1]
+include::upgrading-eck.asciidoc[leveloffset=+1]
+include::uninstalling-eck.asciidoc[leveloffset=+1]
