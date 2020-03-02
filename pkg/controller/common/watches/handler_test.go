@@ -7,7 +7,6 @@ package watches
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/workqueue"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -309,7 +309,7 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	}))
 
 	// let's make object 1 the owner of object 2
-	require.NoError(t, reconciler.SetControllerReference(testObject1, testObject2, scheme.Scheme))
+	require.NoError(t, controllerutil.SetControllerReference(testObject1, testObject2, scheme.Scheme))
 	// an update on object 2 should enqueue a request for object 1 (the owner)
 	d.Update(event.UpdateEvent{
 		MetaOld:   testObject2.GetObjectMeta(),
@@ -408,7 +408,7 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 	}))
 	// END FIXTURES
 
-	require.NoError(t, reconciler.SetControllerReference(testObject1, testObject2, scheme.Scheme))
+	require.NoError(t, controllerutil.SetControllerReference(testObject1, testObject2, scheme.Scheme))
 
 	d.Create(event.CreateEvent{
 		Meta:   testObject1.GetObjectMeta(),

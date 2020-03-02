@@ -10,12 +10,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -152,7 +152,7 @@ func setVolumeClaimsControllerReference(
 		// `SetControllerReference` does a safety check on object vs. owner namespace mismatch to cover common errors,
 		// but in this particular case we don't need to set a namespace in the claim template.
 		claim.Namespace = es.Namespace
-		if err := reconciler.SetControllerReference(&es, &claim, scheme); err != nil {
+		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
 			return nil, err
 		}
 		claim.Namespace = ""
