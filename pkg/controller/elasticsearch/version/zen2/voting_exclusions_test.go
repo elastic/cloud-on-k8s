@@ -219,3 +219,11 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 		})
 	}
 }
+
+func Test_serializeExcludedNodesForAnnotation1(t *testing.T) {
+	nodes := []string{"nodeA", "nodeC", "nodeB"}
+	// should be sorted alphabetically in a single comma-separated string
+	require.Equal(t, "nodeA,nodeB,nodeC", serializeExcludedNodesForAnnotation(nodes))
+	// initial slice should not be mutated
+	require.Equal(t, []string{"nodeA", "nodeC", "nodeB"}, nodes)
+}

@@ -6,6 +6,7 @@ package zen2
 
 import (
 	"context"
+	"sort"
 	"strings"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,8 +27,13 @@ const (
 	VotingConfigExclusionsAnnotationName = "elasticsearch.k8s.elastic.co/voting-config-exclusions"
 )
 
+// serializeExcludedNodesForAnnotation returns a sorted comma-separated representation of the given slice.
 func serializeExcludedNodesForAnnotation(excludedNodes []string) string {
-	return strings.Join(excludedNodes, ",")
+	// sort a copy to not mutate the given slice
+	sliceCopy := make([]string, len(excludedNodes))
+	copy(sliceCopy, excludedNodes)
+	sort.Strings(sliceCopy)
+	return strings.Join(sliceCopy, ",")
 }
 
 // votingConfigAnnotationMatches returns true if the voting config exclusions annotation value
