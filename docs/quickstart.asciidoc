@@ -1,11 +1,14 @@
+:page_id: quickstart
 ifdef::env-github[]
 ****
-link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-quickstart.html[View this document on the Elastic website]
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
 ****
 endif::[]
-[id="{p}-quickstart"]
-== Quickstart
+[id="{p}-{page_id}"]
+= Quickstart
 
+[partintro]
+--
 With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your Elasticsearch cluster, and much more.
 
 Eager to get started? This quick guide shows you how to:
@@ -18,13 +21,13 @@ Eager to get started? This quick guide shows you how to:
 * <<{p}-check-samples,Check out the samples>>
 
 **Supported versions**
---
+
 include::supported-versions.asciidoc[]
+
 --
 
-[float]
 [id="{p}-deploy-eck"]
-=== Deploy ECK in your Kubernetes cluster
+== Deploy ECK in your Kubernetes cluster
 
 IMPORTANT: Read the <<{p}-upgrading-eck,upgrade notes>> first if you are attempting to upgrade an existing ECK deployment.
 
@@ -46,9 +49,8 @@ kubectl apply -f https://download.elastic.co/downloads/eck/{eck_version}/all-in-
 kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 ----
 
-[float]
 [id="{p}-deploy-elasticsearch"]
-=== Deploy an Elasticsearch cluster
+== Deploy an Elasticsearch cluster
 
 Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one Elasticsearch node:
 
@@ -79,7 +81,7 @@ The operator automatically creates and manages Kubernetes resources to achieve t
 CAUTION: Setting `node.store.allow_mmap: false` has performance implications and should be tuned for production workloads as described in the <<{p}-virtual-memory>> section.
 
 [float]
-==== Monitor cluster health and creation progress
+=== Monitor cluster health and creation progress
 
 Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including health, version and number of nodes:
 
@@ -117,7 +119,7 @@ kubectl logs -f quickstart-es-default-0
 ----
 
 [float]
-==== Request Elasticsearch access
+=== Request Elasticsearch access
 
 A ClusterIP Service is automatically created for your cluster:
 
@@ -177,9 +179,8 @@ NOTE: Disabling certificate verification using the `-k` flag is not recommended 
 }
 ----
 
-[float]
 [id="{p}-deploy-kibana"]
-=== Deploy a Kibana instance
+== Deploy a Kibana instance
 
 To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance go through the following steps.
 
@@ -241,9 +242,8 @@ Login as the `elastic` user. The password can be obtained with the following com
 kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode; echo
 ----
 
-[float]
 [id="{p}-upgrade-deployment"]
-=== Upgrade your deployment
+== Upgrade your deployment
 
 You can add and modify most elements of the original cluster specification provided that they translate to valid transformations of the underlying Kubernetes resources (e.g., existing volume claims cannot be resized). The operator will attempt to apply your changes with minimal disruption to the existing cluster. You should ensure that the Kubernetes cluster has sufficient resources to accommodate the changes (extra storage space, sufficient memory and CPU resources to temporarily spin up new pods etc.).
 
@@ -269,16 +269,14 @@ spec:
 EOF
 ----
 
-[float]
 [id="{p}-persistent-storage"]
-=== Use persistent storage
+== Use persistent storage
 
 The cluster that you deployed in this quickstart guide only allocates a persistent volume of 1GiB for storage using the default link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] defined for the Kubernetes cluster. You will most likely want to have more control over this for production workloads. Refer to <<{p}-volume-claim-templates>> for more information.
 
 
-[float]
 [id="{p}-check-samples"]
-=== Check out the samples
+== Check out the samples
 
 You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/master/config/samples[in the project repository].
 To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/master/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample].

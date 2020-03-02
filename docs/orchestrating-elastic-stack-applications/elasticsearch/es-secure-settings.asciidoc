@@ -1,0 +1,35 @@
+:parent_page_id: elasticsearch-specification
+:page_id: es-secure-settings
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Secure settings
+
+You can specify link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[secure settings] with Kubernetes secrets.
+The secrets should contain a key-value pair for each secure setting you want to add. ECK automatically injects these settings into the keystore on each Elasticsearch node before it starts Elasticsearch.
+
+[source,yaml]
+----
+spec:
+  secureSettings:
+  - secretName: one-secure-settings-secret
+  - secretName: two-secure-settings-secret
+----
+
+You can export a subset of secret keys and also project keys to specific paths using the `entries`, `key` and `path` fields:
+
+[source,yaml]
+----
+spec:
+  secureSettings:
+  - secretName: your-secure-settings-secret
+    entries:
+    - key: key1
+    - key: key2
+      path: newkey2
+----
+
+See <<{p}-snapshots,How to create automated snapshots>> for an example use case.

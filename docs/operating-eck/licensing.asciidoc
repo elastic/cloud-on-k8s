@@ -1,0 +1,89 @@
+:page_id: licensing
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Manage licenses in ECK
+
+When you install the default distribution of ECK, you receive a Basic license. Any Elastic stack application you manage through ECK will also be Basic licensed. Go to https://www.elastic.co/subscriptions to see which features are included in the Basic license for free.
+
+== Start a trial
+If you want to try the features included in the Enterprise subscription, you can start a 30-day trial. To start a trial create a Kubernetes secret as shown below. Note that it must be in the same namespace as the operator:
+
+[source,yaml]
+----
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: eck-trial-license
+  namespace: elastic-system
+  labels:
+    license.k8s.elastic.co/type: enterprise-trial
+  annotations:
+    elastic.co/eula: accepted <1>
+EOF
+----
+
+<1> By setting this annotation to `accepted` you are expressing that you have accepted the Elastic EULA which can be found at https://www.elastic.co/eula.
+
+NOTE: You can initiate a trial only if a trial has not previously been activated.
+
+At the end of the trial period, the Platinum and Enterprise features operate in a link:https://www.elastic.co/guide/en/elastic-stack-overview/current/license-expiration.html[degraded mode]. You can revert to a Basic license, extend the trial, or purchase an Enterprise subscription.
+
+== Add a license
+If you have a valid Enterprise subscription you will receive a license as a JSON file.
+
+NOTE: Please note that ECK will only accept Enterprise licenses. You can not apply a single Platinum or Gold cluster license to ECK.
+
+To add the license to your ECK installation, create a Kubernetes secret of the following form:
+
+[source,yaml]
+----
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    license.k8s.elastic.co/scope: operator <1>
+  name: eck-license
+type: Opaque
+data:
+  license: "JSON license in base64 format"  <2>
+----
+
+<1> This label is required for ECK to identify your license secret
+<2> The license file can have any name
+
+You can easily create this secret using `kubectl` 's built-in support for secrets.  Note that it must be in the same namespace as the operator:
+
+[source,shell script]
+----
+kubectl create secret generic eck-license --from-file=my-license-file.json -n elastic-system
+kubectl label secret eck-license "license.k8s.elastic.co/scope"=operator -n elastic-system
+----
+
+NOTE: After you install a license into ECK, all the Elastic stack applications you manage with ECK will have all Platinum and Enterprise features enabled. Applications created before you installed the license are upgraded to Platinum or Enterprise features without interruption of service after a short delay.
+
+== Update your license
+Before your current Enterprise license expires, you will receive a new Enterprise license from Elastic (provided your subscription is valid).
+
+To avoid any unintended downgrade of individual Elasticsearch clusters to a Basic license while installing the new license we recommend you install the new Enterprise license as a new Kubernetes secret next to your existing Enterprise license. Just replace `eck-license` with a different name from the examples above. ECK will use the correct license automatically.
+
+Once you have created the new license secret you can safely delete the old license secret.
+
+== Get usage data
+The operator periodically writes the total amount of Elastic resources under management to a config map. It is named `elastic-licensing` in the same namespace as the operator. Here is an example of retrieving the data:
+
+[source,shell]
+----
+> kubectl -n elastic-system get configmap elastic-licensing -o json | jq .data
+{
+  "eck_license_level": "enterprise",
+  "enterprise_resource_units": "1",
+  "max_enterprise_resource_units": "10",
+  "timestamp": "2020-01-03T23:38:20Z",
+  "total_managed_memory": "3.22GB"
+}
+----
