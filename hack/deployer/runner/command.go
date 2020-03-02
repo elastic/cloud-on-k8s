@@ -6,6 +6,7 @@ package runner
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -64,7 +65,7 @@ func (c *Command) OutputContainsAny(tokens ...string) (bool, error) {
 		}
 	}
 
-	return false, err
+	return false, fmt.Errorf("%s with err: %w", out, err)
 }
 
 func (c *Command) OutputList() (list []string, err error) {

@@ -43,6 +43,8 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
+	awsAccessKey       = "AWS_ACCESS_KEY"
+	awsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
 )
 
 func init() {
@@ -75,24 +77,28 @@ type EKSDriver struct {
 	ctx     map[string]interface{}
 }
 
+func (e *EKSDriver) newCmd(cmd string) *Command {
+	return NewCommand(cmd).
+		AsTemplate(e.ctx).
+		WithVariable(awsAccessKey, e.ctx[awsAccessKey].(string)).
+		WithVariable(awsSecretAccessKey, e.ctx[awsSecretAccessKey].(string))
+}
+
 func (e *EKSDriver) Execute() error {
 	defer e.runCleanup()
+	if err := e.fetchSecrets(); err != nil {
+		return fmt.Errorf("while fetching secrets %w", err)
+	}
+
 	exists, err := e.clusterExists()
 	if err != nil {
 		return fmt.Errorf("while checking cluster exists %w", err)
 	}
-
-	if err = e.fetchSecrets(); err != nil {
-		return fmt.Errorf("while fetching secrets %w", err)
-	}
-
 	switch e.plan.Operation {
 	case DeleteAction:
 		if exists {
 			log.Printf("Deleting cluster ...")
-			return NewCommand("eksctl delete cluster --name {{.ClusterName}} --region {{.Region}}").
-				AsTemplate(e.ctx).
-				Run()
+			return e.newCmd("eksctl delete cluster --name {{.ClusterName}} --region {{.Region}}").Run()
 		}
 		log.Printf("not deleting cluster as it does not exist")
 	case CreateAction:
@@ -110,7 +116,7 @@ func (e *EKSDriver) Execute() error {
 			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0644); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
-			return NewCommand(`eksctl create cluster -f {{.CreateCfgFile}}`).AsTemplate(e.ctx).Run()
+			return e.newCmd(`eksctl create cluster -f {{.CreateCfgFile}}`).Run()
 		}
 		log.Printf("not creating cluster as it already exists")
 	}
@@ -148,8 +154,7 @@ func (e *EKSDriver) GetCredentials() error {
 
 func (e *EKSDriver) clusterExists() (bool, error) {
 	log.Printf("Checking if cluster exists ...")
-	cmd := "eksctl get cluster --name {{.ClusterName}} --region {{.Region}}"
-	notFound, err := NewCommand(cmd).AsTemplate(e.ctx).WithoutStreaming().OutputContainsAny("No cluster found")
+	notFound, err := e.newCmd("eksctl get cluster --name {{.ClusterName}} --region {{.Region}}").WithoutStreaming().OutputContainsAny("No cluster found")
 	if notFound {
 		return false, nil
 	}
@@ -166,8 +171,8 @@ func (e *EKSDriver) fetchSecrets() error {
 		"instance-profile": "InstanceProfileARN",
 		"instance-role":    "InstanceRoleARN",
 		"service-role":     "ServiceRoleARN",
-		"access-key":       "AWS_ACCESS_KEY",
-		"secret-key":       "AWS_SECRET_ACCESS_KEY",
+		"access-key":       awsAccessKey,
+		"secret-key":       awsSecretAccessKey,
 	} {
 		val, err := client.Get(EKSVaultPath, vaultKey)
 		if err != nil {
