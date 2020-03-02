@@ -645,7 +645,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-remotecluster"]
-==== RemoteCluster 
+=== RemoteCluster 
 
 
 
