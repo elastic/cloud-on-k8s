@@ -76,7 +76,7 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 			case runner.EKSDriverID:
-				token, err := GetEnvVar("GHTOKEN")
+				token, err := GetEnvVar("GITHUB_TOKEN")
 				if err != nil {
 					return err
 				}
