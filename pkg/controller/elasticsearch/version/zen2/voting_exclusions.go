@@ -22,7 +22,7 @@ var (
 
 const (
 	// VotingConfigExclusionsAnnotationName is an annotation that stores the last applied voting config exclusions.
-	// An empty value means no voting config exclusions is set.
+	// An empty value means no voting config exclusions are set.
 	VotingConfigExclusionsAnnotationName = "elasticsearch.k8s.elastic.co/voting-config-exclusions"
 )
 
