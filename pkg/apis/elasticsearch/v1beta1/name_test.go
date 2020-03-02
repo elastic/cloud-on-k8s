@@ -46,6 +46,13 @@ func TestValidate(t *testing.T) {
 			wantErr:       true,
 			wantErrMsg:    "invalid nodeSet name",
 		},
+		{
+			name:          "duplicated nodeSet names",
+			esName:        "test-es",
+			nodeSpecNames: []string{"default", "default"},
+			wantErr:       true,
+			wantErrMsg:    "duplicated nodeSet name",
+		},
 	}
 
 	for _, tc := range testCases {
