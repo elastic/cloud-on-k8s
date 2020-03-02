@@ -9,6 +9,8 @@ endif::[]
 
 - <<{p}-api-reference>>
 - <<{p}-glossary>>
+- <<{p}-dependencies>>
 
 include::api-docs.asciidoc[leveloffset=+1]
 include::glossary.asciidoc[leveloffset=+1]
+include::dependencies.asciidoc[leveloffset=+1]

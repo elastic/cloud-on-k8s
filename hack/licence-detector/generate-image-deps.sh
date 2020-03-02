@@ -13,7 +13,7 @@ PROJECT_DIR=${SCRIPT_DIR}/../..
 
 IMAGE_NAME=${IMAGE:-docker.elastic.co/eck/eck-operator}
 IMAGE_TAG=${IMAGE_TAG:-1.0.1}
-OUT_FILE=${OUT_FILE:-"${PROJECT_DIR}/docs/container-image-dependencies.csv"}
+OUT_FILE=${OUT_FILE:-"${PROJECT_DIR}/docs/reference/container-image-dependencies.csv"}
 SCRATCH_DIR=${SCRATCH_DIR:-$(mktemp -d)}
 
 install_tern() {
