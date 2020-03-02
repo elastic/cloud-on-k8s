@@ -6,22 +6,22 @@ endif::[]
 [id="{p}-restrict-cross-namespace-associations"]
 === Restrict cross namespace resource associations
 
-By default, associations can be created between any resources as long as they are deployed in some namespaces managed by the same ECK instance.
+By default, associations can be created between any resources as long as they are deployed in namespaces managed by the same ECK instance.
 
-This is true, for example, when using the `elasticsearchRef` field in order to automatically configure and establish a trust relationship between Kibana and Elasticsearch. If a user can create a Kibana instance in a namespace managed by ECK then this Kibana instance can be associated with any Elasticsearch cluster deployed in another namespace managed by the same ECK instance.
+This is true, for example, when using the `elasticsearchRef` field to automatically configure and establish a trust relationship between Kibana and Elasticsearch. If a user can create a Kibana instance in a namespace managed by ECK, then this Kibana instance can be associated with any Elasticsearch cluster deployed in another namespace managed by the same ECK instance. Even if the user only has permissions to edit Kibana and not the Elasticsearch resource.
 
 This section describes how you can restrict the associations that can be created between resources managed by ECK.
 
 [float]
 ==== Enabling cross namespace association restriction
 
-This feature is disabled by default. To enable it start the operator with the `--enforce-rbac-on-refs` flag.
+This feature is disabled by default. To enable it, start the operator with the `--enforce-rbac-on-refs` flag.
 
 NOTE: This feature only provides an access control for resources deployed across two different namespaces. Associations can still be freely created between resources deployed in a same namespace.
 
-Once enabled, associations are allowed to be created as long as the `ServiceAccount` specified in the associated resources can execute a `get` request against the referenced Elasticsearch object.
+Once enabled, associations can be created as long as the `ServiceAccount` specified in the associated resources can execute a `get` request against the referenced Elasticsearch object.
 
-IMPORTANT: ECK unbinds any association that is not allowed. If you have some existing associations do not enable this feature without having created the required `Roles` and `RoleBindings` as described in the following sections.
+IMPORTANT: ECK unbinds any association that is not allowed. If you have some existing associations, do not enable this feature without creating the required `Roles` and `RoleBindings` as described in the following sections.
 
 [float]
 === Specify a ServiceAccount in an associated resource
@@ -58,7 +58,7 @@ NOTE: If the `serviceAccountName` is not set then ECK uses the `ServiceAccount` 
 [float]
 ==== Allowing associations to be created
 
-Create a `ClusterRole` to allow a `get` request to be executed against some Elasticsearch objects:
+Create a `ClusterRole` to allow a `get` request to be run against some Elasticsearch objects:
 
 [source,yaml]
 ----
@@ -75,7 +75,7 @@ rules:
       - get
 ----
 
-Then, in order to allow the `ServiceAccount` of the associated resource to use this role create the following `RoleBinding`:
+Then, to allow the `ServiceAccount` of the associated resource to use this role create the following `RoleBinding`:
 
 [source,yaml]
 ----
