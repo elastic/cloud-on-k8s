@@ -6,6 +6,7 @@ package zen2
 
 import (
 	"context"
+	"strings"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -19,6 +20,35 @@ var (
 	log = logf.Log.WithName("zen2")
 )
 
+const (
+	// VotingConfigExclusionsAnnotationName is an annotation that stores the last applied voting config exclusions.
+	// An empty value means no voting config exclusions is set.
+	VotingConfigExclusionsAnnotationName = "elasticsearch.k8s.elastic.co/voting-config-exclusions"
+)
+
+func serializeExcludedNodesForAnnotation(excludedNodes []string) string {
+	return strings.Join(excludedNodes, ",")
+}
+
+// votingConfigAnnotationMatches returns true if the voting config exclusions annotation value
+// matches the given excluded nodes.
+func votingConfigAnnotationMatches(es esv1.Elasticsearch, excludedNodes []string) bool {
+	value, exists := es.Annotations[VotingConfigExclusionsAnnotationName]
+	if !exists {
+		return false
+	}
+	return value == serializeExcludedNodesForAnnotation(excludedNodes)
+}
+
+// setVotingConfigAnnotation sets the value of the voting config exclusions annotation to the given excluded nodes.
+func setVotingConfigAnnotation(c k8s.Client, es esv1.Elasticsearch, excludedNodes []string) error {
+	if es.Annotations == nil {
+		es.Annotations = map[string]string{}
+	}
+	es.Annotations[VotingConfigExclusionsAnnotationName] = serializeExcludedNodesForAnnotation(excludedNodes)
+	return c.Update(&es)
+}
+
 // AddToVotingConfigExclusions adds the given node names to exclude from voting config exclusions.
 func AddToVotingConfigExclusions(ctx context.Context, c k8s.Client, esClient client.Client, es esv1.Elasticsearch, excludeNodes []string) error {
 	compatible, err := AllMastersCompatibleWithZen2(c, es)
@@ -28,13 +58,20 @@ func AddToVotingConfigExclusions(ctx context.Context, c k8s.Client, esClient cli
 	if !compatible {
 		return nil
 	}
+
+	if votingConfigAnnotationMatches(es, excludeNodes) {
+		// nothing to do, we already applied that setting
+		return nil
+	}
+
 	log.Info("Setting voting config exclusions", "namespace", es.Namespace, "nodes", excludeNodes)
 	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
 	defer cancel()
 	if err := esClient.AddVotingConfigExclusions(ctx, excludeNodes, ""); err != nil {
 		return err
 	}
-	return nil
+	// store the excluded nodes value in an annotation so we don't perform the same API call over and over again
+	return setVotingConfigAnnotation(c, es, excludeNodes)
 }
 
 // canClearVotingConfigExclusions returns true if it is safe to clear voting config exclusions.
@@ -63,6 +100,12 @@ func ClearVotingConfigExclusions(ctx context.Context, es esv1.Elasticsearch, c k
 		return false, nil
 	}
 
+	var noExcludedNodes []string = nil
+	if votingConfigAnnotationMatches(es, noExcludedNodes) {
+		// nothing to do, we already applied that setting
+		return false, nil
+	}
+
 	canClear, err := canClearVotingConfigExclusions(c, actualStatefulSets)
 	if err != nil {
 		return false, err
@@ -78,5 +121,7 @@ func ClearVotingConfigExclusions(ctx context.Context, es esv1.Elasticsearch, c k
 	if err := esClient.DeleteVotingConfigExclusions(ctx, false); err != nil {
 		return false, err
 	}
-	return false, nil
+
+	// store the excluded nodes value in an annotation so we don't perform the same API call over and over again
+	return false, setVotingConfigAnnotation(c, es, noExcludedNodes)
 }
