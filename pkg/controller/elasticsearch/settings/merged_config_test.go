@@ -6,7 +6,6 @@ package settings
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -147,14 +146,16 @@ func TestNewMergedESConfig(t *testing.T) {
 			name:    "user-provided Elasticsearch config overrides should have precedence over ECK config",
 			version: "7.6.0",
 			cfgData: map[string]interface{}{
-				esv1.NetworkHost: "1.2.3.4",
+				esv1.DiscoverySeedProviders: "something-else",
 			},
 			assert: func(cfg CanonicalConfig) {
 				cfgBytes, err := cfg.Render()
 				require.NoError(t, err)
-				fmt.Println(string(cfgBytes))
+				// default config is still there
 				require.True(t, bytes.Contains(cfgBytes, []byte("publish_host: ${POD_IP}")))
-				require.True(t, bytes.Contains(cfgBytes, []byte("host: 1.2.3.4")))
+				// but has been overridden
+				require.True(t, bytes.Contains(cfgBytes, []byte("seed_providers: something-else")))
+				require.Equal(t, 1, bytes.Count(cfgBytes, []byte("seed_providers:")))
 			},
 		},
 	}
