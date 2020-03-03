@@ -187,7 +187,7 @@ func (d *GkeDriver) create() error {
 		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
-		`--subnetwork projects/{{.GCloudProject}}/regions/{{.Region}}/subnetworks/default ` +
+		`--create-subnetwork "" ` +
 		strings.Join(opts, " ")).
 		AsTemplate(d.ctx).
 		Run()

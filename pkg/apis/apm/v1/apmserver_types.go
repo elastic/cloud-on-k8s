@@ -5,6 +5,8 @@
 package v1
 
 import (
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -129,4 +131,9 @@ func (as *ApmServer) ServiceAccountName() string {
 
 func (as *ApmServer) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 	as.assocConf = assocConf
+}
+
+// EffectiveVersion returns the version reported by APM server. For development builds APM server does not use the SNAPSHOT suffix.
+func (as *ApmServer) EffectiveVersion() string {
+	return strings.TrimSuffix(as.Spec.Version, "-SNAPSHOT")
 }

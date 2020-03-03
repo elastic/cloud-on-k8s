@@ -23,10 +23,10 @@ type RotationParams struct {
 }
 
 // ShouldRotateIn computes the duration after which a certificate rotation should be scheduled
-// in order for the CA cert to be rotated before it expires.
-func ShouldRotateIn(now time.Time, certExpiration time.Time, caCertRotateBefore time.Duration) time.Duration {
+// in order for the cert to be rotated before it expires.
+func ShouldRotateIn(now time.Time, certExpiration time.Time, certRotateBefore time.Duration) time.Duration {
 	// make sure we are past the safety margin when rotating, by making it a little bit shorter
-	safetyMargin := caCertRotateBefore - 1*time.Second
+	safetyMargin := certRotateBefore - 1*time.Second
 	requeueTime := certExpiration.Add(-safetyMargin)
 	requeueIn := requeueTime.Sub(now)
 	if requeueIn < 0 {

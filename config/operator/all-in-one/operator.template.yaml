@@ -31,8 +31,6 @@ spec:
                 fieldPath: metadata.namespace
           - name: WEBHOOK_SECRET
             value: elastic-webhook-server-cert
-          - name: WEBHOOK_PODS_LABEL
-            value: elastic-operator
           - name: OPERATOR_IMAGE
             value: <OPERATOR_IMAGE>
         resources:

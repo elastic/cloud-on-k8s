@@ -108,7 +108,7 @@ func (c *apmClusterChecks) CheckApmServerVersion(apm apmv1.ApmServer) test.Step 
 			info, err := c.apmClient.ServerInfo(ctx)
 			require.NoError(t, err)
 
-			require.Equal(t, apm.Spec.Version, info.Version)
+			require.Equal(t, apm.EffectiveVersion(), info.Version)
 		},
 	}
 }
@@ -196,7 +196,7 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 			}
 			err := assertCountIndexEqual(
 				c.esClient,
-				fmt.Sprintf(metricIndexPattern, updatedApmServer.Spec.Version),
+				fmt.Sprintf(metricIndexPattern, updatedApmServer.EffectiveVersion()),
 				1,
 			)
 			if err != nil {
@@ -211,7 +211,7 @@ func (c *apmClusterChecks) CheckEventsInElasticsearch(apm apmv1.ApmServer, k *te
 			}
 			err = assertCountIndexEqual(
 				c.esClient,
-				fmt.Sprintf(errorIndexPattern, updatedApmServer.Spec.Version),
+				fmt.Sprintf(errorIndexPattern, updatedApmServer.EffectiveVersion()),
 				1,
 			)
 			if err != nil {

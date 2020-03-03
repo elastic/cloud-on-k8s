@@ -1,71 +1,53 @@
 # Deployer
 
-Deployer is the provisioning tool that aims to be the interface to multiple Kubernetes providers.
-
-At the moment it support GKE and AKS.
-
-Default values for settings are kept in config/plans.yml file. More settings and setting overrides are provided via deployer-config.yml file.
+Deployer is the provisioning tool that aims to be the interface to multiple Kubernetes providers. Currently, it supports GKE and AKS.
 
 ## Typical usage
 
-While in repo root, run once:
-```
-make dependencies
-cd hack/deployer
-go build
-```
+### Provision
 
-Then, depending on the provider, run the following:
+* GKE
 
-For GKE, with your GCLOUD_PROJECT:
-```
-cat > config/deployer-config.yml << EOF
-id: gke-dev
-overrides:
-  clusterName: dkowalski-dev-cluster
-  gke:
-    gCloudProject: GCLOUD_PROJECT
-EOF
-```
+  * Install [Google Cloud SDK](https://cloud.google.com/sdk/install)
+  * Install Google Cloud SDK beta components by running `gcloud components install beta`
+  * Make sure that container registry authentication is correctly configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication)
+  * Set `GCLOUD_PROJECT` to the name of the GCloud project you wish to use
+  * Run from the [project root](/):
 
-For AKS, with your ACR_NAME and RESOURCE_GROUP:
-```
-cat > config/deployer-config.yml << EOF
-id: aks-dev
-overrides:
-  clusterName: dkowalski-dev-cluster
-  aks:
-    resourceGroup: RESOURCE_GROUP
-    acrName: ACR_NAME
-EOF
-``` 
+    ```bash
+    make switch-gke bootstrap-cloud
+    ```
 
+* AKS
 
-Then, to create, run:
-```
-./deployer execute
+  * Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
+  * Set `RESOURCE_GROUP` to the name of the Resource Group you wish to deploy in
+  * Set `ACR_NAME` to the name of Azure Container Registry you wish to use
+  * Run from the [project root](/):
+
+    ```bash
+    make switch-aks bootstrap-cloud
+    ```
+
+### Deprovision
+
+```bash
+make delete-cloud
 ```
 
-Then, to delete, run: 
-```
-./deployer execute --operation delete
-``` 
+## Advanced usage
 
+Deployer uses two config files:
 
-## CI usage
+* `config/plans.yml` - to store defaults/baseline settings for different use cases (different providers, CI/dev)
+* `config/deployer-config-*.yml` - to "pick" on of the predefined configs from config/plans.yml and allow overriding settings.
 
-CI will populate deployer-config with vault login information and deployer will fetch the needed secrets. Secrets will differ depending on the provider chosen.
+You can adjust many parameters that clusters are deployed with. Exhaustive list is defined in [settings.go](runner/settings.go).
 
-## CI impersonation
+Running `make switch-*` will generate `config/deployer-config-*.yml` file for the respective provider using environment variables specific to that providers configuration needs. After the file is generated, you can make edit it to suit your needs and run `make bootstrap-cloud` to deploy. Currently chosen provider is stored in `config/provider` file.
 
-To facilitate testing locally, developers can run "as CI". While the credentials and vault login method are different it does allow fetching the same credentials and logging in as the same service account as CI would. This aims to shorten the dev cycle for CI related work and debugging.
+You can run deployer directly (not via Makefile in repo root). For details run:
 
-To achieve the above, add the following to your deployer-config.yml, where TOKEN is your GitHub personal access token and VAULT_ADDRESS is the address of your Vault instance.
-
-```
-overrides:
-  vaultInfo:
-    token: TOKEN
-    address: VAULT_ADDRESS
-  ...
+```bash
+./deployer help
 ```

@@ -1,0 +1,32 @@
+:parent_page_id: elasticsearch-specification
+:page_id: init-containers-plugin-downloads
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Init containers for plugin downloads
+
+You can install custom plugins before the Elasticsearch container starts with an `initContainer`. For example:
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - name: default
+    count: 3
+    podTemplate:
+      spec:
+        initContainers:
+        - name: install-plugins
+          command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin install --batch repository-gcs
+----
+
+You can also override the Elasticsearch container image to use your own image with the plugins already installed, as described in the <<{p}-custom-images,custom images doc>>. The <<{p}-snapshots,snapshots>> document has more information on both these options. The Kubernetes document on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
+
+The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It also inherits the Pod name and IP address environment variables.

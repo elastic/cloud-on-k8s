@@ -49,6 +49,7 @@ import (
 	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
@@ -270,7 +271,9 @@ func execute() {
 
 	// Verify cert validity options
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(operator.CACertValidityFlag, operator.CACertRotateBeforeFlag)
+	log.V(1).Info("Using certificate authority rotation parameters", operator.CACertValidityFlag, caCertValidity, operator.CACertRotateBeforeFlag, caCertRotateBefore)
 	certValidity, certRotateBefore := ValidateCertExpirationFlags(operator.CertValidityFlag, operator.CertRotateBeforeFlag)
+	log.V(1).Info("Using certificate rotation parameters", operator.CertValidityFlag, certValidity, operator.CertRotateBeforeFlag, certRotateBefore)
 
 	// Setup a client to set the operator uuid config map
 	clientset, err := kubernetes.NewForConfig(cfg)
@@ -343,6 +346,10 @@ func execute() {
 	}
 	if err = entsassn.Add(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "EnterpriseSearchAssociation")
+		os.Exit(1)
+	}
+	if err = remoteca.Add(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "RemoteClusterCertificateAuthorites")
 		os.Exit(1)
 	}
 

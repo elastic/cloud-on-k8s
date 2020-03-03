@@ -1,0 +1,63 @@
+:parent_page_id: elasticsearch-specification
+:page_id: custom-http-certificate
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Custom HTTP certificate
+
+You can provide your own CA and certificates instead of the self-signed certificate to connect to Elasticsearch via HTTPS using a Kubernetes secret.
+The certificate must be stored under `tls.crt` and the private key must be stored under `tls.key`. If your certificate was not issued by a well-known CA, you must include the trust chain under `ca.crt` as well.
+
+You need to reference the name of a secret that contains a TLS private key and a certificate (and optionally, a trust chain), in the `spec.http.tls.certificate` section.
+
+[source,yaml]
+----
+spec:
+  http:
+    tls:
+      certificate:
+        secretName: quickstart-es-cert
+----
+
+== Custom self-signed certificate using OpenSSL
+
+This example illustrates how to create your own self-signed certificate for the <<{p}-deploy-elasticsearch,quickstart Elasticsearch cluster>> using the OpenSSL command line utility. Note the subject alternative name (SAN) entry for `quickstart-es-http.default.svc`.
+
+[source,sh]
+----
+$ openssl req -x509 -sha256 -nodes -newkey rsa:4096 -days 365 -subj "/CN=quickstart-es-http" -addext "subjectAltName=DNS:quickstart-es-http.default.svc" -keyout tls.key -out tls.crt
+$ kubectl create secret generic quickstart-es-cert --from-file=ca.crt=tls.crt --from-file=tls.crt=tls.crt --from-file=tls.key=tls.key
+----
+
+== Custom self-signed certificate using cert-manager
+
+This example illustrates how to issue a self-signed certificate for the <<{p}-deploy-elasticsearch,quickstart Elasticsearch cluster>> using a link:https://cert-manager.io[cert-manager] self-signed issuer.
+
+[source,yaml]
+----
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: quickstart-es-cert
+spec:
+  isCA: true
+  dnsNames:
+    - quickstart-es-http
+    - quickstart-es-http.default.svc
+    - quickstart-es-http.default.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: quickstart-es-cert
+----

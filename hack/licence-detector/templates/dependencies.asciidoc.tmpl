@@ -1,0 +1,51 @@
+{{- define "depRow" -}}
+{{- range $i, $dep := . }}
+| link:{{ $dep.URL }}[$${{ $dep.Name }}$$] | {{ $dep.Version }} | {{ $dep.LicenceType }}
+{{- end }}
+{{- end -}}
+// Generated documentation. Please do not edit.
+:page_id: dependencies
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+
+[id="{p}-{page_id}"]
+= Third-party dependencies
+
+This page lists the third-party dependencies used to build {n}.
+
+[float]
+[id="{p}-dependencies-direct"]
+== Direct dependencies
+
+[options="header"]
+|===
+| Name | Version | Licence
+{{ template "depRow" .Direct  }}
+|===
+
+{{ if .Indirect }}
+[float]
+[id="{p}-dependencies-indirect"]
+== Indirect dependencies
+
+[options="header"]
+|===
+| Name | Version | Licence
+{{ template "depRow" .Indirect  }}
+|===
+{{ end }}
+
+[float]
+[id="{p}-dependencies-image"]
+== Container image dependencies
+
+Dependencies included in the {n} container image.
+
+[options="header",format="csv"]
+|===
+Name, Version, Licence, URL
+include::container-image-dependencies.csv[]
+|===

@@ -18,6 +18,7 @@ const (
 	configSecretSuffix                = "config"
 	secureSettingsSecretSuffix        = "secure-settings"
 	httpServiceSuffix                 = "http"
+	transportServiceSuffix            = "transport"
 	elasticUserSecretSuffix           = "elastic-user"
 	xpackFileRealmSecretSuffix        = "xpack-file-realm"
 	internalUsersSecretSuffix         = "internal-users"
@@ -26,6 +27,9 @@ const (
 	defaultPodDisruptionBudget        = "default"
 	scriptsConfigMapSuffix            = "scripts"
 	transportCertificatesSecretSuffix = "transport-certificates"
+
+	// remoteCaNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
+	remoteCaNameSuffix = "remote-ca"
 
 	controllerRevisionHashLen = 10
 )
@@ -46,6 +50,7 @@ var (
 		defaultPodDisruptionBudget,
 		scriptsConfigMapSuffix,
 		transportCertificatesSecretSuffix,
+		remoteCaNameSuffix,
 	}
 )
 
@@ -54,8 +59,14 @@ func validateNames(es *Elasticsearch) error {
 	if len(es.Name) > common_name.MaxResourceNameLength {
 		return errors.Errorf("name exceeds maximum allowed length of %d", common_name.MaxResourceNameLength)
 	}
+	nodeSetNames := map[string]struct{}{}
 	// validate ssets
 	for _, nodeSet := range es.Spec.NodeSets {
+		if _, ok := nodeSetNames[nodeSet.Name]; ok {
+			return errors.Errorf("duplicated nodeSet name: '%s'", nodeSet.Name)
+		}
+		nodeSetNames[nodeSet.Name] = struct{}{}
+
 		if errs := apimachineryvalidation.NameIsDNSSubdomain(nodeSet.Name, false); len(errs) > 0 {
 			return errors.Errorf("invalid nodeSet name '%s': [%s]", nodeSet.Name, strings.Join(errs, ","))
 		}
@@ -102,6 +113,10 @@ func TransportCertificatesSecret(esName string) string {
 	return ESNamer.Suffix(esName, transportCertificatesSecretSuffix)
 }
 
+func TransportService(esName string) string {
+	return ESNamer.Suffix(esName, transportServiceSuffix)
+}
+
 func HTTPService(esName string) string {
 	return ESNamer.Suffix(esName, httpServiceSuffix)
 }
@@ -133,4 +148,8 @@ func LicenseSecretName(esName string) string {
 
 func DefaultPodDisruptionBudget(esName string) string {
 	return ESNamer.Suffix(esName, defaultPodDisruptionBudget)
+}
+
+func RemoteCaSecretName(esName string) string {
+	return ESNamer.Suffix(esName, remoteCaNameSuffix)
 }

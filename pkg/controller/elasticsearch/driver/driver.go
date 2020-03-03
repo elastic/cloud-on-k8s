@@ -10,17 +10,13 @@ import (
 	"fmt"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -35,11 +31,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -74,6 +75,9 @@ type DefaultDriverParameters struct {
 	Client   k8s.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+
+	// LicenseChecker is used for some features to check if an appropriate license is setup
+	LicenseChecker commonlicense.Checker
 
 	// State holds the accumulated state during the reconcile loop
 	ReconcileState *reconcile.State
@@ -119,6 +123,11 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.Scheme(), d.ES); err != nil {
+		return results.WithError(err)
+	}
+
+	_, err := common.ReconcileService(ctx, d.Client, d.Scheme(), services.NewTransportService(d.ES), &d.ES)
+	if err != nil {
 		return results.WithError(err)
 	}
 
@@ -215,6 +224,16 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			return controller.Result{}, err
 		},
 	)
+
+	if esReachable {
+		err = remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
+		if err != nil {
+			msg := "Could not update remote clusters in Elasticsearch settings"
+			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+			results.WithResult(defaultRequeue)
+		}
+	}
 
 	// Compute seed hosts based on current masters with a podIP
 	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
