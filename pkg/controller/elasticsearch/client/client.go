@@ -124,10 +124,13 @@ func NewElasticsearchClient(
 		TLSClientConfig: &tls.Config{
 			RootCAs: certPool,
 
+			// We use our own certificate verification because we permit users to provide their own certificates, which may not
+			// be valid for the k8s service URL (though our self-signed certificates are). For instance, users may use a certificate
+			// issued by a public CA for Elasticsearch. We opt to skip verifying here since we're not validating based on DNS names
+			// or IP addresses, which means we have to do our verification in the VerifyPeerCertificate instead.
+
 			// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
 			// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
-			// we opt to skip verifying here because we're not validating based on DNS names or IP addresses, which means
-			// we have to do our verification in the VerifyPeerCertificate instead.
 			InsecureSkipVerify: true,
 			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 				return errors.New("tls: verify peer certificate not setup")
