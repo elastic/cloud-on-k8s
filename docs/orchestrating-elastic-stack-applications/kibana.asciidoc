@@ -127,7 +127,7 @@ This is because the resource definitions in ECK share the same philosophy when i
 
 [id="{p}-kibana-pod-configuration"]
 === Pod Configuration
-You can define a <<{p}-pod-template,pod template>> to customize the Kibana pod and override any configuration values.
+You can <<{p}-customize-pods,customize the Kibana pod>> using a Pod template.
 
 The following example demonstrates how to create a Kibana deployment with custom node affinity and resource limits.
 
