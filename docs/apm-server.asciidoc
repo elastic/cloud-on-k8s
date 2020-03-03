@@ -94,6 +94,19 @@ spec:
   version: {version}
   count: 1
   config:
+    
+    apm-server.jaeger.grpc.enabled: true
+    apm-server.jaeger.grpc.host: "0.0.0.0:14250"
+  http:
+    service:
+      spec:
+        ports:
+          - name: http
+            port: 8200
+            targetPort: 8200
+          - name: grpc
+            port: 14250
+            targetPort: 14250
     output:
       elasticsearch:
         headers:
