@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -24,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func TestReconcile(t *testing.T) {
@@ -136,7 +136,7 @@ func withHashLabel(pdb *v1beta1.PodDisruptionBudget) *v1beta1.PodDisruptionBudge
 }
 
 func withOwnerRef(pdb *v1beta1.PodDisruptionBudget, es esv1.Elasticsearch) *v1beta1.PodDisruptionBudget {
-	if err := reconciler.SetControllerReference(&es, pdb, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&es, pdb, scheme.Scheme); err != nil {
 		panic(err)
 	}
 	return pdb
