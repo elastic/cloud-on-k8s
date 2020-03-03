@@ -29,3 +29,9 @@ include::supported-versions.asciidoc[]
 
 - link:https://www.elastic.co/elasticsearch-kubernetes[Orchestrate Elasticsearch on Kubernetes]
 - link:https://www.elastic.co/blog/introducing-elastic-cloud-on-kubernetes-the-elasticsearch-operator-and-beyond?elektra=products&storm=sub1[ECK post on the Elastic Blog]
+
+[float]
+[id="{p}-ask-for-help"]
+=== Ask for help
+
+include::help.asciidoc[]

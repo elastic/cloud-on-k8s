@@ -7,22 +7,24 @@ endif::[]
 [id="{p}-{page_id}"]
 = Troubleshoot ECK
 
-When things don't work as expected, you can investigate by taking the following actions:
+Most common issues can be identified and resolved by following these instructions:
 
-- <<{p}-get-resources,Get the list of resources>>
+- <<{p}-get-resources,View the list of resources>>
 - <<{p}-describe-failing-resources,Describe failing resources>>
-- <<{p}-get-elasticsearch-logs,Get Elasticsearch logs>>
-- <<{p}-get-init-container-logs,Get init container logs>>
-- <<{p}-get-eck-logs,Get ECK logs>>
 - <<{p}-eck-debug-logs,Enable ECK debug logs>>
+- <<{p}-view-logs>>
 - <<{p}-pause-controllers,Pause ECK controllers>>
 - <<{p}-get-k8s-events,Get Kubernetes events>>
 - <<{p}-exec-into-containers,Exec into containers>>
-- <<{p}-webhook-troubleshooting,Webhook troubleshooting>>
-- <<{p}-ask-for-help,Ask for help>>
+- <<{p}-webhook-troubleshooting,Troubleshoot webhook>>
+
+If you are still unable to find a solution to your problem after following the above instructions, ask for help:
+
+include::../help.asciidoc[]
+
 
 [id="{p}-get-resources"]
-== Get a list of resources
+== View the list of resources
 
 To deploy and manage the Elastic stack, ECK creates several resources in the namespace where the main resource is deployed.
 
@@ -97,48 +99,6 @@ Events:
 
 If you see an error with unbound persistent volume claims (PVCs), it means there is not currently a persistent volume that can satisfy the claim. If you are using automatically provisioned storage (e.g. Amazon EBS provisioner), sometimes the storage provider can take a few minutes to provision a volume, so this may resolve itself in a few minutes. You can also check the status by running `kubectl describe persistentvolumeclaims` to see events of the PVCs.
 
-[id="{p}-get-elasticsearch-logs"]
-== Get Elasticsearch logs
-
-Each Elasticsearch node name is mapped to the corresponding Pod name.
-To get the logs of a particular Elasticsearch node, just fetch the Pod logs:
-
-[source,sh]
-----
-kubectl logs -f elasticsearch-sample-es-lgphkv9p67
-
-(...)
-{"type": "server", "timestamp": "2019-07-22T08:48:10,859+0000", "level": "INFO", "component": "o.e.c.s.ClusterApplierService", "cluster.name": "elasticsearch-sample", "node.name": "elasticsearch-sample-es-lgphkv9p67", "cluster.uuid": "cX9uCx3uQrej9hMLGPhV0g", "node.id": "R_OcheBlRGeqme1IZzE4_Q",  "message": "added {{elasticsearch-sample-es-kqz4jmvj9p}{UGy5IX0UQcaKlztAoh4sLA}{3o_EUuZvRKW7R1C8b1zzzg}{10.16.2.232}{10.16.2.232:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},{elasticsearch-sample-es-stzz78k64p}{Sh_AzQcxRzeuIoOQWgru1w}{cwPoTFNnRAWtqsXWQtWbGA}{10.16.2.233}{10.16.2.233:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},}, term: 1, version: 164, reason: ApplyCommitRequest{term=1, version=164, sourceNode={elasticsearch-sample-es-9xzzhmgd4h}{tAi_bCPcSaO1OkLap4wmhQ}{E6VcWWWtSB2oo-2zmj9DMQ}{10.16.1.150}{10.16.1.150:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true}}"  }
-{"type": "server", "timestamp": "2019-07-22T08:48:22,224+0000", "level": "INFO", "component": "o.e.c.s.ClusterApplierService", "cluster.name": "elasticsearch-sample", "node.name": "elasticsearch-sample-es-lgphkv9p67", "cluster.uuid": "cX9uCx3uQrej9hMLGPhV0g", "node.id": "R_OcheBlRGeqme1IZzE4_Q",  "message": "added {{elasticsearch-sample-es-fn9wvxw6sh}{_tbAciHTStaAlUO6GtD9LA}{1g7_qsXwR0qjjfom05VwMA}{10.16.1.154}{10.16.1.154:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},}, term: 1, version: 169, reason: ApplyCommitRequest{term=1, version=169, sourceNode={elasticsearch-sample-es-9xzzhmgd4h}{tAi_bCPcSaO1OkLap4wmhQ}{E6VcWWWtSB2oo-2zmj9DMQ}{10.16.1.150}{10.16.1.150:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true}}"  }
-----
-
-You can run the same command for Kibana and APM Server.
-
-[id="{p}-get-init-container-logs"]
-== Get init container logs
-
-An Elasticsearch Pod runs a few init containers to prepare the file system of the main Elasticsearch container.
-In some scenarios, the Pod may fail to run (`Status: Error` or `Status: CrashloopBackOff`) because one of the init containers is failing to run.
-Look at the link:https://kubernetes.io/docs/tasks/debug-application-cluster/debug-init-containers/[init container statuses and logs] to get more details.
-
-
-[id="{p}-get-eck-logs"]
-== Get ECK logs
-
-Since the ECK operator is just a standard Pod running in the Kubernetes cluster, you can fetch its logs as you would for any other Pod:
-
-[source,sh]
-----
-kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
-----
-
-The operator constantly attempts to reconcile Kubernetes resources to match the desired state.
-Logs with `INFO` level provide some insights about what is going on.
-Logs with `ERROR` level indicate something is not going as expected.
-
-Due to link:https://github.com/eBay/Kubernetes/blob/master/docs/devel/api-conventions.md#concurrency-control-and-consistency[optimistic locking],
-you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, which will happen almost immediately.
-
 [id="{p}-eck-debug-logs"]
 == Enable ECK debug logs
 
@@ -159,6 +119,55 @@ change the `args` array as follows:
       - manager
       - --log-verbosity=1
 ----
+
+
+[id="{p}-view-logs"]
+== View logs
+
+[float]
+[id="{p}-get-elasticsearch-logs"]
+=== View Elasticsearch logs
+
+Each Elasticsearch node name is mapped to the corresponding Pod name.
+To get the logs of a particular Elasticsearch node, just fetch the Pod logs:
+
+[source,sh]
+----
+kubectl logs -f elasticsearch-sample-es-lgphkv9p67
+
+(...)
+{"type": "server", "timestamp": "2019-07-22T08:48:10,859+0000", "level": "INFO", "component": "o.e.c.s.ClusterApplierService", "cluster.name": "elasticsearch-sample", "node.name": "elasticsearch-sample-es-lgphkv9p67", "cluster.uuid": "cX9uCx3uQrej9hMLGPhV0g", "node.id": "R_OcheBlRGeqme1IZzE4_Q",  "message": "added {{elasticsearch-sample-es-kqz4jmvj9p}{UGy5IX0UQcaKlztAoh4sLA}{3o_EUuZvRKW7R1C8b1zzzg}{10.16.2.232}{10.16.2.232:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},{elasticsearch-sample-es-stzz78k64p}{Sh_AzQcxRzeuIoOQWgru1w}{cwPoTFNnRAWtqsXWQtWbGA}{10.16.2.233}{10.16.2.233:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},}, term: 1, version: 164, reason: ApplyCommitRequest{term=1, version=164, sourceNode={elasticsearch-sample-es-9xzzhmgd4h}{tAi_bCPcSaO1OkLap4wmhQ}{E6VcWWWtSB2oo-2zmj9DMQ}{10.16.1.150}{10.16.1.150:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true}}"  }
+{"type": "server", "timestamp": "2019-07-22T08:48:22,224+0000", "level": "INFO", "component": "o.e.c.s.ClusterApplierService", "cluster.name": "elasticsearch-sample", "node.name": "elasticsearch-sample-es-lgphkv9p67", "cluster.uuid": "cX9uCx3uQrej9hMLGPhV0g", "node.id": "R_OcheBlRGeqme1IZzE4_Q",  "message": "added {{elasticsearch-sample-es-fn9wvxw6sh}{_tbAciHTStaAlUO6GtD9LA}{1g7_qsXwR0qjjfom05VwMA}{10.16.1.154}{10.16.1.154:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true},}, term: 1, version: 169, reason: ApplyCommitRequest{term=1, version=169, sourceNode={elasticsearch-sample-es-9xzzhmgd4h}{tAi_bCPcSaO1OkLap4wmhQ}{E6VcWWWtSB2oo-2zmj9DMQ}{10.16.1.150}{10.16.1.150:9300}{ml.machine_memory=27395555328, ml.max_open_jobs=20, xpack.installed=true}}"  }
+----
+
+You can run the same command for Kibana and APM Server.
+
+[float]
+[id="{p}-get-init-container-logs"]
+=== View init container logs
+
+An Elasticsearch Pod runs a few init containers to prepare the file system of the main Elasticsearch container.
+In some scenarios, the Pod may fail to run (`Status: Error` or `Status: CrashloopBackOff`) because one of the init containers is failing to run.
+Look at the link:https://kubernetes.io/docs/tasks/debug-application-cluster/debug-init-containers/[init container statuses and logs] to get more details.
+
+
+[float]
+[id="{p}-get-eck-logs"]
+=== View ECK logs
+
+Since the ECK operator is just a standard Pod running in the Kubernetes cluster, you can fetch its logs as you would for any other Pod:
+
+[source,sh]
+----
+kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
+----
+
+The operator constantly attempts to reconcile Kubernetes resources to match the desired state.
+Logs with `INFO` level provide some insights about what is going on.
+Logs with `ERROR` level indicate something is not going as expected.
+
+Due to link:https://github.com/eBay/Kubernetes/blob/master/docs/devel/api-conventions.md#concurrency-control-and-consistency[optimistic locking],
+you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, which will happen almost immediately.
 
 
 [id="{p}-pause-controllers"]
@@ -242,16 +251,10 @@ On link:https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster
 
 Refer to <<{p}-webhook-network-policies>> for more information about network policies that might be preventing communication between the Kubernetes API server and the webhook server.
 
+[float]
 === Validation failures
 If the validation webhook is preventing you from making changes due to the unknown fields validation like below, you can force the webhook to ignore it by removing the`kubectl.kubernetes.io/last-applied-configuration` annotation from your resource.
 
 ```
 admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request: Elasticsearch.elasticsearch.k8s.elastic.co "quickstart" is invalid: some-misspelled-field: Invalid value: "some-misspelled-field": some-misspelled-field field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown
 ```
-
-
-[id="{p}-ask-for-help"]
-== Ask for help
-
-* link:https://discuss.elastic.co/c/eck[ECK Discuss forums] to ask any question
-* link:https://github.com/elastic/cloud-on-k8s/issues[Github issues] for bugs and feature requests
