@@ -11,8 +11,8 @@ Most common issues can be identified and resolved by following these instruction
 
 - <<{p}-get-resources,View the list of resources>>
 - <<{p}-describe-failing-resources,Describe failing resources>>
-- <<{p}-view-logs>>
 - <<{p}-eck-debug-logs,Enable ECK debug logs>>
+- <<{p}-view-logs>>
 - <<{p}-pause-controllers,Pause ECK controllers>>
 - <<{p}-get-k8s-events,Get Kubernetes events>>
 - <<{p}-exec-into-containers,Exec into containers>>
