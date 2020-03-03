@@ -1,0 +1,47 @@
+:page_id: samples
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{page_id}.html[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Samples
+
+:samples_dir: ../../config/samples
+
+These sections contain YAML manifest examples for ECK resources that are available for download at https://github.com/elastic/cloud-on-k8s/tree/master/config/samples. Also see https://github.com/elastic/cloud-on-k8s/tree/master/config/recipes for advanced deployment recipes utilizing ECK.
+
+[id="{p}-samples-elasticsearch"]
+== Elasticsearch
+
+.Standalone configuration
+[source,yaml,subs="attributes"]
+----
+include::{samples_dir}/elasticsearch/elasticsearch.yaml[]
+----
+
+
+[id="{p}-samples-kibana"]
+== Kibana
+
+.Associating with Elasticsearch
+[source,yaml,subs="attributes"]
+----
+include::{samples_dir}/kibana/kibana_es.yaml[]
+----
+
+
+[id="{p}-samples-apmserver"]
+== APM Server
+
+.Standalone configuration
+[source,yaml,subs="attributes"]
+----
+include::{samples_dir}/apm/apmserver.yaml[]
+----
+
+.Associating with Elasticsearch and Kibana
+[source,yaml,subs="attributes"]
+----
+include::{samples_dir}/apm/apm_es_kibana.yaml[]
+----
