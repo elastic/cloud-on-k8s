@@ -18,7 +18,7 @@ import (
 )
 
 // NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived from the given
-// parameters.
+// parameters. The user provided config overrides have precedence over the ECK config.
 func NewMergedESConfig(
 	clusterName string,
 	ver version.Version,
@@ -26,13 +26,14 @@ func NewMergedESConfig(
 	userConfig commonv1.Config,
 	certResources *escerts.CertificateResources,
 ) (CanonicalConfig, error) {
-	config, err := common.NewCanonicalConfigFrom(userConfig.Data)
+	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
+	config := baseConfig(clusterName, ver).CanonicalConfig
 	err = config.MergeWith(
-		baseConfig(clusterName, ver).CanonicalConfig,
 		xpackConfig(ver, httpConfig, certResources).CanonicalConfig,
+		userCfg,
 	)
 	if err != nil {
 		return CanonicalConfig{}, err
