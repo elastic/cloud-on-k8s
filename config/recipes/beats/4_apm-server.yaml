@@ -1,0 +1,32 @@
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: apm-server-quickstart
+  namespace: default
+spec:
+  version: 7.6.0
+  count: 1
+  hostNetwork: true
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  config:
+    apm-server.jaeger.grpc.enabled: true
+    apm-server.jaeger.grpc.host: "0.0.0.0:14250"
+  http:
+    service:
+      spec:
+        ports:
+          - name: http
+            port: 8200
+            targetPort: 8200
+          - name: grpc
+            port: 14250
+            targetPort: 14250
+    output:
+      elasticsearch:
+        headers:
+          X-My-Header: Just an example of a custom settings
+  elasticsearchRef:
+    name: "quickstart"
