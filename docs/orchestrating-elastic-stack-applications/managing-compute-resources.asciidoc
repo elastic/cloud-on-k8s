@@ -35,7 +35,7 @@ A link:https://github.com/kubernetes/kubernetes/issues/51135[known Kubernetes is
 * link:https://github.com/kubernetes/kubernetes/issues/51135#issuecomment-386319185[disable CFS quotas] in kubelet configuration
 ===============================
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
