@@ -37,7 +37,12 @@ A link:https://github.com/kubernetes/kubernetes/issues/51135[known Kubernetes is
 
 [source,yaml]
 ----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
 spec:
+  version: {version}
   nodeSets:
   - name: default
     count: 1
@@ -51,9 +56,10 @@ spec:
           resources:
             requests:
               memory: 4Gi
-              cpu: 1
+              cpu: 0.5
             limits:
               memory: 4Gi
+              cpu: 2
 ----
 
 [float]
@@ -64,7 +70,12 @@ For Kibana or APM Server objects, the `podTemplate` can be configured as follows
 
 [source,yaml]
 ----
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+metadata:
+  name: quickstart
 spec:
+  version: {version}
   podTemplate:
     spec:
       containers:
@@ -72,9 +83,10 @@ spec:
         resources:
           requests:
             memory: 1Gi
-            cpu: 1
+            cpu: 0.5
           limits:
             memory: 2Gi
+            cpu: 2
 ----
 
 For the container name, you can use `apm-server` or `kibana` as appropriate.
