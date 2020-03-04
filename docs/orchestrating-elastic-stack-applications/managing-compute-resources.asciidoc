@@ -68,7 +68,7 @@ spec:
 
 For Kibana or APM Server objects, the `podTemplate` can be configured as follows:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
 kind: Kibana
