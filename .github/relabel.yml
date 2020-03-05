@@ -3,4 +3,4 @@ requiredLabels:
   - missingLabel: triage
     regex: ">.*"
   - missingLabel: needs-version
-    regex: "v.*"
+    regex: "^v[0-9].*"
