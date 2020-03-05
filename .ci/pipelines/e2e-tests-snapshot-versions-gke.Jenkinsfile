@@ -52,7 +52,7 @@ pipeline {
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-76-${BUILD_NUMBER}-e2e", "7.6.1-SNAPSHOT")
+                            runWith(lib, failedTests, "eck-76-snapshot-${BUILD_NUMBER}-e2e", "7.6.1-SNAPSHOT")
                         }
                     }
                 }
@@ -60,7 +60,7 @@ pipeline {
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-77-${BUILD_NUMBER}-e2e", "7.7.0-SNAPSHOT")
+                            runWith(lib, failedTests, "eck-77-snapshot-${BUILD_NUMBER}-e2e", "7.7.0-SNAPSHOT")
                         }
                     }
                 }
@@ -94,8 +94,8 @@ pipeline {
         cleanup {
             script {
                 clusters = [
-                    "eck-76-${BUILD_NUMBER}-e2e",
-                    "eck-77-${BUILD_NUMBER}-e2e"
+                    "eck-76-snapshot-${BUILD_NUMBER}-e2e",
+                    "eck-77-snapshot-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',

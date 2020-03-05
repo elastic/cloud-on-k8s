@@ -56,7 +56,7 @@ ci-build-image:
 		docker push push.$(CI_IMAGE) \
 	)
 
-ifneq (,$(SNAPSHOT_TEST_TARGET))
+ifneq (,$(IS_SNAPSHOT_BUILD))
        SECRET_FIELD_PREFIX ?= dev-
 endif
 
