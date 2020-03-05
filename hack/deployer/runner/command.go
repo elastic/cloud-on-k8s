@@ -65,7 +65,11 @@ func (c *Command) OutputContainsAny(tokens ...string) (bool, error) {
 		}
 	}
 
-	return false, fmt.Errorf("%s with err: %w", out, err)
+	if err != nil {
+		// provide additional context to callers otherwise it is really hard to figure out what went wrong
+		err = fmt.Errorf("%s with err: %w", out, err)
+	}
+	return false, nil
 }
 
 func (c *Command) OutputList() (list []string, err error) {
