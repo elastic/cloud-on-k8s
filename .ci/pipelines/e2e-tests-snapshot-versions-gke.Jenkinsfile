@@ -45,10 +45,16 @@ pipeline {
         stage('Run tests for different stack versions in GKE') {
             environment {
                // use the image we just built
-               OPERATOR_IMAGE = "${sh(returnStdout: true, script: 'make print-operator-image').trim()}"
+               OPERATOR_IMAGE = """${sh(
+                returnStdout: true,
+                script: 'make print-operator-image'
+                )}"""
             }
             parallel {
-                stage("7.6.1-SNAPSHOT") {
+                stage("7.6.2-SNAPSHOT") {
+                     agent {
+                        label 'linux'
+                    }
                     steps {
                         checkout scm
                         script {
@@ -57,6 +63,9 @@ pipeline {
                     }
                 }
                 stage("7.7.0-SNAPSHOT") {
+                     agent {
+                        label 'linux'
+                    }
                     steps {
                         checkout scm
                         script {
