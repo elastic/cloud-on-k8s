@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -66,7 +67,7 @@ var t = true
 var ownerRefFixture = metav1.OwnerReference{
 	APIVersion:         "kibana.k8s.elastic.co/v1",
 	Kind:               "Kibana",
-	Name:               "foo",
+	Name:               "kibana-foo",
 	UID:                kibanaFixtureUID,
 	Controller:         &t,
 	BlockOwnerDeletion: &t,
@@ -285,6 +286,80 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				}, &corev1.Secret{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
+					Name:      association.ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
+				}, &corev1.Secret{}))
+			},
+			wantErr: false,
+		},
+		{
+			name: "No more es ref in Kibana, orphan user for previous es ref in a different namespace still exist",
+			kibana: kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "kibana-foo",
+					Namespace: "ns2",
+					UID:       kibanaFixtureUID,
+				},
+			},
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "es-foo",
+					Namespace: "ns1",
+					UID:       "f8d564d9-885e-11e9-896d-08002703f062",
+				},
+			},
+			initialObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "kibana-foo-kibana-user",
+						Namespace: "ns2",
+						Labels: map[string]string{
+							AssociationLabelName:      "kibana-foo",
+							AssociationLabelNamespace: "ns2",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ns2-kibana-foo-kibana-user",
+						Namespace: "ns1",
+						Labels: map[string]string{
+							label.ClusterNameLabelName: "es-foo",
+							AssociationLabelName:       "kibana-foo",
+							AssociationLabelNamespace:  "ns2",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							esRefFixture,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "kibana-foo-kb-es-ca",
+						Namespace: "ns2",
+						Labels: map[string]string{
+							AssociationLabelName: "kibana-foo",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+					},
+				},
+			},
+			postCondition: func(c k8s.Client) {
+				// This works even without labels because mock client currently ignores labels
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: "ns2",
+					Name:      "kibana-foo-kibana-user",
+				}, &corev1.Secret{}))
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: "ns1",
+					Name:      "ns2-kibana-foo-kibana-user",
+				}, &corev1.Secret{}))
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: "ns2",
 					Name:      association.ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
 				}, &corev1.Secret{}))
 			},
