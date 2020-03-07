@@ -16,11 +16,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -242,23 +240,31 @@ func (r *ReconcileApmServerElasticsearchAssociation) isCompatible(ctx context.Co
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx context.Context, apmServer *apmv1.ApmServer) (commonv1.AssociationStatus, error) {
+	// garbage collect leftover resources that are not required anymore
+	if err := deleteOrphanedResources(ctx, r, apmServer); err != nil {
+		log.Error(err, "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
+	}
+	apmServerKey := k8s.ExtractNamespacedName(apmServer)
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.ElasticsearchRef
 	if !elasticsearchRef.IsDefined() {
-		return commonv1.AssociationUnknown, nil
+		// stop watching any ES cluster previously referenced for this Kibana resource
+		r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(apmServerKey))
+		// remove the configuration in the annotation, other leftover resources are already garbage-collected
+		return commonv1.AssociationUnknown, association.RemoveAssociationConf(r.Client, apmServer)
 	}
 	if elasticsearchRef.Namespace == "" {
 		// no namespace provided: default to the APM server namespace
 		elasticsearchRef.Namespace = apmServer.Namespace
 	}
-	assocKey := k8s.ExtractNamespacedName(apmServer)
+
 	// Make sure we see events from Elasticsearch using a dynamic watch
 	// will become more relevant once we refactor user handling to CRDs and implement
 	// syncing of user credentials across namespaces
 	err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
-		Name:    elasticsearchWatchName(assocKey),
+		Name:    elasticsearchWatchName(apmServerKey),
 		Watched: []types.NamespacedName{elasticsearchRef.NamespacedName()},
-		Watcher: assocKey,
+		Watcher: apmServerKey,
 	})
 	if err != nil {
 		return commonv1.AssociationFailed, err
@@ -318,9 +324,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		return status, err
 	}
 
-	if err := deleteOrphanedResources(ctx, r, apmServer); err != nil {
-		log.Error(err, "Error while trying to delete orphaned resources. Continuing.", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
-	}
 	return commonv1.AssociationEstablished, nil
 }
 
@@ -406,24 +409,5 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ct
 // now redundant old user object/secret. This function lists all resources that don't match the current name/namespace
 // combinations and deletes them.
 func deleteOrphanedResources(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
-	defer span.End()
-
-	var secrets corev1.SecretList
-	ns := client.InNamespace(as.Namespace)
-	matchLabels := client.MatchingLabels(NewResourceLabels(as.Name))
-	if err := c.List(&secrets, ns, matchLabels); err != nil {
-		return err
-	}
-
-	for _, s := range secrets.Items {
-		controlledBy := metav1.IsControlledBy(&s, as)
-		if controlledBy && !as.Spec.ElasticsearchRef.IsDefined() {
-			log.Info("Deleting secret", "namespace", s.Namespace, "secret_name", s.Name, "as_name", as.Name)
-			if err := c.Delete(&s); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return association.DeleteOrphanedResources(ctx, c, as, NewResourceLabels(as.Name), createdByApmServer)
 }

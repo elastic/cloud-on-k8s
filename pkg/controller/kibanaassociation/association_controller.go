@@ -16,11 +16,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -237,8 +235,8 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 	if kibana.Spec.ElasticsearchRef.Name == "" {
 		// stop watching any ES cluster previously referenced for this Kibana resource
 		r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
-		// other leftover resources are already garbage-collected
-		return commonv1.AssociationUnknown, nil
+		// remove the configuration in the annotation, other leftover resources are already garbage-collected
+		return commonv1.AssociationUnknown, association.RemoveAssociationConf(r.Client, kibana)
 	}
 
 	// this Kibana instance references an Elasticsearch cluster
@@ -403,43 +401,10 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kib
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
 // attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
-func deleteOrphanedResources(ctx context.Context, c k8s.Client, kibana *kbv1.Kibana) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
-	defer span.End()
-
-	var secrets corev1.SecretList
-	ns := client.InNamespace(kibana.Namespace)
-	matchLabels := NewResourceSelector(kibana.Name)
-	if err := c.List(&secrets, ns, matchLabels); err != nil {
-		return err
-	}
-
-	// Namespace in reference can be empty, in that case we compare it with the namespace of Kibana
-	var esRefNamespace string
-	if kibana.Spec.ElasticsearchRef.IsDefined() && kibana.Spec.ElasticsearchRef.Namespace != "" {
-		esRefNamespace = kibana.Spec.ElasticsearchRef.Namespace
-	} else {
-		esRefNamespace = kibana.Namespace
-	}
-
-	for _, s := range secrets.Items {
-		if metav1.IsControlledBy(&s, kibana) || hasBeenCreatedBy(&s, kibana) {
-			if !kibana.Spec.ElasticsearchRef.IsDefined() {
-				// look for association secrets owned by this kibana instance
-				// which should not exist since no ES referenced in the spec
-				log.Info("Deleting secret", "namespace", s.Namespace, "secret_name", s.Name, "kibana_name", kibana.Name)
-				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-			} else if value, ok := s.Labels[common.TypeLabelName]; ok && value == user.UserType &&
-				esRefNamespace != s.Namespace {
-				// User secret may live in an other namespace, check if it has changed
-				log.Info("Deleting secret", "namespace", s.Namespace, "secretname", s.Name, "kibana_name", kibana.Name)
-				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-			}
-		}
-	}
-	return nil
+func deleteOrphanedResources(
+	ctx context.Context,
+	c k8s.Client,
+	kibana *kbv1.Kibana,
+) error {
+	return association.DeleteOrphanedResources(ctx, c, kibana, NewResourceSelector(kibana.Name), createdByKibana)
 }
