@@ -106,7 +106,7 @@ spec:
     port: 9300
     targetPort: 9300
 ----
-<1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively expose the service via a Kubernetes link:https://kubernetes.io/docs/concepts/services-networking/ingress/[Ingress].
+<1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively expose the service via one of the Kubernetes Ingress controllers that support TCP services.
 
 Finally, configure `cluster-one` as a remote cluster in `cluster-two` using the Elasticsearch REST API:
 
