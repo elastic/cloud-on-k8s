@@ -12,6 +12,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/label"
 )
 
 const (
@@ -30,7 +31,10 @@ func NewResourceSelector(name string) client.MatchingLabels {
 
 func hasBeenCreatedBy(object metav1.Object, kibana *kbv1.Kibana) bool {
 	labels := object.GetLabels()
-	if name, ok := labels[AssociationLabelName]; !ok || name != kibana.Name {
+	if !label.HasLabel(object, labels[AssociationLabelName]) {
+		return false
+	}
+	if labels[AssociationLabelName] != kibana.Name {
 		return false
 	}
 	if ns, ok := labels[AssociationLabelNamespace]; !ok || ns != kibana.Namespace {

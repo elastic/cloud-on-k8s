@@ -12,6 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/label"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -57,7 +58,10 @@ func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 func newToRequestsFuncFromSecret() handler.ToRequestsFunc {
 	return func(obj handler.MapObject) []reconcile.Request {
 		labels := obj.Meta.GetLabels()
-		if secretType, ok := labels[common.TypeLabelName]; !ok || secretType != TypeLabelValue {
+		if !label.HasLabel(obj.Meta, common.TypeLabelName) {
+			return nil
+		}
+		if labels[common.TypeLabelName] != TypeLabelValue {
 			return nil
 		}
 		clusterAssociationName, ok := labels[RemoteClusterNameLabelName]
