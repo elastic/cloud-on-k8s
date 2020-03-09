@@ -13,7 +13,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/label"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
