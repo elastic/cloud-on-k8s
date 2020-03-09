@@ -360,7 +360,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				}, &corev1.Secret{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: "ns2",
-					Name:      association.ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
+					Name:      "kibana-foo-kb-es-ca",
 				}, &corev1.Secret{}))
 			},
 			wantErr: false,
