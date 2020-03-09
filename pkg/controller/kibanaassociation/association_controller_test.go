@@ -13,7 +13,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -120,7 +120,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						},
 						Labels: map[string]string{
 							AssociationLabelName: kibanaFixture.Name,
-							common.TypeLabelName: user.UserType,
+							common.TypeLabelName: esuser.AssociatedUserType,
 						},
 					},
 				},
@@ -170,7 +170,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Labels: map[string]string{
 							AssociationLabelName:      kibanaFixture.Name,
 							AssociationLabelNamespace: kibanaFixture.Namespace,
-							common.TypeLabelName:      user.UserType,
+							common.TypeLabelName:      esuser.AssociatedUserType,
 						},
 					},
 				},

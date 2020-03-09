@@ -6,7 +6,8 @@ package apmserverelasticsearchassociation
 
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,6 +31,6 @@ func NewUserLabelSelector(
 		map[string]string{
 			AssociationLabelName:      namespacedName.Name,
 			AssociationLabelNamespace: namespacedName.Namespace,
-			common.TypeLabelName:      user.UserType,
+			common.TypeLabelName:      esuser.AssociatedUserType,
 		})
 }

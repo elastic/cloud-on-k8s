@@ -7,15 +7,17 @@ package initcontainer
 import (
 	"path"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -57,16 +59,16 @@ var (
 	linkedFiles = LinkedFilesArray{
 		Array: []LinkedFile{
 			{
-				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticUsersFile),
+				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", filerealm.UsersFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", filerealm.UsersFile),
 			},
 			{
-				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticRolesFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticRolesFile),
+				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.RolesFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", user.RolesFile),
 			},
 			{
-				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersRolesFile),
-				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticUsersRolesFile),
+				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", filerealm.UsersRolesFile),
+				Target: stringsutil.Concat(EsConfigSharedVolume.EsContainerMountPath, "/", filerealm.UsersRolesFile),
 			},
 			{
 				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),

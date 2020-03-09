@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -16,10 +15,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	commonuser "github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -84,7 +86,7 @@ func ReconcileEsUser(
 	span, _ := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
 
-	pw := commonuser.RandomPasswordBytes()
+	pw := common.RandomPasswordBytes()
 
 	secKey := secretKey(associated, userObjectSuffix)
 	usrKey := UserKey(associated, userObjectSuffix)
@@ -130,7 +132,7 @@ func ReconcileEsUser(
 	// and the association label ("for that associated object")
 
 	// merge the association labels provided by the controller with the one needed for a user
-	userLabels := commonuser.NewLabels(k8s.ExtractNamespacedName(&es))
+	userLabels := esuser.AssociatedUserLabels(es)
 	for key, value := range labels {
 		userLabels[key] = value
 	}
@@ -142,9 +144,9 @@ func ReconcileEsUser(
 			Labels:    userLabels,
 		},
 		Data: map[string][]byte{
-			commonuser.UserName:     []byte(usrKey.Name),
-			commonuser.PasswordHash: bcryptHash,
-			commonuser.UserRoles:    []byte(userRoles),
+			esuser.UserNameField:     []byte(usrKey.Name),
+			esuser.PasswordHashField: bcryptHash,
+			esuser.UserRolesField:    []byte(userRoles),
 		},
 	}
 
@@ -157,9 +159,9 @@ func ReconcileEsUser(
 		Reconciled: &reconciledEsSecret,
 		NeedsUpdate: func() bool {
 			return !hasExpectedLabels(expectedEsUser, &reconciledEsSecret) ||
-				!bytes.Equal(expectedEsUser.Data[commonuser.UserName], reconciledEsSecret.Data[commonuser.UserName]) ||
-				!bytes.Equal(expectedEsUser.Data[commonuser.UserRoles], reconciledEsSecret.Data[commonuser.UserRoles]) ||
-				bcrypt.CompareHashAndPassword(reconciledEsSecret.Data[commonuser.PasswordHash], reconciledPw) != nil
+				!bytes.Equal(expectedEsUser.Data[esuser.UserNameField], reconciledEsSecret.Data[esuser.UserNameField]) ||
+				!bytes.Equal(expectedEsUser.Data[esuser.UserRolesField], reconciledEsSecret.Data[esuser.UserRolesField]) ||
+				bcrypt.CompareHashAndPassword(reconciledEsSecret.Data[esuser.PasswordHashField], reconciledPw) != nil
 		},
 		UpdateReconciled: func() {
 			setExpectedLabels(expectedEsUser, &reconciledEsSecret)

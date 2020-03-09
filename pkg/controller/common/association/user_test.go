@@ -6,26 +6,26 @@ package association
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"k8s.io/client-go/kubernetes/scheme"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	elasticsearchuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -94,7 +94,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				assert.NoError(t, c.Get(types.NamespacedName{Name: userName, Namespace: "default"}, &esUser))
 				expectedLabels := map[string]string{
 					associationLabelName:       kibanaFixture.Name,
-					common.TypeLabelName:       user.UserType,
+					common.TypeLabelName:       esuser.AssociatedUserType,
 					label.ClusterNameLabelName: "es-foo",
 				}
 				for k, v := range expectedLabels {
@@ -139,15 +139,15 @@ func Test_reconcileEsUser(t *testing.T) {
 				list := corev1.SecretList{}
 				assert.NoError(t, c.List(&list))
 				assert.Equal(t, 3, len(list.Items))
-				s := user.GetSecret(list, types.NamespacedName{Namespace: "other", Name: userSecretName})
+				s := GetSecret(list, types.NamespacedName{Namespace: "other", Name: userSecretName})
 				assert.NotNil(t, s)
-				s = user.GetSecret(list, types.NamespacedName{Namespace: esFixture.Namespace, Name: userSecretName})
+				s = GetSecret(list, types.NamespacedName{Namespace: esFixture.Namespace, Name: userSecretName})
 				assert.NotNil(t, s)
 				password, passwordIsSet := s.Data[userName]
 				assert.True(t, passwordIsSet)
 				assert.NotEmpty(t, password)
-				s = user.GetSecret(list, types.NamespacedName{Namespace: esFixture.Namespace, Name: userName}) // secret on the ES side
-				user.ChecksUser(t, s, userName, []string{"kibana_system"})
+				s = GetSecret(list, types.NamespacedName{Namespace: esFixture.Namespace, Name: userName}) // secret on the ES side
+				ChecksUser(t, s, userName, []string{"kibana_system"})
 			},
 		},
 		{
@@ -197,14 +197,14 @@ func Test_reconcileEsUser(t *testing.T) {
 							Labels: map[string]string{
 								associationLabelName:       kibanaFixture.Name,
 								associationLabelNamespace:  kibanaFixture.Namespace,
-								common.TypeLabelName:       user.UserType,
+								common.TypeLabelName:       esuser.AssociatedUserType,
 								label.ClusterNameLabelName: esFixture.Name,
 							},
 						},
 						Data: map[string][]byte{
-							user.UserName:     []byte(userName),
-							user.PasswordHash: []byte("$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e"),
-							user.UserRoles:    []byte(esuser.KibanaSystemUserBuiltinRole),
+							esuser.UserNameField:     []byte(userName),
+							esuser.PasswordHashField: []byte("$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e"),
+							esuser.UserRolesField:    []byte("kibana_system"),
 						},
 					}},
 				kibana: kibanaFixture,
@@ -214,7 +214,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			postCondition: func(c k8s.Client) {
 				var userSecret corev1.Secret
 				assert.NoError(t, c.Get(types.NamespacedName{Name: userName, Namespace: "default"}, &userSecret))
-				require.Equal(t, "$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e", string(userSecret.Data[user.PasswordHash]))
+				require.Equal(t, "$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e", string(userSecret.Data[esuser.PasswordHashField]))
 			},
 		},
 		{
@@ -262,7 +262,7 @@ func Test_reconcileEsUser(t *testing.T) {
 					associationLabelName:      tt.args.kibana.Name,
 					associationLabelNamespace: tt.args.kibana.Namespace,
 				},
-				elasticsearchuser.KibanaSystemUserBuiltinRole,
+				"kibana_system",
 				"kibana-user",
 				tt.args.es,
 			); (err != nil) != tt.wantErr {
@@ -271,4 +271,28 @@ func Test_reconcileEsUser(t *testing.T) {
 			tt.postCondition(c)
 		})
 	}
+}
+
+// ChecksUser checks that a secret contains the required fields expected by the user reconciler.
+func ChecksUser(t *testing.T, secret *corev1.Secret, expectedUsername string, expectedRoles []string) {
+	assert.NotNil(t, secret)
+	currentUsername, ok := secret.Data["name"]
+	assert.True(t, ok)
+	assert.Equal(t, expectedUsername, string(currentUsername))
+	passwordHash, ok := secret.Data["passwordHash"]
+	assert.True(t, ok)
+	assert.NotEmpty(t, passwordHash)
+	currentRoles, ok := secret.Data["userRoles"]
+	assert.True(t, ok)
+	assert.ElementsMatch(t, expectedRoles, strings.Split(string(currentRoles), ","))
+}
+
+// GetSecret gets the first secret in a list that matches the namespace and the name.
+func GetSecret(list corev1.SecretList, namespacedName types.NamespacedName) *corev1.Secret {
+	for _, secret := range list.Items {
+		if secret.Namespace == namespacedName.Namespace && secret.Name == namespacedName.Name {
+			return &secret
+		}
+	}
+	return nil
 }

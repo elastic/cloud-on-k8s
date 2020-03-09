@@ -11,7 +11,7 @@ import (
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 )
 
 const (
@@ -46,6 +46,6 @@ func NewUserLabelSelector(
 		map[string]string{
 			AssociationLabelName:      namespacedName.Name,
 			AssociationLabelNamespace: namespacedName.Namespace,
-			common.TypeLabelName:      user.UserType,
+			common.TypeLabelName:      esuser.AssociatedUserType,
 		})
 }
