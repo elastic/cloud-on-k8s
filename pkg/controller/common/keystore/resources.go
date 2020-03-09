@@ -37,6 +37,14 @@ type HasKeystore interface {
 	SecureSettings() []commonv1.SecretSource
 }
 
+func WatchedSecretNames(hasKeystore HasKeystore) []string {
+	var names []string
+	for _, s := range hasKeystore.SecureSettings() {
+		names = append(names, s.SecretName)
+	}
+	return names
+}
+
 // NewResources optionally returns a volume and init container to include in pods,
 // in order to create a Keystore from a Secret containing secure settings provided by
 // the user and referenced in the Elastic Stack application spec.

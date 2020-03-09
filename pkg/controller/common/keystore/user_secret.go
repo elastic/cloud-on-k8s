@@ -43,8 +43,13 @@ func secureSettingsVolume(
 	namer name.Namer,
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
-	err := watchSecureSettings(r.DynamicWatches(), hasKeystore.SecureSettings(), k8s.ExtractNamespacedName(hasKeystore))
-	if err != nil {
+	watcher := k8s.ExtractNamespacedName(hasKeystore)
+	if err := watches.WatchUserProvidedSecrets(
+		watcher,
+		r.DynamicWatches(),
+		SecureSettingsWatchName(watcher),
+		WatchedSecretNames(hasKeystore),
+	); err != nil {
 		return nil, "", err
 	}
 
@@ -199,29 +204,4 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 // It is unique per APM or Kibana deployment.
 func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
-}
-
-// watchSecureSettings registers a watch for the given secure settings.
-//
-// Only one watch per cluster is registered:
-// - if it already exists with a different secret, it is replaced to watch the new secret.
-// - if the given user secret is nil, the watch is removed.
-func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1.SecretSource, nn types.NamespacedName) error {
-	watchName := SecureSettingsWatchName(nn)
-	if secureSettingsRef == nil {
-		watched.Secrets.RemoveHandlerForKey(watchName)
-		return nil
-	}
-	userSecretNsns := make([]types.NamespacedName, 0, len(secureSettingsRef))
-	for _, secretRef := range secureSettingsRef {
-		userSecretNsns = append(userSecretNsns, types.NamespacedName{
-			Namespace: nn.Namespace,
-			Name:      secretRef.SecretName,
-		})
-	}
-	return watched.Secrets.AddHandler(watches.NamedWatch{
-		Name:    watchName,
-		Watched: userSecretNsns,
-		Watcher: nn,
-	})
 }
