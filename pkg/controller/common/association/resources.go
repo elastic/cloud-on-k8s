@@ -48,10 +48,10 @@ func deleteIfOrphaned(
 	c k8s.Client,
 	secret *corev1.Secret,
 	associated commonv1.Associated,
-	hasBeenCreatedBy CreatedBy,
+	createdBy CreatedBy,
 	esRef commonv1.ObjectSelector,
 ) error {
-	if metav1.IsControlledBy(secret, associated) || hasBeenCreatedBy(secret, associated) {
+	if metav1.IsControlledBy(secret, associated) || createdBy(secret, associated) {
 		if !esRef.IsDefined() {
 			// look for association secrets owned by this associated instance
 			// which should not exist since no ES referenced in the spec
