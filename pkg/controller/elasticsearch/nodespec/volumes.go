@@ -40,7 +40,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		esv1.UnicastHostsConfigMap(esName), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 	)
 	usersSecretVolume := volume.NewSecretVolumeWithMountPath(
-		user.XPackFileRealmSecretName(esName),
+		esv1.RolesAndFileRealmSecret(esName),
 		esvolume.XPackFileRealmVolumeName,
 		esvolume.XPackFileRealmVolumeMountPath,
 	)
