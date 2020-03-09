@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -58,24 +59,16 @@ func AddWatches(c controller.Controller, r *ReconcileRemoteCa) error {
 func newToRequestsFuncFromSecret() handler.ToRequestsFunc {
 	return func(obj handler.MapObject) []reconcile.Request {
 		labels := obj.Meta.GetLabels()
-		if !label.HasLabel(obj.Meta, common.TypeLabelName) {
+		if !maps.ContainsKeys(labels, RemoteClusterNameLabelName, RemoteClusterNamespaceLabelName, common.TypeLabelName) {
 			return nil
 		}
 		if labels[common.TypeLabelName] != TypeLabelValue {
 			return nil
 		}
-		clusterAssociationName, ok := labels[RemoteClusterNameLabelName]
-		if !ok {
-			return nil
-		}
-		clusterAssociationNamespace, ok := labels[RemoteClusterNamespaceLabelName]
-		if !ok {
-			return nil
-		}
 		return []reconcile.Request{
 			{NamespacedName: types.NamespacedName{
-				Namespace: clusterAssociationNamespace,
-				Name:      clusterAssociationName},
+				Namespace: labels[RemoteClusterNamespaceLabelName],
+				Name:      labels[RemoteClusterNameLabelName]},
 			},
 		}
 	}
