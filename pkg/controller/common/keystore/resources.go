@@ -37,8 +37,9 @@ type HasKeystore interface {
 	SecureSettings() []commonv1.SecretSource
 }
 
+// WatchedSecretNames returns the name of all secure settings secrets to watch.
 func WatchedSecretNames(hasKeystore HasKeystore) []string {
-	var names []string
+	names := make([]string, 0, len(hasKeystore.SecureSettings()))
 	for _, s := range hasKeystore.SecureSettings() {
 		names = append(names, s.SecretName)
 	}

@@ -123,7 +123,7 @@ func aggregateFileRealm(
 func aggregateRoles(c k8s.Client, es esv1.Elasticsearch, watched watches.DynamicWatches) (RolesFileContent, error) {
 	userProvided, err := reconcileUserProvidedRoles(c, es, watched)
 	if err != nil {
-		return RolesFileContent{}, nil
+		return RolesFileContent{}, err
 	}
 	// merge all roles together, the last one having precedence
 	return PredefinedRoles.MergeWith(userProvided), nil

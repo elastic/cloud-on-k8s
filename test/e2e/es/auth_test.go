@@ -31,9 +31,9 @@ const (
 
 	sampleUser                = "myuser"
 	samplePassword            = "mypassword"
-	samplePasswordHash        = "$2a$10$qrurU7ju08g0eCXgh5qZmOWfKLhWMs/ca3uXz1l6.eFf09UH6YXFy"
+	samplePasswordHash        = "$2a$10$qrurU7ju08g0eCXgh5qZmOWfKLhWMs/ca3uXz1l6.eFf09UH6YXFy" // nolint
 	samplePasswordUpdated     = "mypasswordupdated"
-	samplePasswordUpdatedHash = "$2a$10$ckqhC0BB5OdXJhR1J7vbiu21e9BxJU1V6HHLOqbSo.TlZAocWWnie"
+	samplePasswordUpdatedHash = "$2a$10$ckqhC0BB5OdXJhR1J7vbiu21e9BxJU1V6HHLOqbSo.TlZAocWWnie" // nolint
 	sampleUsersFile           = sampleUser + ":" + samplePasswordHash
 	sampleUsersFileUpdated    = sampleUser + ":" + samplePasswordUpdatedHash
 	sampleUsersRolesFile      = "test_role:" + sampleUser
@@ -217,6 +217,7 @@ func postDocument(es esv1.Elasticsearch, k *test.K8sClient, user esclient.UserAu
 			return err
 		}
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != expectedStatusCode {
 		return fmt.Errorf("unexpected status code %d", resp.StatusCode)
 	}
