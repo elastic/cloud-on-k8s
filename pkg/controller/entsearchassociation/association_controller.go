@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package entsearchassociation
 
 import (
@@ -43,8 +47,8 @@ import (
 //  -> massive refactoring in common association stuff should happen.
 
 const (
-	name = "entsearch-es-association-controller"
-	entSearchUserSuffix               = "entsearch-es-user"
+	name                        = "entsearch-es-association-controller"
+	entSearchUserSuffix         = "entsearch-es-user"
 	elasticsearchCASecretSuffix = "entsearch-es-ca" // nolint
 )
 
@@ -124,7 +128,6 @@ type ReconcileEnterpriseSearchElasticsearchAssociation struct {
 	iteration uint64
 }
 
-
 func (r *ReconcileEnterpriseSearchElasticsearchAssociation) onDelete(obj types.NamespacedName) error {
 	// Clean up memory
 	r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(obj))
@@ -188,7 +191,6 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) Reconcile(request re
 		Aggregate()
 }
 
-
 func (r *ReconcileEnterpriseSearchElasticsearchAssociation) isCompatible(ctx context.Context, entSearch *entsv1beta1.EnterpriseSearch) (bool, error) {
 	selector := map[string]string{enterprisesearch.EnterpriseSearchNameLabelName: entSearch.Name}
 	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, entSearch, selector, r.OperatorInfo.BuildInfo.Version)
@@ -197,7 +199,6 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) isCompatible(ctx con
 	}
 	return compat, err
 }
-
 
 func elasticsearchWatchName(assocKey types.NamespacedName) string {
 	return assocKey.Namespace + "-" + assocKey.Name + "-es-watch"
@@ -208,7 +209,6 @@ func elasticsearchWatchName(assocKey types.NamespacedName) string {
 func esCAWatchName(entsearch types.NamespacedName) string {
 	return entsearch.Namespace + "-" + entsearch.Name + "-ca-watch"
 }
-
 
 func (r *ReconcileEnterpriseSearchElasticsearchAssociation) reconcileInternal(ctx context.Context, entSearch *entsv1beta1.EnterpriseSearch) (commonv1.AssociationStatus, error) {
 	// no auto-association nothing to do
@@ -222,8 +222,6 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) reconcileInternal(ct
 	}
 	assocKey := k8s.ExtractNamespacedName(entSearch)
 	// Make sure we see events from Elasticsearch using a dynamic watch
-	// will become more relevant once we refactor user handling to CRDs and implement
-	// syncing of user credentials across namespaces
 	err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(assocKey),
 		Watched: []types.NamespacedName{elasticsearchRef.NamespacedName()},
@@ -293,7 +291,6 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) reconcileInternal(ct
 	return commonv1.AssociationEstablished, nil
 }
 
-
 func (r *ReconcileEnterpriseSearchElasticsearchAssociation) updateStatus(ctx context.Context, entSearch entsv1beta1.EnterpriseSearch, newStatus commonv1.AssociationStatus) error {
 	span, _ := apm.StartSpan(ctx, "update_association", tracing.SpanTypeApp)
 	defer span.End()
@@ -314,7 +311,6 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) updateStatus(ctx con
 	return nil
 }
 
-
 func (r *ReconcileEnterpriseSearchElasticsearchAssociation) getElasticsearch(ctx context.Context, entSearch *entsv1beta1.EnterpriseSearch, elasticsearchRef commonv1.ObjectSelector, es *esv1.Elasticsearch) (commonv1.AssociationStatus, error) {
 	span, _ := apm.StartSpan(ctx, "get_elasticsearch", tracing.SpanTypeApp)
 	defer span.End()
@@ -329,14 +325,12 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) getElasticsearch(ctx
 				log.Error(err, "Failed to remove Elasticsearch output from EnterpriseSearch object", "namespace", entSearch.Namespace, "name", entSearch.Name)
 				return commonv1.AssociationPending, err
 			}
-
 			return commonv1.AssociationPending, nil
 		}
 		return commonv1.AssociationFailed, err
 	}
 	return "", nil
 }
-
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
 // attempts. If a user changes namespace on a vertex of an association the standard reconcile mechanism will not delete the
@@ -364,7 +358,6 @@ func deleteOrphanedResources(ctx context.Context, c k8s.Client, entSearch *entsv
 	}
 	return nil
 }
-
 
 func resultFromStatus(status commonv1.AssociationStatus) reconcile.Result {
 	switch status {

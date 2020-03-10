@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package enterprisesearch
 
 import (
@@ -8,8 +12,8 @@ import (
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,12 +26,12 @@ const (
 func DefaultUserRef(ents entsv1beta1.EnterpriseSearch) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: ents.Namespace,
-		Name: name.DefaultUser(ents.Name),
+		Name:      name.DefaultUser(ents.Name),
 	}
 }
 
 type User struct {
-	Name string
+	Name     string
 	Password []byte
 }
 
@@ -49,9 +53,9 @@ func (u User) Secret(ents entsv1beta1.EnterpriseSearch) corev1.Secret {
 // TODO: this should not be printed out on stdout, but is :(
 func DefaultUserEnvVar(ents entsv1beta1.EnterpriseSearch) corev1.EnvVar {
 	return corev1.EnvVar{
-		Name:      "ENT_SEARCH_DEFAULT_PASSWORD",
+		Name: "ENT_SEARCH_DEFAULT_PASSWORD",
 		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef:     &corev1.SecretKeySelector{
+			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: DefaultUserRef(ents).Name,
 				},
@@ -63,12 +67,11 @@ func DefaultUserEnvVar(ents entsv1beta1.EnterpriseSearch) corev1.EnvVar {
 
 func GenerateDefaultUser() User {
 	return User{
-		Name: DefaultUserName,
+		Name:     DefaultUserName,
 		Password: user.RandomPasswordBytes(),
 	}
 }
 
-// TODO: factorize with the ES user?
 func ReconcileDefaultUser(c k8s.Client, ents entsv1beta1.EnterpriseSearch, scheme *runtime.Scheme) error {
 	user := GenerateDefaultUser()
 	expected := user.Secret(ents)

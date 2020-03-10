@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package enterprisesearch
 
 import (
@@ -16,8 +20,8 @@ import (
 )
 
 const (
-	HTTPPort = 3002
-	DefaultJavaOpts = "-Xms3500m -Xmx3500m"
+	HTTPPort            = 3002
+	DefaultJavaOpts     = "-Xms3500m -Xmx3500m"
 	ConfigHashLabelName = "enterprisesearch.k8s.elastic.co/config-hash"
 )
 
@@ -51,14 +55,14 @@ func readinessProbe(ents entsv1beta1.EnterpriseSearch) corev1.Probe {
 						`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/swiftype-app-version -k -s`,
 						ents.Spec.Protocol(),
 						HTTPPort,
-						),
+					),
 				},
 			},
 		},
 	}
 }
 
-func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) (corev1.PodTemplateSpec, error) {
+func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
 	cfgVolume := ConfigSecretVolume(ents)
 
 	builder := defaults.NewPodTemplateBuilder(
@@ -78,7 +82,7 @@ func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) (corev1.Po
 	builder = withESCertsVolume(builder, ents)
 	builder = withHTTPCertsVolume(builder, ents)
 
-	return builder.PodTemplate, nil
+	return builder.PodTemplate
 }
 
 func withESCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {

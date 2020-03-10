@@ -17,6 +17,6 @@ const (
 func NewLabels(entsName string) map[string]string {
 	return map[string]string{
 		EnterpriseSearchNameLabelName: entsName,
-		common.TypeLabelName:   Type,
+		common.TypeLabelName:          Type,
 	}
 }

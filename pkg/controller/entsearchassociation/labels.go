@@ -23,13 +23,10 @@ func NewResourceLabels(name string) map[string]string {
 	return map[string]string{AssociationLabelName: name}
 }
 
-func NewUserLabelSelector(
-	namespacedName types.NamespacedName,
-) client.MatchingLabels {
-	return client.MatchingLabels(
-		map[string]string{
-			AssociationLabelName:      namespacedName.Name,
-			AssociationLabelNamespace: namespacedName.Namespace,
-			common.TypeLabelName:      user.UserType,
-		})
+func NewUserLabelSelector(namespacedName types.NamespacedName) client.MatchingLabels {
+	return map[string]string{
+		AssociationLabelName:      namespacedName.Name,
+		AssociationLabelNamespace: namespacedName.Namespace,
+		common.TypeLabelName:      user.UserType,
+	}
 }

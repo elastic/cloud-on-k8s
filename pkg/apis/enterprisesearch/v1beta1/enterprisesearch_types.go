@@ -63,7 +63,7 @@ const (
 // EnterpriseSearchStatus defines the observed state of EnterpriseSearch
 type EnterpriseSearchStatus struct {
 	commonv1.ReconcilerStatus `json:",inline"`
-	Health                         EnterpriseSearchHealth `json:"health,omitempty"`
+	Health                    EnterpriseSearchHealth `json:"health,omitempty"`
 	// ExternalService is the name of the service associated to the Enterprise Search Pods.
 	ExternalService string `json:"service,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
@@ -110,8 +110,8 @@ type EnterpriseSearch struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec      EnterpriseSearchSpec                  `json:"spec,omitempty"`
-	Status    EnterpriseSearchStatus                `json:"status,omitempty"`
+	Spec      EnterpriseSearchSpec      `json:"spec,omitempty"`
+	Status    EnterpriseSearchStatus    `json:"status,omitempty"`
 	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
 }
 

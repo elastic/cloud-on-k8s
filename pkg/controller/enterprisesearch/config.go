@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package enterprisesearch
 
 import (
@@ -17,14 +21,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
-	ESCertsPath = "/mnt/elastic-internal/es-certs"
+	ESCertsPath     = "/mnt/elastic-internal/es-certs"
 	ConfigMountPath = "/mnt/elastic-internal/config"
-	ConfigFilename = "enterprise-search.yml"
+	ConfigFilename  = "enterprise-search.yml"
 )
 
 func ConfigSecretVolume(ents entsv1beta1.EnterpriseSearch) volume.SecretVolume {
@@ -59,8 +63,8 @@ func ReconcileConfig(client k8s.Client, scheme *runtime.Scheme, ents entsv1beta1
 	reconciledConfigSecret := &corev1.Secret{}
 	if err := reconciler.ReconcileResource(
 		reconciler.Params{
-			Client: client,
-			Scheme: scheme,
+			Client:     client,
+			Scheme:     scheme,
 			Owner:      &ents,
 			Expected:   expectedConfigSecret,
 			Reconciled: reconciledConfigSecret,
@@ -103,14 +107,13 @@ func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.Canon
 	return cfg, nil
 }
 
-
 func defaultConfig(ents entsv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
-		"ent_search.external_url": fmt.Sprintf("%s://localhost:%d", ents.Spec.Protocol(), HTTPPort),
-		"ent_search.listen_host": "0.0.0.0",
+		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ents.Spec.Protocol(), HTTPPort),
+		"ent_search.listen_host":         "0.0.0.0",
 		"allow_es_settings_modification": true,
 		// TODO explicitly handle those two
-		"secret_session_key": "TODOCHANGEMEsecret_session_key",
+		"secret_session_key":                "TODOCHANGEMEsecret_session_key",
 		"secret_management.encryption_keys": []string{"TODOCHANGEMEsecret_management.encryption_keys"},
 	})
 }
@@ -124,18 +127,20 @@ func associationConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settin
 	if err != nil {
 		return nil, err
 	}
-	cfg :=  settings.MustCanonicalConfig(map[string]string{
+	cfg := settings.MustCanonicalConfig(map[string]string{
 		"ent_search.auth.source": "elasticsearch-native",
-		"elasticsearch.host": ents.AssociationConf().URL,
+		"elasticsearch.host":     ents.AssociationConf().URL,
 		"elasticsearch.username": username,
 		"elasticsearch.password": password,
 	})
 
 	if ents.AssociationConf().CAIsConfigured() {
-		cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
-			"elasticsearch.ssl.enabled": true,
+		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
+			"elasticsearch.ssl.enabled":               true,
 			"elasticsearch.ssl.certificate_authority": filepath.Join(ESCertsPath, certificates.CertFileName),
-		}))
+		})); err != nil {
+			return nil, err
+		}
 	}
 	return cfg, nil
 }
@@ -146,9 +151,9 @@ func tlsConfig(ents entsv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
 	}
 	certsDir := http.HTTPCertSecretVolume(name.EntSearchNamer, ents.Name).VolumeMount().MountPath
 	return settings.MustCanonicalConfig(map[string]interface{}{
-		"ent_search.ssl.enabled": true,
-		"ent_search.ssl.certificate": filepath.Join(certsDir, certificates.CertFileName),
-		"ent_search.ssl.key": filepath.Join(certsDir, certificates.KeyFileName),
+		"ent_search.ssl.enabled":                 true,
+		"ent_search.ssl.certificate":             filepath.Join(certsDir, certificates.CertFileName),
+		"ent_search.ssl.key":                     filepath.Join(certsDir, certificates.KeyFileName),
 		"ent_search.ssl.certificate_authorities": []string{filepath.Join(certsDir, certificates.CAFileName)},
 	})
 }

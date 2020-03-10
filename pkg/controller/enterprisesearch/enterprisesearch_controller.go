@@ -38,7 +38,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-
 const (
 	controllerName = "enterprisesearch-controller"
 )
@@ -116,7 +115,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}
 
-
 // ReconcileEnterpriseSearch reconciles an ApmServer object
 type ReconcileEnterpriseSearch struct {
 	k8s.Client
@@ -145,7 +143,6 @@ func (r *ReconcileEnterpriseSearch) Scheme() *runtime.Scheme {
 }
 
 var _ driver.Interface = &ReconcileEnterpriseSearch{}
-
 
 // Reconcile reads that state of the cluster for an EnterpriseSearch object and makes changes based on the state read
 // and what is in the EnterpriseSearch.Spec.
@@ -192,12 +189,10 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	return r.doReconcile(ctx, request, ents)
 }
 
-
 func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 }
-
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *entsv1beta1.EnterpriseSearch) (bool, error) {
 	selector := map[string]string{EnterpriseSearchNameLabelName: ents.Name}
@@ -208,7 +203,6 @@ func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *ents
 	return compat, err
 }
 
-
 func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request reconcile.Request, ents entsv1beta1.EnterpriseSearch) (reconcile.Result, error) {
 	state := NewState(request, &ents)
 
@@ -216,7 +210,6 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-
 
 	results := ReconcileCertificates(ctx, r, &ents, []corev1.Service{*svc}, r.CACertRotation, r.CertRotation)
 	if results.HasError() {
@@ -267,7 +260,6 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	return res, nil
 }
 
-
 func NewService(ents entsv1beta1.EnterpriseSearch) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: ents.Spec.HTTP.Service.ObjectMeta,
@@ -302,7 +294,7 @@ func buildConfigHash(c k8s.Client, ents entsv1beta1.EnterpriseSearch, configSecr
 	if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
 		return "", err
 	}
-	if certPem, ok := tlsCertSecret.Data[certificates.CertFileName] ; ok {
+	if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {
 		_, _ = configHash.Write(certPem)
 	}
 
@@ -320,7 +312,6 @@ func buildConfigHash(c k8s.Client, ents entsv1beta1.EnterpriseSearch, configSecr
 
 	return fmt.Sprintf("%x", configHash.Sum(nil)), nil
 }
-
 
 func tlsSecretWatchName(ents entsv1beta1.EnterpriseSearch) string {
 	return fmt.Sprintf("%s-%s-es-auth-secret", ents.Namespace, ents.Name)

@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package enterprisesearch
 
 import (
@@ -22,12 +26,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	params, err := r.deploymentParams(ents, configHash)
-	if err != nil {
-		return state, err
-	}
-
-	deploy := deployment.New(params)
+	deploy := deployment.New(r.deploymentParams(ents, configHash))
 	result, err := deployment.Reconcile(r.K8sClient(), r.Scheme(), deploy, &ents)
 	if err != nil {
 		return state, err
@@ -36,12 +35,8 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	return state, nil
 }
 
-
-func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.EnterpriseSearch, configHash string) (deployment.Params, error) {
-	podSpec, err := newPodSpec(ents, configHash)
-	if err != nil {
-		return deployment.Params{}, err
-	}
+func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.EnterpriseSearch, configHash string) deployment.Params {
+	podSpec := newPodSpec(ents, configHash)
 	podLabels := NewLabels(ents.Name)
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
@@ -53,6 +48,5 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.Enterprise
 		Labels:          NewLabels(ents.Name),
 		PodTemplateSpec: podSpec,
 		Strategy:        appsv1.RollingUpdateDeploymentStrategyType,
-	}, nil
+	}
 }
-

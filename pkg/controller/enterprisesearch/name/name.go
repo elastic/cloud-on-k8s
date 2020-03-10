@@ -11,7 +11,7 @@ import (
 const (
 	httpServiceSuffix = "http"
 	configSuffix      = "config"
-	userSuffix = "user"
+	userSuffix        = "user"
 	deploymentSuffix  = "server"
 )
 
