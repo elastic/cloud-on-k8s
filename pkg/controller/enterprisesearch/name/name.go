@@ -16,7 +16,8 @@ const (
 )
 
 // EntSearchNamer is a Namer that is configured with the defaults for resources related to an EnterpriseSearch resource.
-var EntSearchNamer = common_name.NewNamer("entsearch")
+// TODO: "entsearch" looks better but we reach the 28 chars suffix limit for certs secret :(
+var EntSearchNamer = common_name.NewNamer("ents")
 
 func HTTPService(entsName string) string {
 	return EntSearchNamer.Suffix(entsName, httpServiceSuffix)

@@ -211,6 +211,14 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
+
+	results := ReconcileCertificates(ctx, r, &ents, []corev1.Service{*svc}, r.CACertRotation, r.CertRotation)
+	if results.HasError() {
+		res, err := results.Aggregate()
+		k8s.EmitErrorEvent(r.recorder, err, &ents, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
+		return res, err
+	}
+
 	if err := ReconcileDefaultUser(r.K8sClient(), ents, r.Scheme()); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -224,14 +232,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
 
 	// TODO: hash ES certs for rotation
-
-	// TODO: certs
-	//results := apmcerts.Reconcile(ctx, r, as, []corev1.Service{*svc}, r.CACertRotation)
-	//if results.HasError() {
-	//	res, err := results.Aggregate()
-	//	k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
-	//	return res, err
-	//}
+	// TODO: hash http certs for rotation
 
 	state, err = r.reconcileDeployment(ctx, state, ents, fmt.Sprintf("%x", configHash.Sum(nil)))
 	if err != nil {
@@ -251,9 +252,9 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	//	log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
 	//	return reconcile.Result{Requeue: true}, nil
 	//}
-	//res, err := results.WithError(err).Aggregate()
-	//k8s.EmitErrorEvent(r.recorder, err, ents, events.EventReconciliationError, "Reconciliation error: %v", err)
-	return reconcile.Result{}, nil
+	res, err := results.WithError(err).Aggregate()
+	k8s.EmitErrorEvent(r.recorder, err, &ents, events.EventReconciliationError, "Reconciliation error: %v", err)
+	return res, nil
 }
 
 

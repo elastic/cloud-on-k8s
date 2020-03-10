@@ -38,7 +38,10 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 
 
 func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.EnterpriseSearch, configHash string) (deployment.Params, error) {
-	podSpec := newPodSpec(ents, configHash)
+	podSpec, err := newPodSpec(ents, configHash)
+	if err != nil {
+		return deployment.Params{}, err
+	}
 	podLabels := NewLabels(ents.Name)
 
 	//if ents.AssociationConf().CAIsConfigured() {
@@ -97,7 +100,6 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.Enterprise
 	//}
 	//
 	//podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
-	//// TODO: also need to hash secret token?
 
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 

@@ -8,9 +8,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 )
 
 const (
@@ -49,17 +51,15 @@ var (
 			},
 		},
 	}
-
 )
 
-func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
+func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) (corev1.PodTemplateSpec, error) {
 	cfgVolume := ConfigSecretVolume(ents)
 
 	builder := defaults.NewPodTemplateBuilder(
 		ents.Spec.PodTemplate, entsv1beta1.EnterpriseSearchContainerName).
 		WithResources(DefaultResources).
 		WithDockerImage(ents.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, ents.Spec.Version)).
-		//WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
 		WithPorts([]corev1.ContainerPort{
 			{Name: ents.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 		}).
@@ -71,8 +71,9 @@ func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.Pod
 		WithLabels(map[string]string{ConfigHashLabelName: configHash})
 
 	builder = withESCertsVolume(builder, ents)
+	builder = withHTTPCertsVolume(builder, ents)
 
-	return builder.PodTemplate
+	return builder.PodTemplate, nil
 }
 
 // TODO: handle differently?
@@ -88,4 +89,12 @@ func withESCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.En
 	return builder.
 		WithVolumes(vol.Volume()).
 		WithVolumeMounts(vol.VolumeMount())
+}
+
+func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {
+	if !ents.Spec.HTTP.TLS.Enabled() {
+		return builder
+	}
+	vol := http.HTTPCertSecretVolume(name.EntSearchNamer, ents.Name)
+	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 }

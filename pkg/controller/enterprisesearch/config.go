@@ -13,22 +13,23 @@ import (
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	entsname "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 )
 
 const (
 	// TODO: homogenize mount path with ES, Kibana, etc.?
-	ESCertsPath = "/mnt/es-certs"
+	ESCertsPath = "/mnt/elastic-internal/es-certs"
+	ConfigMountPath = "/mnt/elastic-internal/config"
 	ConfigFilename = "enterprise-search.yml"
-	ConfigMountPath = "/mnt/config"
 )
 
 func ConfigSecretVolume(ents entsv1beta1.EnterpriseSearch) volume.SecretVolume {
-	return volume.NewSecretVolumeWithMountPath(entsname.Config(ents.Name), "config", ConfigMountPath)
+	return volume.NewSecretVolumeWithMountPath(name.Config(ents.Name), "config", ConfigMountPath)
 }
 
 // Reconcile reconciles the configuration of Enterprise Search: it generates the right configuration and
@@ -48,7 +49,7 @@ func ReconcileConfig(client k8s.Client, scheme *runtime.Scheme, ents entsv1beta1
 	expectedConfigSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ents.Namespace,
-			Name:      entsname.Config(ents.Name),
+			Name:      name.Config(ents.Name),
 			Labels:    NewLabels(ents.Name),
 		},
 		Data: map[string][]byte{
@@ -99,7 +100,7 @@ func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.Canon
 	}
 
 	// merge with user settings last so they take precedence
-	if err := cfg.MergeWith(associationCfg, userProvidedCfg); err != nil {
+	if err := cfg.MergeWith(associationCfg, tlsConfig(ents), userProvidedCfg); err != nil {
 		return nil, err
 	}
 	return cfg, nil
@@ -142,3 +143,15 @@ func associationConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settin
 	return cfg, nil
 }
 
+func tlsConfig(ents entsv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
+	if !ents.Spec.HTTP.TLS.Enabled() {
+		return settings.NewCanonicalConfig()
+	}
+	certsDir := http.HTTPCertSecretVolume(name.EntSearchNamer, ents.Name).VolumeMount().MountPath
+	return settings.MustCanonicalConfig(map[string]interface{}{
+		"ent_search.ssl.enabled": true,
+		"ent_search.ssl.certificate": filepath.Join(certsDir, certificates.CertFileName),
+		"ent_search.ssl.key": filepath.Join(certsDir, certificates.KeyFileName),
+		"ent_search.ssl.certificate_authorities": []string{filepath.Join(certsDir, certificates.CAFileName)},
+	})
+}

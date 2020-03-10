@@ -22,10 +22,17 @@ spec:
   image: $DOCKER_IMAGE
   count: 1
   elasticsearchRef:
-    name: mycluster
-    namespace: es-namespace
+    name: elasticsearch-sample
   config:
-    ent_search.external_url: http://public-ip:3002
+    ent_search.external_url: https://localhost:3002
+  http:
+#    service:
+#      spec:
+#        type: LoadBalancer
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+          - dns: localhost
   # http:
   #   service:
   #     spec:
