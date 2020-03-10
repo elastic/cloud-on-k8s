@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -97,6 +98,11 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 		IsController: true,
 		OwnerType:    &entsv1beta1.EnterpriseSearch{},
 	}); err != nil {
+		return err
+	}
+
+	// Dynamically watch referenced secrets to connect to Elasticsearch
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
 
@@ -219,6 +225,10 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return res, err
 	}
 
+	if err := watchEsTLSCertsSecret(ents, r.DynamicWatches()); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if err := ReconcileDefaultUser(r.K8sClient(), ents, r.Scheme()); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -228,13 +238,13 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	configHash := sha256.New224()
-	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
+	// build a hash of various inputs to rotate Pods on any change
+	configHash, err := buildConfigHash(r.K8sClient(), ents, *configSecret)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 
-	// TODO: hash ES certs for rotation
-	// TODO: hash http certs for rotation
-
-	state, err = r.reconcileDeployment(ctx, state, ents, fmt.Sprintf("%x", configHash.Sum(nil)))
+	state, err = r.reconcileDeployment(ctx, state, ents, configHash)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")
@@ -277,4 +287,53 @@ func NewService(ents entsv1beta1.EnterpriseSearch) *corev1.Service {
 	}
 
 	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+}
+
+func buildConfigHash(c k8s.Client, ents entsv1beta1.EnterpriseSearch, configSecret corev1.Secret) (string, error) {
+	// build a hash of various settings to rotate the Pod on any change
+	configHash := sha256.New224()
+
+	// - in the Enterprise Search configuration file content
+	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
+
+	// - in the Enterprise Search TLS certificates
+	var tlsCertSecret corev1.Secret
+	tlsSecretKey := types.NamespacedName{Namespace: ents.Namespace, Name: certificates.HTTPCertsInternalSecretName(entsname.EntSearchNamer, ents.Name)}
+	if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
+		return "", err
+	}
+	if certPem, ok := tlsCertSecret.Data[certificates.CertFileName] ; ok {
+		_, _ = configHash.Write(certPem)
+	}
+
+	// - in the Elasticsearch TLS certificates
+	if ents.AssociationConf().CAIsConfigured() {
+		var esPublicCASecret corev1.Secret
+		key := types.NamespacedName{Namespace: ents.Namespace, Name: ents.AssociationConf().GetCASecretName()}
+		if err := c.Get(key, &esPublicCASecret); err != nil {
+			return "", err
+		}
+		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
+			_, _ = configHash.Write(certPem)
+		}
+	}
+
+	return fmt.Sprintf("%x", configHash.Sum(nil)), nil
+}
+
+
+func tlsSecretWatchName(ents entsv1beta1.EnterpriseSearch) string {
+	return fmt.Sprintf("%s-%s-es-auth-secret", ents.Namespace, ents.Name)
+}
+
+// watchEsTLSCertsSecret sets up a dynamic watch for the Secret containing the associated Elasticsearch TLS CA certs.
+func watchEsTLSCertsSecret(ents entsv1beta1.EnterpriseSearch, watched watches.DynamicWatches) error {
+	if !ents.AssociationConf().CAIsConfigured() {
+		return nil
+	}
+	return watched.Secrets.AddHandler(watches.NamedWatch{
+		Name:    tlsSecretWatchName(ents),
+		Watched: []types.NamespacedName{{Namespace: ents.Namespace, Name: ents.AssociationConf().GetCASecretName()}},
+		Watcher: k8s.ExtractNamespacedName(&ents),
+	})
 }

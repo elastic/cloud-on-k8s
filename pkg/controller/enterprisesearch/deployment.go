@@ -43,64 +43,6 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.Enterprise
 		return deployment.Params{}, err
 	}
 	podLabels := NewLabels(ents.Name)
-
-	//if ents.AssociationConf().CAIsConfigured() {
-	//	esCASecretName := ents.AssociationConf().GetCASecretName()
-	//	// TODO: this is a little ugly as it reaches into the ES controller bits
-	//	esCAVolume := volume.NewSecretVolumeWithMountPath(
-	//		esCASecretName,
-	//		"elasticsearch-certs",
-	//		filepath.Join(ApmBaseDir, config.CertificatesDir),
-	//	)
-	//
-	//	// build a checksum of the cert file used by ES, which we can use to cause the Deployment to roll the Apm Server
-	//	// instances in the deployment when the ca file contents change. this is done because Apm Server do not support
-	//	// updating the CA file contents without restarting the process.
-	//	certsChecksum := ""
-	//	var esPublicCASecret corev1.Secret
-	//	key := types.NamespacedName{Namespace: as.Namespace, Name: esCASecretName}
-	//	if err := r.Get(key, &esPublicCASecret); err != nil {
-	//		return deployment.Params{}, err
-	//	}
-	//	if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
-	//		certsChecksum = fmt.Sprintf("%x", sha256.Sum224(certPem))
-	//	}
-	//	// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
-	//	// changes, which will trigger a rolling update)
-	//	podLabels[esCAChecksumLabelName] = certsChecksum
-	//
-	//	podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, esCAVolume.Volume())
-	//
-	//	for i := range podSpec.Spec.InitContainers {
-	//		podSpec.Spec.InitContainers[i].VolumeMounts = append(podSpec.Spec.InitContainers[i].VolumeMounts, esCAVolume.VolumeMount())
-	//	}
-	//
-	//	for i := range podSpec.Spec.Containers {
-	//		podSpec.Spec.Containers[i].VolumeMounts = append(podSpec.Spec.Containers[i].VolumeMounts, esCAVolume.VolumeMount())
-	//	}
-	//}
-	//
-	//if as.Spec.HTTP.TLS.Enabled() {
-	//	// fetch the secret to calculate the checksum
-	//	var httpCerts corev1.Secret
-	//	err := r.Get(types.NamespacedName{
-	//		Namespace: as.Namespace,
-	//		Name:      certificates.HTTPCertsInternalSecretName(apmname.APMNamer, as.Name),
-	//	}, &httpCerts)
-	//	if err != nil {
-	//		return deployment.Params{}, err
-	//	}
-	//	if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
-	//		_, _ = configChecksum.Write(httpCert)
-	//	}
-	//	httpCertsVolume := http.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
-	//	podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
-	//	apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1.ApmServerContainerName)
-	//	apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())
-	//}
-	//
-	//podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
-
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{

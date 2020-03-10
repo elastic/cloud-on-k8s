@@ -81,7 +81,6 @@ func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) (corev1.Po
 	return builder.PodTemplate, nil
 }
 
-// TODO: handle differently?
 func withESCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {
 	if !ents.AssociationConf().CAIsConfigured() {
 		return builder
