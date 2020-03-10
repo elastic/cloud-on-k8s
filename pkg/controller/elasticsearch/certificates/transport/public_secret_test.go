@@ -16,7 +16,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -24,6 +23,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func TestReconcileTransportCertsPublicSecret(t *testing.T) {
@@ -52,7 +52,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 			},
 		}
 
-		if err := reconciler.SetControllerReference(owner, wantSecret, scheme.Scheme); err != nil {
+		if err := controllerutil.SetControllerReference(owner, wantSecret, scheme.Scheme); err != nil {
 			t.Fatal(err)
 		}
 

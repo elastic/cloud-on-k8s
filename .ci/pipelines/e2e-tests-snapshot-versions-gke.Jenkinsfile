@@ -26,79 +26,50 @@ pipeline {
                 }
             }
         }
-        stage('Run tests for different ELK stack versions in GKE') {
+        stage('Validate Jenkins pipelines') {
+            steps {
+                sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
+            }
+        }
+        stage('Run checks') {
+            steps {
+                sh 'make -C .ci TARGET=ci-check ci'
+            }
+        }
+         stage("Build dev operator image") {
+            steps {
+                sh '.ci/setenvconfig dev/build'
+                sh('make -C .ci  get-docker-creds get-elastic-public-key TARGET=ci-release ci')
+            }
+         }
+        stage('Run tests for different stack versions in GKE') {
+            environment {
+               // use the image we just built
+               OPERATOR_IMAGE = """${sh(
+                returnStdout: true,
+                script: 'make print-operator-image'
+                )}"""
+            }
             parallel {
-                stage("6.8.5") {
-                    steps {
-                        checkout scm
-                        script {
-                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.5")
-                        }
-                    }
-                }
-                stage("7.1.1") {
-                    agent {
+                stage("7.6.2-SNAPSHOT") {
+                     agent {
                         label 'linux'
                     }
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-71-${BUILD_NUMBER}-e2e", "7.1.1")
+                            runWith(lib, failedTests, "eck-76-snapshot-${BUILD_NUMBER}-e2e", "7.6.1-SNAPSHOT")
                         }
                     }
                 }
-                stage("7.2.1") {
-                    agent {
+                stage("7.7.0-SNAPSHOT") {
+                     agent {
                         label 'linux'
                     }
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-72-${BUILD_NUMBER}-e2e", "7.2.1")
-                        }
-                    }
-                }
-                stage("7.3.2") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        script {
-                            runWith(lib, failedTests, "eck-73-${BUILD_NUMBER}-e2e", "7.3.2")
-                        }
-                    }
-                }
-                stage("7.4.2") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        script {
-                            runWith(lib, failedTests, "eck-74-${BUILD_NUMBER}-e2e", "7.4.2")
-                        }
-                    }
-                }
-                stage("7.5.2") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        script {
-                            runWith(lib, failedTests, "eck-75-${BUILD_NUMBER}-e2e", "7.5.2")
-                        }
-                    }
-                }
-                stage("7.6.0") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        script {
-                            runWith(lib, failedTests, "eck-76-${BUILD_NUMBER}-e2e", "7.6.0")
+                            runWith(lib, failedTests, "eck-77-snapshot-${BUILD_NUMBER}-e2e", "7.7.0-SNAPSHOT")
                         }
                     }
                 }
@@ -116,7 +87,7 @@ pipeline {
                     slackSend(
                         channel: '#cloud-k8s',
                         color: 'danger',
-                        message: lib.generateSlackMessage("E2E tests for different Elastic stack versions failed!", env.BUILD_URL, filter),
+                        message: lib.generateSlackMessage("E2E tests for Elastic stack snapshot versions failed!", env.BUILD_URL, filter),
                         tokenCredentialId: 'cloud-ci-slack-integration-token',
                         botUser: true,
                         failOnError: true
@@ -132,13 +103,8 @@ pipeline {
         cleanup {
             script {
                 clusters = [
-                    "eck-68-${BUILD_NUMBER}-e2e",
-                    "eck-71-${BUILD_NUMBER}-e2e",
-                    "eck-72-${BUILD_NUMBER}-e2e",
-                    "eck-73-${BUILD_NUMBER}-e2e",
-                    "eck-74-${BUILD_NUMBER}-e2e",
-                    "eck-75-${BUILD_NUMBER}-e2e",
-                    "eck-76-${BUILD_NUMBER}-e2e"
+                    "eck-76-snapshot-${BUILD_NUMBER}-e2e",
+                    "eck-77-snapshot-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',

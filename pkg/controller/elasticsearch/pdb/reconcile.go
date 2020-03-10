@@ -11,11 +11,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -101,7 +101,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList, schem
 	// and append our labels
 	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
 	// set owner reference for deletion upon ES resource deletion
-	if err := reconciler.SetControllerReference(&es, &expected, scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&es, &expected, scheme); err != nil {
 		return nil, err
 	}
 
