@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
@@ -20,7 +21,7 @@ import (
 
 func TestReconcileUsersAndRoles(t *testing.T) {
 	c := k8s.WrappedFakeClient(append(sampleUserProvidedFileRealmSecrets, sampleUserProvidedRolesSecret...)...)
-	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches())
+	controllerUser, err := ReconcileUsersAndRoles(context.Background(), c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	var reconciledSecret corev1.Secret
@@ -63,7 +64,7 @@ func Test_ReconcileRolesFileRealmSecret(t *testing.T) {
 
 func Test_aggregateFileRealm(t *testing.T) {
 	c := k8s.WrappedFakeClient(sampleUserProvidedFileRealmSecrets...)
-	fileRealm, controllerUser, err := aggregateFileRealm(c, sampleEsWithAuth, initDynamicWatches())
+	fileRealm, controllerUser, err := aggregateFileRealm(c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
 	require.NotEmpty(t, controllerUser.Password)
 	actualUsers := fileRealm.UserNames()
@@ -72,7 +73,7 @@ func Test_aggregateFileRealm(t *testing.T) {
 
 func Test_aggregateRoles(t *testing.T) {
 	c := k8s.WrappedFakeClient(sampleUserProvidedRolesSecret...)
-	roles, err := aggregateRoles(c, sampleEsWithAuth, initDynamicWatches())
+	roles, err := aggregateRoles(c, sampleEsWithAuth, initDynamicWatches(), record.NewFakeRecorder(10))
 	require.NoError(t, err)
 	require.Len(t, roles, 3)
 	require.Contains(t, roles, ProbeUserRole, "role1", "role2")

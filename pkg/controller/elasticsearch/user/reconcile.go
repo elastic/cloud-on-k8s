@@ -13,6 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -29,6 +31,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+var log = logf.Log.WithName("elasticsearch-user")
+
 // ReconcileUsersAndRoles fetches all users and roles and aggregates them into a single
 // Kubernetes secret mounted in the Elasticsearch Pods.
 // That secret contains the file realm files (`users` and `users_roles`) and the file roles (`roles.yml`).
@@ -44,16 +48,17 @@ func ReconcileUsersAndRoles(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
+	recorder record.EventRecorder,
 ) (client.UserAuth, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
 
 	// build aggregate roles and file realms
-	roles, err := aggregateRoles(c, es, watched)
+	roles, err := aggregateRoles(c, es, watched, recorder)
 	if err != nil {
 		return client.UserAuth{}, err
 	}
-	fileRealm, controllerUser, err := aggregateFileRealm(c, es, watched)
+	fileRealm, controllerUser, err := aggregateFileRealm(c, es, watched, recorder)
 	if err != nil {
 		return client.UserAuth{}, err
 	}
@@ -67,14 +72,23 @@ func ReconcileUsersAndRoles(
 	return controllerUser, nil
 }
 
+func getExistingFileRealm(c k8s.Client, es esv1.Elasticsearch) (filerealm.Realm, error) {
+	var secret corev1.Secret
+	if err := c.Get(RolesFileRealmSecretKey(es), &secret); err != nil {
+		return filerealm.Realm{}, err
+	}
+	return filerealm.FromSecret(secret)
+}
+
 // aggregateFileRealm aggregates the various file realms into a single one, and returns the controller user auth.
 func aggregateFileRealm(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
+	recorder record.EventRecorder,
 ) (filerealm.Realm, esclient.UserAuth, error) {
 	// retrieve existing file realm to reuse predefined users password hashes if possible
-	existingFileRealm, err := filerealm.FromSecret(c, RolesFileRealmSecretKey(es))
+	existingFileRealm, err := getExistingFileRealm(c, es)
 	if err != nil && apierrors.IsNotFound(err) {
 		// no secret yet, work with an empty file realm
 		existingFileRealm = filerealm.New()
@@ -104,7 +118,7 @@ func aggregateFileRealm(
 	}
 
 	// watch & fetch user-provided file realm & roles
-	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(c, es, watched)
+	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(c, es, watched, recorder)
 	if err != nil {
 		return filerealm.Realm{}, esclient.UserAuth{}, err
 	}
@@ -120,8 +134,13 @@ func aggregateFileRealm(
 	return fileRealm, controllerUserAuth, nil
 }
 
-func aggregateRoles(c k8s.Client, es esv1.Elasticsearch, watched watches.DynamicWatches) (RolesFileContent, error) {
-	userProvided, err := reconcileUserProvidedRoles(c, es, watched)
+func aggregateRoles(
+	c k8s.Client,
+	es esv1.Elasticsearch,
+	watched watches.DynamicWatches,
+	recorder record.EventRecorder,
+) (RolesFileContent, error) {
+	userProvided, err := reconcileUserProvidedRoles(c, es, watched, recorder)
 	if err != nil {
 		return RolesFileContent{}, err
 	}

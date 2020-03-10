@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
 
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -90,6 +91,7 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 		watched       watches.DynamicWatches
 		wantWatched   []string
 		wantFileRealm filerealm.Realm
+		wantEvents    int
 	}{
 		{
 			name:          "no auth provided",
@@ -114,14 +116,52 @@ func TestReconcileUserProvidedFileRealm(t *testing.T) {
 				WithRole("role3", nil).
 				WithRole("role4", []string{"user1", "user2"}),
 		},
+		{
+			name: "unknown secret referenced: emit an event but don't error out",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{FileRealm: []esv1.FileRealmSource{
+					{SecretRef: v1.SecretRef{SecretName: "unknown-secret"}},
+					{SecretRef: v1.SecretRef{SecretName: "unknown-secret-2"}},
+				}}},
+			},
+			secrets:       nil,
+			watched:       initDynamicWatches(),
+			wantWatched:   []string{UserProvidedFileRealmWatchName(types.NamespacedName{Namespace: "ns", Name: "es"})},
+			wantFileRealm: filerealm.New(),
+			wantEvents:    2,
+		},
+		{
+			name: "invalid secret data: emit an event but don't error out",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{FileRealm: []esv1.FileRealmSource{
+					{SecretRef: v1.SecretRef{SecretName: "invalid-secret"}},
+				}}},
+			},
+			secrets: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "invalid-secret"},
+					Data: map[string][]byte{
+						filerealm.UsersFile: []byte("invalid-data"),
+					},
+				},
+			},
+			watched:       initDynamicWatches(),
+			wantWatched:   []string{UserProvidedFileRealmWatchName(types.NamespacedName{Namespace: "ns", Name: "es"})},
+			wantFileRealm: filerealm.New(),
+			wantEvents:    1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			recorder := record.NewFakeRecorder(10)
 			c := k8s.WrappedFakeClient(tt.secrets...)
-			gotFileRealm, err := reconcileUserProvidedFileRealm(c, tt.es, tt.watched)
+			gotFileRealm, err := reconcileUserProvidedFileRealm(c, tt.es, tt.watched, recorder)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantFileRealm, gotFileRealm)
 			require.Equal(t, tt.wantWatched, tt.watched.Secrets.Registrations())
+			require.Len(t, recorder.Events, tt.wantEvents)
 		})
 	}
 }
@@ -134,6 +174,7 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 		watched     watches.DynamicWatches
 		wantWatched []string
 		wantRoles   RolesFileContent
+		wantEvents  int
 	}{
 		{
 			name:        "no auth provided",
@@ -154,14 +195,52 @@ func TestReconcileUserProvidedRoles(t *testing.T) {
 				"role2": "rolespec2",
 			},
 		},
+		{
+			name: "unknown secret referenced: emit an event but don't error out",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{Roles: []esv1.RoleSource{
+					{SecretRef: v1.SecretRef{SecretName: "unknown-secret"}},
+					{SecretRef: v1.SecretRef{SecretName: "unknown-secret-2"}},
+				}}},
+			},
+			secrets:     nil,
+			watched:     initDynamicWatches(),
+			wantWatched: []string{UserProvidedRolesWatchName(types.NamespacedName{Namespace: "ns", Name: "es"})},
+			wantRoles:   RolesFileContent{},
+			wantEvents:  2,
+		},
+		{
+			name: "invalid secret data: emit an event but don't error out",
+			es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "es"},
+				Spec: esv1.ElasticsearchSpec{Auth: esv1.Auth{Roles: []esv1.RoleSource{
+					{SecretRef: v1.SecretRef{SecretName: "invalid-secret"}},
+				}}},
+			},
+			secrets: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "invalid-secret"},
+					Data: map[string][]byte{
+						RolesFile: []byte("[invalid yaml]"),
+					},
+				},
+			},
+			watched:     initDynamicWatches(),
+			wantWatched: []string{UserProvidedRolesWatchName(types.NamespacedName{Namespace: "ns", Name: "es"})},
+			wantRoles:   RolesFileContent{},
+			wantEvents:  1,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			recorder := record.NewFakeRecorder(10)
 			c := k8s.WrappedFakeClient(tt.secrets...)
-			gotRoles, err := reconcileUserProvidedRoles(c, tt.es, tt.watched)
+			gotRoles, err := reconcileUserProvidedRoles(c, tt.es, tt.watched, recorder)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantRoles, gotRoles)
 			require.Equal(t, tt.wantWatched, tt.watched.Secrets.Registrations())
+			require.Len(t, recorder.Events, tt.wantEvents)
 		})
 	}
 }

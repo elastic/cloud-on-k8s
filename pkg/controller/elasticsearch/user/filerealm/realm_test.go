@@ -10,9 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func Test_FileRealm_MergeWith(t *testing.T) {
@@ -57,8 +54,7 @@ user2:hash2
 		},
 	}
 
-	c := k8s.WrappedFakeClient(&secret)
-	actualRealm, err := FromSecret(c, types.NamespacedName{Namespace: "ns", Name: "fileRealmSecret"})
+	actualRealm, err := FromSecret(secret)
 	require.NoError(t, err)
 
 	expectedRealm := Realm{

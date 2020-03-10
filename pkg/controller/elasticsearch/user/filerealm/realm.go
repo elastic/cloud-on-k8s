@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/pkg/errors"
 
@@ -41,12 +40,8 @@ func MergedFrom(others ...Realm) Realm {
 	return New().MergeWith(others...)
 }
 
-// FromSecret builds a file realm from the given secret data.
-func FromSecret(c k8s.Client, secretKey types.NamespacedName) (Realm, error) {
-	var secret corev1.Secret
-	if err := c.Get(secretKey, &secret); err != nil {
-		return Realm{}, err
-	}
+// FromSecret builds a file realm from the given secret.
+func FromSecret(secret corev1.Secret) (Realm, error) {
 	users, err := parseUsersPasswordHashes(k8s.GetSecretEntry(secret, UsersFile))
 	if err != nil {
 		return Realm{}, errors.Wrap(err, fmt.Sprintf("fail to parse users from secret %s", secret.Name))
