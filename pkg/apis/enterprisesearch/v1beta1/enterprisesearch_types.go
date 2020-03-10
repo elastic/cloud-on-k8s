@@ -43,9 +43,11 @@ type EnterpriseSearchSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
-
-func (ents *EnterpriseSearch) ServiceAccountName() string {
-	return ents.Spec.ServiceAccountName
+func (spec EnterpriseSearchSpec) Protocol() string {
+	if spec.HTTP.TLS.Enabled() {
+		return "https"
+	}
+	return "http"
 }
 
 // EnterpriseSearchHealth expresses the health of the EnterpriseSearchHealth instances.
@@ -67,10 +69,31 @@ type EnterpriseSearchStatus struct {
 	// Association is the status of any auto-linking to Elasticsearch clusters.
 	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
 }
-//
+
 // IsDegraded returns true if the current status is worse than the previous.
 func (ents EnterpriseSearchStatus) IsDegraded(prev EnterpriseSearchStatus) bool {
 	return prev.Health == EnterpriseSearchGreen && ents.Health != EnterpriseSearchRed
+}
+
+// IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted
+func (ents *EnterpriseSearch) IsMarkedForDeletion() bool {
+	return !ents.DeletionTimestamp.IsZero()
+}
+
+func (ents *EnterpriseSearch) ServiceAccountName() string {
+	return ents.Spec.ServiceAccountName
+}
+
+func (ents *EnterpriseSearch) ElasticsearchRef() commonv1.ObjectSelector {
+	return ents.Spec.ElasticsearchRef
+}
+
+func (ents *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {
+	return ents.assocConf
+}
+
+func (ents *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	ents.assocConf = assocConf
 }
 
 // +kubebuilder:object:root=true
@@ -103,22 +126,4 @@ type EnterpriseSearchList struct {
 
 func init() {
 	SchemeBuilder.Register(&EnterpriseSearch{}, &EnterpriseSearchList{})
-}
-
-// IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted
-func (ents *EnterpriseSearch) IsMarkedForDeletion() bool {
-	return !ents.DeletionTimestamp.IsZero()
-}
-
-func (ents *EnterpriseSearch) ElasticsearchRef() commonv1.ObjectSelector {
-	return ents.Spec.ElasticsearchRef
-}
-
-
-func (ents *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {
-	return ents.assocConf
-}
-
-func (ents *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {
-	ents.assocConf = assocConf
 }

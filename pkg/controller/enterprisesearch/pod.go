@@ -19,8 +19,6 @@ const (
 	HTTPPort = 3002
 	DefaultJavaOpts = "-Xms3500m -Xmx3500m"
 	ConfigHashLabelName = "enterprisesearch.k8s.elastic.co/config-hash"
-	// TODO: support https
-	Protocol = "http"
 )
 
 var (
@@ -37,7 +35,10 @@ var (
 		{Name: "JAVA_OPTS", Value: DefaultJavaOpts},
 		{Name: "ENT_SEARCH_CONFIG_PATH", Value: filepath.Join(ConfigMountPath, ConfigFilename)},
 	}
-	ReadinessProbe = corev1.Probe{
+)
+
+func readinessProbe(ents entsv1beta1.EnterpriseSearch) corev1.Probe {
+	return corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 60, // initial startup is pretty slow
 		PeriodSeconds:       10,
@@ -46,12 +47,16 @@ var (
 		Handler: corev1.Handler{
 			Exec: &corev1.ExecAction{
 				Command: []string{"bash", "-c",
-					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/swiftype-app-version -k -s`, Protocol, HTTPPort),
+					fmt.Sprintf(
+						`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/swiftype-app-version -k -s`,
+						ents.Spec.Protocol(),
+						HTTPPort,
+						),
 				},
 			},
 		},
 	}
-)
+}
 
 func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) (corev1.PodTemplateSpec, error) {
 	cfgVolume := ConfigSecretVolume(ents)
@@ -63,7 +68,7 @@ func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) (corev1.Po
 		WithPorts([]corev1.ContainerPort{
 			{Name: ents.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 		}).
-		WithReadinessProbe(ReadinessProbe).
+		WithReadinessProbe(readinessProbe(ents)).
 		WithVolumes(cfgVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount()).
 		WithEnv(append(DefaultEnv, DefaultUserEnvVar(ents))...).

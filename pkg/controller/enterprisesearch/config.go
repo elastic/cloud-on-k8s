@@ -22,7 +22,6 @@ import (
 )
 
 const (
-	// TODO: homogenize mount path with ES, Kibana, etc.?
 	ESCertsPath = "/mnt/elastic-internal/es-certs"
 	ConfigMountPath = "/mnt/elastic-internal/config"
 	ConfigFilename = "enterprise-search.yml"
@@ -80,10 +79,8 @@ func ReconcileConfig(client k8s.Client, scheme *runtime.Scheme, ents entsv1beta1
 	return reconciledConfigSecret, nil
 }
 
-
-
 func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
-	cfg := defaultConfig()
+	cfg := defaultConfig(ents)
 
 	specConfig := ents.Spec.Config
 	if specConfig == nil {
@@ -107,9 +104,9 @@ func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.Canon
 }
 
 
-func defaultConfig() *settings.CanonicalConfig {
+func defaultConfig(ents entsv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
-		"ent_search.external_url": fmt.Sprintf("http://localhost:%d", HTTPPort),
+		"ent_search.external_url": fmt.Sprintf("%s://localhost:%d", ents.Spec.Protocol(), HTTPPort),
 		"ent_search.listen_host": "0.0.0.0",
 		"allow_es_settings_modification": true,
 		// TODO explicitly handle those two
