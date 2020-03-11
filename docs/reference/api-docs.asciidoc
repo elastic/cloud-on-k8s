@@ -814,7 +814,7 @@ Package v1beta1 contains API schema definitions for managing Enterprise Search r
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearch"]
 === EnterpriseSearch 
 
-EnterpriseSearch represents an Enterprise Search resource in a Kubernetes cluster.
+EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 
 .Appears In:
 ****

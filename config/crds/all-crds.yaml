@@ -1268,8 +1268,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: EnterpriseSearch represents an Enterprise Search resource in a
-        Kubernetes cluster.
+      description: EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -1603,8 +1602,8 @@ spec:
               format: int32
               type: integer
             health:
-              description: EnterpriseSearchHealth expresses the health of the EnterpriseSearchHealth
-                instances.
+              description: EnterpriseSearchHealth expresses the health of the Enterprise
+                Search instances.
               type: string
             service:
               description: ExternalService is the name of the service associated to
