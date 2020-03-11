@@ -5,9 +5,9 @@
 package user
 
 import (
+	"fmt"
 	"strings"
 
-	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,19 +76,19 @@ func retrieveAssociatedUsers(c k8s.Client, es esv1.Elasticsearch) (users, error)
 func parseAssociatedUserSecret(secret v1.Secret) (AssociatedUser, error) {
 	user := AssociatedUser{}
 	if len(secret.Data) == 0 {
-		return user, pkgerrors.Errorf("user secret %s/%s is empty", secret.Namespace, secret.Name)
+		return user, fmt.Errorf("user secret %s/%s is empty", secret.Namespace, secret.Name)
 	}
 
 	if username, ok := secret.Data[UserNameField]; ok && len(username) > 0 {
 		user.Name = string(username)
 	} else {
-		return user, pkgerrors.Errorf(fieldNotFound, UserNameField, secret.Namespace, secret.Name)
+		return user, fmt.Errorf(fieldNotFound, UserNameField, secret.Namespace, secret.Name)
 	}
 
 	if hash, ok := secret.Data[PasswordHashField]; ok && len(hash) > 0 {
 		user.PasswordHash = hash
 	} else {
-		return user, pkgerrors.Errorf(fieldNotFound, PasswordHashField, secret.Namespace, secret.Name)
+		return user, fmt.Errorf(fieldNotFound, PasswordHashField, secret.Namespace, secret.Name)
 	}
 
 	if roles, ok := secret.Data[UserRolesField]; ok && len(roles) > 0 {
