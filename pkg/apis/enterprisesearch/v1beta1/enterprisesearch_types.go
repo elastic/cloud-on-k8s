@@ -50,7 +50,7 @@ func (spec EnterpriseSearchSpec) Protocol() string {
 	return "http"
 }
 
-// EnterpriseSearchHealth expresses the health of the EnterpriseSearchHealth instances.
+// EnterpriseSearchHealth expresses the health of the Enterprise Search instances.
 type EnterpriseSearchHealth string
 
 const (
@@ -98,7 +98,7 @@ func (ents *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.Association
 
 // +kubebuilder:object:root=true
 
-// EnterpriseSearch represents an Enterprise Search resource in a Kubernetes cluster.
+// EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 // +kubebuilder:resource:categories=elastic,shortName=entsearch
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
