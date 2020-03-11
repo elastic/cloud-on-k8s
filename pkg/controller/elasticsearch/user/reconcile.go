@@ -8,6 +8,7 @@ import (
 	"context"
 	"reflect"
 
+	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,6 +17,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -23,12 +25,8 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-
-	"go.elastic.co/apm"
-
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 var log = logf.Log.WithName("elasticsearch-user")
@@ -80,7 +78,7 @@ func getExistingFileRealm(c k8s.Client, es esv1.Elasticsearch) (filerealm.Realm,
 	return filerealm.FromSecret(secret)
 }
 
-// aggregateFileRealm aggregates the various file realms into a single one, and returns the controller user auth.
+// aggregateFileRealm builds a single file realm from multiple ones, and returns the controller user credentials.
 func aggregateFileRealm(
 	c k8s.Client,
 	es esv1.Elasticsearch,
@@ -105,11 +103,6 @@ func aggregateFileRealm(
 	if err != nil {
 		return filerealm.Realm{}, esclient.UserAuth{}, err
 	}
-	// grab the controller user auth for later use
-	controllerUserAuth, err := internalUsers.userAuth(ControllerUserName)
-	if err != nil {
-		return filerealm.Realm{}, esclient.UserAuth{}, err
-	}
 
 	// fetch associated users
 	associatedUsers, err := retrieveAssociatedUsers(c, es)
@@ -123,7 +116,7 @@ func aggregateFileRealm(
 		return filerealm.Realm{}, esclient.UserAuth{}, err
 	}
 
-	// merge all file realm together, the last one having precedence
+	// merge all file realms together, the last one having precedence
 	fileRealm := filerealm.MergedFrom(
 		internalUsers.fileRealm(),
 		elasticUser.fileRealm(),
@@ -131,6 +124,11 @@ func aggregateFileRealm(
 		userProvidedFileRealm,
 	)
 
+	// grab the controller user auth for later use
+	controllerUserAuth, err := internalUsers.userAuth(ControllerUserName)
+	if err != nil {
+		return filerealm.Realm{}, esclient.UserAuth{}, err
+	}
 	return fileRealm, controllerUserAuth, nil
 }
 

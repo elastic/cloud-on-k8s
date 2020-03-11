@@ -30,7 +30,7 @@ func UserProvidedRolesWatchName(es types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-user-roles", es.Namespace, es.Name)
 }
 
-// ReconcileUserProvidedAuth returns the aggregate file realm from the referenced sources in the es spec.
+// reconcileUserProvidedFileRealm returns the aggregate file realm from the referenced sources in the es spec.
 // It also ensures referenced secrets are watched for future reconciliations to be triggered on any change.
 func reconcileUserProvidedFileRealm(
 	c k8s.Client,
@@ -57,7 +57,7 @@ func reconcileUserProvidedFileRealm(
 	return retrieveUserProvidedFileRealm(c, es, recorder)
 }
 
-// ReconcileUserProvidedAuth returns aggregate roles from the referenced sources in the es spec.
+// reconcileUserProvidedRoles returns aggregate roles from the referenced sources in the es spec.
 // It also ensures referenced secrets are watched for future reconciliations to be triggered on any change.
 func reconcileUserProvidedRoles(
 	c k8s.Client,
@@ -143,7 +143,7 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder
 
 func handleSecretNotFound(recorder record.EventRecorder, es esv1.Elasticsearch, secretName string) {
 	msg := "referenced secret not found"
-	// logging with info level since this may be expected if the secret is the secret is not in the cache yet
+	// logging with info level since this may be expected if the secret is not in the cache yet
 	log.Info(msg, "namespace", es.Namespace, "secret_name", secretName)
 	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 }

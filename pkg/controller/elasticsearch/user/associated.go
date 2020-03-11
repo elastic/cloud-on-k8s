@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// AssociatedUserType is used to annotate an associated user secret.
+	// AssociatedUserType is used to annotate an associated user secret, most likely created by an association controller.
 	AssociatedUserType = "user"
 
 	// UserNameField is the field in the secret that contains the username.
@@ -32,7 +32,7 @@ const (
 	fieldNotFound = "field %s not found in secret %s/%s"
 )
 
-// AssociatedUser represents an Elasticsearch user associated for another resource (eg. Kibana, APMServer, etc.).
+// AssociatedUser represents an Elasticsearch user associated with another resource (eg. Kibana, APMServer, etc.).
 type AssociatedUser struct {
 	Name         string
 	PasswordHash []byte
@@ -48,8 +48,9 @@ func AssociatedUserLabels(es esv1.Elasticsearch) map[string]string {
 }
 
 // retrieveAssociatedUsers fetches users resulting from an association (eg. Kibana or APMServer users).
+// Those users are created by an association controller.
 func retrieveAssociatedUsers(c k8s.Client, es esv1.Elasticsearch) (users, error) {
-	// list all associated users secret
+	// list all associated user secrets
 	var associatedUserSecrets corev1.SecretList
 	if err := c.List(
 		&associatedUserSecrets,

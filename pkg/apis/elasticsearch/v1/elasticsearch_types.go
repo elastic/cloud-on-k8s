@@ -97,7 +97,7 @@ type Auth struct {
 	FileRealm []FileRealmSource `json:"fileRealm,omitempty"`
 }
 
-// RoleSource reference roles to create on the Elasticsearch cluster.
+// RoleSource references roles to create on the Elasticsearch cluster.
 type RoleSource struct {
 	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
 	// Multiple roles can be specified in a Kubernetes secret, under a single "roles.yml" entry.
@@ -127,7 +127,7 @@ type RoleSource struct {
 	commonv1.SecretRef `json:",inline"`
 }
 
-// FileRealmSource reference users to create on the Elasticsearch cluster.
+// FileRealmSource references users to create on the Elasticsearch cluster.
 type FileRealmSource struct {
 	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
 	// Multiple users and their roles mapping can be specified in a Kubernetes secret.
