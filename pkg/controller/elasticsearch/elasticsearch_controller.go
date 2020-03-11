@@ -33,7 +33,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -67,7 +66,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	observerSettings.Tracer = params.Tracer
 	return &ReconcileElasticsearch{
 		Client:         client,
-		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
 		esObservers:    observer.NewManager(observerSettings),
@@ -161,7 +159,6 @@ var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	licenseChecker license.Checker
 
@@ -305,7 +302,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		ES:                 es,
 		ReconcileState:     reconcileState,
 		Client:             r.Client,
-		Scheme:             r.scheme,
 		Recorder:           r.recorder,
 		Version:            *ver,
 		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),

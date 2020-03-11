@@ -7,25 +7,20 @@ package association
 import (
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const ElasticsearchCASecretSuffix = "xx-es-ca" // nolint
 
 func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
-	// init watches
-	w := watches.NewDynamicWatches()
-	require.NoError(t, w.Secrets.InjectScheme(scheme.Scheme))
-
 	// mock existing ES resource
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
@@ -146,7 +141,6 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ReconcileCASecret(
 				tt.client,
-				scheme.Scheme,
 				&tt.kibana,
 				k8s.ExtractNamespacedName(&tt.es),
 				map[string]string{},

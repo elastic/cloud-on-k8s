@@ -19,7 +19,6 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -41,7 +40,6 @@ var (
 // ReconcileTrials reconciles Enterprise trial licenses.
 type ReconcileTrials struct {
 	k8s.Client
-	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 	// iteration is the number of times this controller has run its Reconcile method.
 	iteration         int64
@@ -155,7 +153,6 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTrials {
 	return &ReconcileTrials{
 		Client:            k8s.WrapClient(mgr.GetClient()),
-		scheme:            mgr.GetScheme(),
 		recorder:          mgr.GetEventRecorderFor(name),
 		operatorNamespace: params.OperatorNamespace,
 	}

@@ -126,7 +126,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcileHTTPCertsPublicSecret(client, scheme.Scheme, owner, esv1.ESNamer, certificate)
+			err := ReconcileHTTPCertsPublicSecret(client, owner, esv1.ESNamer, certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return

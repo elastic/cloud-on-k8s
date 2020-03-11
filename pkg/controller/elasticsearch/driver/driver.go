@@ -10,6 +10,10 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	commondriver "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -37,10 +41,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -73,7 +73,6 @@ type DefaultDriverParameters struct {
 	Version version.Version
 	// Client is used to access the Kubernetes API.
 	Client   k8s.Client
-	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 
 	// LicenseChecker is used for some features to check if an appropriate license is setup
@@ -99,10 +98,6 @@ func (d *defaultDriver) K8sClient() k8s.Client {
 	return d.Client
 }
 
-func (d *defaultDriver) Scheme() *runtime.Scheme {
-	return d.DefaultDriverParameters.Scheme
-}
-
 func (d *defaultDriver) DynamicWatches() watches.DynamicWatches {
 	return d.DefaultDriverParameters.DynamicWatches
 }
@@ -122,16 +117,16 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.Scheme(), d.ES); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	_, err := common.ReconcileService(ctx, d.Client, d.Scheme(), services.NewTransportService(d.ES), &d.ES)
+	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	externalService, err := common.ReconcileService(ctx, d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
+	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -148,7 +143,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results
 	}
 
-	internalUsers, err := user.ReconcileUsers(ctx, d.Client, d.Scheme(), d.ES)
+	internalUsers, err := user.ReconcileUsers(ctx, d.Client, d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -236,7 +231,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
 

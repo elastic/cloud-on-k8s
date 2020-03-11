@@ -58,7 +58,6 @@ func Reconcile(
 
 	httpCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
-		driver.Scheme(),
 		esv1.ESNamer,
 		&es,
 		labels,
@@ -98,13 +97,12 @@ func Reconcile(
 	})
 
 	// reconcile http public certs secret:
-	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &es, esv1.ESNamer, httpCertificates); err != nil {
+	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), &es, esv1.ESNamer, httpCertificates); err != nil {
 		return nil, results.WithError(err)
 	}
 
 	transportCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
-		driver.Scheme(),
 		esv1.ESNamer,
 		&es,
 		labels,
@@ -120,14 +118,13 @@ func Reconcile(
 	})
 
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), driver.Scheme(), es, transportCA); err != nil {
+	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), es, transportCA); err != nil {
 		return nil, results.WithError(err)
 	}
 
 	// reconcile transport certificates
 	transportResults := transport.ReconcileTransportCertificatesSecrets(
 		driver.K8sClient(),
-		driver.Scheme(),
 		transportCA,
 		es,
 		certRotation,

@@ -14,9 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -72,7 +70,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileLi
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{
 		Client:  c,
-		scheme:  mgr.GetScheme(),
 		checker: license.NewLicenseChecker(c, params.OperatorNamespace),
 	}
 }
@@ -147,7 +144,6 @@ var _ reconcile.Reconciler = &ReconcileLicenses{}
 // ReconcileLicenses reconciles EnterpriseLicenses with existing Elasticsearch clusters and creates ClusterLicenses for them.
 type ReconcileLicenses struct {
 	k8s.Client
-	scheme *runtime.Scheme
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration uint64
 	checker   license.Checker
@@ -195,7 +191,6 @@ func reconcileSecret(
 	var reconciled corev1.Secret
 	err = reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme.Scheme,
 		Owner:      &cluster,
 		Expected:   &expected,
 		Reconciled: &reconciled,

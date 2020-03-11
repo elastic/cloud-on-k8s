@@ -16,7 +16,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
@@ -46,7 +45,6 @@ func TestHandleUpscaleAndSpecChanges(t *testing.T) {
 	ctx := upscaleCtx{
 		k8sClient:    k8sClient,
 		es:           es,
-		scheme:       scheme.Scheme,
 		esState:      nil,
 		expectations: expectations.NewExpectations(k8sClient),
 		parentCtx:    context.Background(),
@@ -435,7 +433,6 @@ func Test_adjustResources(t *testing.T) {
 				es:           tt.args.es,
 				k8sClient:    k8sClient,
 				expectations: expectations.NewExpectations(k8sClient),
-				scheme:       k8s.Scheme(),
 			}
 			got, err := adjustResources(ctx, tt.args.actualStatefulSets, tt.args.expectedResources)
 			require.NoError(t, err)

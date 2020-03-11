@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
@@ -52,7 +51,7 @@ func secureSettingsVolume(
 	if err != nil {
 		return nil, "", err
 	}
-	secret, err := reconcileSecureSettings(r.K8sClient(), r.Scheme(), hasKeystore, secrets, namer, labels)
+	secret, err := reconcileSecureSettings(r.K8sClient(), hasKeystore, secrets, namer, labels)
 	if err != nil {
 		return nil, "", err
 	}
@@ -76,7 +75,6 @@ func secureSettingsVolume(
 
 func reconcileSecureSettings(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	hasKeystore HasKeystore,
 	userSecrets []corev1.Secret,
 	namer name.Namer,
@@ -111,7 +109,6 @@ func reconcileSecureSettings(
 	reconciled := corev1.Secret{}
 	return &reconciled, reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      hasKeystore,
 		Expected:   &expected,
 		Reconciled: &reconciled,

@@ -22,7 +22,6 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -39,7 +38,6 @@ func Quorum(nMasters int) int {
 func UpdateSeedHostsConfigMap(
 	ctx context.Context,
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 	pods []corev1.Pod,
 ) error {
@@ -86,7 +84,6 @@ func UpdateSeedHostsConfigMap(
 	return reconciler.ReconcileResource(
 		reconciler.Params{
 			Client:     c,
-			Scheme:     scheme,
 			Owner:      &es,
 			Expected:   &expected,
 			Reconciled: reconciled,
