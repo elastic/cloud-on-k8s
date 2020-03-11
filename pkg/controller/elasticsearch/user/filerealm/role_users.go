@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
-// roleUsersMapping is a map {role name -> [] user names}
+// roleUsersMapping is a map {role name -> [] sorted user names}
 type roleUsersMapping map[string][]string
 
 // mergeWith merges multiple usersPasswordHashes, giving priority to other.
@@ -30,7 +30,7 @@ func (r roleUsersMapping) mergeWith(other roleUsersMapping) roleUsersMapping {
 			r[otherRole] = otherUsers
 			continue
 		}
-		// role already exists, merge sorted users
+		// role already exists, merge sorted users and remove duplicates
 		userSet := set.Make(currentUsers...)
 		userSet.MergeWith(set.Make(otherUsers...))
 		userSlice := userSet.AsSlice()
@@ -49,10 +49,10 @@ func (r roleUsersMapping) mergeWith(other roleUsersMapping) roleUsersMapping {
 func (r roleUsersMapping) fileBytes() []byte {
 	rows := make([]string, 0, len(r))
 	for role, users := range r {
-		stringsutil.SortStringSlice(users)
 		rows = append(rows, fmt.Sprintf("%s:%s", role, strings.Join(users, ",")))
 	}
-	// sort for consistent comparison
+	// sort rows for consistent comparison
+	// users within each row are already sorted
 	stringsutil.SortStringSlice(rows)
 	return []byte(strings.Join(rows, "\n") + "\n")
 }
@@ -72,6 +72,8 @@ func parseRoleUsersMapping(data []byte) (roleUsersMapping, error) {
 		}
 		role := roleUsers[0]
 		users := strings.Split(roleUsers[1], ",")
+		// sort users for consistent comparison
+		stringsutil.SortStringSlice(users)
 		if len(users) == 1 && users[0] == "" {
 			// if there are no users, strings.Split("", ",") still returns []string{""}
 			// remove that empty user
