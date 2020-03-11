@@ -7,6 +7,8 @@ package filerealm
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_roleUsersMapping_mergeWith(t *testing.T) {
@@ -85,9 +87,43 @@ func Test_roleUsersMapping_fileBytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.fileBytes(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("fileBytes() = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, tt.r.fileBytes())
+		})
+	}
+}
+
+func Test_parseRoleUsersMapping(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+		want roleUsersMapping
+	}{
+		{
+			name: "nil data",
+			data: nil,
+			want: roleUsersMapping{},
+		},
+		{
+			name: "standard case",
+			data: []byte("role1:user1,user2\nrole2:user1\n"),
+			want: roleUsersMapping{"role1": []string{"user1", "user2"}, "role2": []string{"user1"}},
+		},
+		{
+			name: "users should be sorted in the internal representation",
+			data: []byte("role1:user3,user1,user2\nrole2:user2,user1\n"),
+			want: roleUsersMapping{"role1": []string{"user1", "user2", "user3"}, "role2": []string{"user1", "user2"}},
+		},
+		{
+			name: "role with no user",
+			data: []byte("role1:\n"),
+			want: roleUsersMapping{"role1": nil},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseRoleUsersMapping(tt.data)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

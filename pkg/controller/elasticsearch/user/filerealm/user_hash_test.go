@@ -7,6 +7,8 @@ package filerealm
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_usersPasswordHashes_mergeWith(t *testing.T) {
@@ -77,6 +79,32 @@ func Test_usersPasswordHashes_fileBytes(t *testing.T) {
 			if got := tt.u.fileBytes(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("fileBytes() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func Test_parseUsersPasswordHashes(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+		want usersPasswordHashes
+	}{
+		{
+			name: "nil data",
+			data: nil,
+			want: usersPasswordHashes{},
+		},
+		{
+			name: "standard case",
+			data: []byte("user1:hash1\nuser2:hash2\n"),
+			want: usersPasswordHashes{"user1": []byte("hash1"), "user2": []byte("hash2")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseUsersPasswordHashes(tt.data)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
