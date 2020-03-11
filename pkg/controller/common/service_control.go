@@ -41,6 +41,9 @@ func ReconcileService(
 		Owner:      owner,
 		Expected:   expected,
 		Reconciled: reconciled,
+		NeedsDelete: func() bool {
+			return needsRecreate(expected, reconciled)
+		},
 		NeedsUpdate: func() bool {
 			return needsUpdate(expected, reconciled)
 		},
@@ -53,17 +56,34 @@ func ReconcileService(
 	return reconciled, err
 }
 
-func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
-	// ClusterIP might not exist in the expected service,
-	// but might have been set after creation by k8s on the actual resource.
-	// In such case, we want to use these values for comparison.
-	if expected.Spec.ClusterIP == "" {
-		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
-	}
+func needsRecreate(expected, reconciled *corev1.Service) bool {
+	applyDefaults(expected, reconciled)
+	// ClusterIP is an immutable field
+	return expected.Spec.ClusterIP != reconciled.Spec.ClusterIP
+}
 
+func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
+	applyDefaults(expected, reconciled)
+
+	expected.Annotations = maps.MergePreservingExistingKeys(expected.Annotations, reconciled.Annotations)
+	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, reconciled.Labels)
+
+	// if the specs, labels, or annotations differ, the object should be updated
+	return !(reflect.DeepEqual(expected.Spec, reconciled.Spec) &&
+		compare.LabelsAndAnnotationsAreEqual(expected.ObjectMeta, reconciled.ObjectMeta))
+}
+
+// applyDefaults applies any default the api server might have set from the reconciled version to the expected one.
+func applyDefaults(expected, reconciled *corev1.Service) {
 	// Type may be defaulted by the api server
 	if expected.Spec.Type == "" {
 		expected.Spec.Type = reconciled.Spec.Type
+	}
+	// ClusterIP might not exist in the expected service,
+	// but might have been set after creation by k8s on the actual resource.
+	// In such case, we want to use these values for comparison.
+	if expected.Spec.Type == reconciled.Spec.Type && expected.Spec.ClusterIP == "" && reconciled.Spec.ClusterIP != "None" {
+		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
 	}
 
 	// SessionAffinity may be defaulted by the api server
@@ -87,13 +107,6 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 	if expected.Spec.HealthCheckNodePort == 0 {
 		expected.Spec.HealthCheckNodePort = reconciled.Spec.HealthCheckNodePort
 	}
-
-	expected.Annotations = maps.MergePreservingExistingKeys(expected.Annotations, reconciled.Annotations)
-	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, reconciled.Labels)
-
-	// if the specs, labels, or annotations differ, the object should be updated
-	return !(reflect.DeepEqual(expected.Spec, reconciled.Spec) &&
-		compare.LabelsAndAnnotationsAreEqual(expected.ObjectMeta, reconciled.ObjectMeta))
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.

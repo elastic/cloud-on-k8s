@@ -28,6 +28,8 @@
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/items/properties/targetPort/x-kubernetes-int-or-string
 - op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/transport/properties/service/properties/spec/properties/ports/items/properties/targetPort/x-kubernetes-int-or-string
+- op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/podDisruptionBudget/properties/spec/properties/maxUnavailable/x-kubernetes-int-or-string
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/podDisruptionBudget/properties/spec/properties/minAvailable/x-kubernetes-int-or-string
@@ -44,4 +46,8 @@
 - op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/x-kubernetes-list-map-keys
 - op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/transport/properties/service/properties/spec/properties/ports/x-kubernetes-list-map-keys
+- op: remove
   path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/x-kubernetes-list-type
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/transport/properties/service/properties/spec/properties/ports/x-kubernetes-list-type

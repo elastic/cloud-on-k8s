@@ -39,6 +39,8 @@ type Params struct {
 	Reconciled runtime.Object
 	// NeedsUpdate returns true when the object to be reconciled has changes that are not persisted remotely.
 	NeedsUpdate func() bool
+	// NeedsDelete returns true when the object to be reconciled needs to be deleted and re-created because it cannot be updated.
+	NeedsDelete func() bool
 	// UpdateReconciled modifies the resource pointed to by Reconciled to reflect the state of Expected
 	UpdateReconciled func()
 	// PreCreate is called just before the creation of the resource.
@@ -91,9 +93,7 @@ func ReconcileResource(params Params) error {
 		}
 	}
 
-	// Check if already exists
-	err = params.Client.Get(types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
-	if err != nil && apierrors.IsNotFound(err) {
+	create := func() error {
 		// Create if needed
 		log.Info("Creating resource", "kind", kind, "namespace", namespace, "name", name)
 		if params.PreCreate != nil {
@@ -112,9 +112,24 @@ func ReconcileResource(params Params) error {
 			return err
 		}
 		return nil
+	}
+
+	// Check if already exists
+	err = params.Client.Get(types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
+	if err != nil && apierrors.IsNotFound(err) {
+		return create()
 	} else if err != nil {
 		log.Error(err, fmt.Sprintf("Generic GET for %s %s/%s failed with error", kind, namespace, name))
-		return errors.Wrapf(err, "failed to get %s %s/%s", kind, namespace, name)
+		return fmt.Errorf("failed to get %s %s/%s: %w", kind, namespace, name, err)
+	}
+
+	if params.NeedsDelete != nil && params.NeedsDelete() {
+		log.Info("Recreating resource", "kind", kind, "namespace", namespace, "name", name)
+		err := params.Client.Delete(params.Expected)
+		if err != nil {
+			return fmt.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
+		}
+		return create()
 	}
 
 	// Update if needed
