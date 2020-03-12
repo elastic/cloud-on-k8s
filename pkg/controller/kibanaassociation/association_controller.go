@@ -121,9 +121,12 @@ type ReconcileAssociation struct {
 }
 
 func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
-	// Clean up memory
+	// Remove watcher on the Elasticsearch cluster
 	r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(obj))
+	// Remove watcher on the Elasticsearch CA secret
 	r.watches.Secrets.RemoveHandlerForKey(esCAWatchName(obj))
+	// Remove watcher on the user Secret in the Elasticsearch namespace
+	r.watches.Secrets.RemoveHandlerForKey(elasticsearchWatchName(obj))
 	// Delete user Secret in the Elasticsearch namespace
 	return user.DeleteUser(r.Client, newUserLabelSelector(obj))
 }
