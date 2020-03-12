@@ -29,7 +29,7 @@ type EnterpriseSearchSpec struct {
 	// HTTP holds the HTTP layer configuration for Enterprise Search resource.
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
-	// ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
+	// ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on)
@@ -41,13 +41,6 @@ type EnterpriseSearchSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-}
-
-func (spec EnterpriseSearchSpec) Protocol() string {
-	if spec.HTTP.TLS.Enabled() {
-		return "https"
-	}
-	return "http"
 }
 
 // EnterpriseSearchHealth expresses the health of the Enterprise Search instances.

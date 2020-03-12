@@ -53,7 +53,7 @@ func readinessProbe(ents entsv1beta1.EnterpriseSearch) corev1.Probe {
 				Command: []string{"bash", "-c",
 					fmt.Sprintf(
 						`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/swiftype-app-version -k -s`,
-						ents.Spec.Protocol(),
+						ents.Spec.HTTP.Protocol(),
 						HTTPPort,
 					),
 				},

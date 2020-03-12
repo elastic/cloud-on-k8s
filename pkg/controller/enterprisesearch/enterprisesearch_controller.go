@@ -249,12 +249,8 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 
 	state.UpdateEnterpriseSearchExternalService(*svc)
 
-	//// update status
-	//err = r.updateStatus(ctx, state)
-	//if err != nil && errors.IsConflict(err) {
-	//	log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
-	//	return reconcile.Result{Requeue: true}, nil
-	//}
+	// TODO: update status
+
 	res, err := results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, &ents, events.EventReconciliationError, "Reconciliation error: %v", err)
 	return res, nil

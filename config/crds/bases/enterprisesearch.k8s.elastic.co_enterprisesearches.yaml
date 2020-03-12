@@ -64,8 +64,8 @@ spec:
               format: int32
               type: integer
             elasticsearchRef:
-              description: ElasticsearchRef is a reference to the output Elasticsearch
-                cluster running in the same Kubernetes cluster.
+              description: ElasticsearchRef is a reference to the Elasticsearch cluster
+                running in the same Kubernetes cluster.
               properties:
                 name:
                   description: Name of the Kubernetes object.

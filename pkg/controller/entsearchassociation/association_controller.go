@@ -87,7 +87,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 }
 
 func addWatches(c controller.Controller, r *ReconcileEnterpriseSearchElasticsearchAssociation) error {
-	// Watch for changes to EnterpiseSearch
+	// Watch for changes to EnterpriseSearch
 	if err := c.Watch(&source.Kind{Type: &entsv1beta1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}

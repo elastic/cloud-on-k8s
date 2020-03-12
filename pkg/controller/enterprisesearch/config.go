@@ -109,7 +109,7 @@ func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.Canon
 
 func defaultConfig(ents entsv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
 	return settings.MustCanonicalConfig(map[string]interface{}{
-		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ents.Spec.Protocol(), HTTPPort),
+		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ents.Spec.HTTP.Protocol(), HTTPPort),
 		"ent_search.listen_host":         "0.0.0.0",
 		"allow_es_settings_modification": true,
 		// TODO explicitly handle those two

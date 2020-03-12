@@ -35,13 +35,7 @@ func NewState(request reconcile.Request, ents *entsv1beta1.EnterpriseSearch) Sta
 // UpdateApmServerState updates the ApmServer status based on the given deployment.
 func (s State) UpdateEnterpriseSearchState(deployment v1.Deployment) {
 	s.EnterpriseSearch.Status.AvailableNodes = deployment.Status.AvailableReplicas
-	// TODO
-	//s.EnterpriseSearch.Status.Health = apmv1.ApmServerRed
-	//for _, c := range deployment.Status.Conditions {
-	//	if c.Type == v1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
-	//		s.EnterpriseSearch.Status.Health = apmv1.ApmServerGreen
-	//	}
-	//}
+	// TODO health
 }
 
 // UpdateEnterpriseSearchExternalService updates the EnterpriseSearch ExternalService status.
