@@ -11,7 +11,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
@@ -37,7 +36,7 @@ func ConfigSecretVolume(ents entsv1beta1.EnterpriseSearch) volume.SecretVolume {
 
 // Reconcile reconciles the configuration of Enterprise Search: it generates the right configuration and
 // stores it in a secret that is kept up to date.
-func ReconcileConfig(client k8s.Client, scheme *runtime.Scheme, ents entsv1beta1.EnterpriseSearch) (*corev1.Secret, error) {
+func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*corev1.Secret, error) {
 	cfg, err := newConfig(client, ents)
 	if err != nil {
 		return nil, err
@@ -64,7 +63,6 @@ func ReconcileConfig(client k8s.Client, scheme *runtime.Scheme, ents entsv1beta1
 	if err := reconciler.ReconcileResource(
 		reconciler.Params{
 			Client:     client,
-			Scheme:     scheme,
 			Owner:      &ents,
 			Expected:   expectedConfigSecret,
 			Reconciled: reconciledConfigSecret,

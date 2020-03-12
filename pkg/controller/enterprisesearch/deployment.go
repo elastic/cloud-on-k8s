@@ -27,7 +27,7 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	defer span.End()
 
 	deploy := deployment.New(r.deploymentParams(ents, configHash))
-	result, err := deployment.Reconcile(r.K8sClient(), r.Scheme(), deploy, &ents)
+	result, err := deployment.Reconcile(r.K8sClient(), deploy, &ents)
 	if err != nil {
 		return state, err
 	}

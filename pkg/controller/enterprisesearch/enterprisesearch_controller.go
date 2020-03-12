@@ -12,7 +12,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -62,7 +61,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileEnterpriseSearch{
 		Client:         client,
-		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
@@ -118,7 +116,6 @@ var _ reconcile.Reconciler = &ReconcileEnterpriseSearch{}
 // ReconcileEnterpriseSearch reconciles an ApmServer object
 type ReconcileEnterpriseSearch struct {
 	k8s.Client
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
@@ -136,10 +133,6 @@ func (r *ReconcileEnterpriseSearch) DynamicWatches() watches.DynamicWatches {
 
 func (r *ReconcileEnterpriseSearch) Recorder() record.EventRecorder {
 	return r.recorder
-}
-
-func (r *ReconcileEnterpriseSearch) Scheme() *runtime.Scheme {
-	return r.scheme
 }
 
 var _ driver.Interface = &ReconcileEnterpriseSearch{}
@@ -206,7 +199,7 @@ func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *ents
 func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request reconcile.Request, ents entsv1beta1.EnterpriseSearch) (reconcile.Result, error) {
 	state := NewState(request, &ents)
 
-	svc, err := common.ReconcileService(ctx, r.Client, r.scheme, NewService(ents), &ents)
+	svc, err := common.ReconcileService(ctx, r.Client, NewService(ents), &ents)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -222,11 +215,11 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	if err := ReconcileDefaultUser(r.K8sClient(), ents, r.Scheme()); err != nil {
+	if err := ReconcileDefaultUser(r.K8sClient(), ents); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	configSecret, err := ReconcileConfig(r.K8sClient(), r.Scheme(), ents)
+	configSecret, err := ReconcileConfig(r.K8sClient(), ents)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

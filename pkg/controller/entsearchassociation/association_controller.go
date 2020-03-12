@@ -251,7 +251,6 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) reconcileInternal(ct
 	if err := association.ReconcileEsUser(
 		ctx,
 		r.Client,
-		r.scheme,
 		entSearch,
 		map[string]string{
 			AssociationLabelName:      entSearch.Name,
@@ -386,7 +385,6 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) reconcileElasticsear
 	labels[AssociationLabelName] = entSearch.Name
 	return association.ReconcileCASecret(
 		r.Client,
-		r.scheme,
 		entSearch,
 		es,
 		labels,

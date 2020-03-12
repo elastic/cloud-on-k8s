@@ -6,7 +6,6 @@ package enterprisesearch
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
@@ -72,13 +71,12 @@ func GenerateDefaultUser() User {
 	}
 }
 
-func ReconcileDefaultUser(c k8s.Client, ents entsv1beta1.EnterpriseSearch, scheme *runtime.Scheme) error {
+func ReconcileDefaultUser(c k8s.Client, ents entsv1beta1.EnterpriseSearch) error {
 	user := GenerateDefaultUser()
 	expected := user.Secret(ents)
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      &ents,
 		Expected:   &expected,
 		Reconciled: reconciled,

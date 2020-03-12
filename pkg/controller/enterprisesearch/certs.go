@@ -45,7 +45,6 @@ func ReconcileCertificates(
 	// reconcile CA certs first
 	httpCa, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
-		driver.Scheme(),
 		name.EntSearchNamer,
 		ents,
 		labels,
@@ -84,6 +83,6 @@ func ReconcileCertificates(
 	})
 
 	// reconcile http public cert secret
-	results.WithError(http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), ents, name.EntSearchNamer, httpCertificates))
+	results.WithError(http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), ents, name.EntSearchNamer, httpCertificates))
 	return results
 }
