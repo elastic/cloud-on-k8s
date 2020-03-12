@@ -41,22 +41,13 @@ var _ HandlerRegistration = &fakeHandler{}
 func TestDynamicEnqueueRequest_AddHandler(t *testing.T) {
 	tests := []struct {
 		name               string
-		setup              func(handler *DynamicEnqueueRequest)
 		args               HandlerRegistration
 		wantErr            bool
 		registeredHandlers int
 	}{
 		{
-			name:    "fail on uninitialized handler",
-			args:    &fakeHandler{},
-			wantErr: true,
-		},
-		{
-			name: "succeed on initialized handler",
-			args: &fakeHandler{},
-			setup: func(handler *DynamicEnqueueRequest) {
-				assert.NoError(t, handler.InjectScheme(scheme.Scheme))
-			},
+			name:               "registers the given handler with no error",
+			args:               &fakeHandler{},
 			wantErr:            false,
 			registeredHandlers: 1,
 		},
@@ -64,9 +55,6 @@ func TestDynamicEnqueueRequest_AddHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := NewDynamicEnqueueRequest()
-			if tt.setup != nil {
-				tt.setup(d)
-			}
 			if err := d.AddHandler(tt.args); (err != nil) != tt.wantErr {
 				t.Errorf("DynamicEnqueueRequest.AddHandler() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -90,7 +78,6 @@ func TestDynamicEnqueueRequest_RemoveHandler(t *testing.T) {
 			name: "succeed on initialized handler",
 			args: &fakeHandler{},
 			setup: func(handler *DynamicEnqueueRequest) {
-				assert.NoError(t, handler.InjectScheme(scheme.Scheme))
 				assert.NoError(t, handler.AddHandler(&fakeHandler{}))
 				assert.Equal(t, len(handler.registrations), 1)
 			},
@@ -102,7 +89,6 @@ func TestDynamicEnqueueRequest_RemoveHandler(t *testing.T) {
 				name: "bar",
 			},
 			setup: func(handler *DynamicEnqueueRequest) {
-				assert.NoError(t, handler.InjectScheme(scheme.Scheme))
 				assert.NoError(t, handler.AddHandler(&fakeHandler{
 					name: "foo",
 				}))
@@ -151,7 +137,6 @@ func TestDynamicEnqueueRequest_EventHandler(t *testing.T) {
 	}
 
 	d := NewDynamicEnqueueRequest()
-	require.NoError(t, d.InjectScheme(scheme.Scheme))
 	require.NoError(t, d.InjectMapper(getRESTMapper()))
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 
@@ -379,7 +364,6 @@ func TestDynamicEnqueueRequest_OwnerWatch(t *testing.T) {
 	updated2.Labels = map[string]string{"updated": "2"}
 
 	d := NewDynamicEnqueueRequest()
-	require.NoError(t, d.InjectScheme(scheme.Scheme))
 	require.NoError(t, d.InjectMapper(getRESTMapper()))
 	q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 

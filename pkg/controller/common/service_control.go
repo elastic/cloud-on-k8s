@@ -16,7 +16,6 @@ import (
 	"go.elastic.co/apm"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -27,7 +26,6 @@ var log = logf.Log.WithName("common")
 func ReconcileService(
 	ctx context.Context,
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	expected *corev1.Service,
 	owner metav1.Object,
 ) (*corev1.Service, error) {
@@ -37,7 +35,6 @@ func ReconcileService(
 	reconciled := &corev1.Service{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      owner,
 		Expected:   expected,
 		Reconciled: reconciled,

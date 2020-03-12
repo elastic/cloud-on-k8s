@@ -17,7 +17,6 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // ReconcileConfigSecret reconciles the expected Kibana config secret for the given Kibana resource.
@@ -56,7 +55,6 @@ func ReconcileConfigSecret(
 	reconciled := corev1.Secret{}
 	if err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     client,
-		Scheme:     scheme.Scheme,
 		Owner:      &kb,
 		Expected:   &expected,
 		Reconciled: &reconciled,

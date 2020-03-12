@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -22,7 +21,6 @@ import (
 // the certificate if available.
 func ReconcileHTTPCertsPublicSecret(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	owner metav1.Object,
 	namer name.Namer,
 	httpCertificates *CertificatesSecret,
@@ -41,7 +39,6 @@ func ReconcileHTTPCertsPublicSecret(
 
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      owner,
 		Expected:   expected,
 		Reconciled: reconciled,

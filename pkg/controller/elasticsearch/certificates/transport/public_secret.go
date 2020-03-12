@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -22,7 +21,6 @@ import (
 // information.
 func ReconcileTransportCertsPublicSecret(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 	ca *certificates.CA,
 ) error {
@@ -40,7 +38,6 @@ func ReconcileTransportCertsPublicSecret(
 
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      &es,
 		Expected:   expected,
 		Reconciled: reconciled,

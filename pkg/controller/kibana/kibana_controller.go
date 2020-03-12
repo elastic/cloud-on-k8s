@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -60,7 +59,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileKibana{
 		Client:         client,
-		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
@@ -116,7 +114,6 @@ var _ reconcile.Reconciler = &ReconcileKibana{}
 // ReconcileKibana reconciles a Kibana object
 type ReconcileKibana struct {
 	k8s.Client
-	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
 	dynamicWatches watches.DynamicWatches
@@ -190,7 +187,7 @@ func (r *ReconcileKibana) isCompatible(ctx context.Context, kb *kbv1.Kibana) (bo
 }
 
 func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
-	driver, err := newDriver(r, r.scheme, r.dynamicWatches, r.recorder, kb)
+	driver, err := newDriver(r, r.dynamicWatches, r.recorder, kb)
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}

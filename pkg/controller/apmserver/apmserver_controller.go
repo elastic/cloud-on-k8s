@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"go.elastic.co/apm"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmcerts "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
@@ -35,14 +37,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"go.elastic.co/apm"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
@@ -93,7 +93,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
 		Client:         client,
-		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
@@ -150,7 +149,6 @@ var _ reconcile.Reconciler = &ReconcileApmServer{}
 // ReconcileApmServer reconciles an ApmServer object
 type ReconcileApmServer struct {
 	k8s.Client
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
@@ -168,10 +166,6 @@ func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
 
 func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 	return r.recorder
-}
-
-func (r *ReconcileApmServer) Scheme() *runtime.Scheme {
-	return r.scheme
 }
 
 var _ driver.Interface = &ReconcileApmServer{}
@@ -237,7 +231,7 @@ func (r *ReconcileApmServer) isCompatible(ctx context.Context, as *apmv1.ApmServ
 
 func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
 	state := NewState(request, as)
-	svc, err := common.ReconcileService(ctx, r.Client, r.scheme, NewService(*as), as)
+	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as), as)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -291,7 +285,6 @@ func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1.ApmServer) (*cor
 	return reconciledApmServerSecret, reconciler.ReconcileResource(
 		reconciler.Params{
 			Client: r.Client,
-			Scheme: r.scheme,
 
 			Owner:      as,
 			Expected:   expectedApmServerSecret,
@@ -432,7 +425,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	reconciledConfigSecret, err := config.Reconcile(r.Client, r.scheme, as)
+	reconciledConfigSecret, err := config.Reconcile(r.Client, as)
 	if err != nil {
 		return state, err
 	}
@@ -465,7 +458,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	}
 
 	deploy := deployment.New(params)
-	result, err := deployment.Reconcile(r.K8sClient(), r.Scheme(), deploy, as)
+	result, err := deployment.Reconcile(r.K8sClient(), deploy, as)
 	if err != nil {
 		return state, err
 	}

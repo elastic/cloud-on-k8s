@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -179,8 +178,6 @@ func Test_getStrategyType(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := watches.NewDynamicWatches()
-			err := w.Secrets.InjectScheme(scheme.Scheme)
-			assert.NoError(t, err)
 
 			kb := kibanaFixture()
 			kb.Name = tt.expectedKbName
@@ -191,7 +188,7 @@ func Test_getStrategyType(t *testing.T) {
 				client = &failingClient{}
 			}
 
-			d, err := newDriver(client, scheme.Scheme, w, record.NewFakeRecorder(100), kb)
+			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb)
 			assert.NoError(t, err)
 
 			strategy, err := d.getStrategyType(kb)
@@ -369,10 +366,8 @@ func TestDriverDeploymentParams(t *testing.T) {
 
 			client := k8s.WrappedFakeClient(initialObjects...)
 			w := watches.NewDynamicWatches()
-			err := w.Secrets.InjectScheme(scheme.Scheme)
-			require.NoError(t, err)
 
-			d, err := newDriver(client, scheme.Scheme, w, record.NewFakeRecorder(100), kb)
+			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb)
 			require.NoError(t, err)
 
 			got, err := d.deploymentParams(kb)
@@ -417,10 +412,8 @@ func TestMinSupportedVersion(t *testing.T) {
 			kb.Spec.Version = tc.version
 			client := k8s.WrappedFakeClient(defaultInitialObjects()...)
 			w := watches.NewDynamicWatches()
-			err := w.Secrets.InjectScheme(scheme.Scheme)
-			require.NoError(t, err)
 
-			_, err = newDriver(client, scheme.Scheme, w, record.NewFakeRecorder(100), kb)
+			_, err := newDriver(client, w, record.NewFakeRecorder(100), kb)
 			if tc.wantErr {
 				require.Error(t, err)
 			} else {

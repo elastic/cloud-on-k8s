@@ -23,8 +23,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -55,7 +55,7 @@ func ReconcileHTTPCertificates(
 	}
 
 	internalCerts, err := reconcileHTTPInternalCertificatesSecret(
-		driver.K8sClient(), driver.Scheme(), owner, namer, tls, labels, services, customCertificates, ca, rotationParams,
+		driver.K8sClient(), owner, namer, tls, labels, services, customCertificates, ca, rotationParams,
 	)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,6 @@ func ReconcileHTTPCertificates(
 // reconcileHTTPInternalCertificatesSecret ensures that the internal HTTP certificate secret has the correct content.
 func reconcileHTTPInternalCertificatesSecret(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	owner metav1.Object,
 	namer name.Namer,
 	tls commonv1.TLSOptions,
@@ -106,7 +105,7 @@ func reconcileHTTPInternalCertificatesSecret(
 		}
 	}
 
-	if err := controllerutil.SetControllerReference(owner, &secret, scheme); err != nil {
+	if err := controllerutil.SetControllerReference(owner, &secret, scheme.Scheme); err != nil {
 		return nil, err
 	}
 
