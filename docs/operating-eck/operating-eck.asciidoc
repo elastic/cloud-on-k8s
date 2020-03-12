@@ -19,6 +19,7 @@ endif::[]
 
 include::operator-config.asciidoc[leveloffset=+1]
 include::webhook.asciidoc[leveloffset=+1]
+include::restrict-cross-namespace-associations.asciidoc[leveloffset=+1]
 include::licensing.asciidoc[leveloffset=+1]
 include::troubleshooting.asciidoc[leveloffset=+1]
 include::upgrading-eck.asciidoc[leveloffset=+1]
