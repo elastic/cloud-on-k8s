@@ -272,7 +272,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 }
 
 func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
-	// Clean up watches
+	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 }
 
