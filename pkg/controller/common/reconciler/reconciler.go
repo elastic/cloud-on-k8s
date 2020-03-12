@@ -124,7 +124,7 @@ func ReconcileResource(params Params) error {
 	}
 
 	if params.NeedsDelete != nil && params.NeedsDelete() {
-		log.Info("Recreating resource", "kind", kind, "namespace", namespace, "name", name)
+		log.Info("Deleting resource", "kind", kind, "namespace", namespace, "name", name)
 		err := params.Client.Delete(params.Expected)
 		if err != nil {
 			return fmt.Errorf("failed to delete %s %s/%s: %w", kind, namespace, name, err)
