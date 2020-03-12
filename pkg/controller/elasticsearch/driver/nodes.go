@@ -55,7 +55,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme(), certResources, actualStatefulSets)
+	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, certResources, actualStatefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -71,7 +71,6 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		parentCtx:     ctx,
 		k8sClient:     d.K8sClient(),
 		es:            d.ES,
-		scheme:        d.Scheme(),
 		observedState: observedState,
 		esState:       esState,
 		expectations:  d.Expectations,
@@ -83,7 +82,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Update PDB to account for new replicas.
-	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES, actualStatefulSets); err != nil {
+	if err := pdb.Reconcile(d.Client, d.ES, actualStatefulSets); err != nil {
 		return results.WithError(err)
 	}
 

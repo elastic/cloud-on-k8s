@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -91,7 +90,6 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &ReconcileAssociation{
 		Client:         client,
 		accessReviewer: accessReviewer,
-		scheme:         mgr.GetScheme(),
 		watches:        watches.NewDynamicWatches(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		Parameters:     params,
@@ -114,7 +112,6 @@ var _ reconcile.Reconciler = &ReconcileAssociation{}
 type ReconcileAssociation struct {
 	k8s.Client
 	accessReviewer rbac.AccessReviewer
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	watches        watches.DynamicWatches
 	operator.Parameters
@@ -287,7 +284,6 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 	if err := association.ReconcileEsUser(
 		ctx,
 		r.Client,
-		r.scheme,
 		kibana,
 		map[string]string{
 			AssociationLabelName:      kibana.Name,
@@ -393,7 +389,6 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kib
 	labels[AssociationLabelName] = kibana.Name
 	return association.ReconcileCASecret(
 		r.Client,
-		r.scheme,
 		kibana,
 		es,
 		labels,

@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -22,7 +21,6 @@ import (
 // ReconcileUserCredentialsSecret creates or updates the given credentials.
 func ReconcileUserCredentialsSecret(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 	creds UserCredentials,
 ) error {
@@ -30,7 +28,6 @@ func ReconcileUserCredentialsSecret(
 	reconciled := &corev1.Secret{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      &es,
 		Expected:   &expected,
 		Reconciled: reconciled,
@@ -79,7 +76,6 @@ func aggregateAllUsers(customUsers corev1.SecretList, defaultUsers ...ClearTextC
 func ReconcileUsers(
 	ctx context.Context,
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 ) (*InternalUsers, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
@@ -87,12 +83,12 @@ func ReconcileUsers(
 
 	nsn := k8s.ExtractNamespacedName(&es)
 	internalSecrets := NewInternalUserCredentials(nsn)
-	if err := ReconcileUserCredentialsSecret(c, scheme, es, internalSecrets); err != nil {
+	if err := ReconcileUserCredentialsSecret(c, es, internalSecrets); err != nil {
 		return nil, err
 	}
 
 	externalSecrets := NewExternalUserCredentials(nsn)
-	if err := ReconcileUserCredentialsSecret(c, scheme, es, externalSecrets); err != nil {
+	if err := ReconcileUserCredentialsSecret(c, es, externalSecrets); err != nil {
 		return nil, err
 	}
 
@@ -111,7 +107,7 @@ func ReconcileUsers(
 	if err != nil {
 		return nil, err
 	}
-	if err := ReconcileUserCredentialsSecret(c, scheme, es, elasticUsersRolesSecret); err != nil {
+	if err := ReconcileUserCredentialsSecret(c, es, elasticUsersRolesSecret); err != nil {
 		return nil, err
 	}
 
