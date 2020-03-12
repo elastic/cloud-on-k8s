@@ -9,8 +9,25 @@ import (
 	"reflect"
 	"time"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
+	elasticsearchuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
@@ -23,23 +40,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	elasticsearchuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // Kibana association controller
@@ -124,8 +124,8 @@ func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
 	// Clean up memory
 	r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(obj))
 	r.watches.Secrets.RemoveHandlerForKey(esCAWatchName(obj))
-	// Delete user
-	return user.DeleteUser(r.Client, NewUserLabelSelector(obj))
+	// Delete user Secret in the Elasticsearch namespace
+	return user.DeleteUser(r.Client, newUserLabelSelector(obj))
 }
 
 // Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
@@ -287,10 +287,7 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 		r.Client,
 		r.scheme,
 		kibana,
-		map[string]string{
-			AssociationLabelName:      kibana.Name,
-			AssociationLabelNamespace: kibana.Namespace,
-		},
+		associationLabels(kibana),
 		elasticsearchuser.KibanaSystemUserBuiltinRole,
 		kibanaUserSuffix,
 		es); err != nil {
@@ -338,7 +335,7 @@ func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expect
 func (r *ReconcileAssociation) Unbind(kibana commonv1.Associated) error {
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-	if err := user.DeleteUser(r.Client, NewUserLabelSelector(kibanaKey)); err != nil {
+	if err := user.DeleteUser(r.Client, newUserLabelSelector(kibanaKey)); err != nil {
 		return err
 	}
 	// Also remove the association configuration
@@ -386,15 +383,13 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kib
 	}); err != nil {
 		return association.CASecret{}, err
 	}
-	// Build the labels applied on the secret
-	labels := kblabel.NewLabels(kibana.Name)
-	labels[AssociationLabelName] = kibana.Name
+
 	return association.ReconcileCASecret(
 		r.Client,
 		r.scheme,
 		kibana,
 		es,
-		labels,
+		maps.Merge(labels.NewLabels(kibana.Name), associationLabels(kibana)),
 		ElasticsearchCASecretSuffix,
 	)
 }
@@ -406,5 +401,5 @@ func deleteOrphanedResources(
 	c k8s.Client,
 	kibana *kbv1.Kibana,
 ) error {
-	return association.DeleteOrphanedResources(ctx, c, kibana, NewResourceSelector(kibana.Name), createdByKibana)
+	return association.DeleteOrphanedResources(ctx, c, kibana, associationLabels(kibana))
 }

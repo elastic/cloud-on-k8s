@@ -150,6 +150,10 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						OwnerReferences: []metav1.OwnerReference{
 							ownerRefFixture,
 						},
+						Labels: map[string]string{
+							AssociationLabelName:      kibanaFixture.Name,
+							AssociationLabelNamespace: kibanaFixture.Namespace,
+						},
 					},
 				},
 				&corev1.Secret{
@@ -158,6 +162,10 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Namespace: kibanaFixture.Namespace,
 						OwnerReferences: []metav1.OwnerReference{
 							ownerRefFixture,
+						},
+						Labels: map[string]string{
+							AssociationLabelName:      kibanaFixture.Name,
+							AssociationLabelNamespace: kibanaFixture.Namespace,
 						},
 					},
 				},
@@ -241,7 +249,8 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      userSecretName,
 						Namespace: kibanaFixture.Namespace,
 						Labels: map[string]string{
-							AssociationLabelName: kibanaFixture.Name,
+							AssociationLabelName:      kibanaFixture.Name,
+							AssociationLabelNamespace: kibanaFixture.Namespace,
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							ownerRefFixture,
@@ -266,7 +275,8 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      association.ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
 						Namespace: kibanaFixture.Namespace,
 						Labels: map[string]string{
-							AssociationLabelName: kibanaFixture.Name,
+							AssociationLabelName:      kibanaFixture.Name,
+							AssociationLabelNamespace: kibanaFixture.Namespace,
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							ownerRefFixture,
@@ -340,7 +350,8 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      "kibana-foo-kb-es-ca",
 						Namespace: "ns2",
 						Labels: map[string]string{
-							AssociationLabelName: "kibana-foo",
+							AssociationLabelName:      "kibana-foo",
+							AssociationLabelNamespace: "ns2",
 						},
 						OwnerReferences: []metav1.OwnerReference{
 							ownerRefFixture,

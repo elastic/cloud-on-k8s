@@ -11,6 +11,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
@@ -132,8 +133,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.Namespac
 	// Clean up memory
 	r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(obj))
 	r.watches.Secrets.RemoveHandlerForKey(esCAWatchName(obj))
-	// Delete user
-	return user.DeleteUser(r.Client, NewUserLabelSelector(obj))
+	// Delete user Secret in the Elasticsearch namespace
+	return user.DeleteUser(r.Client, newUserLabelSelector(obj))
 }
 
 // Reconcile reads that state of the cluster for a ApmServerElasticsearchAssociation object and makes changes based on the state read
@@ -292,10 +293,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		r.Client,
 		r.scheme,
 		apmServer,
-		map[string]string{
-			AssociationLabelName:      apmServer.Name,
-			AssociationLabelNamespace: apmServer.Namespace,
-		},
+		associationLabels(apmServer),
 		"superuser",
 		apmUserSuffix,
 		es,
@@ -371,7 +369,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) updateAssocConf(ctx context
 func (r *ReconcileApmServerElasticsearchAssociation) Unbind(apm commonv1.Associated) error {
 	apmKey := k8s.ExtractNamespacedName(apm)
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-	if err := user.DeleteUser(r.Client, NewUserLabelSelector(apmKey)); err != nil {
+	if err := user.DeleteUser(r.Client, newUserLabelSelector(apmKey)); err != nil {
 		return err
 	}
 	// Also remove the association configuration
@@ -391,15 +389,13 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ct
 	}); err != nil {
 		return association.CASecret{}, err
 	}
-	// Build the labels applied on the secret
-	labels := labels.NewLabels(as.Name)
-	labels[AssociationLabelName] = as.Name
+
 	return association.ReconcileCASecret(
 		r.Client,
 		r.scheme,
 		as,
 		es,
-		labels,
+		maps.Merge(labels.NewLabels(as.Name), associationLabels(as)),
 		elasticsearchCASecretSuffix,
 	)
 }
@@ -409,5 +405,5 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ct
 // now redundant old user object/secret. This function lists all resources that don't match the current name/namespace
 // combinations and deletes them.
 func deleteOrphanedResources(ctx context.Context, c k8s.Client, as *apmv1.ApmServer) error {
-	return association.DeleteOrphanedResources(ctx, c, as, NewResourceLabels(as.Name), createdByApmServer)
+	return association.DeleteOrphanedResources(ctx, c, as, associationLabels(as))
 }
