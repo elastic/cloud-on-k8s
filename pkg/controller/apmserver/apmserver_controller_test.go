@@ -24,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -333,10 +332,8 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.args.initialObjects...)
 			w := watches.NewDynamicWatches()
-			require.NoError(t, w.Secrets.InjectScheme(scheme.Scheme))
 			r := &ReconcileApmServer{
 				Client:         client,
-				scheme:         scheme.Scheme,
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: w,
 			}
@@ -400,7 +397,6 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileApmServer{
 				Client:         k8s.WrappedFakeClient(&tt.as),
-				scheme:         scheme.Scheme,
 				recorder:       tt.fields.recorder,
 				dynamicWatches: tt.fields.dynamicWatches,
 				Parameters:     tt.fields.Parameters,

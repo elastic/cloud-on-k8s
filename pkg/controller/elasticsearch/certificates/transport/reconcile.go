@@ -20,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -32,7 +31,6 @@ var log = logf.Log.WithName("transport")
 // cluster.
 func ReconcileTransportCertificatesSecrets(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	ca *certificates.CA,
 	es esv1.Elasticsearch,
 	rotationParams certificates.RotationParams,
@@ -45,7 +43,7 @@ func ReconcileTransportCertificatesSecrets(
 		return results.WithError(errors.WithStack(err))
 	}
 
-	secret, err := ensureTransportCertificatesSecretExists(c, scheme, es)
+	secret, err := ensureTransportCertificatesSecretExists(c, es)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -121,7 +119,6 @@ func ReconcileTransportCertificatesSecrets(
 // in time will contain the transport certificates.
 func ensureTransportCertificatesSecretExists(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 ) (*corev1.Secret, error) {
 	expected := corev1.Secret{
@@ -140,7 +137,6 @@ func ensureTransportCertificatesSecretExists(
 	var reconciled corev1.Secret
 	if err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      &es,
 		Expected:   &expected,
 		Reconciled: &reconciled,

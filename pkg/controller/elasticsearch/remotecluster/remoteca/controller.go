@@ -23,7 +23,6 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,7 +46,6 @@ func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &ReconcileRemoteCa{
 		Client:         c,
 		accessReviewer: accessReviewer,
-		scheme:         mgr.GetScheme(),
 		watches:        watches.NewDynamicWatches(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		licenseChecker: license.NewLicenseChecker(c, params.OperatorNamespace),
@@ -62,7 +60,6 @@ type ReconcileRemoteCa struct {
 	k8s.Client
 	operator.Parameters
 	accessReviewer rbac.AccessReviewer
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	watches        watches.DynamicWatches
 	licenseChecker license.Checker

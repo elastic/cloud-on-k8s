@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -29,8 +30,6 @@ var (
 // Params is a parameter object for the ReconcileResources function
 type Params struct {
 	Client k8s.Client
-	// Scheme with all custom resources kinds registered.
-	Scheme *runtime.Scheme
 	// Owner will be set as the controller reference
 	Owner metav1.Object
 	// Expected the expected state of the resource going into reconciliation.
@@ -82,14 +81,14 @@ func ReconcileResource(params Params) error {
 	}
 	namespace := metaObj.GetNamespace()
 	name := metaObj.GetName()
-	gvk, err := apiutil.GVKForObject(params.Expected, params.Scheme)
+	gvk, err := apiutil.GVKForObject(params.Expected, scheme.Scheme)
 	if err != nil {
 		return err
 	}
 	kind := gvk.Kind
 
 	if params.Owner != nil {
-		if err := controllerutil.SetControllerReference(params.Owner, metaObj, params.Scheme); err != nil {
+		if err := controllerutil.SetControllerReference(params.Owner, metaObj, scheme.Scheme); err != nil {
 			return err
 		}
 	}

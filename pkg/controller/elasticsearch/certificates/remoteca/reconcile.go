@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -63,7 +62,6 @@ func Reconcile(
 	var reconciled v1.Secret
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme.Scheme,
 		Owner:      &es,
 		Expected:   &expected,
 		Reconciled: &reconciled,

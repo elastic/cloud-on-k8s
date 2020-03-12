@@ -87,6 +87,9 @@ func buildGeneralNames(
 	generalNames := []certificates.GeneralName{
 		{OtherName: *commonNameOtherName},
 		{DNSName: commonName},
+		// add the transport service name for remote cluster connections initially connecting through the service
+		// the DNS name has to match the seed hosts configured in the remote cluster settings
+		{DNSName: fmt.Sprintf("%s.%s.svc", esv1.TransportService(cluster.Name), cluster.Namespace)},
 		{IPAddress: netutil.MaybeIPTo4(podIP)},
 		{IPAddress: net.ParseIP("127.0.0.1").To4()},
 	}

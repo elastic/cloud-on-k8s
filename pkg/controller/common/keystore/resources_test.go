@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 )
 
@@ -138,12 +137,10 @@ echo "Keystore initialization successful."
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testDriver := driver.TestDriver{
-				Client:        tt.client,
-				RuntimeScheme: scheme.Scheme,
-				Watches:       watches2.NewDynamicWatches(),
-				FakeRecorder:  record.NewFakeRecorder(1000),
+				Client:       tt.client,
+				Watches:      watches2.NewDynamicWatches(),
+				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			require.NoError(t, testDriver.Watches.InjectScheme(scheme.Scheme))
 			resources, err := NewResources(testDriver, &tt.kb, name.KBNamer, nil, initContainersParameters)
 			require.NoError(t, err)
 			if tt.wantNil {

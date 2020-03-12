@@ -27,7 +27,6 @@ func TestReconcileService(t *testing.T) {
 	}
 
 	existingSvc := mkService()
-	scheme := k8s.Scheme()
 	client := k8s.WrappedFakeClient(owner, existingSvc)
 
 	expectedSvc := mkService()
@@ -40,7 +39,7 @@ func TestReconcileService(t *testing.T) {
 	wantSvc.Labels["lbl3"] = "lblval3"
 	wantSvc.Annotations["ann3"] = "annval3"
 
-	haveSvc, err := ReconcileService(context.Background(), client, scheme, expectedSvc, owner)
+	haveSvc, err := ReconcileService(context.Background(), client, expectedSvc, owner)
 	require.NoError(t, err)
 	comparison.AssertEqual(t, wantSvc, haveSvc)
 }

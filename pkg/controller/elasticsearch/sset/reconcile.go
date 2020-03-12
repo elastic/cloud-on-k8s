@@ -6,7 +6,6 @@ package sset
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
@@ -16,11 +15,10 @@ import (
 )
 
 // ReconcileStatefulSet creates or updates the expected StatefulSet.
-func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es esv1.Elasticsearch, expected appsv1.StatefulSet, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
+func ReconcileStatefulSet(c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
 	var reconciled appsv1.StatefulSet
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      &es,
 		Expected:   &expected,
 		Reconciled: &reconciled,

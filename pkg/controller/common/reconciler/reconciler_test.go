@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func withoutControllerRef(obj runtime.Object) runtime.Object {
@@ -266,7 +265,6 @@ func TestReconcileResource(t *testing.T) {
 			args := tt.args()
 			p := Params{
 				Client:           client,
-				Scheme:           scheme.Scheme,
 				Owner:            &appsv1.Deployment{}, //just a dummy
 				Expected:         args.Expected,
 				Reconciled:       args.Reconciled,

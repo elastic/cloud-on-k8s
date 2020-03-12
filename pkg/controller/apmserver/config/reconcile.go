@@ -9,7 +9,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -25,7 +24,7 @@ var log = logf.Log.WithName("apmserver-config")
 
 // Reconcile reconciles the configuration of the APM server: it first creates the configuration from the APM
 // specification and then reconcile the underlying secret.
-func Reconcile(client k8s.Client, scheme *runtime.Scheme, as *apmv1.ApmServer) (*corev1.Secret, error) {
+func Reconcile(client k8s.Client, as *apmv1.ApmServer) (*corev1.Secret, error) {
 
 	// Create a new configuration from the APM object spec.
 	cfg, err := NewConfigFromSpec(client, as)
@@ -54,7 +53,6 @@ func Reconcile(client k8s.Client, scheme *runtime.Scheme, as *apmv1.ApmServer) (
 	if err := reconciler.ReconcileResource(
 		reconciler.Params{
 			Client: client,
-			Scheme: scheme,
 
 			Owner:      as,
 			Expected:   expectedConfigSecret,

@@ -18,14 +18,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type upscaleCtx struct {
 	parentCtx     context.Context
 	k8sClient     k8s.Client
 	es            esv1.Elasticsearch
-	scheme        *runtime.Scheme
 	observedState observer.State
 	esState       ESState
 	expectations  *expectations.Expectations
@@ -55,10 +53,10 @@ func HandleUpscaleAndSpecChanges(
 		if err := settings.ReconcileConfig(ctx.k8sClient, ctx.es, res.StatefulSet.Name, res.Config); err != nil {
 			return nil, err
 		}
-		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, ctx.scheme, &res.HeadlessService, &ctx.es); err != nil {
+		if _, err := common.ReconcileService(ctx.parentCtx, ctx.k8sClient, &res.HeadlessService, &ctx.es); err != nil {
 			return nil, err
 		}
-		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.scheme, ctx.es, res.StatefulSet, ctx.expectations)
+		reconciled, err := sset.ReconcileStatefulSet(ctx.k8sClient, ctx.es, res.StatefulSet, ctx.expectations)
 		if err != nil {
 			return nil, err
 		}
