@@ -1166,7 +1166,7 @@ spec:
                 namespace. Can only be used if ECK is enforcing RBAC on references.
               type: string
             transport:
-              description: HTTP holds Transport layer settings for Elasticsearch.
+              description: Transport holds transport layer settings for Elasticsearch.
               properties:
                 service:
                   description: Service defines the template for the associated Kubernetes

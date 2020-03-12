@@ -42,7 +42,7 @@ func ReconcileService(
 		Owner:      owner,
 		Expected:   expected,
 		Reconciled: reconciled,
-		NeedsDelete: func() bool {
+		NeedsRecreate: func() bool {
 			return needsDelete(expected, reconciled)
 		},
 		NeedsUpdate: func() bool {
