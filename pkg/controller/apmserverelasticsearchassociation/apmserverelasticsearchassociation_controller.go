@@ -130,9 +130,12 @@ type ReconcileApmServerElasticsearchAssociation struct {
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.NamespacedName) error {
-	// Clean up memory
+	// Remove watcher on the Elasticsearch cluster
 	r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(obj))
+	// Remove watcher on the Elasticsearch CA secret
 	r.watches.Secrets.RemoveHandlerForKey(esCAWatchName(obj))
+	// Remove watcher on the user Secret in the Elasticsearch namespace
+	r.watches.Secrets.RemoveHandlerForKey(elasticsearchWatchName(obj))
 	// Delete user Secret in the Elasticsearch namespace
 	return user.DeleteUser(r.Client, newUserLabelSelector(obj))
 }
@@ -268,6 +271,16 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		Watcher: apmServerKey,
 	})
 	if err != nil {
+		return commonv1.AssociationFailed, err
+	}
+
+	userSecretKey := association.UserKey(apmServer, apmUserSuffix)
+	// watch the user secret in the ES namespace
+	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
+		Name:    elasticsearchWatchName(apmServerKey),
+		Watched: []types.NamespacedName{userSecretKey},
+		Watcher: apmServerKey,
+	}); err != nil {
 		return commonv1.AssociationFailed, err
 	}
 
