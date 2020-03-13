@@ -75,7 +75,7 @@ func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.Pod
 		WithReadinessProbe(readinessProbe(ents)).
 		WithVolumes(cfgVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount()).
-		WithEnv(append(DefaultEnv, DefaultUserEnvVar(ents))...).
+		WithEnv(DefaultEnv...).
 		// ensure the Pod gets rotated on config change
 		WithLabels(map[string]string{ConfigHashLabelName: configHash})
 
