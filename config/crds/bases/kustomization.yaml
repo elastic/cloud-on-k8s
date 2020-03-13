@@ -2,3 +2,4 @@ resources:
   - apm.k8s.elastic.co_apmservers.yaml
   - elasticsearch.k8s.elastic.co_elasticsearches.yaml
   - kibana.k8s.elastic.co_kibanas.yaml
+  - enterprisesearch.k8s.elastic.co_enterprisesearches.yaml
