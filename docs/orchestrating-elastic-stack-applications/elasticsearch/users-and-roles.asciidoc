@@ -10,9 +10,10 @@ endif::[]
 
 == Default elastic user
 
-A default user named `elastic` is created automatically. Its password can be retrieved in a Kubernetes secret, whose name
+A default user named `elastic` is created automatically, and is assigned the `superuser` role.
+
+Its password can be retrieved in a Kubernetes secret, whose name
 is based on the Elasticsearch resource name: `<elasticsearch-name>-es-elastic-user`.
-The password is stored in the `elastic` secret entry.
 
 For example, the password of the `elastic` user for an Elasticsearch cluster named `quickstart` can be retrieved with:
 
@@ -20,8 +21,6 @@ For example, the password of the `elastic` user for an Elasticsearch cluster nam
 ----
 kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode
 ----
-
-The `elastic` user is assigned the `superuser` role.
 
 == Creating custom users
 
@@ -32,7 +31,7 @@ Custom users can be created in the link:https://www.elastic.co/guide/en/elastics
 === File realm
 
 Custom users can also be created by providing the desired link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm content]
-in a Kubernetes secret, referenced in the Elasticsearch resource.
+in Kubernetes secrets, referenced in the Elasticsearch resource.
 
 [source,yaml]
 ----
