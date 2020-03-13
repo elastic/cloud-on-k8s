@@ -59,12 +59,20 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userSecretName,
 						Namespace: apmFixture.Namespace,
+						Labels: map[string]string{
+							AssociationLabelName:      apmFixture.Name,
+							AssociationLabelNamespace: apmFixture.Namespace,
+						},
 					},
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      esUserName,
 						Namespace: apmFixture.Namespace,
+						Labels: map[string]string{
+							AssociationLabelName:      apmFixture.Name,
+							AssociationLabelNamespace: apmFixture.Namespace,
+						},
 					},
 				},
 			},
