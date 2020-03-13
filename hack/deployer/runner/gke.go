@@ -49,8 +49,8 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 	if len(pvcPrefix) > pvcPrefixMaxLength {
 		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
 	}
-	clusterIPv4CIDR := defaultClusterIPv4CIDR
 
+	clusterIPv4CIDR := defaultClusterIPv4CIDR
 	if plan.Gke.ClusterIPv4CIDR != "" {
 		clusterIPv4CIDR = plan.Gke.ClusterIPv4CIDR
 	}
