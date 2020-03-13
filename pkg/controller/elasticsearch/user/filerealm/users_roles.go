@@ -12,11 +12,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
-// roleUsersMapping is a map {role name -> [] sorted user names}
-type roleUsersMapping map[string][]string
+// usersRoles is a map {role name -> [] sorted user names}
+// /!\ we use the File Realm naming convention, note this is a role to users mapping,
+// and not the other way around as the name may indicate.
+type usersRoles map[string][]string
 
-// mergeWith merges multiple usersPasswordHashes, giving priority to other.
-func (r roleUsersMapping) mergeWith(other roleUsersMapping) roleUsersMapping {
+// mergeWith merges multiple usersRoles, giving priority to other.
+func (r usersRoles) mergeWith(other usersRoles) usersRoles {
 	if len(r) == 0 {
 		return other
 	}
@@ -40,13 +42,13 @@ func (r roleUsersMapping) mergeWith(other roleUsersMapping) roleUsersMapping {
 	return r
 }
 
-// fileBytes serializes the roleUsersMapping into a file with format:
+// fileBytes serializes the usersRoles into a file with format:
 // ```
 // role1:user1,user2,user3
 // role2:user1
 // ```
 // Rows are sorted for easier comparison.
-func (r roleUsersMapping) fileBytes() []byte {
+func (r usersRoles) fileBytes() []byte {
 	rows := make([]string, 0, len(r))
 	for role, users := range r {
 		rows = append(rows, fmt.Sprintf("%s:%s", role, strings.Join(users, ",")))
@@ -57,14 +59,14 @@ func (r roleUsersMapping) fileBytes() []byte {
 	return []byte(strings.Join(rows, "\n") + "\n")
 }
 
-// parseRoleUsersMapping extracts the role to users mapping from the given file content.
+// parseUsersRoles extracts the role to users mapping from the given file content.
 // Expected format:
 // ```
 // role1:user1,user2,user3
 // role2:user1
 // ```
-func parseRoleUsersMapping(data []byte) (roleUsersMapping, error) {
-	rolesMapping := make(roleUsersMapping)
+func parseUsersRoles(data []byte) (usersRoles, error) {
+	rolesMapping := make(usersRoles)
 	return rolesMapping, forEachRow(data, func(row []byte) error {
 		roleUsers := strings.Split(string(row), ":")
 		if len(roleUsers) != 2 {
@@ -79,7 +81,7 @@ func parseRoleUsersMapping(data []byte) (roleUsersMapping, error) {
 			// remove that empty user
 			users = nil
 		}
-		rolesMapping = rolesMapping.mergeWith(roleUsersMapping{
+		rolesMapping = rolesMapping.mergeWith(usersRoles{
 			role: users,
 		})
 		return nil

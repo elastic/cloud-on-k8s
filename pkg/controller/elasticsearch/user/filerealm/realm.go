@@ -23,14 +23,14 @@ const (
 // Realm is the file realm representation, containing user password hashes and role mapping.
 type Realm struct {
 	users      usersPasswordHashes
-	usersRoles roleUsersMapping
+	usersRoles usersRoles
 }
 
 // New empty file realm.
 func New() Realm {
 	return Realm{
 		users:      make(usersPasswordHashes),
-		usersRoles: make(roleUsersMapping),
+		usersRoles: make(usersRoles),
 	}
 }
 
@@ -45,7 +45,7 @@ func FromSecret(secret corev1.Secret) (Realm, error) {
 	if err != nil {
 		return Realm{}, errors.Wrap(err, fmt.Sprintf("fail to parse users from secret %s", secret.Name))
 	}
-	usersRoles, err := parseRoleUsersMapping(k8s.GetSecretEntry(secret, UsersRolesFile))
+	usersRoles, err := parseUsersRoles(k8s.GetSecretEntry(secret, UsersRolesFile))
 	if err != nil {
 		return Realm{}, errors.Wrap(err, fmt.Sprintf("fail to parse users roles from secret %s", secret.Name))
 	}
@@ -69,7 +69,7 @@ func (f Realm) WithUser(name string, passwordHash []byte) Realm {
 
 // WithRole adds the given role to the file realm, merging with existing users.
 func (f Realm) WithRole(name string, users []string) Realm {
-	f.usersRoles = f.usersRoles.mergeWith(roleUsersMapping{name: users})
+	f.usersRoles = f.usersRoles.mergeWith(usersRoles{name: users})
 	return f
 }
 
