@@ -1,0 +1,28 @@
+# Remove validation.openAPIV3Schema.type that causes failures on k8s 1.11.
+# This should have been fixed with https://github.com/kubernetes-sigs/controller-tools/pull/72, but it looks like
+# this commit has been lost in history. See https://github.com/kubernetes-sigs/controller-tools/issues/296.
+# TODO: remove once fixed in controller-tools
+- op: remove
+  path: /spec/validation/openAPIV3Schema/type
+
+# Using `kubectl apply` stores the complete CRD file as an annotation,
+# which may be too big for the annotations size limit.
+# One way to mitigate this problem is to remove the (huge) podTemplate properties from the CRD.
+# It also avoids the problem of having any k8s-version specific field in the Pod schema,
+# that would maybe not match the user's k8s version.
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/podTemplate/properties
+
+# TODO: remove once https://github.com/kubernetes-sigs/controller-tools/issues/392 is fixed
+# without this the API server complains with "The CustomResourceDefinition "elasticsearches.elasticsearch.k8s.elastic.co"
+# is invalid: spec.validation.openAPIV3Schema.type: Required value: must not be empty at the root"
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/items/properties/targetPort/x-kubernetes-int-or-string
+
+# TODO: remove once https://github.com/kubernetes-sigs/controller-tools/issues/392 is fixed
+# these are not technically required by the API server, but kubectl validation will fail because
+# of these markers so we remove them to make applying the CRDs easier.
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/x-kubernetes-list-map-keys
+- op: remove
+  path: /spec/validation/openAPIV3Schema/properties/spec/properties/http/properties/service/properties/spec/properties/ports/x-kubernetes-list-type

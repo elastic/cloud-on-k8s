@@ -8,8 +8,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -55,7 +55,6 @@ func BuildStatefulSet(
 	cfg settings.CanonicalConfig,
 	keystoreResources *keystore.Resources,
 	existingStatefulSets sset.StatefulSetList,
-	scheme *runtime.Scheme,
 ) (appsv1.StatefulSet, error) {
 	statefulSetName := esv1.StatefulSet(es.Name, nodeSet.Name)
 
@@ -84,7 +83,7 @@ func BuildStatefulSet(
 	if existingSset, exists := existingStatefulSets.GetByName(statefulSetName); exists {
 		existingClaims = existingSset.Spec.VolumeClaimTemplates
 	}
-	claims, err := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, existingClaims, es, scheme)
+	claims, err := setVolumeClaimsControllerReference(nodeSet.VolumeClaimTemplates, existingClaims, es)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}
@@ -126,7 +125,6 @@ func setVolumeClaimsControllerReference(
 	persistentVolumeClaims []corev1.PersistentVolumeClaim,
 	existingClaims []corev1.PersistentVolumeClaim,
 	es esv1.Elasticsearch,
-	scheme *runtime.Scheme,
 ) ([]corev1.PersistentVolumeClaim, error) {
 	// set the owner reference of all volume claims to the ES resource,
 	// so PVC get deleted automatically upon Elasticsearch resource deletion
@@ -152,7 +150,7 @@ func setVolumeClaimsControllerReference(
 		// `SetControllerReference` does a safety check on object vs. owner namespace mismatch to cover common errors,
 		// but in this particular case we don't need to set a namespace in the claim template.
 		claim.Namespace = es.Namespace
-		if err := controllerutil.SetControllerReference(&es, &claim, scheme); err != nil {
+		if err := controllerutil.SetControllerReference(&es, &claim, scheme.Scheme); err != nil {
 			return nil, err
 		}
 		claim.Namespace = ""

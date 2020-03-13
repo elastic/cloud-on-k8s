@@ -5,6 +5,7 @@
 package kibanaassociation
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,10 +31,10 @@ func NewResourceSelector(name string) client.MatchingLabels {
 
 func hasBeenCreatedBy(object metav1.Object, kibana *kbv1.Kibana) bool {
 	labels := object.GetLabels()
-	if name, ok := labels[AssociationLabelName]; !ok || name != kibana.Name {
+	if !maps.ContainsKeys(labels, AssociationLabelName, AssociationLabelNamespace) {
 		return false
 	}
-	if ns, ok := labels[AssociationLabelNamespace]; !ok || ns != kibana.Namespace {
+	if labels[AssociationLabelName] != kibana.Name || labels[AssociationLabelNamespace] != kibana.Namespace {
 		return false
 	}
 	return true

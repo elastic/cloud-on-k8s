@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/client-go/kubernetes/scheme"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -256,7 +254,6 @@ func Test_reconcileEsUser(t *testing.T) {
 			if err := ReconcileEsUser(
 				context.Background(),
 				c,
-				scheme.Scheme,
 				&tt.args.kibana,
 				map[string]string{
 					associationLabelName:      tt.args.kibana.Name,

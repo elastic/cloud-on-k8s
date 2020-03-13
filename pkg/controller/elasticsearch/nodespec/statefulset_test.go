@@ -8,14 +8,16 @@ import (
 	"reflect"
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 )
 
 func Test_setVolumeClaimsControllerReference(t *testing.T) {
+	_ = scheme.SetupScheme()
 	varTrue := true
 	varFalse := false
 	es := esv1.Elasticsearch{
@@ -176,7 +178,7 @@ func Test_setVolumeClaimsControllerReference(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := setVolumeClaimsControllerReference(tt.persistentVolumeClaims, tt.existingClaims, es, k8s.Scheme())
+			got, err := setVolumeClaimsControllerReference(tt.persistentVolumeClaims, tt.existingClaims, es)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantClaims, got)
 		})

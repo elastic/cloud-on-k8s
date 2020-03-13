@@ -12,7 +12,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -76,7 +75,6 @@ func ClearTextSecretKeySelector(associated commonv1.Associated, userSuffix strin
 func ReconcileEsUser(
 	ctx context.Context,
 	c k8s.Client,
-	s *runtime.Scheme,
 	associated commonv1.Associated,
 	labels map[string]string,
 	userRoles string,
@@ -104,7 +102,6 @@ func ReconcileEsUser(
 	reconciledSecret := corev1.Secret{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     s,
 		Owner:      associated,
 		Expected:   &expectedSecret,
 		Reconciled: &reconciledSecret,
@@ -153,7 +150,6 @@ func ReconcileEsUser(
 	reconciledEsSecret := corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     s,
 		Owner:      &es, // user is owned by the ES resource
 		Expected:   expectedEsUser,
 		Reconciled: &reconciledEsSecret,

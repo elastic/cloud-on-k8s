@@ -78,7 +78,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			exp := expectations.NewExpectations(tt.c)
-			returned, err := ReconcileStatefulSet(tt.c, scheme.Scheme, es, tt.expected, exp)
+			returned, err := ReconcileStatefulSet(tt.c, es, tt.expected, exp)
 			require.NoError(t, err)
 
 			// expect owner ref to be set to the es resource

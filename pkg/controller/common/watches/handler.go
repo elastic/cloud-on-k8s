@@ -7,9 +7,8 @@ package watches
 import (
 	"sync"
 
-	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -42,7 +41,6 @@ func NewDynamicEnqueueRequest() *DynamicEnqueueRequest {
 type DynamicEnqueueRequest struct {
 	mutex         sync.RWMutex
 	registrations map[string]HandlerRegistration
-	scheme        *runtime.Scheme
 	// mapper maps GroupVersionKinds to Resources
 	mapper meta.RESTMapper
 }
@@ -59,12 +57,9 @@ func (d *DynamicEnqueueRequest) AddHandlers(handlers ...HandlerRegistration) err
 
 // AddHandler adds a new event handler to this DynamicEnqueueRequest.
 func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
-	if d.scheme == nil {
-		return errors.New("DynamicEnqueueRequest is not initialised yet. No scheme")
-	}
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	if _, err := inject.SchemeInto(d.scheme, handler); err != nil {
+	if _, err := inject.SchemeInto(scheme.Scheme, handler); err != nil {
 		log.Error(err, "Failed to add handler to dynamic enqueue request")
 		return err
 	}
@@ -142,15 +137,6 @@ func (d *DynamicEnqueueRequest) Generic(evt event.GenericEvent, q workqueue.Rate
 		v.EventHandler().Generic(evt, q)
 	}
 }
-
-// InjectScheme is used by the ControllerManager to inject Scheme into Sources, EventHandlers, Predicates, and
-// Reconciles.
-func (d *DynamicEnqueueRequest) InjectScheme(scheme *runtime.Scheme) error {
-	d.scheme = scheme
-	return nil
-}
-
-var _ inject.Scheme = &DynamicEnqueueRequest{}
 
 // InjectMapper is called by the Controller to provide the rest mapper used by the manager.
 func (d *DynamicEnqueueRequest) InjectMapper(m meta.RESTMapper) error {

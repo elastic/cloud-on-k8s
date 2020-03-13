@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -72,7 +71,6 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &ReconcileApmServerElasticsearchAssociation{
 		Client:         client,
 		accessReviewer: accessReviewer,
-		scheme:         mgr.GetScheme(),
 		watches:        watches.NewDynamicWatches(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		Parameters:     params,
@@ -122,7 +120,6 @@ var _ reconcile.Reconciler = &ReconcileApmServerElasticsearchAssociation{}
 type ReconcileApmServerElasticsearchAssociation struct {
 	k8s.Client
 	accessReviewer rbac.AccessReviewer
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	watches        watches.DynamicWatches
 	operator.Parameters
@@ -284,7 +281,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 	if err := association.ReconcileEsUser(
 		ctx,
 		r.Client,
-		r.scheme,
 		apmServer,
 		map[string]string{
 			AssociationLabelName:      apmServer.Name,
@@ -393,7 +389,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ct
 	labels[AssociationLabelName] = as.Name
 	return association.ReconcileCASecret(
 		r.Client,
-		r.scheme,
 		as,
 		es,
 		labels,

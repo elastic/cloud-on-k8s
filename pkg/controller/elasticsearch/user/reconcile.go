@@ -13,7 +13,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -172,7 +171,6 @@ func reconcileRolesFileRealmSecret(c k8s.Client, es esv1.Elasticsearch, roles Ro
 	var reconciled corev1.Secret
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme.Scheme,
 		Owner:      &es,
 		Expected:   &expected,
 		Reconciled: &reconciled,

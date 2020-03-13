@@ -12,7 +12,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -100,7 +99,6 @@ func reconcilePredefinedUsers(
 	// TODO: factorize with https://github.com/elastic/cloud-on-k8s/issues/2626
 	return users, reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme.Scheme,
 		Owner:      &es,
 		Expected:   &expected,
 		Reconciled: &reconciled,

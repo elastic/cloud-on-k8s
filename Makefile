@@ -46,7 +46,7 @@ REPOSITORY  ?= eck
 NAME        ?= eck-operator
 SNAPSHOT    ?= true
 VERSION     ?= $(shell cat VERSION)
-TAG         ?= $(shell git rev-parse --short --verify HEAD)
+TAG         ?= $(shell git rev-parse --short=8 --verify HEAD)
 IMG_NAME    ?= $(NAME)$(IMG_SUFFIX)
 IMG_VERSION ?= $(VERSION)-$(TAG)
 

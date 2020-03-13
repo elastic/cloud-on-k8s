@@ -12,8 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -39,7 +37,6 @@ func Test_secureSettingsVolume(t *testing.T) {
 	)
 	createWatches := func(handlerName string) watches.DynamicWatches {
 		w := watches.NewDynamicWatches()
-		require.NoError(t, w.InjectScheme(scheme.Scheme))
 		if handlerName != "" {
 			require.NoError(t, w.Secrets.AddHandler(watches.NamedWatch{
 				Name: handlerName,
@@ -99,10 +96,9 @@ func Test_secureSettingsVolume(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testDriver := driver.TestDriver{
-				Client:        tt.c,
-				RuntimeScheme: scheme.Scheme,
-				Watches:       tt.w,
-				FakeRecorder:  record.NewFakeRecorder(1000),
+				Client:       tt.c,
+				Watches:      tt.w,
+				FakeRecorder: record.NewFakeRecorder(1000),
 			}
 			vol, version, err := secureSettingsVolume(testDriver, &tt.kb, nil, kbname.KBNamer)
 			require.NoError(t, err)
@@ -304,7 +300,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileSecureSettings(tt.args.c, clientgoscheme.Scheme, tt.args.hasKeystore, tt.args.userSecrets, tt.args.namer, nil)
+			got, err := reconcileSecureSettings(tt.args.c, tt.args.hasKeystore, tt.args.userSecrets, tt.args.namer, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileSecureSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -12,16 +12,16 @@ import (
 	"testing"
 	"time"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/client-go/kubernetes/scheme"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var testNamer = name.Namer{
@@ -214,7 +214,7 @@ func Test_renewCA(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ca, err := renewCA(tt.client, testNamer, &testCluster, nil, tt.expireIn, scheme.Scheme, TransportCAType)
+			ca, err := renewCA(tt.client, testNamer, &testCluster, nil, tt.expireIn, TransportCAType)
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			assert.Equal(t, ca.Cert.Issuer.CommonName, testName+"-"+string(TransportCAType))
@@ -285,7 +285,7 @@ func TestReconcileCAForCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ca, err := ReconcileCAForOwner(
-				tt.cl, scheme.Scheme, testNamer, &testCluster, nil, TransportCAType, RotationParams{
+				tt.cl, testNamer, &testCluster, nil, TransportCAType, RotationParams{
 					Validity:     tt.caCertValidity,
 					RotateBefore: DefaultRotateBefore,
 				},

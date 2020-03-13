@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -25,9 +24,8 @@ import (
 )
 
 func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
-	w := watches.NewDynamicWatches()
 	_ = commonscheme.SetupScheme()
-	_ = w.Secrets.InjectScheme(scheme.Scheme)
+	w := watches.NewDynamicWatches()
 	for _, name := range watchNames {
 		_ = w.Secrets.AddHandler(watches.NamedWatch{
 			Name: name,
