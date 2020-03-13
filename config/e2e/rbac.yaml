@@ -162,19 +162,6 @@ rules:
       - patch
       - delete
   - apiGroups:
-      - associations.k8s.elastic.co
-    resources:
-      - apmserverelasticsearchassociations
-      - apmserverelasticsearchassociations/status
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
       - storage.k8s.io
     resources:
       - storageclasses
