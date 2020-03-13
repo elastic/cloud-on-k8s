@@ -1,0 +1,134 @@
+= Expose Elasticsearch and Kibana using Istio ingress gateway
+
+This recipe demonstrates the following features:
+
+- Deploying an Elasticsearch cluster with different node types (coordinator, ingest, master, data, ml)
+- Enforcing Istio mTLS between Elasticsearch nodes
+- Routing read traffic to coordinator nodes and write traffic to ingest nodes (internally and externally)
+- Exposing Elasticsearch and Kibana deployments externally using the Istio ingress gateway
+
+
+NOTE: These manifests were tested with ECK 1.0.1, Istio 1.5.0, and Kubernetes 1.16 (v1.16.6-gke.12) on Google Kubernetes Engine.
+
+== Prerequisites
+
+- Install Istio with the Secret Discovery Service (SDS) enabled
++
+[source,sh]
+----
+istioctl manifest generate \
+  --set values.global.mtls.enabled=true \
+  --set values.global.sds.enabled=true \
+  --set values.kiali.enabled=true \
+  --set values.global.proxy.accessLogFile="/dev/stdout" \
+  --set values.gateways.istio-egressgateway.enabled=false \
+  --set values.gateways.istio-ingressgateway.sds.enabled=true | kubectl apply -f -
+----
+- Install ECK with the Istio sidecar. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-service-mesh-istio.html
+- Enforce mTLS
++
+[source,yaml]
+----
+include::00-prereq-mtls.yaml[]
+----
+- Create a namespace called `istio-apps` with Istio injection enabled
++
+[source,yaml]
+----
+include::01-prereq-namespace.yaml[]
+----
+- Install link:https://cert-manager.io[cert-manager] and create a `ClusterIssuer` named `selfsigning-issuer`
++
+[source,yaml]
+----
+include::02-prereq-selfsigning-issuer.yaml[]
+----
+
+== Recipe
+
+=== Deploy Elasticsearch and Kibana
+
+[source,yaml]
+----
+include::03-elasticsearch-kibana.yaml[]
+----
+
+=== Issue certificates for Elasticsearch and Kibana
+
+We are issuing certificates for made-up domains `elasticsearch.ekmnt` and `kibana.ekmnt` to enforce TLS at the ingress gateway. Note that the certificate secret must be created in the same namespace as the ingress gateway pod (`istio-system` by default).
+
+[source,yaml]
+----
+include::04-certificates.yaml[]
+----
+
+=== Create gateway to expose the Elasticsearch and Kibana deployments
+
+This gateway definition accepts TLS connections on port 443 for the made-up domains we created earlier. Requests made to `elasticsearch.ekmnt` would be directed to the Elasticsearch deployment and requests made to `kibana.ekmnt` would be directed to the Kibana deployment.
+
+[source,yaml]
+----
+include::05-gateway.yaml[]
+----
+
+=== Split Elasticsearch read/write traffic
+
+This virtual service and destination rule splits both internal and external traffic using the following rules:
+
+- `POST` requests to `/_search` or any `GET` requests should be sent to coordinator nodes
+- Any other requests (`DELETE`, `PUT`, `POST`, `PATCH`) should be sent to ingest nodes
+
+This traffic split applies to internal traffic (mesh) as well as external traffic.
+
+[source,yaml]
+----
+include::06-es-traffic-split.yaml[]
+----
+
+=== Expose Kibana
+
+Note that since we are using made-up domains that do not have valid DNS entries, you will not be able to access Kibana using a browser.
+
+[source,yaml]
+----
+include::07-kibana.yaml[]
+----
+
+
+== Testing
+
+Obtain the public IP address and HTTPS port of your ingress gateway
+
+[source,sh]
+----
+INGRESS_HOST=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+SECURE_INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="https")].port}')
+----
+
+Obtain the password for the elastic user
+
+[source,sh]
+----
+ELASTIC_PASSWORD=$(kubectl get secret ekmnt-es-elastic-user -n istio-apps -o=go-template='{{ .data.elastic | base64decode}}')
+----
+
+Send a request to Elasticsearch
+
+[source,sh]
+----
+curl -k \
+	--resolve "elasticsearch.ekmnt:$SECURE_INGRESS_PORT:$INGRESS_HOST" \
+	-u "elastic:$ELASTICSEARCH_PASSWORD" \
+	"https://elasticsearch.ekmnt:$SECURE_INGRESS_PORT/_cat/health?v"
+----
+
+If you have enabled proxy access logs, you can verify that the above `GET` request was received by the coordinator node by looking at the proxy logs:
+
+[source,sh]
+----
+kubectl logs -f ekmnt-es-coordinator-0 -n istio-apps -c istio-proxy
+----
+
+Alternatively, if you have Kiali installed, your traffic graph might resemble the following:
+
+image::kiali.png[]

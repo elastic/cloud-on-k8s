@@ -1,0 +1,25 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: ekmnt-kibana
+  namespace: istio-apps
+  labels:
+    app: ekmnt
+spec:
+  hosts:
+    - "kibana.ekmnt"
+    - "ekmnt-kb-http.istio-apps.svc.cluster.local"
+  gateways:
+    - ekmnt-gateway
+    - mesh
+  http:
+    - name: reads
+      match:
+        - uri:
+            prefix: "/"
+      route:
+        - destination:
+            host: ekmnt-kb-http.istio-apps.svc.cluster.local
+            port:
+              number: 5601
