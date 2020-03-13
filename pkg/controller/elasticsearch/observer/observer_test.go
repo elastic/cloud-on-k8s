@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func fakeEsClient200(user client.UserAuth) client.Client {
+func fakeEsClient200(user client.BasicAuth) client.Client {
 	return client.NewMockClientWithUser(version.MustParse("6.8.0"),
 		user,
 		func(req *http.Request) *http.Response {
@@ -36,7 +36,7 @@ func fakeEsClient200(user client.UserAuth) client.Client {
 }
 
 func createAndRunTestObserver(onObs OnObservation) *Observer {
-	fakeEsClient := fakeEsClient200(client.UserAuth{})
+	fakeEsClient := fakeEsClient200(client.BasicAuth{})
 	obs := NewObserver(cluster("cluster"), fakeEsClient, Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
@@ -50,7 +50,7 @@ func TestObserver_retrieveState(t *testing.T) {
 	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
 		atomic.AddInt32(&counter, 1)
 	}
-	fakeEsClient := fakeEsClient200(client.UserAuth{})
+	fakeEsClient := fakeEsClient200(client.BasicAuth{})
 	observer := Observer{
 		esClient:      fakeEsClient,
 		onObservation: onObservation,
@@ -63,7 +63,7 @@ func TestObserver_retrieveState(t *testing.T) {
 
 func TestObserver_retrieveState_nilFunction(t *testing.T) {
 	var nilFunc OnObservation
-	fakeEsClient := fakeEsClient200(client.UserAuth{})
+	fakeEsClient := fakeEsClient200(client.BasicAuth{})
 	observer := Observer{
 		esClient:      fakeEsClient,
 		onObservation: nilFunc,

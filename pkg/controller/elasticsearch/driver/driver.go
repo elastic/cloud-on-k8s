@@ -271,7 +271,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
 	state *reconcile.ResourcesState,
-	user esclient.UserAuth,
+	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {

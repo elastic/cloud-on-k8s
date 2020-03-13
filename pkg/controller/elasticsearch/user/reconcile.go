@@ -46,23 +46,23 @@ func ReconcileUsersAndRoles(
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
-) (client.UserAuth, error) {
+) (client.BasicAuth, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
 
 	// build aggregate roles and file realms
 	roles, err := aggregateRoles(c, es, watched, recorder)
 	if err != nil {
-		return client.UserAuth{}, err
+		return client.BasicAuth{}, err
 	}
 	fileRealm, controllerUser, err := aggregateFileRealm(c, es, watched, recorder)
 	if err != nil {
-		return client.UserAuth{}, err
+		return client.BasicAuth{}, err
 	}
 
 	// reconcile the aggregate secret
 	if err := reconcileRolesFileRealmSecret(c, es, roles, fileRealm); err != nil {
-		return client.UserAuth{}, err
+		return client.BasicAuth{}, err
 	}
 
 	// return the controller user for next reconciliation steps to interact with Elasticsearch
@@ -83,36 +83,36 @@ func aggregateFileRealm(
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
-) (filerealm.Realm, esclient.UserAuth, error) {
+) (filerealm.Realm, esclient.BasicAuth, error) {
 	// retrieve existing file realm to reuse predefined users password hashes if possible
 	existingFileRealm, err := getExistingFileRealm(c, es)
 	if err != nil && apierrors.IsNotFound(err) {
 		// no secret yet, work with an empty file realm
 		existingFileRealm = filerealm.New()
 	} else if err != nil {
-		return filerealm.Realm{}, esclient.UserAuth{}, err
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 
 	// reconcile predefined users
 	elasticUser, err := reconcileElasticUser(c, es, existingFileRealm)
 	if err != nil {
-		return filerealm.Realm{}, esclient.UserAuth{}, err
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 	internalUsers, err := reconcileInternalUsers(c, es, existingFileRealm)
 	if err != nil {
-		return filerealm.Realm{}, esclient.UserAuth{}, err
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 
 	// fetch associated users
 	associatedUsers, err := retrieveAssociatedUsers(c, es)
 	if err != nil {
-		return filerealm.Realm{}, esclient.UserAuth{}, err
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 
 	// watch & fetch user-provided file realm & roles
 	userProvidedFileRealm, err := reconcileUserProvidedFileRealm(c, es, watched, recorder)
 	if err != nil {
-		return filerealm.Realm{}, esclient.UserAuth{}, err
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
 
 	// merge all file realms together, the last one having precedence
@@ -123,12 +123,12 @@ func aggregateFileRealm(
 		userProvidedFileRealm,
 	)
 
-	// grab the controller user auth for later use
-	controllerUserAuth, err := internalUsers.userAuth(ControllerUserName)
+	// grab the controller user credentials for later use
+	controllerCreds, err := internalUsers.credentialsFor(ControllerUserName)
 	if err != nil {
-		return filerealm.Realm{}, esclient.UserAuth{}, err
+		return filerealm.Realm{}, esclient.BasicAuth{}, err
 	}
-	return fileRealm, controllerUserAuth, nil
+	return fileRealm, controllerCreds, nil
 }
 
 func aggregateRoles(

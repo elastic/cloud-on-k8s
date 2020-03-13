@@ -53,7 +53,7 @@ func Test_users_FileRealm(t *testing.T) {
 	require.Equal(t, expected, users.fileRealm())
 }
 
-func Test_users_UserAuth(t *testing.T) {
+func Test_users_credentialsFor(t *testing.T) {
 	users := users{
 		{
 			Name:         "user1",
@@ -69,15 +69,15 @@ func Test_users_UserAuth(t *testing.T) {
 		},
 	}
 
-	auth, err := users.userAuth("user1")
+	auth, err := users.credentialsFor("user1")
 	require.NoError(t, err)
-	require.Equal(t, esclient.UserAuth{
+	require.Equal(t, esclient.BasicAuth{
 		Name:     "user1",
 		Password: "password1",
 	}, auth)
 
 	// non-existing user should return an error
-	_, err = users.userAuth("unknown-user")
+	_, err = users.credentialsFor("unknown-user")
 	require.Error(t, err, "user unknown-user not found")
 }
 
@@ -117,30 +117,6 @@ func Test_users_fileRealm(t *testing.T) {
 		WithRole("role2", []string{"username"}).
 		WithRole("role3", []string{"username2"})
 	require.Equal(t, expected, users.fileRealm())
-}
-
-func Test_users_userAuth(t *testing.T) {
-	users := users{
-		{
-			Name:         "username",
-			Password:     []byte("password"),
-			PasswordHash: []byte("passwordhash"),
-			Roles:        []string{"role1", "role2"},
-		},
-		{
-			Name:         "username2",
-			Password:     []byte("password2"),
-			PasswordHash: []byte("passwordhash2"),
-			Roles:        []string{"role1", "role3"},
-		},
-	}
-	expected := esclient.UserAuth{
-		Name:     "username2",
-		Password: "password2",
-	}
-	actual, err := users.userAuth("username2")
-	require.NoError(t, err)
-	require.Equal(t, expected, actual)
 }
 
 func Test_fromAssociatedUsers(t *testing.T) {

@@ -40,14 +40,14 @@ func (users users) fileRealm() filerealm.Realm {
 	return fileRealm
 }
 
-// userAuth returns an Elasticsearch userAuth struct for the given user.
-func (users users) userAuth(userName string) (client.UserAuth, error) {
+// basicAuth returns basic auth credentials for the given user.
+func (users users) credentialsFor(userName string) (client.BasicAuth, error) {
 	for _, u := range users {
 		if u.Name == userName {
-			return client.UserAuth{Name: userName, Password: string(u.Password)}, nil
+			return client.BasicAuth{Name: userName, Password: string(u.Password)}, nil
 		}
 	}
-	return client.UserAuth{}, fmt.Errorf("user %s not found", userName)
+	return client.BasicAuth{}, fmt.Errorf("user %s not found", userName)
 }
 
 // fromAssociatedUsers returns a list of user from the given associated users.

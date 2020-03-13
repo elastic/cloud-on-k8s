@@ -116,7 +116,7 @@ func TestESUserProvidedAuth(t *testing.T) {
 			test.Step{
 				Name: "ES API should be accessible using the custom user password and role",
 				Test: func(t *testing.T) {
-					esUser := esclient.UserAuth{Name: sampleUser, Password: samplePassword}
+					esUser := esclient.BasicAuth{Name: sampleUser, Password: samplePassword}
 					expectedStatusCode := 201
 					err := postDocument(b.Elasticsearch, k, esUser, writeIndex, expectedStatusCode)
 					require.NoError(t, err)
@@ -125,7 +125,7 @@ func TestESUserProvidedAuth(t *testing.T) {
 			test.Step{
 				Name: "Writing a document on a different index should be unauthorized by the role",
 				Test: func(t *testing.T) {
-					esUser := esclient.UserAuth{Name: sampleUser, Password: samplePassword}
+					esUser := esclient.BasicAuth{Name: sampleUser, Password: samplePassword}
 					expectedStatusCode := 403
 					index := "another-index"
 					err := postDocument(b.Elasticsearch, k, esUser, index, expectedStatusCode)
@@ -160,7 +160,7 @@ func TestESUserProvidedAuth(t *testing.T) {
 			test.Step{
 				Name: "ES API should eventually be accessible using the updated password and the updated role",
 				Test: test.Eventually(func() error {
-					esUser := esclient.UserAuth{Name: sampleUser, Password: samplePasswordUpdated}
+					esUser := esclient.BasicAuth{Name: sampleUser, Password: samplePasswordUpdated}
 					expectedStatusCode := 201
 					return postDocument(b.Elasticsearch, k, esUser, writeIndexUpdated, expectedStatusCode)
 				}),
@@ -179,7 +179,7 @@ func TestESUserProvidedAuth(t *testing.T) {
 			test.Step{
 				Name: "ES API should eventually not be accessible anymore since user has been removed",
 				Test: test.Eventually(func() error {
-					esUser := esclient.UserAuth{Name: sampleUser, Password: samplePasswordUpdated}
+					esUser := esclient.BasicAuth{Name: sampleUser, Password: samplePasswordUpdated}
 					expectedStatusCode := 401
 					return postDocument(b.Elasticsearch, k, esUser, writeIndexUpdated, expectedStatusCode)
 				}),
@@ -197,7 +197,7 @@ func TestESUserProvidedAuth(t *testing.T) {
 		RunSequential(t)
 }
 
-func postDocument(es esv1.Elasticsearch, k *test.K8sClient, user esclient.UserAuth, index string, expectedStatusCode int) error {
+func postDocument(es esv1.Elasticsearch, k *test.K8sClient, user esclient.BasicAuth, index string, expectedStatusCode int) error {
 	esClient, err := elasticsearch.NewElasticsearchClientWithUser(es, k, user)
 	if err != nil {
 		return err

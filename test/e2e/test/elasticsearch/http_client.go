@@ -23,12 +23,12 @@ func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Cl
 	if err != nil {
 		return nil, err
 	}
-	user := client.UserAuth{Name: esuser.ElasticUserName, Password: password}
+	user := client.BasicAuth{Name: esuser.ElasticUserName, Password: password}
 	return NewElasticsearchClientWithUser(es, k, user)
 }
 
 // NewElasticsearchClientWithUser returns an ES client for the given ES cluster with the given basic auth user.
-func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, user client.UserAuth) (client.Client, error) {
+func NewElasticsearchClientWithUser(es esv1.Elasticsearch, k *test.K8sClient, user client.BasicAuth) (client.Client, error) {
 	caCert, err := k.GetHTTPCerts(esv1.ESNamer, es.Namespace, es.Name)
 	if err != nil {
 		return nil, err
