@@ -9,24 +9,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -37,10 +19,26 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -71,7 +69,6 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &ReconcileApmServerElasticsearchAssociation{
 		Client:         client,
 		accessReviewer: accessReviewer,
-		scheme:         mgr.GetScheme(),
 		watches:        watches.NewDynamicWatches(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		Parameters:     params,
@@ -121,7 +118,6 @@ var _ reconcile.Reconciler = &ReconcileApmServerElasticsearchAssociation{}
 type ReconcileApmServerElasticsearchAssociation struct {
 	k8s.Client
 	accessReviewer rbac.AccessReviewer
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	watches        watches.DynamicWatches
 	operator.Parameters
@@ -304,7 +300,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 	if err := association.ReconcileEsUser(
 		ctx,
 		r.Client,
-		r.scheme,
 		apmServer,
 		associationLabels(apmServer),
 		"superuser",
@@ -405,7 +400,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ct
 
 	return association.ReconcileCASecret(
 		r.Client,
-		r.scheme,
 		as,
 		es,
 		maps.Merge(labels.NewLabels(as.Name), associationLabels(as)),

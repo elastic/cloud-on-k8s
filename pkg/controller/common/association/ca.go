@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -38,7 +37,6 @@ func ElasticsearchCACertSecretName(associated commonv1.Associated, suffix string
 // It is the responsibility of the controller to set a watch on the ES CA.
 func ReconcileCASecret(
 	client k8s.Client,
-	scheme *runtime.Scheme,
 	associated commonv1.Associated,
 	es types.NamespacedName,
 	labels map[string]string,
@@ -67,7 +65,6 @@ func ReconcileCASecret(
 	var reconciledSecret corev1.Secret
 	if err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     client,
-		Scheme:     scheme,
 		Owner:      associated,
 		Expected:   &expectedSecret,
 		Reconciled: &reconciledSecret,

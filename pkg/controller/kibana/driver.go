@@ -36,7 +36,6 @@ import (
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,7 +54,6 @@ var minSupportedVersion = version.From(6, 8, 0)
 
 type driver struct {
 	client         k8s.Client
-	scheme         *runtime.Scheme
 	dynamicWatches watches.DynamicWatches
 	recorder       record.EventRecorder
 	version        version.Version
@@ -71,10 +69,6 @@ func (d *driver) K8sClient() k8s.Client {
 
 func (d *driver) Recorder() record.EventRecorder {
 	return d.recorder
-}
-
-func (d *driver) Scheme() *runtime.Scheme {
-	return d.scheme
 }
 
 var _ driver2.Interface = &driver{}
@@ -219,7 +213,7 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	svc, err := common.ReconcileService(ctx, d.client, d.scheme, NewService(*kb), kb)
+	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb), kb)
 	if err != nil {
 		// TODO: consider updating some status here?
 		return results.WithError(err)
@@ -249,7 +243,7 @@ func (d *driver) Reconcile(
 	}
 
 	expectedDp := deployment.New(deploymentParams)
-	reconciledDp, err := deployment.Reconcile(d.client, d.scheme, expectedDp, kb)
+	reconciledDp, err := deployment.Reconcile(d.client, expectedDp, kb)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -259,7 +253,6 @@ func (d *driver) Reconcile(
 
 func newDriver(
 	client k8s.Client,
-	scheme *runtime.Scheme,
 	watches watches.DynamicWatches,
 	recorder record.EventRecorder,
 	kb *kbv1.Kibana,
@@ -278,7 +271,6 @@ func newDriver(
 
 	return &driver{
 		client:         client,
-		scheme:         scheme,
 		dynamicWatches: watches,
 		recorder:       recorder,
 		version:        *ver,

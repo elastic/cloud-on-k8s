@@ -8,8 +8,6 @@ import (
 	"context"
 	"testing"
 
-	"k8s.io/client-go/kubernetes/scheme"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -256,7 +254,6 @@ func Test_reconcileEsUser(t *testing.T) {
 			if err := ReconcileEsUser(
 				context.Background(),
 				c,
-				scheme.Scheme,
 				&tt.args.kibana,
 				map[string]string{
 					associationLabelName:      tt.args.kibana.Name,

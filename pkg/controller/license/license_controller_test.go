@@ -20,7 +20,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -176,7 +175,6 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.k8sResources...)
 			r := &ReconcileLicenses{
 				Client:  client,
-				scheme:  scheme.Scheme,
 				checker: commonlicense.MockChecker{},
 			}
 			nsn := k8s.ExtractNamespacedName(tt.cluster)

@@ -21,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // createOrUpdateCertificateAuthorities creates the two Secrets that are needed to establish a trust relationship between
@@ -170,7 +169,6 @@ func reconcileRemoteCA(
 	var reconciled corev1.Secret
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme.Scheme,
 		Owner:      target,
 		Expected:   &expected,
 		Reconciled: &reconciled,
