@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -410,6 +411,47 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 			require.Equal(t, got.Requeue, tt.wantRequeue)
 			// We just check that the requeue is not zero
 			require.True(t, got.RequeueAfter > 0)
+		})
+	}
+}
+
+func Test_reconcileApmServerSecret(t *testing.T) {
+	apm := &apmv1.ApmServer{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "apm",
+		},
+	}
+	tests := []struct {
+		name       string
+		c          k8s.Client
+		reuseToken []byte
+	}{
+		{
+			name: "no secret exists: create one",
+			c:    k8s.WrappedFakeClient(),
+		},
+		{
+			name: "reuse token if it already exists",
+			c: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      apmname.SecretToken(apm.Name),
+				},
+				Data: map[string][]byte{
+					SecretTokenKey: []byte("existing"),
+				},
+			}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := reconcileApmServerSecret(tt.c, apm)
+			require.NoError(t, err)
+			require.NotEmpty(t, got.Data[SecretTokenKey])
+			if tt.reuseToken != nil {
+				require.Equal(t, tt.reuseToken, got.Data[SecretTokenKey])
+			}
 		})
 	}
 }
