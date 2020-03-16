@@ -6,7 +6,6 @@ package license
 
 import (
 	"encoding/json"
-	"reflect"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -25,8 +24,6 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -188,21 +185,7 @@ func reconcileSecret(
 		},
 	}
 	// create/update a secret in the cluster's namespace containing the same data
-	var reconciled corev1.Secret
-	err = reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Owner:      &cluster,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			return !(reflect.DeepEqual(reconciled.Data, expected.Data) &&
-				compare.LabelsAndAnnotationsAreEqual(reconciled.ObjectMeta, expected.ObjectMeta))
-		},
-		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Data = expected.Data
-		},
-	})
+	_, err = reconciler.ReconcileSecret(c, expected, &cluster)
 	return err
 }
 
