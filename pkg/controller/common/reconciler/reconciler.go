@@ -129,7 +129,7 @@ func ReconcileResource(params Params) error {
 		if err != nil {
 			return err
 		}
-		// Using a precondition here to make sure we delete the version of the resource we intend ot delete and
+		// Using a precondition here to make sure we delete the version of the resource we intend to delete and
 		// to avoid accidentally deleting a resource already recreated for example
 		uidToDelete := reconciledMeta.GetUID()
 		resourceVersionToDelete := reconciledMeta.GetResourceVersion()

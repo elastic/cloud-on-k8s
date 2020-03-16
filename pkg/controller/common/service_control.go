@@ -40,7 +40,7 @@ func ReconcileService(
 		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsRecreate: func() bool {
-			return needsDelete(expected, reconciled)
+			return needsRecreate(expected, reconciled)
 		},
 		NeedsUpdate: func() bool {
 			return needsUpdate(expected, reconciled)
@@ -54,7 +54,7 @@ func ReconcileService(
 	return reconciled, err
 }
 
-func needsDelete(expected, reconciled *corev1.Service) bool {
+func needsRecreate(expected, reconciled *corev1.Service) bool {
 	applyServerSideValues(expected, reconciled)
 	// ClusterIP is an immutable field
 	return expected.Spec.ClusterIP != reconciled.Spec.ClusterIP

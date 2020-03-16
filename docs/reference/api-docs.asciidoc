@@ -667,7 +667,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transportconfig"]
 === TransportConfig 
 
-TransportConfig holds the Transport layer configuration for Elasticsearch.
+TransportConfig holds the transport layer settings for Elasticsearch.
 
 .Appears In:
 ****

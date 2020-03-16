@@ -61,7 +61,7 @@ type ElasticsearchSpec struct {
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
 }
 
-// TransportConfig holds the Transport layer configuration for Elasticsearch.
+// TransportConfig holds the transport layer settings for Elasticsearch.
 type TransportConfig struct {
 	// Service defines the template for the associated Kubernetes Service object.
 	Service commonv1.ServiceTemplate `json:"service,omitempty"`

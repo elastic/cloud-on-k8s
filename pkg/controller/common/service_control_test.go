@@ -208,8 +208,8 @@ func Test_needsDelete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := needsDelete(&tt.args.expected, &tt.args.reconciled); got != tt.want {
-				t.Errorf("needsDelete() = %v, want %v", got, tt.want)
+			if got := needsRecreate(&tt.args.expected, &tt.args.reconciled); got != tt.want {
+				t.Errorf("needsRecreate() = %v, want %v", got, tt.want)
 			}
 		})
 	}
