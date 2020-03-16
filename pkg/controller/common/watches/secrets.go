@@ -11,10 +11,10 @@ import (
 // WatchUserProvidedSecrets registers a watch for user-provided secrets.
 // Only one watch per watcher is registered:
 // - if it already exists with different secrets, it is replaced to watch the new secrets.
-// - if there is non secrets provided by the user, remove the watch.
+// - if there is no secret provided by the user, remove the watch.
 func WatchUserProvidedSecrets(
-	watcher types.NamespacedName, // resources to which the watches are attached (eg. an Elasticsearch object)
-	watched DynamicWatches, // resources already watched by watched
+	watcher types.NamespacedName, // resource to which the watches are attached (eg. an Elasticsearch object)
+	watched DynamicWatches, // existing dynamic watches
 	watchName string, // dynamic watch to register
 	secrets []string, // user-provided secrets to watch
 ) error {
