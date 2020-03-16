@@ -26,8 +26,10 @@ overrides:
 
 var (
 	// GKE uses 18 chars to prefix the pvc created by a cluster
-	pvcPrefixMaxLength    = 18
-	GkeStorageProvisioner = "kubernetes.io/no-provisioner"
+	pvcPrefixMaxLength      = 18
+	GkeStorageProvisioner   = "kubernetes.io/no-provisioner"
+	defaultClusterIPv4CIDR  = "/20"
+	defaultServicesIPv4CIDR = "/20"
 )
 
 func init() {
@@ -47,6 +49,17 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 	if len(pvcPrefix) > pvcPrefixMaxLength {
 		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
 	}
+
+	clusterIPv4CIDR := defaultClusterIPv4CIDR
+	if plan.Gke.ClusterIPv4CIDR != "" {
+		clusterIPv4CIDR = plan.Gke.ClusterIPv4CIDR
+	}
+
+	servicesIPv4CIDR := defaultServicesIPv4CIDR
+	if plan.Gke.ServicesIPv4CIDR != "" {
+		servicesIPv4CIDR = plan.Gke.ServicesIPv4CIDR
+	}
+
 	return &GkeDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
@@ -60,8 +73,8 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 			"LocalSsdCount":     plan.Gke.LocalSsdCount,
 			"GcpScopes":         plan.Gke.GcpScopes,
 			"NodeCountPerZone":  plan.Gke.NodeCountPerZone,
-			"ClusterIPv4CIDR":   plan.Gke.ClusterIPv4CIDR,
-			"ServicesIPv4CIDR":  plan.Gke.ServicesIPv4CIDR,
+			"ClusterIPv4CIDR":   clusterIPv4CIDR,
+			"ServicesIPv4CIDR":  servicesIPv4CIDR,
 		},
 	}, nil
 }
@@ -173,13 +186,6 @@ func (d *GkeDriver) create() error {
 		opts = append(opts, "--enable-pod-security-policy")
 	}
 
-	if d.plan.Gke.ClusterIPv4CIDR != "" {
-		opts = append(opts, fmt.Sprintf("--cluster-ipv4-cidr=%s ", d.plan.Gke.ClusterIPv4CIDR))
-	}
-	if d.plan.Gke.ServicesIPv4CIDR != "" {
-		opts = append(opts, fmt.Sprintf("--services-ipv4-cidr=%s ", d.plan.Gke.ServicesIPv4CIDR))
-	}
-
 	return NewCommand(`gcloud beta container --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 		`--region {{.Region}} --username {{.AdminUsername}} --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --image-type COS --disk-type pd-ssd --disk-size 30 ` +
@@ -187,7 +193,7 @@ func (d *GkeDriver) create() error {
 		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
-		`--create-subnetwork "" ` +
+		`--create-subnetwork range={{.ClusterIPv4CIDR}} --cluster-ipv4-cidr={{.ClusterIPv4CIDR}} --services-ipv4-cidr={{.ServicesIPv4CIDR}} ` +
 		strings.Join(opts, " ")).
 		AsTemplate(d.ctx).
 		Run()
