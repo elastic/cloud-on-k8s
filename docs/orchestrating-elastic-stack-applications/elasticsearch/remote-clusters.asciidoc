@@ -100,7 +100,7 @@ spec:
   transport:
     service:
       spec:
-        type: LoadBalancer
+        type: LoadBalancer <1>
 ----
 <1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively expose the service via one of the Kubernetes Ingress controllers that support TCP services.
 
