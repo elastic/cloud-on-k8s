@@ -13,7 +13,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -172,7 +174,7 @@ func TestNewExternalService(t *testing.T) {
 					},
 				},
 			},
-			wantSvc: mkService,
+			wantSvc: mkHTTPService,
 		},
 		{
 			name: "self-signed certificate",
@@ -188,7 +190,7 @@ func TestNewExternalService(t *testing.T) {
 				},
 			},
 			wantSvc: func() corev1.Service {
-				svc := mkService()
+				svc := mkHTTPService()
 				svc.Spec.Ports[0].Name = "https"
 				return svc
 			},
@@ -203,7 +205,7 @@ func TestNewExternalService(t *testing.T) {
 				},
 			},
 			wantSvc: func() corev1.Service {
-				svc := mkService()
+				svc := mkHTTPService()
 				svc.Spec.Ports[0].Name = "https"
 				return svc
 			},
@@ -219,7 +221,7 @@ func TestNewExternalService(t *testing.T) {
 	}
 }
 
-func mkService() corev1.Service {
+func mkHTTPService() corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "elasticsearch-test-es-http",
@@ -245,6 +247,34 @@ func mkService() corev1.Service {
 	}
 }
 
+func mkTransportService() corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "elasticsearch-test-es-transport",
+			Namespace: "test",
+			Labels: map[string]string{
+				label.ClusterNameLabelName: "elasticsearch-test",
+				common.TypeLabelName:       label.Type,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			PublishNotReadyAddresses: true,
+			ClusterIP:                "None",
+			Type:                     corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Protocol: corev1.ProtocolTCP,
+					Port:     network.TransportPort,
+				},
+			},
+			Selector: map[string]string{
+				label.ClusterNameLabelName: "elasticsearch-test",
+				common.TypeLabelName:       label.Type,
+			},
+		},
+	}
+}
+
 func mkElasticsearch(httpConf commonv1.HTTPConfig) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
@@ -254,5 +284,58 @@ func mkElasticsearch(httpConf commonv1.HTTPConfig) esv1.Elasticsearch {
 		Spec: esv1.ElasticsearchSpec{
 			HTTP: httpConf,
 		},
+	}
+}
+
+func TestNewTransportService(t *testing.T) {
+	tests := []struct {
+		name         string
+		transportCfg esv1.TransportConfig
+		want         func() corev1.Service
+	}{
+		{
+			name: "Sets defaults",
+			want: mkTransportService,
+		},
+		{
+			name: "Respects user provided template",
+			transportCfg: esv1.TransportConfig{
+				Service: commonv1.ServiceTemplate{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{
+							"my-custom": "annotation",
+						},
+					},
+					Spec: corev1.ServiceSpec{
+						Type: corev1.ServiceTypeLoadBalancer,
+					},
+				},
+			},
+			want: func() corev1.Service {
+				svc := mkTransportService()
+				svc.ObjectMeta.Annotations = map[string]string{
+					"my-custom": "annotation",
+				}
+				svc.Spec.Type = corev1.ServiceTypeLoadBalancer
+				svc.Spec.ClusterIP = ""
+				return svc
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			es := esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "elasticsearch-test",
+					Namespace: "test",
+				},
+				Spec: esv1.ElasticsearchSpec{
+					Transport: tt.transportCfg,
+				},
+			}
+			want := tt.want()
+			got := NewTransportService(es)
+			require.Nil(t, deep.Equal(*got, want))
+		})
 	}
 }
