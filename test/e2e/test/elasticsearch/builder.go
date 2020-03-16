@@ -94,6 +94,16 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 	return b
 }
 
+func (b Builder) WithRemoteCluster(remoteEs Builder) Builder {
+	b.Elasticsearch.Spec.RemoteClusters =
+		append(b.Elasticsearch.Spec.RemoteClusters,
+			esv1.RemoteCluster{
+				Name:             remoteEs.Ref().Name,
+				ElasticsearchRef: remoteEs.Ref(),
+			})
+	return b
+}
+
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.Elasticsearch.ObjectMeta.Namespace = namespace
 	return b
