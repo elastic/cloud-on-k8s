@@ -67,7 +67,7 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 		compare.LabelsAndAnnotationsAreEqual(expected.ObjectMeta, reconciled.ObjectMeta))
 }
 
-// applyServerSideValues applies any default the master might have set from the reconciled version to the expected one.
+// applyServerSideValues applies any default that may have been set from the reconciled version.
 func applyServerSideValues(expected, reconciled *corev1.Service) {
 	// Type may be defaulted by the api server
 	if expected.Spec.Type == "" {
