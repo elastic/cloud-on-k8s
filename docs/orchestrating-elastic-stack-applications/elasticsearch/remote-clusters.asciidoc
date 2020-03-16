@@ -92,19 +92,15 @@ Expose the transport layer of `cluster-one`.
 
 [source,yaml]
 ----
-apiVersion: v1
-kind: Service
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
 metadata:
-  name: cluster-one-es-transport
+  name: cluster-one
 spec:
-  selector:
-    common.k8s.elastic.co/type: elasticsearch
-    elasticsearch.k8s.elastic.co/cluster-name: cluster-one
-  type: LoadBalancer <1>
-  ports:
-  - protocol: TCP
-    port: 9300
-    targetPort: 9300
+  transport:
+    service:
+      spec:
+        type: LoadBalancer
 ----
 <1> On cloud providers which support external load balancers, setting the type field to LoadBalancer provisions a load balancer for your Service. Alternatively expose the service via one of the Kubernetes Ingress controllers that support TCP services.
 
