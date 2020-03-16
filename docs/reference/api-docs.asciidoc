@@ -296,6 +296,7 @@ ServiceTemplate defines the template for a Kubernetes Service.
 .Appears In:
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transportconfig[$$TransportConfig$$]
 ****
 
 [cols="25a,75a", options="header"]
@@ -636,6 +637,7 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | *`version`* __string__ | Version of Elasticsearch.
 | *`image`* __string__ | Image is the Elasticsearch Docker image to deploy.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds HTTP layer settings for Elasticsearch.
+| *`transport`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transportconfig[$$TransportConfig$$]__ | Transport holds transport layer settings for Elasticsearch.
 | *`nodeSets`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$] array__ | NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates. See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 | *`updateStrategy`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-updatestrategy[$$UpdateStrategy$$]__ | UpdateStrategy specifies how updates to the cluster should be performed.
 | *`podDisruptionBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-poddisruptionbudgettemplate[$$PodDisruptionBudgetTemplate$$]__ | PodDisruptionBudget provides access to the default pod disruption budget for the Elasticsearch cluster. The default budget selects all cluster pods and sets `maxUnavailable` to 1. To disable, set `PodDisruptionBudget` to the empty value (`{}` in YAML).
@@ -720,6 +722,23 @@ ElasticsearchSpec holds the specification of an Elasticsearch cluster.
 | Field | Description
 | *`SecretRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource. Multiple roles can be specified in a Kubernetes secret, under a single "roles.yml" entry. The secret value must match the expected file-based specification as described in https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file. 
  Example: --- kind: Secret apiVersion: v1 metadata: 	name: my-roles stringData:  roles.yml: |-    click_admins:      run_as: [ 'clicks_watcher_1' ]   	cluster: [ 'monitor' ]   	indices:   	- names: [ 'events-*' ]   	  privileges: [ 'read' ]   	  field_security:   		grant: ['category', '@timestamp', 'message' ]   	  query: '{"match": {"category": "click"}}'    another_role:      cluster: [ 'all' ] ---
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-transportconfig"]
+=== TransportConfig 
+
+TransportConfig holds the transport layer settings for Elasticsearch.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-elasticsearchspec[$$ElasticsearchSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`service`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-servicetemplate[$$ServiceTemplate$$]__ | Service defines the template for the associated Kubernetes Service object.
 |===
 
 

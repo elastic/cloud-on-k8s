@@ -27,6 +27,10 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
+	// Transport holds transport layer settings for Elasticsearch.
+	// +kubebuilder:validation:Optional
+	Transport TransportConfig `json:"transport,omitempty"`
+
 	// NodeSets allow specifying groups of Elasticsearch nodes sharing the same configuration and Pod templates.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-orchestration.html
 	// +kubebuilder:validation:MinItems=1
@@ -59,6 +63,12 @@ type ElasticsearchSpec struct {
 	// RemoteClusters enables you to establish uni-directional connections to a remote Elasticsearch cluster.
 	// +optional
 	RemoteClusters []RemoteCluster `json:"remoteClusters,omitempty"`
+}
+
+// TransportConfig holds the transport layer settings for Elasticsearch.
+type TransportConfig struct {
+	// Service defines the template for the associated Kubernetes Service object.
+	Service commonv1.ServiceTemplate `json:"service,omitempty"`
 }
 
 // RemoteCluster declares a remote Elasticsearch cluster connection.
