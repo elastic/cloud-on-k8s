@@ -183,7 +183,7 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		migrating, err := migration.IsMigratingData(ctx.parentCtx, ctx.shardLister, node, allLeavingNodes)
+		migrating, err := migration.IsMigratingData(ctx.parentCtx, ctx.shardLister, node)
 		if err != nil {
 			return performableDownscale, err
 		}
