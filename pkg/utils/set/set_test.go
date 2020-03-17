@@ -255,3 +255,37 @@ func TestStringSet_AsSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestStringSet_MergeWith(t *testing.T) {
+	tests := []struct {
+		name  string
+		set   StringSet
+		other StringSet
+		want  StringSet
+	}{
+		{
+			name:  "Merge with nil",
+			set:   StringSet{"a": {}, "b": {}},
+			other: nil,
+			want:  StringSet{"a": {}, "b": {}},
+		},
+		{
+			name:  "Merge with empty",
+			set:   StringSet{},
+			other: nil,
+			want:  StringSet{},
+		},
+		{
+			name:  "Merge with other set containing new and duplicate entries",
+			set:   StringSet{"a": {}, "b": {}},
+			other: StringSet{"b": {}, "c": {}, "d": {}},
+			want:  StringSet{"a": {}, "b": {}, "c": {}, "d": {}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.set.MergeWith(tt.other)
+			require.Equal(t, tt.want, tt.set)
+		})
+	}
+}

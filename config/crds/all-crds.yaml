@@ -496,6 +496,33 @@ spec:
           description: ElasticsearchSpec holds the specification of an Elasticsearch
             cluster.
           properties:
+            auth:
+              description: Auth contains user authentication and authorization security
+                settings for Elasticsearch.
+              properties:
+                fileRealm:
+                  description: FileRealm to propagate to the Elasticsearch cluster.
+                  items:
+                    description: FileRealmSource references users to create in the
+                      Elasticsearch cluster.
+                    properties:
+                      secretName:
+                        description: SecretName is the name of the secret.
+                        type: string
+                    type: object
+                  type: array
+                roles:
+                  description: Roles to propagate to the Elasticsearch cluster.
+                  items:
+                    description: RoleSource references roles to create in the Elasticsearch
+                      cluster.
+                    properties:
+                      secretName:
+                        description: SecretName is the name of the secret.
+                        type: string
+                    type: object
+                  type: array
+              type: object
             http:
               description: HTTP holds HTTP layer settings for Elasticsearch.
               properties:

@@ -143,7 +143,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results
 	}
 
-	internalUsers, err := user.ReconcileUsers(ctx, d.Client, d.ES)
+	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder())
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -166,7 +166,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		k8s.ExtractNamespacedName(&d.ES),
 		d.newElasticsearchClient(
 			resourcesState,
-			internalUsers.ControllerUser,
+			controllerUser,
 			*min,
 			certificateResources.TrustedHTTPCertificates,
 		),
@@ -182,7 +182,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
 		resourcesState,
-		internalUsers.ControllerUser,
+		controllerUser,
 		*min,
 		certificateResources.TrustedHTTPCertificates,
 	)
@@ -271,12 +271,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
 	state *reconcile.ResourcesState,
-	user user.User,
+	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
 	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
+	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user, v, caCerts)
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
