@@ -52,7 +52,7 @@ func FromSecret(secret corev1.Secret) (Realm, error) {
 	return Realm{users: users, usersRoles: usersRoles}, nil
 }
 
-// mergeWith merges multiple file realms together, giving priority to the last provided one.
+// MergeWith merges multiple file realms together, giving priority to the last provided one.
 func (f Realm) MergeWith(others ...Realm) Realm {
 	for _, other := range others {
 		f.users = f.users.mergeWith(other.users)
@@ -78,7 +78,7 @@ func (f Realm) PasswordHashForUser(userName string) []byte {
 	return f.users[userName]
 }
 
-// fileBytes returns a map with the content of the 2 file realm files.
+// FileBytes returns a map with the content of the 2 file realm files.
 func (f Realm) FileBytes() map[string][]byte {
 	return map[string][]byte{
 		UsersFile:      f.users.fileBytes(),
@@ -86,7 +86,7 @@ func (f Realm) FileBytes() map[string][]byte {
 	}
 }
 
-// fileBytes returns the list of user names in this file realm.
+// UserNames returns the list of user names in this file realm.
 func (f Realm) UserNames() []string {
 	names := make([]string, 0, len(f.users))
 	for name := range f.users {

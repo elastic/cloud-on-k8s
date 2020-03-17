@@ -31,7 +31,7 @@ func (u user) fileRealm() filerealm.Realm {
 // users is just a list of users to which we attach convenience functions.
 type users []user
 
-// Realm builds a filerealm representation of the users.
+// Realm builds a file realm representation of the users.
 func (users users) fileRealm() filerealm.Realm {
 	fileRealm := filerealm.New()
 	for _, u := range users {
@@ -40,7 +40,7 @@ func (users users) fileRealm() filerealm.Realm {
 	return fileRealm
 }
 
-// basicAuth returns basic auth credentials for the given user.
+// credentialsFor returns basic auth credentials for the given user.
 func (users users) credentialsFor(userName string) (client.BasicAuth, error) {
 	for _, u := range users {
 		if u.Name == userName {

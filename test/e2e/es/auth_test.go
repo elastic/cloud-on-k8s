@@ -211,7 +211,7 @@ func postDocument(es esv1.Elasticsearch, k *test.K8sClient, user esclient.BasicA
 	}
 	resp, err := esClient.Request(ctx, req)
 	if err != nil {
-		// the client wraps unexpected status code in an APIError, but still returns the correct resp
+		// the client wraps unexpected status codes in an APIError, but still returns the correct resp
 		// we want to ignore APIErrors here
 		if _, isWrappedAPIErr := err.(*esclient.APIError); !isWrappedAPIErr {
 			return err

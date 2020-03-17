@@ -63,9 +63,9 @@ const (
 	name = "kibana-association-controller"
 	// kibanaUserSuffix is used to suffix user and associated secret resources.
 	kibanaUserSuffix = "kibana-user"
-	// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName
+	// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName.
 	ElasticsearchCASecretSuffix = "kb-es-ca" // nolint
-	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user
+	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user.
 	KibanaSystemUserBuiltinRole = "kibana_system"
 )
 

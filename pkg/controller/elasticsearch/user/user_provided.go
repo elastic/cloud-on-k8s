@@ -144,12 +144,12 @@ func retrieveUserProvidedFileRealm(c k8s.Client, es esv1.Elasticsearch, recorder
 func handleSecretNotFound(recorder record.EventRecorder, es esv1.Elasticsearch, secretName string) {
 	msg := "referenced secret not found"
 	// logging with info level since this may be expected if the secret is not in the cache yet
-	log.Info(msg, "namespace", es.Namespace, "secret_name", secretName)
+	log.Info(msg, "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
 	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 }
 
 func handleInvalidSecretData(recorder record.EventRecorder, es esv1.Elasticsearch, secretName string, err error) {
 	msg := "invalid data in secret"
-	log.Error(errors.Wrap(err, "msg"), "namespace", es.Namespace, "secret_name", secretName)
+	log.Error(errors.Wrap(err, "msg"), "namespace", es.Namespace, "es_name", es.Name, "secret_name", secretName)
 	recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 }

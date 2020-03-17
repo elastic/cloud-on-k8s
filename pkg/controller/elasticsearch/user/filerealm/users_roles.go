@@ -73,13 +73,11 @@ func parseUsersRoles(data []byte) (usersRoles, error) {
 			return fmt.Errorf("invalid entry in users_roles")
 		}
 		role := roleUsers[0]
-		users := strings.Split(roleUsers[1], ",")
-		// sort users for consistent comparison
-		stringsutil.SortStringSlice(users)
-		if len(users) == 1 && users[0] == "" {
-			// if there are no users, strings.Split("", ",") still returns []string{""}
-			// remove that empty user
-			users = nil
+		var users []string
+		if len(roleUsers[1]) > 0 {
+			users = strings.Split(roleUsers[1], ",")
+			// sort users for consistent comparison
+			stringsutil.SortStringSlice(users)
 		}
 		rolesMapping = rolesMapping.mergeWith(usersRoles{
 			role: users,

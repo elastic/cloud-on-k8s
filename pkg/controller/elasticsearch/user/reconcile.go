@@ -33,7 +33,7 @@ var log = logf.Log.WithName("elasticsearch-user")
 // ReconcileUsersAndRoles fetches all users and roles and aggregates them into a single
 // Kubernetes secret mounted in the Elasticsearch Pods.
 // That secret contains the file realm files (`users` and `users_roles`) and the file roles (`roles.yml`).
-// users are aggregated from various sources:
+// Users are aggregated from various sources:
 // - predefined users include the controller user, the probe user, and the public-facing elastic user
 // - associated users come from resource associations (eg. Kibana or APMServer)
 // - user-provided users from file realms referenced in the Elasticsearch spec
@@ -183,7 +183,7 @@ func reconcileRolesFileRealmSecret(c k8s.Client, es esv1.Elasticsearch, roles Ro
 		UpdateReconciled: func() {
 			reconciled.Data = expected.Data
 			maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			maps.Merge(reconciled.Annotations, expected.Annotations)
 		},
 	})
 }
