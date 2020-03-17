@@ -6,6 +6,8 @@ metadata:
   labels:
     app: hulk
   annotations:
+    # Issue certificates for TLS hosts automatically
+    cert-manager.io/cluster-issuer: "selfsigning-issuer"
     # Disable HTTP traffic
     kubernetes.io/ingress.allow-http: "false"
 spec:

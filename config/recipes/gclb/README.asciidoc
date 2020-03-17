@@ -18,19 +18,11 @@ include::00-prereq-cluster-issuer.yaml[]
 
 == Recipe
 
-Create certificates to secure external communications. We are creating two certificates so that Elasticsearch can be accessed by the `elasticsearch.hulk` domain name and Kibana can be accessed by the `kibana.hulk` domain name.
-
-[source,yaml]
-----
-include::01-certificates.yaml[]
-----
-
-
 Create an Elasticsearch cluster and a Kibana instance with customized service definition.
 
 [source,yaml]
 ----
-include::02-elastic-stack.yaml[]
+include::01-elastic-stack.yaml[]
 ----
 
 
@@ -38,7 +30,7 @@ Create the ingress
 
 [source,yaml]
 ----
-include::03-ingress.yaml[]
+include::02-ingress.yaml[]
 ----
 
 
