@@ -259,8 +259,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 	}
 
 	// Make sure we see events from Elasticsearch using a dynamic watch
-	// will become more relevant once we refactor user handling to CRDs and implement
-	// syncing of user credentials across namespaces
 	err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(apmServerKey),
 		Watched: []types.NamespacedName{elasticsearchRef.NamespacedName()},

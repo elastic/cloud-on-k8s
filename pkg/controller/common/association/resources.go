@@ -22,7 +22,6 @@ func DeleteOrphanedResources(
 	c k8s.Client,
 	associated commonv1.Associated,
 	matchLabels client.MatchingLabels,
-
 ) error {
 	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
 	defer span.End()
@@ -50,7 +49,7 @@ func deleteIfOrphaned(
 ) error {
 	esRef := associated.ElasticsearchRef().WithDefaultNamespace(associated.GetNamespace())
 
-	// Secret should not exist if there is ES referenced in the spec or if the resource is deleted
+	// Secret should not exist if there is no ES referenced in the spec or if the resource is deleted
 	if !esRef.IsDefined() {
 		return deleteSecret(c, secret, associated)
 	}
