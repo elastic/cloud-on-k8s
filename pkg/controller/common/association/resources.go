@@ -3,11 +3,10 @@ package association
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
@@ -57,7 +56,7 @@ func deleteIfOrphaned(
 	// User secrets created in the Elasticsearch namespace are handled differently.
 	// We need to check if the referenced namespace has changed in the Spec.
 	// If a Secret is found in a namespace which is not the one referenced in the Spec then the secret should be deleted.
-	if value, ok := secret.Labels[common.TypeLabelName]; ok && value == user.UserType && esRef.Namespace != secret.Namespace {
+	if value, ok := secret.Labels[common.TypeLabelName]; ok && value == esuser.AssociatedUserType && esRef.Namespace != secret.Namespace {
 		return deleteSecret(c, secret, associated)
 	}
 

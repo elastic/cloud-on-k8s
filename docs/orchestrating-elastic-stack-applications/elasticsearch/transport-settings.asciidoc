@@ -1,0 +1,29 @@
+:parent_page_id: elasticsearch-specification
+:page_id: transport-settings
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Transport settings
+
+The transport module in Elasticsearch is used for internal communication between nodes within the cluster as well as communication between remote clusters. See the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-transport.html[Elasticsearch documentation] for details.
+
+In the `spec.transport.service.` section, you can change the Kubernetes service used to expose the Elasticsearch transport module:
+
+[source,yaml]
+----
+spec:
+  transport:
+    service:
+      metadata:
+        labels:
+          my-custom: label
+      spec:
+        type: LoadBalancer
+----
+
+Check the https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[Kubernetes Publishing Services (ServiceTypes)] that are currently available.
+
+NOTE: Please note that when you change the `clusterIP` setting of the service, ECK will delete and re-create the service as `clusterIP` is an immutable field. This does not typically have an impact on connectivity as the transport module uses long-lived TCP connections, but may cause a small network disruption between Elasticsearch nodes.

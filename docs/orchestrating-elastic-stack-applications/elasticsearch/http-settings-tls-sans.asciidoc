@@ -21,6 +21,8 @@ spec:
 
 Check the https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[Kubernetes Publishing Services (ServiceTypes)] that are currently available.
 
+NOTE: Please note that when you change the `clusterIP` setting of the service, ECK will delete and re-create the service as `clusterIP` is an immutable field. Depending on your client implementation this might have an a short impact on the ability to resolve the service's DNS name to endpoints.
+
 You can add an IP or a DNS name in the SAN of the self-signed certificate configured by default to secure the HTTP layer with TLS in the `spec.http.tls.selfSignedCertificate` section.
 
 [source,yaml]

@@ -21,10 +21,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	elasticsearchuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
@@ -53,7 +51,7 @@ import (
 //   the Kibana resource with ES connection details
 // - create the Kibana user for Elasticsearch
 // - copy ES CA public cert secret into Kibana namespace
-// - reconcile on any change from watching Kibana, Elasticsearch, Users and secrets
+// - reconcile on any change from watching Kibana, Elasticsearch, users and secrets
 //
 // If reference to an Elasticsearch cluster is not set in the Kibana resource,
 // this controller does nothing.
@@ -62,8 +60,10 @@ const (
 	name = "kibana-association-controller"
 	// kibanaUserSuffix is used to suffix user and associated secret resources.
 	kibanaUserSuffix = "kibana-user"
-	// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName
+	// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName.
 	ElasticsearchCASecretSuffix = "kb-es-ca" // nolint
+	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user.
+	KibanaSystemUserBuiltinRole = "kibana_system"
 )
 
 var (
@@ -125,7 +125,7 @@ func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
 	// Remove watcher on the user Secret in the Elasticsearch namespace
 	r.watches.Secrets.RemoveHandlerForKey(elasticsearchWatchName(obj))
 	// Delete user Secret in the Elasticsearch namespace
-	return user.DeleteUser(r.Client, newUserLabelSelector(obj))
+	return k8s.DeleteSecretMatching(r.Client, newUserLabelSelector(obj))
 }
 
 // Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
@@ -287,7 +287,7 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 		r.Client,
 		kibana,
 		associationLabels(kibana),
-		elasticsearchuser.KibanaSystemUserBuiltinRole,
+		KibanaSystemUserBuiltinRole,
 		kibanaUserSuffix,
 		es); err != nil {
 		return commonv1.AssociationPending, err
@@ -334,7 +334,7 @@ func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expect
 func (r *ReconcileAssociation) Unbind(kibana commonv1.Associated) error {
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-	if err := user.DeleteUser(r.Client, newUserLabelSelector(kibanaKey)); err != nil {
+	if err := k8s.DeleteSecretMatching(r.Client, newUserLabelSelector(kibanaKey)); err != nil {
 		return err
 	}
 	// Also remove the association configuration

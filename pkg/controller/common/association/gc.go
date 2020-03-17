@@ -6,7 +6,7 @@ package association
 
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,7 +26,7 @@ const (
 	AllNamespaces = ""
 )
 
-// UsersGarbageCollector allows to remove unused Users. Users should be deleted as part of the association controllers
+// UsersGarbageCollector allows to remove unused users. Users should be deleted as part of the association controllers
 // reconciliation loop. But without a Finalizer nothing prevents the associated resource to be removed while the
 // operator is not running.
 // This code is intended to be run during startup, before the controllers are started, to detect and delete such
@@ -90,7 +90,7 @@ func (ugc *UsersGarbageCollector) getUserSecrets() ([]v1.Secret, error) {
 
 func getUserSecretsInNamespace(c k8s.Client, namespace string) ([]v1.Secret, error) {
 	userSecrets := v1.SecretList{}
-	matchingLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: user.UserType})
+	matchingLabels := client.MatchingLabels(map[string]string{common.TypeLabelName: esuser.AssociatedUserType})
 	if err := c.List(&userSecrets, client.InNamespace(namespace), matchingLabels); err != nil {
 		return nil, err
 	}

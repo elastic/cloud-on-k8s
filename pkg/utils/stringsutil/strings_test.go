@@ -99,3 +99,9 @@ func TestSliceToMap(t *testing.T) {
 	// empty input
 	require.Equal(t, map[string]struct{}{}, SliceToMap(nil))
 }
+
+func Test_sortStringSlice(t *testing.T) {
+	slice := []string{"aab", "aac", "aaa", "aab"}
+	SortStringSlice(slice)
+	require.Equal(t, []string{"aaa", "aab", "aab", "aac"}, slice)
+}

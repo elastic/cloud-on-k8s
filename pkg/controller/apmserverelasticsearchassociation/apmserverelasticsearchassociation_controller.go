@@ -21,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -133,7 +132,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) onDelete(obj types.Namespac
 	// Remove watcher on the user Secret in the Elasticsearch namespace
 	r.watches.Secrets.RemoveHandlerForKey(elasticsearchWatchName(obj))
 	// Delete user Secret in the Elasticsearch namespace
-	return user.DeleteUser(r.Client, newUserLabelSelector(obj))
+	return k8s.DeleteSecretMatching(r.Client, newUserLabelSelector(obj))
 }
 
 // Reconcile reads that state of the cluster for a ApmServerElasticsearchAssociation object and makes changes based on the state read
@@ -375,7 +374,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) updateAssocConf(ctx context
 func (r *ReconcileApmServerElasticsearchAssociation) Unbind(apm commonv1.Associated) error {
 	apmKey := k8s.ExtractNamespacedName(apm)
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-	if err := user.DeleteUser(r.Client, newUserLabelSelector(apmKey)); err != nil {
+	if err := k8s.DeleteSecretMatching(r.Client, newUserLabelSelector(apmKey)); err != nil {
 		return err
 	}
 	// Also remove the association configuration

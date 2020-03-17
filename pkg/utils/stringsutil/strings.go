@@ -5,6 +5,7 @@
 package stringsutil
 
 import (
+	"sort"
 	"strings"
 )
 
@@ -62,4 +63,10 @@ func SliceToMap(slice []string) map[string]struct{} {
 		m[s] = struct{}{}
 	}
 	return m
+}
+
+func SortStringSlice(s []string) {
+	sort.SliceStable(s, func(i, j int) bool {
+		return s[i] < s[j]
+	})
 }
