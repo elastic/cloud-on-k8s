@@ -247,8 +247,10 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.ElasticsearchRef
 	if !elasticsearchRef.IsDefined() {
-		// stop watching any ES cluster previously referenced for this Kibana resource
-		r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(apmServerKey))
+		// clean up watchers and remove artifacts related to the association
+		if err := r.onDelete(apmServerKey); err != nil {
+			return commonv1.AssociationFailed, err
+		}
 		// remove the configuration in the annotation, other leftover resources are already garbage-collected
 		return commonv1.AssociationUnknown, association.RemoveAssociationConf(r.Client, apmServer)
 	}

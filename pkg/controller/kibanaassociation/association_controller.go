@@ -233,8 +233,10 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 	}
 
 	if kibana.Spec.ElasticsearchRef.Name == "" {
-		// stop watching any ES cluster previously referenced for this Kibana resource
-		r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
+		// clean up watchers and remove artifacts related to the association
+		if err := r.onDelete(kibanaKey); err != nil {
+			return commonv1.AssociationFailed, err
+		}
 		// remove the configuration in the annotation, other leftover resources are already garbage-collected
 		return commonv1.AssociationUnknown, association.RemoveAssociationConf(r.Client, kibana)
 	}
