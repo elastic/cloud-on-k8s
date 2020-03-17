@@ -503,7 +503,7 @@ spec:
                 fileRealm:
                   description: FileRealm to propagate to the Elasticsearch cluster.
                   items:
-                    description: FileRealmSource references users to create on the
+                    description: FileRealmSource references users to create in the
                       Elasticsearch cluster.
                     properties:
                       secretName:
@@ -514,7 +514,7 @@ spec:
                 roles:
                   description: Roles to propagate to the Elasticsearch cluster.
                   items:
-                    description: RoleSource references roles to create on the Elasticsearch
+                    description: RoleSource references roles to create in the Elasticsearch
                       cluster.
                     properties:
                       secretName:
