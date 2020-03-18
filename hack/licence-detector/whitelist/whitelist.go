@@ -12,21 +12,6 @@ import (
 
 // CheckWhitelist returns an error if any dependencies use a licence that is not permitted by Elastic
 func CheckWhitelist(deps *dependency.List) error {
-	err := "Dependency %s uses licence %s which is not whitelisted"
-	for _, dep := range deps.Direct {
-		if !(inWhitelist(dep.LicenceType)) {
-			return fmt.Errorf(err, dep.Name, dep.LicenceType)
-		}
-	}
-	for _, dep := range deps.Indirect {
-		if !(inWhitelist(dep.LicenceType)) {
-			return fmt.Errorf(err, dep.Name, dep.LicenceType)
-		}
-	}
-	return nil
-}
-
-func inWhitelist(depName string) bool {
 	// this is not an exhaustive list of Elastic-approved licences, but includes all the ones we use to date
 	whitelist := []string{
 		"Apache-2.0",
@@ -44,8 +29,23 @@ func inWhitelist(depName string) bool {
 		"UNKNOWN",
 	}
 
-	for _, licence := range whitelist {
-		if depName == licence {
+	err := "Dependency %s uses licence %s which is not whitelisted"
+	for _, dep := range deps.Direct {
+		if !(inSlice(dep.LicenceType, whitelist)) {
+			return fmt.Errorf(err, dep.Name, dep.LicenceType)
+		}
+	}
+	for _, dep := range deps.Indirect {
+		if !(inSlice(dep.LicenceType, whitelist)) {
+			return fmt.Errorf(err, dep.Name, dep.LicenceType)
+		}
+	}
+	return nil
+}
+
+func inSlice(item string, slice []string) bool {
+	for _, val := range slice {
+		if item == val {
 			return true
 		}
 	}
