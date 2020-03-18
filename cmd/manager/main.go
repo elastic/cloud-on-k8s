@@ -56,6 +56,7 @@ import (
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"go.uber.org/automaxprocs/maxprocs"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
@@ -175,6 +176,13 @@ func init() {
 }
 
 func execute() {
+	// update GOMAXPROCS to container cpu limit if necessary
+	_, err := maxprocs.Set(maxprocs.Logger(log.Info))
+	if err != nil {
+		log.Error(err, "Error setting GOMAXPROCS")
+		os.Exit(1)
+	}
+
 	if dev.Enabled {
 		// expose pprof if development mode is enabled
 		mux := http.NewServeMux()
