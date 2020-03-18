@@ -19,6 +19,7 @@ linters:
     - scopelint
     - whitespace # added in 1.19
     - wsl # added in 1.20
+    - gomnd # added in 1.23
 linters-settings:
   maligned:
     suggest-new: true
@@ -98,6 +99,5 @@ issues:
       text: 'G101: Potential hardcoded credentials'
     - path: pkg/controller/elasticsearch/driver/version\.go
       text: 'Consider preallocating `vs`'
-    - linters:
-        - stylecheck
-      text: 'ST1016: methods on the same type should have the same receiver name.*"in".*'
+    - path: cmd/manager/main\.go
+      text: 'cyclomatic complexity 31 of func `execute` is high (> 30)'

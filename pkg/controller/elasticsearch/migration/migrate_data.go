@@ -11,7 +11,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -24,7 +23,7 @@ const (
 	AllocationExcludeAnnotationName = "elasticsearch.k8s.elastic.co/allocation-exclude"
 )
 
-func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
+func shardIsMigrating(toMigrate esclient.Shard, others []esclient.Shard) bool {
 	if toMigrate.IsRelocating() || toMigrate.IsInitializing() {
 		return true // being migrated away or weirdly just initializing
 	}
@@ -41,11 +40,11 @@ func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
 
 // nodeIsMigratingData is the core of IsMigratingData just with any I/O
 // removed to facilitate testing. See IsMigratingData for a high-level description.
-func nodeIsMigratingData(nodeName string, shards client.Shards, exclusions map[string]struct{}) bool {
+func nodeIsMigratingData(nodeName string, shards esclient.Shards, exclusions map[string]struct{}) bool {
 	// all other shards not living on the node that is about to go away mapped to their corresponding shard keys
-	othersByShard := make(map[string][]client.Shard)
+	othersByShard := make(map[string][]esclient.Shard)
 	// all shard copies currently living on the node leaving the cluster
-	candidates := make([]client.Shard, 0)
+	candidates := make([]esclient.Shard, 0)
 
 	// divide all shards into the to groups: migration candidate or other shard copy
 	for _, shard := range shards {
@@ -56,7 +55,7 @@ func nodeIsMigratingData(nodeName string, shards client.Shards, exclusions map[s
 			key := shard.Key()
 			others, found := othersByShard[key]
 			if !found {
-				othersByShard[key] = []client.Shard{shard}
+				othersByShard[key] = []esclient.Shard{shard}
 			} else {
 				othersByShard[key] = append(others, shard)
 			}

@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -137,19 +136,19 @@ func (f *fakeESState) NodesInCluster(nodeNames []string) (bool, error) {
 func Test_isMasterNodeJoining(t *testing.T) {
 	tests := []struct {
 		name    string
-		pod     v1.Pod
+		pod     corev1.Pod
 		esState ESState
 		want    bool
 	}{
 		{
 			name: "pod pending",
-			pod:  v1.Pod{Status: v1.PodStatus{Phase: v1.PodPending}},
+			pod:  corev1.Pod{Status: corev1.PodStatus{Phase: corev1.PodPending}},
 			want: true,
 		},
 		{
 			name: "pod running but not ready",
-			pod: v1.Pod{Status: v1.PodStatus{
-				Phase: v1.PodRunning,
+			pod: corev1.Pod{Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
 				Conditions: []corev1.PodCondition{
 					{
 						Type:   corev1.ContainersReady,
@@ -164,12 +163,12 @@ func Test_isMasterNodeJoining(t *testing.T) {
 		},
 		{
 			name: "pod running and ready but not in the cluster yet",
-			pod: v1.Pod{
+			pod: corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "notInCluster",
 				},
-				Status: v1.PodStatus{
-					Phase: v1.PodRunning,
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
 					Conditions: []corev1.PodCondition{
 						{
 							Type:   corev1.ContainersReady,
@@ -185,12 +184,12 @@ func Test_isMasterNodeJoining(t *testing.T) {
 		},
 		{
 			name: "pod running and ready and in the cluster",
-			pod: v1.Pod{
+			pod: corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "inCluster",
 				},
-				Status: v1.PodStatus{
-					Phase: v1.PodRunning,
+				Status: corev1.PodStatus{
+					Phase: corev1.PodRunning,
 					Conditions: []corev1.PodCondition{
 						{
 							Type:   corev1.ContainersReady,
