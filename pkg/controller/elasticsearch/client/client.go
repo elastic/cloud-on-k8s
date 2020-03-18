@@ -27,8 +27,8 @@ const (
 	DefaultReqTimeout = 3 * time.Minute
 )
 
-// UserAuth is authentication information for the Elasticsearch client.
-type UserAuth struct {
+// BasicAuth contains credentials for an Elasticsearch user.
+type BasicAuth struct {
 	Name     string
 	Password string
 }
@@ -111,7 +111,7 @@ type Client interface {
 func NewElasticsearchClient(
 	dialer net.Dialer,
 	esURL string,
-	esUser UserAuth,
+	esUser BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) Client {

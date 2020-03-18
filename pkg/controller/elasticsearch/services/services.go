@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -33,29 +32,30 @@ func TransportServiceName(esName string) string {
 // It is used by Elasticsearch nodes to talk to remote cluster nodes.
 func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      TransportServiceName(es.Name),
-			Labels:    label.NewLabels(nsn),
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: label.NewLabels(nsn),
-			Ports: []corev1.ServicePort{
-				{
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.TransportPort,
-				},
-			},
-			// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
-			ClusterIP:       "None",
-			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            corev1.ServiceTypeClusterIP,
-			// Nodes need to discover themselves before the pod is considered ready,
-			// otherwise minimum master nodes would never be reached
-			PublishNotReadyAddresses: true,
+	svc := corev1.Service{
+		ObjectMeta: es.Spec.Transport.Service.ObjectMeta,
+		Spec:       es.Spec.Transport.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = es.Namespace
+	svc.ObjectMeta.Name = TransportServiceName(es.Name)
+	// Nodes need to discover themselves before the pod is considered ready,
+	// otherwise minimum master nodes would never be reached
+	svc.Spec.PublishNotReadyAddresses = true
+	if svc.Spec.Type == "" {
+		svc.Spec.Type = corev1.ServiceTypeClusterIP
+		// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
+		svc.Spec.ClusterIP = "None"
+	}
+	labels := label.NewLabels(nsn)
+	ports := []corev1.ServicePort{
+		{
+			Protocol: corev1.ProtocolTCP,
+			Port:     network.TransportPort,
 		},
 	}
+
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
 // ExternalServiceName returns the name for the external service

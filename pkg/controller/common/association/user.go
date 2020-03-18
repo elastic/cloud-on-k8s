@@ -7,7 +7,6 @@ package association
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"go.elastic.co/apm"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -17,8 +16,10 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	commonuser "github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -93,7 +94,7 @@ func ReconcileEsUser(
 		Data: map[string][]byte{},
 	}
 
-	password := commonuser.RandomPasswordBytes()
+	password := common.RandomPasswordBytes()
 	// reuse the existing password if there's one
 	var existingSecret corev1.Secret
 	err := c.Get(k8s.ExtractNamespacedName(&expectedSecret), &existingSecret)
@@ -114,7 +115,7 @@ func ReconcileEsUser(
 	// and the association label ("for that associated object")
 
 	// merge the association labels provided by the controller with the one needed for a user
-	userLabels := commonuser.NewLabels(k8s.ExtractNamespacedName(&es))
+	userLabels := esuser.AssociatedUserLabels(es)
 	for key, value := range labels {
 		userLabels[key] = value
 	}
@@ -126,8 +127,8 @@ func ReconcileEsUser(
 			Labels:    userLabels,
 		},
 		Data: map[string][]byte{
-			commonuser.UserName:  []byte(usrKey.Name),
-			commonuser.UserRoles: []byte(userRoles),
+			esuser.UserNameField:  []byte(usrKey.Name),
+			esuser.UserRolesField: []byte(userRoles),
 		},
 	}
 
@@ -140,12 +141,12 @@ func ReconcileEsUser(
 	if err := c.Get(k8s.ExtractNamespacedName(&expectedEsUser), &existingUserSecret); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
-	if existingHash, exists := existingUserSecret.Data[commonuser.PasswordHash]; exists {
+	if existingHash, exists := existingUserSecret.Data[esuser.PasswordHashField]; exists {
 		if bcrypt.CompareHashAndPassword(existingHash, password) == nil {
 			bcryptHash = existingHash
 		}
 	}
-	expectedEsUser.Data[commonuser.PasswordHash] = bcryptHash
+	expectedEsUser.Data[esuser.PasswordHashField] = bcryptHash
 
 	owner := es // user is owned by the es resource in es namespace
 	_, err = reconciler.ReconcileSecret(c, expectedEsUser, &owner)

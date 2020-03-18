@@ -6,7 +6,8 @@ package entsearchassociation
 
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -27,6 +28,6 @@ func NewUserLabelSelector(namespacedName types.NamespacedName) client.MatchingLa
 	return map[string]string{
 		AssociationLabelName:      namespacedName.Name,
 		AssociationLabelNamespace: namespacedName.Namespace,
-		common.TypeLabelName:      user.UserType,
+		common.TypeLabelName:      user.AssociatedUserType,
 	}
 }
