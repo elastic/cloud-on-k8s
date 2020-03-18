@@ -252,7 +252,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "No more es ref in Kibana, orphan user for previous es ref in a different namespace still exist",
+			name: "No more es ref in Kibana, orphan user for previous es ref in a different namespace still exists",
 			kibana: kbv1.Kibana{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "kibana-foo",
