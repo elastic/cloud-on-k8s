@@ -11,7 +11,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -32,16 +31,13 @@ func IsMigratingData(ctx context.Context, shardLister esclient.ShardLister, podN
 	if err != nil {
 		return false, err
 	}
-	// all shard copies currently living on the node leaving the cluster
-	shardsToMigrate := make([]client.Shard, 0)
 	// filter shards affected by node removal
 	for _, shard := range shards {
 		if shard.NodeName == podName {
-			shardsToMigrate = append(shardsToMigrate, shard)
+			return true, nil
 		}
 	}
-	return len(shardsToMigrate) > 0, nil
-
+	return false, nil
 }
 
 // allocationExcludeFromAnnotation returns the allocation exclude value stored in an annotation.
