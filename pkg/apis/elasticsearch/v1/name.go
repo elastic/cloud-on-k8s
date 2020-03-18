@@ -20,13 +20,16 @@ const (
 	httpServiceSuffix                 = "http"
 	transportServiceSuffix            = "transport"
 	elasticUserSecretSuffix           = "elastic-user"
-	xpackFileRealmSecretSuffix        = "xpack-file-realm"
 	internalUsersSecretSuffix         = "internal-users"
 	unicastHostsConfigMapSuffix       = "unicast-hosts"
 	licenseSecretSuffix               = "license"
 	defaultPodDisruptionBudget        = "default"
 	scriptsConfigMapSuffix            = "scripts"
 	transportCertificatesSecretSuffix = "transport-certificates"
+
+	// calling this secret "xpack-file-realm" is conceptually wrong since it also holds the file-based roles which
+	// are not part of the file realm - let's still keep this legacy name for convenience
+	rolesAndFileRealmSecretSuffix = "xpack-file-realm"
 
 	// remoteCaNameSuffix is a suffix for the secret that contains the concatenation of all the remote CAs
 	remoteCaNameSuffix = "remote-ca"
@@ -43,7 +46,7 @@ var (
 		secureSettingsSecretSuffix,
 		httpServiceSuffix,
 		elasticUserSecretSuffix,
-		xpackFileRealmSecretSuffix,
+		rolesAndFileRealmSecretSuffix,
 		internalUsersSecretSuffix,
 		unicastHostsConfigMapSuffix,
 		licenseSecretSuffix,
@@ -125,8 +128,8 @@ func ElasticUserSecret(esName string) string {
 	return ESNamer.Suffix(esName, elasticUserSecretSuffix)
 }
 
-func XPackFileRealmSecret(esName string) string {
-	return ESNamer.Suffix(esName, xpackFileRealmSecretSuffix)
+func RolesAndFileRealmSecret(esName string) string {
+	return ESNamer.Suffix(esName, rolesAndFileRealmSecretSuffix)
 }
 
 func InternalUsersSecret(esName string) string {

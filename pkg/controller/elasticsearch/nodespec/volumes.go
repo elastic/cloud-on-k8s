@@ -22,8 +22,8 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 
 	configVolume := settings.ConfigSecretVolume(esv1.StatefulSet(esName, nodeSpec.Name))
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(esName), esvolume.ProbeUserVolumeName,
-		esvolume.ProbeUserSecretMountPath, []string{user.InternalProbeUserName},
+		esv1.InternalUsersSecret(esName), esvolume.ProbeUserVolumeName,
+		esvolume.ProbeUserSecretMountPath, []string{user.ProbeUserName},
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		certificates.HTTPCertsInternalSecretName(esv1.ESNamer, esName),
@@ -40,7 +40,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		esv1.UnicastHostsConfigMap(esName), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 	)
 	usersSecretVolume := volume.NewSecretVolumeWithMountPath(
-		user.XPackFileRealmSecretName(esName),
+		esv1.RolesAndFileRealmSecret(esName),
 		esvolume.XPackFileRealmVolumeName,
 		esvolume.XPackFileRealmVolumeMountPath,
 	)

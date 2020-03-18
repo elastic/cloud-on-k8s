@@ -5,14 +5,11 @@
 package kibanaassociation
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
 )
 
 const (
@@ -22,31 +19,20 @@ const (
 	AssociationLabelNamespace = "kibanaassociation.k8s.elastic.co/namespace"
 )
 
-// NewResourceSelector selects resources labeled as related to the named association.
-func NewResourceSelector(name string) client.MatchingLabels {
-	return client.MatchingLabels(map[string]string{
-		AssociationLabelName: name,
-	})
+func associationLabels(kibana *v1.Kibana) map[string]string {
+	return map[string]string{
+		AssociationLabelName:      kibana.Name,
+		AssociationLabelNamespace: kibana.Namespace,
+	}
 }
 
-func hasBeenCreatedBy(object metav1.Object, kibana *kbv1.Kibana) bool {
-	labels := object.GetLabels()
-	if !maps.ContainsKeys(labels, AssociationLabelName, AssociationLabelNamespace) {
-		return false
-	}
-	if labels[AssociationLabelName] != kibana.Name || labels[AssociationLabelNamespace] != kibana.Namespace {
-		return false
-	}
-	return true
-}
-
-func NewUserLabelSelector(
+func newUserLabelSelector(
 	namespacedName types.NamespacedName,
 ) client.MatchingLabels {
 	return client.MatchingLabels(
 		map[string]string{
 			AssociationLabelName:      namespacedName.Name,
 			AssociationLabelNamespace: namespacedName.Namespace,
-			common.TypeLabelName:      user.UserType,
+			common.TypeLabelName:      esuser.AssociatedUserType,
 		})
 }

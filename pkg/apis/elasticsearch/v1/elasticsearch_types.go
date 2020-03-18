@@ -46,6 +46,10 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Optional
 	PodDisruptionBudget *commonv1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
 
+	// Auth contains user authentication and authorization security settings for Elasticsearch.
+	// +kubebuilder:validation:Optional
+	Auth Auth `json:"auth,omitempty"`
+
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
 	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 	// +kubebuilder:validation:Optional
@@ -93,6 +97,74 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 		count += topoElem.Count
 	}
 	return count
+}
+
+// Auth contains user authentication and authorization security settings for Elasticsearch.
+type Auth struct {
+	// Roles to propagate to the Elasticsearch cluster.
+	Roles []RoleSource `json:"roles,omitempty"`
+	// FileRealm to propagate to the Elasticsearch cluster.
+	FileRealm []FileRealmSource `json:"fileRealm,omitempty"`
+}
+
+// RoleSource references roles to create in the Elasticsearch cluster.
+type RoleSource struct {
+	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
+	// Multiple roles can be specified in a Kubernetes secret, under a single "roles.yml" entry.
+	// The secret value must match the expected file-based specification as described in
+	// https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file.
+	//
+	// Example:
+	// ---
+	// kind: Secret
+	// apiVersion: v1
+	// metadata:
+	// 	name: my-roles
+	// stringData:
+	//  roles.yml: |-
+	//    click_admins:
+	//      run_as: [ 'clicks_watcher_1' ]
+	//   	cluster: [ 'monitor' ]
+	//   	indices:
+	//   	- names: [ 'events-*' ]
+	//   	  privileges: [ 'read' ]
+	//   	  field_security:
+	//   		grant: ['category', '@timestamp', 'message' ]
+	//   	  query: '{"match": {"category": "click"}}'
+	//    another_role:
+	//      cluster: [ 'all' ]
+	// ---
+	commonv1.SecretRef `json:",inline"`
+}
+
+// FileRealmSource references users to create in the Elasticsearch cluster.
+type FileRealmSource struct {
+	// SecretName references a Kubernetes secret in the same namespace as the Elasticsearch resource.
+	// Multiple users and their roles mapping can be specified in a Kubernetes secret.
+	// The secret should contain 2 entries:
+	// - users: contain all users and the hash of their password (https://www.elastic.co/guide/en/elasticsearch/reference/current/security-settings.html#password-hashing-algorithms)
+	// - users_roles: contain the role to users mapping
+	// The format of those 2 entries must correspond to the expected file realm format, as specified in Elasticsearch
+	// documentation: https://www.elastic.co/guide/en/elasticsearch/reference/7.5/file-realm.html#file-realm-configuration.
+	//
+	// Example:
+	// ---
+	// # File realm in ES format (from the CLI or manually assembled)
+	// kind: Secret
+	// apiVersion: v1
+	// metadata:
+	//   name: my-filerealm
+	// stringData:
+	//   users: |-
+	//     rdeniro:$2a$10$BBJ/ILiyJ1eBTYoRKxkqbuDEdYECplvxnqQ47uiowE7yGqvCEgj9W
+	//     alpacino:$2a$10$cNwHnElYiMYZ/T3K4PvzGeJ1KbpXZp2PfoQD.gfaVdImnHOwIuBKS
+	//     jacknich:{PBKDF2}50000$z1CLJt0MEFjkIK5iEfgvfnA6xq7lF25uasspsTKSo5Q=$XxCVLbaKDimOdyWgLCLJiyoiWpA/XDMe/xtVgn1r5Sg=
+	//   users_roles: |-
+	//     admin:rdeniro
+	//     power_user:alpacino,jacknich
+	//     user:jacknich
+	// ---
+	commonv1.SecretRef `json:",inline"`
 }
 
 // NodeSet is the specification for a group of Elasticsearch nodes sharing the same configuration and a Pod template.
