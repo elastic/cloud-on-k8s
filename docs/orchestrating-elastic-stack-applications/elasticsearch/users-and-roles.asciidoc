@@ -33,7 +33,7 @@ You can create custom users in the link:https://www.elastic.co/guide/en/elastics
 Custom users can also be created by providing the desired link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm content]
 in Kubernetes secrets, referenced in the Elasticsearch resource.
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
@@ -108,7 +108,7 @@ or the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defi
 
 Additionally, link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file[file-based role management] can be achieved by referencing Kubernetes secrets containing the roles specification.
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
 kind: Elasticsearch
