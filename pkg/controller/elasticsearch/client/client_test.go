@@ -17,12 +17,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	cautils "github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	fixtures "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestParseShards(t *testing.T) {
@@ -358,7 +359,7 @@ func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
 	dummyUser := BasicAuth{Name: "user", Password: "password"}
 	createCert := func() *x509.Certificate {
-		ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
+		ca, err := cautils.NewSelfSignedCA(cautils.CABuilderOptions{})
 		require.NoError(t, err)
 		return ca.Cert
 	}

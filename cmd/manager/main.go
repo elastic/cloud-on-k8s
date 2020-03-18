@@ -13,10 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm"
@@ -24,6 +20,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
 	// allow gcp authentication
+	"k8s.io/apimachinery/pkg/util/wait"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,10 +37,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	entsassn "github.com/elastic/cloud-on-k8s/pkg/controller/entsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
@@ -56,7 +56,6 @@ import (
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -89,22 +88,22 @@ func init() {
 	)
 	Cmd.Flags().Duration(
 		operator.CACertRotateBeforeFlag,
-		certificates.DefaultRotateBefore,
+		certutils.DefaultRotateBefore,
 		"Duration representing how long before expiration CA certificates should be reissued",
 	)
 	Cmd.Flags().Duration(
 		operator.CACertValidityFlag,
-		certificates.DefaultCertValidity,
+		certutils.DefaultCertValidity,
 		"Duration representing how long before a newly created CA cert expires",
 	)
 	Cmd.Flags().Duration(
 		operator.CertRotateBeforeFlag,
-		certificates.DefaultRotateBefore,
+		certutils.DefaultRotateBefore,
 		"Duration representing how long before expiration TLS certificates should be reissued",
 	)
 	Cmd.Flags().Duration(
 		operator.CertValidityFlag,
-		certificates.DefaultCertValidity,
+		certutils.DefaultCertValidity,
 		"Duration representing how long before a newly created TLS certificate expires",
 	)
 	Cmd.Flags().String(
@@ -296,11 +295,11 @@ func execute() {
 		Dialer:            dialer,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
-		CACertRotation: certificates.RotationParams{
+		CACertRotation: certutils.RotationParams{
 			Validity:     caCertValidity,
 			RotateBefore: caCertRotateBefore,
 		},
-		CertRotation: certificates.RotationParams{
+		CertRotation: certutils.RotationParams{
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
@@ -408,7 +407,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	}
 }
 
-func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
+func setupWebhook(mgr manager.Manager, certRotation certutils.RotationParams, clientset kubernetes.Interface) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
@@ -445,7 +444,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
 	timeout := time.Second * 30
-	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certificates.CertFileName)
+	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certutils.CertFileName)
 	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
 	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		_, err := os.Stat(keyPath)

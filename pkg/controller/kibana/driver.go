@@ -9,10 +9,20 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	pkgerrors "github.com/pkg/errors"
+	"go.elastic.co/apm"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -24,7 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	kbcerts "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
@@ -32,13 +41,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	pkgerrors "github.com/pkg/errors"
-	"go.elastic.co/apm"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // initContainersParameters is used to generate the init container that will load the secure settings into a keystore
@@ -159,7 +161,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		if err := d.client.Get(key, &esPublicCASecret); err != nil {
 			return deployment.Params{}, err
 		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
+		if certPem, ok := esPublicCASecret.Data[certutils.CertFileName]; ok {
 			_, _ = configChecksum.Write(certPem)
 		}
 
@@ -177,12 +179,12 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		var httpCerts corev1.Secret
 		err := d.client.Get(types.NamespacedName{
 			Namespace: kb.Namespace,
-			Name:      certificates.HTTPCertsInternalSecretName(kbname.KBNamer, kb.Name),
+			Name:      http.InternalCertsSecretName(kbname.KBNamer, kb.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
 		}
-		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
+		if httpCert, ok := httpCerts.Data[certutils.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
 

@@ -12,17 +12,19 @@ import (
 
 	"github.com/pkg/errors"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var log = logf.Log.WithName("transport")
@@ -31,9 +33,9 @@ var log = logf.Log.WithName("transport")
 // cluster.
 func ReconcileTransportCertificatesSecrets(
 	c k8s.Client,
-	ca *certificates.CA,
+	ca *ca.CA,
 	es esv1.Elasticsearch,
-	rotationParams certificates.RotationParams,
+	rotationParams certutils.RotationParams,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	var pods corev1.PodList
@@ -67,7 +69,7 @@ func ReconcileTransportCertificatesSecrets(
 		}
 		// handle cert expiry via requeue
 		results.WithResult(reconcile.Result{
-			RequeueAfter: certificates.ShouldRotateIn(time.Now(), cert.NotAfter, rotationParams.RotateBefore),
+			RequeueAfter: certutils.ShouldRotateIn(time.Now(), cert.NotAfter, rotationParams.RotateBefore),
 		})
 	}
 
@@ -75,7 +77,7 @@ func ReconcileTransportCertificatesSecrets(
 	podsByName := k8s.PodsByName(pods.Items)
 	keysToPrune := make([]string, 0)
 	for secretDataKey := range secret.Data {
-		if secretDataKey == certificates.CAFileName {
+		if secretDataKey == certutils.CAFileName {
 			// never remove the CA file
 			continue
 		}
@@ -96,11 +98,11 @@ func ReconcileTransportCertificatesSecrets(
 		}
 	}
 
-	caBytes := certificates.EncodePEMCert(ca.Cert.Raw)
+	caBytes := certutils.EncodePEMCert(ca.Cert.Raw)
 
 	// compare with current trusted CA certs.
-	if !bytes.Equal(caBytes, secret.Data[certificates.CAFileName]) {
-		secret.Data[certificates.CAFileName] = caBytes
+	if !bytes.Equal(caBytes, secret.Data[certutils.CAFileName]) {
+		secret.Data[certutils.CAFileName] = caBytes
 	}
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {

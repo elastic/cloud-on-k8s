@@ -12,17 +12,18 @@ import (
 	"sort"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -55,13 +56,13 @@ func CheckCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 		Name: "ES certificate authority should be set and deployed",
 		Test: test.Eventually(func() error {
 			// Check that the Transport CA may be loaded
-			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.TransportCAType)
+			_, err := k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, ca.TransportCAType)
 			if err != nil {
 				return err
 			}
 
 			// Check that the HTTP CA may be loaded
-			_, err = k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, certificates.HTTPCAType)
+			_, err = k.GetCA(b.Elasticsearch.Namespace, b.Elasticsearch.Name, ca.HTTPCAType)
 			if err != nil {
 				return err
 			}

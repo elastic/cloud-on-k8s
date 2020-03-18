@@ -11,11 +11,13 @@ import (
 	"crypto/x509/pkix"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	cautils "github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const WebhookServiceName = "elastic-webhook-server"
@@ -30,11 +32,11 @@ type WebhookCertificates struct {
 
 func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webhookConfiguration *v1beta1.ValidatingWebhookConfiguration) bool {
 	// Read the current certificate used by the server
-	serverCA := certificates.BuildCAFromSecret(*serverCertificates)
+	serverCA := cautils.BuildCAFromSecret(*serverCertificates)
 	if serverCA == nil {
 		return true
 	}
-	if !certificates.CanReuseCA(serverCA, w.Rotation.RotateBefore) {
+	if !cautils.CanReuseCA(serverCA, w.Rotation.RotateBefore) {
 		return true
 	}
 	// Read the certificate in the webhook configuration
@@ -44,7 +46,7 @@ func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webh
 			return true
 		}
 		// Parse the certificates
-		certs, err := certificates.ParsePEMCerts(caBytes)
+		certs, err := certutils.ParsePEMCerts(caBytes)
 		if err != nil {
 			log.Error(err, "Cannot parse PEM cert from webhook configuration, will create a new one", "webhook_name", webhookConfiguration.Name)
 			return true
@@ -53,7 +55,7 @@ func (w *Params) shouldRenewCertificates(serverCertificates *corev1.Secret, webh
 			return true
 		}
 		for _, cert := range certs {
-			if !certificates.CertIsValid(*cert, w.Rotation.RotateBefore) {
+			if !cautils.CertIsValid(*cert, w.Rotation.RotateBefore) {
 				return true
 			}
 		}
@@ -70,7 +72,7 @@ func (w *Params) newCertificates() (WebhookCertificates, error) {
 	webhookCertificates := WebhookCertificates{}
 
 	// Create a new CA
-	ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
+	ca, err := cautils.NewSelfSignedCA(cautils.CABuilderOptions{
 		Subject: pkix.Name{
 			CommonName:         "elastic-webhook-ca",
 			OrganizationalUnit: []string{"elastic-webhook"},
@@ -80,14 +82,14 @@ func (w *Params) newCertificates() (WebhookCertificates, error) {
 	if err != nil {
 		return webhookCertificates, err
 	}
-	webhookCertificates.caCert = certificates.EncodePEMCert(ca.Cert.Raw)
+	webhookCertificates.caCert = certutils.EncodePEMCert(ca.Cert.Raw)
 
 	// Create a new certificate for the webhook server
 	privateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 	if err != nil {
 		return webhookCertificates, err
 	}
-	webhookCertificates.serverKey = certificates.EncodePEMPrivateKey(*privateKey)
+	webhookCertificates.serverKey = certutils.EncodePEMPrivateKey(*privateKey)
 
 	csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
 	if err != nil {
@@ -98,7 +100,7 @@ func (w *Params) newCertificates() (WebhookCertificates, error) {
 		return webhookCertificates, err
 	}
 
-	certificateTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
+	certificateTemplate := cautils.ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         "elastic-webhook",
 			OrganizationalUnit: []string{"elastic-webhook"},
@@ -128,6 +130,6 @@ func (w *Params) newCertificates() (WebhookCertificates, error) {
 	if err != nil {
 		return webhookCertificates, err
 	}
-	webhookCertificates.serverCert = certificates.EncodePEMCert(cert)
+	webhookCertificates.serverCert = certutils.EncodePEMCert(cert)
 	return webhookCertificates, nil
 }

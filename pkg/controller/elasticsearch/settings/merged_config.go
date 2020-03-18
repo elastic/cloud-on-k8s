@@ -9,7 +9,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	escerts "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
@@ -78,8 +78,8 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, certResources
 
 		// x-pack security http settings
 		esv1.XPackSecurityHttpSslEnabled:     httpCfg.TLS.Enabled(),
-		esv1.XPackSecurityHttpSslKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
-		esv1.XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		esv1.XPackSecurityHttpSslKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certutils.KeyFileName),
+		esv1.XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certutils.CertFileName),
 
 		// x-pack security transport settings
 		esv1.XPackSecurityTransportSslEnabled: "true",
@@ -94,13 +94,13 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, certResources
 			volume.NodeTransportCertificateCertFile,
 		),
 		esv1.XPackSecurityTransportSslCertificateAuthorities: []string{
-			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
-			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
+			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certutils.CAFileName),
+			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certutils.CAFileName),
 		},
 	}
 
 	if certResources.HTTPCACertProvided {
-		cfg[esv1.XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
+		cfg[esv1.XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certutils.CAFileName)
 	}
 
 	// always enable the built-in file and native internal realms for user auth, ordered as first

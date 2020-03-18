@@ -7,14 +7,16 @@ package transport
 import (
 	"reflect"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // ReconcileTransportCertsPublicSecret reconciles the Secret containing the publicly available transport CA
@@ -22,7 +24,7 @@ import (
 func ReconcileTransportCertsPublicSecret(
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	ca *certificates.CA,
+	ca *ca.CA,
 ) error {
 	esNSN := k8s.ExtractNamespacedName(&es)
 	meta := k8s.ToObjectMeta(PublicCertsSecretRef(esNSN))
@@ -31,7 +33,7 @@ func ReconcileTransportCertsPublicSecret(
 	expected := &corev1.Secret{
 		ObjectMeta: meta,
 		Data: map[string][]byte{
-			certificates.CAFileName: certificates.EncodePEMCert(ca.Cert.Raw),
+			certutils.CAFileName: certutils.EncodePEMCert(ca.Cert.Raw),
 		},
 	}
 	reconciled := &corev1.Secret{}
@@ -64,7 +66,7 @@ func ReconcileTransportCertsPublicSecret(
 // PublicCertsSecretRef returns the NamespacedName for the Secret containing the publicly available transport CA.
 func PublicCertsSecretRef(es types.NamespacedName) types.NamespacedName {
 	return types.NamespacedName{
-		Name:      certificates.PublicSecretName(esv1.ESNamer, es.Name, certificates.TransportCAType),
+		Name:      esv1.ESNamer.Suffix(es.Name, "transport", "certs-public"),
 		Namespace: es.Namespace,
 	}
 }

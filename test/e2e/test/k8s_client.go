@@ -10,18 +10,6 @@ import (
 	"fmt"
 	"os"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +23,20 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 type K8sClient struct {
@@ -204,29 +206,29 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName str
 		return nil, err
 	}
 
-	certData, exists := secret.Data[certificates.CertFileName]
+	certData, exists := secret.Data[certutils.CertFileName]
 	if !exists {
 		return nil, fmt.Errorf("no certificates found in secret %s", secretNSN)
 	}
-	return certificates.ParsePEMCerts(certData)
+	return certutils.ParsePEMCerts(certData)
 }
 
 // GetCA returns the CA of the given owner name
-func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.CAType) (*certificates.CA, error) {
+func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType ca.CAType) (*ca.CA, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ownerNamespace,
-		Name:      certificates.CAInternalSecretName(esv1.ESNamer, ownerName, caType),
+		Name:      ca.CAInternalSecretName(esv1.ESNamer, ownerName, caType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
 	}
 
-	caCertsData, exists := secret.Data[certificates.CertFileName]
+	caCertsData, exists := secret.Data[certutils.CertFileName]
 	if !exists {
-		return nil, fmt.Errorf("no value found for cert in secret %s", certificates.CertFileName)
+		return nil, fmt.Errorf("no value found for cert in secret %s", certutils.CertFileName)
 	}
-	caCerts, err := certificates.ParsePEMCerts(caCertsData)
+	caCerts, err := certutils.ParsePEMCerts(caCertsData)
 	if err != nil {
 		return nil, err
 	}
@@ -235,16 +237,16 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 		return nil, fmt.Errorf("found multiple ca certificates in secret %s", key)
 	}
 
-	pKeyBytes, exists := secret.Data[certificates.KeyFileName]
+	pKeyBytes, exists := secret.Data[certutils.KeyFileName]
 	if !exists || len(pKeyBytes) == 0 {
 		return nil, fmt.Errorf("no value found for private key in secret %s", key)
 	}
-	pKey, err := certificates.ParsePEMPrivateKey(pKeyBytes)
+	pKey, err := certutils.ParsePEMPrivateKey(pKeyBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	return certificates.NewCA(pKey, caCerts[0]), nil
+	return ca.NewCA(pKey, caCerts[0]), nil
 }
 
 // GetTransportCert retrieves the certificate of the CA and the transport certificate
@@ -257,11 +259,11 @@ func (k *K8sClient) GetTransportCert(esNamespace, esName, podName string) (caCer
 	if err = k.Client.Get(key, &secret); err != nil {
 		return nil, nil, err
 	}
-	caCertBytes, exists := secret.Data[certificates.CAFileName]
+	caCertBytes, exists := secret.Data[certutils.CAFileName]
 	if !exists || len(caCertBytes) == 0 {
-		return nil, nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
+		return nil, nil, fmt.Errorf("no value found for secret %s", certutils.CAFileName)
 	}
-	caCert, err = certificates.ParsePEMCerts(caCertBytes)
+	caCert, err = certutils.ParsePEMCerts(caCertBytes)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -269,7 +271,7 @@ func (k *K8sClient) GetTransportCert(esNamespace, esName, podName string) (caCer
 	if !exists || len(transportCertBytes) == 0 {
 		return nil, nil, fmt.Errorf("no value found for secret %s", transport.PodCertFileName(podName))
 	}
-	transportCert, err = certificates.ParsePEMCerts(transportCertBytes)
+	transportCert, err = certutils.ParsePEMCerts(transportCertBytes)
 	if err != nil {
 		return nil, nil, err
 	}

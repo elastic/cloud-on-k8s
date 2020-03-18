@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +30,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			name: "missing cert in secret",
 			args: args{
 				secret:       corev1.Secret{},
-				rotateBefore: certificates.DefaultRotateBefore,
+				rotateBefore: certutils.DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -42,7 +42,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 						PodCertFileName(testPod.Name): []byte("invalid"),
 					},
 				},
-				rotateBefore: certificates.DefaultRotateBefore,
+				rotateBefore: certutils.DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -55,7 +55,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 					},
 				},
 				pod:          &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
-				rotateBefore: certificates.DefaultRotateBefore,
+				rotateBefore: certutils.DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -67,7 +67,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 						PodCertFileName(testPod.Name): pemCert,
 					},
 				},
-				rotateBefore: certificates.DefaultRotateBefore,
+				rotateBefore: certutils.DefaultRotateBefore,
 			},
 			want: false,
 		},
@@ -79,7 +79,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 						PodCertFileName(testPod.Name): pemCert,
 					},
 				},
-				rotateBefore: certificates.DefaultCertValidity, // rotate before the same duration as total validity
+				rotateBefore: certutils.DefaultCertValidity, // rotate before the same duration as total validity
 			},
 			want: true,
 		},
@@ -131,7 +131,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "no cert in the secret",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodKeyFileName(testPod.Name): certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					PodKeyFileName(testPod.Name): certutils.EncodePEMPrivateKey(*testRSAPrivateKey),
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
@@ -146,8 +146,8 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "cert does not belong to the key in the secret",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodKeyFileName(testPod.Name):  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
-					PodCertFileName(testPod.Name): certificates.EncodePEMCert(testCA.Cert.Raw),
+					PodKeyFileName(testPod.Name):  certutils.EncodePEMPrivateKey(*testRSAPrivateKey),
+					PodCertFileName(testPod.Name): certutils.EncodePEMCert(testCA.Cert.Raw),
 				},
 			},
 			assertions: func(t *testing.T, before corev1.Secret, after corev1.Secret) {
@@ -163,7 +163,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "invalid cert in the secret",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodKeyFileName(testPod.Name):  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					PodKeyFileName(testPod.Name):  certutils.EncodePEMPrivateKey(*testRSAPrivateKey),
 					PodCertFileName(testPod.Name): []byte("invalid"),
 				},
 			},
@@ -180,7 +180,7 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 			name: "valid data should not require updating",
 			secret: &corev1.Secret{
 				Data: map[string][]byte{
-					PodKeyFileName(testPod.Name):  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					PodKeyFileName(testPod.Name):  certutils.EncodePEMPrivateKey(*testRSAPrivateKey),
 					PodCertFileName(testPod.Name): pemCert,
 				},
 			},
@@ -205,9 +205,9 @@ func Test_ensureTransportCertificatesSecretContentsForPod(t *testing.T) {
 				tt.secret,
 				*tt.pod,
 				testCA,
-				certificates.RotationParams{
-					Validity:     certificates.DefaultCertValidity,
-					RotateBefore: certificates.DefaultRotateBefore,
+				certutils.RotationParams{
+					Validity:     certutils.DefaultCertValidity,
+					RotateBefore: certutils.DefaultRotateBefore,
 				},
 			)
 			if tt.wantErr != nil {

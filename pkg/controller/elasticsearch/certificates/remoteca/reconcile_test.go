@@ -7,17 +7,18 @@ package remoteca
 import (
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster/remoteca"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster/remoteca"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestReconcile(t *testing.T) {
@@ -45,7 +46,7 @@ func TestReconcile(t *testing.T) {
 								common.TypeLabelName:       remoteca.TypeLabelValue,
 							},
 						},
-						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
+						Data: map[string][]byte{certutils.CAFileName: []byte("cert1\n")},
 					},
 					&v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
@@ -56,7 +57,7 @@ func TestReconcile(t *testing.T) {
 								common.TypeLabelName:       remoteca.TypeLabelValue,
 							},
 						},
-						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
+						Data: map[string][]byte{certutils.CAFileName: []byte("cert2\n")},
 					},
 				},
 			},
@@ -76,7 +77,7 @@ func TestReconcile(t *testing.T) {
 								common.TypeLabelName:       remoteca.TypeLabelValue,
 							},
 						},
-						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
+						Data: map[string][]byte{certutils.CAFileName: []byte("cert1\n")},
 					},
 					&v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
@@ -87,7 +88,7 @@ func TestReconcile(t *testing.T) {
 								common.TypeLabelName:       "foo",
 							},
 						},
-						Data: map[string][]byte{certificates.CAFileName: []byte("cert3\n")},
+						Data: map[string][]byte{certutils.CAFileName: []byte("cert3\n")},
 					},
 					&v1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
@@ -98,7 +99,7 @@ func TestReconcile(t *testing.T) {
 								common.TypeLabelName:       remoteca.TypeLabelValue,
 							},
 						},
-						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
+						Data: map[string][]byte{certutils.CAFileName: []byte("cert2\n")},
 					},
 				},
 			},
@@ -113,7 +114,7 @@ func TestReconcile(t *testing.T) {
 			}
 			remoteCaList := v1.Secret{}
 			assert.NoError(t, k8sClient.Get(types.NamespacedName{Namespace: "ns1", Name: "es1-es-remote-ca"}, &remoteCaList))
-			content, ok := remoteCaList.Data[certificates.CAFileName]
+			content, ok := remoteCaList.Data[certutils.CAFileName]
 			assert.True(t, ok)
 			assert.Equal(t, tt.want, content)
 		})

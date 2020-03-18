@@ -15,7 +15,6 @@ import (
 	"go.elastic.co/apm"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	apmcerts "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
@@ -23,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -371,7 +371,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		if err := r.Get(key, &esPublicCASecret); err != nil {
 			return deployment.Params{}, err
 		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
+		if certPem, ok := esPublicCASecret.Data[certutils.CertFileName]; ok {
 			certsChecksum = fmt.Sprintf("%x", sha256.Sum224(certPem))
 		}
 		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
@@ -394,12 +394,12 @@ func (r *ReconcileApmServer) deploymentParams(
 		var httpCerts corev1.Secret
 		err := r.Get(types.NamespacedName{
 			Namespace: as.Namespace,
-			Name:      certificates.HTTPCertsInternalSecretName(apmname.APMNamer, as.Name),
+			Name:      http.InternalCertsSecretName(apmname.APMNamer, as.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
 		}
-		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
+		if httpCert, ok := httpCerts.Data[certutils.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
 		httpCertsVolume := http.HTTPCertSecretVolume(apmname.APMNamer, as.Name)

@@ -9,16 +9,18 @@ import (
 	"net"
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 )
 
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
 // are parsed and considered part of the certificate
-func roundTripSerialize(cert *certificates.ValidatedCertificateTemplate) (*x509.Certificate, error) {
+func roundTripSerialize(cert *ca.ValidatedCertificateTemplate) (*x509.Certificate, error) {
 	certData, err := testCA.CreateCertificate(*cert)
 	if err != nil {
 		return nil, err
@@ -36,7 +38,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	cn := "test-pod-name.node.test-es-name.test-namespace.es.local"
 
 	validatedCert, err := createValidatedCertificateTemplate(
-		testPod, testES, testCSR, certificates.DefaultCertValidity,
+		testPod, testES, testCSR, certutils.DefaultCertValidity,
 	)
 	require.NoError(t, err)
 
@@ -51,24 +53,24 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	assert.Contains(t, certRT.IPAddresses, net.ParseIP("127.0.0.1").To4())
 
 	// es specific othernames is a bit more difficult to get to, but should be present:
-	otherNames, err := certificates.ParseSANGeneralNamesOtherNamesOnly(certRT)
+	otherNames, err := certutils.ParseSANGeneralNamesOtherNamesOnly(certRT)
 	require.NoError(t, err)
 
-	otherName, err := (&certificates.UTF8StringValuedOtherName{
-		OID:   certificates.CommonNameObjectIdentifier,
+	otherName, err := (&certutils.UTF8StringValuedOtherName{
+		OID:   certutils.CommonNameObjectIdentifier,
 		Value: cn,
 	}).ToOtherName()
 	require.NoError(t, err)
 
 	assert.Equal(t, certRT.Subject.CommonName, cn)
-	assert.Contains(t, otherNames, certificates.GeneralName{OtherName: *otherName})
+	assert.Contains(t, otherNames, certutils.GeneralName{OtherName: *otherName})
 }
 
 func Test_buildGeneralNames(t *testing.T) {
 	expectedCommonName := "test-pod-name.node.test-es-name.test-namespace.es.local"
 	expectedTransportSvcName := "test-es-name-es-transport.test-namespace.svc"
-	otherName, err := (&certificates.UTF8StringValuedOtherName{
-		OID:   certificates.CommonNameObjectIdentifier,
+	otherName, err := (&certutils.UTF8StringValuedOtherName{
+		OID:   certutils.CommonNameObjectIdentifier,
 		Value: expectedCommonName,
 	}).ToOtherName()
 	require.NoError(t, err)
@@ -80,7 +82,7 @@ func Test_buildGeneralNames(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want []certificates.GeneralName
+		want []certutils.GeneralName
 	}{
 		{
 			name: "no svcs and user-provided SANs",
@@ -88,7 +90,7 @@ func Test_buildGeneralNames(t *testing.T) {
 				cluster: testES,
 				pod:     testPod,
 			},
-			want: []certificates.GeneralName{
+			want: []certutils.GeneralName{
 				{OtherName: *otherName},
 				{DNSName: expectedCommonName},
 				{DNSName: expectedTransportSvcName},

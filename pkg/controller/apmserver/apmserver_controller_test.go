@@ -8,15 +8,6 @@ import (
 	"context"
 	"testing"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -26,6 +17,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint
@@ -251,7 +252,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 							Name: certSecretName,
 						},
 						Data: map[string][]byte{
-							certificates.CertFileName: []byte("bar"),
+							certutils.CertFileName: []byte("bar"),
 						},
 					},
 				},
@@ -381,9 +382,9 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters: operator.Parameters{
-					CACertRotation: certificates.RotationParams{
-						Validity:     certificates.DefaultCertValidity,
-						RotateBefore: certificates.DefaultRotateBefore,
+					CACertRotation: certutils.RotationParams{
+						Validity:     certutils.DefaultCertValidity,
+						RotateBefore: certutils.DefaultRotateBefore,
 					},
 				},
 			},

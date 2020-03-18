@@ -5,15 +5,16 @@
 package nodespec
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var downwardAPIVolume = volume.DownwardAPI{}
@@ -26,7 +27,7 @@ func buildVolumes(esName string, nodeSpec esv1.NodeSet, keystoreResources *keyst
 		esvolume.ProbeUserSecretMountPath, []string{user.ProbeUserName},
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
-		certificates.HTTPCertsInternalSecretName(esv1.ESNamer, esName),
+		http.InternalCertsSecretName(esv1.ESNamer, esName),
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)

@@ -8,19 +8,20 @@ import (
 	"context"
 	"reflect"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 // createOrUpdateCertificateAuthorities creates the two Secrets that are needed to establish a trust relationship between
@@ -90,7 +91,7 @@ func copyCertificateAuthority(
 		return err
 	}
 
-	if len(sourceCA.Data[certificates.CAFileName]) == 0 {
+	if len(sourceCA.Data[certutils.CAFileName]) == 0 {
 		log.Info(
 			"Cannot find CA cert",
 			"local_namespace", source.Namespace,
@@ -103,7 +104,7 @@ func copyCertificateAuthority(
 	}
 
 	// Reconcile the copy to the target cluster
-	if err := reconcileRemoteCA(ctx, r.Client, target, sourceKey, sourceCA.Data[certificates.CAFileName]); err != nil {
+	if err := reconcileRemoteCA(ctx, r.Client, target, sourceKey, sourceCA.Data[certutils.CAFileName]); err != nil {
 		return err
 	}
 
@@ -162,7 +163,7 @@ func reconcileRemoteCA(
 	expected := corev1.Secret{
 		ObjectMeta: remoteCAObjectMeta(remoteCASecretName(target.Name, source), target, source),
 		Data: map[string][]byte{
-			certificates.CAFileName: sourceCA,
+			certutils.CAFileName: sourceCA,
 		},
 	}
 

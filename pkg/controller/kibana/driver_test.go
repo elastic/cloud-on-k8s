@@ -22,7 +22,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -284,7 +284,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 								Namespace: "default",
 							},
 							Data: map[string][]byte{
-								certificates.CertFileName: nil,
+								certutils.CertFileName: nil,
 							},
 						},
 						&corev1.Secret{
@@ -582,7 +582,7 @@ func defaultInitialObjects() []runtime.Object {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				certificates.CertFileName: nil,
+				certutils.CertFileName: nil,
 			},
 		},
 		&corev1.Secret{

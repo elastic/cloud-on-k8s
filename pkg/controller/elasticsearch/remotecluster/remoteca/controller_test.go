@@ -8,14 +8,6 @@ import (
 	"reflect"
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -24,6 +16,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
 type clusterBuilder struct {
@@ -104,7 +105,7 @@ func fakePublicCa(namespace, name string) *corev1.Secret {
 			Name:      transportPublicCertKey.Name,
 		},
 		Data: map[string][]byte{
-			certificates.CAFileName: []byte(namespacedName.String()),
+			certutils.CAFileName: []byte(namespacedName.String()),
 		},
 	}
 }
@@ -127,13 +128,13 @@ func remoteCa(localNamespace, localName, remoteNamespace, remoteName string) *co
 			},
 		},
 		Data: map[string][]byte{
-			certificates.CAFileName: []byte(remoteNamespacedName.String()),
+			certutils.CAFileName: []byte(remoteNamespacedName.String()),
 		},
 	}
 }
 
 func withDataCert(caSecret *corev1.Secret, newCa []byte) *corev1.Secret {
-	caSecret.Data[certificates.CAFileName] = newCa
+	caSecret.Data[certutils.CAFileName] = newCa
 	return caSecret
 }
 
@@ -451,9 +452,9 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 				var actualSecret corev1.Secret
 				assert.NoError(t, r.Client.Get(types.NamespacedName{Namespace: expectedSecret.Namespace, Name: expectedSecret.Name}, &actualSecret))
 				// Compare content
-				actualCa, ok := actualSecret.Data[certificates.CAFileName]
+				actualCa, ok := actualSecret.Data[certutils.CAFileName]
 				assert.True(t, ok)
-				assert.Equal(t, expectedSecret.Data[certificates.CAFileName], actualCa)
+				assert.Equal(t, expectedSecret.Data[certutils.CAFileName], actualCa)
 				// Compare labels
 				assert.NotNil(t, actualSecret.Labels)
 				assert.Equal(t, expectedSecret.Labels, actualSecret.Labels)

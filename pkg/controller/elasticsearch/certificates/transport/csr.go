@@ -15,7 +15,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
@@ -25,26 +26,26 @@ func createValidatedCertificateTemplate(
 	cluster esv1.Elasticsearch,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
-) (*certificates.ValidatedCertificateTemplate, error) {
+) (*ca.ValidatedCertificateTemplate, error) {
 	generalNames, err := buildGeneralNames(cluster, pod)
 	if err != nil {
 		return nil, err
 	}
 
-	generalNamesBytes, err := certificates.MarshalToSubjectAlternativeNamesData(generalNames)
+	generalNamesBytes, err := certutils.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: csr signature is not checked
-	certificateTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
+	certificateTemplate := ca.ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         buildCertificateCommonName(pod, cluster.Name, cluster.Namespace),
 			OrganizationalUnit: []string{cluster.Name},
 		},
 
 		ExtraExtensions: []pkix.Extension{
-			{Id: certificates.SubjectAlternativeNamesObjectIdentifier, Value: generalNamesBytes},
+			{Id: certutils.SubjectAlternativeNamesObjectIdentifier, Value: generalNamesBytes},
 		},
 		NotBefore: time.Now().Add(-10 * time.Minute),
 		NotAfter:  time.Now().Add(certValidity),
@@ -65,7 +66,7 @@ func createValidatedCertificateTemplate(
 func buildGeneralNames(
 	cluster esv1.Elasticsearch,
 	pod corev1.Pod,
-) ([]certificates.GeneralName, error) {
+) ([]certutils.GeneralName, error) {
 	podIP := net.ParseIP(pod.Status.PodIP)
 	if podIP == nil {
 		return nil, errors.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
@@ -73,8 +74,8 @@ func buildGeneralNames(
 
 	commonName := buildCertificateCommonName(pod, cluster.Name, cluster.Namespace)
 
-	commonNameUTF8OtherName := &certificates.UTF8StringValuedOtherName{
-		OID:   certificates.CommonNameObjectIdentifier,
+	commonNameUTF8OtherName := &certutils.UTF8StringValuedOtherName{
+		OID:   certutils.CommonNameObjectIdentifier,
 		Value: commonName,
 	}
 	commonNameOtherName, err := commonNameUTF8OtherName.ToOtherName()
@@ -84,7 +85,7 @@ func buildGeneralNames(
 
 	// because we're using the ES-customized subject alternative-names extension, we have to handle all the general
 	// names here instead of using x509.Certificate.DNSNames, .IPAddresses etc.
-	generalNames := []certificates.GeneralName{
+	generalNames := []certutils.GeneralName{
 		{OtherName: *commonNameOtherName},
 		{DNSName: commonName},
 		// add the transport service name for remote cluster connections initially connecting through the service
