@@ -24,19 +24,6 @@ const (
 	AllocationExcludeAnnotationName = "elasticsearch.k8s.elastic.co/allocation-exclude"
 )
 
-// nodeIsMigratingData returns true if there are any shards left on the node to remove.
-func nodeIsMigratingData(nodeName string, shards client.Shards) bool {
-	// all shard copies currently living on the node leaving the cluster
-	shardsToMigrate := make([]client.Shard, 0)
-	// filter shards affected by node removal
-	for _, shard := range shards {
-		if shard.NodeName == nodeName {
-			shardsToMigrate = append(shardsToMigrate, shard)
-		}
-	}
-	return len(shardsToMigrate) > 0
-}
-
 // IsMigratingData looks only at the presence of shards on a given node
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
@@ -45,7 +32,16 @@ func IsMigratingData(ctx context.Context, shardLister esclient.ShardLister, podN
 	if err != nil {
 		return false, err
 	}
-	return nodeIsMigratingData(podName, shards), nil
+	// all shard copies currently living on the node leaving the cluster
+	shardsToMigrate := make([]client.Shard, 0)
+	// filter shards affected by node removal
+	for _, shard := range shards {
+		if shard.NodeName == podName {
+			shardsToMigrate = append(shardsToMigrate, shard)
+		}
+	}
+	return len(shardsToMigrate) > 0, nil
+
 }
 
 // allocationExcludeFromAnnotation returns the allocation exclude value stored in an annotation.
