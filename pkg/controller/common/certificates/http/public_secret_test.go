@@ -7,16 +7,17 @@ package http
 import (
 	"testing"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
@@ -30,9 +31,9 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 
 	certificate := &CertificatesSecret{
 		Data: map[string][]byte{
-			certificates.CAFileName:   ca,
-			certificates.CertFileName: tls,
-			certificates.KeyFileName:  key,
+			certutils.CAFileName:   ca,
+			certutils.CertFileName: tls,
+			certutils.KeyFileName:  key,
 		},
 	}
 
@@ -48,8 +49,8 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		wantSecret := &corev1.Secret{
 			ObjectMeta: k8s.ToObjectMeta(namespacedSecretName),
 			Data: map[string][]byte{
-				certificates.CertFileName: tls,
-				certificates.CAFileName:   ca,
+				certutils.CertFileName: tls,
+				certutils.CAFileName:   ca,
 			},
 		}
 
@@ -75,7 +76,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 			name: "is updated on mismatch",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
 				s := mkWantedSecret(t)
-				s.Data[certificates.CertFileName] = []byte{0, 1, 2, 3}
+				s.Data[certutils.CertFileName] = []byte{0, 1, 2, 3}
 				return mkClient(t, s)
 			},
 			wantSecret: mkWantedSecret,

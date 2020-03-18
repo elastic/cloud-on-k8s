@@ -5,7 +5,6 @@
 package http
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 )
@@ -18,7 +17,7 @@ const (
 // HTTPCertSecretVolume returns a SecretVolume to hold the HTTP certs for the given resource.
 func HTTPCertSecretVolume(namer name.Namer, name string) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		certificates.HTTPCertsInternalSecretName(namer, name),
+		InternalCertsSecretName(namer, name),
 		HTTPCertificatesSecretVolumeName,
 		HTTPCertificatesSecretVolumeMountPath,
 	)

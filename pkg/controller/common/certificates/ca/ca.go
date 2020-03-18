@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package certificates
+package ca
 
 import (
 	cryptorand "crypto/rand"
@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 )
 
 var (
@@ -66,7 +68,7 @@ func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 		}
 	}
 
-	notAfter := time.Now().Add(DefaultCertValidity)
+	notAfter := time.Now().Add(certutils.DefaultCertValidity)
 	if options.ExpireIn != nil {
 		notAfter = time.Now().Add(*options.ExpireIn)
 	}

@@ -4,7 +4,7 @@
 
 // +build integration
 
-package certificates
+package ca
 
 import (
 	"crypto/rsa"

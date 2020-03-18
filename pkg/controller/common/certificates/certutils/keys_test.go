@@ -4,7 +4,7 @@
 
 // +build integration
 
-package certificates
+package certutils
 
 import (
 	cryptorand "crypto/rand"

@@ -2,18 +2,15 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package certificates
+package certutils
 
 import (
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
-
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
-	log = logf.Log.WithName("certificates")
 
 	// SubjectAlternativeNamesObjectIdentifier is the OID for the Subject Alternative Name x509 extension
 	SubjectAlternativeNamesObjectIdentifier = asn1.ObjectIdentifier{2, 5, 29, 17}

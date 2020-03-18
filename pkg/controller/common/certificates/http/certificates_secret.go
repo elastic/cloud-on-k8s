@@ -5,19 +5,20 @@
 package http
 
 import (
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 type CertificatesSecret v1.Secret
 
 // CAPem returns the certificate of the certificate authority.
 func (s CertificatesSecret) CAPem() []byte {
-	return s.Data[certificates.CAFileName]
+	return s.Data[certutils.CAFileName]
 }
 
 // CertChain combines the certificate of the CA and the host certificate.
@@ -26,40 +27,40 @@ func (s CertificatesSecret) CertChain() []byte {
 }
 
 func (s CertificatesSecret) CertPem() []byte {
-	return s.Data[certificates.CertFileName]
+	return s.Data[certutils.CertFileName]
 }
 
 func (s CertificatesSecret) KeyPem() []byte {
-	return s.Data[certificates.KeyFileName]
+	return s.Data[certutils.KeyFileName]
 }
 
 // Validate checks that mandatory fields are present.
 // It does not check that the public key matches the private key.
 func (s CertificatesSecret) Validate() error {
 	// Validate private key
-	key, exist := s.Data[certificates.KeyFileName]
+	key, exist := s.Data[certutils.KeyFileName]
 	if !exist {
-		return pkgerrors.Errorf("can't find private key %s in %s/%s", certificates.KeyFileName, s.Namespace, s.Name)
+		return pkgerrors.Errorf("can't find private key %s in %s/%s", certutils.KeyFileName, s.Namespace, s.Name)
 	}
-	_, err := certificates.ParsePEMPrivateKey(key)
+	_, err := certutils.ParsePEMPrivateKey(key)
 	if err != nil {
 		return err
 	}
 	// Validate host certificate
-	cert, exist := s.Data[certificates.CertFileName]
+	cert, exist := s.Data[certutils.CertFileName]
 	if !exist {
-		return pkgerrors.Errorf("can't find certificate %s in %s/%s", certificates.CertFileName, s.Namespace, s.Name)
+		return pkgerrors.Errorf("can't find certificate %s in %s/%s", certutils.CertFileName, s.Namespace, s.Name)
 	}
-	_, err = certificates.ParsePEMCerts(cert)
+	_, err = certutils.ParsePEMCerts(cert)
 	if err != nil {
 		return err
 	}
 	// Eventually validate CA certificate
-	ca, exist := s.Data[certificates.CAFileName]
+	ca, exist := s.Data[certutils.CAFileName]
 	if !exist {
 		return nil
 	}
-	_, err = certificates.ParsePEMCerts(ca)
+	_, err = certutils.ParsePEMCerts(ca)
 	if err != nil {
 		return err
 	}

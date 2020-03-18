@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package certificates
+package certutils
 
 const (
 	// CAFileName is used for the CA Certificates inside a secret
