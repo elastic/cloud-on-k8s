@@ -53,13 +53,13 @@ spec:
 You can reference several secrets in the Elasticsearch specification.
 ECK aggregates their content into a single secret, mounted in every Elasticsearch Pod.
 
-Referenced secrets may be composed of 2 entries:
+Referenced secrets may be composed of 2 entries. You can provide either entry or both entry in each secret:
 
 - `users`: content of the `users` file. It specifies user names and password hashes, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation].
 - `users_roles`: content of the `users_roles` file. It associates each role to a list of users, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation].
 
 If you specify multiple users with the same name in more than one secret, the last one takes precedence.
-If you specify multiple roles with the same name in more than one secret, a single entry per role is be derived from the concatenation of its corresponding users from all secrets.
+If you specify multiple roles with the same name in more than one secret, a single entry per role is derived from the concatenation of its corresponding users from all secrets.
 
 The following Secret specifies three users and their respective roles:
 
@@ -128,7 +128,7 @@ spec:
 Several secrets can be referenced in the Elasticsearch specification.
 ECK aggregates their content into a single secret, mounted in every Elasticsearch Pod.
 
-Each secret must have a `roles.yml` entry, containing the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file[roles configuration].
+Each secret must have a `roles.yml` entry, containing the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file[roles definition].
 
 If you specify multiple roles with the same name in more than one secret, the last one takes precedence.
 
