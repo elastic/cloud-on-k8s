@@ -15,9 +15,9 @@ When using remote cluster connections with ECK, the setup process depends on whe
 [id="{p}-remote-clusters-connect-internal"]
 == Connect from an Elasticsearch cluster running in the same Kubernetes cluster
 
-NOTE: The remote clusters feature requires a valid Enterprise license or Enterprise trial license. See <<{p}-licensing, the license documentation>> for details how to install your license.
+NOTE: The remote clusters feature requires a valid Enterprise license or Enterprise trial license. See <<{p}-licensing, the license documentation>> for more details about managing licenses.
 
-You can create a remote cluster connection to another Elasticsearch cluster inside the same Kubernetes cluster by specifying the `remoteClusters` attribute in your Elasticsearch spec.
+You can create a remote cluster connection to another Elasticsearch cluster deployed within the same Kubernetes cluster by specifying the `remoteClusters` attribute in your Elasticsearch spec.
 
 For illustration purposes, consider the following example assuming you want to configure `cluster-two` as a remote cluster in `cluster-one`.
 
