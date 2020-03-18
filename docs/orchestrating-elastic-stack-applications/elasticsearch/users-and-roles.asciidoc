@@ -19,7 +19,7 @@ For example, the password of the `elastic` user for an Elasticsearch cluster nam
 
 [source,sh]
 ----
-kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode
+kubectl get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}'
 ----
 
 == Creating custom users
