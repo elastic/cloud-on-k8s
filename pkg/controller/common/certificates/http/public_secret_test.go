@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -44,10 +45,16 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		return k8s.WrappedFakeClient(objs...)
 	}
 
+	labels := map[string]string{"expected": "default-labels"}
+
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
 		t.Helper()
 		wantSecret := &corev1.Secret{
-			ObjectMeta: k8s.ToObjectMeta(namespacedSecretName),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespacedSecretName.Namespace,
+				Name:      namespacedSecretName.Name,
+				Labels:    labels,
+			},
 			Data: map[string][]byte{
 				certutils.CertFileName: tls,
 				certutils.CAFileName:   ca,
@@ -94,9 +101,6 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 			name: "preserves labels and annotations",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
 				s := mkWantedSecret(t)
-				if s.Labels == nil {
-					s.Labels = make(map[string]string)
-				}
 				s.Labels["label1"] = "labelValue1"
 				s.Labels["label2"] = "labelValue2"
 				if s.Annotations == nil {
@@ -108,9 +112,6 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 			},
 			wantSecret: func(t *testing.T) *corev1.Secret {
 				s := mkWantedSecret(t)
-				if s.Labels == nil {
-					s.Labels = make(map[string]string)
-				}
 				s.Labels["label1"] = "labelValue1"
 				s.Labels["label2"] = "labelValue2"
 				if s.Annotations == nil {
@@ -127,7 +128,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcileHTTPCertsPublicSecret(client, owner, esv1.ESNamer, certificate)
+			err := ReconcileHTTPCertsPublicSecret(client, owner, esv1.ESNamer, certificate, labels)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return

@@ -87,6 +87,6 @@ func ReconcileCAAndHTTPCerts(
 	})
 
 	// reconcile http public cert secret, which does not contain the private key
-	results.WithError(http.ReconcileHTTPCertsPublicSecret(k8sClient, object, namer, httpCertificates))
+	results.WithError(http.ReconcileHTTPCertsPublicSecret(k8sClient, object, namer, httpCertificates, labels))
 	return httpCertificates, results
 }

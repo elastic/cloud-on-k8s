@@ -25,9 +25,15 @@ func ReconcileHTTPCertsPublicSecret(
 	owner metav1.Object,
 	namer name.Namer,
 	httpCertificates *CertificatesSecret,
+	labels map[string]string,
 ) error {
+	nsn := PublicCertsSecretRef(namer, k8s.ExtractNamespacedName(owner))
 	expected := &corev1.Secret{
-		ObjectMeta: k8s.ToObjectMeta(PublicCertsSecretRef(namer, k8s.ExtractNamespacedName(owner))),
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: nsn.Namespace,
+			Name:      nsn.Name,
+			Labels:    labels,
+		},
 		Data: map[string][]byte{
 			certutils.CertFileName: httpCertificates.CertPem(),
 		},

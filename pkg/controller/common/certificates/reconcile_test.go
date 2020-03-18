@@ -67,13 +67,15 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 			require.NotNil(t, httpCerts)
 			require.NotEmpty(t, httpCerts.Data)
 
-			// the 3 secrets should have been created in the apiserver
+			// the 3 secrets should have been created in the apiserver,
+			// and have the expected labels and content generated
 			var caCerts corev1.Secret
 			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: ca.CAInternalSecretName(esv1.ESNamer, obj.Name, ca.HTTPCAType)}, &caCerts)
 			require.NoError(t, err)
 			require.Len(t, caCerts.Data, 2)
 			require.NotEmpty(t, caCerts.Data[certutils.CertFileName])
 			require.NotEmpty(t, caCerts.Data[certutils.KeyFileName])
+			require.Equal(t, labels, caCerts.Labels)
 
 			var internalCerts corev1.Secret
 			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: http.InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
@@ -82,13 +84,15 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 			require.NotEmpty(t, internalCerts.Data[certutils.CAFileName])
 			require.NotEmpty(t, internalCerts.Data[certutils.CertFileName])
 			require.NotEmpty(t, internalCerts.Data[certutils.KeyFileName])
+			require.Equal(t, labels, internalCerts.Labels)
 
 			var publicCerts corev1.Secret
 			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: http.PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)
 			require.NoError(t, err)
 			require.Len(t, publicCerts.Data, 2)
-			require.NotEmpty(t, internalCerts.Data[certutils.CAFileName])
-			require.NotEmpty(t, internalCerts.Data[certutils.CertFileName])
+			require.NotEmpty(t, publicCerts.Data[certutils.CAFileName])
+			require.NotEmpty(t, publicCerts.Data[certutils.CertFileName])
+			require.Equal(t, labels, publicCerts.Labels)
 		})
 	}
 }
