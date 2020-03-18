@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license/validation"
@@ -158,12 +159,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTr
 	}
 }
 
-func add(mgr manager.Manager, r *ReconcileTrials) error {
-	// Create a new controller
-	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
+func addWatches(c controller.Controller) error {
 
 	// Watch the trial status secret and the enterprise trial licenses as well
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
@@ -205,7 +201,11 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	r := newReconciler(mgr, params)
-	return add(mgr, r)
+	c, err := common.NewController(mgr, name, r, params)
+	if err != nil {
+		return err
+	}
+	return addWatches(c)
 }
 
 var _ reconcile.Reconciler = &ReconcileTrials{}
