@@ -25,8 +25,8 @@ ECK can be configured using either command line flags or environment variables.
 |enable-webhook | false | Enables a validating webhook server in the operator process.
 |enforce-rbac-on-refs| false | Enables restrictions on cross-namespace resource association through RBAC
 |log-verbosity |0 |Verbosity level of logs. `-2`=Error, `-1`=Warn, `0`=Info, `0` and above=Debug
-|max-concurrent-reconciles |3 | Maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, APM Server). Affects the ability of the operator to process changes concurrently.
 |manage-webhook-certs |true |Enables automatic webhook certificate management.
+|max-concurrent-reconciles |3 | Maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, APM Server). Affects the ability of the operator to process changes concurrently.
 |metrics-port |0 |Prometheus metrics port. Set to 0 to disable the metrics endpoint.
 |namespaces |"" |Namespaces in which this operator should manage resources. Accepts multiple comma-separated values. Defaults to all namespaces if empty or unspecified.
 |operator-namespace |"" |Namespace the operator runs in. Required.
