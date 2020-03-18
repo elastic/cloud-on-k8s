@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// NewController creates a new controller with the given reconciler r and the common parameters in p.
+// NewController creates a new controller with the given name, reconciler and parameters and registers it with the manager.
 func NewController(mgr manager.Manager, name string, r reconcile.Reconciler, p operator.Parameters) (controller.Controller, error) {
 	return controller.New(name, mgr, controller.Options{Reconciler: r, MaxConcurrentReconciles: p.MaxConcurrentReconciles})
 }
