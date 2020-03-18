@@ -204,7 +204,18 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	results := ReconcileCertificates(ctx, r, &ents, []corev1.Service{*svc}, r.CACertRotation, r.CertRotation)
+	_, results := certificates.ReconcileCAAndHTTPCerts(
+		ctx,
+		&ents,
+		ents.Spec.HTTP.TLS,
+		NewLabels(ents.Name),
+		entsname.EntSearchNamer,
+		r.K8sClient(),
+		r.DynamicWatches(),
+		[]corev1.Service{*svc},
+		r.CACertRotation,
+		r.CertRotation,
+	)
 	if results.HasError() {
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, &ents, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
