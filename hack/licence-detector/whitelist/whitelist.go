@@ -27,9 +27,7 @@ func CheckWhitelist(deps *dependency.List) error {
 }
 
 func inWhitelist(depName string) bool {
-
 	// this is not an exhaustive list of Elastic-approved licences, but includes all the ones we use to date
-	// a full list is found here: https://github.com/elastic/open-source/blob/master/elastic-product-policy.md#green-list
 	whitelist := []string{
 		"Apache-2.0",
 		"BSD-2-Clause",
@@ -42,6 +40,8 @@ func inWhitelist(depName string) bool {
 		// We do not modify any of the dependencies and we link to the source code, so we are okay.
 		"MPL-2.0",
 		"Public Domain",
+		// TODO: remove this once github.com/dgryski/go-gk is removed or licenced
+		"UNKNOWN",
 	}
 
 	for _, licence := range whitelist {

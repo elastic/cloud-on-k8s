@@ -93,14 +93,12 @@ func TestCheckWhitelist(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-
 		t.Run(tc.name, func(t *testing.T) {
 			deps := &dependency.List{
 				Direct:   tc.direct,
 				Indirect: tc.indirect,
 			}
 			res := CheckWhitelist(deps)
-
 			if tc.wantErr {
 				assert.Error(t, res)
 			} else {
