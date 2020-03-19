@@ -6,7 +6,13 @@ package remoteca
 
 import (
 	"context"
-	"reflect"
+
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -14,13 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // createOrUpdateCertificateAuthorities creates the two Secrets that are needed to establish a trust relationship between
@@ -166,18 +165,6 @@ func reconcileRemoteCA(
 		},
 	}
 
-	var reconciled corev1.Secret
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Owner:      target,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			return !maps.IsSubset(expected.Labels, reconciled.Labels) || !reflect.DeepEqual(expected.Data, reconciled.Data)
-		},
-		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Data = expected.Data
-		},
-	})
+	_, err := reconciler.ReconcileSecret(c, expected, target)
+	return err
 }
