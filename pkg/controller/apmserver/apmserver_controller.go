@@ -270,7 +270,9 @@ func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 }
 
-func reconcileApmServerSecret(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+// reconcileApmServerToken reconciles a Secret containing the APM Server token.
+// It reuses the existing token if possible.
+func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
 	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
@@ -390,7 +392,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	reconciledApmServerSecret, err := reconcileApmServerSecret(r.Client, as)
+	tokenSecret, err := reconcileApmServerToken(r.Client, as)
 	if err != nil {
 		return state, err
 	}
@@ -416,8 +418,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 		PodTemplate: as.Spec.PodTemplate,
 
-		ApmServerSecret: reconciledApmServerSecret,
-		ConfigSecret:    reconciledConfigSecret,
+		TokenSecret:  tokenSecret,
+		ConfigSecret: reconciledConfigSecret,
 
 		keystoreResources: keystoreResources,
 	}
@@ -431,7 +433,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	state.UpdateApmServerState(result, reconciledApmServerSecret)
+	state.UpdateApmServerState(result, tokenSecret)
 	return state, nil
 }
 

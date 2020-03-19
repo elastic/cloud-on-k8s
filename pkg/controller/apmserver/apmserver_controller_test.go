@@ -201,7 +201,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	}
 	defaultPodSpecParams := PodSpecParams{
 		Version: "1.0",
-		ApmServerSecret: corev1.Secret{
+		TokenSecret: corev1.Secret{
 			ObjectMeta: v1.ObjectMeta{
 				Name: "test-apm-server-apm-token",
 			},
@@ -415,7 +415,7 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 	}
 }
 
-func Test_reconcileApmServerSecret(t *testing.T) {
+func Test_reconcileApmServerToken(t *testing.T) {
 	apm := &apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -446,7 +446,7 @@ func Test_reconcileApmServerSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileApmServerSecret(tt.c, apm)
+			got, err := reconcileApmServerToken(tt.c, apm)
 			require.NoError(t, err)
 			require.NotEmpty(t, got.Data[SecretTokenKey])
 			if tt.reuseToken != nil {
