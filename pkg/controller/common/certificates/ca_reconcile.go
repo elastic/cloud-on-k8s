@@ -106,15 +106,7 @@ func renewCA(
 	caInternalSecret := internalSecretForCA(ca, namer, owner, labels, caType)
 
 	// create or update internal secret
-	reconciledCAInternalSecret := corev1.Secret{}
-	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client:           client,
-		Expected:         &caInternalSecret,
-		NeedsUpdate:      func() bool { return true },
-		Owner:            owner,
-		Reconciled:       &reconciledCAInternalSecret,
-		UpdateReconciled: func() { reconciledCAInternalSecret.Data = caInternalSecret.Data },
-	}); err != nil {
+	if _, err := reconciler.ReconcileSecret(client, caInternalSecret, owner); err != nil {
 		return nil, err
 	}
 

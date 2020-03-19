@@ -46,7 +46,7 @@ var log = logf.Log.WithName(name)
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := add(mgr, reconciler)
+	c, err := common.NewController(mgr, name, reconciler, params)
 	if err != nil {
 		return err
 	}
@@ -62,12 +62,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 		dynamicWatches: watches.NewDynamicWatches(),
 		params:         params,
 	}
-}
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	// Create a new controller
-	return controller.New(name, mgr, controller.Options{Reconciler: r})
 }
 
 func addWatches(c controller.Controller, r *ReconcileKibana) error {

@@ -6,7 +6,6 @@ package config
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -52,20 +51,7 @@ func ReconcileConfigSecret(
 			telemetryFilename: telemetryYamlBytes,
 		},
 	}
-	reconciled := corev1.Secret{}
-	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client:     client,
-		Owner:      &kb,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(reconciled.Data, expected.Data)
-		},
-		UpdateReconciled: func() {
-			reconciled.Data = expected.Data
-		},
-	}); err != nil {
-		return err
-	}
-	return nil
+
+	_, err = reconciler.ReconcileSecret(client, expected, &kb)
+	return err
 }

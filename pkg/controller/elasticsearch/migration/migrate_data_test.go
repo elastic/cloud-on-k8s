@@ -23,7 +23,6 @@ func TestIsMigratingData(t *testing.T) {
 	type args struct {
 		shardLister client.ShardLister
 		podName     string
-		exclusions  []string
 	}
 	tests := []struct {
 		name    string
@@ -43,7 +42,7 @@ func TestIsMigratingData(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Test enough redundancy",
+			name: "Node needs to be completely evacuated",
 			args: args{
 				podName: "A",
 				shardLister: NewFakeShardLister([]client.Shard{
@@ -52,7 +51,7 @@ func TestIsMigratingData(t *testing.T) {
 					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
 				}),
 			},
-			want: false,
+			want: true,
 		},
 		{
 			name: "Nothing to migrate",
@@ -99,36 +98,10 @@ func TestIsMigratingData(t *testing.T) {
 			},
 			want: true,
 		},
-		{
-			name: "Valid copy exists",
-			args: args{
-				podName:    "A",
-				exclusions: []string{"A", "B"},
-				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "B"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
-				}),
-			},
-			want: false,
-		},
-		{
-			name: "No Valid copy exists, all nodes are excluded",
-			args: args{
-				podName:    "A",
-				exclusions: []string{"B", "C"},
-				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "B"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
-				}),
-			},
-			want: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := IsMigratingData(context.Background(), tt.args.shardLister, tt.args.podName, tt.args.exclusions)
+			got, err := IsMigratingData(context.Background(), tt.args.shardLister, tt.args.podName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("IsMigratingData() error = %v, wantErr %v", err, tt.wantErr)
 				return
