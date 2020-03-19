@@ -37,7 +37,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-// CheckKbStatusHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its login page.
+// CheckKbStatusHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its API status.
 func (check *kbChecks) CheckKbStatusHealthy(kb kbv1.Kibana) test.Step {
 	return test.Step{
 		Name: "Kibana should be able to connect to Elasticsearch",
