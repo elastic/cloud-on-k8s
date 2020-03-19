@@ -281,8 +281,10 @@ func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 }
 
-func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1.ApmServer) (*corev1.Secret, error) {
-	expectedApmServerSecret := &corev1.Secret{
+// reconcileApmServerToken reconciles a Secret containing the APM Server token.
+// It reuses the existing token if possible.
+func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      apmname.SecretToken(as.Name),
@@ -292,48 +294,17 @@ func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1.ApmServer) (*cor
 			SecretTokenKey: []byte(rand.String(24)),
 		},
 	}
-	reconciledApmServerSecret := &corev1.Secret{}
-	return reconciledApmServerSecret, reconciler.ReconcileResource(
-		reconciler.Params{
-			Client: r.Client,
+	// reuse the secret token if it already exists
+	var existingSecret corev1.Secret
+	err := c.Get(k8s.ExtractNamespacedName(&expectedApmServerSecret), &existingSecret)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return corev1.Secret{}, err
+	}
+	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
+		expectedApmServerSecret.Data[SecretTokenKey] = token
+	}
 
-			Owner:      as,
-			Expected:   expectedApmServerSecret,
-			Reconciled: reconciledApmServerSecret,
-
-			NeedsUpdate: func() bool {
-				if !reflect.DeepEqual(reconciledApmServerSecret.Labels, expectedApmServerSecret.Labels) {
-					return true
-				}
-
-				if reconciledApmServerSecret.Data == nil {
-					return true
-				}
-
-				// re-use the secret token key if it exists
-				existingSecretTokenKey, hasExistingSecretTokenKey := reconciledApmServerSecret.Data[SecretTokenKey]
-				if hasExistingSecretTokenKey {
-					expectedApmServerSecret.Data[SecretTokenKey] = existingSecretTokenKey
-				}
-
-				if !reflect.DeepEqual(reconciledApmServerSecret.Data, expectedApmServerSecret.Data) {
-					return true
-				}
-
-				return false
-			},
-			UpdateReconciled: func() {
-				reconciledApmServerSecret.Labels = expectedApmServerSecret.Labels
-				reconciledApmServerSecret.Data = expectedApmServerSecret.Data
-			},
-			PreCreate: func() {
-				log.Info("Creating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
-			},
-			PreUpdate: func() {
-				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
-			},
-		},
-	)
+	return reconciler.ReconcileSecret(c, expectedApmServerSecret, as)
 }
 
 func (r *ReconcileApmServer) deploymentParams(
@@ -432,7 +403,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	reconciledApmServerSecret, err := r.reconcileApmServerSecret(as)
+	tokenSecret, err := reconcileApmServerToken(r.Client, as)
 	if err != nil {
 		return state, err
 	}
@@ -458,8 +429,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 		PodTemplate: as.Spec.PodTemplate,
 
-		ApmServerSecret: *reconciledApmServerSecret,
-		ConfigSecret:    *reconciledConfigSecret,
+		TokenSecret:  tokenSecret,
+		ConfigSecret: reconciledConfigSecret,
 
 		keystoreResources: keystoreResources,
 	}
@@ -473,7 +444,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	state.UpdateApmServerState(result, *reconciledApmServerSecret)
+	state.UpdateApmServerState(result, tokenSecret)
 	return state, nil
 }
 

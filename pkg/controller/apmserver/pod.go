@@ -78,8 +78,8 @@ type PodSpecParams struct {
 
 	PodTemplate corev1.PodTemplateSpec
 
-	ApmServerSecret corev1.Secret
-	ConfigSecret    corev1.Secret
+	TokenSecret  corev1.Secret
+	ConfigSecret corev1.Secret
 
 	keystoreResources *keystore.Resources
 }
@@ -95,7 +95,7 @@ func newPodSpec(as *apmv1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 		Name: "SECRET_TOKEN",
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{Name: p.ApmServerSecret.Name},
+				LocalObjectReference: corev1.LocalObjectReference{Name: p.TokenSecret.Name},
 				Key:                  SecretTokenKey,
 			},
 		},

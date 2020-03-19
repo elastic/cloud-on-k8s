@@ -234,7 +234,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	}
 
 	// build a hash of various inputs to rotate Pods on any change
-	configHash, err := buildConfigHash(r.K8sClient(), ents, *configSecret)
+	configHash, err := buildConfigHash(r.K8sClient(), ents, configSecret)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

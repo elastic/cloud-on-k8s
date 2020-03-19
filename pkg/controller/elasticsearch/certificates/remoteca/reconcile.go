@@ -6,7 +6,6 @@ package remoteca
 
 import (
 	"bytes"
-	"reflect"
 	"sort"
 
 	v1 "k8s.io/api/core/v1"
@@ -19,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 // Reconcile fetches the list of remote certificate authorities and concatenates them into a single Secret
@@ -59,19 +57,6 @@ func Reconcile(
 			certutils.CAFileName: bytes.Join(remoteCertificateAuthorities, nil),
 		},
 	}
-
-	var reconciled v1.Secret
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Owner:      &es,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			return !maps.IsSubset(expected.Labels, reconciled.Labels) || !reflect.DeepEqual(expected.Data, reconciled.Data)
-		},
-		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Data = expected.Data
-		},
-	})
+	_, err := reconciler.ReconcileSecret(c, expected, &es)
+	return err
 }

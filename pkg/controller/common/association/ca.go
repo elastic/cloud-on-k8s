@@ -5,9 +5,6 @@
 package association
 
 import (
-	"reflect"
-
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,21 +59,7 @@ func ReconcileCASecret(
 		},
 		Data: publicESHTTPCertificatesSecret.Data,
 	}
-	var reconciledSecret corev1.Secret
-	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client:     client,
-		Owner:      associated,
-		Expected:   &expectedSecret,
-		Reconciled: &reconciledSecret,
-		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(expectedSecret.Data, reconciledSecret.Data) ||
-				!maps.IsSubset(expectedSecret.Labels, reconciledSecret.Labels)
-		},
-		UpdateReconciled: func() {
-			reconciledSecret.Data = expectedSecret.Data
-			maps.Merge(reconciledSecret.Labels, expectedSecret.Labels)
-		},
-	}); err != nil {
+	if _, err := reconciler.ReconcileSecret(client, expectedSecret, associated); err != nil {
 		return CASecret{}, err
 	}
 

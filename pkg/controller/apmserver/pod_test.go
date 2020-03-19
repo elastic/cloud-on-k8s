@@ -51,9 +51,9 @@ func TestNewPodSpec(t *testing.T) {
 						Name:      "config-secret",
 					},
 				},
-				ApmServerSecret: corev1.Secret{
+				TokenSecret: corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "apm-secret",
+						Name: "token-secret",
 					},
 				},
 			},
@@ -84,7 +84,7 @@ func TestNewPodSpec(t *testing.T) {
 									Name: "SECRET_TOKEN",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{Name: "apm-secret"},
+											LocalObjectReference: corev1.LocalObjectReference{Name: "token-secret"},
 											Key:                  SecretTokenKey,
 										},
 									},
