@@ -882,8 +882,8 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 Package v1beta1 contains API schema definitions for managing Enterprise Search resources.
 
 .Resource Types
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearch[$$EnterpriseSearch$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchlist[$$EnterpriseSearchList$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearch[$$EnterpriseSearch$$]
 
 
 
