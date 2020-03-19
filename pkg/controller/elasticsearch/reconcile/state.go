@@ -91,7 +91,7 @@ func (s *State) UpdateElasticsearchMigrating(
 	s.AddEvent(
 		corev1.EventTypeNormal,
 		events.EventReasonDelayed,
-		"Requested topology change delayed by data migration",
+		"Requested topology change delayed by data migration. Ensure index replica settings allow node removal.",
 	)
 	return s.updateWithPhase(esv1.ElasticsearchMigratingDataPhase, resourcesState, observedState)
 }

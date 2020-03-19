@@ -57,7 +57,7 @@ func HandleDownscale(
 
 	for _, downscale := range downscales {
 		// attempt the StatefulSet downscale (may or may not remove nodes)
-		requeue, err := attemptDownscale(downscaleCtx, downscale, leavingNodes, actualStatefulSets)
+		requeue, err := attemptDownscale(downscaleCtx, downscale, actualStatefulSets)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -131,11 +131,10 @@ func calculateDownscales(
 func attemptDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
-	allLeavingNodes []string,
 	statefulSets sset.StatefulSetList,
 ) (bool, error) {
 	// adjust the theoretical downscale to one we can safely perform
-	performable, err := calculatePerformableDownscale(ctx, downscale, allLeavingNodes)
+	performable, err := calculatePerformableDownscale(ctx, downscale)
 	if err != nil {
 		return true, err
 	}
@@ -172,7 +171,6 @@ func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, sta
 func calculatePerformableDownscale(
 	ctx downscaleContext,
 	downscale ssetDownscale,
-	allLeavingNodes []string,
 ) (ssetDownscale, error) {
 	// create another downscale based on the provided one, for which we'll slowly decrease target replicas
 	performableDownscale := ssetDownscale{
@@ -183,7 +181,7 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		migrating, err := migration.IsMigratingData(ctx.parentCtx, ctx.shardLister, node, allLeavingNodes)
+		migrating, err := migration.IsMigratingData(ctx.parentCtx, ctx.shardLister, node)
 		if err != nil {
 			return performableDownscale, err
 		}
