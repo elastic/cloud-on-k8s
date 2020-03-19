@@ -1542,6 +1542,20 @@ spec:
             config:
               description: Config holds the Enterprise Search configuration.
               type: object
+            configRef:
+              description: 'ConfigRef contains references to Kubernetes Secrets holding
+                the Enterprise Search configuration. Multiple secrets can be referenced:
+                they are merged into a single configuration secret. If duplicate settings
+                exist in multiple secrets, the last one takes precedence.'
+              items:
+                description: ConfigSource references configuration settings to include
+                  in the Enterprise Search configuration.
+                properties:
+                  secretName:
+                    description: SecretName is the name of the secret.
+                    type: string
+                type: object
+              type: array
             count:
               description: Count of Enterprise Search instances to deploy.
               format: int32

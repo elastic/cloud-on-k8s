@@ -215,7 +215,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	configSecret, err := ReconcileConfig(r.K8sClient(), ents)
+	configSecret, err := ReconcileConfig(r.K8sClient(), r.DynamicWatches(), ents)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
