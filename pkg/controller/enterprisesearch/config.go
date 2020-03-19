@@ -7,7 +7,6 @@ package enterprisesearch
 import (
 	"fmt"
 	"path/filepath"
-	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,19 +35,19 @@ func ConfigSecretVolume(ents entsv1beta1.EnterpriseSearch) volume.SecretVolume {
 
 // Reconcile reconciles the configuration of Enterprise Search: it generates the right configuration and
 // stores it in a secret that is kept up to date.
-func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*corev1.Secret, error) {
+func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (corev1.Secret, error) {
 	cfg, err := newConfig(client, ents)
 	if err != nil {
-		return nil, err
+		return corev1.Secret{}, err
 	}
 
 	cfgBytes, err := cfg.Render()
 	if err != nil {
-		return nil, err
+		return corev1.Secret{}, err
 	}
 
 	// Reconcile the configuration in a secret
-	expectedConfigSecret := &corev1.Secret{
+	expectedConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ents.Namespace,
 			Name:      name.Config(ents.Name),
@@ -59,26 +58,7 @@ func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*cor
 		},
 	}
 
-	reconciledConfigSecret := &corev1.Secret{}
-	if err := reconciler.ReconcileResource(
-		reconciler.Params{
-			Client:     client,
-			Owner:      &ents,
-			Expected:   expectedConfigSecret,
-			Reconciled: reconciledConfigSecret,
-			NeedsUpdate: func() bool {
-				return !reflect.DeepEqual(reconciledConfigSecret.Data, expectedConfigSecret.Data) ||
-					!reflect.DeepEqual(reconciledConfigSecret.Labels, expectedConfigSecret.Labels)
-			},
-			UpdateReconciled: func() {
-				reconciledConfigSecret.Labels = expectedConfigSecret.Labels
-				reconciledConfigSecret.Data = expectedConfigSecret.Data
-			},
-		},
-	); err != nil {
-		return nil, err
-	}
-	return reconciledConfigSecret, nil
+	return reconciler.ReconcileSecret(client, expectedConfigSecret, &ents)
 }
 
 func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {

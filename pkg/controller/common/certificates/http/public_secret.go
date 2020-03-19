@@ -5,13 +5,10 @@
 package http
 
 import (
-	"reflect"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,7 +22,7 @@ func ReconcileHTTPCertsPublicSecret(
 	namer name.Namer,
 	httpCertificates *CertificatesSecret,
 ) error {
-	expected := &corev1.Secret{
+	expected := corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(PublicCertsSecretRef(namer, k8s.ExtractNamespacedName(owner))),
 		Data: map[string][]byte{
 			certificates.CertFileName: httpCertificates.CertPem(),
@@ -35,31 +32,8 @@ func ReconcileHTTPCertsPublicSecret(
 		expected.Data[certificates.CAFileName] = caPem
 	}
 
-	reconciled := &corev1.Secret{}
-
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Owner:      owner,
-		Expected:   expected,
-		Reconciled: reconciled,
-		NeedsUpdate: func() bool {
-			switch {
-			case !maps.IsSubset(expected.Labels, reconciled.Labels):
-				return true
-			case !maps.IsSubset(expected.Annotations, reconciled.Annotations):
-				return true
-			case !reflect.DeepEqual(expected.Data, reconciled.Data):
-				return true
-			default:
-				return false
-			}
-		},
-		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
-			reconciled.Data = expected.Data
-		},
-	})
+	_, err := reconciler.ReconcileSecret(c, expected, owner)
+	return err
 }
 
 // PublicCertsSecretRef returns the NamespacedName for the Secret containing the publicly available HTTP CA.

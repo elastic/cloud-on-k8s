@@ -6,7 +6,6 @@ package keystore
 
 import (
 	"fmt"
-	"reflect"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -111,19 +110,11 @@ func reconcileSecureSettings(
 		return nil, err
 	}
 
-	reconciled := corev1.Secret{}
-	return &reconciled, reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Owner:      hasKeystore,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(expected.Data, reconciled.Data)
-		},
-		UpdateReconciled: func() {
-			reconciled.Data = expected.Data
-		},
-	})
+	secret, err := reconciler.ReconcileSecret(c, expected, hasKeystore)
+	if err != nil {
+		return nil, err
+	}
+	return &secret, nil
 }
 
 func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore) ([]corev1.Secret, error) {

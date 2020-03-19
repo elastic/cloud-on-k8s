@@ -6,7 +6,6 @@ package license
 
 import (
 	"encoding/json"
-	"reflect"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -25,8 +24,6 @@ import (
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -62,7 +59,12 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, p operator.Parameters) error {
-	return add(mgr, newReconciler(mgr, p))
+	r := newReconciler(mgr, p)
+	c, err := common.NewController(mgr, name, r, p)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, r.Client)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -95,14 +97,8 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 	}
 }
 
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r *ReconcileLicenses) error {
-	// Create a new controller
-	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
+// addWatches adds a new Controller to mgr with r as the reconcile.Reconciler
+func addWatches(c controller.Controller, client k8s.Client) error {
 	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
 		&source.Kind{Type: &esv1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
@@ -125,7 +121,7 @@ func add(mgr manager.Manager, r *ReconcileLicenses) error {
 
 			// if a license is added/modified we want to update for potentially all clusters managed by this instance
 			// of ECK which is why we are listing all Elasticsearch clusters here and trigger a reconciliation
-			rs, err := reconcileRequestsForAllClusters(r)
+			rs, err := reconcileRequestsForAllClusters(client)
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
@@ -188,21 +184,7 @@ func reconcileSecret(
 		},
 	}
 	// create/update a secret in the cluster's namespace containing the same data
-	var reconciled corev1.Secret
-	err = reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Owner:      &cluster,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			return !(reflect.DeepEqual(reconciled.Data, expected.Data) &&
-				compare.LabelsAndAnnotationsAreEqual(reconciled.ObjectMeta, expected.ObjectMeta))
-		},
-		UpdateReconciled: func() {
-			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
-			reconciled.Data = expected.Data
-		},
-	})
+	_, err = reconciler.ReconcileSecret(c, expected, &cluster)
 	return err
 }
 

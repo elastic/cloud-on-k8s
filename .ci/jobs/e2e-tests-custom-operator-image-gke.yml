@@ -9,8 +9,8 @@
           description: "ECK Docker image"
       - string:
           name: JKS_PARAM_K8S_VERSION
-          default: 1.13
-          description: "Kubernetes version, default is 1.13"
+          default: 1.14
+          description: "Kubernetes version, default is 1.14"
       - bool:
           name: SEND_NOTIFICATIONS
           default: true

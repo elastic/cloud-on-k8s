@@ -70,7 +70,7 @@ Here are a few examples based on the Elasticsearch specification above:
 
 ECK orchestrates `NodeSet` changes with no downtime and makes sure that:
 
-- Before a node is removed, the relevant data is migrated to other nodes.
+- Before a node is removed, the relevant data is migrated to other nodes (but see <<{p}-orchestration-limitations,Limitations>>).
 - When a cluster topology changes, the Elasticsearch orchestration settings `discovery.seed_hosts`, `cluster.initial_master_nodes`, `discovery.zen.minimum_master_nodes`, `_cluster/voting_config_exclusions` are adjusted accordingly.
 - Rolling upgrades are performed safely, reusing the `PersistentVolumes` of the upgraded Elasticsearch nodes.
 
@@ -132,3 +132,10 @@ The health of the cluster is deliberately ignored in the following cases:
 * Elasticsearch versions cannot be downgraded. For example it is impossible to downgrade an existing cluster from version 7.3.0 to 7.2.0. This is not supported by Elasticsearch.
 
 Advanced users may force an upgrade by manually deleting `Pods` themselves. The deleted `Pods` will be automatically recreated at the latest revision.
+
+Operations that reduce the number of nodes in the cluster cannot make progress without user intervention if the Elasticsearch index replica settings are incompatible with the intended downscale.
+Specifically if the Elasticsearch index settings demand a higher number of shard copies than data nodes in the cluster after the downscale operation, ECK cannot migrate the data away from the node about to be removed. Users can address this in the following ways:
+
+** Adjust the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-update-settings.html[index settings] to a number of replicas that allow the desired node removal
+** Use link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#dynamic-index-settings[`auto_expand_replicas`] to automatically adjust the replicas to the number of data nodes in the cluster
+
