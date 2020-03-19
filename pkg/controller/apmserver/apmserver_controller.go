@@ -81,7 +81,7 @@ var (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := add(mgr, reconciler)
+	c, err := common.NewController(mgr, name, reconciler, params)
 	if err != nil {
 		return err
 	}
@@ -136,12 +136,6 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	}
 
 	return nil
-}
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	// Create a new controller
-	return controller.New(name, mgr, controller.Options{Reconciler: r})
 }
 
 var _ reconcile.Reconciler = &ReconcileApmServer{}
