@@ -24,6 +24,8 @@ type Parameters struct {
 	CACertRotation certutils.RotationParams
 	// CertRotation defines the rotation params for non-CA certificates.
 	CertRotation certutils.RotationParams
+	// MaxConcurrentReconciles controls the number of goroutines per controller.
+	MaxConcurrentReconciles int
 	// Tracer is a shared APM tracer instance or nil
 	Tracer *apm.Tracer
 }
