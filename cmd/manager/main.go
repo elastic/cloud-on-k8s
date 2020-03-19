@@ -139,7 +139,7 @@ func init() {
 	Cmd.Flags().Int(
 		operator.MaxConcurrentReconcilesFlag,
 		3,
-		"Sets maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, ApmServer etc)",
+		"Sets maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, Apm Server etc). Affects the ability of the operator to process changes concurrently.",
 	)
 	Cmd.Flags().Int(
 		operator.MetricsPortFlag,
