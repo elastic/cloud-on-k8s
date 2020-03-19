@@ -33,7 +33,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -75,7 +74,7 @@ var (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := newReconciler(mgr, accessReviewer, params)
-	c, err := add(mgr, r)
+	c, err := common.NewController(mgr, name, r, params)
 	if err != nil {
 		return err
 	}
@@ -92,16 +91,6 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		recorder:       mgr.GetEventRecorderFor(name),
 		Parameters:     params,
 	}
-}
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	// Create a new controller
-	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return c, err
-	}
-	return c, nil
 }
 
 var _ reconcile.Reconciler = &ReconcileAssociation{}
