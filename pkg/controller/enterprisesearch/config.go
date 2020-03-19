@@ -9,9 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -22,12 +19,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 const (
 	ESCertsPath     = "/mnt/elastic-internal/es-certs"
 	ConfigMountPath = "/mnt/elastic-internal/config"
 	ConfigFilename  = "enterprise-search.yml"
+
+	SecretSessionKey  = "secret_session_key"
+	EncryptionKeysKey = "secret_management.encryption_keys"
 )
 
 func ConfigSecretVolume(ents entsv1beta1.EnterpriseSearch) volume.SecretVolume {
@@ -81,8 +86,43 @@ func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*cor
 	return reconciledConfigSecret, nil
 }
 
+// enterpriseSearchSecrets captures secrets settings in the Enterprise Search configuration that we want to reuse.
+type enterpriseSearchSecrets struct {
+	SecretSessionKey  string   `config:"secret_session_key"`
+	EncryptionKeysKey []string `config:"secret_management.encryption_keys"`
+}
+
+// reuseOrGenerateSecretKeys reads the current configuration and reuse existing secrets it they exist.
+func reuseOrGenerateSecretKeys(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+	cfg, err := getExistingConfig(c, ents)
+	if err != nil {
+		return nil, err
+	}
+
+	var e enterpriseSearchSecrets
+	if cfg == nil {
+		e = enterpriseSearchSecrets{}
+	} else {
+		if err := cfg.Unpack(&e); err != nil {
+			return nil, err
+		}
+	}
+	if len(e.SecretSessionKey) == 0 {
+		e.SecretSessionKey = rand.String(32)
+	}
+	if len(e.EncryptionKeysKey) == 0 {
+		e.EncryptionKeysKey = []string{rand.String(32)}
+	}
+	return settings.MustCanonicalConfig(e), nil
+}
+
 func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	cfg := defaultConfig(ents)
+
+	secretCfg, err := reuseOrGenerateSecretKeys(c, ents)
+	if err != nil {
+		return nil, err
+	}
 
 	specConfig := ents.Spec.Config
 	if specConfig == nil {
@@ -99,7 +139,32 @@ func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.Canon
 	}
 
 	// merge with user settings last so they take precedence
-	if err := cfg.MergeWith(associationCfg, tlsConfig(ents), userProvidedCfg); err != nil {
+	if err := cfg.MergeWith(secretCfg, associationCfg, tlsConfig(ents), userProvidedCfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// getExistingConfig retrieves the canonical config, if one exists
+func getExistingConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+	var secret corev1.Secret
+	key := types.NamespacedName{
+		Namespace: ents.Namespace,
+		Name:      name.Config(ents.Name),
+	}
+	err := client.Get(key, &secret)
+	if err != nil && apierrors.IsNotFound(err) {
+		log.V(1).Info("Enterprise Search config secret does not exist", "namespace", ents.Namespace, "ents_name", ents.Name)
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	rawCfg, exists := secret.Data[ConfigFilename]
+	if !exists {
+		return nil, fmt.Errorf("Enterprise Search config secret %v exists but missing config file key %s", key, ConfigFilename)
+	}
+	cfg, err := settings.ParseConfig(rawCfg)
+	if err != nil {
 		return nil, err
 	}
 	return cfg, nil
@@ -110,9 +175,6 @@ func defaultConfig(ents entsv1beta1.EnterpriseSearch) *settings.CanonicalConfig 
 		"ent_search.external_url":        fmt.Sprintf("%s://localhost:%d", ents.Spec.HTTP.Protocol(), HTTPPort),
 		"ent_search.listen_host":         "0.0.0.0",
 		"allow_es_settings_modification": true,
-		// TODO explicitly handle those two
-		"secret_session_key":                "TODOCHANGEMEsecret_session_key",
-		"secret_management.encryption_keys": []string{"TODOCHANGEMEsecret_management.encryption_keys"},
 	})
 }
 
