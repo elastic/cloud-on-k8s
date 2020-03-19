@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ReconcileSecret creates or update the actual secret to match the expected one.
+// ReconcileSecret creates or updates the actual secret to match the expected one.
 // Existing annotations or labels that are not expected are preserved.
 func ReconcileSecret(c k8s.Client, expected corev1.Secret, owner metav1.Object) (corev1.Secret, error) {
 	var reconciled corev1.Secret
