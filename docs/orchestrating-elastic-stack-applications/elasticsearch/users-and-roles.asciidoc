@@ -1,0 +1,154 @@
+:parent_page_id: elasticsearch-specification
+:page_id: users-and-roles
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Users and roles
+
+== Default elastic user
+
+When the Elasticsearch resource is created, a default user named `elastic` is created automatically, and is assigned the `superuser` role.
+
+Its password can be retrieved in a Kubernetes secret, whose name
+is based on the Elasticsearch resource name: `<elasticsearch-name>-es-elastic-user`.
+
+For example, the password of the `elastic` user for an Elasticsearch cluster named `quickstart` can be retrieved with:
+
+[source,sh]
+----
+kubectl get secret quickstart-es-elastic-user -o go-template='{{.data.elastic | base64decode}}'
+----
+
+== Creating custom users
+
+=== Native realm
+
+You can create custom users in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/native-realm.html[Elasticsearch native realm] using link:https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api.html#security-user-apis[Elasticsearch user management APIs].
+
+=== File realm
+
+Custom users can also be created by providing the desired link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm content]
+in Kubernetes secrets, referenced in the Elasticsearch resource.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: {version}
+  auth:
+    fileRealm:
+    - secretName: my-filerealm-secret-1
+    - secretName: my-filerealm-secret-2
+  nodeSets:
+  - name: default
+    count: 1
+----
+
+You can reference several secrets in the Elasticsearch specification.
+ECK aggregates their content into a single secret, mounted in every Elasticsearch Pod.
+
+Referenced secrets may be composed of 2 entries. You can provide either entry or both entry in each secret:
+
+- `users`: content of the `users` file. It specifies user names and password hashes, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation].
+- `users_roles`: content of the `users_roles` file. It associates each role to a list of users, as described in the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/file-realm.html[file realm documentation].
+
+If you specify multiple users with the same name in more than one secret, the last one takes precedence.
+If you specify multiple roles with the same name in more than one secret, a single entry per role is derived from the concatenation of its corresponding users from all secrets.
+
+The following Secret specifies three users and their respective roles:
+
+[source,yaml]
+----
+kind: Secret
+apiVersion: v1
+metadata:
+  name: my-filerealm-secret
+stringData:
+  users: |-
+    rdeniro:$2a$10$BBJ/ILiyJ1eBTYoRKxkqbuDEdYECplvxnqQ47uiowE7yGqvCEgj9W
+    alpacino:$2a$10$cNwHnElYiMYZ/T3K4PvzGeJ1KbpXZp2PfoQD.gfaVdImnHOwIuBKS
+    jacknich:{PBKDF2}50000$z1CLJt0MEFjkIK5iEfgvfnA6xq7lF25uasspsTKSo5Q=$XxCVLbaKDimOdyWgLCLJiyoiWpA/XDMe/xtVgn1r5Sg=
+  users_roles: |-
+    admin:rdeniro
+    power_user:alpacino,jacknich
+    user:jacknich
+----
+
+You can populate the content of both `users` and `users_roles` using the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/users-command.html[elasticsearch-users] tool.
+
+For example, invoking the tool in a Docker container:
+
+[source,sh]
+----
+# create a folder with the 2 files
+mkdir filerealm
+touch filerealm/users filerealm/users_roles
+
+# create user 'myuser' with role 'monitoring_user'
+docker run \
+    -v ${PWD}/filerealm:/usr/share/elasticsearch/config \
+    docker.elastic.co/elasticsearch/elasticsearch:{version} \
+    bin/elasticsearch-users useradd myuser -p mypassword -r monitoring_user
+
+# create a Kubernetes secret with the file realm content
+kubectl create secret generic my-file-realm-secret --from-file filerealm
+----
+
+== Creating custom roles
+
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html[Roles] can be specified using the
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-api[Role management API],
+or the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-ui[Role management UI in Kibana].
+
+Additionally, link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file[file-based role management] can be achieved by referencing Kubernetes secrets containing the roles specification.
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: {version}
+  auth:
+    roles:
+    - secretName: my-roles-secret-1
+    - secretName: my-roles-secret-2
+  nodeSets:
+  - name: default
+    count: 1
+----
+
+Several secrets can be referenced in the Elasticsearch specification.
+ECK aggregates their content into a single secret, mounted in every Elasticsearch Pod.
+
+Each secret must have a `roles.yml` entry, containing the link:https://www.elastic.co/guide/en/elasticsearch/reference/current/defining-roles.html#roles-management-file[roles definition].
+
+If you specify multiple roles with the same name in more than one secret, the last one takes precedence.
+
+The following Secret specifies one role named `click_admins`:
+
+[source,yaml]
+----
+kind: Secret
+apiVersion: v1
+metadata:
+  name: my-roles-secret
+stringData:
+  roles.yml: |-
+    click_admins:
+      run_as: [ 'clicks_watcher_1' ]
+      cluster: [ 'monitor' ]
+      indices:
+      - names: [ 'events-*' ]
+        privileges: [ 'read' ]
+        field_security:
+          grant: ['category', '@timestamp', 'message' ]
+        query: '{"match": {"category": "click"}}'
+----

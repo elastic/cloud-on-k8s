@@ -22,6 +22,7 @@ Before you deploy and run ECK, take some time to look at the basic and advanced 
 - <<{p}-custom-http-certificate>>
 - <<{p}-reserved-settings>>
 - <<{p}-es-secure-settings>>
+- <<{p}-users-and-roles>>
 - <<{p}-bundles-plugins>>
 - <<{p}-init-containers-plugin-downloads>>
 - <<{p}-update-strategy>>
@@ -44,6 +45,7 @@ include::elasticsearch/virtual-memory.asciidoc[leveloffset=+1]
 include::elasticsearch/custom-http-certificate.asciidoc[leveloffset=+1]
 include::elasticsearch/reserved-settings.asciidoc[leveloffset=+1]
 include::elasticsearch/es-secure-settings.asciidoc[leveloffset=+1]
+include::elasticsearch/users-and-roles.asciidoc[leveloffset=+1]
 include::elasticsearch/bundles-plugins.asciidoc[leveloffset=+1]
 include::elasticsearch/init-containers-plugin-downloads.asciidoc[leveloffset=+1]
 include::elasticsearch/update-strategy.asciidoc[leveloffset=+1]

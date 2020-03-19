@@ -228,7 +228,6 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 }
 
 func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {
-	// Clean up watches
+	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(obj))
 }
