@@ -28,17 +28,6 @@ pipeline {
         }
         stage('Run tests for different k8s versions in GKE') {
             parallel {
-                stage("1.13") {
-                    agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        script {
-                            runWith(lib, failedTests, '1.13', "eck-gke13-${BUILD_NUMBER}-e2e")
-                        }
-                    }
-                }
                 stage("1.14") {
                     agent {
                         label 'linux'
@@ -86,7 +75,7 @@ pipeline {
         }
         cleanup {
             script {
-                clusters = ["eck-gke13-${BUILD_NUMBER}-e2e", "eck-gke14-${BUILD_NUMBER}-e2e", "eck-gke15-${BUILD_NUMBER}-e2e"]
+                clusters = ["eck-gke14-${BUILD_NUMBER}-e2e", "eck-gke15-${BUILD_NUMBER}-e2e"]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: clusters[i])],
