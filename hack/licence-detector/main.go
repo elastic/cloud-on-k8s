@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/hack/licence-detector/detector"
 	"github.com/elastic/cloud-on-k8s/hack/licence-detector/render"
 	"github.com/elastic/cloud-on-k8s/hack/licence-detector/validate"
-	"github.com/elastic/cloud-on-k8s/hack/licence-detector/whitelist"
 )
 
 var (
@@ -28,7 +27,6 @@ var (
 	noticeOutFlag       = flag.String("noticeOut", "NOTICE.txt", "Path to output the notice")
 	overridesFlag       = flag.String("overrides", "", "Path to the file containing override directives")
 	validateFlag        = flag.Bool("validate", false, "Validate results (slow)")
-	whitelistFlag       = flag.Bool("checkWhitelist", true, "Checks that all dependencies are whitelisted, returns an error if any are not")
 )
 
 func main() {
@@ -61,13 +59,6 @@ func main() {
 	if *validateFlag {
 		if err := validate.Validate(dependencies); err != nil {
 			log.Fatalf("Validation failed: %v", err)
-		}
-	}
-
-	// ensure all licences detected are approved for use by Elastic
-	if *whitelistFlag {
-		if err := whitelist.CheckWhitelist(dependencies); err != nil {
-			log.Fatal(err)
 		}
 	}
 
