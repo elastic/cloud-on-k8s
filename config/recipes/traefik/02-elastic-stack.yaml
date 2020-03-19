@@ -65,6 +65,8 @@ apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer
 metadata:
   name: hulk
+  labels:
+    app: hulk
 spec:
   version: 7.6.1
   count: 1
