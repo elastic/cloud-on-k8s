@@ -29,7 +29,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -179,7 +178,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 
 func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
 	// Clean up watches
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(configRefWatchName(obj))
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *entsv1beta1.EnterpriseSearch) (bool, error) {

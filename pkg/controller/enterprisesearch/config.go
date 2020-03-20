@@ -150,7 +150,7 @@ func tlsConfig(ents entsv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
 }
 
 // configRefWatchName returns the name of the watch registered on
-func configRefWatchName(ents entsv1beta1.EnterpriseSearch) string {
+func configRefWatchName(ents types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-configref", ents.Namespace, ents.Name)
 }
 
@@ -165,7 +165,8 @@ func parseConfigRef(c k8s.Client, dynamicWatches watches.DynamicWatches, ents en
 		}
 		secretNames = append(secretNames, secretRef.SecretName)
 	}
-	if err := watches.WatchUserProvidedSecrets(k8s.ExtractNamespacedName(&ents), dynamicWatches, configRefWatchName(ents), secretNames); err != nil {
+	nsn := k8s.ExtractNamespacedName(&ents)
+	if err := watches.WatchUserProvidedSecrets(nsn, dynamicWatches, configRefWatchName(nsn), secretNames); err != nil {
 		return nil, err
 	}
 	for _, secretName := range secretNames {
