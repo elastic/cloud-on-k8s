@@ -65,9 +65,6 @@ pipeline {
                     }
                 }
                 stage("Run smoke E2E tests") {
-                    node {
-                        unstash "eck-source"
-                    }
                     when {
                         expression {
                             notOnlyDocs()
