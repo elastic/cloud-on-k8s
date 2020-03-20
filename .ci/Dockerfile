@@ -16,13 +16,6 @@ ENV OPENSHIFT_TOOLS_VERSION=4.3.0
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
-# shellcheck
-ENV PATH=${PATH}:/usr/local/shellcheck
-RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
-    tar -xf shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
-    mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
-    rm shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz
-
 # kubebuilder to get required tools (etcd, apiserver, etc.)
 ENV PATH=${PATH}:/usr/local/kubebuilder/bin
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
@@ -50,11 +43,18 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
     tar xzf docker-${DOCKER_VERSION}.tgz --strip 1 -C /usr/local/bin docker/docker && \
     rm docker-${DOCKER_VERSION}.tgz
 
-# AWS CLI to upload YAML on S3
+# AWS CLI to upload YAML on S3 and xz-utils to decompress shellcheck
 RUN apt-get update && apt-get --no-install-recommends -y install \
-    awscli && \
+    awscli xz-utils && \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# shellcheck
+ENV PATH=${PATH}:/usr/local/shellcheck
+RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
+    tar -xf shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
+    mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
+    rm shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz
 
 # Azure CLI to provision AKS clusters
 RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
