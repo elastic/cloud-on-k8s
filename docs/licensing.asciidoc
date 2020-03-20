@@ -3,7 +3,7 @@
 
 When you install the default distribution of ECK, you receive a Basic license. Any Elastic stack application you manage through ECK will also be Basic licensed. Go to https://www.elastic.co/subscriptions to see which features are included in the Basic license for free.
 
-IMPORTANT: ECK is offered in two licensing tiers only: Basic and Enterprise. Similar to the Elastic Stack today, customers can download and use ECK for free, but a subscription is required for support. ECK support requires an Enterprise subscription.
+IMPORTANT: ECK is offered in two licensing tiers only: Basic and Enterprise. Similar to the Elastic Stack, customers can download and use ECK for free, but a subscription is required for support. ECK support requires an Enterprise subscription.
 
 [float]
 === Starting a trial
