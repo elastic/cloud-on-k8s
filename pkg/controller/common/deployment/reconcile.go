@@ -8,7 +8,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -56,7 +55,6 @@ func New(params Params) appsv1.Deployment {
 // ReconcileDeployment creates or updates the given deployment for the specified owner.
 func Reconcile(
 	k8sClient k8s.Client,
-	scheme *runtime.Scheme,
 	expected appsv1.Deployment,
 	owner metav1.Object,
 ) (appsv1.Deployment, error) {
@@ -66,7 +64,6 @@ func Reconcile(
 	reconciled := &appsv1.Deployment{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     k8sClient,
-		Scheme:     scheme,
 		Owner:      owner,
 		Expected:   &expected,
 		Reconciled: reconciled,

@@ -32,6 +32,12 @@ func SupportedVersions(v version.Version) *LowestHighestSupportedVersions {
 			// higher may be possible, but not proven yet, lower may also be a requirement...
 			HighestSupportedVersion: version.MustParse("7.99.99"),
 		}
+	case 8:
+		return &LowestHighestSupportedVersions{
+			// 7.4.0 is the lowest version that offers a direct upgrade path to 8.0
+			LowestSupportedVersion:  version.MustParse("7.4.0"),
+			HighestSupportedVersion: version.MustParse("8.99.99"),
+		}
 	default:
 		return nil
 	}

@@ -100,6 +100,20 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - enterprisesearch.k8s.elastic.co
+  resources:
+  - enterprisesearches
+  - enterprisesearches/status
+  - enterprisesearches/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - admissionregistration.k8s.io
   resources:
   - mutatingwebhookconfigurations

@@ -27,7 +27,8 @@ func Reconcile(
 	d driver.Interface,
 	kb kbv1.Kibana,
 	services []corev1.Service,
-	rotation certificates.RotationParams,
+	caRotation certificates.RotationParams,
+	certRotation certificates.RotationParams,
 ) *reconciler.Results {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
@@ -43,12 +44,11 @@ func Reconcile(
 	// reconcile CA certs first
 	httpCa, err := certificates.ReconcileCAForOwner(
 		d.K8sClient(),
-		d.Scheme(),
 		name.KBNamer,
 		&kb,
 		labels,
 		certificates.HTTPCAType,
-		rotation,
+		caRotation,
 	)
 	if err != nil {
 		return results.WithError(err)
@@ -56,7 +56,7 @@ func Reconcile(
 
 	// handle CA expiry via requeue
 	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, rotation.RotateBefore),
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// discover and maybe reconcile for the http certificates to use
@@ -68,12 +68,21 @@ func Reconcile(
 		kb.Spec.HTTP.TLS,
 		labels,
 		services,
-		rotation, // todo correct rotation
+		certRotation,
 	)
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	primaryCert, err := certificates.GetPrimaryCertificate(httpCertificates.CertPem())
+	if err != nil {
+		return results.WithError(err)
+	}
+	results.WithResult(reconcile.Result{
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore),
+	})
+
 	// reconcile http public cert secret
-	results.WithError(http.ReconcileHTTPCertsPublicSecret(d.K8sClient(), d.Scheme(), &kb, name.KBNamer, httpCertificates))
+	results.WithError(http.ReconcileHTTPCertsPublicSecret(d.K8sClient(), &kb, name.KBNamer, httpCertificates))
 	return &results
 }

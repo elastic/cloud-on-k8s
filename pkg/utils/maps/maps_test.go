@@ -229,3 +229,52 @@ func TestMergePreservingExistingKeys(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsKeys(t *testing.T) {
+	tests := []struct {
+		name   string
+		m      map[string]string
+		labels []string
+		want   bool
+	}{
+		{
+			name:   "when no labels on object",
+			m:      map[string]string{},
+			labels: []string{"x", "y"},
+			want:   false,
+		},
+		{
+			// empty label set is a subset of every non-empty set
+			name:   "when empty label set provided",
+			m:      map[string]string{"x": "y"},
+			labels: []string{},
+			want:   true,
+		},
+		{
+			name:   "when labels that match",
+			m:      map[string]string{"x": "y", "a": "b"},
+			labels: []string{"x", "a"},
+			want:   true,
+		},
+		{
+			name: "when labels that don't match",
+			m:    map[string]string{"x": "y", "a": "b"},
+
+			labels: []string{"c", "d"},
+			want:   false,
+		},
+		{
+			name:   "when labels that are nil",
+			m:      nil,
+			labels: []string{"c", "d"},
+			want:   false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			have := ContainsKeys(tc.m, tc.labels...)
+			require.Equal(t, tc.want, have)
+		})
+	}
+}

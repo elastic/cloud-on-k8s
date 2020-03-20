@@ -13,9 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func Test_ensureTransportCertificateSecretExists(t *testing.T) {
@@ -37,9 +35,8 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	}
 
 	type args struct {
-		c      k8s.Client
-		scheme *runtime.Scheme
-		owner  esv1.Elasticsearch
+		c     k8s.Client
+		owner esv1.Elasticsearch
 	}
 	tests := []struct {
 		name    string
@@ -77,6 +74,27 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 			},
 		},
 		{
+			name: "should not modify the secret data if already exists",
+			args: args{
+				c: k8s.WrappedFakeClient(defaultSecretWith(func(secret *corev1.Secret) {
+					secret.ObjectMeta.UID = types.UID("42")
+					secret.Data = map[string][]byte{
+						"existing": []byte("data"),
+					}
+				})),
+				owner: testES,
+			},
+			want: func(t *testing.T, secret *corev1.Secret) {
+				// UID and data should be kept
+				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
+					secret.ObjectMeta.UID = types.UID("42")
+					secret.Data = map[string][]byte{
+						"existing": []byte("data"),
+					}
+				}), secret)
+			},
+		},
+		{
 			name: "should allow additional labels in the secret",
 			args: args{
 				c: k8s.WrappedFakeClient(defaultSecretWith(func(secret *corev1.Secret) {
@@ -93,11 +111,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.args.scheme == nil {
-				tt.args.scheme = scheme.Scheme
-			}
-
-			got, err := ensureTransportCertificatesSecretExists(tt.args.c, tt.args.scheme, tt.args.owner)
+			got, err := ensureTransportCertificatesSecretExists(tt.args.c, tt.args.owner)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EnsureTransportCertificateSecretExists() error = %v, wantErr %v", err, tt.wantErr)
 				return

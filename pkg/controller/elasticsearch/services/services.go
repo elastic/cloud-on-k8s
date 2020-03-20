@@ -9,25 +9,64 @@ import (
 	"math/rand"
 	"strconv"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
 	globalServiceSuffix = ".svc"
 )
 
+// TransportServiceName returns the name for the transport service associated to this cluster
+func TransportServiceName(esName string) string {
+	return esv1.TransportService(esName)
+}
+
+// NewTransportService returns the transport service associated with the given cluster.
+// It is used by Elasticsearch nodes to talk to remote cluster nodes.
+func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
+	nsn := k8s.ExtractNamespacedName(&es)
+	svc := corev1.Service{
+		ObjectMeta: es.Spec.Transport.Service.ObjectMeta,
+		Spec:       es.Spec.Transport.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = es.Namespace
+	svc.ObjectMeta.Name = TransportServiceName(es.Name)
+	// Nodes need to discover themselves before the pod is considered ready,
+	// otherwise minimum master nodes would never be reached
+	svc.Spec.PublishNotReadyAddresses = true
+	if svc.Spec.Type == "" {
+		svc.Spec.Type = corev1.ServiceTypeClusterIP
+		// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
+		svc.Spec.ClusterIP = "None"
+	}
+	labels := label.NewLabels(nsn)
+	ports := []corev1.ServicePort{
+		{
+			Protocol: corev1.ProtocolTCP,
+			Port:     network.TransportPort,
+		},
+	}
+
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+}
+
 // ExternalServiceName returns the name for the external service
 // associated to this cluster
 func ExternalServiceName(esName string) string {
 	return esv1.HTTPService(esName)
+}
+
+// ExternalTransportServiceHost returns the hostname and the port used to reach Elasticsearch's transport endpoint.
+func ExternalTransportServiceHost(es types.NamespacedName) string {
+	return stringsutil.Concat(TransportServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.TransportPort))
 }
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint

@@ -19,6 +19,10 @@ import (
 	"github.com/go-test/deep"
 )
 
+const (
+	DataIntegrityIndex = "data-integrity-check"
+)
+
 type DataIntegrityCheck struct {
 	clientFactory func() (client.Client, error) // recreate clients for cases where we switch scheme in tests
 	indexName     string
@@ -33,7 +37,7 @@ func NewDataIntegrityCheck(k *test.K8sClient, b Builder) *DataIntegrityCheck {
 		clientFactory: func() (client.Client, error) {
 			return NewElasticsearchClient(b.Elasticsearch, k)
 		},
-		indexName: "data-integrity-check",
+		indexName: DataIntegrityIndex,
 		sampleData: map[string]interface{}{
 			"foo": "bar",
 		},
@@ -41,6 +45,11 @@ func NewDataIntegrityCheck(k *test.K8sClient, b Builder) *DataIntegrityCheck {
 		numShards:   3,
 		numReplicas: dataIntegrityReplicas(b),
 	}
+}
+
+func (dc *DataIntegrityCheck) ForIndex(indexName string) *DataIntegrityCheck {
+	dc.indexName = indexName
+	return dc
 }
 
 func (dc *DataIntegrityCheck) Init() error {

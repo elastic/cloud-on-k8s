@@ -9,39 +9,33 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	elasticsearchuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // Kibana association controller
@@ -56,7 +50,7 @@ import (
 //   the Kibana resource with ES connection details
 // - create the Kibana user for Elasticsearch
 // - copy ES CA public cert secret into Kibana namespace
-// - reconcile on any change from watching Kibana, Elasticsearch, Users and secrets
+// - reconcile on any change from watching Kibana, Elasticsearch, users and secrets
 //
 // If reference to an Elasticsearch cluster is not set in the Kibana resource,
 // this controller does nothing.
@@ -65,8 +59,10 @@ const (
 	name = "kibana-association-controller"
 	// kibanaUserSuffix is used to suffix user and associated secret resources.
 	kibanaUserSuffix = "kibana-user"
-	// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName
+	// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName.
 	ElasticsearchCASecretSuffix = "kb-es-ca" // nolint
+	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user.
+	KibanaSystemUserBuiltinRole = "kibana_system"
 )
 
 var (
@@ -78,7 +74,7 @@ var (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := newReconciler(mgr, accessReviewer, params)
-	c, err := add(mgr, r)
+	c, err := common.NewController(mgr, name, r, params)
 	if err != nil {
 		return err
 	}
@@ -91,21 +87,10 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 	return &ReconcileAssociation{
 		Client:         client,
 		accessReviewer: accessReviewer,
-		scheme:         mgr.GetScheme(),
 		watches:        watches.NewDynamicWatches(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		Parameters:     params,
 	}
-}
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	// Create a new controller
-	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return c, err
-	}
-	return c, nil
 }
 
 var _ reconcile.Reconciler = &ReconcileAssociation{}
@@ -114,7 +99,6 @@ var _ reconcile.Reconciler = &ReconcileAssociation{}
 type ReconcileAssociation struct {
 	k8s.Client
 	accessReviewer rbac.AccessReviewer
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	watches        watches.DynamicWatches
 	operator.Parameters
@@ -123,11 +107,14 @@ type ReconcileAssociation struct {
 }
 
 func (r *ReconcileAssociation) onDelete(obj types.NamespacedName) error {
-	// Clean up memory
+	// Remove watcher on the Elasticsearch cluster
 	r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(obj))
+	// Remove watcher on the Elasticsearch CA secret
 	r.watches.Secrets.RemoveHandlerForKey(esCAWatchName(obj))
-	// Delete user
-	return user.DeleteUser(r.Client, NewUserLabelSelector(obj))
+	// Remove watcher on the user Secret in the Elasticsearch namespace
+	r.watches.Secrets.RemoveHandlerForKey(elasticsearchWatchName(obj))
+	// Delete user Secret in the Elasticsearch namespace
+	return k8s.DeleteSecretMatching(r.Client, newUserLabelSelector(obj))
 }
 
 // Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
@@ -235,10 +222,12 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 	}
 
 	if kibana.Spec.ElasticsearchRef.Name == "" {
-		// stop watching any ES cluster previously referenced for this Kibana resource
-		r.watches.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
-		// other leftover resources are already garbage-collected
-		return commonv1.AssociationUnknown, nil
+		// clean up watchers and remove artifacts related to the association
+		if err := r.onDelete(kibanaKey); err != nil {
+			return commonv1.AssociationFailed, err
+		}
+		// remove the configuration in the annotation, other leftover resources are already garbage-collected
+		return commonv1.AssociationUnknown, association.RemoveAssociationConf(r.Client, kibana)
 	}
 
 	// this Kibana instance references an Elasticsearch cluster
@@ -287,13 +276,9 @@ func (r *ReconcileAssociation) reconcileInternal(ctx context.Context, kibana *kb
 	if err := association.ReconcileEsUser(
 		ctx,
 		r.Client,
-		r.scheme,
 		kibana,
-		map[string]string{
-			AssociationLabelName:      kibana.Name,
-			AssociationLabelNamespace: kibana.Namespace,
-		},
-		elasticsearchuser.KibanaSystemUserBuiltinRole,
+		associationLabels(kibana),
+		KibanaSystemUserBuiltinRole,
 		kibanaUserSuffix,
 		es); err != nil {
 		return commonv1.AssociationPending, err
@@ -340,7 +325,7 @@ func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expect
 func (r *ReconcileAssociation) Unbind(kibana commonv1.Associated) error {
 	kibanaKey := k8s.ExtractNamespacedName(kibana)
 	// Ensure that user in Elasticsearch is deleted to prevent illegitimate access
-	if err := user.DeleteUser(r.Client, NewUserLabelSelector(kibanaKey)); err != nil {
+	if err := k8s.DeleteSecretMatching(r.Client, newUserLabelSelector(kibanaKey)); err != nil {
 		return err
 	}
 	// Also remove the association configuration
@@ -388,58 +373,22 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kib
 	}); err != nil {
 		return association.CASecret{}, err
 	}
-	// Build the labels applied on the secret
-	labels := kblabel.NewLabels(kibana.Name)
-	labels[AssociationLabelName] = kibana.Name
+
 	return association.ReconcileCASecret(
 		r.Client,
-		r.scheme,
 		kibana,
 		es,
-		labels,
+		maps.Merge(labels.NewLabels(kibana.Name), associationLabels(kibana)),
 		ElasticsearchCASecretSuffix,
 	)
 }
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
 // attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
-func deleteOrphanedResources(ctx context.Context, c k8s.Client, kibana *kbv1.Kibana) error {
-	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
-	defer span.End()
-
-	var secrets corev1.SecretList
-	ns := client.InNamespace(kibana.Namespace)
-	matchLabels := NewResourceSelector(kibana.Name)
-	if err := c.List(&secrets, ns, matchLabels); err != nil {
-		return err
-	}
-
-	// Namespace in reference can be empty, in that case we compare it with the namespace of Kibana
-	var esRefNamespace string
-	if kibana.Spec.ElasticsearchRef.IsDefined() && kibana.Spec.ElasticsearchRef.Namespace != "" {
-		esRefNamespace = kibana.Spec.ElasticsearchRef.Namespace
-	} else {
-		esRefNamespace = kibana.Namespace
-	}
-
-	for _, s := range secrets.Items {
-		if metav1.IsControlledBy(&s, kibana) || hasBeenCreatedBy(&s, kibana) {
-			if !kibana.Spec.ElasticsearchRef.IsDefined() {
-				// look for association secrets owned by this kibana instance
-				// which should not exist since no ES referenced in the spec
-				log.Info("Deleting secret", "namespace", s.Namespace, "secret_name", s.Name, "kibana_name", kibana.Name)
-				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-			} else if value, ok := s.Labels[common.TypeLabelName]; ok && value == user.UserType &&
-				esRefNamespace != s.Namespace {
-				// User secret may live in an other namespace, check if it has changed
-				log.Info("Deleting secret", "namespace", s.Namespace, "secretname", s.Name, "kibana_name", kibana.Name)
-				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
-					return err
-				}
-			}
-		}
-	}
-	return nil
+func deleteOrphanedResources(
+	ctx context.Context,
+	c k8s.Client,
+	kibana *kbv1.Kibana,
+) error {
+	return association.DeleteOrphanedResources(ctx, c, kibana, associationLabels(kibana))
 }

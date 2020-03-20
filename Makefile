@@ -14,26 +14,16 @@ export SHELL := /bin/bash
 
 KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 
-REPOSITORY 	?= eck
-NAME       	?= eck-operator
-VERSION    	?= $(shell cat VERSION)
-SNAPSHOT   	?= true
-
 # Default to debug logging
 LOG_VERBOSITY ?= 1
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq ($(shell go env GOBIN),)
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
+GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
 # find or download controller-gen
-# note this does not validate the version
 controller-gen:
-ifeq ($(shell command -v controller-gen),)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1)
+ifneq ($(shell controller-gen --version), Version: v0.2.5)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -41,7 +31,7 @@ endif
 
 ## -- Docker image
 
-# on GKE, use GCR and GCLOUD_PROJECT
+# for dev, on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
 else
@@ -49,20 +39,27 @@ else
 	REGISTRY ?= localhost:5000
 endif
 
-# suffix image name with current user name
-IMG_SUFFIX ?= -$(subst _,,$(USER))
-IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
-TAG ?= $(shell git rev-parse --short --verify HEAD)
-OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
+# for dev, suffix image name with current user name
+IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
+REPOSITORY  ?= eck
+NAME        ?= eck-operator
+SNAPSHOT    ?= true
+VERSION     ?= $(shell cat VERSION)
+TAG         ?= $(shell git rev-parse --short=8 --verify HEAD)
+IMG_NAME    ?= $(NAME)$(IMG_SUFFIX)
+IMG_VERSION ?= $(VERSION)-$(TAG)
+
+BASE_IMG       := $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)
+OPERATOR_IMAGE ?= $(BASE_IMG):$(IMG_VERSION)
+
+print-operator-image:
+	@ echo $(OPERATOR_IMAGE)
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/pkg/about.buildHash=$(TAG) \
 	-X github.com/elastic/cloud-on-k8s/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
 	-X github.com/elastic/cloud-on-k8s/pkg/about.buildSnapshot=$(SNAPSHOT)
-
-# Setting for CI, if set to true will prevent building and using local Docker image
-SKIP_DOCKER_COMMAND ?= false
 
 ## -- Namespaces
 
@@ -113,6 +110,9 @@ generate-api-docs:
 generate-notice-file:
 	@hack/licence-detector/generate-notice.sh
 
+generate-image-dependencies:
+	@hack/licence-detector/generate-image-deps.sh
+
 elastic-operator: generate
 	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
@@ -128,15 +128,15 @@ reattach-pv:
 unit: clean
 	go test ./pkg/... ./cmd/... -cover
 
-unit_xml: clean
+unit-xml: clean
 	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/...
 
 integration: GO_TAGS += integration
 integration: clean generate-crds
 	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover
 
-integration_xml: GO_TAGS += integration
-integration_xml: clean generate-crds
+integration-xml: GO_TAGS += integration
+integration-xml: clean generate-crds
 	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/...
 
 lint:
@@ -184,9 +184,9 @@ go-debug:
 		--manage-webhook-certs=false)
 
 build-operator-image:
-ifeq ($(SKIP_DOCKER_COMMAND), false)
-	$(MAKE) docker-build docker-push
-endif
+	@ docker pull $(OPERATOR_IMAGE) \
+	&& echo "OK: image $(OPERATOR_IMAGE) already published" \
+	|| $(MAKE) docker-build docker-push
 
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
@@ -260,7 +260,7 @@ set-context-minikube:
 	$(eval KUBECTL_CLUSTER="minikube")
 
 bootstrap-minikube:
-	hack/minikube-cluster.sh
+	hack/dev/minikube-cluster.sh
 	$(MAKE) set-context-minikube cluster-bootstrap
 
 ## -- clouds
@@ -316,7 +316,7 @@ switch-ocp:
 ##  --    Docker images    --  ##
 #################################
 
-docker-build:
+docker-build: go-generate
 	docker build . \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
@@ -326,14 +326,15 @@ docker-push:
 ifeq ($(REGISTRY), docker.elastic.co)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
+# this is used by the cloud-on-k8s-e2e-tests-ocp job
 ifeq ($(REGISTRY), eu.gcr.io)
 	@ gcloud auth configure-docker --quiet
 endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
 	# use the minikube registry
-	@ hack/registry.sh port-forward start
+	@ hack/dev/registry.sh port-forward start
 	docker push $(OPERATOR_IMAGE)
-	@ hack/registry.sh port-forward stop
+	@ hack/dev/registry.sh port-forward stop
 else
 ifeq ($(REGISTRY), docker.elastic.co)
 	@ docker tag $(OPERATOR_IMAGE) push.$(OPERATOR_IMAGE)
@@ -344,8 +345,8 @@ endif
 endif
 
 purge-gcr-images:
-	@ for i in $(gcloud container images list-tags $(IMG) | tail +3 | awk '{print $$2}'); \
-		do gcloud container images untag $(IMG):$$i; \
+	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
+		do gcloud container images untag $(BASE_IMG):$$i; \
 	done
 
 
@@ -355,19 +356,20 @@ purge-gcr-images:
 
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= "^Test"
-E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
+E2E_IMG ?= $(BASE_IMG)-e2e-tests:$(TAG)
 STACK_VERSION ?= 7.6.0
 E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
-
-# Run e2e tests as a k8s batch job
-e2e: build-operator-image e2e-docker-build e2e-docker-push e2e-run
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
+ifeq ($(REGISTRY), eu.gcr.io)
+	# this is used by the cloud-on-k8s-e2e-tests-ocp job
+	@ gcloud auth configure-docker --quiet
+endif
 	docker push $(E2E_IMG)
 
 e2e-run:
@@ -391,8 +393,7 @@ e2e-compile:
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
-LOCAL_E2E_CTX:=/tmp/e2e-local.json
-
+e2e-local: LOCAL_E2E_CTX := /tmp/e2e-local.json
 e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
@@ -409,12 +410,19 @@ e2e-local:
 ##########################################
 ##  --    Continuous integration    --  ##
 ##########################################
+
 ci-check: check-license-header lint generate check-local-changes
 
-ci: unit_xml integration_xml docker-build reattach-pv
+ci: unit-xml integration-xml docker-build reattach-pv
 
-# Run e2e tests in a dedicated cluster.
-ci-e2e: e2e-compile run-deployer install-crds apply-psp e2e
+# Note: e2e-docker-push gets access to the gcr docker registry through run-deployer
+setup-e2e: e2e-compile run-deployer install-crds apply-psp e2e-docker-build e2e-docker-push
+
+ci-e2e: E2E_JSON := true
+ci-e2e: setup-e2e e2e-run
+
+ci-build-operator-e2e-run: E2E_JSON := true
+ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
@@ -427,10 +435,10 @@ ci-release: clean ci-check build-operator-image
 ##########################
 
 check-requisites:
-	@ hack/check-requisites.sh
+	@ hack/check/check-requisites.sh
 
 check-license-header:
-	./build/check-license-header.sh
+	@ hack/check/check-license-header.sh
 
 # Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
@@ -459,9 +467,9 @@ bootstrap-kind:
 	@ echo "Run the following command to update your current context:"
 	@ echo "kubectl config set-context kind-${KIND_CLUSTER_NAME}"
 
-## Start a kind cluster with just the CRDs, e.g.:
-# "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a one node cluster
-# "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" to start a 1 master + 3 nodes cluster
+## Start a Kind cluster with just the CRDs, e.g.:
+# "make kind-cluster-0 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-node cluster
+# "make kind-cluster-3 KIND_NODE_IMAGE=kindest/node:v1.15.0" # start a 1-master 3-nodes cluster
 kind-cluster-%: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-cluster-%: export CLUSTER_NAME = ${KIND_CLUSTER_NAME}
 kind-cluster-%: kind-node-variable-check
@@ -478,15 +486,15 @@ kind-with-operator-%: kind-node-variable-check docker-build
 		--nodes "${*}" \
 		make install-crds apply-operator
 
-## Run all the e2e tests in a Kind cluster
+## Run all e2e tests in a Kind cluster
 set-kind-e2e-image:
-ifneq ($(ECK_IMAGE),)
-	$(eval OPERATOR_IMAGE=$(ECK_IMAGE))
+ifneq ($(OPERATOR_IMAGE),)
 	@docker pull $(OPERATOR_IMAGE)
 else
 	$(MAKE) go-generate docker-build
 endif
 
+kind-e2e: export E2E_JSON := true
 kind-e2e: export KUBECONFIG = ${HOME}/.kube/kind-config-eck-e2e
 kind-e2e: export NODE_IMAGE = ${KIND_NODE_IMAGE}
 kind-e2e: kind-node-variable-check set-kind-e2e-image e2e-docker-build

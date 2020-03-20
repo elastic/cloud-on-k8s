@@ -9,13 +9,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -25,8 +25,8 @@ import (
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
 // The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
 // If the spec has disabled the default PDB, it will ensure none exist.
-func Reconcile(k8sClient k8s.Client, scheme *runtime.Scheme, es esv1.Elasticsearch, statefulSets sset.StatefulSetList) error {
-	expected, err := expectedPDB(es, statefulSets, scheme)
+func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList) error {
+	expected, err := expectedPDB(es, statefulSets)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
 
 // expectedPDB returns a PDB according to the given ES spec.
 // It may return nil if the PDB has been explicitly disabled in the ES spec.
-func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList, scheme *runtime.Scheme) (*v1beta1.PodDisruptionBudget, error) {
+func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1beta1.PodDisruptionBudget, error) {
 	template := es.Spec.PodDisruptionBudget.DeepCopy()
 	if template.IsDisabled() {
 		return nil, nil
@@ -101,7 +101,7 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList, schem
 	// and append our labels
 	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
 	// set owner reference for deletion upon ES resource deletion
-	if err := reconciler.SetControllerReference(&es, &expected, scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&es, &expected, scheme.Scheme); err != nil {
 		return nil, err
 	}
 

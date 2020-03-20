@@ -15,14 +15,14 @@ import (
 func TestModel_RemoteCluster(t *testing.T) {
 	tests := []struct {
 		name string
-		arg  Settings
+		arg  RemoteClustersSettings
 		want string
 	}{
 		{
 			name: "Simple remote cluster",
-			arg: Settings{
+			arg: RemoteClustersSettings{
 				PersistentSettings: &SettingsGroup{
-					Cluster: Cluster{
+					Cluster: RemoteClusters{
 						RemoteClusters: map[string]RemoteCluster{
 							"leader": {
 								Seeds: []string{"127.0.0.1:9300"},
@@ -35,9 +35,9 @@ func TestModel_RemoteCluster(t *testing.T) {
 		},
 		{
 			name: "Deleted remote cluster",
-			arg: Settings{
+			arg: RemoteClustersSettings{
 				PersistentSettings: &SettingsGroup{
-					Cluster: Cluster{
+					Cluster: RemoteClusters{
 						RemoteClusters: map[string]RemoteCluster{
 							"leader": {
 								Seeds: nil,

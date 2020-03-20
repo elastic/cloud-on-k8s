@@ -27,8 +27,8 @@ const (
 	DefaultReqTimeout = 3 * time.Minute
 )
 
-// UserAuth is authentication information for the Elasticsearch client.
-type UserAuth struct {
+// BasicAuth contains credentials for an Elasticsearch user.
+type BasicAuth struct {
 	Name     string
 	Password string
 }
@@ -87,6 +87,8 @@ type Client interface {
 	GetNodesStats(ctx context.Context) (NodesStats, error)
 	// ClusterBootstrappedForZen2 returns true if the cluster is relying on zen2 orchestration.
 	ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
+	// UpdateRemoteClusterSettings updates the remote clusters of a cluster.
+	UpdateRemoteClusterSettings(ctx context.Context, settings RemoteClustersSettings) error
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	//
 	// If timeout is the empty string, the default is used.
@@ -109,7 +111,7 @@ type Client interface {
 func NewElasticsearchClient(
 	dialer net.Dialer,
 	esURL string,
-	esUser UserAuth,
+	esUser BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) Client {
@@ -122,10 +124,13 @@ func NewElasticsearchClient(
 		TLSClientConfig: &tls.Config{
 			RootCAs: certPool,
 
+			// We use our own certificate verification because we permit users to provide their own certificates, which may not
+			// be valid for the k8s service URL (though our self-signed certificates are). For instance, users may use a certificate
+			// issued by a public CA for Elasticsearch. We opt to skip verifying here since we're not validating based on DNS names
+			// or IP addresses, which means we have to do our own verification in VerifyPeerCertificate instead.
+
 			// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
 			// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
-			// we opt to skip verifying here because we're not validating based on DNS names or IP addresses, which means
-			// we have to do our verification in the VerifyPeerCertificate instead.
 			InsecureSkipVerify: true,
 			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 				return errors.New("tls: verify peer certificate not setup")

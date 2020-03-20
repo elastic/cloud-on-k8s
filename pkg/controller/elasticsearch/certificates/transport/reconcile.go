@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"reflect"
 	"strings"
+	"time"
+
+	"github.com/pkg/errors"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -15,9 +18,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -29,25 +33,24 @@ var log = logf.Log.WithName("transport")
 // cluster.
 func ReconcileTransportCertificatesSecrets(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	ca *certificates.CA,
 	es esv1.Elasticsearch,
 	rotationParams certificates.RotationParams,
-) (reconcile.Result, error) {
+) *reconciler.Results {
+	results := &reconciler.Results{}
 	var pods corev1.PodList
 	matchLabels := label.NewLabelSelectorForElasticsearch(es)
 	ns := client.InNamespace(es.Namespace)
 	if err := c.List(&pods, matchLabels, ns); err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(errors.WithStack(err))
 	}
 
-	secret, err := ensureTransportCertificatesSecretExists(c, scheme, es)
+	secret, err := ensureTransportCertificatesSecretExists(c, es)
 	if err != nil {
-		return reconcile.Result{}, err
+		return results.WithError(err)
 	}
 	// defensive copy of the current secret so we can check whether we need to update later on
 	currentTransportCertificatesSecret := secret.DeepCopy()
-
 	for _, pod := range pods.Items {
 		if pod.Status.PodIP == "" {
 			log.Info("Skipping pod because it has no IP yet", "namespace", pod.Namespace, "pod_name", pod.Name)
@@ -57,8 +60,17 @@ func ReconcileTransportCertificatesSecrets(
 		if err := ensureTransportCertificatesSecretContentsForPod(
 			es, secret, pod, ca, rotationParams,
 		); err != nil {
-			return reconcile.Result{}, err
+			return results.WithError(err)
 		}
+		certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
+		cert := extractTransportCert(*secret, pod, certCommonName)
+		if cert == nil {
+			return results.WithError(errors.New("No certificate found for pod"))
+		}
+		// handle cert expiry via requeue
+		results.WithResult(reconcile.Result{
+			RequeueAfter: certificates.ShouldRotateIn(time.Now(), cert.NotAfter, rotationParams.RotateBefore),
+		})
 	}
 
 	// remove certificates and keys for deleted pods
@@ -95,69 +107,53 @@ func ReconcileTransportCertificatesSecrets(
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
 		if err := c.Update(secret); err != nil {
-			return reconcile.Result{}, err
+			return results.WithError(err)
 		}
 		for _, pod := range pods.Items {
 			annotation.MarkPodAsUpdated(c, pod)
 		}
 	}
 
-	return reconcile.Result{}, nil
+	return results
 }
 
 // ensureTransportCertificatesSecretExists ensures the existence and Labels of the Secret that at a later point
 // in time will contain the transport certificates.
 func ensureTransportCertificatesSecretExists(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
 ) (*corev1.Secret, error) {
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      esv1.TransportCertificatesSecret(es.Name),
-
 			Labels: map[string]string{
 				// a label showing which es these certificates belongs to
 				label.ClusterNameLabelName: es.Name,
 			},
 		},
 	}
-
-	// reconcile the secret resource
+	// reconcile the secret resource:
+	// - create it if it doesn't exist
+	// - update labels & annotations if they don't match
+	// - do not touch the existing data as it probably already contains certificates - it will be reconciled later on
 	var reconciled corev1.Secret
 	if err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      &es,
 		Expected:   &expected,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
-			// we only care about labels, not contents at this point, and we can allow additional labels
-			if reconciled.Labels == nil {
-				return true
-			}
-
-			for k, v := range expected.Labels {
-				if rv, ok := reconciled.Labels[k]; !ok || rv != v {
-					return true
-				}
-			}
-			return false
+			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!maps.IsSubset(expected.Annotations, reconciled.Annotations)
 		},
 		UpdateReconciled: func() {
-			if reconciled.Labels == nil {
-				reconciled.Labels = expected.Labels
-			} else {
-				for k, v := range expected.Labels {
-					reconciled.Labels[k] = v
-				}
-			}
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 		},
 	}); err != nil {
 		return nil, err
 	}
-
 	// a placeholder secret may have nil entries, create them if needed
 	if reconciled.Data == nil {
 		reconciled.Data = make(map[string][]byte)

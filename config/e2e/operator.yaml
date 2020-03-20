@@ -103,10 +103,11 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - associations.k8s.elastic.co
+  - enterprisesearch.k8s.elastic.co
   resources:
-  - apmserverelasticsearchassociations
-  - apmserverelasticsearchassociations/status
+  - enterprisesearches
+  - enterprisesearches/status
+  - enterprisesearches/finalizers
   verbs:
   - get
   - list
@@ -188,8 +189,6 @@ spec:
                 fieldPath: metadata.namespace
           - name: WEBHOOK_SECRET
             value: webhook-server-secret
-          - name: WEBHOOK_PODS_LABEL
-            value: {{ .Operator.Name }}
           - name: OPERATOR_IMAGE
             value: {{ .OperatorImage }}
         resources:

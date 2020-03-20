@@ -31,7 +31,7 @@ func ParsePEMCerts(pemData []byte) ([]*x509.Certificate, error) {
 
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 
 		certs = append(certs, cert)
@@ -85,4 +85,18 @@ func parsePKCS8PrivateKey(block []byte) (*rsa.PrivateKey, error) {
 	}
 
 	return rsaKey, nil
+}
+
+// GetPrimaryCertificate returns the primary certificate (i.e. the actual subject, not a CA or intermediate) from a PEM certificate chain
+func GetPrimaryCertificate(pemBytes []byte) (*x509.Certificate, error) {
+	parsedCerts, err := ParsePEMCerts(pemBytes)
+	if err != nil {
+		return nil, err
+	}
+	// the primary certificate should always come first, see:
+	// http://tools.ietf.org/html/rfc4346#section-7.4.2
+	if len(parsedCerts) < 1 {
+		return nil, errors.New("Expected at least one certificate")
+	}
+	return parsedCerts[0], nil
 }

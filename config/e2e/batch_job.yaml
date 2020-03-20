@@ -43,7 +43,7 @@ spec:
 {{ if not .Context.OcpCluster }}
         fsGroup: 101
         runAsUser: 101
-        runAsGroup: 101
+        runAsGroup: 0
 {{ end }}
       serviceAccountName: {{ .Context.E2EServiceAccount }}
       containers:

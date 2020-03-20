@@ -1,0 +1,50 @@
+:parent_page_id: elasticsearch-specification
+:page_id: volume-claim-templates
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Volume claim templates
+
+By default, the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for each pod in an Elasticsearch cluster to prevent data loss in case of accidental pod deletion. For production workloads, you should define your own volume claim template with the desired storage capacity and (optionally) the Kubernetes link:https://kubernetes.io/docs/concepts/storage/storage-classes/[storage class] to associate with the persistent volume. The name of the volume claim must always be `elasticsearch-data`.
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - name: default
+    count: 3
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: standard
+----
+
+ECK automatically deletes PersistentVolumeClaim resources if they are not required for any Elasticsearch node. The corresponding PersistentVolume may be preserved, depending on the configured link:https://kubernetes.io/docs/concepts/storage/storage-classes/#reclaim-policy[storage class reclaim policy].
+
+IMPORTANT: Depending on the Kubernetes configuration and the underlying file system, some persistent volumes <<{p}-orchestration-limitations,cannot be resized after they are created>>. When you define volume claims, consider future storage requirements and make sure you have enough space to support the expected growth.
+
+If you are not concerned about data loss, you can use an `emptyDir` volume for Elasticsearch data as well:
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - name: data
+    count: 10
+    podTemplate:
+      spec:
+        volumes:
+        - name: elasticsearch-data
+          emptyDir: {}
+----
+
+CAUTION: Using `emptyDir` is not recommended due to the high likelihood of permanent data loss.

@@ -5,13 +5,10 @@
 package settings
 
 import (
-	"reflect"
-
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -96,21 +93,8 @@ func ReconcileConfig(client k8s.Client, es esv1.Elasticsearch, ssetName string, 
 		return err
 	}
 	expected := ConfigSecret(es, ssetName, rendered)
-	reconciled := corev1.Secret{}
-	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client:   client,
-		Expected: &expected,
-		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(reconciled.Data, expected.Data)
-		},
-		Owner:            &es,
-		Reconciled:       &reconciled,
-		Scheme:           scheme.Scheme,
-		UpdateReconciled: func() { reconciled.Data = expected.Data },
-	}); err != nil {
-		return err
-	}
-	return nil
+	_, err = reconciler.ReconcileSecret(client, expected, &es)
+	return err
 }
 
 // DeleteConfig removes the configuration Secret corresponding to the given Statefulset.

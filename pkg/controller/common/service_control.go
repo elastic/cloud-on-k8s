@@ -6,6 +6,7 @@ package common
 
 import (
 	"context"
+	"net"
 	"reflect"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -16,7 +17,6 @@ import (
 	"go.elastic.co/apm"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -27,7 +27,6 @@ var log = logf.Log.WithName("common")
 func ReconcileService(
 	ctx context.Context,
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	expected *corev1.Service,
 	owner metav1.Object,
 ) (*corev1.Service, error) {
@@ -37,10 +36,12 @@ func ReconcileService(
 	reconciled := &corev1.Service{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
-		Scheme:     scheme,
 		Owner:      owner,
 		Expected:   expected,
 		Reconciled: reconciled,
+		NeedsRecreate: func() bool {
+			return needsRecreate(expected, reconciled)
+		},
 		NeedsUpdate: func() bool {
 			return needsUpdate(expected, reconciled)
 		},
@@ -53,17 +54,31 @@ func ReconcileService(
 	return reconciled, err
 }
 
-func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
-	// ClusterIP might not exist in the expected service,
-	// but might have been set after creation by k8s on the actual resource.
-	// In such case, we want to use these values for comparison.
-	if expected.Spec.ClusterIP == "" {
-		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
-	}
+func needsRecreate(expected, reconciled *corev1.Service) bool {
+	applyServerSideValues(expected, reconciled)
+	// ClusterIP is an immutable field
+	return expected.Spec.ClusterIP != reconciled.Spec.ClusterIP
+}
 
+func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
+	applyServerSideValues(expected, reconciled)
+	// if the specs, labels, or annotations differ, the object should be updated
+	return !(reflect.DeepEqual(expected.Spec, reconciled.Spec) &&
+		compare.LabelsAndAnnotationsAreEqual(expected.ObjectMeta, reconciled.ObjectMeta))
+}
+
+// applyServerSideValues applies any default that may have been set from the reconciled version.
+func applyServerSideValues(expected, reconciled *corev1.Service) {
 	// Type may be defaulted by the api server
 	if expected.Spec.Type == "" {
 		expected.Spec.Type = reconciled.Spec.Type
+	}
+	// ClusterIP might not exist in the expected service,
+	// but might have been set after creation by k8s on the actual resource.
+	// In such case, we want to use these values for comparison.
+	// But only if we are not changing the type of service and the api server has assigned an IP
+	if expected.Spec.Type == reconciled.Spec.Type && expected.Spec.ClusterIP == "" && net.ParseIP(reconciled.Spec.ClusterIP) != nil {
+		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
 	}
 
 	// SessionAffinity may be defaulted by the api server
@@ -90,10 +105,6 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 
 	expected.Annotations = maps.MergePreservingExistingKeys(expected.Annotations, reconciled.Annotations)
 	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, reconciled.Labels)
-
-	// if the specs, labels, or annotations differ, the object should be updated
-	return !(reflect.DeepEqual(expected.Spec, reconciled.Spec) &&
-		compare.LabelsAndAnnotationsAreEqual(expected.ObjectMeta, reconciled.ObjectMeta))
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.

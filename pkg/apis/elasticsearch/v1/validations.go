@@ -194,7 +194,7 @@ func validUpgradePath(current, proposed *Elasticsearch) field.ErrorList {
 		// this should not happen, since this is the already persisted version
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), current.Spec.Version, parseStoredVersionErrMsg))
 	}
-	currVer, err := version.Parse(proposed.Spec.Version)
+	proposedVer, err := version.Parse(proposed.Spec.Version)
 	if err != nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, parseVersionErrMsg))
 	}
@@ -202,7 +202,7 @@ func validUpgradePath(current, proposed *Elasticsearch) field.ErrorList {
 		return errs
 	}
 
-	v := esversion.SupportedVersions(*currVer)
+	v := esversion.SupportedVersions(*proposedVer)
 	if v == nil {
 		errs = append(errs, field.Invalid(field.NewPath("spec").Child("version"), proposed.Spec.Version, unsupportedVersionMsg))
 		return errs

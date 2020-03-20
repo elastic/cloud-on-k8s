@@ -15,9 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // newPodWithIP creates a new Pod potentially labeled as master with a given podIP
@@ -46,10 +44,9 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 		},
 	}
 	type args struct {
-		c      k8s.Client
-		scheme *runtime.Scheme
-		es     esv1.Elasticsearch
-		pods   []corev1.Pod
+		c    k8s.Client
+		es   esv1.Elasticsearch
+		pods []corev1.Pod
 	}
 	tests := []struct {
 		name            string
@@ -67,9 +64,8 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:      k8s.WrappedFakeClient(),
-				es:     es,
-				scheme: scheme.Scheme,
+				c:  k8s.WrappedFakeClient(),
+				es: es,
 			},
 			wantErr:         false,
 			expectedContent: "",
@@ -81,9 +77,8 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:      k8s.WrappedFakeClient(),
-				es:     es,
-				scheme: scheme.Scheme,
+				c:  k8s.WrappedFakeClient(),
+				es: es,
 			},
 			wantErr:         false,
 			expectedContent: "",
@@ -98,9 +93,8 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "10.0.9.3", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:      k8s.WrappedFakeClient(),
-				es:     es,
-				scheme: scheme.Scheme,
+				c:  k8s.WrappedFakeClient(),
+				es: es,
 			},
 			wantErr:         false,
 			expectedContent: "10.0.3.3:9300\n10.0.9.2:9300",
@@ -115,9 +109,8 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("node1", "", false),
 					newPodWithIP("node2", "10.0.2.8", false),
 				},
-				c:      k8s.WrappedFakeClient(),
-				es:     es,
-				scheme: scheme.Scheme,
+				c:  k8s.WrappedFakeClient(),
+				es: es,
 			},
 			wantErr:         false,
 			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
@@ -130,9 +123,8 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 					newPodWithIP("master3", "10.0.3.3", true),
 					newPodWithIP("master1", "10.0.9.2", true),
 				},
-				c:      k8s.WrappedFakeClient(),
-				es:     es,
-				scheme: scheme.Scheme,
+				c:  k8s.WrappedFakeClient(),
+				es: es,
 			},
 			wantErr:         false,
 			expectedContent: "10.0.3.3:9300\n10.0.6.5:9300\n10.0.9.2:9300",
@@ -140,7 +132,7 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := UpdateSeedHostsConfigMap(context.Background(), tt.args.c, tt.args.scheme, tt.args.es, tt.args.pods)
+			err := UpdateSeedHostsConfigMap(context.Background(), tt.args.c, tt.args.es, tt.args.pods)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UpdateSeedHostsConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 				return

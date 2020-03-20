@@ -364,19 +364,18 @@ type StartBasicResponse struct {
 	ErrorMessage    string `json:"error_message"`
 }
 
-// Settings is the root element of settings.
-type Settings struct {
+// RemoteClustersSettings is used to build a request to update remote clusters.
+type RemoteClustersSettings struct {
 	PersistentSettings *SettingsGroup `json:"persistent,omitempty"`
-	TransientSettings  *SettingsGroup `json:"transient,omitempty"`
 }
 
-// SettingsGroup is a group of settings, either to transient or persistent.
+// SettingsGroup is a group of persistent settings.
 type SettingsGroup struct {
-	Cluster Cluster `json:"cluster,omitempty"`
+	Cluster RemoteClusters `json:"cluster,omitempty"`
 }
 
-// Cluster models the configuration of the cluster.
-type Cluster struct {
+// RemoteClusters models the configuration of the remote clusters.
+type RemoteClusters struct {
 	RemoteClusters map[string]RemoteCluster `json:"remote,omitempty"`
 }
 

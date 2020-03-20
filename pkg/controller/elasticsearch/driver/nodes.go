@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -56,7 +55,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, d.Scheme(), certResources, actualStatefulSets)
+	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, certResources, actualStatefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -72,7 +71,6 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		parentCtx:     ctx,
 		k8sClient:     d.K8sClient(),
 		es:            d.ES,
-		scheme:        d.Scheme(),
 		observedState: observedState,
 		esState:       esState,
 		expectations:  d.Expectations,
@@ -84,7 +82,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 
 	// Update PDB to account for new replicas.
-	if err := pdb.Reconcile(d.Client, d.Scheme(), d.ES, actualStatefulSets); err != nil {
+	if err := pdb.Reconcile(d.Client, d.ES, actualStatefulSets); err != nil {
 		return results.WithError(err)
 	}
 
@@ -158,7 +156,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 	// When not reconciled, set the phase to ApplyingChanges only if it was Ready to avoid to
 	// override another "not Ready" phase like MigratingData.
-	if Reconciled(d.ES, expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
+	if Reconciled(expectedResources.StatefulSets(), actualStatefulSets, d.Client) {
 		reconcileState.UpdateElasticsearchReady(resourcesState, observedState)
 	} else if reconcileState.IsElasticsearchReady(observedState) {
 		reconcileState.UpdateElasticsearchApplyingChanges(resourcesState.CurrentPods)
@@ -173,7 +171,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 // Reconciled reports whether the actual StatefulSets are reconciled to match the expected StatefulSets
 // by checking that the expected template hash label is reconciled for all StatefulSets, there are no
 // pod upgrades in progress and all pods are running.
-func Reconciled(es esv1.Elasticsearch, expectedStatefulSets, actualStatefulSets sset.StatefulSetList, client k8s.Client) bool {
+func Reconciled(expectedStatefulSets, actualStatefulSets sset.StatefulSetList, client k8s.Client) bool {
 	// actual sset should have the expected sset template hash label
 	for _, expectedSset := range expectedStatefulSets {
 		actualSset, ok := actualStatefulSets.GetByName(expectedSset.Name)
@@ -188,7 +186,7 @@ func Reconciled(es esv1.Elasticsearch, expectedStatefulSets, actualStatefulSets 
 	}
 
 	// all pods should have been upgraded
-	pods, err := podsToUpgrade(es, client, actualStatefulSets)
+	pods, err := podsToUpgrade(client, actualStatefulSets)
 	if err != nil {
 		return false
 	}
