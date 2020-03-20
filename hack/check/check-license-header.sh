@@ -8,7 +8,7 @@
 
 set -eu
 
-# shellcheck disable=2223
+# shellcheck disable=2086
 : "${CHECK_PATH:=$(dirname $0)/../../*}" # root project directory
 
 # shellcheck disable=SC2086
