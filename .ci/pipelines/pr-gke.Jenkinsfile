@@ -37,11 +37,11 @@ pipeline {
             }
         }
         stage('Run tests in parallel') {
+            failFast true
             parallel {
                 stage("Run unit and integration tests") {
                     when {
                         expression {
-                            checkout scm
                             notOnlyDocs()
                         }
                     }
@@ -62,7 +62,6 @@ pipeline {
                 stage("Run smoke E2E tests") {
                     when {
                         expression {
-                            checkout scm
                             notOnlyDocs()
                         }
                     }
