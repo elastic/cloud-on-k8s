@@ -1,3 +1,5 @@
+@Library('apm@current') _
+
 def failedTests = []
 def lib
 
