@@ -18,9 +18,9 @@ import (
 
 // +kubebuilder:webhook:path=/validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch,mutating=false,failurePolicy=ignore,groups=elasticsearch.k8s.elastic.co,resources=elasticsearches,verbs=create;update,versions=v1beta1,name=elastic-es-validation-v1beta1.k8s.elastic.co
 
-func (r *Elasticsearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (es *Elasticsearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+		For(es).
 		Complete()
 }
 
@@ -28,18 +28,18 @@ var eslog = logf.Log.WithName("es-validation")
 
 var _ webhook.Validator = &Elasticsearch{}
 
-func (r *Elasticsearch) ValidateCreate() error {
-	eslog.V(1).Info("validate create", "name", r.Name)
-	return r.validateElasticsearch()
+func (es *Elasticsearch) ValidateCreate() error {
+	eslog.V(1).Info("validate create", "name", es.Name)
+	return es.validateElasticsearch()
 }
 
 // ValidateDelete is required to implement webhook.Validator, but we do not actually validate deletes
-func (r *Elasticsearch) ValidateDelete() error {
+func (es *Elasticsearch) ValidateDelete() error {
 	return nil
 }
 
-func (r *Elasticsearch) ValidateUpdate(old runtime.Object) error {
-	eslog.V(1).Info("validate update", "name", r.Name)
+func (es *Elasticsearch) ValidateUpdate(old runtime.Object) error {
+	eslog.V(1).Info("validate update", "name", es.Name)
 	oldEs, ok := old.(*Elasticsearch)
 	if !ok {
 		return errors.New("cannot cast old object to Elasticsearch type")
@@ -47,24 +47,24 @@ func (r *Elasticsearch) ValidateUpdate(old runtime.Object) error {
 
 	var errs field.ErrorList
 	for _, val := range updateValidations {
-		if err := val(oldEs, r); err != nil {
+		if err := val(oldEs, es); err != nil {
 			errs = append(errs, err...)
 		}
 	}
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
-			r.Name, errs)
+			es.Name, errs)
 	}
-	return r.validateElasticsearch()
+	return es.validateElasticsearch()
 }
 
-func (r *Elasticsearch) validateElasticsearch() error {
-	errs := r.check(validations)
+func (es *Elasticsearch) validateElasticsearch() error {
+	errs := es.check(validations)
 	if len(errs) > 0 {
 		return apierrors.NewInvalid(
 			schema.GroupKind{Group: "elasticsearch.k8s.elastic.co", Kind: "Elasticsearch"},
-			r.Name,
+			es.Name,
 			errs,
 		)
 	}

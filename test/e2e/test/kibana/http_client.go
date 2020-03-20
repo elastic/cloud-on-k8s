@@ -14,7 +14,6 @@ import (
 	"path"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
@@ -23,7 +22,7 @@ import (
 func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
 	if kb.Spec.HTTP.TLS.Enabled() {
-		crts, err := k.GetHTTPCerts(name.KBNamer, kb.Namespace, kb.Name)
+		crts, err := k.GetHTTPCerts(kbname.KBNamer, kb.Namespace, kb.Name)
 		if err != nil {
 			return nil, err
 		}

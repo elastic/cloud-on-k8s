@@ -10,7 +10,6 @@ import (
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -27,7 +26,7 @@ func TestExtractNamespacedName(t *testing.T) {
 	assert.Equal(
 		t,
 		types.NamespacedName{Namespace: "namespace", Name: "name"},
-		ExtractNamespacedName(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "name"}}),
+		ExtractNamespacedName(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "name"}}),
 	)
 }
 
@@ -43,7 +42,7 @@ func TestGetServiceDNSName(t *testing.T) {
 		{
 			name: "sample service",
 			args: args{
-				svc: v1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-name"}},
+				svc: corev1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-name"}},
 			},
 			want: []string{"test-name.test-ns.svc", "test-name.test-ns"},
 		},
