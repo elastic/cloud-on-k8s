@@ -94,6 +94,11 @@ type Context struct {
 	Local                 bool              `json:"local"`
 	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
 	OcpCluster            bool              `json:"ocp_cluster"`
+	Pipeline              string            `json:"pipeline"`
+	BuildNumber           string            `json:"build_number"`
+	Provider              string            `json:"provider"`
+	ClusterName           string            `json:"clusterName"`
+	KubernetesVersion     string            `json:"kubernetes_version"`
 }
 
 // ManagedNamespace returns the nth managed namespace.

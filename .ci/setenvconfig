@@ -46,6 +46,12 @@ MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secr
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 TEST_TIMEOUT = 10m
+
+PIPELINE=e2e/aks
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=aks
+CLUSTER_NAME=$BUILD_TAG
+KUBERNETES_VERSION=default
 ENV
 write_deployer_config <<CFG
 id: aks-ci
@@ -73,6 +79,12 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
+
+PIPELINE=e2e/custom-operator-image
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=gke
+CLUSTER_NAME=eck-e2e-$BUILD_NUMBER
+KUBERNETES_VERSION=$JKS_PARAM_K8S_VERSION
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -106,6 +118,12 @@ TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
+
+PIPELINE=e2e/gke-k8s-versions
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=gke
+CLUSTER_NAME=${clusterName}
+KUBERNETES_VERSION="${clusterVersion}"
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -140,6 +158,12 @@ MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secr
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 KIND_NODE_IMAGE = ${kindNodeImage}
+
+PIPELINE=e2e/kind-k8s-versions
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=kind
+CLUSTER_NAME=kind-$BUILD_NUMBER
+KUBERNETES_VERSION=default
 ENV
 ;;
 
@@ -156,6 +180,12 @@ GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
+
+PIPELINE=e2e/master
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=gke
+CLUSTER_NAME=eck-e2e-$BUILD_NUMBER
+KUBERNETES_VERSION=default
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -186,6 +216,12 @@ MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secr
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 TEST_TIMEOUT = 10m
+
+PIPELINE=e2e/ocp
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=ocp
+CLUSTER_NAME=$BUILD_TAG
+KUBERNETES_VERSION=default
 ENV
 write_deployer_config <<CFG
 id: ocp-ci
@@ -219,6 +255,12 @@ MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secr
 
 OPERATOR_IMAGE = ${operatorImage}
 STACK_VERSION = ${stackVersion}
+
+PIPELINE=e2e/stack-versions
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=gke
+CLUSTER_NAME=${clusterName}
+KUBERNETES_VERSION=default
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -246,6 +288,11 @@ IMG_SUFFIX = -ci
 TESTS_MATCH = TestSmoke
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
+PIPELINE=pr
+BUILD_NUMBER=$BUILD_NUMBER
+E2E_PROVIDER=gke
+CLUSTER_NAME=eck-pr-$BUILD_NUMBER
+KUBERNETES_VERSION=default
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -288,7 +335,6 @@ IMG_NAME = eck-operator
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 ELASTIC_DOCKER_LOGIN = eckadmin
 
