@@ -19,7 +19,7 @@ RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.s
 # shellcheck
 ENV PATH=${PATH}:/usr/local/shellcheck
 RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
-    tar -zxf shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
+    tar -xf shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
     mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
     rm shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz
 
