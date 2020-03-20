@@ -10,12 +10,13 @@ set -eu
 
 : "${CHECK_PATH:=$(dirname "$0")/../../*}" # root project directory
 
+# shellcheck disable=SC2086
 files=$(grep \
     --include=\*.go --exclude-dir=vendor \
     --include=\*.sh \
     --include=Makefile \
     -L "Copyright Elasticsearch B.V." \
-    -r "${CHECK_PATH}")
+    -r ${CHECK_PATH})
 
 [ "$files" != "" ] \
     && echo -e "Error: file(s) without license header:\n$files" && exit 1 \
