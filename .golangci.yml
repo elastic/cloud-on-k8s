@@ -32,6 +32,11 @@ issues:
       linters:
         - goconst
         - unparam
+    # TODO: remove this when upgrading to golangci-lint >1.24.0.
+    # currently it checks the receiver names of even generated files, but is fixed in a later version
+    - linters:
+        - stylecheck
+      text: 'ST1016: methods on the same type should have the same receiver name .*'
     - path: cmd/manager/main\.go
       text: 'cyclomatic complexity 31 of func `execute` is high (> 30)'
     - path: pkg/controller/apmserver/config/reconcile\.go
