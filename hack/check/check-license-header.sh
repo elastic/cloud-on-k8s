@@ -8,7 +8,8 @@
 
 set -eu
 
-: "${CHECK_PATH:=$(dirname "$0")/../../*}" # root project directory
+# shellcheck disable=2223
+: "${CHECK_PATH:=$(dirname $0)/../../*}" # root project directory
 
 # shellcheck disable=SC2086
 files=$(grep \
