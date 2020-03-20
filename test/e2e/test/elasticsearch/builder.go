@@ -333,7 +333,7 @@ func (b Builder) TriggersRollingUpgrade() bool {
 	// Important: this only checks ES version and spec, other changes such as secure settings update
 	// are tricky to capture and ignored here.
 	isVersionUpgrade := b.MutatedFrom.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
-	httpOptionsChange := reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
+	httpOptionsChange := !reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
 	for _, initialNs := range b.MutatedFrom.Elasticsearch.Spec.NodeSets {
 		for _, mutatedNs := range b.Elasticsearch.Spec.NodeSets {
 			if initialNs.Name == mutatedNs.Name &&
