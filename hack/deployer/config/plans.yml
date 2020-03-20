@@ -81,6 +81,7 @@ plans:
   provider: eks
   machineType: c5d.xlarge
   serviceAccount: false
+  kubernetesVersion: 1.14
   eks:
     region: eu-west-2
     nodeCount: 3

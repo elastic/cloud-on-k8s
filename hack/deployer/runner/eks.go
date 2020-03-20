@@ -30,7 +30,7 @@ kind: ClusterConfig
 metadata:
   name: {{.ClusterName}}
   region: {{.Region}}
-  version: {{.KubernetesVersion}}
+  version: "{{.KubernetesVersion}}"
 nodeGroups:
   - name: ng-1
     instanceType: {{.MachineType}}
