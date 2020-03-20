@@ -17,11 +17,7 @@ pipeline {
     }
 
     stages {
-        stage('Stash source code') {
-            stash name: "eck-source"
-        }
         stage('Validate Jenkins pipelines') {
-            unstash "eck-source"
             when {
                 expression {
                     notOnlyDocs()
@@ -32,7 +28,6 @@ pipeline {
             }
         }
         stage('Run checks') {
-            unstash "eck-source"
             when {
                 expression {
                     notOnlyDocs()
@@ -40,13 +35,16 @@ pipeline {
             }
             steps {
                 sh 'make -C .ci TARGET=ci-check ci'
+                stash name: "eck-source"
             }
         }
         stage('Run tests in parallel') {
             failFast true
             parallel {
                 stage("Run unit and integration tests") {
-                    unstash "eck-source"
+                    node {
+                        unstash "eck-source"
+                    }
                     when {
                         expression {
                             notOnlyDocs()
@@ -67,7 +65,9 @@ pipeline {
                     }
                 }
                 stage("Run smoke E2E tests") {
-                    unstash "eck-source"
+                    node {
+                        unstash "eck-source"
+                    }
                     when {
                         expression {
                             notOnlyDocs()
