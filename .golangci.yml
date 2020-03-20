@@ -38,7 +38,7 @@ issues:
         - stylecheck
       text: 'ST1016: methods on the same type should have the same receiver name .*'
     - path: cmd/manager/main\.go
-      text: 'cyclomatic complexity 31 of func `execute` is high (> 30)'
+      text: 'cyclomatic complexity \d+ of func `execute` is high'
     - path: pkg/controller/apmserver/config/reconcile\.go
       text: 'G101: Potential hardcoded credentials'
     - path: pkg/controller/common/settings/canonical_config\.go
