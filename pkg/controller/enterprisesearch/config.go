@@ -88,8 +88,8 @@ func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*cor
 
 // reusableSettings captures secrets settings in the Enterprise Search configuration that we want to reuse.
 type reusableSettings struct {
-	SecretSessionKey  string   `config:"secret_session_key"`
-	EncryptionKeysKey []string `config:"secret_management.encryption_keys"`
+	SecretSession  string   `config:"secret_session_key"`
+	EncryptionKeys []string `config:"secret_management.encryption_keys"`
 }
 
 // reuseOrGenerateSecretKeys reads the current configuration and reuse existing secrets it they exist.
@@ -105,11 +105,11 @@ func reuseOrGenerateSecretKeys(c k8s.Client, ents entsv1beta1.EnterpriseSearch) 
 	} else if err := cfg.Unpack(&e); err != nil {
 		return nil, err
 	}
-	if len(e.SecretSessionKey) == 0 {
-		e.SecretSessionKey = rand.String(32)
+	if len(e.SecretSession) == 0 {
+		e.SecretSession = rand.String(32)
 	}
-	if len(e.EncryptionKeysKey) == 0 {
-		e.EncryptionKeysKey = []string{rand.String(32)}
+	if len(e.EncryptionKeys) == 0 {
+		e.EncryptionKeys = []string{rand.String(32)}
 	}
 	return settings.MustCanonicalConfig(e), nil
 }
