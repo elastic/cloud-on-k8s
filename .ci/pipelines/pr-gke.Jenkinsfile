@@ -35,7 +35,6 @@ pipeline {
             }
             steps {
                 sh 'make -C .ci TARGET=ci-check ci'
-                stash name: "eck-source"
             }
         }
         stage('Run tests in parallel') {
@@ -44,14 +43,14 @@ pipeline {
                 stage("Run unit and integration tests") {
                     when {
                         expression {
+                            retry(3) {
+                                checkout scm
+                            }
                             notOnlyDocs()
                         }
                     }
                     agent {
-                        node {
-                            label 'linux'
-                            unstash "eck-source"
-                        }
+                        label 'linux'
                     }
                     steps {
                         script {
