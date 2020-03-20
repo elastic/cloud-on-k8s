@@ -1,0 +1,113 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: ekmnt
+  namespace: istio-apps
+  labels:
+    app: ekmnt
+spec:
+  version: 7.6.0
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  nodeSets:
+  - name: master
+    count: 1
+    config:
+      node.master: true
+      node.data: false
+      node.ingest: false
+      node.ml: false
+      node.store.allow_mmap: false
+    podTemplate:
+      metadata:
+        labels:
+          app: ekmnt
+        annotations:
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300"
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+  - name: data
+    count: 1
+    config:
+      node.master: false
+      node.data: true
+      node.ingest: false
+      node.ml: false
+      node.store.allow_mmap: false
+    podTemplate:
+      metadata:
+        labels:
+          app: ekmnt
+        annotations:
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300"
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+  - name: ingest
+    count: 1
+    config:
+      node.master: false
+      node.data: false
+      node.ingest: true
+      node.ml: false
+      node.store.allow_mmap: false
+    podTemplate:
+      metadata:
+        labels:
+          app: ekmnt
+        annotations:
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300"
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+  - name: coordinator
+    count: 1
+    config:
+      node.master: false
+      node.data: false
+      node.ingest: false
+      node.ml: false
+      node.store.allow_mmap: false
+    podTemplate:
+      metadata:
+        labels:
+          app: ekmnt
+        annotations:
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300"
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+  - name: ml
+    count: 1
+    config:
+      node.master: false
+      node.data: false
+      node.ingest: false
+      node.ml: true
+      node.store.allow_mmap: false
+    podTemplate:
+      metadata:
+        labels:
+          app: ekmnt
+        annotations:
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300"
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: ekmnt
+  namespace: istio-apps
+  labels:
+    app: ekmnt
+spec:
+  version: 7.6.0
+  count: 1
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  elasticsearchRef:
+    name: ekmnt
+  podTemplate:
+    metadata:
+      labels:
+        app: ekmnt
+      annotations:
+        sidecar.istio.io/rewriteAppHTTPProbers: "true"
