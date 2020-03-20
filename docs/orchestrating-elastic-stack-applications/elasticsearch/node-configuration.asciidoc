@@ -1,0 +1,36 @@
+:parent_page_id: elasticsearch-specification
+:page_id: node-configuration
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Node configuration
+
+Any setting defined in the `elasticsearch.yml` configuration file can also be defined for set of Elasticsearch nodes in the `spec.nodeSets[?].config` section.
+
+[source,yaml]
+----
+spec:
+  nodeSets:
+  - name: masters
+    count: 3
+    config:
+      node.master: true
+      node.data: false
+      node.ingest: false
+      node.ml: false
+      xpack.ml.enabled: true
+      cluster.remote.connect: false
+  - name: data
+    count: 10
+    config:
+      node.master: false
+      node.data: true
+      node.ingest: true
+      node.ml: true
+      cluster.remote.connect: false
+----
+
+For more information on Elasticsearch settings, see https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].

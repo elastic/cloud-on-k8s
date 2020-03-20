@@ -3,6 +3,8 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
   creationTimestamp: null
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
@@ -61,6 +63,33 @@ spec:
             description: ElasticsearchSpec holds the specification of an Elasticsearch
               cluster.
             properties:
+              auth:
+                description: Auth contains user authentication and authorization security
+                  settings for Elasticsearch.
+                properties:
+                  fileRealm:
+                    description: FileRealm to propagate to the Elasticsearch cluster.
+                    items:
+                      description: FileRealmSource references users to create in the
+                        Elasticsearch cluster.
+                      properties:
+                        secretName:
+                          description: SecretName is the name of the secret.
+                          type: string
+                      type: object
+                    type: array
+                  roles:
+                    description: Roles to propagate to the Elasticsearch cluster.
+                    items:
+                      description: RoleSource references roles to create in the Elasticsearch
+                        cluster.
+                      properties:
+                        secretName:
+                          description: SecretName is the name of the secret.
+                          type: string
+                      type: object
+                    type: array
+                type: object
               http:
                 description: HTTP holds HTTP layer settings for Elasticsearch.
                 properties:
@@ -193,8 +222,8 @@ spec:
                                   type: string
                                 targetPort:
                                   anyOf:
-                                  - type: string
                                   - type: integer
+                                  - type: string
                                   description: 'Number or name of the port to access
                                     on the pods targeted by the service. Number must
                                     be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
@@ -205,10 +234,15 @@ spec:
                                     ignored for services with clusterIP=None, and
                                     should be omitted or set equal to the ''port''
                                     field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
+                                  x-kubernetes-int-or-string: true
                               required:
                               - port
                               type: object
                             type: array
+                            x-kubernetes-list-map-keys:
+                            - port
+                            - protocol
+                            x-kubernetes-list-type: map
                           publishNotReadyAddresses:
                             description: publishNotReadyAddresses, when set to true,
                               indicates that DNS implementations must publish the
@@ -254,6 +288,25 @@ spec:
                                     type: integer
                                 type: object
                             type: object
+                          topologyKeys:
+                            description: topologyKeys is a preference-order list of
+                              topology keys which implementations of services should
+                              use to preferentially sort endpoints when accessing
+                              this Service, it can not be used at the same time as
+                              externalTrafficPolicy=Local. Topology keys must be valid
+                              label keys and at most 16 keys may be specified. Endpoints
+                              are chosen based on the first topology key with available
+                              backends. If this field is specified and all entries
+                              have no backends that match the topology of the client,
+                              the service has no backends for that client and connections
+                              should fail. The special value "*" may be used to mean
+                              "any topology". This catch-all value, if used, only
+                              makes sense as the last value in the list. If this is
+                              not specified or empty, no topology constraints will
+                              be applied.
+                            items:
+                              type: string
+                            type: array
                           type:
                             description: 'type determines how the Service is exposed.
                               Defaults to ClusterIP. Valid options are ExternalName,
@@ -1150,7 +1203,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP.'
+                                                status.hostIP, status.podIP, status.podIPs.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -1178,10 +1231,14 @@ spec:
                                                     vars'
                                                   type: string
                                                 divisor:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
                                                   description: Specifies the output
                                                     format of the exposed resources,
                                                     defaults to "1"
-                                                  type: string
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  x-kubernetes-int-or-string: true
                                                 resource:
                                                   description: 'Required: resource
                                                     to select'
@@ -1350,12 +1407,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -1376,12 +1434,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -1463,12 +1522,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -1489,12 +1549,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -1566,12 +1627,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -1611,12 +1673,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -1679,6 +1742,10 @@ spec:
                                       - containerPort
                                       type: object
                                     type: array
+                                    x-kubernetes-list-map-keys:
+                                    - containerPort
+                                    - protocol
+                                    x-kubernetes-list-type: map
                                   readinessProbe:
                                     description: 'Periodic probe of container service
                                       readiness. Container will be removed from service
@@ -1746,12 +1813,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -1791,12 +1859,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -1813,14 +1882,22 @@ spec:
                                     properties:
                                       limits:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
                                           info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                         type: object
                                       requests:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Requests describes the minimum
                                           amount of compute resources required. If
                                           Requests is omitted for a container, it
@@ -1971,10 +2048,9 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is alpha-level
-                                              and it is only honored by servers that
-                                              enable the WindowsRunAsUserName feature
-                                              flag.
+                                              takes precedence. This field is beta-level
+                                              and may be disabled with the WindowsRunAsUserName
+                                              feature flag.
                                             type: string
                                         type: object
                                     type: object
@@ -2053,12 +2129,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -2098,12 +2175,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -2226,8 +2304,7 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive. This
-                                            field is beta in 1.15.
+                                            and SubPath are mutually exclusive.
                                           type: string
                                       required:
                                       - mountPath
@@ -2406,7 +2483,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP.'
+                                                status.hostIP, status.podIP, status.podIPs.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -2434,10 +2511,14 @@ spec:
                                                     vars'
                                                   type: string
                                                 divisor:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
                                                   description: Specifies the output
                                                     format of the exposed resources,
                                                     defaults to "1"
-                                                  type: string
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  x-kubernetes-int-or-string: true
                                                 resource:
                                                   description: 'Required: resource
                                                     to select'
@@ -2601,12 +2682,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -2627,12 +2709,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -2714,12 +2797,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -2740,12 +2824,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -2816,12 +2901,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -2861,12 +2947,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -2988,12 +3075,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -3033,12 +3121,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -3056,14 +3145,22 @@ spec:
                                     properties:
                                       limits:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
                                           info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                         type: object
                                       requests:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Requests describes the minimum
                                           amount of compute resources required. If
                                           Requests is omitted for a container, it
@@ -3213,10 +3310,9 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is alpha-level
-                                              and it is only honored by servers that
-                                              enable the WindowsRunAsUserName feature
-                                              flag.
+                                              takes precedence. This field is beta-level
+                                              and may be disabled with the WindowsRunAsUserName
+                                              feature flag.
                                             type: string
                                         type: object
                                     type: object
@@ -3285,12 +3381,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -3330,12 +3427,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -3467,8 +3565,7 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive. This
-                                            field is beta in 1.15.
+                                            and SubPath are mutually exclusive.
                                           type: string
                                       required:
                                       - mountPath
@@ -3648,7 +3745,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP.'
+                                                status.hostIP, status.podIP, status.podIPs.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -3676,10 +3773,14 @@ spec:
                                                     vars'
                                                   type: string
                                                 divisor:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
                                                   description: Specifies the output
                                                     format of the exposed resources,
                                                     defaults to "1"
-                                                  type: string
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  x-kubernetes-int-or-string: true
                                                 resource:
                                                   description: 'Required: resource
                                                     to select'
@@ -3848,12 +3949,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -3874,12 +3976,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -3961,12 +4064,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -3987,12 +4091,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -4064,12 +4169,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -4109,12 +4215,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -4177,6 +4284,10 @@ spec:
                                       - containerPort
                                       type: object
                                     type: array
+                                    x-kubernetes-list-map-keys:
+                                    - containerPort
+                                    - protocol
+                                    x-kubernetes-list-type: map
                                   readinessProbe:
                                     description: 'Periodic probe of container service
                                       readiness. Container will be removed from service
@@ -4244,12 +4355,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -4289,12 +4401,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -4311,14 +4424,22 @@ spec:
                                     properties:
                                       limits:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
                                           info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                         type: object
                                       requests:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Requests describes the minimum
                                           amount of compute resources required. If
                                           Requests is omitted for a container, it
@@ -4469,10 +4590,9 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is alpha-level
-                                              and it is only honored by servers that
-                                              enable the WindowsRunAsUserName feature
-                                              flag.
+                                              takes precedence. This field is beta-level
+                                              and may be disabled with the WindowsRunAsUserName
+                                              feature flag.
                                             type: string
                                         type: object
                                     type: object
@@ -4551,12 +4671,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -4596,12 +4717,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -4724,8 +4846,7 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive. This
-                                            field is beta in 1.15.
+                                            and SubPath are mutually exclusive.
                                           type: string
                                       required:
                                       - mountPath
@@ -4758,7 +4879,11 @@ spec:
                               type: object
                             overhead:
                               additionalProperties:
-                                type: string
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
                               description: 'Overhead represents the resource overhead
                                 associated with running a pod for a given RuntimeClass.
                                 This field will be autopopulated at admission time
@@ -4969,9 +5094,9 @@ spec:
                                         unspecified. May also be set in PodSecurityContext.
                                         If set in both SecurityContext and PodSecurityContext,
                                         the value specified in SecurityContext takes
-                                        precedence. This field is alpha-level and
-                                        it is only honored by servers that enable
-                                        the WindowsRunAsUserName feature flag.
+                                        precedence. This field is beta-level and may
+                                        be disabled with the WindowsRunAsUserName
+                                        feature flag.
                                       type: string
                                   type: object
                               type: object
@@ -4992,8 +5117,7 @@ spec:
                                 containers in the same pod, and the first process
                                 in each container will not be assigned PID 1. HostPID
                                 and ShareProcessNamespace cannot both be set. Optional:
-                                Default to false. This field is beta-level and may
-                                be disabled with the PodShareProcessNamespace feature.'
+                                Default to false.'
                               type: boolean
                             subdomain:
                               description: If specified, the fully qualified Pod hostname
@@ -5174,6 +5298,10 @@ spec:
                                 - whenUnsatisfiable
                                 type: object
                               type: array
+                              x-kubernetes-list-map-keys:
+                              - topologyKey
+                              - whenUnsatisfiable
+                              x-kubernetes-list-type: map
                             volumes:
                               description: 'List of volumes that can be mounted by
                                 containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes'
@@ -5555,10 +5683,14 @@ spec:
                                                     vars'
                                                   type: string
                                                 divisor:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
                                                   description: Specifies the output
                                                     format of the exposed resources,
                                                     defaults to "1"
-                                                  type: string
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  x-kubernetes-int-or-string: true
                                                 resource:
                                                   description: 'Required: resource
                                                     to select'
@@ -5584,6 +5716,9 @@ spec:
                                           or Memory. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir'
                                         type: string
                                       sizeLimit:
+                                        anyOf:
+                                        - type: integer
+                                        - type: string
                                         description: 'Total amount of local storage
                                           required for this EmptyDir volume. The size
                                           limit is also applicable for memory medium.
@@ -5593,7 +5728,8 @@ spec:
                                           of all containers in a pod. The default
                                           is nil which means that the limit is undefined.
                                           More info: http://kubernetes.io/docs/user-guide/volumes#emptydir'
-                                        type: string
+                                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                        x-kubernetes-int-or-string: true
                                     type: object
                                   fc:
                                     description: FC represents a Fibre Channel resource
@@ -6126,11 +6262,15 @@ spec:
                                                               optional for env vars'
                                                             type: string
                                                           divisor:
+                                                            anyOf:
+                                                            - type: integer
+                                                            - type: string
                                                             description: Specifies
                                                               the output format of
                                                               the exposed resources,
                                                               defaults to "1"
-                                                            type: string
+                                                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                            x-kubernetes-int-or-string: true
                                                           resource:
                                                             description: 'Required:
                                                               resource to select'
@@ -6632,13 +6772,21 @@ spec:
                                 properties:
                                   limits:
                                     additionalProperties:
-                                      type: string
+                                      anyOf:
+                                      - type: integer
+                                      - type: string
+                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                      x-kubernetes-int-or-string: true
                                     description: 'Limits describes the maximum amount
                                       of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                   requests:
                                     additionalProperties:
-                                      type: string
+                                      anyOf:
+                                      - type: integer
+                                      - type: string
+                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                      x-kubernetes-int-or-string: true
                                     description: 'Requests describes the minimum amount
                                       of compute resources required. If Requests is
                                       omitted for a container, it defaults to Limits
@@ -6724,7 +6872,11 @@ spec:
                                 type: array
                               capacity:
                                 additionalProperties:
-                                  type: string
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
                                 description: Represents the actual resources of the
                                   underlying volume.
                                 type: object
@@ -6795,22 +6947,24 @@ spec:
                     properties:
                       maxUnavailable:
                         anyOf:
-                        - type: string
                         - type: integer
+                        - type: string
                         description: An eviction is allowed if at most "maxUnavailable"
                           pods selected by "selector" are unavailable after the eviction,
                           i.e. even in absence of the evicted pod. For example, one
                           can prevent all voluntary evictions by specifying 0. This
                           is a mutually exclusive setting with "minAvailable".
+                        x-kubernetes-int-or-string: true
                       minAvailable:
                         anyOf:
-                        - type: string
                         - type: integer
+                        - type: string
                         description: An eviction is allowed if at least "minAvailable"
                           pods selected by "selector" will still be available after
                           the eviction, i.e. even in the absence of the evicted pod.  So
                           for example you can prevent all voluntary evictions by specifying
                           "100%".
+                        x-kubernetes-int-or-string: true
                       selector:
                         description: Label query over pods whose evictions are managed
                           by the disruption budget.
@@ -6859,6 +7013,37 @@ spec:
                         type: object
                     type: object
                 type: object
+              remoteClusters:
+                description: RemoteClusters enables you to establish uni-directional
+                  connections to a remote Elasticsearch cluster.
+                items:
+                  description: RemoteCluster declares a remote Elasticsearch cluster
+                    connection.
+                  properties:
+                    elasticsearchRef:
+                      description: ElasticsearchRef is a reference to an Elasticsearch
+                        cluster running within the same k8s cluster.
+                      properties:
+                        name:
+                          description: Name of the Kubernetes object.
+                          type: string
+                        namespace:
+                          description: Namespace of the Kubernetes object. If empty,
+                            defaults to the current namespace.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    name:
+                      description: Name is the name of the remote cluster as it is
+                        set in the Elasticsearch settings. The name is expected to
+                        be unique for each remote clusters.
+                      minLength: 1
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               secureSettings:
                 description: 'SecureSettings is a list of references to Kubernetes
                   secrets containing sensitive configuration options for Elasticsearch.
@@ -6902,6 +7087,243 @@ spec:
                   different namespace. Can only be used if ECK is enforcing RBAC on
                   references.
                 type: string
+              transport:
+                description: Transport holds transport layer settings for Elasticsearch.
+                properties:
+                  service:
+                    description: Service defines the template for the associated Kubernetes
+                      Service object.
+                    properties:
+                      metadata:
+                        description: ObjectMeta is the metadata of the service. The
+                          name and namespace provided here are managed by ECK and
+                          will be ignored.
+                        type: object
+                      spec:
+                        description: Spec is the specification of the service.
+                        properties:
+                          clusterIP:
+                            description: 'clusterIP is the IP address of the service
+                              and is usually assigned randomly by the master. If an
+                              address is specified manually and is not in use by others,
+                              it will be allocated to the service; otherwise, creation
+                              of the service will fail. This field can not be changed
+                              through updates. Valid values are "None", empty string
+                              (""), or a valid IP address. "None" can be specified
+                              for headless services when proxying is not required.
+                              Only applies to types ClusterIP, NodePort, and LoadBalancer.
+                              Ignored if type is ExternalName. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                            type: string
+                          externalIPs:
+                            description: externalIPs is a list of IP addresses for
+                              which nodes in the cluster will also accept traffic
+                              for this service.  These IPs are not managed by Kubernetes.  The
+                              user is responsible for ensuring that traffic arrives
+                              at a node with this IP.  A common example is external
+                              load-balancers that are not part of the Kubernetes system.
+                            items:
+                              type: string
+                            type: array
+                          externalName:
+                            description: externalName is the external reference that
+                              kubedns or equivalent will return as a CNAME record
+                              for this service. No proxying will be involved. Must
+                              be a valid RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
+                              and requires Type to be ExternalName.
+                            type: string
+                          externalTrafficPolicy:
+                            description: externalTrafficPolicy denotes if this Service
+                              desires to route external traffic to node-local or cluster-wide
+                              endpoints. "Local" preserves the client source IP and
+                              avoids a second hop for LoadBalancer and Nodeport type
+                              services, but risks potentially imbalanced traffic spreading.
+                              "Cluster" obscures the client source IP and may cause
+                              a second hop to another node, but should have good overall
+                              load-spreading.
+                            type: string
+                          healthCheckNodePort:
+                            description: healthCheckNodePort specifies the healthcheck
+                              nodePort for the service. If not specified, HealthCheckNodePort
+                              is created by the service api backend with the allocated
+                              nodePort. Will use user-specified nodePort value if
+                              specified by the client. Only effects when Type is set
+                              to LoadBalancer and ExternalTrafficPolicy is set to
+                              Local.
+                            format: int32
+                            type: integer
+                          ipFamily:
+                            description: ipFamily specifies whether this Service has
+                              a preference for a particular IP family (e.g. IPv4 vs.
+                              IPv6).  If a specific IP family is requested, the clusterIP
+                              field will be allocated from that family, if it is available
+                              in the cluster.  If no IP family is requested, the cluster's
+                              primary IP family will be used. Other IP fields (loadBalancerIP,
+                              loadBalancerSourceRanges, externalIPs) and controllers
+                              which allocate external load-balancers should use the
+                              same IP family.  Endpoints for this Service will be
+                              of this family.  This field is immutable after creation.
+                              Assigning a ServiceIPFamily not available in the cluster
+                              (e.g. IPv6 in IPv4 only cluster) is an error condition
+                              and will fail during clusterIP assignment.
+                            type: string
+                          loadBalancerIP:
+                            description: 'Only applies to Service Type: LoadBalancer
+                              LoadBalancer will get created with the IP specified
+                              in this field. This feature depends on whether the underlying
+                              cloud-provider supports specifying the loadBalancerIP
+                              when a load balancer is created. This field will be
+                              ignored if the cloud-provider does not support the feature.'
+                            type: string
+                          loadBalancerSourceRanges:
+                            description: 'If specified and supported by the platform,
+                              this will restrict traffic through the cloud-provider
+                              load-balancer will be restricted to the specified client
+                              IPs. This field will be ignored if the cloud-provider
+                              does not support the feature." More info: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/'
+                            items:
+                              type: string
+                            type: array
+                          ports:
+                            description: 'The list of ports that are exposed by this
+                              service. More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                            items:
+                              description: ServicePort contains information on service's
+                                port.
+                              properties:
+                                name:
+                                  description: The name of this port within the service.
+                                    This must be a DNS_LABEL. All ports within a ServiceSpec
+                                    must have unique names. When considering the endpoints
+                                    for a Service, this must match the 'name' field
+                                    in the EndpointPort. Optional if only one ServicePort
+                                    is defined on this service.
+                                  type: string
+                                nodePort:
+                                  description: 'The port on each node on which this
+                                    service is exposed when type=NodePort or LoadBalancer.
+                                    Usually assigned by the system. If specified,
+                                    it will be allocated to the service if unused
+                                    or else creation of the service will fail. Default
+                                    is to auto-allocate a port if the ServiceType
+                                    of this Service requires one. More info: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport'
+                                  format: int32
+                                  type: integer
+                                port:
+                                  description: The port that will be exposed by this
+                                    service.
+                                  format: int32
+                                  type: integer
+                                protocol:
+                                  description: The IP protocol for this port. Supports
+                                    "TCP", "UDP", and "SCTP". Default is TCP.
+                                  type: string
+                                targetPort:
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  description: 'Number or name of the port to access
+                                    on the pods targeted by the service. Number must
+                                    be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
+                                    If this is a string, it will be looked up as a
+                                    named port in the target Pod''s container ports.
+                                    If this is not specified, the value of the ''port''
+                                    field is used (an identity map). This field is
+                                    ignored for services with clusterIP=None, and
+                                    should be omitted or set equal to the ''port''
+                                    field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
+                                  x-kubernetes-int-or-string: true
+                              required:
+                              - port
+                              type: object
+                            type: array
+                            x-kubernetes-list-map-keys:
+                            - port
+                            - protocol
+                            x-kubernetes-list-type: map
+                          publishNotReadyAddresses:
+                            description: publishNotReadyAddresses, when set to true,
+                              indicates that DNS implementations must publish the
+                              notReadyAddresses of subsets for the Endpoints associated
+                              with the Service. The default value is false. The primary
+                              use case for setting this field is to use a StatefulSet's
+                              Headless Service to propagate SRV records for its Pods
+                              without respect to their readiness for purpose of peer
+                              discovery.
+                            type: boolean
+                          selector:
+                            additionalProperties:
+                              type: string
+                            description: 'Route service traffic to pods with label
+                              keys and values matching this selector. If empty or
+                              not present, the service is assumed to have an external
+                              process managing its endpoints, which Kubernetes will
+                              not modify. Only applies to types ClusterIP, NodePort,
+                              and LoadBalancer. Ignored if type is ExternalName. More
+                              info: https://kubernetes.io/docs/concepts/services-networking/service/'
+                            type: object
+                          sessionAffinity:
+                            description: 'Supports "ClientIP" and "None". Used to
+                              maintain session affinity. Enable client IP based session
+                              affinity. Must be ClientIP or None. Defaults to None.
+                              More info: https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies'
+                            type: string
+                          sessionAffinityConfig:
+                            description: sessionAffinityConfig contains the configurations
+                              of session affinity.
+                            properties:
+                              clientIP:
+                                description: clientIP contains the configurations
+                                  of Client IP based session affinity.
+                                properties:
+                                  timeoutSeconds:
+                                    description: timeoutSeconds specifies the seconds
+                                      of ClientIP type session sticky time. The value
+                                      must be >0 && <=86400(for 1 day) if ServiceAffinity
+                                      == "ClientIP". Default value is 10800(for 3
+                                      hours).
+                                    format: int32
+                                    type: integer
+                                type: object
+                            type: object
+                          topologyKeys:
+                            description: topologyKeys is a preference-order list of
+                              topology keys which implementations of services should
+                              use to preferentially sort endpoints when accessing
+                              this Service, it can not be used at the same time as
+                              externalTrafficPolicy=Local. Topology keys must be valid
+                              label keys and at most 16 keys may be specified. Endpoints
+                              are chosen based on the first topology key with available
+                              backends. If this field is specified and all entries
+                              have no backends that match the topology of the client,
+                              the service has no backends for that client and connections
+                              should fail. The special value "*" may be used to mean
+                              "any topology". This catch-all value, if used, only
+                              makes sense as the last value in the list. If this is
+                              not specified or empty, no topology constraints will
+                              be applied.
+                            items:
+                              type: string
+                            type: array
+                          type:
+                            description: 'type determines how the Service is exposed.
+                              Defaults to ClusterIP. Valid options are ExternalName,
+                              ClusterIP, NodePort, and LoadBalancer. "ExternalName"
+                              maps to the specified externalName. "ClusterIP" allocates
+                              a cluster-internal IP address for load-balancing to
+                              endpoints. Endpoints are determined by the selector
+                              or if that is not specified, by manual construction
+                              of an Endpoints object. If clusterIP is "None", no virtual
+                              IP is allocated and the endpoints are published as a
+                              set of endpoints rather than a stable IP. "NodePort"
+                              builds on ClusterIP and allocates a port on every node
+                              which routes to the clusterIP. "LoadBalancer" builds
+                              on NodePort and creates an external load-balancer (if
+                              supported in the current cloud) which routes to the
+                              clusterIP. More info: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types'
+                            type: string
+                        type: object
+                    type: object
+                type: object
               updateStrategy:
                 description: UpdateStrategy specifies how updates to the cluster should
                   be performed.
@@ -7107,8 +7529,8 @@ spec:
                                   type: string
                                 targetPort:
                                   anyOf:
-                                  - type: string
                                   - type: integer
+                                  - type: string
                                   description: 'Number or name of the port to access
                                     on the pods targeted by the service. Number must
                                     be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
@@ -7119,10 +7541,15 @@ spec:
                                     ignored for services with clusterIP=None, and
                                     should be omitted or set equal to the ''port''
                                     field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service'
+                                  x-kubernetes-int-or-string: true
                               required:
                               - port
                               type: object
                             type: array
+                            x-kubernetes-list-map-keys:
+                            - port
+                            - protocol
+                            x-kubernetes-list-type: map
                           publishNotReadyAddresses:
                             description: publishNotReadyAddresses, when set to true,
                               indicates that DNS implementations must publish the
@@ -7168,6 +7595,25 @@ spec:
                                     type: integer
                                 type: object
                             type: object
+                          topologyKeys:
+                            description: topologyKeys is a preference-order list of
+                              topology keys which implementations of services should
+                              use to preferentially sort endpoints when accessing
+                              this Service, it can not be used at the same time as
+                              externalTrafficPolicy=Local. Topology keys must be valid
+                              label keys and at most 16 keys may be specified. Endpoints
+                              are chosen based on the first topology key with available
+                              backends. If this field is specified and all entries
+                              have no backends that match the topology of the client,
+                              the service has no backends for that client and connections
+                              should fail. The special value "*" may be used to mean
+                              "any topology". This catch-all value, if used, only
+                              makes sense as the last value in the list. If this is
+                              not specified or empty, no topology constraints will
+                              be applied.
+                            items:
+                              type: string
+                            type: array
                           type:
                             description: 'type determines how the Service is exposed.
                               Defaults to ClusterIP. Valid options are ExternalName,
@@ -8064,7 +8510,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP.'
+                                                status.hostIP, status.podIP, status.podIPs.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -8092,10 +8538,14 @@ spec:
                                                     vars'
                                                   type: string
                                                 divisor:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
                                                   description: Specifies the output
                                                     format of the exposed resources,
                                                     defaults to "1"
-                                                  type: string
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  x-kubernetes-int-or-string: true
                                                 resource:
                                                   description: 'Required: resource
                                                     to select'
@@ -8264,12 +8714,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -8290,12 +8741,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -8377,12 +8829,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -8403,12 +8856,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -8480,12 +8934,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -8525,12 +8980,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -8593,6 +9049,10 @@ spec:
                                       - containerPort
                                       type: object
                                     type: array
+                                    x-kubernetes-list-map-keys:
+                                    - containerPort
+                                    - protocol
+                                    x-kubernetes-list-type: map
                                   readinessProbe:
                                     description: 'Periodic probe of container service
                                       readiness. Container will be removed from service
@@ -8660,12 +9120,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -8705,12 +9166,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -8727,14 +9189,22 @@ spec:
                                     properties:
                                       limits:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
                                           info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                         type: object
                                       requests:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Requests describes the minimum
                                           amount of compute resources required. If
                                           Requests is omitted for a container, it
@@ -8885,10 +9355,9 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is alpha-level
-                                              and it is only honored by servers that
-                                              enable the WindowsRunAsUserName feature
-                                              flag.
+                                              takes precedence. This field is beta-level
+                                              and may be disabled with the WindowsRunAsUserName
+                                              feature flag.
                                             type: string
                                         type: object
                                     type: object
@@ -8967,12 +9436,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -9012,12 +9482,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -9140,8 +9611,7 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive. This
-                                            field is beta in 1.15.
+                                            and SubPath are mutually exclusive.
                                           type: string
                                       required:
                                       - mountPath
@@ -9320,7 +9790,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP.'
+                                                status.hostIP, status.podIP, status.podIPs.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -9348,10 +9818,14 @@ spec:
                                                     vars'
                                                   type: string
                                                 divisor:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
                                                   description: Specifies the output
                                                     format of the exposed resources,
                                                     defaults to "1"
-                                                  type: string
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  x-kubernetes-int-or-string: true
                                                 resource:
                                                   description: 'Required: resource
                                                     to select'
@@ -9515,12 +9989,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -9541,12 +10016,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -9628,12 +10104,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -9654,12 +10131,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -9730,12 +10208,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -9775,12 +10254,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -9902,12 +10382,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -9947,12 +10428,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -9970,14 +10452,22 @@ spec:
                                     properties:
                                       limits:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
                                           info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                         type: object
                                       requests:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Requests describes the minimum
                                           amount of compute resources required. If
                                           Requests is omitted for a container, it
@@ -10127,10 +10617,9 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is alpha-level
-                                              and it is only honored by servers that
-                                              enable the WindowsRunAsUserName feature
-                                              flag.
+                                              takes precedence. This field is beta-level
+                                              and may be disabled with the WindowsRunAsUserName
+                                              feature flag.
                                             type: string
                                         type: object
                                     type: object
@@ -10199,12 +10688,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -10244,12 +10734,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -10381,8 +10872,7 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive. This
-                                            field is beta in 1.15.
+                                            and SubPath are mutually exclusive.
                                           type: string
                                       required:
                                       - mountPath
@@ -10562,7 +11052,7 @@ spec:
                                                 pod: supports metadata.name, metadata.namespace,
                                                 metadata.labels, metadata.annotations,
                                                 spec.nodeName, spec.serviceAccountName,
-                                                status.hostIP, status.podIP.'
+                                                status.hostIP, status.podIP, status.podIPs.'
                                               properties:
                                                 apiVersion:
                                                   description: Version of the schema
@@ -10590,10 +11080,14 @@ spec:
                                                     vars'
                                                   type: string
                                                 divisor:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
                                                   description: Specifies the output
                                                     format of the exposed resources,
                                                     defaults to "1"
-                                                  type: string
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  x-kubernetes-int-or-string: true
                                                 resource:
                                                   description: 'Required: resource
                                                     to select'
@@ -10762,12 +11256,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -10788,12 +11283,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -10875,12 +11371,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Name or number of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                               scheme:
                                                 description: Scheme to use for connecting
                                                   to the host. Defaults to HTTP.
@@ -10901,12 +11398,13 @@ spec:
                                                 type: string
                                               port:
                                                 anyOf:
-                                                - type: string
                                                 - type: integer
+                                                - type: string
                                                 description: Number or name of the
                                                   port to access on the container.
                                                   Number must be in the range 1 to
                                                   65535. Name must be an IANA_SVC_NAME.
+                                                x-kubernetes-int-or-string: true
                                             required:
                                             - port
                                             type: object
@@ -10978,12 +11476,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -11023,12 +11522,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -11091,6 +11591,10 @@ spec:
                                       - containerPort
                                       type: object
                                     type: array
+                                    x-kubernetes-list-map-keys:
+                                    - containerPort
+                                    - protocol
+                                    x-kubernetes-list-type: map
                                   readinessProbe:
                                     description: 'Periodic probe of container service
                                       readiness. Container will be removed from service
@@ -11158,12 +11662,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -11203,12 +11708,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -11225,14 +11731,22 @@ spec:
                                     properties:
                                       limits:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Limits describes the maximum
                                           amount of compute resources allowed. More
                                           info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                         type: object
                                       requests:
                                         additionalProperties:
-                                          type: string
+                                          anyOf:
+                                          - type: integer
+                                          - type: string
+                                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                          x-kubernetes-int-or-string: true
                                         description: 'Requests describes the minimum
                                           amount of compute resources required. If
                                           Requests is omitted for a container, it
@@ -11383,10 +11897,9 @@ spec:
                                               also be set in PodSecurityContext. If
                                               set in both SecurityContext and PodSecurityContext,
                                               the value specified in SecurityContext
-                                              takes precedence. This field is alpha-level
-                                              and it is only honored by servers that
-                                              enable the WindowsRunAsUserName feature
-                                              flag.
+                                              takes precedence. This field is beta-level
+                                              and may be disabled with the WindowsRunAsUserName
+                                              feature flag.
                                             type: string
                                         type: object
                                     type: object
@@ -11465,12 +11978,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Name or number of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                           scheme:
                                             description: Scheme to use for connecting
                                               to the host. Defaults to HTTP.
@@ -11510,12 +12024,13 @@ spec:
                                             type: string
                                           port:
                                             anyOf:
-                                            - type: string
                                             - type: integer
+                                            - type: string
                                             description: Number or name of the port
                                               to access on the container. Number must
                                               be in the range 1 to 65535. Name must
                                               be an IANA_SVC_NAME.
+                                            x-kubernetes-int-or-string: true
                                         required:
                                         - port
                                         type: object
@@ -11638,8 +12153,7 @@ spec:
                                             but environment variable references $(VAR_NAME)
                                             are expanded using the container's environment.
                                             Defaults to "" (volume's root). SubPathExpr
-                                            and SubPath are mutually exclusive. This
-                                            field is beta in 1.15.
+                                            and SubPath are mutually exclusive.
                                           type: string
                                       required:
                                       - mountPath
@@ -11672,7 +12186,11 @@ spec:
                               type: object
                             overhead:
                               additionalProperties:
-                                type: string
+                                anyOf:
+                                - type: integer
+                                - type: string
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
                               description: 'Overhead represents the resource overhead
                                 associated with running a pod for a given RuntimeClass.
                                 This field will be autopopulated at admission time
@@ -11883,9 +12401,9 @@ spec:
                                         unspecified. May also be set in PodSecurityContext.
                                         If set in both SecurityContext and PodSecurityContext,
                                         the value specified in SecurityContext takes
-                                        precedence. This field is alpha-level and
-                                        it is only honored by servers that enable
-                                        the WindowsRunAsUserName feature flag.
+                                        precedence. This field is beta-level and may
+                                        be disabled with the WindowsRunAsUserName
+                                        feature flag.
                                       type: string
                                   type: object
                               type: object
@@ -11906,8 +12424,7 @@ spec:
                                 containers in the same pod, and the first process
                                 in each container will not be assigned PID 1. HostPID
                                 and ShareProcessNamespace cannot both be set. Optional:
-                                Default to false. This field is beta-level and may
-                                be disabled with the PodShareProcessNamespace feature.'
+                                Default to false.'
                               type: boolean
                             subdomain:
                               description: If specified, the fully qualified Pod hostname
@@ -12088,6 +12605,10 @@ spec:
                                 - whenUnsatisfiable
                                 type: object
                               type: array
+                              x-kubernetes-list-map-keys:
+                              - topologyKey
+                              - whenUnsatisfiable
+                              x-kubernetes-list-type: map
                             volumes:
                               description: 'List of volumes that can be mounted by
                                 containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes'
@@ -12469,10 +12990,14 @@ spec:
                                                     vars'
                                                   type: string
                                                 divisor:
+                                                  anyOf:
+                                                  - type: integer
+                                                  - type: string
                                                   description: Specifies the output
                                                     format of the exposed resources,
                                                     defaults to "1"
-                                                  type: string
+                                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                  x-kubernetes-int-or-string: true
                                                 resource:
                                                   description: 'Required: resource
                                                     to select'
@@ -12498,6 +13023,9 @@ spec:
                                           or Memory. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir'
                                         type: string
                                       sizeLimit:
+                                        anyOf:
+                                        - type: integer
+                                        - type: string
                                         description: 'Total amount of local storage
                                           required for this EmptyDir volume. The size
                                           limit is also applicable for memory medium.
@@ -12507,7 +13035,8 @@ spec:
                                           of all containers in a pod. The default
                                           is nil which means that the limit is undefined.
                                           More info: http://kubernetes.io/docs/user-guide/volumes#emptydir'
-                                        type: string
+                                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                        x-kubernetes-int-or-string: true
                                     type: object
                                   fc:
                                     description: FC represents a Fibre Channel resource
@@ -13040,11 +13569,15 @@ spec:
                                                               optional for env vars'
                                                             type: string
                                                           divisor:
+                                                            anyOf:
+                                                            - type: integer
+                                                            - type: string
                                                             description: Specifies
                                                               the output format of
                                                               the exposed resources,
                                                               defaults to "1"
-                                                            type: string
+                                                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                                            x-kubernetes-int-or-string: true
                                                           resource:
                                                             description: 'Required:
                                                               resource to select'
@@ -13546,13 +14079,21 @@ spec:
                                 properties:
                                   limits:
                                     additionalProperties:
-                                      type: string
+                                      anyOf:
+                                      - type: integer
+                                      - type: string
+                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                      x-kubernetes-int-or-string: true
                                     description: 'Limits describes the maximum amount
                                       of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                                     type: object
                                   requests:
                                     additionalProperties:
-                                      type: string
+                                      anyOf:
+                                      - type: integer
+                                      - type: string
+                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                      x-kubernetes-int-or-string: true
                                     description: 'Requests describes the minimum amount
                                       of compute resources required. If Requests is
                                       omitted for a container, it defaults to Limits
@@ -13638,7 +14179,11 @@ spec:
                                 type: array
                               capacity:
                                 additionalProperties:
-                                  type: string
+                                  anyOf:
+                                  - type: integer
+                                  - type: string
+                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                  x-kubernetes-int-or-string: true
                                 description: Represents the actual resources of the
                                   underlying volume.
                                 type: object
@@ -13709,22 +14254,24 @@ spec:
                     properties:
                       maxUnavailable:
                         anyOf:
-                        - type: string
                         - type: integer
+                        - type: string
                         description: An eviction is allowed if at most "maxUnavailable"
                           pods selected by "selector" are unavailable after the eviction,
                           i.e. even in absence of the evicted pod. For example, one
                           can prevent all voluntary evictions by specifying 0. This
                           is a mutually exclusive setting with "minAvailable".
+                        x-kubernetes-int-or-string: true
                       minAvailable:
                         anyOf:
-                        - type: string
                         - type: integer
+                        - type: string
                         description: An eviction is allowed if at least "minAvailable"
                           pods selected by "selector" will still be available after
                           the eviction, i.e. even in the absence of the evicted pod.  So
                           for example you can prevent all voluntary evictions by specifying
                           "100%".
+                        x-kubernetes-int-or-string: true
                       selector:
                         description: Label query over pods whose evictions are managed
                           by the disruption budget.

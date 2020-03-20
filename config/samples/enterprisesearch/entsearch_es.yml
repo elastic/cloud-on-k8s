@@ -1,0 +1,46 @@
+# This sample sets up an Elasticsearch cluster and a Enterprise Search instance preconfigured for that cluster
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: 7.6.0
+  nodeSets:
+    - name: default
+      count: 1
+      config:
+        # This setting could have performance implications for production clusters.
+        # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+        node.store.allow_mmap: false
+---
+apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
+kind: EnterpriseSearch
+metadata:
+  name: entsearch-sample
+spec:
+  version: 7.6.0
+  image: $DOCKER_IMAGE
+  count: 1
+  elasticsearchRef:
+    name: elasticsearch-sample
+  config:
+    ent_search.external_url: https://localhost:3002
+  http:
+#    service:
+#      spec:
+#        type: LoadBalancer
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+          - dns: localhost
+  # http:
+  #   service:
+  #     spec:
+  #       type: LoadBalancer
+  # podTemplate:
+  #   spec:
+  #     containers:
+  #       - name: enterprise-search
+  #         resources:
+  #           requests:
+  #             cpu: 4

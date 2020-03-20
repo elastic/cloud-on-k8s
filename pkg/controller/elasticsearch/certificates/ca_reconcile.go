@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -48,11 +49,15 @@ func Reconcile(
 
 	results := &reconciler.Results{}
 
+	// reconcile remote clusters certificate authorities
+	if err := remoteca.Reconcile(driver.K8sClient(), es); err != nil {
+		results.WithError(err)
+	}
+
 	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
 	httpCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
-		driver.Scheme(),
 		esv1.ESNamer,
 		&es,
 		labels,
@@ -92,13 +97,12 @@ func Reconcile(
 	})
 
 	// reconcile http public certs secret:
-	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), driver.Scheme(), &es, esv1.ESNamer, httpCertificates); err != nil {
+	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), &es, esv1.ESNamer, httpCertificates); err != nil {
 		return nil, results.WithError(err)
 	}
 
 	transportCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
-		driver.Scheme(),
 		esv1.ESNamer,
 		&es,
 		labels,
@@ -114,14 +118,13 @@ func Reconcile(
 	})
 
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), driver.Scheme(), es, transportCA); err != nil {
+	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), es, transportCA); err != nil {
 		return nil, results.WithError(err)
 	}
 
 	// reconcile transport certificates
 	transportResults := transport.ReconcileTransportCertificatesSecrets(
 		driver.K8sClient(),
-		driver.Scheme(),
 		transportCA,
 		es,
 		certRotation,

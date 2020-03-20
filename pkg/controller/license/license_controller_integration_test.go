@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,11 +40,16 @@ func TestMain(m *testing.M) {
 
 func TestReconcile(t *testing.T) {
 	c, stop := test.StartManager(t, func(mgr manager.Manager, p operator.Parameters) error {
-		return add(mgr, &ReconcileLicenses{
+		r := &ReconcileLicenses{
 			Client:  k8s.WrapClient(mgr.GetClient()),
-			scheme:  mgr.GetScheme(),
 			checker: license.MockChecker{},
-		})
+		}
+		c, err := common.NewController(mgr, name, r, p)
+		if err != nil {
+			return err
+		}
+		return addWatches(c, r.Client)
+
 	}, operator.Parameters{})
 	defer stop()
 

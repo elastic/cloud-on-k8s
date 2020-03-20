@@ -21,10 +21,9 @@ LOG_VERBOSITY ?= 1
 GOBIN := $(or $(shell go env GOBIN 2>/dev/null), $(shell go env GOPATH 2>/dev/null)/bin)
 
 # find or download controller-gen
-# note this does not validate the version
 controller-gen:
-ifeq ($(shell command -v controller-gen),)
-	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.1)
+ifneq ($(shell controller-gen --version), Version: v0.2.5)
+	@(cd /tmp; GO111MODULE=on go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5)
 CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
@@ -47,7 +46,7 @@ REPOSITORY  ?= eck
 NAME        ?= eck-operator
 SNAPSHOT    ?= true
 VERSION     ?= $(shell cat VERSION)
-TAG         ?= $(shell git rev-parse --short --verify HEAD)
+TAG         ?= $(shell git rev-parse --short=8 --verify HEAD)
 IMG_NAME    ?= $(NAME)$(IMG_SUFFIX)
 IMG_VERSION ?= $(VERSION)-$(TAG)
 
@@ -110,6 +109,9 @@ generate-api-docs:
 
 generate-notice-file:
 	@hack/licence-detector/generate-notice.sh
+
+generate-image-dependencies:
+	@hack/licence-detector/generate-image-deps.sh
 
 elastic-operator: generate
 	go build -mod=readonly -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/cmd

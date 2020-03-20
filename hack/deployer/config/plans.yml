@@ -3,7 +3,7 @@ plans:
   operation: create
   clusterName: ci
   provider: gke
-  kubernetesVersion: 1.13
+  kubernetesVersion: 1.14
   machineType: n1-standard-8
   serviceAccount: true
   psp: true
@@ -17,7 +17,7 @@ plans:
   operation: create
   clusterName: dev
   provider: gke
-  kubernetesVersion: 1.13
+  kubernetesVersion: 1.14
   machineType: n1-standard-8
   serviceAccount: false
   psp: false
@@ -27,11 +27,12 @@ plans:
     localSsdCount: 1
     nodeCountPerZone: 1
     # gke creates a secondary IP range for all Pods of a cluster
-    # it defaults to a /14 subnet, which allows 262k Pods per cluster, but only 62 subnets to be created
+    # gke defaults to a /14 subnet, which allows 262k Pods per cluster, but only 62 subnets to be created
     # /20 allows 4094 subnets, with up to 4094 IPs (Pods) per subnet
-    # more clusters can therefore be created in the same VPC network
-    clusterIpv4Cidr: /20
-    servicesIpv4Cidr: /20
+    # more clusters can therefore be created in the same VPC network.
+    # we set a default of /20 that can be overriden here
+    # clusterIpv4Cidr: /20
+    # servicesIpv4Cidr: /20
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
 - id: aks-ci
   operation: create

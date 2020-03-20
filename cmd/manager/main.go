@@ -15,6 +15,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm"
@@ -42,10 +44,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	entsassn "github.com/elastic/cloud-on-k8s/pkg/controller/entsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
@@ -131,6 +135,11 @@ func init() {
 		operator.ManageWebhookCertsFlag,
 		true,
 		"Enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
+	)
+	Cmd.Flags().Int(
+		operator.MaxConcurrentReconcilesFlag,
+		3,
+		"Sets maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, Apm Server etc). Affects the ability of the operator to process changes concurrently.",
 	)
 	Cmd.Flags().Int(
 		operator.MetricsPortFlag,
@@ -300,7 +309,8 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
-		Tracer: tracer,
+		MaxConcurrentReconciles: viper.GetInt(operator.MaxConcurrentReconcilesFlag),
+		Tracer:                  tracer,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {
@@ -328,12 +338,24 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "Kibana")
 		os.Exit(1)
 	}
+	if err = enterprisesearch.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "EnterpriseSearch")
+		os.Exit(1)
+	}
 	if err = asesassn.Add(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
 		os.Exit(1)
 	}
 	if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+		os.Exit(1)
+	}
+	if err = entsassn.Add(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "EnterpriseSearchAssociation")
+		os.Exit(1)
+	}
+	if err = remoteca.Add(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "RemoteClusterCertificateAuthorites")
 		os.Exit(1)
 	}
 

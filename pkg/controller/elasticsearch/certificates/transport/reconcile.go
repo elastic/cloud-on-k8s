@@ -20,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -32,7 +31,6 @@ var log = logf.Log.WithName("transport")
 // cluster.
 func ReconcileTransportCertificatesSecrets(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	ca *certificates.CA,
 	es esv1.Elasticsearch,
 	rotationParams certificates.RotationParams,
@@ -45,7 +43,7 @@ func ReconcileTransportCertificatesSecrets(
 		return results.WithError(errors.WithStack(err))
 	}
 
-	secret, err := ensureTransportCertificatesSecretExists(c, scheme, es)
+	secret, err := ensureTransportCertificatesSecretExists(c, es)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -58,12 +56,12 @@ func ReconcileTransportCertificatesSecrets(
 		}
 
 		if err := ensureTransportCertificatesSecretContentsForPod(
-			es, secret, pod, ca, rotationParams,
+			es, &secret, pod, ca, rotationParams,
 		); err != nil {
 			return results.WithError(err)
 		}
 		certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
-		cert := extractTransportCert(*secret, pod, certCommonName)
+		cert := extractTransportCert(secret, pod, certCommonName)
 		if cert == nil {
 			return results.WithError(errors.New("No certificate found for pod"))
 		}
@@ -106,7 +104,7 @@ func ReconcileTransportCertificatesSecrets(
 	}
 
 	if !reflect.DeepEqual(secret, currentTransportCertificatesSecret) {
-		if err := c.Update(secret); err != nil {
+		if err := c.Update(&secret); err != nil {
 			return results.WithError(err)
 		}
 		for _, pod := range pods.Items {
@@ -121,59 +119,25 @@ func ReconcileTransportCertificatesSecrets(
 // in time will contain the transport certificates.
 func ensureTransportCertificatesSecretExists(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	es esv1.Elasticsearch,
-) (*corev1.Secret, error) {
+) (corev1.Secret, error) {
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      esv1.TransportCertificatesSecret(es.Name),
-
 			Labels: map[string]string{
 				// a label showing which es these certificates belongs to
 				label.ClusterNameLabelName: es.Name,
 			},
 		},
 	}
-
-	// reconcile the secret resource
-	var reconciled corev1.Secret
-	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Scheme:     scheme,
-		Owner:      &es,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			// we only care about labels, not contents at this point, and we can allow additional labels
-			if reconciled.Labels == nil {
-				return true
-			}
-
-			for k, v := range expected.Labels {
-				if rv, ok := reconciled.Labels[k]; !ok || rv != v {
-					return true
-				}
-			}
-			return false
-		},
-		UpdateReconciled: func() {
-			if reconciled.Labels == nil {
-				reconciled.Labels = expected.Labels
-			} else {
-				for k, v := range expected.Labels {
-					reconciled.Labels[k] = v
-				}
-			}
-		},
-	}); err != nil {
-		return nil, err
+	reconciled, err := reconciler.ReconcileSecret(c, expected, &es)
+	if err != nil {
+		return corev1.Secret{}, err
 	}
-
 	// a placeholder secret may have nil entries, create them if needed
 	if reconciled.Data == nil {
 		reconciled.Data = make(map[string][]byte)
 	}
-
-	return &reconciled, nil
+	return reconciled, nil
 }

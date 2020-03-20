@@ -149,10 +149,10 @@ rules:
       - patch
       - delete
   - apiGroups:
-      - associations.k8s.elastic.co
+      - enterprisesearch.k8s.elastic.co
     resources:
-      - apmserverelasticsearchassociations
-      - apmserverelasticsearchassociations/status
+      - enterprisesearches
+      - enterprisesearches/status
     verbs:
       - get
       - list

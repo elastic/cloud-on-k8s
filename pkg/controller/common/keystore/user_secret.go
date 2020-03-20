@@ -6,13 +6,11 @@ package keystore
 
 import (
 	"fmt"
-	"reflect"
 
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
@@ -43,8 +41,13 @@ func secureSettingsVolume(
 	namer name.Namer,
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
-	err := watchSecureSettings(r.DynamicWatches(), hasKeystore.SecureSettings(), k8s.ExtractNamespacedName(hasKeystore))
-	if err != nil {
+	watcher := k8s.ExtractNamespacedName(hasKeystore)
+	if err := watches.WatchUserProvidedSecrets(
+		watcher,
+		r.DynamicWatches(),
+		SecureSettingsWatchName(watcher),
+		WatchedSecretNames(hasKeystore),
+	); err != nil {
 		return nil, "", err
 	}
 
@@ -52,7 +55,7 @@ func secureSettingsVolume(
 	if err != nil {
 		return nil, "", err
 	}
-	secret, err := reconcileSecureSettings(r.K8sClient(), r.Scheme(), hasKeystore, secrets, namer, labels)
+	secret, err := reconcileSecureSettings(r.K8sClient(), hasKeystore, secrets, namer, labels)
 	if err != nil {
 		return nil, "", err
 	}
@@ -76,7 +79,6 @@ func secureSettingsVolume(
 
 func reconcileSecureSettings(
 	c k8s.Client,
-	scheme *runtime.Scheme,
 	hasKeystore HasKeystore,
 	userSecrets []corev1.Secret,
 	namer name.Namer,
@@ -108,20 +110,11 @@ func reconcileSecureSettings(
 		return nil, err
 	}
 
-	reconciled := corev1.Secret{}
-	return &reconciled, reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Scheme:     scheme,
-		Owner:      hasKeystore,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(expected.Data, reconciled.Data)
-		},
-		UpdateReconciled: func() {
-			reconciled.Data = expected.Data
-		},
-	})
+	secret, err := reconciler.ReconcileSecret(c, expected, hasKeystore)
+	if err != nil {
+		return nil, err
+	}
+	return &secret, nil
 }
 
 func retrieveUserSecrets(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore) ([]corev1.Secret, error) {
@@ -199,29 +192,4 @@ func secureSettingsSecretName(namer name.Namer, hasKeystore HasKeystore) string 
 // It is unique per APM or Kibana deployment.
 func SecureSettingsWatchName(namespacedName types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
-}
-
-// watchSecureSettings registers a watch for the given secure settings.
-//
-// Only one watch per cluster is registered:
-// - if it already exists with a different secret, it is replaced to watch the new secret.
-// - if the given user secret is nil, the watch is removed.
-func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef []commonv1.SecretSource, nn types.NamespacedName) error {
-	watchName := SecureSettingsWatchName(nn)
-	if secureSettingsRef == nil {
-		watched.Secrets.RemoveHandlerForKey(watchName)
-		return nil
-	}
-	userSecretNsns := make([]types.NamespacedName, 0, len(secureSettingsRef))
-	for _, secretRef := range secureSettingsRef {
-		userSecretNsns = append(userSecretNsns, types.NamespacedName{
-			Namespace: nn.Namespace,
-			Name:      secretRef.SecretName,
-		})
-	}
-	return watched.Secrets.AddHandler(watches.NamedWatch{
-		Name:    watchName,
-		Watched: userSecretNsns,
-		Watcher: nn,
-	})
 }

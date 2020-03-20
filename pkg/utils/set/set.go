@@ -31,6 +31,12 @@ func (set StringSet) Count() int {
 	return len(set)
 }
 
+func (set StringSet) MergeWith(other StringSet) {
+	for str := range other {
+		set.Add(str)
+	}
+}
+
 func (set StringSet) Has(s string) (exists bool) {
 	if set != nil {
 		_, exists = set[s]

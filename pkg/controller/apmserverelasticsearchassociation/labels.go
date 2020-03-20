@@ -5,8 +5,9 @@
 package apmserverelasticsearchassociation
 
 import (
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/user"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -18,18 +19,20 @@ const (
 	AssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
 )
 
-// NewResourceLabels returns the labels to identify an APM association
-func NewResourceLabels(name string) map[string]string {
-	return map[string]string{AssociationLabelName: name}
+func associationLabels(apmServer *apmv1.ApmServer) map[string]string {
+	return map[string]string{
+		AssociationLabelName:      apmServer.Name,
+		AssociationLabelNamespace: apmServer.Namespace,
+	}
 }
 
-func NewUserLabelSelector(
+func newUserLabelSelector(
 	namespacedName types.NamespacedName,
 ) client.MatchingLabels {
 	return client.MatchingLabels(
 		map[string]string{
 			AssociationLabelName:      namespacedName.Name,
 			AssociationLabelNamespace: namespacedName.Namespace,
-			common.TypeLabelName:      user.UserType,
+			common.TypeLabelName:      esuser.AssociatedUserType,
 		})
 }

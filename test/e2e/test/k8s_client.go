@@ -248,10 +248,10 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 }
 
 // GetTransportCert retrieves the certificate of the CA and the transport certificate
-func (k *K8sClient) GetTransportCert(esName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
+func (k *K8sClient) GetTransportCert(esNamespace, esName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: Ctx().ManagedNamespace(0),
+		Namespace: esNamespace,
 		Name:      esv1.TransportCertificatesSecret(esName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {

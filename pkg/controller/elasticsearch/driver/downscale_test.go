@@ -34,7 +34,13 @@ import (
 
 // Sample StatefulSets to use in tests
 var (
-	clusterName         = "cluster-name"
+	clusterName = "cluster-name"
+	es          = esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName,
+			Namespace: "ns",
+		},
+	}
 	ssetMaster3Replicas = sset.TestSset{
 		Name:      "ssetMaster3Replicas",
 		Namespace: "ns",
@@ -118,7 +124,7 @@ var (
 			Ready:           true,
 		}.Build(),
 	}
-	runtimeObjs = []runtime.Object{&ssetMaster3Replicas, &ssetData4Replicas,
+	runtimeObjs = []runtime.Object{&es, &ssetMaster3Replicas, &ssetData4Replicas,
 		&podsSsetMaster3Replicas[0], &podsSsetMaster3Replicas[1], &podsSsetMaster3Replicas[2],
 		&podsSsetData4Replicas[0], &podsSsetData4Replicas[1], &podsSsetData4Replicas[2], &podsSsetData4Replicas[3],
 	}
@@ -147,13 +153,8 @@ func TestHandleDownscale(t *testing.T) {
 				{Index: "index-1", Shard: "0", State: esclient.STARTED, NodeName: "ssetData4Replicas-2"},
 			},
 		),
-		esClient: esClient,
-		es: esv1.Elasticsearch{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      clusterName,
-				Namespace: "ns",
-			},
-		},
+		esClient:  esClient,
+		es:        es,
 		parentCtx: context.Background(),
 	}
 
@@ -532,10 +533,9 @@ func Test_calculateDownscales(t *testing.T) {
 
 func Test_calculatePerformableDownscale(t *testing.T) {
 	type args struct {
-		ctx             downscaleContext
-		downscale       ssetDownscale
-		state           *downscaleState
-		allLeavingNodes []string
+		ctx       downscaleContext
+		downscale ssetDownscale
+		state     *downscaleState
 	}
 	tests := []struct {
 		name    string
@@ -552,8 +552,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  3,
 					finalReplicas:   3,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
@@ -572,8 +571,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  2,
 					finalReplicas:   2,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
@@ -593,8 +591,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  3,
 					finalReplicas:   2,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(0)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(0)},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
@@ -615,8 +612,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   2,
 				},
 				// a master node has already been removed
-				state:           &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				statefulSet:     ssetMaster3Replicas,
@@ -638,8 +634,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   1,
 				},
 				// invariants limits us to one master node downscale only
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				statefulSet:     ssetMaster3Replicas,
@@ -661,8 +656,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   0,
 				},
 				// only one master is running
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				statefulSet:     ssetMaster3Replicas,
@@ -674,7 +668,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale, tt.args.allLeavingNodes)
+			got, err := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("calculatePerformableDownscale() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -740,7 +734,7 @@ func Test_attemptDownscale(t *testing.T) {
 				esClient:       &fakeESClient{},
 			}
 			// do the downscale
-			_, err := attemptDownscale(downscaleCtx, tt.downscale, nil, tt.statefulSets)
+			_, err := attemptDownscale(downscaleCtx, tt.downscale, tt.statefulSets)
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList
@@ -802,8 +796,8 @@ func Test_doDownscale_updateReplicasAndExpectations(t *testing.T) {
 func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	ssetMasters := sset.TestSset{
 		Name:        "masters",
-		Namespace:   "ns",
-		ClusterName: "es",
+		Namespace:   es.Namespace,
+		ClusterName: es.Name,
 		Version:     "7.1.0",
 		Replicas:    3,
 		Master:      true,
@@ -811,8 +805,8 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	}.Build()
 	ssetData := sset.TestSset{
 		Name:        "datas",
-		Namespace:   "ns",
-		ClusterName: "es",
+		Namespace:   es.Namespace,
+		ClusterName: es.Name,
 		Version:     "7.1.0",
 		Replicas:    3,
 		Master:      false,
@@ -847,12 +841,6 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			es := esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: ssetMasters.Namespace,
-					Name:      "es",
-				},
-			}
 			// simulate an existing v7 master for zen2 to be called
 			v7Pod := corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -865,7 +853,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 					},
 				},
 			}
-			k8sClient := k8s.WrappedFakeClient(&ssetMasters, &ssetData, &v7Pod)
+			k8sClient := k8s.WrappedFakeClient(es.DeepCopy(), &ssetMasters, &ssetData, &v7Pod)
 			esClient := &fakeESClient{}
 			downscaleCtx := downscaleContext{
 				k8sClient:      k8sClient,

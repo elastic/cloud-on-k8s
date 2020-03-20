@@ -17,7 +17,7 @@ import (
 )
 
 type baseClient struct {
-	User      UserAuth
+	User      BasicAuth
 	HTTP      *http.Client
 	transport *http.Transport
 	Endpoint  string
@@ -59,7 +59,7 @@ func (c *baseClient) doRequest(context context.Context, request *http.Request) (
 	withContext := request.WithContext(context)
 	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	if c.User != (UserAuth{}) {
+	if c.User != (BasicAuth{}) {
 		withContext.SetBasicAuth(c.User.Name, c.User.Password)
 	}
 

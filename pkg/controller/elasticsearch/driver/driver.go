@@ -11,7 +11,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -21,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -35,6 +35,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
@@ -72,8 +73,10 @@ type DefaultDriverParameters struct {
 	Version version.Version
 	// Client is used to access the Kubernetes API.
 	Client   k8s.Client
-	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+
+	// LicenseChecker is used for some features to check if an appropriate license is setup
+	LicenseChecker commonlicense.Checker
 
 	// State holds the accumulated state during the reconcile loop
 	ReconcileState *reconcile.State
@@ -95,10 +98,6 @@ func (d *defaultDriver) K8sClient() k8s.Client {
 	return d.Client
 }
 
-func (d *defaultDriver) Scheme() *runtime.Scheme {
-	return d.DefaultDriverParameters.Scheme
-}
-
 func (d *defaultDriver) DynamicWatches() watches.DynamicWatches {
 	return d.DefaultDriverParameters.DynamicWatches
 }
@@ -118,11 +117,16 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.Scheme(), d.ES); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES); err != nil {
 		return results.WithError(err)
 	}
 
-	externalService, err := common.ReconcileService(ctx, d.Client, d.Scheme(), services.NewExternalService(d.ES), &d.ES)
+	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES), &d.ES)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -139,7 +143,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results
 	}
 
-	internalUsers, err := user.ReconcileUsers(ctx, d.Client, d.Scheme(), d.ES)
+	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder())
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -162,7 +166,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		k8s.ExtractNamespacedName(&d.ES),
 		d.newElasticsearchClient(
 			resourcesState,
-			internalUsers.ControllerUser,
+			controllerUser,
 			*min,
 			certificateResources.TrustedHTTPCertificates,
 		),
@@ -178,7 +182,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
 		resourcesState,
-		internalUsers.ControllerUser,
+		controllerUser,
 		*min,
 		certificateResources.TrustedHTTPCertificates,
 	)
@@ -216,8 +220,18 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		},
 	)
 
+	if esReachable {
+		err = remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
+		if err != nil {
+			msg := "Could not update remote clusters in Elasticsearch settings"
+			d.ReconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			log.Error(err, msg, "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+			results.WithResult(defaultRequeue)
+		}
+	}
+
 	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.Scheme(), d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
 
@@ -257,12 +271,12 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(
 	state *reconcile.ResourcesState,
-	user user.User,
+	user esclient.BasicAuth,
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) esclient.Client {
 	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
+	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user, v, caCerts)
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported

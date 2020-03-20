@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -25,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
@@ -32,7 +34,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -52,7 +53,7 @@ var log = logf.Log.WithName(name)
 // this is also called by cmd/main.go
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := add(mgr, reconciler)
+	c, err := common.NewController(mgr, name, reconciler, params)
 	if err != nil {
 		return err
 	}
@@ -65,22 +66,16 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	observerSettings := observer.DefaultSettings
 	observerSettings.Tracer = params.Tracer
 	return &ReconcileElasticsearch{
-		Client:      client,
-		scheme:      mgr.GetScheme(),
-		recorder:    mgr.GetEventRecorderFor(name),
-		esObservers: observer.NewManager(observerSettings),
+		Client:         client,
+		recorder:       mgr.GetEventRecorderFor(name),
+		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
+		esObservers:    observer.NewManager(observerSettings),
 
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
 
 		Parameters: params,
 	}
-}
-
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	// Create a new controller
-	return controller.New(name, mgr, controller.Options{Reconciler: r})
 }
 
 func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
@@ -159,8 +154,8 @@ var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
+	recorder       record.EventRecorder
+	licenseChecker license.Checker
 
 	esObservers *observer.Manager
 
@@ -302,13 +297,13 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		ES:                 es,
 		ReconcileState:     reconcileState,
 		Client:             r.Client,
-		Scheme:             r.scheme,
 		Recorder:           r.recorder,
 		Version:            *ver,
 		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
 		Observers:          r.esObservers,
 		DynamicWatches:     r.dynamicWatches,
 		SupportedVersions:  *supported,
+		LicenseChecker:     r.licenseChecker,
 	}).Reconcile(ctx)
 }
 
@@ -343,4 +338,6 @@ func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(http.CertificateWatchKey(esv1.ESNamer, es.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedRolesWatchName(es))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(user.UserProvidedFileRealmWatchName(es))
 }

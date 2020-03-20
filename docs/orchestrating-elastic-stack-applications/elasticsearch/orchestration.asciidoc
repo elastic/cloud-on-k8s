@@ -1,0 +1,141 @@
+:parent_page_id: elasticsearch-specification
+:page_id: orchestration
+ifdef::env-github[]
+****
+link:https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-{parent_page_id}.html#k8s-{page_id}[View this document on the Elastic website]
+****
+endif::[]
+[id="{p}-{page_id}"]
+= Nodes orchestration
+
+[id="{p}-nodesets"]
+== NodeSets overview
+
+The Elasticsearch cluster is specified using a list of `NodeSets`. Each `NodeSet` represents a group of Elasticsearch nodes sharing the same specification (both Elasticsearch configuration and Kubernetes Pod configuration).
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+  - name: master-nodes
+    count: 3
+    config:
+      master: true
+      data: false
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: standard
+  - name: data-nodes
+    count: 10
+    config:
+      master: false
+      data: true
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1000Gi
+        storageClassName: standard
+----
+
+The Elasticsearch resource above defines two `NodeSets`: one for master nodes, using 10Gi volumes, and one for data nodes, using 1000Gi volumes. The Elasticsearch cluster is composed of 13 nodes: 3 master nodes and 10 data nodes.
+
+[id="{p}-upgrading"]
+== Upgrading the cluster
+
+ECK handles smooth upgrades from one cluster specification to another. You can apply a new Elasticsearch specification at any time.
+
+Here are a few examples based on the Elasticsearch specification above:
+
+- To add five additional Elasticsearch data nodes: change `count: 10` to `count: 15` in the `data-nodes` `NodeSet`.
+- To increase the RAM memory limit of data nodes to 32Gi: link:k8s-managing-compute-resources.html[set a different resources limits] in the existing `data-nodes` `NodeSet` PodTemplate.
+- To replace dedicated master and dedicated data nodes by nodes having both master and data roles: replace the 2 existing `NodeSets` by a single one with a different name and the corresponding Elasticsearch configuration settings.
+- To upgrade Elasticsearch from version `7.2.0` to `7.3.0`: change the value in the `version` field.
+
+ECK orchestrates `NodeSet` changes with no downtime and makes sure that:
+
+- Before a node is removed, the relevant data is migrated to other nodes (but see <<{p}-orchestration-limitations,Limitations>>).
+- When a cluster topology changes, the Elasticsearch orchestration settings `discovery.seed_hosts`, `cluster.initial_master_nodes`, `discovery.zen.minimum_master_nodes`, `_cluster/voting_config_exclusions` are adjusted accordingly.
+- Rolling upgrades are performed safely, reusing the `PersistentVolumes` of the upgraded Elasticsearch nodes.
+
+[id="{p}-statefulsets"]
+== StatefulSets orchestration
+
+Behind the scenes, ECK translates each `NodeSet` specified in the Elasticsearch resource into a link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/[StatefulSet in Kubernetes]. The StatefulSet specification is based on the `NodeSet` specification:
+
+* `count` corresponds to the number of replicas in the `StatefulSet`, each replica leading to the creation of a `Pod`, which corresponds to a single Elasticsearch node
+* `podTemplate` can be <<{p}-customize-pods,used to specify custom settings for the Elasticsearch Pod>>, overriding the default ones set by ECK on the generated `StatefulSet` specification
+* the `StatefulSet` name is built from the Elasticsearch resource name and the `NodeSet` name. Each Pod will be assigned the `StatefulSet` name suffixed by an ordinal. The corresponding Elasticsearch node has the same name as the `Pod`.
+
+The actual `Pod` creation is handled by the `StatefulSet` controller in Kubernetes. ECK relies on the link:https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#on-delete[OnDelete StatefulSet update strategy] since it needs full control over when and how Pods get upgraded to a new revision.
+
+When a `Pod` is removed and recreated (maybe with a newer revision), the `StatefulSet` controller makes sure that the `PersistentVolumes` attached to the original `Pod` are then attached to the new `Pod`.
+
+[id="{p}-upgrade-patterns"]
+== Cluster upgrade patterns
+
+Depending on how the `NodeSets` are updated, ECK handles the Kubernetes resources reconciliation in various ways.
+
+* When a new `NodeSet` is added to the Elasticsearch resource, ECK creates the corresponding `StatefulSet`. It also sets up link:https://kubernetes.io/docs/concepts/configuration/secret/[Secrets] and link:https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/[ConfigMaps] to hold the TLS certificates and Elasticsearch configuration files.
+* When the node count of an existing `NodeSet` is increased, ECK increases the replicas of the corresponding `StatefulSet`.
+* When the node count of an existing `NodeSet` is decreased, ECK migrates data away from the corresponding Elasticsearch nodes to remove, then decreases the replicas of the corresponding `StatefulSet`, once data migration is over. Corresponding <<{p}-volume-claim-templates,PersistentVolumeClaims are automatically removed>>.
+* When an existing `NodeSet` is removed, ECK migrates data away from the corresponding Elasticsearch nodes to remove, decreases the `StatefulSet` replicas accordingly, then finally removes the corresponding `StatefulSet`.
+* When the specification of an existing `NodeSet` is updated (for example the Elasticsearch configuration, or the `PodTemplate` resources requirements), ECK performs a rolling upgrade of the corresponding Elasticsearch nodes. In order to do so, it follows link:https://www.elastic.co/guide/en/elasticsearch/reference/current/rolling-upgrades.html[Elasticsearch rolling upgrade best practices], to slowly upgrade `Pods` to the newest revision while preventing unavailability of the Elasticsearch cluster. In most cases, it corresponds to restarting Elasticsearch nodes one by one and reusing the same `PersistentVolume` data. Note that some <<{p}-orchestration-limitations,cluster topologies may cause the cluster to be unavailable during the upgrade>>.
+* When an existing `NodeSet` is renamed, ECK performs the creation of a new `NodeSet` with the new name, and the removal of the old `NodeSet`, according to the `NodeSet` creation and removal patterns described above. Elasticsearch data is migrated away from the deprecated `NodeSet` before removal. The Elasticsearch resource <<{p}-update-strategy,update strategy>> controls how many nodes can exist above or below the target node count during the upgrade.
+
+In all these cases, ECK handles `StatefulSet` operations according to the Elasticsearch orchestration best practices, by adjusting the orchestration settings `discovery.seed_hosts`, `cluster.initial_master_nodes`, `discovery.zen.minimum_master_nodes`, and `_cluster/voting_config_exclusions` accordingly.
+
+[id="{p}-orchestration-limitations"]
+== Limitations
+
+Based on how Kubernetes and `StatefulSets` operate, ECK orchestration has the following limitations:
+
+* Storage requirements (including volume size) of an existing `NodeSet` cannot be updated. link:https://github.com/kubernetes/enhancements/issues/661[StatefulSet volumes expansion is not available in Kubernetes yet]. To upgrade the storage size, you can create a new `NodeSet`, or rename an existing one. Renaming a `NodeSet` automatically creates a new `StatefulSet` with the specified storage size. The original `StatefulSet` is removed once the Elasticsearch data is migrated to the nodes of the new `StatefulSet`.
+
+* Cluster availability is not be guaranteed in the following cases:
+
+** During the rolling upgrade of single-node clusters
+
+** For clusters that have indices with no replicas
+
+If an Elasticsearch node holds the only copy of a shard, this shard becomes unavailable while the node is upgraded. Clusters with more than one node and at least one replica per index are considered best practice.
+
+* Elasticsearch `Pods` may stay `Pending` during a rolling upgrade if the Kubernetes scheduler cannot re-schedule them back. This is especially important when using local `PersistentVolumes`. If the Kubernetes node bound to a local `PersistentVolume` does not have enough capacity to host an upgraded `Pod` which was temporarily removed, that `Pod` will stay Pending.
+
+* Rolling upgrades can make progress if the Elasticsearch cluster health is green. ECK will also make progress if the cluster health is yellow under the following conditions:
+** A cluster version upgrade is in progress and some `Pods` are not up to date
+** There are no initializing or relocating shards
+
+If the above conditions are met, then ECK can delete a `Pod` for upgrade even if the cluster health is yellow as long as the `Pod` is not holding the last available replica of a shard.
+
+The health of the cluster is deliberately ignored in the following cases:
+
+** If all the Elasticsearch nodes of a `NodeSet` are unavailable, probably caused by a misconfiguration, the operator ignores the cluster health and upgrades nodes of the `NodeSet`.
+** If an Elasticsearch node to upgrade is not healthy, and not part of the Elasticsearch cluster, the operator ignores the cluster health and upgrades the Elasticsearch node.
+
+* Elasticsearch versions cannot be downgraded. For example it is impossible to downgrade an existing cluster from version 7.3.0 to 7.2.0. This is not supported by Elasticsearch.
+
+Advanced users may force an upgrade by manually deleting `Pods` themselves. The deleted `Pods` will be automatically recreated at the latest revision.
+
+Operations that reduce the number of nodes in the cluster cannot make progress without user intervention if the Elasticsearch index replica settings are incompatible with the intended downscale.
+Specifically if the Elasticsearch index settings demand a higher number of shard copies than data nodes in the cluster after the downscale operation, ECK cannot migrate the data away from the node about to be removed. Users can address this in the following ways:
+
+** Adjust the Elasticsearch link:https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-update-settings.html[index settings] to a number of replicas that allow the desired node removal
+** Use link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules.html#dynamic-index-settings[`auto_expand_replicas`] to automatically adjust the replicas to the number of data nodes in the cluster
+

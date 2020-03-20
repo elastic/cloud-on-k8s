@@ -5,11 +5,8 @@
 package config
 
 import (
-	"reflect"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -25,21 +22,20 @@ var log = logf.Log.WithName("apmserver-config")
 
 // Reconcile reconciles the configuration of the APM server: it first creates the configuration from the APM
 // specification and then reconcile the underlying secret.
-func Reconcile(client k8s.Client, scheme *runtime.Scheme, as *apmv1.ApmServer) (*corev1.Secret, error) {
-
+func Reconcile(client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
 	// Create a new configuration from the APM object spec.
 	cfg, err := NewConfigFromSpec(client, as)
 	if err != nil {
-		return nil, err
+		return corev1.Secret{}, err
 	}
 
 	cfgBytes, err := cfg.Render()
 	if err != nil {
-		return nil, err
+		return corev1.Secret{}, err
 	}
 
 	// Reconcile the configuration in a secret
-	expectedConfigSecret := &corev1.Secret{
+	expectedConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      name.Config(as.Name),
@@ -49,34 +45,5 @@ func Reconcile(client k8s.Client, scheme *runtime.Scheme, as *apmv1.ApmServer) (
 			ApmCfgSecretKey: cfgBytes,
 		},
 	}
-
-	reconciledConfigSecret := &corev1.Secret{}
-	if err := reconciler.ReconcileResource(
-		reconciler.Params{
-			Client: client,
-			Scheme: scheme,
-
-			Owner:      as,
-			Expected:   expectedConfigSecret,
-			Reconciled: reconciledConfigSecret,
-
-			NeedsUpdate: func() bool {
-				return !reflect.DeepEqual(reconciledConfigSecret.Data, expectedConfigSecret.Data) ||
-					!reflect.DeepEqual(reconciledConfigSecret.Labels, expectedConfigSecret.Labels)
-			},
-			UpdateReconciled: func() {
-				reconciledConfigSecret.Labels = expectedConfigSecret.Labels
-				reconciledConfigSecret.Data = expectedConfigSecret.Data
-			},
-			PreCreate: func() {
-				log.Info("Creating config secret", "name", expectedConfigSecret.Name)
-			},
-			PreUpdate: func() {
-				log.Info("Updating config secret", "name", expectedConfigSecret.Name)
-			},
-		},
-	); err != nil {
-		return nil, err
-	}
-	return reconciledConfigSecret, nil
+	return reconciler.ReconcileSecret(client, expectedConfigSecret, as)
 }

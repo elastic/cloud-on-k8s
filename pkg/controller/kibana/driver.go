@@ -36,7 +36,6 @@ import (
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -55,7 +54,6 @@ var minSupportedVersion = version.From(6, 8, 0)
 
 type driver struct {
 	client         k8s.Client
-	scheme         *runtime.Scheme
 	dynamicWatches watches.DynamicWatches
 	recorder       record.EventRecorder
 	version        version.Version
@@ -73,15 +71,7 @@ func (d *driver) Recorder() record.EventRecorder {
 	return d.recorder
 }
 
-func (d *driver) Scheme() *runtime.Scheme {
-	return d.scheme
-}
-
 var _ driver2.Interface = &driver{}
-
-func secretWatchKey(kibana types.NamespacedName) string {
-	return fmt.Sprintf("%s-%s-es-auth-secret", kibana.Namespace, kibana.Name)
-}
 
 // getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
 // upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
@@ -128,48 +118,28 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	if keystoreResources != nil {
 		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
 	}
-	kbNamespacedName := k8s.ExtractNamespacedName(kb)
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if kb.AssociationConf().AuthIsConfigured() {
-		esAuthSecret := types.NamespacedName{Name: kb.AssociationConf().GetAuthSecretName(), Namespace: kb.Namespace}
-		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
-			Name:    secretWatchKey(kbNamespacedName),
-			Watched: []types.NamespacedName{esAuthSecret},
-			Watcher: kbNamespacedName,
-		}); err != nil {
+		esAuthKey := types.NamespacedName{Name: kb.AssociationConf().GetAuthSecretName(), Namespace: kb.Namespace}
+		esAuthSecret := corev1.Secret{}
+		if err := d.client.Get(esAuthKey, &esAuthSecret); err != nil {
 			return deployment.Params{}, err
 		}
-		sec := corev1.Secret{}
-		if err := d.client.Get(esAuthSecret, &sec); err != nil {
-			return deployment.Params{}, err
-		}
-		_, _ = configChecksum.Write(sec.Data[kb.AssociationConf().GetAuthSecretKey()])
-	} else {
-		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(kbNamespacedName))
+		_, _ = configChecksum.Write(esAuthSecret.Data[kb.AssociationConf().GetAuthSecretKey()])
 	}
 
 	volumes := []commonvolume.SecretVolume{config.SecretVolume(*kb)}
 
 	if kb.AssociationConf().CAIsConfigured() {
+		esPublicCAKey := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
 		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
-		// watch for changes in the CA secret
-		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
-			Name:    secretWatchKey(kbNamespacedName),
-			Watched: []types.NamespacedName{key},
-			Watcher: kbNamespacedName,
-		}); err != nil {
-			return deployment.Params{}, err
-		}
-
-		if err := d.client.Get(key, &esPublicCASecret); err != nil {
+		if err := d.client.Get(esPublicCAKey, &esPublicCASecret); err != nil {
 			return deployment.Params{}, err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(certPem)
 		}
 
-		// TODO: this is a little ugly as it reaches into the ES controller bits
 		esCertsVolume := es.CaCertSecretVolume(*kb)
 		volumes = append(volumes, esCertsVolume)
 		for i := range kibanaPodSpec.Spec.InitContainers {
@@ -243,7 +213,7 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	svc, err := common.ReconcileService(ctx, d.client, d.scheme, NewService(*kb), kb)
+	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb), kb)
 	if err != nil {
 		// TODO: consider updating some status here?
 		return results.WithError(err)
@@ -273,7 +243,7 @@ func (d *driver) Reconcile(
 	}
 
 	expectedDp := deployment.New(deploymentParams)
-	reconciledDp, err := deployment.Reconcile(d.client, d.scheme, expectedDp, kb)
+	reconciledDp, err := deployment.Reconcile(d.client, expectedDp, kb)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -283,7 +253,6 @@ func (d *driver) Reconcile(
 
 func newDriver(
 	client k8s.Client,
-	scheme *runtime.Scheme,
 	watches watches.DynamicWatches,
 	recorder record.EventRecorder,
 	kb *kbv1.Kibana,
@@ -302,7 +271,6 @@ func newDriver(
 
 	return &driver{
 		client:         client,
-		scheme:         scheme,
 		dynamicWatches: watches,
 		recorder:       recorder,
 		version:        *ver,

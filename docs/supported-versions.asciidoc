@@ -1,3 +1,5 @@
 * link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] 1.11+
 * Kubernetes 1.12+ or OpenShift 3.11+
 * Elastic Stack: 6.8+, 7.1+
+
+Please see the full link:https://www.elastic.co/support/matrix#matrix_kubernetes[Elastic support matrix] for more information.

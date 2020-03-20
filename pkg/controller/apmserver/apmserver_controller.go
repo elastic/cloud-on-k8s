@@ -12,6 +12,8 @@ import (
 	"reflect"
 	"sync/atomic"
 
+	"go.elastic.co/apm"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmcerts "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
@@ -35,14 +37,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"go.elastic.co/apm"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
@@ -81,7 +81,7 @@ var (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := add(mgr, reconciler)
+	c, err := common.NewController(mgr, name, reconciler, params)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
 		Client:         client,
-		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetEventRecorderFor(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
@@ -139,18 +138,11 @@ func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	return nil
 }
 
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	// Create a new controller
-	return controller.New(name, mgr, controller.Options{Reconciler: r})
-}
-
 var _ reconcile.Reconciler = &ReconcileApmServer{}
 
 // ReconcileApmServer reconciles an ApmServer object
 type ReconcileApmServer struct {
 	k8s.Client
-	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
@@ -168,10 +160,6 @@ func (r *ReconcileApmServer) DynamicWatches() watches.DynamicWatches {
 
 func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 	return r.recorder
-}
-
-func (r *ReconcileApmServer) Scheme() *runtime.Scheme {
-	return r.scheme
 }
 
 var _ driver.Interface = &ReconcileApmServer{}
@@ -237,7 +225,7 @@ func (r *ReconcileApmServer) isCompatible(ctx context.Context, as *apmv1.ApmServ
 
 func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
 	state := NewState(request, as)
-	svc, err := common.ReconcileService(ctx, r.Client, r.scheme, NewService(*as), as)
+	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as), as)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -272,12 +260,14 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 }
 
 func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
-	// Clean up watches
+	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 }
 
-func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1.ApmServer) (*corev1.Secret, error) {
-	expectedApmServerSecret := &corev1.Secret{
+// reconcileApmServerToken reconciles a Secret containing the APM Server token.
+// It reuses the existing token if possible.
+func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      apmname.SecretToken(as.Name),
@@ -287,49 +277,17 @@ func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1.ApmServer) (*cor
 			SecretTokenKey: []byte(rand.String(24)),
 		},
 	}
-	reconciledApmServerSecret := &corev1.Secret{}
-	return reconciledApmServerSecret, reconciler.ReconcileResource(
-		reconciler.Params{
-			Client: r.Client,
-			Scheme: r.scheme,
+	// reuse the secret token if it already exists
+	var existingSecret corev1.Secret
+	err := c.Get(k8s.ExtractNamespacedName(&expectedApmServerSecret), &existingSecret)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return corev1.Secret{}, err
+	}
+	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
+		expectedApmServerSecret.Data[SecretTokenKey] = token
+	}
 
-			Owner:      as,
-			Expected:   expectedApmServerSecret,
-			Reconciled: reconciledApmServerSecret,
-
-			NeedsUpdate: func() bool {
-				if !reflect.DeepEqual(reconciledApmServerSecret.Labels, expectedApmServerSecret.Labels) {
-					return true
-				}
-
-				if reconciledApmServerSecret.Data == nil {
-					return true
-				}
-
-				// re-use the secret token key if it exists
-				existingSecretTokenKey, hasExistingSecretTokenKey := reconciledApmServerSecret.Data[SecretTokenKey]
-				if hasExistingSecretTokenKey {
-					expectedApmServerSecret.Data[SecretTokenKey] = existingSecretTokenKey
-				}
-
-				if !reflect.DeepEqual(reconciledApmServerSecret.Data, expectedApmServerSecret.Data) {
-					return true
-				}
-
-				return false
-			},
-			UpdateReconciled: func() {
-				reconciledApmServerSecret.Labels = expectedApmServerSecret.Labels
-				reconciledApmServerSecret.Data = expectedApmServerSecret.Data
-			},
-			PreCreate: func() {
-				log.Info("Creating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
-			},
-			PreUpdate: func() {
-				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
-			},
-		},
-	)
+	return reconciler.ReconcileSecret(c, expectedApmServerSecret, as)
 }
 
 func (r *ReconcileApmServer) deploymentParams(
@@ -428,11 +386,11 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	reconciledApmServerSecret, err := r.reconcileApmServerSecret(as)
+	tokenSecret, err := reconcileApmServerToken(r.Client, as)
 	if err != nil {
 		return state, err
 	}
-	reconciledConfigSecret, err := config.Reconcile(r.Client, r.scheme, as)
+	reconciledConfigSecret, err := config.Reconcile(r.Client, as)
 	if err != nil {
 		return state, err
 	}
@@ -454,8 +412,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 		PodTemplate: as.Spec.PodTemplate,
 
-		ApmServerSecret: *reconciledApmServerSecret,
-		ConfigSecret:    *reconciledConfigSecret,
+		TokenSecret:  tokenSecret,
+		ConfigSecret: reconciledConfigSecret,
 
 		keystoreResources: keystoreResources,
 	}
@@ -465,11 +423,11 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	}
 
 	deploy := deployment.New(params)
-	result, err := deployment.Reconcile(r.K8sClient(), r.Scheme(), deploy, as)
+	result, err := deployment.Reconcile(r.K8sClient(), deploy, as)
 	if err != nil {
 		return state, err
 	}
-	state.UpdateApmServerState(result, *reconciledApmServerSecret)
+	state.UpdateApmServerState(result, tokenSecret)
 	return state, nil
 }
 

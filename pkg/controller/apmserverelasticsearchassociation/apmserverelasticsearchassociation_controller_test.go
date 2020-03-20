@@ -24,16 +24,6 @@ const (
 	userSecretName = "as-elastic-internal-apm"
 )
 
-var t = true
-var ownerRefFixture = metav1.OwnerReference{
-	APIVersion:         "apmserver.k8s.elastic.co/v1",
-	Kind:               "ApmServer",
-	Name:               "as",
-	UID:                "",
-	Controller:         &t,
-	BlockOwnerDeletion: &t,
-}
-
 // apmFixture is a shared test fixture
 var apmFixture = apmv1.ApmServer{
 	ObjectMeta: metav1.ObjectMeta{
@@ -69,8 +59,9 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userSecretName,
 						Namespace: apmFixture.Namespace,
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
+						Labels: map[string]string{
+							AssociationLabelName:      apmFixture.Name,
+							AssociationLabelNamespace: apmFixture.Namespace,
 						},
 					},
 				},
@@ -78,8 +69,9 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      esUserName,
 						Namespace: apmFixture.Namespace,
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
+						Labels: map[string]string{
+							AssociationLabelName:      apmFixture.Name,
+							AssociationLabelNamespace: apmFixture.Namespace,
 						},
 					},
 				},
@@ -104,7 +96,8 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      userSecretName,
 						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							AssociationLabelName: apmFixture.Name,
+							AssociationLabelName:      apmFixture.Name,
+							AssociationLabelNamespace: apmFixture.Namespace,
 						},
 					},
 				},
@@ -113,13 +106,19 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      esUserName,
 						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							AssociationLabelName: apmFixture.Name,
+							AssociationLabelName:      apmFixture.Name,
+							AssociationLabelNamespace: apmFixture.Namespace,
 						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "should-not-be-deleted",
+						Namespace: apmFixture.Namespace,
 					},
 				},
 			},
 			postCondition: func(c k8s.Client) {
-				// This works even without labels because mock client currently ignores labels
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: "other-ns",
 					Name:      userSecretName,
@@ -128,7 +127,10 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					Namespace: "other-ns",
 					Name:      esUserName,
 				}, &corev1.Secret{}))
-
+				assert.NoError(t, c.Get(types.NamespacedName{
+					Namespace: apmFixture.Namespace,
+					Name:      "should-not-be-deleted",
+				}, &corev1.Secret{}))
 			},
 			wantErr: false,
 		},

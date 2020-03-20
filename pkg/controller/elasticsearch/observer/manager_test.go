@@ -47,8 +47,8 @@ func cluster(name string) types.NamespacedName {
 }
 
 func TestManager_Observe(t *testing.T) {
-	fakeClient := fakeEsClient200(client.UserAuth{})
-	fakeClientWithDifferentUser := fakeEsClient200(client.UserAuth{Name: "name", Password: "another-one"})
+	fakeClient := fakeEsClient200(client.BasicAuth{})
+	fakeClientWithDifferentUser := fakeEsClient200(client.BasicAuth{Name: "name", Password: "another-one"})
 	tests := []struct {
 		name                   string
 		initiallyObserved      map[types.NamespacedName]*Observer
@@ -114,7 +114,7 @@ func TestManager_Observe(t *testing.T) {
 }
 
 func TestManager_StopObserving(t *testing.T) {
-	esClient := fakeEsClient200(client.UserAuth{})
+	esClient := fakeEsClient200(client.BasicAuth{})
 	tests := []struct {
 		name                       string
 		observed                   map[types.NamespacedName]*Observer
@@ -172,9 +172,9 @@ func TestManager_AddObservationListener(t *testing.T) {
 	})
 
 	// observe 2 clusters
-	obs1 := m.Observe(cluster("cluster1"), fakeEsClient200(client.UserAuth{}))
+	obs1 := m.Observe(cluster("cluster1"), fakeEsClient200(client.BasicAuth{}))
 	defer obs1.Stop()
-	obs2 := m.Observe(cluster("cluster2"), fakeEsClient200(client.UserAuth{}))
+	obs2 := m.Observe(cluster("cluster2"), fakeEsClient200(client.BasicAuth{}))
 	defer obs2.Stop()
 
 	// add a listener that is only interested in cluster1

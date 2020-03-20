@@ -4,11 +4,6 @@
 
 package watches
 
-import (
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-)
-
 // NewDynamicWatches creates an initialized DynamicWatches container.
 func NewDynamicWatches() DynamicWatches {
 	return DynamicWatches{
@@ -27,13 +22,3 @@ type DynamicWatches struct {
 	ElasticsearchClusters *DynamicEnqueueRequest
 	Kibanas               *DynamicEnqueueRequest
 }
-
-// InjectScheme is used by the ControllerManager to inject Scheme into Sources, EventHandlers, Predicates, and
-// Reconciles
-func (w DynamicWatches) InjectScheme(scheme *runtime.Scheme) error {
-	return w.Secrets.InjectScheme(scheme)
-}
-
-// DynamicWatches implements inject.Scheme mostly to facilitate testing. In production code injection happens on
-// the individual watch level.
-var _ inject.Scheme = DynamicWatches{}

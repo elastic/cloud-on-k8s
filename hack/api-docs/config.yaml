@@ -1,8 +1,8 @@
 processor:
   ignoreTypes:
-    - "(Elasticsearch|Kibana|ApmServer)List$"
-    - "(Elasticsearch|Kibana|ApmServer)Health$"
-    - "(Elasticsearch|Kibana|ApmServer|Reconciler)Status$"
+    - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch)List$"
+    - "(Elasticsearch|Kibana|ApmServer|EnterpriseSearch)Health$"
+    - "(Elasticsearch|Kibana|ApmServer|Reconciler|EnterpriseSearch)Status$"
     - "ElasticsearchSettings$"
     - "Associa(ted|tor|tionStatus|tionConf)$"
   ignoreFields:
