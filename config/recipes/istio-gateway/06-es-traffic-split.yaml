@@ -1,0 +1,68 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: ekmnt-elasticsearch
+  namespace: istio-apps
+  labels:
+    app: ekmnt
+spec:
+  hosts:
+    - "elasticsearch.ekmnt"
+    - "ekmnt-es-http.istio-apps.svc.cluster.local"
+  gateways:
+    - ekmnt-gateway
+    - mesh
+  http:
+    - name: reads
+      match:
+        - method:
+            exact: "POST"
+          uri:
+            prefix: "/_search"
+        - method:
+            exact: "GET"
+      route:
+        - destination:
+            host: ekmnt-es-http.istio-apps.svc.cluster.local
+            subset: coordinator
+            port:
+              number: 9200
+    - name: writes
+      match:
+        - method:
+            regex: ".*"
+      route:
+        - destination:
+            host: ekmnt-es-http.istio-apps.svc.cluster.local
+            subset: ingest
+            port:
+              number: 9200
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: ekmnt-node-types
+  namespace: istio-apps
+  labels:
+    app: ekmnt
+spec:
+  host: ekmnt-es-http.istio-apps.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      simple: RANDOM
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+    - name: ingest
+      labels:
+        elasticsearch.k8s.elastic.co/node-master: "false"
+        elasticsearch.k8s.elastic.co/node-data: "false"
+        elasticsearch.k8s.elastic.co/node-ingest: "true"
+        elasticsearch.k8s.elastic.co/node-ml: "false"
+    - name: coordinator
+      labels:
+        elasticsearch.k8s.elastic.co/node-master: "false"
+        elasticsearch.k8s.elastic.co/node-data: "false"
+        elasticsearch.k8s.elastic.co/node-ingest: "false"
+        elasticsearch.k8s.elastic.co/node-ml: "false"

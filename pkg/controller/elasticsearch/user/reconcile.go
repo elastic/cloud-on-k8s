@@ -20,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
@@ -46,23 +45,23 @@ func ReconcileUsersAndRoles(
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
-) (client.BasicAuth, error) {
+) (esclient.BasicAuth, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
 
 	// build aggregate roles and file realms
 	roles, err := aggregateRoles(c, es, watched, recorder)
 	if err != nil {
-		return client.BasicAuth{}, err
+		return esclient.BasicAuth{}, err
 	}
 	fileRealm, controllerUser, err := aggregateFileRealm(c, es, watched, recorder)
 	if err != nil {
-		return client.BasicAuth{}, err
+		return esclient.BasicAuth{}, err
 	}
 
 	// reconcile the aggregate secret
 	if err := reconcileRolesFileRealmSecret(c, es, roles, fileRealm); err != nil {
-		return client.BasicAuth{}, err
+		return esclient.BasicAuth{}, err
 	}
 
 	// return the controller user for next reconciliation steps to interact with Elasticsearch

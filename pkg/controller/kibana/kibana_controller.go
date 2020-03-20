@@ -24,7 +24,6 @@ import (
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -191,7 +190,7 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 
 	// update status
 	err = r.updateStatus(ctx, state)
-	if err != nil && errors.IsConflict(err) {
+	if err != nil && apierrors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}

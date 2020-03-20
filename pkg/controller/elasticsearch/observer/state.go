@@ -7,7 +7,6 @@ package observer
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -25,8 +24,8 @@ type State struct {
 // RetrieveState returns the current Elasticsearch cluster state
 func RetrieveState(ctx context.Context, cluster types.NamespacedName, esClient esclient.Client) State {
 	// retrieve cluster health and license in parallel
-	healthChan := make(chan *client.Health)
-	licenseChan := make(chan *client.License)
+	healthChan := make(chan *esclient.Health)
+	licenseChan := make(chan *esclient.License)
 
 	go func() {
 		health, err := esClient.GetClusterHealth(ctx)

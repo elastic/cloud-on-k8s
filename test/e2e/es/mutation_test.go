@@ -32,7 +32,7 @@ func TestMutationHTTPToHTTPS(t *testing.T) {
 	// mutate to https
 	mutated := b.WithTLSDisabled(false)
 
-	test.RunMutation(t, b, mutated)
+	RunESMutation(t, b, mutated)
 }
 
 // TestMutationHTTPSToHTTP creates a 3 node cluster
@@ -45,7 +45,7 @@ func TestMutationHTTPSToHTTP(t *testing.T) {
 	// mutate to http
 	mutated := b.WithTLSDisabled(true)
 
-	test.RunMutation(t, b, mutated)
+	RunESMutation(t, b, mutated)
 }
 
 // TestMdiToDedicatedMutation creates a 1 master + data cluster,

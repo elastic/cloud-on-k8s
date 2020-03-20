@@ -1,0 +1,17 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: hulk-certs
+  labels:
+    app: hulk
+spec:
+  secretName: hulk-certs
+  dnsNames:
+    - "elasticsearch.hulk"
+    - "kibana.hulk"
+    - "apm.hulk"
+  isCA: true
+  issuerRef:
+    name: selfsigning-issuer
+    kind: ClusterIssuer

@@ -1,0 +1,8 @@
+= ECK Recipes
+
+Showcases how to utilize ECK for common use cases. 
+
+IMPORTANT: These recipes are for illustration purposes only and should not be considered to be production-ready.
+
+CAUTION: Some of these recipes use the `node.store.allow_mmap: false` configuration value to avoid configuring memory mapping settings on the underlying host. This could have a significant performance impact on your Elasticsearch clusters and should not be used in production without careful consideration. See https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html for more information.
+
