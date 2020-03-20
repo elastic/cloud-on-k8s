@@ -58,3 +58,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.5.0
 	sigs.k8s.io/controller-tools v0.2.5
 )
+
+// this is used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin this
+replace github.com/dgryski/go-gk => github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654

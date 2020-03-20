@@ -103,7 +103,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/cpuguy83/go-md2man[$$github.com/cpuguy83/go-md2man$$] | v1.0.10 | MIT
 | link:https://github.com/creack/pty[$$github.com/creack/pty$$] | v1.1.7 | MIT
 | link:https://github.com/dgrijalva/jwt-go[$$github.com/dgrijalva/jwt-go$$] | v3.2.0+incompatible | MIT
-| link:https://github.com/dgryski/go-gk[$$github.com/dgryski/go-gk$$] | v0.0.0-20140819190930-201884a44051 | UNKNOWN
+| link:https://github.com/dgryski/go-gk[$$github.com/dgryski/go-gk$$] | v0.0.0-20200319235926-a69029f61654 | MIT
 | link:https://github.com/dgryski/go-sip13[$$github.com/dgryski/go-sip13$$] | v0.0.0-20181026042036-e10d5fee7954 | MIT
 | link:https://github.com/docker/docker[$$github.com/docker/docker$$] | v0.7.3-0.20190327010347-be7ac8be2ae0 | Apache-2.0
 | link:https://github.com/docker/go-units[$$github.com/docker/go-units$$] | v0.4.0 | Apache-2.0
