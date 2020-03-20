@@ -8,7 +8,7 @@
 
 set -eu
 
-: "${CHECK_PATH:=$(dirname "$0")/../*}" # root project directory
+: "${CHECK_PATH:=$(dirname "$0")/../../*}" # root project directory
 
 files=$(grep \
     --include=\*.go --exclude-dir=vendor \

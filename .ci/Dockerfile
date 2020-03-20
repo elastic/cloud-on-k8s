@@ -1,7 +1,8 @@
 # Docker image used for continuous integration
 FROM golang:1.13-stretch
 
-ENV GOLANGCILINT_VERSION=1.21.0
+# TODO: update to >1.24.0 once https://github.com/golangci/golangci-lint/issues/994 is fixed, as jenkins OOMs when running 1.24.0
+ENV GOLANGCILINT_VERSION=1.23.8
 ENV SHELLCHECK_VERSION=0.7.0
 ENV KUBEBUILDER_VERSION=2.0.0
 ENV GCLOUD_VERSION=277.0.0

@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -73,7 +72,7 @@ func GetServiceDNSName(svc corev1.Service) []string {
 // EmitErrorEvent emits an event if the error is report-worthy
 func EmitErrorEvent(r record.EventRecorder, err error, obj runtime.Object, reason, message string, args ...interface{}) {
 	// ignore nil errors and conflict issues
-	if err == nil || errors.IsConflict(err) {
+	if err == nil || apierrors.IsConflict(err) {
 		return
 	}
 

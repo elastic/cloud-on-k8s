@@ -1,0 +1,30 @@
+---
+kind: Gateway
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: ekmnt-gateway
+  namespace: istio-apps
+  labels:
+    app: ekmnt
+spec:
+  servers:
+    - hosts:
+        - "elasticsearch.ekmnt"
+      port:
+        name: https-es
+        number: 443
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: ekmnt-elasticsearch-cert
+    - hosts:
+        - "kibana.ekmnt"
+      port:
+        name: https-kb
+        number: 443
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: ekmnt-kibana-cert
+  selector:
+    istio: ingressgateway

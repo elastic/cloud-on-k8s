@@ -23,7 +23,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -192,22 +191,22 @@ func expectedDeploymentParams() testParams {
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	apmFixture := &apmv1.ApmServer{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-apm-server",
 		},
-		TypeMeta: v1.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind: "apmserver",
 		},
 	}
 	defaultPodSpecParams := PodSpecParams{
 		Version: "1.0",
 		TokenSecret: corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-apm-server-apm-token",
 			},
 		},
 		ConfigSecret: corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: "test-apm-config",
 			},
 		},
@@ -232,7 +231,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: defaultPodSpecParams,
 				initialObjects: []runtime.Object{
 					&corev1.Secret{
-						ObjectMeta: v1.ObjectMeta{
+						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
 						},
 					},
@@ -248,7 +247,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: defaultPodSpecParams,
 				initialObjects: []runtime.Object{
 					&corev1.Secret{
-						ObjectMeta: v1.ObjectMeta{
+						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
 						},
 						Data: map[string][]byte{
@@ -267,7 +266,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				podSpecParams: func() PodSpecParams {
 					params := defaultPodSpecParams
 					params.ConfigSecret = corev1.Secret{
-						ObjectMeta: v1.ObjectMeta{
+						ObjectMeta: metav1.ObjectMeta{
 							Name: "test-apm-config",
 						},
 						Data: map[string][]byte{
@@ -278,7 +277,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				}(),
 				initialObjects: []runtime.Object{
 					&corev1.Secret{
-						ObjectMeta: v1.ObjectMeta{
+						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
 						},
 					},
@@ -304,7 +303,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				}(),
 				initialObjects: []runtime.Object{
 					&corev1.Secret{
-						ObjectMeta: v1.ObjectMeta{
+						ObjectMeta: metav1.ObjectMeta{
 							Name: certSecretName,
 						},
 					},

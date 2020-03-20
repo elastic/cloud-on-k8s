@@ -1,0 +1,74 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: hulk
+  labels:
+    app: hulk
+spec:
+  version: 7.6.1
+  nodeSets:
+  - name: master
+    count: 1
+    config:
+      node.master: true
+      node.data: false
+      node.ingest: false
+      node.ml: false
+      node.store.allow_mmap: false
+  - name: data
+    count: 1
+    config:
+      node.master: false
+      node.data: true
+      node.ingest: false
+      node.ml: false
+      node.store.allow_mmap: false
+  - name: ingest
+    count: 1
+    config:
+      node.master: false
+      node.data: false
+      node.ingest: true
+      node.ml: false
+      node.store.allow_mmap: false
+  - name: coordinator
+    count: 1
+    config:
+      node.master: false
+      node.data: false
+      node.ingest: false
+      node.ml: false
+      node.store.allow_mmap: false
+  - name: ml
+    count: 1
+    config:
+      node.master: false
+      node.data: false
+      node.ingest: false
+      node.ml: true
+      node.store.allow_mmap: false
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: hulk
+  labels:
+    app: hulk
+spec:
+  version: 7.6.1
+  count: 1
+  elasticsearchRef:
+    name: hulk
+---
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: hulk
+  labels:
+    app: hulk
+spec:
+  version: 7.6.1
+  count: 1
+  elasticsearchRef:
+    name: hulk
