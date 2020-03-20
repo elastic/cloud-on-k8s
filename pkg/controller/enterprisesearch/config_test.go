@@ -43,8 +43,8 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
 				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
-					SecretSessionKey:  "alreadysetsessionkey",
-					EncryptionKeysKey: []string{"alreadysetencryptionkey1", "alreadysetencryptionkey2"},
+					SecretSessionSetting:  "alreadysetsessionkey",
+					EncryptionKeysSetting: []string{"alreadysetencryptionkey1", "alreadysetencryptionkey2"},
 				})
 				assert.Equal(t, expectedSettings, got)
 			},
@@ -66,7 +66,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
 				// Unpack the configuration to check that some default secure settings have been generated
-				var e enterpriseSearchSecrets
+				var e reusableSettings
 				assert.NoError(t, got.Unpack(&e))
 				assert.Equal(t, len(e.EncryptionKeysKey), 1)     // We set 1 encryption key by default
 				assert.Equal(t, len(e.EncryptionKeysKey[0]), 32) // encryption key length should be 32
@@ -90,7 +90,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
 				// Unpack the configuration to check that some default secure settings have been generated
-				var e enterpriseSearchSecrets
+				var e reusableSettings
 				assert.NoError(t, got.Unpack(&e))
 				assert.Equal(t, len(e.EncryptionKeysKey), 1)     // We set 1 encryption key by default
 				assert.Equal(t, len(e.EncryptionKeysKey[0]), 32) // encryption key length should be 32
@@ -107,7 +107,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
 				// Unpack the configuration to check that some default secure settings have been generated
-				var e enterpriseSearchSecrets
+				var e reusableSettings
 				assert.NoError(t, got.Unpack(&e))
 				assert.Equal(t, len(e.EncryptionKeysKey), 1)     // We set 1 encryption key by default
 				assert.Equal(t, len(e.EncryptionKeysKey[0]), 32) // encryption key length should be 32

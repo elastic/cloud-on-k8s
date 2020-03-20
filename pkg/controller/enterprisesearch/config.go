@@ -31,8 +31,8 @@ const (
 	ConfigMountPath = "/mnt/elastic-internal/config"
 	ConfigFilename  = "enterprise-search.yml"
 
-	SecretSessionKey  = "secret_session_key"
-	EncryptionKeysKey = "secret_management.encryption_keys"
+	SecretSessionSetting  = "secret_session_key"
+	EncryptionKeysSetting = "secret_management.encryption_keys"
 )
 
 func ConfigSecretVolume(ents entsv1beta1.EnterpriseSearch) volume.SecretVolume {
@@ -86,8 +86,8 @@ func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*cor
 	return reconciledConfigSecret, nil
 }
 
-// enterpriseSearchSecrets captures secrets settings in the Enterprise Search configuration that we want to reuse.
-type enterpriseSearchSecrets struct {
+// reusableSettings captures secrets settings in the Enterprise Search configuration that we want to reuse.
+type reusableSettings struct {
 	SecretSessionKey  string   `config:"secret_session_key"`
 	EncryptionKeysKey []string `config:"secret_management.encryption_keys"`
 }
@@ -99,9 +99,9 @@ func reuseOrGenerateSecretKeys(c k8s.Client, ents entsv1beta1.EnterpriseSearch) 
 		return nil, err
 	}
 
-	var e enterpriseSearchSecrets
+	var e reusableSettings
 	if cfg == nil {
-		e = enterpriseSearchSecrets{}
+		e = reusableSettings{}
 	} else if err := cfg.Unpack(&e); err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func getExistingConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*s
 	}
 	rawCfg, exists := secret.Data[ConfigFilename]
 	if !exists {
-		return nil, fmt.Errorf("%s:%s: config secret %v exists but config file key %s is missing", ents.Namespace, ents.Name, key, ConfigFilename)
+		return nil, nil
 	}
 	cfg, err := settings.ParseConfig(rawCfg)
 	if err != nil {
