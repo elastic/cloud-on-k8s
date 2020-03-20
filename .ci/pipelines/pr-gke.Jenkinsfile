@@ -6,7 +6,6 @@ pipeline {
 
     options {
         timeout(time: 45, unit: 'MINUTES')
-        skipDefaultCheckout()
         skipStagesAfterUnstable()
     }
 
@@ -18,7 +17,11 @@ pipeline {
     }
 
     stages {
+        stage('Stash source code') {
+            stash name: "eck-source"
+        }
         stage('Validate Jenkins pipelines') {
+            unstash "eck-source"
             when {
                 expression {
                     notOnlyDocs()
@@ -29,6 +32,7 @@ pipeline {
             }
         }
         stage('Run checks') {
+            unstash "eck-source"
             when {
                 expression {
                     notOnlyDocs()
@@ -42,6 +46,7 @@ pipeline {
             failFast true
             parallel {
                 stage("Run unit and integration tests") {
+                    unstash "eck-source"
                     when {
                         expression {
                             notOnlyDocs()
@@ -62,6 +67,7 @@ pipeline {
                     }
                 }
                 stage("Run smoke E2E tests") {
+                    unstash "eck-source"
                     when {
                         expression {
                             notOnlyDocs()
