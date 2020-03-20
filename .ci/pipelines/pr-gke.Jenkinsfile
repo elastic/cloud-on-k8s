@@ -42,16 +42,16 @@ pipeline {
             failFast true
             parallel {
                 stage("Run unit and integration tests") {
-                    node {
-                        unstash "eck-source"
-                    }
                     when {
                         expression {
                             notOnlyDocs()
                         }
                     }
                     agent {
-                        label 'linux'
+                        node {
+                            label 'linux'
+                            unstash "eck-source"
+                        }
                     }
                     steps {
                         script {
