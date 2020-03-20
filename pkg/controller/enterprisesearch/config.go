@@ -102,10 +102,8 @@ func reuseOrGenerateSecretKeys(c k8s.Client, ents entsv1beta1.EnterpriseSearch) 
 	var e enterpriseSearchSecrets
 	if cfg == nil {
 		e = enterpriseSearchSecrets{}
-	} else {
-		if err := cfg.Unpack(&e); err != nil {
-			return nil, err
-		}
+	} else if err := cfg.Unpack(&e); err != nil {
+		return nil, err
 	}
 	if len(e.SecretSessionKey) == 0 {
 		e.SecretSessionKey = rand.String(32)
