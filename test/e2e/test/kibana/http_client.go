@@ -33,16 +33,17 @@ func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 }
 
 // DoKibanaReq executes an HTTP request against a Kibana instance.
-func DoKibanaReq(k *test.K8sClient, b Builder, method string, uri string, body []byte) ([]byte, error) {
-	password, err := k.GetElasticPassword(b.Kibana.Spec.ElasticsearchRef.Namespace, b.Kibana.Spec.ElasticsearchRef.Name)
+func DoKibanaReq(k *test.K8sClient, kb kbv1.Kibana, method string, uri string, body []byte) ([]byte, error) {
+	password, err := k.GetElasticPassword(kb.Spec.ElasticsearchRef.Namespace, kb.Spec.ElasticsearchRef.Name)
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting elastic password")
 	}
 	scheme := "http"
-	if b.Kibana.Spec.HTTP.TLS.Enabled() {
+	if kb.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"
 	}
-	u, err := url.Parse(fmt.Sprintf("%s://%s.%s:5601", scheme, kbname.HTTPService(b.Kibana.Name), b.Kibana.Namespace))
+	// add .svc suffix so that requests work when using the port-forwarder during local test runs
+	u, err := url.Parse(fmt.Sprintf("%s://%s.%s.svc:5601", scheme, kbname.HTTPService(kb.Name), kb.Namespace))
 	if err != nil {
 		return nil, errors.Wrap(err, "while parsing url")
 	}
@@ -56,8 +57,8 @@ func DoKibanaReq(k *test.K8sClient, b Builder, method string, uri string, body [
 	req.SetBasicAuth("elastic", password)
 	req.Header.Set("Content-Type", "application/json")
 	// send the kbn-version header expected by the Kibana server to protect against xsrf attacks
-	req.Header.Set("kbn-version", b.Kibana.Spec.Version)
-	client, err := NewKibanaClient(b.Kibana, k)
+	req.Header.Set("kbn-version", kb.Spec.Version)
+	client, err := NewKibanaClient(kb, k)
 	if err != nil {
 		return nil, errors.Wrap(err, "while creating kibana client")
 	}
