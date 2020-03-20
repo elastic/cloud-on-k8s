@@ -51,10 +51,10 @@ RUN apt-get update && apt-get --no-install-recommends -y install \
 
 # shellcheck
 ENV PATH=${PATH}:/usr/local/shellcheck
-RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
-    tar -xf shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
+RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz && \
+    tar -xf shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz && \
     mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
-    rm shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz
+    rm shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz
 
 # Azure CLI to provision AKS clusters
 RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
