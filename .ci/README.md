@@ -28,7 +28,7 @@ Per repro, depending on the job, set up `.env` and `deployer-config.yml` files b
 Test the `cloud-on-k8s-e2e-tests-master` job:
 ```sh
 .ci/setenvconfig e2e/master
-make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET=ci-build-operator-e2e-run ci
+make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci
 ```
 
 Test the `cloud-on-k8s-e2e-tests-stack-versions` job:

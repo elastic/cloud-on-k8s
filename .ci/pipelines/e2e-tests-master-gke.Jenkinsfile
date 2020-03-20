@@ -50,7 +50,7 @@ pipeline {
             steps {
                 sh '.ci/setenvconfig e2e/master'
                 script {
-                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET=ci-build-operator-e2e-run ci')
+                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci')
 
                     sh 'make -C .ci TARGET=e2e-generate-xml ci'
                     junit "e2e-tests.xml"
