@@ -533,10 +533,9 @@ func Test_calculateDownscales(t *testing.T) {
 
 func Test_calculatePerformableDownscale(t *testing.T) {
 	type args struct {
-		ctx             downscaleContext
-		downscale       ssetDownscale
-		state           *downscaleState
-		allLeavingNodes []string
+		ctx       downscaleContext
+		downscale ssetDownscale
+		state     *downscaleState
 	}
 	tests := []struct {
 		name    string
@@ -553,8 +552,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  3,
 					finalReplicas:   3,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
@@ -573,8 +571,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  2,
 					finalReplicas:   2,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
@@ -594,8 +591,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  3,
 					finalReplicas:   2,
 				},
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(0)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(0)},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
@@ -616,8 +612,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   2,
 				},
 				// a master node has already been removed
-				state:           &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				statefulSet:     ssetMaster3Replicas,
@@ -639,8 +634,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   1,
 				},
 				// invariants limits us to one master node downscale only
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				statefulSet:     ssetMaster3Replicas,
@@ -662,8 +656,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					finalReplicas:   0,
 				},
 				// only one master is running
-				state:           &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: pointer.Int32(1)},
-				allLeavingNodes: []string{"node-1", "node-2"},
+				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				statefulSet:     ssetMaster3Replicas,
@@ -675,7 +668,7 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale, tt.args.allLeavingNodes)
+			got, err := calculatePerformableDownscale(tt.args.ctx, tt.args.downscale)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("calculatePerformableDownscale() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -741,7 +734,7 @@ func Test_attemptDownscale(t *testing.T) {
 				esClient:       &fakeESClient{},
 			}
 			// do the downscale
-			_, err := attemptDownscale(downscaleCtx, tt.downscale, nil, tt.statefulSets)
+			_, err := attemptDownscale(downscaleCtx, tt.downscale, tt.statefulSets)
 			require.NoError(t, err)
 			// retrieve statefulsets
 			var ssets appsv1.StatefulSetList

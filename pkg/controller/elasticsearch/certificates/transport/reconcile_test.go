@@ -74,6 +74,27 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 			},
 		},
 		{
+			name: "should not modify the secret data if already exists",
+			args: args{
+				c: k8s.WrappedFakeClient(defaultSecretWith(func(secret *corev1.Secret) {
+					secret.ObjectMeta.UID = types.UID("42")
+					secret.Data = map[string][]byte{
+						"existing": []byte("data"),
+					}
+				})),
+				owner: testES,
+			},
+			want: func(t *testing.T, secret *corev1.Secret) {
+				// UID and data should be kept
+				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
+					secret.ObjectMeta.UID = types.UID("42")
+					secret.Data = map[string][]byte{
+						"existing": []byte("data"),
+					}
+				}), secret)
+			},
+		},
+		{
 			name: "should allow additional labels in the secret",
 			args: args{
 				c: k8s.WrappedFakeClient(defaultSecretWith(func(secret *corev1.Secret) {

@@ -58,7 +58,7 @@ var (
 
 func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	r := newReconciler(mgr, accessReviewer, params)
-	c, err := add(mgr, r)
+	c, err := common.NewController(mgr, name, r, params)
 	if err != nil {
 		return err
 	}
@@ -75,14 +75,6 @@ func newReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		recorder:       mgr.GetEventRecorderFor(name),
 		Parameters:     params,
 	}
-}
-
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
-	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return nil, err
-	}
-	return c, nil
 }
 
 func addWatches(c controller.Controller, r *ReconcileEnterpriseSearchElasticsearchAssociation) error {

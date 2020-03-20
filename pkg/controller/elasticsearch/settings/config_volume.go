@@ -5,8 +5,6 @@
 package settings
 
 import (
-	"reflect"
-
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,20 +93,8 @@ func ReconcileConfig(client k8s.Client, es esv1.Elasticsearch, ssetName string, 
 		return err
 	}
 	expected := ConfigSecret(es, ssetName, rendered)
-	reconciled := corev1.Secret{}
-	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client:   client,
-		Expected: &expected,
-		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(reconciled.Data, expected.Data)
-		},
-		Owner:            &es,
-		Reconciled:       &reconciled,
-		UpdateReconciled: func() { reconciled.Data = expected.Data },
-	}); err != nil {
-		return err
-	}
-	return nil
+	_, err = reconciler.ReconcileSecret(client, expected, &es)
+	return err
 }
 
 // DeleteConfig removes the configuration Secret corresponding to the given Statefulset.

@@ -138,6 +138,11 @@ func init() {
 		"Enables automatic certificates management for the webhook. The Secret and the ValidatingWebhookConfiguration must be created before running the operator",
 	)
 	Cmd.Flags().Int(
+		operator.MaxConcurrentReconcilesFlag,
+		3,
+		"Sets maximum number of concurrent reconciles per controller (Elasticsearch, Kibana, Apm Server etc). Affects the ability of the operator to process changes concurrently.",
+	)
+	Cmd.Flags().Int(
 		operator.MetricsPortFlag,
 		DefaultMetricPort,
 		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
@@ -312,7 +317,8 @@ func execute() {
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
-		Tracer: tracer,
+		MaxConcurrentReconciles: viper.GetInt(operator.MaxConcurrentReconcilesFlag),
+		Tracer:                  tracer,
 	}
 
 	if viper.GetBool(operator.EnableWebhookFlag) {

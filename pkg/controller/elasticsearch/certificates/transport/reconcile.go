@@ -18,6 +18,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -125,15 +127,16 @@ func ensureTransportCertificatesSecretExists(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      esv1.TransportCertificatesSecret(es.Name),
-
 			Labels: map[string]string{
 				// a label showing which es these certificates belongs to
 				label.ClusterNameLabelName: es.Name,
 			},
 		},
 	}
-
-	// reconcile the secret resource
+	// reconcile the secret resource:
+	// - create it if it doesn't exist
+	// - update labels & annotations if they don't match
+	// - do not touch the existing data as it probably already contains certificates - it will be reconciled later on
 	var reconciled corev1.Secret
 	if err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
@@ -141,31 +144,16 @@ func ensureTransportCertificatesSecretExists(
 		Expected:   &expected,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
-			// we only care about labels, not contents at this point, and we can allow additional labels
-			if reconciled.Labels == nil {
-				return true
-			}
-
-			for k, v := range expected.Labels {
-				if rv, ok := reconciled.Labels[k]; !ok || rv != v {
-					return true
-				}
-			}
-			return false
+			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!maps.IsSubset(expected.Annotations, reconciled.Annotations)
 		},
 		UpdateReconciled: func() {
-			if reconciled.Labels == nil {
-				reconciled.Labels = expected.Labels
-			} else {
-				for k, v := range expected.Labels {
-					reconciled.Labels[k] = v
-				}
-			}
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
 		},
 	}); err != nil {
 		return nil, err
 	}
-
 	// a placeholder secret may have nil entries, create them if needed
 	if reconciled.Data == nil {
 		reconciled.Data = make(map[string][]byte)
