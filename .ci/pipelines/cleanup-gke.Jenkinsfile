@@ -6,6 +6,7 @@ pipeline {
 
     options {
         timeout(time: 30, unit: 'MINUTES')
+        retry(3)
     }
 
     environment {
