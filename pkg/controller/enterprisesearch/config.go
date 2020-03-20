@@ -161,7 +161,7 @@ func getExistingConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*s
 	}
 	rawCfg, exists := secret.Data[ConfigFilename]
 	if !exists {
-		return nil, fmt.Errorf("Enterprise Search config secret %v exists but missing config file key %s", key, ConfigFilename)
+		return nil, fmt.Errorf("%s:%s: config secret %v exists but config file key %s is missing", ents.Namespace, ents.Name, key, ConfigFilename)
 	}
 	cfg, err := settings.ParseConfig(rawCfg)
 	if err != nil {
