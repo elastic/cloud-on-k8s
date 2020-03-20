@@ -2,6 +2,7 @@
 FROM golang:1.13-stretch
 
 ENV GOLANGCILINT_VERSION=1.21.0
+ENV SHELLCHECK_VERSION=0.7.0
 ENV KUBEBUILDER_VERSION=2.0.0
 ENV GCLOUD_VERSION=277.0.0
 ENV KUBECTL_VERSION=1.14.7
@@ -13,6 +14,13 @@ ENV OPENSHIFT_TOOLS_VERSION=4.3.0
 # golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
     | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
+
+# shellcheck
+ENV PATH=${PATH}:/usr/local/shellcheck
+RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
+    tar -zxf shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz && \
+    mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
+    rm shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz
 
 # kubebuilder to get required tools (etcd, apiserver, etc.)
 ENV PATH=${PATH}:/usr/local/kubebuilder/bin

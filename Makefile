@@ -411,7 +411,7 @@ e2e-local:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci-check: check-license-header lint generate check-local-changes
+ci-check: check-license-header lint shellcheck generate check-local-changes
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
