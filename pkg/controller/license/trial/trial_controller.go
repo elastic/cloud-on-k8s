@@ -14,7 +14,6 @@ import (
 
 	licensing "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/license/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +29,8 @@ import (
 )
 
 const (
-	name = "trial-controller"
+	name              = "trial-controller"
+	EULAValidationMsg = `Please set the annotation elastic.co/eula to "accepted" to accept the EULA`
 )
 
 var (
@@ -68,14 +68,9 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, pkgerrors.Wrap(err, "while fetching trial license")
 	}
 
-	violations := validation.Validate(secret)
-	if len(violations) > 0 {
-		if secret.Annotations == nil {
-			secret.Annotations = map[string]string{}
-		}
-		// TODO (sabo): this is the only dependency on the license_validation, which was removed as part of removing the webhook package
-		// res := license_validation.Aggregate(violations)
-		// secret.Annotations[licensing.LicenseInvalidAnnotation] = string(res.Response.Result.Reason)
+	validationMsg := validateEULA(secret)
+	if validationMsg != "" {
+		setValidationMsg(&secret, validationMsg)
 		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
 	}
 
@@ -105,12 +100,12 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 		status := verifier.Valid(license, time.Now())
 		if status != licensing.LicenseStatusValid {
-			secret.Annotations[licensing.LicenseInvalidAnnotation] = string(status)
+			setValidationMsg(&secret, string(status))
 		}
 	} else {
 		// if the trial secret fields are not populated at this point a user is trying to start a trial a second time
 		// with an empty trial secret, which is not a supported use case.
-		secret.Annotations[licensing.LicenseInvalidAnnotation] = "trial can be started only once"
+		setValidationMsg(&secret, "trial can be started only once")
 	}
 	return reconcile.Result{}, r.Update(&secret)
 }
@@ -148,6 +143,21 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 	trialStatus.Data[licensing.TrialPubkeyKey] = pubkeyBytes
 	return r.Update(&trialStatus)
 
+}
+
+func validateEULA(trialSecret corev1.Secret) string {
+	if licensing.IsEnterpriseTrial(trialSecret) &&
+		trialSecret.Annotations[licensing.EULAAnnotation] != licensing.EULAAcceptedValue {
+		return EULAValidationMsg
+	}
+	return ""
+}
+
+func setValidationMsg(secret *corev1.Secret, violation string) {
+	if secret.Annotations == nil {
+		secret.Annotations = map[string]string{}
+	}
+	secret.Annotations[licensing.LicenseInvalidAnnotation] = violation
 }
 
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTrials {
