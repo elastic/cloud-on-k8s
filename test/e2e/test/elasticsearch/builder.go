@@ -332,7 +332,7 @@ func (b Builder) WithLabel(key, value string) Builder {
 	return b
 }
 
-// WithPodLabel sets the label in pod templates accross all node sets.
+// WithPodLabel sets the label in pod templates across all node sets.
 // All invocations can be removed when
 // https://github.com/elastic/cloud-on-k8s/issues/2652 is implemented.
 func (b Builder) WithPodLabel(key, value string) Builder {
