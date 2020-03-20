@@ -6,6 +6,7 @@
 
 set -eu
 
+# shellcheck disable=SC2016
 help() { 
   echo \
 'Manage a Docker registry in k8s.

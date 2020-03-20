@@ -16,12 +16,13 @@ CLEANUP="${CLEANUP:-true}"
 cleanup() {
     if [[ $CLEANUP == "true" ]]; then
         echo "Removing $SCRATCH_DIR"
-        rm -rf $SCRATCH_DIR || echo "Failed to remove $SCRATCH_DIR"
+        rm -rf "$SCRATCH_DIR" || echo "Failed to remove $SCRATCH_DIR"
     fi
 }
 
 build_docs() {
-    local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local SCRIPT_DIR
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local REPO_ROOT="${SCRIPT_DIR}/../.."
     local DOCS_DIR="${SCRIPT_DIR}/../../docs"
     local REFDOCS_REPO="${REFDOCS_REPO:-github.com/elastic/crd-ref-docs}"
@@ -30,16 +31,16 @@ build_docs() {
 
     (
         echo "Installing crd-ref-docs $REFDOCS_VER to $BIN_DIR"
-        mkdir -p $BIN_DIR
-        cd $SCRATCH_DIR
+        mkdir -p "$BIN_DIR"
+        cd "$SCRATCH_DIR"
         go mod init github.com/elastic/cloud-on-k8s-docs && GOBIN=$BIN_DIR go get -u "${REFDOCS_REPO}@${REFDOCS_VER}"
 
         echo "Generating API reference documentation"
-        ${BIN_DIR}/crd-ref-docs --source-path=${REPO_ROOT}/pkg/apis \
-            --config=${SCRIPT_DIR}/config.yaml \
+        "${BIN_DIR}"/crd-ref-docs --source-path="${REPO_ROOT}"/pkg/apis \
+            --config="${SCRIPT_DIR}"/config.yaml \
             --renderer=asciidoctor \
-            --templates-dir=${SCRIPT_DIR}/templates \
-            --output-path=${DOCS_DIR}/reference/api-docs.asciidoc
+            --templates-dir="${SCRIPT_DIR}"/templates \
+            --output-path="${DOCS_DIR}"/reference/api-docs.asciidoc
     )
 }
 

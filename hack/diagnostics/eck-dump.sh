@@ -103,19 +103,19 @@ main() {
 
   # get info from the namespaces in which resources are managed 
   for ns in $RESOURCES_NS; do
-    get_resources $ns statefulsets
-    get_resources $ns replicasets
-    get_resources $ns deployments
-    get_resources $ns pods
-    get_resources $ns persistentvolumes
-    get_resources $ns persistentvolumeclaims
-    get_resources $ns services
-    get_resources $ns endpoints
-    get_resources $ns configmaps
-    get_resources $ns events
-    get_resources $ns networkpolicies
-    get_resources $ns controllerrevisions
-    list_resources $ns secrets
+    get_resources "$ns" statefulsets
+    get_resources "$ns" replicasets
+    get_resources "$ns" deployments
+    get_resources "$ns" pods
+    get_resources "$ns" persistentvolumes
+    get_resources "$ns" persistentvolumeclaims
+    get_resources "$ns" services
+    get_resources "$ns" endpoints
+    get_resources "$ns" configmaps
+    get_resources "$ns" events
+    get_resources "$ns" networkpolicies
+    get_resources "$ns" controllerrevisions
+    list_resources "$ns" secrets
     
     local types="kibana,elasticsearch,apmserver"
     for t in $types; do
