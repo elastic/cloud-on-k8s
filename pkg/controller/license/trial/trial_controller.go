@@ -136,6 +136,13 @@ func (r *ReconcileTrials) initTrial(secret corev1.Secret, l licensing.Enterprise
 
 func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error {
 	if !r.isTrialRunning() {
+		// reinstate pubkey from status secret e.g. after operator restart
+		pubKeyBytes := trialStatus.Data[licensing.TrialPubkeyKey]
+		key, err := licensing.ParsePubKey(pubKeyBytes)
+		if err != nil {
+			return err
+		}
+		r.trialPubKey = key
 		return nil
 	}
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(r.trialPubKey)

@@ -7,6 +7,7 @@ package trial
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"fmt"
 	"testing"
 	"time"
@@ -63,6 +64,12 @@ func testPubkey(t *testing.T) *rsa.PublicKey {
 	return &key.PublicKey
 }
 
+func testPubkeyBytes(t *testing.T) []byte {
+	bytes, err := x509.MarshalPKIXPublicKey(testPubkey(t))
+	require.NoError(t, err)
+	return bytes
+}
+
 func TestReconcileTrials_Reconcile(t *testing.T) {
 	requireValidationMsg := func(msg string) func(c k8s.Client) {
 		return func(c k8s.Client) {
@@ -111,6 +118,27 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			},
 		},
 		{
+			name: "valid trial after operator restart",
+			fields: fields{
+				Client: k8s.WrappedFakeClient(
+					trialSecretSample(
+						true,
+						map[string][]byte{
+							"license": trialLicenseBytes(),
+						}),
+					&v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      licensing.TrialStatusSecretKey,
+							Namespace: testNs,
+						},
+						Data: map[string][]byte{licensing.TrialPubkeyKey: testPubkeyBytes(t)},
+					}),
+				trialPubKey: nil, // simulating restart
+			},
+			wantErr:    false,
+			assertions: requireValidationMsg("trial license signature invalid"), // but not: trial can be started only once
+		},
+		{
 			name: "invalid: trial running but no status secret",
 			fields: fields{
 				Client:      k8s.WrappedFakeClient(trialSecretSample(true, nil)),
@@ -122,13 +150,16 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 		{
 			name: "invalid: restarting a running trial",
 			fields: fields{
-				Client: k8s.WrappedFakeClient(trialSecretSample(true, nil), &v1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      licensing.TrialStatusSecretKey,
-						Namespace: testNs,
-					},
-				}),
-				trialPubKey: testPubkey(t),
+				Client: k8s.WrappedFakeClient(
+					// user creates a new trial secret
+					trialSecretSample(true, nil),
+					&v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      licensing.TrialStatusSecretKey,
+							Namespace: testNs,
+						},
+					}),
+				trialPubKey: testPubkey(t), // but trial is already running
 			},
 			wantErr:    false,
 			assertions: requireValidationMsg(trialOnlyOnceMsg),
