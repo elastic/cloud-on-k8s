@@ -229,7 +229,7 @@ func execute() {
 
 	// set the default container registry
 	containerRegistry := viper.GetString(operator.ContainerRegistryFlag)
-	log.Info("Setting default container registry", "registry", containerRegistry)
+	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
 
 	// Get a config to talk to the apiserver
