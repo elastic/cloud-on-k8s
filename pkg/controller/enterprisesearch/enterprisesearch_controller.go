@@ -215,6 +215,12 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
+	// toggle read-only mode for Enterprise Search version upgrades
+	upgrade := VersionUpgrade{k8sClient: r.K8sClient(), ents: ents, dialer: r.Dialer}
+	if err := upgrade.Handle(ctx); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// build a hash of various inputs to rotate Pods on any change
 	configHash, err := buildConfigHash(r.K8sClient(), ents, configSecret)
 	if err != nil {
