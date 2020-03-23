@@ -70,6 +70,7 @@ func Reconcile(
 		services,
 		caRotation,
 		certRotation,
+		false,
 	)
 	if results.HasError() {
 		return nil, results

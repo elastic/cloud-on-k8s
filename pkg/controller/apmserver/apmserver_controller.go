@@ -237,6 +237,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		[]corev1.Service{*svc},
 		r.CACertRotation,
 		r.CertRotation,
+		true,
 	)
 	if results.HasError() {
 		res, err := results.Aggregate()

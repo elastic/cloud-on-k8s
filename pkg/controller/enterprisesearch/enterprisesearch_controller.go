@@ -210,6 +210,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		[]corev1.Service{*svc},
 		r.CACertRotation,
 		r.CertRotation,
+		true,
 	)
 	if results.HasError() {
 		res, err := results.Aggregate()

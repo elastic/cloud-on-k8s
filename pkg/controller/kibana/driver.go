@@ -230,6 +230,7 @@ func (d *driver) Reconcile(
 		[]corev1.Service{*svc},
 		params.CACertRotation,
 		params.CertRotation,
+		true,
 	)
 	if results.HasError() {
 		return results

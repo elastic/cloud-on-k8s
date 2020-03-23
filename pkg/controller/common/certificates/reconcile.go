@@ -10,7 +10,9 @@ import (
 
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -42,11 +44,17 @@ func ReconcileCAAndHTTPCerts(
 	services []corev1.Service,
 	caRotation RotationParams,
 	certRotation RotationParams,
+	removeSecretsIfTLSDisabled bool,
 ) (*CertificatesSecret, *reconciler.Results) {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
+
+	if !tlsOptions.Enabled() && removeSecretsIfTLSDisabled {
+		// TLS is disabled, ensure secrets are removed
+		return nil, results.WithError(removeCAAndHTTPCertsSecrets(k8sClient, object, namer, dynamicWatches))
+	}
 
 	// reconcile CA certs first
 	httpCa, err := ReconcileCAForOwner(
@@ -91,4 +99,44 @@ func ReconcileCAAndHTTPCerts(
 	// reconcile http public cert secret, which does not contain the private key
 	results.WithError(ReconcilePublicHTTPCerts(k8sClient, object, namer, httpCertificates, labels))
 	return httpCertificates, results
+}
+
+func removeCAAndHTTPCertsSecrets(c k8s.Client, object metav1.Object, namer commonname.Namer, dynamicWatches watches.DynamicWatches) error {
+	// remove public certs secret
+	if err := deleteIfExists(c,
+		types.NamespacedName{Namespace: object.GetNamespace(), Name: PublicCertsSecretName(namer, object.GetName())},
+	); err != nil {
+		return err
+	}
+	// remove internal certs secret
+	if err := deleteIfExists(c,
+		types.NamespacedName{Namespace: object.GetNamespace(), Name: InternalCertsSecretName(namer, object.GetName())},
+	); err != nil {
+		return err
+	}
+	// remove CA secret
+	if err := deleteIfExists(c,
+		types.NamespacedName{Namespace: object.GetNamespace(), Name: CAInternalSecretName(namer, object.GetName(), HTTPCAType)},
+	); err != nil {
+		return err
+	}
+	// remove watches on user-provided certs secret
+	dynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(namer, object.GetName()))
+	return nil
+}
+
+func deleteIfExists(c k8s.Client, secretRef types.NamespacedName) error {
+	var secret corev1.Secret
+	err := c.Get(secretRef, &secret)
+	if err != nil && apierrors.IsNotFound(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	log.Info("Deleting secret", "namespace", secretRef.Namespace, "secret_name", secretRef.Name)
+	err = c.Delete(&secret)
+	if err != nil && apierrors.IsNotFound(err) {
+		return nil
+	}
+	return err
 }
