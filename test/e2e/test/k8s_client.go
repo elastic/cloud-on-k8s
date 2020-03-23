@@ -29,9 +29,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -191,7 +189,7 @@ func (k *K8sClient) GetElasticPassword(namespace, esName string) (string, error)
 
 func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName string) ([]*x509.Certificate, error) {
 	var secret corev1.Secret
-	secretNSN := http.PublicCertsSecretRef(
+	secretNSN := certificates.PublicCertsSecretRef(
 		namer,
 		types.NamespacedName{
 			Namespace: ownerNamespace,
@@ -206,29 +204,29 @@ func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName str
 		return nil, err
 	}
 
-	certData, exists := secret.Data[certutils.CertFileName]
+	certData, exists := secret.Data[certificates.CertFileName]
 	if !exists {
 		return nil, fmt.Errorf("no certificates found in secret %s", secretNSN)
 	}
-	return certutils.ParsePEMCerts(certData)
+	return certificates.ParsePEMCerts(certData)
 }
 
 // GetCA returns the CA of the given owner name
-func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType ca.CAType) (*ca.CA, error) {
+func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.CAType) (*certificates.CA, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ownerNamespace,
-		Name:      ca.CAInternalSecretName(esv1.ESNamer, ownerName, caType),
+		Name:      certificates.CAInternalSecretName(esv1.ESNamer, ownerName, caType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
 	}
 
-	caCertsData, exists := secret.Data[certutils.CertFileName]
+	caCertsData, exists := secret.Data[certificates.CertFileName]
 	if !exists {
-		return nil, fmt.Errorf("no value found for cert in secret %s", certutils.CertFileName)
+		return nil, fmt.Errorf("no value found for cert in secret %s", certificates.CertFileName)
 	}
-	caCerts, err := certutils.ParsePEMCerts(caCertsData)
+	caCerts, err := certificates.ParsePEMCerts(caCertsData)
 	if err != nil {
 		return nil, err
 	}
@@ -237,16 +235,16 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType ca.CAType) (*
 		return nil, fmt.Errorf("found multiple ca certificates in secret %s", key)
 	}
 
-	pKeyBytes, exists := secret.Data[certutils.KeyFileName]
+	pKeyBytes, exists := secret.Data[certificates.KeyFileName]
 	if !exists || len(pKeyBytes) == 0 {
 		return nil, fmt.Errorf("no value found for private key in secret %s", key)
 	}
-	pKey, err := certutils.ParsePEMPrivateKey(pKeyBytes)
+	pKey, err := certificates.ParsePEMPrivateKey(pKeyBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	return ca.NewCA(pKey, caCerts[0]), nil
+	return certificates.NewCA(pKey, caCerts[0]), nil
 }
 
 // GetTransportCert retrieves the certificate of the CA and the transport certificate
@@ -259,11 +257,11 @@ func (k *K8sClient) GetTransportCert(esNamespace, esName, podName string) (caCer
 	if err = k.Client.Get(key, &secret); err != nil {
 		return nil, nil, err
 	}
-	caCertBytes, exists := secret.Data[certutils.CAFileName]
+	caCertBytes, exists := secret.Data[certificates.CAFileName]
 	if !exists || len(caCertBytes) == 0 {
-		return nil, nil, fmt.Errorf("no value found for secret %s", certutils.CAFileName)
+		return nil, nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
 	}
-	caCert, err = certutils.ParsePEMCerts(caCertBytes)
+	caCert, err = certificates.ParsePEMCerts(caCertBytes)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -271,7 +269,7 @@ func (k *K8sClient) GetTransportCert(esNamespace, esName, podName string) (caCer
 	if !exists || len(transportCertBytes) == 0 {
 		return nil, nil, fmt.Errorf("no value found for secret %s", transport.PodCertFileName(podName))
 	}
-	transportCert, err = certutils.ParsePEMCerts(transportCertBytes)
+	transportCert, err = certificates.ParsePEMCerts(transportCertBytes)
 	if err != nil {
 		return nil, nil, err
 	}

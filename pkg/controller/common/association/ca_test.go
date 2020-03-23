@@ -14,8 +14,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -33,21 +32,21 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	esCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      http.PublicCertsSecretName(esv1.ESNamer, es.Name),
+			Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
 		},
 		Data: map[string][]byte{
-			certutils.CertFileName: []byte("fake-cert"),
-			certutils.CAFileName:   []byte("fake-ca-cert"),
+			certificates.CertFileName: []byte("fake-cert"),
+			certificates.CAFileName:   []byte("fake-ca-cert"),
 		},
 	}
 	updatedEsCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      http.PublicCertsSecretName(esv1.ESNamer, es.Name),
+			Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
 		},
 		Data: map[string][]byte{
-			certutils.CertFileName: []byte("updated-fake-cert"),
-			certutils.CAFileName:   []byte("updated-fake-ca-cert"),
+			certificates.CertFileName: []byte("updated-fake-cert"),
+			certificates.CAFileName:   []byte("updated-fake-ca-cert"),
 		},
 	}
 	// mock existing ES CA secret for Kibana
@@ -57,8 +56,8 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
 		},
 		Data: map[string][]byte{
-			certutils.CertFileName: []byte("fake-cert"),
-			certutils.CAFileName:   []byte("fake-ca-cert"),
+			certificates.CertFileName: []byte("fake-cert"),
+			certificates.CAFileName:   []byte("fake-ca-cert"),
 		},
 	}
 	updatedKibanaEsCA := corev1.Secret{
@@ -67,18 +66,18 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
 		},
 		Data: map[string][]byte{
-			certutils.CertFileName: []byte("updated-fake-cert"),
-			certutils.CAFileName:   []byte("updated-fake-ca-cert"),
+			certificates.CertFileName: []byte("updated-fake-cert"),
+			certificates.CAFileName:   []byte("updated-fake-ca-cert"),
 		},
 	}
 	esEmptyCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      http.PublicCertsSecretName(esv1.ESNamer, es.Name),
+			Name:      certificates.PublicCertsSecretName(esv1.ESNamer, es.Name),
 		},
 		Data: map[string][]byte{
-			certutils.CertFileName: []byte("fake-cert"),
-			certutils.CAFileName:   {},
+			certificates.CertFileName: []byte("fake-cert"),
+			certificates.CAFileName:   {},
 		},
 	}
 	kibanaEmptyEsCA := corev1.Secret{
@@ -87,8 +86,8 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      ElasticsearchCACertSecretName(&kibanaFixture, ElasticsearchCASecretSuffix),
 		},
 		Data: map[string][]byte{
-			certutils.CertFileName: []byte("fake-cert"),
-			certutils.CAFileName:   {},
+			certificates.CertFileName: []byte("fake-cert"),
+			certificates.CAFileName:   {},
 		},
 	}
 	tests := []struct {

@@ -8,7 +8,7 @@ import (
 	"go.elastic.co/apm"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
@@ -21,9 +21,9 @@ type Parameters struct {
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
 	// CACertRotation defines the rotation params for CA certificates.
-	CACertRotation certutils.RotationParams
+	CACertRotation certificates.RotationParams
 	// CertRotation defines the rotation params for non-CA certificates.
-	CertRotation certutils.RotationParams
+	CertRotation certificates.RotationParams
 	// MaxConcurrentReconciles controls the number of goroutines per controller.
 	MaxConcurrentReconciles int
 	// Tracer is a shared APM tracer instance or nil

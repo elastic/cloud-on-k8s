@@ -22,8 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -138,7 +136,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		if err := d.client.Get(esPublicCAKey, &esPublicCASecret); err != nil {
 			return deployment.Params{}, err
 		}
-		if certPem, ok := esPublicCASecret.Data[certutils.CertFileName]; ok {
+		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(certPem)
 		}
 
@@ -155,16 +153,16 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		var httpCerts corev1.Secret
 		err := d.client.Get(types.NamespacedName{
 			Namespace: kb.Namespace,
-			Name:      http.InternalCertsSecretName(kbname.KBNamer, kb.Name),
+			Name:      certificates.InternalCertsSecretName(kbname.KBNamer, kb.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
 		}
-		if httpCert, ok := httpCerts.Data[certutils.CertFileName]; ok {
+		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
 
-		httpCertsVolume := http.HTTPCertSecretVolume(kbname.KBNamer, kb.Name)
+		httpCertsVolume := certificates.HTTPCertSecretVolume(kbname.KBNamer, kb.Name)
 		volumes = append(volumes, httpCertsVolume)
 	}
 

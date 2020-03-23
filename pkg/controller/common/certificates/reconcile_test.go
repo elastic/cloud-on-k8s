@@ -15,9 +15,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -25,9 +22,9 @@ import (
 // this test just visits the main path of the certs reconciliation
 // inner functions are individually tested elsewhere
 func TestReconcileCAAndHTTPCerts(t *testing.T) {
-	rotation := certutils.RotationParams{
-		Validity:     certutils.DefaultCertValidity,
-		RotateBefore: certutils.DefaultRotateBefore,
+	rotation := RotationParams{
+		Validity:     DefaultCertValidity,
+		RotateBefore: DefaultRotateBefore,
 	}
 	labels := map[string]string{
 		"foo": "bar",
@@ -70,28 +67,28 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 			// the 3 secrets should have been created in the apiserver,
 			// and have the expected labels and content generated
 			var caCerts corev1.Secret
-			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: ca.CAInternalSecretName(esv1.ESNamer, obj.Name, ca.HTTPCAType)}, &caCerts)
+			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: CAInternalSecretName(esv1.ESNamer, obj.Name, HTTPCAType)}, &caCerts)
 			require.NoError(t, err)
 			require.Len(t, caCerts.Data, 2)
-			require.NotEmpty(t, caCerts.Data[certutils.CertFileName])
-			require.NotEmpty(t, caCerts.Data[certutils.KeyFileName])
+			require.NotEmpty(t, caCerts.Data[CertFileName])
+			require.NotEmpty(t, caCerts.Data[KeyFileName])
 			require.Equal(t, labels, caCerts.Labels)
 
 			var internalCerts corev1.Secret
-			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: http.InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
+			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
 			require.NoError(t, err)
 			require.Len(t, internalCerts.Data, 3)
-			require.NotEmpty(t, internalCerts.Data[certutils.CAFileName])
-			require.NotEmpty(t, internalCerts.Data[certutils.CertFileName])
-			require.NotEmpty(t, internalCerts.Data[certutils.KeyFileName])
+			require.NotEmpty(t, internalCerts.Data[CAFileName])
+			require.NotEmpty(t, internalCerts.Data[CertFileName])
+			require.NotEmpty(t, internalCerts.Data[KeyFileName])
 			require.Equal(t, labels, internalCerts.Labels)
 
 			var publicCerts corev1.Secret
-			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: http.PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)
+			err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)
 			require.NoError(t, err)
 			require.Len(t, publicCerts.Data, 2)
-			require.NotEmpty(t, publicCerts.Data[certutils.CAFileName])
-			require.NotEmpty(t, publicCerts.Data[certutils.CertFileName])
+			require.NotEmpty(t, publicCerts.Data[CAFileName])
+			require.NotEmpty(t, publicCerts.Data[CertFileName])
 			require.Equal(t, labels, publicCerts.Labels)
 		})
 	}

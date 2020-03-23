@@ -26,8 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -283,11 +281,11 @@ func buildConfigHash(c k8s.Client, ents entsv1beta1.EnterpriseSearch, configSecr
 
 	// - in the Enterprise Search TLS certificates
 	var tlsCertSecret corev1.Secret
-	tlsSecretKey := types.NamespacedName{Namespace: ents.Namespace, Name: http.InternalCertsSecretName(entsname.EntSearchNamer, ents.Name)}
+	tlsSecretKey := types.NamespacedName{Namespace: ents.Namespace, Name: certificates.InternalCertsSecretName(entsname.EntSearchNamer, ents.Name)}
 	if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
 		return "", err
 	}
-	if certPem, ok := tlsCertSecret.Data[certutils.CertFileName]; ok {
+	if certPem, ok := tlsCertSecret.Data[certificates.CertFileName]; ok {
 		_, _ = configHash.Write(certPem)
 	}
 
@@ -298,7 +296,7 @@ func buildConfigHash(c k8s.Client, ents entsv1beta1.EnterpriseSearch, configSecr
 		if err := c.Get(key, &esPublicCASecret); err != nil {
 			return "", err
 		}
-		if certPem, ok := esPublicCASecret.Data[certutils.CertFileName]; ok {
+		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			_, _ = configHash.Write(certPem)
 		}
 	}

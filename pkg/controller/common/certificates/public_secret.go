@@ -2,14 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package http
+package certificates
 
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -32,11 +31,11 @@ func ReconcileHTTPCertsPublicSecret(
 			Labels:    labels,
 		},
 		Data: map[string][]byte{
-			certutils.CertFileName: httpCertificates.CertPem(),
+			CertFileName: httpCertificates.CertPem(),
 		},
 	}
 	if caPem := httpCertificates.CAPem(); caPem != nil {
-		expected.Data[certutils.CAFileName] = caPem
+		expected.Data[CAFileName] = caPem
 	}
 
 	_, err := reconciler.ReconcileSecret(c, expected, owner)

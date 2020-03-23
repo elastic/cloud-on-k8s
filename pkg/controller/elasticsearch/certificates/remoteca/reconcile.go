@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster/remoteca"
@@ -42,7 +42,7 @@ func Reconcile(
 
 	remoteCertificateAuthorities := make([][]byte, len(remoteCAList.Items))
 	for i, remoteCA := range remoteCAList.Items {
-		remoteCertificateAuthorities[i] = remoteCA.Data[certutils.CAFileName]
+		remoteCertificateAuthorities[i] = remoteCA.Data[certificates.CAFileName]
 	}
 
 	expected := v1.Secret{
@@ -54,7 +54,7 @@ func Reconcile(
 			},
 		},
 		Data: map[string][]byte{
-			certutils.CAFileName: bytes.Join(remoteCertificateAuthorities, nil),
+			certificates.CAFileName: bytes.Join(remoteCertificateAuthorities, nil),
 		},
 	}
 	_, err := reconciler.ReconcileSecret(c, expected, &es)

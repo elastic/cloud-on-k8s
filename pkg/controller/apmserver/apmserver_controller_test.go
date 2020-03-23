@@ -19,8 +19,7 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -116,7 +115,7 @@ func expectedDeploymentParams() testParams {
 							},
 						},
 						{
-							Name: http.HTTPCertificatesSecretVolumeName,
+							Name: certificates.HTTPCertificatesSecretVolumeName,
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: certSecretName,
@@ -252,7 +251,7 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 							Name: certSecretName,
 						},
 						Data: map[string][]byte{
-							certutils.CertFileName: []byte("bar"),
+							certificates.CertFileName: []byte("bar"),
 						},
 					},
 				},
@@ -382,9 +381,9 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 				recorder:       record.NewFakeRecorder(100),
 				dynamicWatches: watches.NewDynamicWatches(),
 				Parameters: operator.Parameters{
-					CACertRotation: certutils.RotationParams{
-						Validity:     certutils.DefaultCertValidity,
-						RotateBefore: certutils.DefaultRotateBefore,
+					CACertRotation: certificates.RotationParams{
+						Validity:     certificates.DefaultCertValidity,
+						RotateBefore: certificates.DefaultRotateBefore,
 					},
 				},
 			},

@@ -21,8 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -50,7 +49,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		wantSecret := &corev1.Secret{
 			ObjectMeta: meta,
 			Data: map[string][]byte{
-				certutils.CAFileName: certutils.EncodePEMCert(ca.Cert.Raw),
+				certificates.CAFileName: certificates.EncodePEMCert(ca.Cert.Raw),
 			},
 		}
 
@@ -76,7 +75,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 			name: "is updated on mismatch",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
 				s := mkWantedSecret(t)
-				s.Data[certutils.CAFileName] = []byte("/some/ca.crt")
+				s.Data[certificates.CAFileName] = []byte("/some/ca.crt")
 				return mkClient(t, s)
 			},
 			wantSecret: mkWantedSecret,
@@ -143,7 +142,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 	}
 }
 
-func genCA(t *testing.T) *ca.CA {
+func genCA(t *testing.T) *certificates.CA {
 	t.Helper()
 
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -181,7 +180,7 @@ func genCA(t *testing.T) *ca.CA {
 		t.Fatalf("failed to parse certificate: %v", err)
 	}
 
-	return &ca.CA{
+	return &certificates.CA{
 		PrivateKey: priv,
 		Cert:       cert,
 	}

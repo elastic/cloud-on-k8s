@@ -14,9 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	commonname "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -38,21 +35,21 @@ func ReconcileCAAndHTTPCerts(
 	k8sClient k8s.Client,
 	dynamicWatches watches.DynamicWatches,
 	services []corev1.Service,
-	caRotation certutils.RotationParams,
-	certRotation certutils.RotationParams,
-) (*http.CertificatesSecret, *reconciler.Results) {
+	caRotation RotationParams,
+	certRotation RotationParams,
+) (*CertificatesSecret, *reconciler.Results) {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
 
 	// reconcile CA certs first
-	httpCa, err := ca.ReconcileCAForOwner(
+	httpCa, err := ReconcileCAForOwner(
 		k8sClient,
 		namer,
 		object,
 		labels,
-		ca.HTTPCAType,
+		HTTPCAType,
 		caRotation,
 	)
 	if err != nil {
@@ -60,11 +57,11 @@ func ReconcileCAAndHTTPCerts(
 	}
 	// handle CA expiry via requeue
 	results.WithResult(reconcile.Result{
-		RequeueAfter: certutils.ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, caRotation.RotateBefore),
+		RequeueAfter: ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// reconcile http certificates: either self-signed or user-provided
-	httpCertificates, err := http.ReconcileHTTPCertificates(
+	httpCertificates, err := ReconcileHTTPCertificates(
 		k8sClient,
 		dynamicWatches,
 		object,
@@ -78,15 +75,15 @@ func ReconcileCAAndHTTPCerts(
 	if err != nil {
 		return nil, results.WithError(err)
 	}
-	primaryCert, err := certutils.GetPrimaryCertificate(httpCertificates.CertPem())
+	primaryCert, err := GetPrimaryCertificate(httpCertificates.CertPem())
 	if err != nil {
 		return nil, results.WithError(err)
 	}
 	results.WithResult(reconcile.Result{
-		RequeueAfter: certutils.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore),
+		RequeueAfter: ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore),
 	})
 
 	// reconcile http public cert secret, which does not contain the private key
-	results.WithError(http.ReconcileHTTPCertsPublicSecret(k8sClient, object, namer, httpCertificates, labels))
+	results.WithError(ReconcileHTTPCertsPublicSecret(k8sClient, object, namer, httpCertificates, labels))
 	return httpCertificates, results
 }

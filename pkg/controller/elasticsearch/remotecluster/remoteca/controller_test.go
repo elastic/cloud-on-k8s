@@ -19,7 +19,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
@@ -105,7 +105,7 @@ func fakePublicCa(namespace, name string) *corev1.Secret {
 			Name:      transportPublicCertKey.Name,
 		},
 		Data: map[string][]byte{
-			certutils.CAFileName: []byte(namespacedName.String()),
+			certificates.CAFileName: []byte(namespacedName.String()),
 		},
 	}
 }
@@ -128,13 +128,13 @@ func remoteCa(localNamespace, localName, remoteNamespace, remoteName string) *co
 			},
 		},
 		Data: map[string][]byte{
-			certutils.CAFileName: []byte(remoteNamespacedName.String()),
+			certificates.CAFileName: []byte(remoteNamespacedName.String()),
 		},
 	}
 }
 
 func withDataCert(caSecret *corev1.Secret, newCa []byte) *corev1.Secret {
-	caSecret.Data[certutils.CAFileName] = newCa
+	caSecret.Data[certificates.CAFileName] = newCa
 	return caSecret
 }
 
@@ -452,9 +452,9 @@ func TestReconcileRemoteCa_Reconcile(t *testing.T) {
 				var actualSecret corev1.Secret
 				assert.NoError(t, r.Client.Get(types.NamespacedName{Namespace: expectedSecret.Namespace, Name: expectedSecret.Name}, &actualSecret))
 				// Compare content
-				actualCa, ok := actualSecret.Data[certutils.CAFileName]
+				actualCa, ok := actualSecret.Data[certificates.CAFileName]
 				assert.True(t, ok)
-				assert.Equal(t, expectedSecret.Data[certutils.CAFileName], actualCa)
+				assert.Equal(t, expectedSecret.Data[certificates.CAFileName], actualCa)
 				// Compare labels
 				assert.NotNil(t, actualSecret.Labels)
 				assert.Equal(t, expectedSecret.Labels, actualSecret.Labels)

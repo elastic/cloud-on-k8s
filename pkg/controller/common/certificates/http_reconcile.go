@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package http
+package certificates
 
 import (
 	cryptorand "crypto/rand"
@@ -23,8 +23,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -41,11 +39,11 @@ func ReconcileHTTPCertificates(
 	dynamicWatches watches.DynamicWatches,
 	owner metav1.Object,
 	namer name.Namer,
-	ca *ca.CA,
+	ca *CA,
 	tls commonv1.TLSOptions,
 	labels map[string]string,
 	services []corev1.Service,
-	rotationParams certutils.RotationParams,
+	rotationParams RotationParams,
 ) (*CertificatesSecret, error) {
 	ownerNSN := k8s.ExtractNamespacedName(owner)
 	customCertificates, err := GetCustomCertificates(k8sClient, ownerNSN, tls)
@@ -76,8 +74,8 @@ func reconcileHTTPInternalCertificatesSecret(
 	labels map[string]string,
 	svcs []corev1.Service,
 	customCertificates *CertificatesSecret,
-	ca *ca.CA,
-	rotationParams certutils.RotationParams,
+	ca *CA,
+	rotationParams RotationParams,
 ) (*CertificatesSecret, error) {
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -122,10 +120,10 @@ func reconcileHTTPInternalCertificatesSecret(
 			return nil, err
 		}
 		expectedSecretData := make(map[string][]byte)
-		expectedSecretData[certutils.CertFileName] = customCertificates.CertPem()
-		expectedSecretData[certutils.KeyFileName] = customCertificates.KeyPem()
+		expectedSecretData[CertFileName] = customCertificates.CertPem()
+		expectedSecretData[KeyFileName] = customCertificates.KeyPem()
 		if caPem := customCertificates.CAPem(); caPem != nil {
-			expectedSecretData[certutils.CAFileName] = caPem
+			expectedSecretData[CAFileName] = caPem
 		}
 
 		if !reflect.DeepEqual(secret.Data, expectedSecretData) {
@@ -170,16 +168,16 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	namer name.Namer,
 	tls commonv1.TLSOptions,
 	svcs []corev1.Service,
-	ca *ca.CA,
-	rotationParam certutils.RotationParams,
+	ca *CA,
+	rotationParam RotationParams,
 ) (bool, error) {
 	secretWasChanged := false
 
 	// verify that the secret contains a parsable private key, create if it does not exist
 	var privateKey *rsa.PrivateKey
 	needsNewPrivateKey := true
-	if privateKeyData, ok := secret.Data[certutils.KeyFileName]; ok {
-		storedPrivateKey, err := certutils.ParsePEMPrivateKey(privateKeyData)
+	if privateKeyData, ok := secret.Data[KeyFileName]; ok {
+		storedPrivateKey, err := ParsePEMPrivateKey(privateKeyData)
 		if err != nil {
 			log.Error(err, "Unable to parse stored private key", "namespace", secret.Namespace, "secret_name", secret.Name)
 		} else {
@@ -197,7 +195,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 		privateKey = generatedPrivateKey
 		secretWasChanged = true
-		secret.Data[certutils.KeyFileName] = certutils.EncodePEMPrivateKey(*privateKey)
+		secret.Data[KeyFileName] = EncodePEMPrivateKey(*privateKey)
 	}
 
 	// check if the existing cert should be re-issued
@@ -233,8 +231,8 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 		secretWasChanged = true
 		// store certificate and signed certificate in a secret mounted into the pod
-		secret.Data[certutils.CAFileName] = certutils.EncodePEMCert(ca.Cert.Raw)
-		secret.Data[certutils.CertFileName] = certutils.EncodePEMCert(certData, ca.Cert.Raw)
+		secret.Data[CAFileName] = EncodePEMCert(ca.Cert.Raw)
+		secret.Data[CertFileName] = EncodePEMCert(certData, ca.Cert.Raw)
 	}
 
 	return secretWasChanged, nil
@@ -254,7 +252,7 @@ func shouldIssueNewHTTPCertificate(
 	tls commonv1.TLSOptions,
 	secret *corev1.Secret,
 	svcs []corev1.Service,
-	ca *ca.CA,
+	ca *CA,
 	certReconcileBefore time.Duration,
 ) bool {
 	validatedTemplate := createValidatedHTTPCertificateTemplate(
@@ -263,11 +261,11 @@ func shouldIssueNewHTTPCertificate(
 
 	var certificate *x509.Certificate
 
-	certData, ok := secret.Data[certutils.CertFileName]
+	certData, ok := secret.Data[CertFileName]
 	if !ok {
 		return true
 	}
-	certs, err := certutils.ParsePEMCerts(certData)
+	certs, err := ParsePEMCerts(certData)
 	if err != nil {
 		log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
 		return true
@@ -334,10 +332,10 @@ func createValidatedHTTPCertificateTemplate(
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
-) *ca.ValidatedCertificateTemplate {
+) *ValidatedCertificateTemplate {
 
 	defaultSuffixes := strings.Join(namer.DefaultSuffixes, "-")
-	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(ca.HTTPCAType)
+	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(HTTPCAType)
 	cnNameParts := []string{
 		shortName,
 		owner.Namespace,
@@ -369,7 +367,7 @@ func createValidatedHTTPCertificateTemplate(
 		}
 	}
 
-	certificateTemplate := ca.ValidatedCertificateTemplate(x509.Certificate{
+	certificateTemplate := ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         certCommonName,
 			OrganizationalUnit: []string{owner.Name},

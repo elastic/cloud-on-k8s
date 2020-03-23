@@ -20,8 +20,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -177,8 +176,8 @@ func kibanaTLSSettings(kb kbv1.Kibana) map[string]interface{} {
 	}
 	return map[string]interface{}{
 		ServerSSLEnabled:     true,
-		ServerSSLCertificate: path.Join(http.HTTPCertificatesSecretVolumeMountPath, certutils.CertFileName),
-		ServerSSLKey:         path.Join(http.HTTPCertificatesSecretVolumeMountPath, certutils.KeyFileName),
+		ServerSSLCertificate: path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		ServerSSLKey:         path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
 }
 
@@ -189,7 +188,7 @@ func elasticsearchTLSSettings(kb kbv1.Kibana) map[string]interface{} {
 
 	if kb.AssociationConf().GetCACertProvided() {
 		esCertsVolumeMountPath := es.CaCertSecretVolume(kb).VolumeMount().MountPath
-		cfg[ElasticsearchSslCertificateAuthorities] = path.Join(esCertsVolumeMountPath, certutils.CAFileName)
+		cfg[ElasticsearchSslCertificateAuthorities] = path.Join(esCertsVolumeMountPath, certificates.CAFileName)
 	}
 
 	return cfg

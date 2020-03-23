@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package ca
+package certificates
 
 import (
 	"crypto/x509"
@@ -13,15 +13,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
-
-var log = logf.Log.WithName("ca_certs")
 
 // CAType is a type of CA
 type CAType string
@@ -54,7 +50,7 @@ func ReconcileCAForOwner(
 	owner v1.Object,
 	labels map[string]string,
 	caType CAType,
-	rotationParams certutils.RotationParams,
+	rotationParams RotationParams,
 ) (*CA, error) {
 
 	// retrieve current CA secret
@@ -120,7 +116,7 @@ func renewCA(
 
 // CanReuseCA returns true if the given CA is valid for reuse
 func CanReuseCA(ca *CA, expirationSafetyMargin time.Duration) bool {
-	return certutils.PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && CertIsValid(*ca.Cert, expirationSafetyMargin)
+	return PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && CertIsValid(*ca.Cert, expirationSafetyMargin)
 }
 
 // CertIsValid returns true if the given cert is valid,
@@ -153,8 +149,8 @@ func internalSecretForCA(
 			Labels:    labels,
 		},
 		Data: map[string][]byte{
-			certutils.CertFileName: certutils.EncodePEMCert(ca.Cert.Raw),
-			certutils.KeyFileName:  certutils.EncodePEMPrivateKey(*ca.PrivateKey),
+			CertFileName: EncodePEMCert(ca.Cert.Raw),
+			KeyFileName:  EncodePEMPrivateKey(*ca.PrivateKey),
 		},
 	}
 }
@@ -165,11 +161,11 @@ func BuildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	if caInternalSecret.Data == nil {
 		return nil
 	}
-	caBytes, exists := caInternalSecret.Data[certutils.CertFileName]
+	caBytes, exists := caInternalSecret.Data[CertFileName]
 	if !exists || len(caBytes) == 0 {
 		return nil
 	}
-	certs, err := certutils.ParsePEMCerts(caBytes)
+	certs, err := ParsePEMCerts(caBytes)
 	if err != nil {
 		log.Error(err, "Cannot parse PEM cert from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "secret_name", caInternalSecret.Name)
 		return nil
@@ -186,11 +182,11 @@ func BuildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	}
 	cert := certs[0]
 
-	privateKeyBytes, exists := caInternalSecret.Data[certutils.KeyFileName]
+	privateKeyBytes, exists := caInternalSecret.Data[KeyFileName]
 	if !exists || len(privateKeyBytes) == 0 {
 		return nil
 	}
-	privateKey, err := certutils.ParsePEMPrivateKey(privateKeyBytes)
+	privateKey, err := ParsePEMPrivateKey(privateKeyBytes)
 	if err != nil {
 		log.Error(err, "Cannot parse PEM private key from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "secret_name", caInternalSecret.Name)
 		return nil

@@ -20,8 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -65,7 +64,7 @@ func (r *ReconcileWebhookResources) reconcileInternal() *reconciler.Results {
 	if err != nil {
 		return res.WithError(err)
 	}
-	serverCA := ca.BuildCAFromSecret(*webhookServerSecret)
+	serverCA := certificates.BuildCAFromSecret(*webhookServerSecret)
 	if serverCA == nil {
 		return res.WithError(
 			pkgerrors.Errorf("cannot find CA in webhook secret %s/%s", r.webhookParams.Namespace, r.webhookParams.SecretName),
@@ -73,7 +72,7 @@ func (r *ReconcileWebhookResources) reconcileInternal() *reconciler.Results {
 	}
 
 	res.WithResult(reconcile.Result{
-		RequeueAfter: certutils.ShouldRotateIn(time.Now(), serverCA.Cert.NotAfter, r.webhookParams.Rotation.RotateBefore),
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), serverCA.Cert.NotAfter, r.webhookParams.Rotation.RotateBefore),
 	})
 	return res
 }

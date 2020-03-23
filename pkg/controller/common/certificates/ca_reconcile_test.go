@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package ca
+package certificates
 
 import (
 	cryptorand "crypto/rand"
@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -135,7 +134,7 @@ func Test_canReuseCA(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := CanReuseCA(tt.ca(), certutils.DefaultRotateBefore); got != tt.want {
+			if got := CanReuseCA(tt.ca(), DefaultRotateBefore); got != tt.want {
 				t.Errorf("CanReuseCA() = %v, want %v", got, tt.want)
 			}
 		})
@@ -153,7 +152,7 @@ func checkCASecrets(
 	expectedExpiration time.Duration,
 ) {
 	// ca cert should be valid
-	require.True(t, CertIsValid(*ca.Cert, certutils.DefaultRotateBefore))
+	require.True(t, CertIsValid(*ca.Cert, DefaultRotateBefore))
 
 	// expiration date should be correctly set
 	require.True(t, ca.Cert.NotBefore.After(time.Now().Add(-1*time.Hour)))
@@ -178,8 +177,8 @@ func checkCASecrets(
 		Name:      CAInternalSecretName(testNamer, cluster.Name, caType),
 	}, &internalCASecret)
 	require.NoError(t, err)
-	require.NotEmpty(t, internalCASecret.Data[certutils.CertFileName])
-	require.NotEmpty(t, internalCASecret.Data[certutils.KeyFileName])
+	require.NotEmpty(t, internalCASecret.Data[CertFileName])
+	require.NotEmpty(t, internalCASecret.Data[KeyFileName])
 
 	// secret should be ok to parse as a CA
 	parsedCa := BuildCAFromSecret(internalCASecret)
@@ -204,12 +203,12 @@ func Test_renewCA(t *testing.T) {
 		{
 			name:     "create new CA",
 			client:   k8s.WrappedFakeClient(),
-			expireIn: certutils.DefaultCertValidity,
+			expireIn: DefaultCertValidity,
 		},
 		{
 			name:        "replace existing CA",
 			client:      k8s.WrappedFakeClient(&internalCASecret),
-			expireIn:    certutils.DefaultCertValidity,
+			expireIn:    DefaultCertValidity,
 			notExpected: testCa, // existing CA should be replaced
 		},
 	}
@@ -230,10 +229,10 @@ func TestReconcileCAForCluster(t *testing.T) {
 	internalCASecret := internalSecretForCA(validCa, testNamer, &testCluster, nil, TransportCAType)
 
 	internalCASecretWithoutPrivateKey := internalCASecret.DeepCopy()
-	delete(internalCASecretWithoutPrivateKey.Data, certutils.KeyFileName)
+	delete(internalCASecretWithoutPrivateKey.Data, KeyFileName)
 
 	internalCASecretWithoutCACert := internalCASecret.DeepCopy()
-	delete(internalCASecretWithoutCACert.Data, certutils.CertFileName)
+	delete(internalCASecretWithoutCACert.Data, CertFileName)
 
 	soonToExpire := 1 * time.Minute
 	soonToExpireCa, err := NewSelfSignedCA(CABuilderOptions{
@@ -254,31 +253,31 @@ func TestReconcileCAForCluster(t *testing.T) {
 		{
 			name:           "no existing CA cert nor private key",
 			cl:             k8s.WrappedFakeClient(),
-			caCertValidity: certutils.DefaultCertValidity,
+			caCertValidity: DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing CA cert but no private key",
 			cl:             k8s.WrappedFakeClient(internalCASecretWithoutPrivateKey),
-			caCertValidity: certutils.DefaultCertValidity,
+			caCertValidity: DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing private key cert but no cert",
 			cl:             k8s.WrappedFakeClient(internalCASecretWithoutCACert),
-			caCertValidity: certutils.DefaultCertValidity,
+			caCertValidity: DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing valid internal secret",
 			cl:             k8s.WrappedFakeClient(&internalCASecret),
-			caCertValidity: certutils.DefaultCertValidity,
+			caCertValidity: DefaultCertValidity,
 			shouldReuseCa:  validCa, // should reuse existing one
 		},
 		{
 			name:             "existing internal cert is soon to expire",
 			cl:               k8s.WrappedFakeClient(&soonToExpireInternalCASecret),
-			caCertValidity:   certutils.DefaultCertValidity,
+			caCertValidity:   DefaultCertValidity,
 			shouldReuseCa:    nil,            // should create a new one
 			shouldNotReuseCa: soonToExpireCa, // and not reuse existing one
 		},
@@ -286,9 +285,9 @@ func TestReconcileCAForCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ca, err := ReconcileCAForOwner(
-				tt.cl, testNamer, &testCluster, nil, TransportCAType, certutils.RotationParams{
+				tt.cl, testNamer, &testCluster, nil, TransportCAType, RotationParams{
 					Validity:     tt.caCertValidity,
-					RotateBefore: certutils.DefaultRotateBefore,
+					RotateBefore: DefaultRotateBefore,
 				},
 			)
 			require.NoError(t, err)
@@ -312,8 +311,8 @@ func Test_internalSecretForCA(t *testing.T) {
 	assert.Equal(t, testName+"-test-transport-ca-internal", internalSecret.Name)
 	assert.Len(t, internalSecret.Data, 2)
 
-	assert.NotEmpty(t, internalSecret.Data[certutils.CertFileName])
-	assert.NotEmpty(t, internalSecret.Data[certutils.KeyFileName])
+	assert.NotEmpty(t, internalSecret.Data[CertFileName])
+	assert.NotEmpty(t, internalSecret.Data[KeyFileName])
 
 	assert.Equal(t, labels, internalSecret.Labels)
 }
@@ -325,10 +324,10 @@ func Test_buildCAFromSecret(t *testing.T) {
 	internalSecret := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
 
 	internalSecretMissingCert := internalSecret.DeepCopy()
-	delete(internalSecretMissingCert.Data, certutils.CertFileName)
+	delete(internalSecretMissingCert.Data, CertFileName)
 
 	internalSecretMissingPrivateKey := internalSecret.DeepCopy()
-	delete(internalSecretMissingPrivateKey.Data, certutils.KeyFileName)
+	delete(internalSecretMissingPrivateKey.Data, KeyFileName)
 
 	tests := []struct {
 		name           string
@@ -359,8 +358,8 @@ func Test_buildCAFromSecret(t *testing.T) {
 			name: "invalid cert",
 			internalSecret: corev1.Secret{
 				Data: map[string][]byte{
-					certutils.CertFileName: []byte("invalid"),
-					certutils.KeyFileName:  internalSecret.Data[certutils.KeyFileName],
+					CertFileName: []byte("invalid"),
+					KeyFileName:  internalSecret.Data[KeyFileName],
 				},
 			},
 			wantCa: nil,
@@ -369,8 +368,8 @@ func Test_buildCAFromSecret(t *testing.T) {
 			name: "invalid private key secret",
 			internalSecret: corev1.Secret{
 				Data: map[string][]byte{
-					certutils.CertFileName: internalSecret.Data[certutils.CertFileName],
-					certutils.KeyFileName:  []byte("invalid"),
+					CertFileName: internalSecret.Data[CertFileName],
+					KeyFileName:  []byte("invalid"),
 				},
 			},
 			wantCa: nil,

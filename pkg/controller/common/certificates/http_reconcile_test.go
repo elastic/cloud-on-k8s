@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package http
+package certificates
 
 import (
 	cryptorand "crypto/rand"
@@ -20,8 +20,6 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -48,7 +46,7 @@ wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 
 // fixtures
 var (
-	testCA            *ca.CA
+	testCA            *CA
 	testRSAPrivateKey *rsa.PrivateKey
 	pemCert           []byte
 	testES            = esv1.Elasticsearch{ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
@@ -70,7 +68,7 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCA, err = ca.NewSelfSignedCA(ca.CABuilderOptions{
+	if testCA, err = NewSelfSignedCA(CABuilderOptions{
 		Subject:    pkix.Name{CommonName: "test-common-name"},
 		PrivateKey: testRSAPrivateKey,
 	}); err != nil {
@@ -84,7 +82,7 @@ func init() {
 	testCSR, _ := x509.ParseCertificateRequest(testCSRBytes)
 
 	validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
-		k8s.ExtractNamespacedName(&testES), esv1.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certutils.DefaultCertValidity,
+		k8s.ExtractNamespacedName(&testES), esv1.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, DefaultCertValidity,
 	)
 
 	certData, err := testCA.CreateCertificate(*validatedCertificateTemplate)
@@ -92,7 +90,7 @@ func init() {
 		panic("Failed to create cert data:" + err.Error())
 	}
 
-	pemCert = certutils.EncodePEMCert(certData, testCA.Cert.Raw)
+	pemCert = EncodePEMCert(certData, testCA.Cert.Raw)
 }
 
 func TestReconcileHTTPCertificates(t *testing.T) {
@@ -102,7 +100,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 	type args struct {
 		c        k8s.Client
 		es       esv1.Elasticsearch
-		ca       *ca.CA
+		ca       *CA
 		services []corev1.Service
 	}
 	tests := []struct {
@@ -119,8 +117,8 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 				ca: testCA,
 			},
 			want: func(t *testing.T, cs *CertificatesSecret) {
-				assert.Contains(t, cs.Data, certutils.KeyFileName)
-				assert.Contains(t, cs.Data, certutils.CertFileName)
+				assert.Contains(t, cs.Data, KeyFileName)
+				assert.Contains(t, cs.Data, CertFileName)
 			},
 		},
 		{
@@ -129,8 +127,8 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 				c: k8s.WrappedFakeClient(&corev1.Secret{
 					ObjectMeta: v1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
 					Data: map[string][]byte{
-						certutils.CertFileName: tls,
-						certutils.KeyFileName:  key,
+						CertFileName: tls,
+						KeyFileName:  key,
 					},
 				}),
 				es: esv1.Elasticsearch{
@@ -148,8 +146,8 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 				ca: testCA,
 			},
 			want: func(t *testing.T, cs *CertificatesSecret) {
-				assert.Equal(t, cs.Data[certutils.KeyFileName], key)
-				assert.Equal(t, cs.Data[certutils.CertFileName], tls)
+				assert.Equal(t, cs.Data[KeyFileName], key)
+				assert.Equal(t, cs.Data[CertFileName], tls)
 			},
 		},
 	}
@@ -163,9 +161,9 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 
 			got, err := ReconcileHTTPCertificates(
 				tt.args.c, w, &tt.args.es, esv1.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
-				certutils.RotationParams{
-					Validity:     certutils.DefaultCertValidity,
-					RotateBefore: certutils.DefaultRotateBefore,
+				RotationParams{
+					Validity:     DefaultCertValidity,
+					RotateBefore: DefaultRotateBefore,
 				},
 			)
 			if (err != nil) != tt.wantErr {
@@ -191,7 +189,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want func(t *testing.T, cert *ca.ValidatedCertificateTemplate)
+		want func(t *testing.T, cert *ValidatedCertificateTemplate)
 	}{
 		{
 			name: "with svcs and user-provided SANs",
@@ -233,7 +231,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 					},
 				},
 			},
-			want: func(t *testing.T, cert *ca.ValidatedCertificateTemplate) {
+			want: func(t *testing.T, cert *ValidatedCertificateTemplate) {
 				expectedCommonName := "test-es-http.test.es.local"
 				assert.Contains(t, cert.Subject.CommonName, expectedCommonName)
 				assert.Contains(t, cert.DNSNames, expectedCommonName)
@@ -290,7 +288,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret:       corev1.Secret{},
 				es:           testES,
-				rotateBefore: certutils.DefaultRotateBefore,
+				rotateBefore: DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -299,11 +297,11 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						certutils.CertFileName: []byte("invalid"),
+						CertFileName: []byte("invalid"),
 					},
 				},
 				es:           testES,
-				rotateBefore: certutils.DefaultRotateBefore,
+				rotateBefore: DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -312,11 +310,11 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						certutils.CertFileName: pemCert,
+						CertFileName: pemCert,
 					},
 				},
 				es:           testES,
-				rotateBefore: certutils.DefaultRotateBefore,
+				rotateBefore: DefaultRotateBefore,
 			},
 			want: false,
 		},
@@ -325,11 +323,11 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						certutils.CertFileName: pemCert,
+						CertFileName: pemCert,
 					},
 				},
 				es:           testES,
-				rotateBefore: certutils.DefaultCertValidity, // rotate before the same duration as total validity
+				rotateBefore: DefaultCertValidity, // rotate before the same duration as total validity
 			},
 			want: true,
 		},
@@ -338,11 +336,11 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						certutils.CertFileName: pemCert,
+						CertFileName: pemCert,
 					},
 				},
 				es:           *esWithSAN,
-				rotateBefore: certutils.DefaultRotateBefore,
+				rotateBefore: DefaultRotateBefore,
 			},
 			want: true,
 		},

@@ -8,21 +8,21 @@ import (
 	"fmt"
 	"path/filepath"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -175,7 +175,7 @@ func associationConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settin
 	if ents.AssociationConf().CAIsConfigured() {
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(map[string]interface{}{
 			"elasticsearch.ssl.enabled":               true,
-			"elasticsearch.ssl.certificate_authority": filepath.Join(ESCertsPath, certutils.CertFileName),
+			"elasticsearch.ssl.certificate_authority": filepath.Join(ESCertsPath, certificates.CertFileName),
 		})); err != nil {
 			return nil, err
 		}
@@ -187,11 +187,11 @@ func tlsConfig(ents entsv1beta1.EnterpriseSearch) *settings.CanonicalConfig {
 	if !ents.Spec.HTTP.TLS.Enabled() {
 		return settings.NewCanonicalConfig()
 	}
-	certsDir := http.HTTPCertSecretVolume(name.EntSearchNamer, ents.Name).VolumeMount().MountPath
+	certsDir := certificates.HTTPCertSecretVolume(name.EntSearchNamer, ents.Name).VolumeMount().MountPath
 	return settings.MustCanonicalConfig(map[string]interface{}{
 		"ent_search.ssl.enabled":                 true,
-		"ent_search.ssl.certificate":             filepath.Join(certsDir, certutils.CertFileName),
-		"ent_search.ssl.key":                     filepath.Join(certsDir, certutils.KeyFileName),
-		"ent_search.ssl.certificate_authorities": []string{filepath.Join(certsDir, certutils.CAFileName)},
+		"ent_search.ssl.certificate":             filepath.Join(certsDir, certificates.CertFileName),
+		"ent_search.ssl.key":                     filepath.Join(certsDir, certificates.KeyFileName),
+		"ent_search.ssl.certificate_authorities": []string{filepath.Join(certsDir, certificates.CAFileName)},
 	})
 }

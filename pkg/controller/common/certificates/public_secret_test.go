@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package http
+package certificates
 
 import (
 	"testing"
@@ -16,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -32,9 +31,9 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 
 	certificate := &CertificatesSecret{
 		Data: map[string][]byte{
-			certutils.CAFileName:   ca,
-			certutils.CertFileName: tls,
-			certutils.KeyFileName:  key,
+			CAFileName:   ca,
+			CertFileName: tls,
+			KeyFileName:  key,
 		},
 	}
 
@@ -56,8 +55,8 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 				Labels:    labels,
 			},
 			Data: map[string][]byte{
-				certutils.CertFileName: tls,
-				certutils.CAFileName:   ca,
+				CertFileName: tls,
+				CAFileName:   ca,
 			},
 		}
 
@@ -83,7 +82,7 @@ func TestReconcileHTTPCertsPublicSecret(t *testing.T) {
 			name: "is updated on mismatch",
 			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
 				s := mkWantedSecret(t)
-				s.Data[certutils.CertFileName] = []byte{0, 1, 2, 3}
+				s.Data[CertFileName] = []byte{0, 1, 2, 3}
 				return mkClient(t, s)
 			},
 			wantSecret: mkWantedSecret,

@@ -9,8 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -21,7 +20,7 @@ import (
 func ReconcileTransportCertsPublicSecret(
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	ca *ca.CA,
+	ca *certificates.CA,
 ) error {
 	esNSN := k8s.ExtractNamespacedName(&es)
 	meta := k8s.ToObjectMeta(PublicCertsSecretRef(esNSN))
@@ -30,7 +29,7 @@ func ReconcileTransportCertsPublicSecret(
 	expected := corev1.Secret{
 		ObjectMeta: meta,
 		Data: map[string][]byte{
-			certutils.CAFileName: certutils.EncodePEMCert(ca.Cert.Raw),
+			certificates.CAFileName: certificates.EncodePEMCert(ca.Cert.Raw),
 		},
 	}
 	_, err := reconciler.ReconcileSecret(c, expected, &es)

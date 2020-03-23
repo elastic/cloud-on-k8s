@@ -12,8 +12,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -58,7 +57,7 @@ func NewConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalCo
 			"output.elasticsearch.password": password,
 		}
 		if as.AssociationConf().GetCACertProvided() {
-			tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(CertificatesDir, certutils.CAFileName)}
+			tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(CertificatesDir, certificates.CAFileName)}
 		}
 
 		outputCfg = settings.MustCanonicalConfig(tmpOutputCfg)
@@ -90,8 +89,8 @@ func tlsSettings(as *apmv1.ApmServer) map[string]interface{} {
 	}
 	return map[string]interface{}{
 		APMServerSSLEnabled:     true,
-		APMServerSSLCertificate: path.Join(http.HTTPCertificatesSecretVolumeMountPath, certutils.CertFileName),
-		APMServerSSLKey:         path.Join(http.HTTPCertificatesSecretVolumeMountPath, certutils.KeyFileName),
+		APMServerSSLCertificate: path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		APMServerSSLKey:         path.Join(certificates.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
 
 }

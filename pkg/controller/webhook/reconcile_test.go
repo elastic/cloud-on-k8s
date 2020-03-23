@@ -9,12 +9,13 @@ import (
 	"encoding/pem"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/admissionregistration/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
 func TestParams_ReconcileResources(t *testing.T) {
@@ -23,9 +24,9 @@ func TestParams_ReconcileResources(t *testing.T) {
 		Namespace:                "elastic-system",
 		SecretName:               "elastic-webhook-server-cert",
 		WebhookConfigurationName: "elastic-webhook.k8s.elastic.co",
-		Rotation: certutils.RotationParams{
-			Validity:     certutils.DefaultCertValidity,
-			RotateBefore: certutils.DefaultRotateBefore,
+		Rotation: certificates.RotationParams{
+			Validity:     certificates.DefaultCertValidity,
+			RotateBefore: certificates.DefaultRotateBefore,
 		},
 	}
 

@@ -16,18 +16,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
 // PodKeyFileName returns the name of the private key entry for a specific pod in a transport certificates secret.
 func PodKeyFileName(podName string) string {
-	return fmt.Sprintf("%s.%s", podName, certutils.KeyFileName)
+	return fmt.Sprintf("%s.%s", podName, certificates.KeyFileName)
 }
 
 // PodCertFileName returns the name of the certificates entry for a specific pod in a transport certificates secret.
 func PodCertFileName(podName string) string {
-	return fmt.Sprintf("%s.%s", podName, certutils.CertFileName)
+	return fmt.Sprintf("%s.%s", podName, certificates.CertFileName)
 }
 
 // ensureTransportCertificatesSecretContentsForPod ensures that the transport certificates secret has the correct
@@ -36,14 +35,14 @@ func ensureTransportCertificatesSecretContentsForPod(
 	es esv1.Elasticsearch,
 	secret *corev1.Secret,
 	pod corev1.Pod,
-	ca *ca.CA,
-	rotationParams certutils.RotationParams,
+	ca *certificates.CA,
+	rotationParams certificates.RotationParams,
 ) error {
 	// verify that the secret contains a parsable private key, create if it does not exist
 	var privateKey *rsa.PrivateKey
 	needsNewPrivateKey := true
 	if privateKeyData, ok := secret.Data[PodKeyFileName(pod.Name)]; ok {
-		storedPrivateKey, err := certutils.ParsePEMPrivateKey(privateKeyData)
+		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
 		if err != nil {
 			log.Error(err, "Unable to parse stored private key",
 				"namespace", pod.Namespace, "pod_name", pod.Name)
@@ -61,7 +60,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 		}
 
 		privateKey = generatedPrivateKey
-		secret.Data[PodKeyFileName(pod.Name)] = certutils.EncodePEMPrivateKey(*privateKey)
+		secret.Data[PodKeyFileName(pod.Name)] = certificates.EncodePEMPrivateKey(*privateKey)
 	}
 
 	if shouldIssueNewCertificate(es, *secret, pod, privateKey, ca, rotationParams.RotateBefore) {
@@ -94,7 +93,7 @@ func ensureTransportCertificatesSecretContentsForPod(
 		}
 
 		// store the issued certificate in a secret mounted into the pod
-		secret.Data[PodCertFileName(pod.Name)] = certutils.EncodePEMCert(certData, ca.Cert.Raw)
+		secret.Data[PodCertFileName(pod.Name)] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
 	}
 
 	return nil
@@ -113,7 +112,7 @@ func shouldIssueNewCertificate(
 	secret corev1.Secret,
 	pod corev1.Pod,
 	privateKey *rsa.PrivateKey,
-	ca *ca.CA,
+	ca *certificates.CA,
 	certReconcileBefore time.Duration,
 ) bool {
 	certCommonName := buildCertificateCommonName(pod, es.Name, es.Namespace)
@@ -169,7 +168,7 @@ func shouldIssueNewCertificate(
 	}
 
 	// compare actual vs. expected SANs
-	expected, err := certutils.MarshalToSubjectAlternativeNamesData(generalNames)
+	expected, err := certificates.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
 		log.Error(err, "Cannot marshal subject alternative names, will issue new certificate",
 			"namespace", pod.Namespace, "pod_name", pod.Name)
@@ -177,7 +176,7 @@ func shouldIssueNewCertificate(
 	}
 	extraExtensionFound := false
 	for _, ext := range cert.Extensions {
-		if !ext.Id.Equal(certutils.SubjectAlternativeNamesObjectIdentifier) {
+		if !ext.Id.Equal(certificates.SubjectAlternativeNamesObjectIdentifier) {
 			continue
 		}
 		extraExtensionFound = true
@@ -206,7 +205,7 @@ func extractTransportCert(secret corev1.Secret, pod corev1.Pod, commonName strin
 		return nil
 	}
 
-	certs, err := certutils.ParsePEMCerts(certData)
+	certs, err := certificates.ParsePEMCerts(certData)
 	if err != nil {
 		log.Error(err, "Invalid certificate data found",
 			"namespace", pod.Namespace, "pod_name", pod.Name)

@@ -39,7 +39,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
@@ -90,22 +90,22 @@ func init() {
 	)
 	Cmd.Flags().Duration(
 		operator.CACertRotateBeforeFlag,
-		certutils.DefaultRotateBefore,
+		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration CA certificates should be reissued",
 	)
 	Cmd.Flags().Duration(
 		operator.CACertValidityFlag,
-		certutils.DefaultCertValidity,
+		certificates.DefaultCertValidity,
 		"Duration representing how long before a newly created CA cert expires",
 	)
 	Cmd.Flags().Duration(
 		operator.CertRotateBeforeFlag,
-		certutils.DefaultRotateBefore,
+		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration TLS certificates should be reissued",
 	)
 	Cmd.Flags().Duration(
 		operator.CertValidityFlag,
-		certutils.DefaultCertValidity,
+		certificates.DefaultCertValidity,
 		"Duration representing how long before a newly created TLS certificate expires",
 	)
 	Cmd.Flags().String(
@@ -309,11 +309,11 @@ func execute() {
 		Dialer:            dialer,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
-		CACertRotation: certutils.RotationParams{
+		CACertRotation: certificates.RotationParams{
 			Validity:     caCertValidity,
 			RotateBefore: caCertRotateBefore,
 		},
-		CertRotation: certutils.RotationParams{
+		CertRotation: certificates.RotationParams{
 			Validity:     certValidity,
 			RotateBefore: certRotateBefore,
 		},
@@ -422,7 +422,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	}
 }
 
-func setupWebhook(mgr manager.Manager, certRotation certutils.RotationParams, clientset kubernetes.Interface) {
+func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams, clientset kubernetes.Interface) {
 	manageWebhookCerts := viper.GetBool(operator.ManageWebhookCertsFlag)
 	if manageWebhookCerts {
 		log.Info("Automatic management of the webhook certificates enabled")
@@ -459,7 +459,7 @@ func setupWebhook(mgr manager.Manager, certRotation certutils.RotationParams, cl
 	// wait for the secret to be populated in the local filesystem before returning
 	interval := time.Second * 1
 	timeout := time.Second * 30
-	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certutils.CertFileName)
+	keyPath := filepath.Join(mgr.GetWebhookServer().CertDir, certificates.CertFileName)
 	log.Info("Polling for the webhook certificate to be available", "path", keyPath)
 	err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		_, err := os.Stat(keyPath)

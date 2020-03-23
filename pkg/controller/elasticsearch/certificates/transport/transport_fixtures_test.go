@@ -15,17 +15,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
 // fixtures
 var (
-	testCA                       *ca.CA
+	testCA                       *certificates.CA
 	testRSAPrivateKey            *rsa.PrivateKey
 	testCSRBytes                 []byte
 	testCSR                      *x509.CertificateRequest
-	validatedCertificateTemplate *ca.ValidatedCertificateTemplate
+	validatedCertificateTemplate *certificates.ValidatedCertificateTemplate
 	certData                     []byte
 	pemCert                      []byte
 	testIP                       = "1.2.3.4"
@@ -69,7 +68,7 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCA, err = ca.NewSelfSignedCA(ca.CABuilderOptions{
+	if testCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 		Subject:    pkix.Name{CommonName: "test-common-name"},
 		PrivateKey: testRSAPrivateKey,
 	}); err != nil {
@@ -86,7 +85,7 @@ func init() {
 	}
 
 	validatedCertificateTemplate, err = createValidatedCertificateTemplate(
-		testPod, testES, testCSR, certutils.DefaultCertValidity)
+		testPod, testES, testCSR, certificates.DefaultCertValidity)
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
 	}
@@ -96,5 +95,5 @@ func init() {
 		panic("Failed to create cert data:" + err.Error())
 	}
 
-	pemCert = certutils.EncodePEMCert(certData, testCA.Cert.Raw)
+	pemCert = certificates.EncodePEMCert(certData, testCA.Cert.Raw)
 }

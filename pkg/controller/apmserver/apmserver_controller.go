@@ -22,8 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -335,7 +333,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		if err := r.Get(key, &esPublicCASecret); err != nil {
 			return deployment.Params{}, err
 		}
-		if certPem, ok := esPublicCASecret.Data[certutils.CertFileName]; ok {
+		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			certsChecksum = fmt.Sprintf("%x", sha256.Sum224(certPem))
 		}
 		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
@@ -358,15 +356,15 @@ func (r *ReconcileApmServer) deploymentParams(
 		var httpCerts corev1.Secret
 		err := r.Get(types.NamespacedName{
 			Namespace: as.Namespace,
-			Name:      http.InternalCertsSecretName(apmname.APMNamer, as.Name),
+			Name:      certificates.InternalCertsSecretName(apmname.APMNamer, as.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
 		}
-		if httpCert, ok := httpCerts.Data[certutils.CertFileName]; ok {
+		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
-		httpCertsVolume := http.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
+		httpCertsVolume := certificates.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
 		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
 		apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1.ApmServerContainerName)
 		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())

@@ -15,9 +15,6 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/ca"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -32,7 +29,7 @@ type CertificateResources struct {
 	TrustedHTTPCertificates []*x509.Certificate
 
 	// TransportCA is the CA used for Transport certificates
-	TransportCA *ca.CA
+	TransportCA *certificates.CA
 
 	// HTTPCACertProvided indicates whether ca.crt key is defined in the certificate secret.
 	HTTPCACertProvided bool
@@ -44,8 +41,8 @@ func Reconcile(
 	driver driver.Interface,
 	es esv1.Elasticsearch,
 	services []corev1.Service,
-	caRotation certutils.RotationParams,
-	certRotation certutils.RotationParams,
+	caRotation certificates.RotationParams,
+	certRotation certificates.RotationParams,
 ) (*CertificateResources, *reconciler.Results) {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
@@ -61,7 +58,7 @@ func Reconcile(
 	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
 	// reconcile HTTP CA and cert
-	var httpCerts *http.CertificatesSecret
+	var httpCerts *certificates.CertificatesSecret
 	httpCerts, results = certificates.ReconcileCAAndHTTPCerts(
 		ctx,
 		&es,
@@ -79,12 +76,12 @@ func Reconcile(
 	}
 
 	// reconcile transport CA and certs
-	transportCA, err := ca.ReconcileCAForOwner(
+	transportCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
 		esv1.ESNamer,
 		&es,
 		certsLabels,
-		ca.TransportCAType,
+		certificates.TransportCAType,
 		caRotation,
 	)
 	if err != nil {
@@ -92,7 +89,7 @@ func Reconcile(
 	}
 	// make sure to requeue before the CA cert expires
 	results.WithResult(reconcile.Result{
-		RequeueAfter: certutils.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// reconcile transport public certs secret
@@ -112,12 +109,12 @@ func Reconcile(
 		return nil, results
 	}
 
-	trustedHTTPCertificates, err := certutils.ParsePEMCerts(httpCerts.CertPem())
+	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCerts.CertPem())
 	if err != nil {
 		return nil, results.WithError(err)
 	}
 
-	httpCACertProvided := len(httpCerts.Data[certutils.CAFileName]) > 0
+	httpCACertProvided := len(httpCerts.Data[certificates.CAFileName]) > 0
 	return &CertificateResources{
 		TrustedHTTPCertificates: trustedHTTPCertificates,
 		TransportCA:             transportCA,

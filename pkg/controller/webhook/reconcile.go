@@ -8,7 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
 // Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration)
@@ -18,7 +18,7 @@ type Params struct {
 	WebhookConfigurationName string
 
 	// Certificate options
-	Rotation certutils.RotationParams
+	Rotation certificates.RotationParams
 }
 
 // ReconcileResources reconciles the certificates used by the webhook client and the webhook server.
@@ -60,8 +60,8 @@ func (w *Params) ReconcileResources(clientset kubernetes.Interface) error {
 
 		// update server secret
 		webhookServerSecret.Data = map[string][]byte{
-			certutils.CertFileName: newCertificates.serverCert,
-			certutils.KeyFileName:  newCertificates.serverKey,
+			certificates.CertFileName: newCertificates.serverCert,
+			certificates.KeyFileName:  newCertificates.serverKey,
 		}
 		if _, err := clientset.CoreV1().Secrets(w.Namespace).Update(webhookServerSecret); err != nil {
 			return err

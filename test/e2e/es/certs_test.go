@@ -18,8 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/certutils"
-	httpcerts "github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -95,14 +94,14 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ns,
-		Name:      httpcerts.PublicCertsSecretName(esv1.ESNamer, esName),
+		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, esName),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
 	}
-	certBytes, exists := secret.Data[certutils.CertFileName]
+	certBytes, exists := secret.Data[certificates.CertFileName]
 	if !exists || len(certBytes) == 0 {
-		return nil, fmt.Errorf("no value found for secret %s", certutils.CertFileName)
+		return nil, fmt.Errorf("no value found for secret %s", certificates.CertFileName)
 	}
 
 	return certBytes, nil
