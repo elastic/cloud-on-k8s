@@ -2,7 +2,7 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
-  name: test-kibana-standalone-es-{{ .Suffix }}
+  name: {{ .ESName }}
 spec:
   version: 7.6.0
   nodeSets:
@@ -22,7 +22,7 @@ spec:
   count: 1
   config:
     elasticsearch.hosts:
-      - https://test-kibana-standalone-es-{{ .Suffix }}-es-http:9200
+      - https://{{ .ESName }}-es-http:9200
     elasticsearch.username: elastic
     elasticsearch.ssl.verificationMode: none
   podTemplate:
@@ -33,5 +33,5 @@ spec:
             - name: ELASTICSEARCH_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: test-kibana-standalone-es-{{ .Suffix }}-es-elastic-user
+                  name: {{ .ESName }}-es-elastic-user
                   key: elastic
