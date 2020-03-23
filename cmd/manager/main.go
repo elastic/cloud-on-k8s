@@ -182,7 +182,9 @@ func init() {
 
 func execute() {
 	// update GOMAXPROCS to container cpu limit if necessary
-	_, err := maxprocs.Set(maxprocs.Logger(log.Info))
+	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
+		log.Info(fmt.Sprintf(s, i...))
+	}))
 	if err != nil {
 		log.Error(err, "Error setting GOMAXPROCS")
 		os.Exit(1)
