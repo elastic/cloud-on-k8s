@@ -4,19 +4,30 @@
 
 package enterprisesearch
 
-import "github.com/elastic/cloud-on-k8s/pkg/controller/common"
-
-const (
-	// EnterpriseSearchNameLabelName used to represent an EnterpriseSearch in k8s resources
-	EnterpriseSearchNameLabelName = "enterprisesearch.k8s.elastic.co/name"
-	// Type represents the Enterprise Search type
-	Type = "enterprise-search"
+import (
+	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 )
 
-// NewLabels constructs a new set of labels for an Enterprise Search pod
-func NewLabels(entsName string) map[string]string {
+const (
+	// Type represents the Enterprise Search type.
+	Type = "enterprise-search"
+	// EnterpriseSearchNameLabelName used to represent an EnterpriseSearch in k8s resources.
+	EnterpriseSearchNameLabelName = "enterprisesearch.k8s.elastic.co/name"
+	// VersionLabelName is a label used to track the version of an Enterprise Search Pod.
+	VersionLabelName = "enterprisesearch.k8s.elastic.co/version"
+)
+
+// EnterpriseSearchLabels returns labels that identify the given Enterprise Search resource
+func EnterpriseSearchLabels(entsName string) map[string]string {
 	return map[string]string{
 		EnterpriseSearchNameLabelName: entsName,
 		common.TypeLabelName:          Type,
+	}
+}
+
+func VersionLabels(ents entsv1beta1.EnterpriseSearch) map[string]string {
+	return map[string]string{
+		VersionLabelName: ents.Spec.Version,
 	}
 }

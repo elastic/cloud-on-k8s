@@ -249,7 +249,7 @@ func NewService(ents entsv1beta1.EnterpriseSearch) *corev1.Service {
 	svc.ObjectMeta.Namespace = ents.Namespace
 	svc.ObjectMeta.Name = entsname.HTTPService(ents.Name)
 
-	labels := NewLabels(ents.Name)
+	labels := EnterpriseSearchLabels(ents.Name)
 	ports := []corev1.ServicePort{
 		{
 			Name:     ents.Spec.HTTP.Protocol(),

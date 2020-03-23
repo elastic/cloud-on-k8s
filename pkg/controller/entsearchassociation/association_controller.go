@@ -372,7 +372,7 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) reconcileElasticsear
 		return association.CASecret{}, err
 	}
 	// Build the labels applied on the secret
-	labels := enterprisesearch.NewLabels(entSearch.Name)
+	labels := enterprisesearch.EnterpriseSearchLabels(entSearch.Name)
 	labels[AssociationLabelName] = entSearch.Name
 	return association.ReconcileCASecret(
 		r.Client,

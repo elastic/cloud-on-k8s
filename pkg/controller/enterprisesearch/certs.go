@@ -40,7 +40,7 @@ func ReconcileCertificates(
 		return results
 	}
 
-	labels := NewLabels(ents.Name)
+	labels := EnterpriseSearchLabels(ents.Name)
 
 	// reconcile CA certs first
 	httpCa, err := certificates.ReconcileCAForOwner(
