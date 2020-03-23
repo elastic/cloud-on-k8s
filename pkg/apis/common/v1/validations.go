@@ -9,7 +9,10 @@ import (
 	"fmt"
 	"strings"
 
+	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -39,4 +42,62 @@ func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorLis
 		}
 	}
 	return errs
+}
+
+// CheckNameLength checks that the object name does not exceed the maximum length.
+func CheckNameLength(obj runtime.Object) field.ErrorList {
+	path := field.NewPath("metadata").Child("name")
+	accessor := meta.NewAccessor()
+	name, err := accessor.Name(obj)
+	if err != nil {
+		return field.ErrorList{field.InternalError(path, err)}
+	}
+
+	if len(name) > common_name.MaxResourceNameLength {
+		return field.ErrorList{field.TooLong(path, name, common_name.MaxResourceNameLength)}
+	}
+
+	return nil
+}
+
+// CheckSupportedStackVersion checks that the given version is a valid Stack version supported by ECK.
+func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) field.ErrorList {
+	v, err := parseVersion(ver)
+	if err != nil {
+		return err
+	}
+
+	if err := supported.WithinRange(*v); err != nil {
+		return field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), ver, fmt.Sprintf("Unsupported version: %v", err))}
+	}
+
+	return nil
+}
+
+// CheckNoDowngrade checks current and previous versions to ensure no downgrades are happening.
+func CheckNoDowngrade(prev, curr string) field.ErrorList {
+	prevVer, err := parseVersion(prev)
+	if err != nil {
+		return err
+	}
+
+	currVer, err := parseVersion(curr)
+	if err != nil {
+		return err
+	}
+
+	if !currVer.IsSameOrAfter(*prevVer) {
+		return field.ErrorList{field.Forbidden(field.NewPath("spec").Child("version"), "Version downgrades are not supported")}
+	}
+
+	return nil
+}
+
+func parseVersion(ver string) (*version.Version, field.ErrorList) {
+	v, err := version.Parse(ver)
+	if err != nil {
+		return nil, field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), ver, fmt.Sprintf("Invalid version: %v", err))}
+	}
+
+	return v, nil
 }
