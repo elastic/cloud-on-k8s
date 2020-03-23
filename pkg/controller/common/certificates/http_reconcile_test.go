@@ -15,11 +15,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -93,7 +99,130 @@ func init() {
 	pemCert = EncodePEMCert(certData, testCA.Cert.Raw)
 }
 
-func TestReconcileHTTPCertificates(t *testing.T) {
+func TestReconcilePublicHTTPCerts(t *testing.T) {
+	ca := loadFileBytes("ca.crt")
+	tls := loadFileBytes("tls.crt")
+	key := loadFileBytes("tls.key")
+
+	owner := &esv1.Elasticsearch{
+		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
+	}
+
+	certificate := &CertificatesSecret{
+		Data: map[string][]byte{
+			CAFileName:   ca,
+			CertFileName: tls,
+			KeyFileName:  key,
+		},
+	}
+
+	namespacedSecretName := PublicCertsSecretRef(esv1.ESNamer, k8s.ExtractNamespacedName(owner))
+
+	mkClient := func(t *testing.T, objs ...runtime.Object) k8s.Client {
+		t.Helper()
+		return k8s.WrappedFakeClient(objs...)
+	}
+
+	labels := map[string]string{"expected": "default-labels"}
+
+	mkWantedSecret := func(t *testing.T) *corev1.Secret {
+		t.Helper()
+		wantSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespacedSecretName.Namespace,
+				Name:      namespacedSecretName.Name,
+				Labels:    labels,
+			},
+			Data: map[string][]byte{
+				CertFileName: tls,
+				CAFileName:   ca,
+			},
+		}
+
+		if err := controllerutil.SetControllerReference(owner, wantSecret, scheme.Scheme); err != nil {
+			t.Fatal(err)
+		}
+
+		return wantSecret
+	}
+
+	tests := []struct {
+		name       string
+		client     func(*testing.T, ...runtime.Object) k8s.Client
+		wantSecret func(*testing.T) *corev1.Secret
+		wantErr    bool
+	}{
+		{
+			name:       "is created if missing",
+			client:     mkClient,
+			wantSecret: mkWantedSecret,
+		},
+		{
+			name: "is updated on mismatch",
+			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				s := mkWantedSecret(t)
+				s.Data[CertFileName] = []byte{0, 1, 2, 3}
+				return mkClient(t, s)
+			},
+			wantSecret: mkWantedSecret,
+		},
+		{
+			name: "removes extraneous keys",
+			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				s := mkWantedSecret(t)
+				s.Data["extra"] = []byte{0, 1, 2, 3}
+				return mkClient(t, s)
+			},
+			wantSecret: mkWantedSecret,
+		},
+		{
+			name: "preserves labels and annotations",
+			client: func(t *testing.T, _ ...runtime.Object) k8s.Client {
+				s := mkWantedSecret(t)
+				s.Labels["label1"] = "labelValue1"
+				s.Labels["label2"] = "labelValue2"
+				if s.Annotations == nil {
+					s.Annotations = make(map[string]string)
+				}
+				s.Annotations["annotation1"] = "annotationValue1"
+				s.Annotations["annotation2"] = "annotationValue2"
+				return mkClient(t, s)
+			},
+			wantSecret: func(t *testing.T) *corev1.Secret {
+				s := mkWantedSecret(t)
+				s.Labels["label1"] = "labelValue1"
+				s.Labels["label2"] = "labelValue2"
+				if s.Annotations == nil {
+					s.Annotations = make(map[string]string)
+				}
+				s.Annotations["annotation1"] = "annotationValue1"
+				s.Annotations["annotation2"] = "annotationValue2"
+				return s
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			client := tt.client(t)
+			err := ReconcilePublicHTTPCerts(client, owner, esv1.ESNamer, certificate, labels)
+			if tt.wantErr {
+				require.Error(t, err, "Failed to reconcile")
+				return
+			}
+
+			var gotSecret corev1.Secret
+			err = client.Get(namespacedSecretName, &gotSecret)
+			require.NoError(t, err, "Failed to get secret")
+
+			wantSecret := tt.wantSecret(t)
+			comparison.AssertEqual(t, wantSecret, &gotSecret)
+		})
+	}
+}
+
+func TestReconcileInternalHTTPCerts(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
 
@@ -154,12 +283,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := watches.NewDynamicWatches()
-			//testDriver := driver.TestDriver{
-			//	Client:  tt.args.c,
-			//	Watches: w,
-			//}
-
-			got, err := ReconcileHTTPCertificates(
+			got, err := ReconcileInternalHTTPCerts(
 				tt.args.c, w, &tt.args.es, esv1.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
 				RotationParams{
 					Validity:     DefaultCertValidity,
@@ -167,7 +291,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 				},
 			)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ReconcileHTTPCertificates() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ReconcileInternalHTTPCerts() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			tt.want(t, got)

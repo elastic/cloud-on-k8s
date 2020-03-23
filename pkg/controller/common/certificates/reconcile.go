@@ -11,6 +11,7 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -19,6 +20,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+)
+
+var (
+	log = logf.Log.WithName("certificates")
 )
 
 // ReconcileCAAndHTTPCerts reconciles 3 TLS-related secrets for the given object:
@@ -61,7 +66,7 @@ func ReconcileCAAndHTTPCerts(
 	})
 
 	// reconcile http certificates: either self-signed or user-provided
-	httpCertificates, err := ReconcileHTTPCertificates(
+	httpCertificates, err := ReconcileInternalHTTPCerts(
 		k8sClient,
 		dynamicWatches,
 		object,
@@ -84,6 +89,6 @@ func ReconcileCAAndHTTPCerts(
 	})
 
 	// reconcile http public cert secret, which does not contain the private key
-	results.WithError(ReconcileHTTPCertsPublicSecret(k8sClient, object, namer, httpCertificates, labels))
+	results.WithError(ReconcilePublicHTTPCerts(k8sClient, object, namer, httpCertificates, labels))
 	return httpCertificates, results
 }

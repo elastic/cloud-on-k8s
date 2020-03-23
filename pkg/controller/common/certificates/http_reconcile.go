@@ -20,21 +20,45 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
-var (
-	log = logf.Log.WithName("http_certs")
-)
+// ReconcilePublicHTTPCerts reconciles the Secret containing the HTTP Certificate currently in use, and the CA of
+// the certificate if available.
+func ReconcilePublicHTTPCerts(
+	c k8s.Client,
+	owner metav1.Object,
+	namer name.Namer,
+	httpCertificates *CertificatesSecret,
+	labels map[string]string,
+) error {
+	nsn := PublicCertsSecretRef(namer, k8s.ExtractNamespacedName(owner))
+	expected := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: nsn.Namespace,
+			Name:      nsn.Name,
+			Labels:    labels,
+		},
+		Data: map[string][]byte{
+			CertFileName: httpCertificates.CertPem(),
+		},
+	}
+	if caPem := httpCertificates.CAPem(); caPem != nil {
+		expected.Data[CAFileName] = caPem
+	}
 
-// ReconcileHTTPCertificates reconciles the internal resources for the HTTP certificate.
-func ReconcileHTTPCertificates(
+	_, err := reconciler.ReconcileSecret(c, expected, owner)
+	return err
+}
+
+// ReconcileInternalHTTPCerts reconciles the internal resources for the HTTP certificate.
+func ReconcileInternalHTTPCerts(
 	k8sClient k8s.Client,
 	dynamicWatches watches.DynamicWatches,
 	owner metav1.Object,
@@ -55,7 +79,7 @@ func ReconcileHTTPCertificates(
 		return nil, err
 	}
 
-	internalCerts, err := reconcileHTTPInternalCertificatesSecret(
+	internalCerts, err := reconcileInternalHTTPCertsSecret(
 		k8sClient, owner, namer, tls, labels, services, customCertificates, ca, rotationParams,
 	)
 	if err != nil {
@@ -65,8 +89,8 @@ func ReconcileHTTPCertificates(
 	return internalCerts, nil
 }
 
-// reconcileHTTPInternalCertificatesSecret ensures that the internal HTTP certificate secret has the correct content.
-func reconcileHTTPInternalCertificatesSecret(
+// reconcileInternalHTTPCertsSecret ensures that the internal HTTP certificate secret has the correct content.
+func reconcileInternalHTTPCertsSecret(
 	c k8s.Client,
 	owner metav1.Object,
 	namer name.Namer,
