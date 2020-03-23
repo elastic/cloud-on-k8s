@@ -82,6 +82,30 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 		return err
 	}
 
+	// Watch Pods to be notified about Pods going up/down during version upgrades.
+	// Unfortunately watching deployment only is not enough since we may miss a Pod deletion event.
+	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(
+				func(object handler.MapObject) []reconcile.Request {
+					labels := object.Meta.GetLabels()
+					entsName, isSet := labels[EnterpriseSearchNameLabelName]
+					if !isSet {
+						return nil
+					}
+					return []reconcile.Request{
+						{
+							NamespacedName: types.NamespacedName{
+								Namespace: object.Meta.GetNamespace(),
+								Name:      entsName,
+							},
+						},
+					}
+				}),
+		}); err != nil {
+		return err
+	}
+
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
