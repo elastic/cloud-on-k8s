@@ -88,9 +88,19 @@ func MustParse(version string) Version {
 
 // IsSameOrAfter returns true if the receiver is the same version or newer than the argument. Labels are ignored.
 func (v *Version) IsSameOrAfter(other Version) bool {
+	return v.IsSame(other) || v.IsAfter(other)
+}
+
+// IsSameOrAfter returns true if the receiver is the same version as the argument. Labels are ignored.
+func (v *Version) IsSame(other Version) bool {
+	return v.Major == other.Major && v.Minor == other.Minor && v.Patch == other.Patch
+}
+
+// IsAfter returns true if the receiver version is newer than the argument. Labels are ignored.
+func (v *Version) IsAfter(other Version) bool {
 	return v.Major > other.Major ||
 		(v.Major == other.Major && v.Minor > other.Minor) ||
-		(v.Major == other.Major && v.Minor == other.Minor && v.Patch >= other.Patch)
+		(v.Major == other.Major && v.Minor == other.Minor && v.Patch > other.Patch)
 }
 
 // Min returns the minimum version in vs or nil.
@@ -103,4 +113,16 @@ func Min(vs []Version) *Version {
 		v = &vs[0]
 	}
 	return v
+}
+
+func FromLabels(labels map[string]string, labelName string) (*Version, error) {
+	labelValue, ok := labels[labelName]
+	if !ok {
+		return nil, errors.Errorf("version label %s is missing", labelName)
+	}
+	v, err := Parse(labelValue)
+	if err != nil {
+		return nil, errors.Wrapf(err, "version label %s is invalid: %s", labelName, labelValue)
+	}
+	return v, nil
 }

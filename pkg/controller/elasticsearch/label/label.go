@@ -8,7 +8,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -85,15 +84,7 @@ func IsDataNode(pod corev1.Pod) bool {
 
 // ExtractVersion extracts the Elasticsearch version from the given labels.
 func ExtractVersion(labels map[string]string) (*version.Version, error) {
-	labelValue, ok := labels[VersionLabelName]
-	if !ok {
-		return nil, errors.Errorf("version label %s is missing", VersionLabelName)
-	}
-	v, err := version.Parse(labelValue)
-	if err != nil {
-		return nil, errors.Wrapf(err, "version label %s is invalid: %s", VersionLabelName, labelValue)
-	}
-	return v, nil
+	return version.FromLabels(labels, VersionLabelName)
 }
 
 // MinVersion extracts the currently running Elasticsearch versions from the running pods
