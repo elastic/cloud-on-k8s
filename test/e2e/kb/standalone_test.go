@@ -10,6 +10,7 @@ import (
 	"testing"
 	"text/template"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
@@ -31,7 +32,12 @@ func mkKibanaStandaloneBuilders(t *testing.T) []test.Builder {
 	require.NoError(t, err, "Failed to parse template")
 
 	buf := new(bytes.Buffer)
-	require.NoError(t, tmpl.Execute(buf, map[string]string{"Suffix": rand.String(4)}))
+	rndSuffix := rand.String(4)
+	esName := "test-kibana-standalone-es-" + rndSuffix
+	require.NoError(t, tmpl.Execute(buf, map[string]string{
+		"ESName": esName,
+		"Suffix": rndSuffix,
+	}))
 
 	namespace := test.Ctx().ManagedNamespace(0)
 	stackVersion := test.Ctx().ElasticStackVersion
@@ -45,6 +51,10 @@ func mkKibanaStandaloneBuilders(t *testing.T) []test.Builder {
 		case kibana.Builder:
 			return b.WithNamespace(namespace).
 				WithVersion(stackVersion).
+				WithExternalElasticsearchRef(commonv1.ObjectSelector{
+					Namespace: namespace,
+					Name:      esName,
+				}).
 				WithRestrictedSecurityContext()
 		default:
 			return b

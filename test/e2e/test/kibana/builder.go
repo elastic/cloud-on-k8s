@@ -17,8 +17,9 @@ import (
 
 // Builder to create Kibana instances
 type Builder struct {
-	Kibana      kbv1.Kibana
-	MutatedFrom *Builder
+	Kibana                   kbv1.Kibana
+	ExternalElasticsearchRef commonv1.ObjectSelector
+	MutatedFrom              *Builder
 }
 
 var _ test.Builder = Builder{}
@@ -60,6 +61,11 @@ func (b Builder) WithSuffix(suffix string) Builder {
 
 func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	b.Kibana.Spec.ElasticsearchRef = ref
+	return b
+}
+
+func (b Builder) WithExternalElasticsearchRef(ref commonv1.ObjectSelector) Builder {
+	b.ExternalElasticsearchRef = ref
 	return b
 }
 
@@ -127,4 +133,12 @@ func (b Builder) WithLabel(key, value string) Builder {
 
 func (b Builder) RuntimeObjects() []runtime.Object {
 	return []runtime.Object{&b.Kibana}
+}
+
+func (b Builder) ElasticsearchRef() commonv1.ObjectSelector {
+	if b.ExternalElasticsearchRef.IsDefined() {
+		return b.ExternalElasticsearchRef
+	}
+	// if no external Elasticsearch cluster is defined, use the ElasticsearchRef
+	return b.Kibana.ElasticsearchRef().WithDefaultNamespace(b.Kibana.Namespace)
 }

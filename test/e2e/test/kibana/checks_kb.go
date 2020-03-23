@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/pkg/errors"
 )
 
 type kbChecks struct {
@@ -33,16 +33,20 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		client: k,
 	}
 	return test.StepList{
-		checks.CheckKbStatusHealthy(b.Kibana),
+		checks.CheckKbStatusHealthy(b),
 	}
 }
 
 // CheckKbStatusHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its API status.
-func (check *kbChecks) CheckKbStatusHealthy(kb kbv1.Kibana) test.Step {
+func (check *kbChecks) CheckKbStatusHealthy(b Builder) test.Step {
 	return test.Step{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: test.Eventually(func() error {
-			body, err := DoKibanaReq(check.client, kb, "GET", "/api/status", nil)
+			password, err := check.client.GetElasticPassword(b.ElasticsearchRef().NamespacedName())
+			if err != nil {
+				return errors.Wrap(err, "while getting elastic password")
+			}
+			body, err := DoRequest(check.client, b.Kibana, password, "GET", "/api/status", nil)
 			if err != nil {
 				return err
 			}
