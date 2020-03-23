@@ -134,3 +134,11 @@ func (b Builder) WithLabel(key, value string) Builder {
 func (b Builder) RuntimeObjects() []runtime.Object {
 	return []runtime.Object{&b.Kibana}
 }
+
+func (b Builder) ElasticsearchRef() commonv1.ObjectSelector {
+	if b.ExternalElasticsearchRef.IsDefined() {
+		return b.ExternalElasticsearchRef
+	}
+	// if no external Elasticsearch cluster is defined, use the ElasticsearchRef
+	return b.Kibana.ElasticsearchRef().WithDefaultNamespace(b.Kibana.Namespace)
+}

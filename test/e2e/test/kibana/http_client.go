@@ -31,17 +31,8 @@ func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 	return test.NewHTTPClient(caCerts), nil
 }
 
-// DoRequest executes an HTTP request against a Kibana instance.
-func DoRequest(k *test.K8sClient, kb kbv1.Kibana, method string, uri string, body []byte) ([]byte, error) {
-	password, err := k.GetElasticPassword(kb.Spec.ElasticsearchRef.WithDefaultNamespace(kb.Namespace).NamespacedName())
-	if err != nil {
-		return nil, errors.Wrap(err, "while getting elastic password")
-	}
-	return DoRequestWithPassword(k, kb, password, method, uri, body)
-}
-
-// DoRequestWithPassword executes an HTTP request against a Kibana instance using the given password for the elastic user.
-func DoRequestWithPassword(k *test.K8sClient, kb kbv1.Kibana, password string, method string, uri string, body []byte) ([]byte, error) {
+// DoRequest executes an HTTP request against a Kibana instance using the given password for the elastic user.
+func DoRequest(k *test.K8sClient, kb kbv1.Kibana, password string, method string, uri string, body []byte) ([]byte, error) {
 	scheme := "http"
 	if kb.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"
