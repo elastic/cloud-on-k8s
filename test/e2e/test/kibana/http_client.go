@@ -40,7 +40,7 @@ func DoRequest(k *test.K8sClient, kb kbv1.Kibana, method string, uri string, bod
 	)
 }
 
-// DoRequest executes an HTTP request against a Kibana instance connected to the given Elasticsearch instance.
+// DoRequestWithES executes an HTTP request against a Kibana instance connected to the given Elasticsearch instance.
 func DoRequestWithES(k *test.K8sClient, kb kbv1.Kibana, es types.NamespacedName, method string, uri string, body []byte) ([]byte, error) {
 	password, err := k.GetElasticPassword(es)
 	if err != nil {
