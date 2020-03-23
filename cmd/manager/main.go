@@ -183,6 +183,8 @@ func init() {
 func execute() {
 	// update GOMAXPROCS to container cpu limit if necessary
 	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
+		// maxprocs needs an sprintf format string with args, but our logger needs a string with optional key value pairs,
+		// so we need to do this translation
 		log.Info(fmt.Sprintf(s, i...))
 	}))
 	if err != nil {
