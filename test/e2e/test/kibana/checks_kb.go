@@ -34,41 +34,18 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		client: k,
 	}
 	return test.StepList{
-		checks.CheckKbStatusHealthy(b.Kibana),
-		checks.CheckKbWithExternalESStatusHealthy(b.Kibana, b.ExternalElasticsearchRef),
+		checks.CheckKbStatusHealthy(b.Kibana, b.ExternalElasticsearchRef),
 	}
 }
 
 // CheckKbStatusHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its API status.
-func (check *kbChecks) CheckKbStatusHealthy(kb kbv1.Kibana) test.Step {
+func (check *kbChecks) CheckKbStatusHealthy(kb kbv1.Kibana, es types.NamespacedName) test.Step {
 	return test.Step{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: test.Eventually(func() error {
-			body, err := DoRequest(check.client, kb, "GET", "/api/status", nil)
-			if err != nil {
-				return err
+			if es.Name == "" { // if no external Elasticsearch cluster is used, use the ElasticsearchRef
+				es = kb.ElasticsearchRef().WithDefaultNamespace(kb.Namespace).NamespacedName()
 			}
-			var status kbStatus
-			err = json.Unmarshal(body, &status)
-			if err != nil {
-				return err
-			}
-			if status.Status.Overall.State != "green" {
-				return fmt.Errorf("not ready: want 'green' but Kibana status was '%s'", status.Status.Overall.State)
-			}
-			return nil
-		}),
-		Skip: func() bool {
-			ref := kb.ElasticsearchRef()
-			return !ref.IsDefined()
-		},
-	}
-}
-
-func (check *kbChecks) CheckKbWithExternalESStatusHealthy(kb kbv1.Kibana, es types.NamespacedName) test.Step {
-	return test.Step{
-		Name: "Kibana should be able to connect to an external Elasticsearch",
-		Test: test.Eventually(func() error {
 			body, err := DoRequestWithES(check.client, kb, es, "GET", "/api/status", nil)
 			if err != nil {
 				return err
@@ -83,9 +60,5 @@ func (check *kbChecks) CheckKbWithExternalESStatusHealthy(kb kbv1.Kibana, es typ
 			}
 			return nil
 		}),
-		Skip: func() bool {
-			ref := kb.ElasticsearchRef()
-			return ref.IsDefined()
-		},
 	}
 }
