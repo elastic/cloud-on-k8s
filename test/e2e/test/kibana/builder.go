@@ -8,7 +8,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -19,7 +18,7 @@ import (
 // Builder to create Kibana instances
 type Builder struct {
 	Kibana                   kbv1.Kibana
-	ExternalElasticsearchRef types.NamespacedName
+	ExternalElasticsearchRef commonv1.ObjectSelector
 	MutatedFrom              *Builder
 }
 
@@ -65,7 +64,7 @@ func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
-func (b Builder) WithExternalElasticsearchRef(ref types.NamespacedName) Builder {
+func (b Builder) WithExternalElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	b.ExternalElasticsearchRef = ref
 	return b
 }

@@ -17,7 +17,6 @@ import (
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
@@ -34,18 +33,15 @@ func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 
 // DoRequest executes an HTTP request against a Kibana instance.
 func DoRequest(k *test.K8sClient, kb kbv1.Kibana, method string, uri string, body []byte) ([]byte, error) {
-	return DoRequestWithES(k, kb,
-		kb.Spec.ElasticsearchRef.WithDefaultNamespace(kb.Namespace).NamespacedName(),
-		method, uri, body,
-	)
-}
-
-// DoRequestWithES executes an HTTP request against a Kibana instance connected to the given Elasticsearch instance.
-func DoRequestWithES(k *test.K8sClient, kb kbv1.Kibana, es types.NamespacedName, method string, uri string, body []byte) ([]byte, error) {
-	password, err := k.GetElasticPassword(es)
+	password, err := k.GetElasticPassword(kb.Spec.ElasticsearchRef.WithDefaultNamespace(kb.Namespace).NamespacedName())
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting elastic password")
 	}
+	return DoRequestWithPassword(k, kb, password, method, uri, body)
+}
+
+// DoRequestWithPassword executes an HTTP request against a Kibana instance using the given password for the elastic user.
+func DoRequestWithPassword(k *test.K8sClient, kb kbv1.Kibana, password string, method string, uri string, body []byte) ([]byte, error) {
 	scheme := "http"
 	if kb.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"

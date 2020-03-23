@@ -8,9 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/pkg/errors"
 )
 
 type kbChecks struct {
@@ -39,14 +40,18 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 }
 
 // CheckKbStatusHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its API status.
-func (check *kbChecks) CheckKbStatusHealthy(kb kbv1.Kibana, es types.NamespacedName) test.Step {
+func (check *kbChecks) CheckKbStatusHealthy(kb kbv1.Kibana, es commonv1.ObjectSelector) test.Step {
 	return test.Step{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: test.Eventually(func() error {
-			if es.Name == "" { // if no external Elasticsearch cluster is used, use the ElasticsearchRef
-				es = kb.ElasticsearchRef().WithDefaultNamespace(kb.Namespace).NamespacedName()
+			if !es.IsDefined() { // if no external Elasticsearch cluster is defined, use the ElasticsearchRef
+				es = kb.ElasticsearchRef().WithDefaultNamespace(kb.Namespace)
 			}
-			body, err := DoRequestWithES(check.client, kb, es, "GET", "/api/status", nil)
+			password, err := check.client.GetElasticPassword(es.NamespacedName())
+			if err != nil {
+				return errors.Wrap(err, "while getting elastic password")
+			}
+			body, err := DoRequestWithPassword(check.client, kb, password, "GET", "/api/status", nil)
 			if err != nil {
 				return err
 			}

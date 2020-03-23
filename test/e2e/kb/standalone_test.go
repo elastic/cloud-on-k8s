@@ -10,12 +10,12 @@ import (
 	"testing"
 	"text/template"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -51,7 +51,7 @@ func mkKibanaStandaloneBuilders(t *testing.T) []test.Builder {
 		case kibana.Builder:
 			return b.WithNamespace(namespace).
 				WithVersion(stackVersion).
-				WithExternalElasticsearchRef(types.NamespacedName{
+				WithExternalElasticsearchRef(commonv1.ObjectSelector{
 					Namespace: namespace,
 					Name:      esName,
 				}).
