@@ -69,6 +69,9 @@ func Reconcile(
 		Services:       services,
 		CACertRotation: caRotation,
 		CertRotation:   certRotation,
+		// ES is able to hot-reload TLS certificates: let's keep secrets around even though TLS is disabled.
+		// In case TLS is toggled on/off/on quickly enough, removing the secret would prevent future certs to be available.
+		GarbageCollectSecrets: false,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		return nil, results

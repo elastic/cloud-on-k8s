@@ -228,15 +228,16 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	}
 
 	_, results := certificates.Reconciler{
-		K8sClient:      r.K8sClient(),
-		DynamicWatches: r.DynamicWatches(),
-		Object:         as,
-		TLSOptions:     as.Spec.HTTP.TLS,
-		Namer:          apmname.APMNamer,
-		Labels:         labels.NewLabels(as.Name),
-		Services:       []corev1.Service{*svc},
-		CACertRotation: r.CACertRotation,
-		CertRotation:   r.CertRotation,
+		K8sClient:             r.K8sClient(),
+		DynamicWatches:        r.DynamicWatches(),
+		Object:                as,
+		TLSOptions:            as.Spec.HTTP.TLS,
+		Namer:                 apmname.APMNamer,
+		Labels:                labels.NewLabels(as.Name),
+		Services:              []corev1.Service{*svc},
+		CACertRotation:        r.CACertRotation,
+		CertRotation:          r.CertRotation,
+		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		res, err := results.Aggregate()

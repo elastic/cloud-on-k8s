@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -42,15 +43,16 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	c := k8s.WrappedFakeClient()
 
 	r := Reconciler{
-		K8sClient:      c,
-		DynamicWatches: watches.NewDynamicWatches(),
-		Object:         &obj,
-		TLSOptions:     commonv1.TLSOptions{},
-		Namer:          esv1.ESNamer,
-		Labels:         labels,
-		Services:       nil,
-		CACertRotation: rotation,
-		CertRotation:   rotation,
+		K8sClient:             c,
+		DynamicWatches:        watches.NewDynamicWatches(),
+		Object:                &obj,
+		TLSOptions:            commonv1.TLSOptions{},
+		Namer:                 esv1.ESNamer,
+		Labels:                labels,
+		Services:              nil,
+		CACertRotation:        rotation,
+		CertRotation:          rotation,
+		GarbageCollectSecrets: false,
 	}
 	httpCerts, results := r.ReconcileCAAndHTTPCerts(context.Background())
 	checkResults := func() {
@@ -102,7 +104,26 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 
 	// disable TLS and run again: should keep existing certs secrets (Elasticsearch use case)
 	r.TLSOptions = commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}
+	r.GarbageCollectSecrets = false
 	httpCerts, results = r.ReconcileCAAndHTTPCerts(context.Background())
 	checkResults()
 	checkCertsSecrets()
+
+	// disable TLS and run again, this time with the option to remove secrets (Kibana, APMServer, Enterprise Search use cases)
+	r.TLSOptions = commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}
+	r.GarbageCollectSecrets = true
+	httpCerts, results = r.ReconcileCAAndHTTPCerts(context.Background())
+	aggregateResult, err := results.Aggregate()
+	require.NoError(t, err)
+	require.Zero(t, aggregateResult.RequeueAfter)
+	require.Nil(t, httpCerts)
+	removedSecrets := []types.NamespacedName{
+		{Namespace: obj.Namespace, Name: CAInternalSecretName(esv1.ESNamer, obj.Name, HTTPCAType)},
+		{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)},
+		{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)},
+	}
+	for _, nsn := range removedSecrets {
+		var s corev1.Secret
+		require.True(t, apierrors.IsNotFound(c.Get(nsn, &s)))
+	}
 }

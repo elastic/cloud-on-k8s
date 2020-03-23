@@ -200,15 +200,16 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	}
 
 	_, results := certificates.Reconciler{
-		K8sClient:      r.K8sClient(),
-		DynamicWatches: r.DynamicWatches(),
-		Object:         &ents,
-		TLSOptions:     ents.Spec.HTTP.TLS,
-		Namer:          entsname.EntSearchNamer,
-		Labels:         NewLabels(ents.Name),
-		Services:       []corev1.Service{*svc},
-		CACertRotation: r.CACertRotation,
-		CertRotation:   r.CertRotation,
+		K8sClient:             r.K8sClient(),
+		DynamicWatches:        r.DynamicWatches(),
+		Object:                &ents,
+		TLSOptions:            ents.Spec.HTTP.TLS,
+		Namer:                 entsname.EntSearchNamer,
+		Labels:                NewLabels(ents.Name),
+		Services:              []corev1.Service{*svc},
+		CACertRotation:        r.CACertRotation,
+		CertRotation:          r.CertRotation,
+		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		res, err := results.Aggregate()

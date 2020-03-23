@@ -41,6 +41,8 @@ type Reconciler struct {
 
 	CACertRotation RotationParams // to requeue a reconciliation before CA cert expiration
 	CertRotation   RotationParams // to requeue a reconciliation before cert expiration
+
+	GarbageCollectSecrets bool // if true, delete secrets if TLS is disabled
 }
 
 // ReconcileCAAndHTTPCerts reconciles 3 TLS-related secrets for the given object:
@@ -53,6 +55,10 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
+
+	if !r.TLSOptions.Enabled() && r.GarbageCollectSecrets {
+		return nil, results.WithError(r.removeCAAndHTTPCertsSecrets())
+	}
 
 	// reconcile CA certs first
 	httpCa, err := ReconcileCAForOwner(

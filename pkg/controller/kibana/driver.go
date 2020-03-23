@@ -220,15 +220,16 @@ func (d *driver) Reconcile(
 	}
 
 	_, results = certificates.Reconciler{
-		K8sClient:      d.K8sClient(),
-		DynamicWatches: d.DynamicWatches(),
-		Object:         kb,
-		TLSOptions:     kb.Spec.HTTP.TLS,
-		Namer:          kbname.KBNamer,
-		Labels:         labels.NewLabels(kb.Name),
-		Services:       []corev1.Service{*svc},
-		CACertRotation: params.CACertRotation,
-		CertRotation:   params.CertRotation,
+		K8sClient:             d.K8sClient(),
+		DynamicWatches:        d.DynamicWatches(),
+		Object:                kb,
+		TLSOptions:            kb.Spec.HTTP.TLS,
+		Namer:                 kbname.KBNamer,
+		Labels:                labels.NewLabels(kb.Name),
+		Services:              []corev1.Service{*svc},
+		CACertRotation:        params.CACertRotation,
+		CertRotation:          params.CertRotation,
+		GarbageCollectSecrets: true,
 	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		return results
