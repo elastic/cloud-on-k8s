@@ -60,7 +60,7 @@ func (check *kbChecks) CheckKbStatusHealthy(kb kbv1.Kibana) test.Step {
 		}),
 		Skip: func() bool {
 			ref := kb.ElasticsearchRef()
-			return ref.IsDefined() == false
+			return !ref.IsDefined()
 		},
 	}
 }
