@@ -17,22 +17,21 @@ import (
 )
 
 type baseClient struct {
-	User      BasicAuth
-	HTTP      *http.Client
-	transport *http.Transport
-	Endpoint  string
-	caCerts   []*x509.Certificate
+	User     BasicAuth
+	HTTP     *http.Client
+	Endpoint string
+	caCerts  []*x509.Certificate
 }
 
 // Close idle connections in the underlying http client.
 // Should be called once this client is not used anymore.
 func (c *baseClient) Close() {
-	if c.transport != nil {
+	if c.HTTP != nil {
 		// When the http transport goes out of scope, the underlying goroutines responsible
 		// for handling keep-alive connections are not closed automatically.
 		// Since this client gets recreated frequently we would effectively be leaking goroutines.
 		// Let's make sure this does not happen by closing idle connections.
-		c.transport.CloseIdleConnections()
+		c.HTTP.CloseIdleConnections()
 	}
 }
 

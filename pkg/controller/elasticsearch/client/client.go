@@ -152,10 +152,9 @@ func NewElasticsearchClient(
 	}
 
 	base := &baseClient{
-		Endpoint:  esURL,
-		User:      esUser,
-		caCerts:   caCerts,
-		transport: &transportConfig,
+		Endpoint: esURL,
+		User:     esUser,
+		caCerts:  caCerts,
 		HTTP: &http.Client{
 			Transport: apmelasticsearch.WrapRoundTripper(&transportConfig),
 		},
