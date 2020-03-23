@@ -33,7 +33,10 @@ func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 
 // DoKibanaReq executes an HTTP request against a Kibana instance.
 func DoKibanaReq(k *test.K8sClient, kb kbv1.Kibana, method string, uri string, body []byte) ([]byte, error) {
-	password, err := k.GetElasticPassword(kb.Spec.ElasticsearchRef.Namespace, kb.Spec.ElasticsearchRef.Name)
+	password, err := k.GetElasticPassword(
+		kb.Spec.ElasticsearchRef.WithDefaultNamespace(kb.Namespace).Namespace,
+		kb.Spec.ElasticsearchRef.Name,
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting elastic password")
 	}
