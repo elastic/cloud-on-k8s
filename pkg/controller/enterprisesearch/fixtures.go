@@ -25,7 +25,7 @@ ent_search:
     key: /mnt/elastic-internal/http-certs/tls.key
 `
 
-var existingConfigWithSecureSettings = existingConfig +
+var existingConfigWithReusableSettings = existingConfig +
 	`secret_management:
   encryption_keys:
   - alreadysetencryptionkey1

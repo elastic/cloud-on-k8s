@@ -92,8 +92,8 @@ type reusableSettings struct {
 	EncryptionKeys []string `config:"secret_management.encryption_keys"`
 }
 
-// reuseOrGenerateSecretKeys reads the current configuration and reuse existing secrets it they exist.
-func reuseOrGenerateSecretKeys(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+// getOrCreateReusableSettings reads the current configuration and reuse existing secrets it they exist.
+func getOrCreateReusableSettings(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	cfg, err := getExistingConfig(c, ents)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func reuseOrGenerateSecretKeys(c k8s.Client, ents entsv1beta1.EnterpriseSearch) 
 func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	cfg := defaultConfig(ents)
 
-	secretCfg, err := reuseOrGenerateSecretKeys(c, ents)
+	reusedCfg, err := getOrCreateReusableSettings(c, ents)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func newConfig(c k8s.Client, ents entsv1beta1.EnterpriseSearch) (*settings.Canon
 	}
 
 	// merge with user settings last so they take precedence
-	if err := cfg.MergeWith(secretCfg, associationCfg, tlsConfig(ents), userProvidedCfg); err != nil {
+	if err := cfg.MergeWith(reusedCfg, associationCfg, tlsConfig(ents), userProvidedCfg); err != nil {
 		return nil, err
 	}
 	return cfg, nil
