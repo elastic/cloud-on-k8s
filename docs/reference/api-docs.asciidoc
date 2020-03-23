@@ -882,7 +882,6 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 Package v1beta1 contains API schema definitions for managing Enterprise Search resources.
 
 .Resource Types
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchlist[$$EnterpriseSearchList$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearch[$$EnterpriseSearch$$]
 
 
@@ -892,10 +891,7 @@ Package v1beta1 contains API schema definitions for managing Enterprise Search r
 
 EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchlist[$$EnterpriseSearchList$$]
-****
+
 
 [cols="25a,75a", options="header"]
 |===
@@ -905,24 +901,6 @@ EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]__ | 
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchlist"]
-=== EnterpriseSearchList 
-
-EnterpriseSearchList contains a list of EnterpriseSearch
-
-
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`apiVersion`* __string__ | `enterprisesearch.k8s.elastic.co/v1beta1`
-| *`kind`* __string__ | `EnterpriseSearchList`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta[$$ListMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
-
-| *`items`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearch[$$EnterpriseSearch$$]__ | 
 |===
 
 
@@ -948,8 +926,6 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 |===
-
-
 
 
 

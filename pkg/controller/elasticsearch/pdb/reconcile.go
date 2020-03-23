@@ -6,7 +6,6 @@ package pdb
 
 import (
 	"k8s.io/api/policy/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -68,13 +67,13 @@ func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
 			Name:      esv1.DefaultPodDisruptionBudget(es.Name),
 		},
 	}
-	if err := k8sClient.Get(k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !errors.IsNotFound(err) {
+	if err := k8sClient.Get(k8s.ExtractNamespacedName(&pdb), &pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
-	} else if errors.IsNotFound(err) {
+	} else if apierrors.IsNotFound(err) {
 		// already deleted, which is fine
 		return nil
 	}
-	if err := k8sClient.Delete(&pdb); err != nil && !errors.IsNotFound(err) {
+	if err := k8sClient.Delete(&pdb); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	return nil

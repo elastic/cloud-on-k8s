@@ -29,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
+	"go.uber.org/automaxprocs/maxprocs"
+
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -179,6 +181,13 @@ func init() {
 }
 
 func execute() {
+	// update GOMAXPROCS to container cpu limit if necessary
+	_, err := maxprocs.Set(maxprocs.Logger(log.Info))
+	if err != nil {
+		log.Error(err, "Error setting GOMAXPROCS")
+		os.Exit(1)
+	}
+
 	if dev.Enabled {
 		// expose pprof if development mode is enabled
 		mux := http.NewServeMux()
@@ -220,7 +229,7 @@ func execute() {
 
 	// set the default container registry
 	containerRegistry := viper.GetString(operator.ContainerRegistryFlag)
-	log.Info("Setting default container registry", "registry", containerRegistry)
+	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
 
 	// Get a config to talk to the apiserver

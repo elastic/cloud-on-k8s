@@ -35,7 +35,7 @@ pipeline {
             steps {
                 sh '.ci/setenvconfig e2e/custom-operator-image'
                 script {
-                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci')
+                    env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET=ci-e2e ci')
 
                     sh 'make -C .ci TARGET=e2e-generate-xml ci'
                     junit "e2e-tests.xml"

@@ -107,6 +107,21 @@ func doDetectLicences(licenceRegex *regexp.Regexp, classifier *licenseclassifier
 		return nil, nil
 	}
 
+	// this is not an exhaustive list of Elastic-approved licences, but includes all the ones we use to date
+	whitelist := map[string]struct{}{
+		"Apache-2.0":   struct{}{},
+		"BSD-2-Clause": struct{}{},
+		"BSD-3-Clause": struct{}{},
+		"ISC":          struct{}{},
+		"MIT":          struct{}{},
+		// Yellow list: Mozilla Public License 1.1 or 2.0 (“MPL”) Exception:
+		// "Incorporation of unmodified source or binaries into Elastic products is permitted,
+		// provided that the product's NOTICE file links to a URL providing the MPL-covered source code"
+		// We do not modify any of the dependencies and we link to the source code, so we are okay.
+		"MPL-2.0":       struct{}{},
+		"Public Domain": struct{}{},
+	}
+
 	depInfoList := make([]dependency.Info, len(depList))
 	for i, mod := range depList {
 		depInfo := mkDepInfo(mod, overrides)
@@ -137,6 +152,9 @@ func doDetectLicences(licenceRegex *regexp.Regexp, classifier *licenseclassifier
 			}
 		}
 
+		if _, ok := whitelist[depInfo.LicenceType]; !ok {
+			return nil, fmt.Errorf("dependency %s uses licence %s which is not whitelisted", depInfo.Name, depInfo.LicenceType)
+		}
 		depInfoList[i] = depInfo
 	}
 

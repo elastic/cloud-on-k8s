@@ -40,7 +40,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -249,7 +248,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 
 	state, err = r.reconcileApmServerDeployment(ctx, state, as)
 	if err != nil {
-		if errors.IsConflict(err) {
+		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")
 			return reconcile.Result{Requeue: true}, nil
 		}
@@ -261,7 +260,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 
 	// update status
 	err = r.updateStatus(ctx, state)
-	if err != nil && errors.IsConflict(err) {
+	if err != nil && apierrors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}

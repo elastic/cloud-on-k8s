@@ -30,7 +30,7 @@ func TestTelemetry(t *testing.T) {
 				Test: func(t *testing.T) {
 					uri := "/api/telemetry/v1/clusters/_stats"
 					payload := `{"timeRange":{"min":"0","max":"0"}}`
-					body, err := kibana.DoKibanaReq(k, kbBuilder, "POST", uri, []byte(payload))
+					body, err := kibana.DoKibanaReq(k, kbBuilder.Kibana, "POST", uri, []byte(payload))
 					require.NoError(t, err)
 
 					var stats ClusterStats
