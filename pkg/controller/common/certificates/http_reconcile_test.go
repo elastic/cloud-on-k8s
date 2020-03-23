@@ -206,7 +206,12 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcilePublicHTTPCerts(client, owner, esv1.ESNamer, certificate, labels)
+			err := Reconciler{
+				K8sClient: client,
+				Object:    owner,
+				Namer:     esv1.ESNamer,
+				Labels:    labels,
+			}.ReconcilePublicHTTPCerts(certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return
@@ -283,13 +288,19 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := watches.NewDynamicWatches()
-			got, err := ReconcileInternalHTTPCerts(
-				tt.args.c, w, &tt.args.es, esv1.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
-				RotationParams{
+			got, err := Reconciler{
+				K8sClient:      tt.args.c,
+				DynamicWatches: w,
+				Object:         &tt.args.es,
+				TLSOptions:     tt.args.es.Spec.HTTP.TLS,
+				Namer:          esv1.ESNamer,
+				Labels:         map[string]string{},
+				Services:       tt.args.services,
+				CertRotation: RotationParams{
 					Validity:     DefaultCertValidity,
 					RotateBefore: DefaultRotateBefore,
 				},
-			)
+			}.ReconcileInternalHTTPCerts(tt.args.ca)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileInternalHTTPCerts() error = %v, wantErr %v", err, tt.wantErr)
 				return

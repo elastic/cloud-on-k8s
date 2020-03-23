@@ -28,63 +28,51 @@ var (
 	log = logf.Log.WithName("certificates")
 )
 
+type Reconciler struct {
+	K8sClient      k8s.Client
+	DynamicWatches watches.DynamicWatches
+
+	Object     metav1.Object       // owner for the TLS certificates (eg. Elasticsearch, Kibana)
+	TLSOptions commonv1.TLSOptions // TLS options of the object
+
+	Namer    commonname.Namer  // helps naming the reconciled secrets
+	Labels   map[string]string // to set on the reconciled cert secrets
+	Services []corev1.Service  // to be used for TLS SANs
+
+	CACertRotation RotationParams // to requeue a reconciliation before CA cert expiration
+	CertRotation   RotationParams // to requeue a reconciliation before cert expiration
+}
+
 // ReconcileCAAndHTTPCerts reconciles 3 TLS-related secrets for the given object:
 // - a Secret containing the Certificate Authority generated for the object
 // - a Secret containing the HTTP certificates and key (for internal use by the object), returned by this function
 // - a Secret containing the public-facing HTTP certificates (same as the internal one, but without the key)
 // If TLS is disabled, self-signed certificates are still reconciled, for simplicity/consistency, but not used.
-func ReconcileCAAndHTTPCerts(
-	ctx context.Context,
-	object metav1.Object,
-	tlsOptions commonv1.TLSOptions,
-	labels map[string]string,
-	namer commonname.Namer,
-	k8sClient k8s.Client,
-	dynamicWatches watches.DynamicWatches,
-	services []corev1.Service,
-	caRotation RotationParams,
-	certRotation RotationParams,
-	removeSecretsIfTLSDisabled bool,
-) (*CertificatesSecret, *reconciler.Results) {
+func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesSecret, *reconciler.Results) {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
 
 	results := reconciler.NewResult(ctx)
 
-	if !tlsOptions.Enabled() && removeSecretsIfTLSDisabled {
-		// TLS is disabled, ensure secrets are removed
-		return nil, results.WithError(removeCAAndHTTPCertsSecrets(k8sClient, object, namer, dynamicWatches))
-	}
-
 	// reconcile CA certs first
 	httpCa, err := ReconcileCAForOwner(
-		k8sClient,
-		namer,
-		object,
-		labels,
+		r.K8sClient,
+		r.Namer,
+		r.Object,
+		r.Labels,
 		HTTPCAType,
-		caRotation,
+		r.CACertRotation,
 	)
 	if err != nil {
 		return nil, results.WithError(err)
 	}
 	// handle CA expiry via requeue
 	results.WithResult(reconcile.Result{
-		RequeueAfter: ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, caRotation.RotateBefore),
+		RequeueAfter: ShouldRotateIn(time.Now(), httpCa.Cert.NotAfter, r.CACertRotation.RotateBefore),
 	})
 
 	// reconcile http certificates: either self-signed or user-provided
-	httpCertificates, err := ReconcileInternalHTTPCerts(
-		k8sClient,
-		dynamicWatches,
-		object,
-		namer,
-		httpCa,
-		tlsOptions,
-		labels,
-		services,
-		certRotation,
-	)
+	httpCertificates, err := r.ReconcileInternalHTTPCerts(httpCa)
 	if err != nil {
 		return nil, results.WithError(err)
 	}
@@ -93,35 +81,37 @@ func ReconcileCAAndHTTPCerts(
 		return nil, results.WithError(err)
 	}
 	results.WithResult(reconcile.Result{
-		RequeueAfter: ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore),
+		RequeueAfter: ShouldRotateIn(time.Now(), primaryCert.NotAfter, r.CertRotation.RotateBefore),
 	})
 
 	// reconcile http public cert secret, which does not contain the private key
-	results.WithError(ReconcilePublicHTTPCerts(k8sClient, object, namer, httpCertificates, labels))
+	results.WithError(r.ReconcilePublicHTTPCerts(httpCertificates))
 	return httpCertificates, results
 }
 
-func removeCAAndHTTPCertsSecrets(c k8s.Client, object metav1.Object, namer commonname.Namer, dynamicWatches watches.DynamicWatches) error {
+func (r *Reconciler) removeCAAndHTTPCertsSecrets() error {
 	// remove public certs secret
-	if err := deleteIfExists(c,
-		types.NamespacedName{Namespace: object.GetNamespace(), Name: PublicCertsSecretName(namer, object.GetName())},
+	if err := deleteIfExists(r.K8sClient,
+		types.NamespacedName{Namespace: r.Object.GetNamespace(), Name: PublicCertsSecretName(r.Namer, r.Object.GetName())},
 	); err != nil {
 		return err
 	}
 	// remove internal certs secret
-	if err := deleteIfExists(c,
-		types.NamespacedName{Namespace: object.GetNamespace(), Name: InternalCertsSecretName(namer, object.GetName())},
+	if err := deleteIfExists(r.K8sClient,
+		types.NamespacedName{Namespace: r.Object.GetNamespace(), Name: InternalCertsSecretName(r.Namer, r.Object.GetName())},
 	); err != nil {
 		return err
 	}
 	// remove CA secret
-	if err := deleteIfExists(c,
-		types.NamespacedName{Namespace: object.GetNamespace(), Name: CAInternalSecretName(namer, object.GetName(), HTTPCAType)},
+	if err := deleteIfExists(r.K8sClient,
+		types.NamespacedName{Namespace: r.Object.GetNamespace(), Name: CAInternalSecretName(r.Namer, r.Object.GetName(), HTTPCAType)},
 	); err != nil {
 		return err
 	}
+
 	// remove watches on user-provided certs secret
-	dynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(namer, object.GetName()))
+	r.DynamicWatches.Secrets.RemoveHandlerForKey(CertificateWatchKey(r.Namer, r.Object.GetName()))
+
 	return nil
 }
 

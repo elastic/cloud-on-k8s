@@ -226,19 +226,18 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	_, results := certificates.ReconcileCAAndHTTPCerts(
-		ctx,
-		as,
-		as.Spec.HTTP.TLS,
-		labels.NewLabels(as.Name),
-		apmname.APMNamer,
-		r.K8sClient(),
-		r.DynamicWatches(),
-		[]corev1.Service{*svc},
-		r.CACertRotation,
-		r.CertRotation,
-		true,
-	)
+
+	_, results := certificates.Reconciler{
+		K8sClient:      r.K8sClient(),
+		DynamicWatches: r.DynamicWatches(),
+		Object:         as,
+		TLSOptions:     as.Spec.HTTP.TLS,
+		Namer:          apmname.APMNamer,
+		Labels:         labels.NewLabels(as.Name),
+		Services:       []corev1.Service{*svc},
+		CACertRotation: r.CACertRotation,
+		CertRotation:   r.CertRotation,
+	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)

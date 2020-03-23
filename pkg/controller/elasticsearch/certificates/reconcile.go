@@ -59,19 +59,17 @@ func Reconcile(
 
 	// reconcile HTTP CA and cert
 	var httpCerts *certificates.CertificatesSecret
-	httpCerts, results = certificates.ReconcileCAAndHTTPCerts(
-		ctx,
-		&es,
-		es.Spec.HTTP.TLS,
-		certsLabels,
-		esv1.ESNamer,
-		driver.K8sClient(),
-		driver.DynamicWatches(),
-		services,
-		caRotation,
-		certRotation,
-		false,
-	)
+	httpCerts, results = certificates.Reconciler{
+		K8sClient:      driver.K8sClient(),
+		DynamicWatches: driver.DynamicWatches(),
+		Object:         &es,
+		TLSOptions:     es.Spec.HTTP.TLS,
+		Namer:          esv1.ESNamer,
+		Labels:         certsLabels,
+		Services:       services,
+		CACertRotation: caRotation,
+		CertRotation:   certRotation,
+	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		return nil, results
 	}

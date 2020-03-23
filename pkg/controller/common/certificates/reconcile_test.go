@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -42,8 +41,18 @@ var (
 func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	c := k8s.WrappedFakeClient()
 
-	tlsOpts := commonv1.TLSOptions{}
-	httpCerts, results := ReconcileCAAndHTTPCerts(context.Background(), &obj, tlsOpts, labels, esv1.ESNamer, c, watches.NewDynamicWatches(), nil, rotation, rotation, false)
+	r := Reconciler{
+		K8sClient:      c,
+		DynamicWatches: watches.NewDynamicWatches(),
+		Object:         &obj,
+		TLSOptions:     commonv1.TLSOptions{},
+		Namer:          esv1.ESNamer,
+		Labels:         labels,
+		Services:       nil,
+		CACertRotation: rotation,
+		CertRotation:   rotation,
+	}
+	httpCerts, results := r.ReconcileCAAndHTTPCerts(context.Background())
 	checkResults := func() {
 		aggregateResult, err := results.Aggregate()
 		require.NoError(t, err)
@@ -87,32 +96,13 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 	checkCertsSecrets()
 
 	// running again should lead to the same results
-	httpCerts, results = ReconcileCAAndHTTPCerts(context.Background(), &obj, commonv1.TLSOptions{}, labels, esv1.ESNamer, c, watches.NewDynamicWatches(), nil, rotation, rotation, false)
+	httpCerts, results = r.ReconcileCAAndHTTPCerts(context.Background())
 	checkResults()
 	checkCertsSecrets()
 
 	// disable TLS and run again: should keep existing certs secrets (Elasticsearch use case)
-	tlsOpts = commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}
-	removeSecretsIfTLSDisabled := false
-	httpCerts, results = ReconcileCAAndHTTPCerts(context.Background(), &obj, tlsOpts, labels, esv1.ESNamer, c, watches.NewDynamicWatches(), nil, rotation, rotation, removeSecretsIfTLSDisabled)
+	r.TLSOptions = commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}
+	httpCerts, results = r.ReconcileCAAndHTTPCerts(context.Background())
 	checkResults()
 	checkCertsSecrets()
-
-	// disable TLS and run again, this time with the option to remove secrets (Kibana, APMServer, Enterprise Search use cases)
-	tlsOpts = commonv1.TLSOptions{SelfSignedCertificate: &commonv1.SelfSignedCertificate{Disabled: true}}
-	removeSecretsIfTLSDisabled = true
-	httpCerts, results = ReconcileCAAndHTTPCerts(context.Background(), &obj, tlsOpts, labels, esv1.ESNamer, c, watches.NewDynamicWatches(), nil, rotation, rotation, removeSecretsIfTLSDisabled)
-	aggregateResult, err := results.Aggregate()
-	require.NoError(t, err)
-	require.Zero(t, aggregateResult.RequeueAfter)
-	require.Nil(t, httpCerts)
-	removedSecrets := []types.NamespacedName{
-		{Namespace: obj.Namespace, Name: CAInternalSecretName(esv1.ESNamer, obj.Name, HTTPCAType)},
-		{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)},
-		{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)},
-	}
-	for _, nsn := range removedSecrets {
-		var s corev1.Secret
-		require.True(t, apierrors.IsNotFound(c.Get(nsn, &s)))
-	}
 }
