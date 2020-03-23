@@ -16,10 +16,8 @@ spec:
           # Enable TLS between GCLB and the application
           cloud.google.com/app-protocols: '{"https":"HTTPS"}'
           service.alpha.kubernetes.io/app-protocols: '{"https":"HTTPS"}'
-          # Uncomment the following line to enable container-native load balancing.
-          #cloud.google.com/neg: '{"ingress": true}'
-      spec:
-        type: NodePort
+          # Comment out the following line if you are not using a VPC-native cluster
+          cloud.google.com/neg: '{"ingress": true}'
   nodeSets:
   - name: default
     count: 3
@@ -34,6 +32,7 @@ spec:
       spec:
         containers:
           - name: elasticsearch
+            # Override the readiness probe as GCLB reuses it for its own healthchecks
             readinessProbe:
               httpGet:
                 scheme: HTTPS
@@ -57,10 +56,8 @@ spec:
           # Enable TLS between GCLB and the application
           cloud.google.com/app-protocols: '{"https":"HTTPS"}'
           service.alpha.kubernetes.io/app-protocols: '{"https":"HTTPS"}'
-          # Uncomment the following line to enable container-native load balancing.
-          #cloud.google.com/neg: '{"ingress": true}'
-      spec:
-        type: NodePort
+          # Comment out the following line if you are not using a VPC-native cluster
+          cloud.google.com/neg: '{"ingress": true}'
   elasticsearchRef:
     name: hulk
   podTemplate:
@@ -68,6 +65,7 @@ spec:
       containers:
         - name: kibana
           readinessProbe:
+            # Override the readiness probe as GCLB reuses it for its own healthchecks
             httpGet:
               scheme: HTTPS
               path: "/login"
