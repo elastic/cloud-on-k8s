@@ -13,13 +13,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
 // NewElasticsearchClient returns an ES client for the given ES cluster
 func NewElasticsearchClient(es esv1.Elasticsearch, k *test.K8sClient) (client.Client, error) {
-	password, err := k.GetElasticPassword(es.Namespace, es.Name)
+	password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&es))
 	if err != nil {
 		return nil, err
 	}

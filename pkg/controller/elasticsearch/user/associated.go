@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -73,7 +72,7 @@ func retrieveAssociatedUsers(c k8s.Client, es esv1.Elasticsearch) (users, error)
 }
 
 // parseAssociatedUserSecret reads an associated user from a secret.
-func parseAssociatedUserSecret(secret v1.Secret) (AssociatedUser, error) {
+func parseAssociatedUserSecret(secret corev1.Secret) (AssociatedUser, error) {
 	user := AssociatedUser{}
 	if len(secret.Data) == 0 {
 		return user, fmt.Errorf("user secret %s/%s is empty", secret.Namespace, secret.Name)
