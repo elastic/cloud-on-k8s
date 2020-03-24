@@ -37,7 +37,7 @@ func (l TrueFalseLabel) AsMap(value bool) map[string]string {
 	}
 }
 
-// AddHasCredentialsAnnotation adds a label used to describe a resource which contains some credentials, either a clear-text password or a token.
-func AddHasCredentialsAnnotation(original map[string]string) map[string]string {
+// AddHasCredentialsLabel adds a label used to describe a resource which contains some credentials, either a clear-text password or a token.
+func AddHasCredentialsLabel(original map[string]string) map[string]string {
 	return maps.Merge(map[string]string{hasCredentialsLabel: "true"}, original)
 }

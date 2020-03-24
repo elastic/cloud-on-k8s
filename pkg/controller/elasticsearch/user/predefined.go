@@ -89,7 +89,7 @@ func reconcilePredefinedUsers(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: secretNsn.Namespace,
 			Name:      secretNsn.Name,
-			Labels:    common.AddHasCredentialsAnnotation(label.NewLabels(k8s.ExtractNamespacedName(&es))),
+			Labels:    common.AddHasCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(&es))),
 		},
 		Data: secretData,
 	}
