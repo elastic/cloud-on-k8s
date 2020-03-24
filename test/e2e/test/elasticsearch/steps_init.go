@@ -42,6 +42,9 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					b.Elasticsearch.Labels[run.TestNameLabel])
 				require.NoError(t, err)
 			},
+			Skip: func() bool {
+				return test.Ctx().Local
+			},
 		},
 		{
 			Name: "Elasticsearch CRDs should exist",

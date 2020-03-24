@@ -36,6 +36,9 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					b.Kibana.Labels[run.TestNameLabel])
 				require.NoError(t, err)
 			},
+			Skip: func() bool {
+				return test.Ctx().Local
+			},
 		},
 		{
 			Name: "Kibana CRDs should exist",

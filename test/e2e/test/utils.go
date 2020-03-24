@@ -122,7 +122,7 @@ func ValidateBuilderHashAnnotation(pod corev1.Pod, hash string) error {
 
 // LabelTestPods labels:
 // - operator pod,
-// - e2e runner pod (if running in cluster)
+// - e2e runner pod
 func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
 	// label operator pod
 	if err := labelPod(
@@ -132,11 +132,6 @@ func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
 		key,
 		value); err != nil {
 		return err
-	}
-
-	// during local run there is no e2e test runner pod so we are done
-	if ctx.Local {
-		return nil
 	}
 
 	// find and label E2E test runner pod

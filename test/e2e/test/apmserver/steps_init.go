@@ -35,6 +35,9 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					b.ApmServer.Labels[run.TestNameLabel])
 				require.NoError(t, err)
 			},
+			Skip: func() bool {
+				return test.Ctx().Local
+			},
 		},
 		{
 			Name: "APM Server CRDs should exist",
