@@ -379,6 +379,11 @@ e2e-run:
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
 		--test-timeout=$(TEST_TIMEOUT) \
+		--pipeline=$(PIPELINE) \
+		--build-number=$(BUILD_NUMBER) \
+		--provider=$(E2E_PROVIDER) \
+		--clusterName=$(CLUSTER_NAME) \
+		--kubernetes-version=$(KUBERNETES_VERSION) \
 		--monitoring-secrets=$(MONITORING_SECRETS)
 
 e2e-generate-xml:
