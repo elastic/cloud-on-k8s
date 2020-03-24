@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -70,11 +69,8 @@ func TestRemoteCluster(t *testing.T) {
 			test.Step{
 				Name: "Add some data to the first cluster",
 				Test: func(t *testing.T) {
-					dataIntegrityCheck := elasticsearch.NewDataIntegrityCheck(k, es1Builder)
-					if strings.HasPrefix(es1Builder.Elasticsearch.Spec.Version, "6") {
-						dataIntegrityCheck.WithSoftDeletesEnabled(true)
-					}
-					require.NoError(t, dataIntegrityCheck.Init())
+					// Always enable soft deletes on test index. This is required to create follower indices but disabled by default on 6.x
+					require.NoError(t, elasticsearch.NewDataIntegrityCheck(k, es1Builder).WithSoftDeletesEnabled(true).Init())
 				},
 			},
 			test.Step{
