@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -69,7 +70,11 @@ func TestRemoteCluster(t *testing.T) {
 			test.Step{
 				Name: "Add some data to the first cluster",
 				Test: func(t *testing.T) {
-					require.NoError(t, elasticsearch.NewDataIntegrityCheck(k, es1Builder).Init())
+					dataIntegrityCheck := elasticsearch.NewDataIntegrityCheck(k, es1Builder)
+					if strings.HasPrefix(es1Builder.Elasticsearch.Spec.Version, "6") {
+						dataIntegrityCheck.WithSoftDeletesEnabled(true)
+					}
+					require.NoError(t, dataIntegrityCheck.Init())
 				},
 			},
 			test.Step{
