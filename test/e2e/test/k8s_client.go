@@ -169,12 +169,12 @@ func (k *K8sClient) GetEvents(opts ...k8sclient.ListOption) ([]corev1.Event, err
 	return eventList.Items, nil
 }
 
-func (k *K8sClient) GetElasticPassword(namespace, esName string) (string, error) {
-	secretName := esName + "-es-elastic-user"
+func (k *K8sClient) GetElasticPassword(nsn types.NamespacedName) (string, error) {
+	secretName := nsn.Name + "-es-elastic-user"
 	elasticUserKey := "elastic"
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: namespace,
+		Namespace: nsn.Namespace,
 		Name:      secretName,
 	}
 	if err := k.Client.Get(key, &secret); err != nil {

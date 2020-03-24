@@ -228,7 +228,7 @@ func CheckESPassword(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "Elastic password should be available",
 		Test: test.Eventually(func() error {
-			password, err := k.GetElasticPassword(b.Elasticsearch.Namespace, b.Elasticsearch.Name)
+			password, err := k.GetElasticPassword(k8s.ExtractNamespacedName(&b.Elasticsearch))
 			if err != nil {
 				return err
 			}

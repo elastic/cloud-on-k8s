@@ -1,0 +1,58 @@
+= Expose Elasticsearch and Kibana using a Google Cloud Load Balancer (GCLB)
+
+This recipe illustrates how to expose an Elasticsearch and Kibana instance to the outside world using custom TLS certificates. All communications -- including those between the load balancer and the Elasticsearch/Kibana pods -- are done over secure TLS connections.
+
+== Prerequisites
+
+- Google Kubernetes Engine (GKE) cluster running ECK. If you want to use container-native networking to avoid an extra network hop between the load balancer and the application, ensure that link:https://cloud.google.com/kubernetes-engine/docs/how-to/container-native-load-balancing[IP aliasing] is enabled when creating the cluster.
+- A firewall rule allowing the Google healthcheck probes to access the VMs running your Kubernetes nodes. See https://cloud.google.com/load-balancing/docs/health-check-concepts#ip-ranges for more information.
+
+This recipe uses self-signed certifcates issued by link:https://cert-manager.io[cert-manager] to secure the communication channel between users and the GCLB. You could choose to use Google managed certificates or your own saved certificates instead. Refer to the link:https://cloud.google.com/kubernetes-engine/docs/concepts/ingress#options_for_providing_ssl_certificates[documentation] for more information about how to enable those options.
+
+A self-signing cluster issuer can be created as follows:
+
+[source,yaml]
+----
+include::00-prereq-cluster-issuer.yaml[]
+----
+
+== Recipe
+
+Create an Elasticsearch cluster and a Kibana instance with customized service definition.
+
+[source,yaml]
+----
+include::01-elastic-stack.yaml[]
+----
+
+
+Create the ingress
+
+[source,yaml]
+----
+include::02-ingress.yaml[]
+----
+
+
+== Test the ingress
+
+Obtain the IP address of the ingress.
+
+[source,sh]
+----
+export INGRESS_HOST=$(kubectl get ingress hulk -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+----
+
+Obtain the password of the `elastic` user.
+
+[source,sh]
+----
+ELASTICSEARCH_PASSWORD=$(kubectl get secret hulk-es-elastic-user -o=go-template='{{ .data.elastic | base64decode}}')
+----
+
+Access Elasticsearch.
+
+[source,sh]
+----
+curl -H "Host: elasticsearch.hulk" --resolve "elasticsearch.hulk:443:$INGRESS_HOST" -k -u "elastic:$ELASTICSEARCH_PASSWORD" 'https://elasticsearch.hulk/_cat/health?v'
+----
