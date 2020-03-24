@@ -269,7 +269,7 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      apmname.SecretToken(as.Name),
-			Labels:    common.AddHasCredentialsLabel(labels.NewLabels(as.Name)),
+			Labels:    common.AddCredentialsLabel(labels.NewLabels(as.Name)),
 		},
 		Data: make(map[string][]byte),
 	}

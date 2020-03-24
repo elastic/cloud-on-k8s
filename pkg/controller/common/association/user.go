@@ -92,7 +92,7 @@ func ReconcileEsUser(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
 			Namespace: secKey.Namespace,
-			Labels:    common.AddHasCredentialsLabel(labels),
+			Labels:    common.AddCredentialsLabel(labels),
 		},
 		Data: map[string][]byte{},
 	}

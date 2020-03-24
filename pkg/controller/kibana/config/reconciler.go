@@ -43,7 +43,7 @@ func ReconcileConfigSecret(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kb.Namespace,
 			Name:      SecretName(kb),
-			Labels: common.AddHasCredentialsLabel(map[string]string{
+			Labels: common.AddCredentialsLabel(map[string]string{
 				label.KibanaNameLabelName: kb.Name,
 			}),
 		},

@@ -14,7 +14,7 @@ const (
 	// TypeLabelName used to represent a resource type in k8s resources
 	TypeLabelName = "common.k8s.elastic.co/type"
 
-	hasCredentialsLabel = "eck.k8s.elastic.co/has-credentials"
+	credentialsLabel = "eck.k8s.elastic.co/credentials"
 )
 
 // TrueFalseLabel is a label that has a true/false value.
@@ -37,7 +37,7 @@ func (l TrueFalseLabel) AsMap(value bool) map[string]string {
 	}
 }
 
-// AddHasCredentialsLabel adds a label used to describe a resource which contains some credentials, either a clear-text password or a token.
-func AddHasCredentialsLabel(original map[string]string) map[string]string {
-	return maps.Merge(map[string]string{hasCredentialsLabel: "true"}, original)
+// AddCredentialsLabel adds a label used to describe a resource which contains some credentials, either a clear-text password or a token.
+func AddCredentialsLabel(original map[string]string) map[string]string {
+	return maps.Merge(map[string]string{credentialsLabel: "true"}, original)
 }
