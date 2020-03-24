@@ -75,12 +75,6 @@ func ReconcileConfig(client k8s.Client, dynamicWatches watches.DynamicWatches, e
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
 func newConfig(c k8s.Client, dynamicWatches watches.DynamicWatches, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
-	cfg := defaultConfig(ents)
-	specConfig := ents.Spec.Config
-	if specConfig == nil {
-		specConfig = &commonv1.Config{}
-	}
-
 	reusedCfg, err := getOrCreateReusableSettings(c, ents)
 	if err != nil {
 		return nil, err
@@ -90,6 +84,10 @@ func newConfig(c k8s.Client, dynamicWatches watches.DynamicWatches, ents entsv1b
 	if err != nil {
 		return nil, err
 	}
+	specConfig := ents.Spec.Config
+	if specConfig == nil {
+		specConfig = &commonv1.Config{}
+	}
 	userProvidedCfg, err := settings.NewCanonicalConfigFrom(specConfig.Data)
 	if err != nil {
 		return nil, err
@@ -98,6 +96,7 @@ func newConfig(c k8s.Client, dynamicWatches watches.DynamicWatches, ents entsv1b
 	if err != nil {
 		return nil, err
 	}
+	cfg := defaultConfig(ents)
 
 	// merge with user settings last so they take precedence
 	err = cfg.MergeWith(reusedCfg, tlsCfg, associationCfg, userProvidedCfg, userProvidedSecretCfg)
