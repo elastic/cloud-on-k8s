@@ -408,36 +408,3 @@ func Test_getExistingConfig(t *testing.T) {
 		})
 	}
 }
-
-func Test_filterExistingConfig(t *testing.T) {
-	tests := []struct {
-		name      string
-		cfg       *settings.CanonicalConfig
-		want      *settings.CanonicalConfig
-		expectErr bool
-	}{
-		{
-			name: "happy path",
-			cfg: settings.MustCanonicalConfig(map[string]interface{}{
-				XpackSecurityEncryptionKey: "value",
-				"notakey":                  "notavalue",
-			}),
-			want: settings.MustCanonicalConfig(map[string]interface{}{
-				XpackSecurityEncryptionKey: "value",
-			}),
-			expectErr: false,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			actual, err := filterExistingConfig(tc.cfg)
-			if tc.expectErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-			assert.Equal(t, tc.want, actual)
-		})
-	}
-}

@@ -7,12 +7,6 @@ package user
 import (
 	"reflect"
 
-	"golang.org/x/crypto/bcrypt"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -20,6 +14,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"golang.org/x/crypto/bcrypt"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -90,7 +89,7 @@ func reconcilePredefinedUsers(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: secretNsn.Namespace,
 			Name:      secretNsn.Name,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Labels:    common.AddHasCredentialsAnnotation(label.NewLabels(k8s.ExtractNamespacedName(&es))),
 		},
 		Data: secretData,
 	}

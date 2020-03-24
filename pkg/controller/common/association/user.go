@@ -7,20 +7,20 @@ package association
 import (
 	"context"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 // elasticsearchUserName identifies the associated user in Elasticsearch namespace.
@@ -83,18 +83,21 @@ func ReconcileEsUser(
 	span, _ := apm.StartSpan(ctx, "reconcile_es_user", tracing.SpanTypeApp)
 	defer span.End()
 
+	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
+	labels[eslabel.ClusterNameLabelName] = es.Name
+
 	secKey := secretKey(associated, userObjectSuffix)
 	usrKey := UserKey(associated, userObjectSuffix)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
 			Namespace: secKey.Namespace,
-			Labels:    labels,
+			Labels:    common.AddHasCredentialsAnnotation(labels),
 		},
 		Data: map[string][]byte{},
 	}
 
-	password := common.RandomPasswordBytes()
+	var password []byte
 	// reuse the existing password if there's one
 	var existingSecret corev1.Secret
 	err := c.Get(k8s.ExtractNamespacedName(&expectedSecret), &existingSecret)
@@ -103,6 +106,8 @@ func ReconcileEsUser(
 	}
 	if existingPassword, exists := existingSecret.Data[usrKey.Name]; exists {
 		password = existingPassword
+	} else {
+		password = common.RandomPasswordBytes()
 	}
 	expectedSecret.Data[usrKey.Name] = password
 

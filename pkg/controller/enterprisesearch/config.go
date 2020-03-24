@@ -10,6 +10,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
@@ -22,7 +23,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 const (
@@ -56,7 +56,7 @@ func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (core
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ents.Namespace,
 			Name:      name.Config(ents.Name),
-			Labels:    NewLabels(ents.Name),
+			Labels:    common.AddHasCredentialsAnnotation(NewLabels(ents.Name)),
 		},
 		Data: map[string][]byte{
 			ConfigFilename: cfgBytes,
@@ -86,10 +86,10 @@ func getOrCreateReusableSettings(c k8s.Client, ents entsv1beta1.EnterpriseSearch
 		return nil, err
 	}
 	if len(e.SecretSession) == 0 {
-		e.SecretSession = rand.String(32)
+		e.SecretSession = string(common.RandomBytes(32))
 	}
 	if len(e.EncryptionKeys) == 0 {
-		e.EncryptionKeys = []string{rand.String(32)}
+		e.EncryptionKeys = []string{string(common.RandomBytes(32))}
 	}
 	return settings.MustCanonicalConfig(e), nil
 }

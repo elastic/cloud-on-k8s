@@ -43,7 +43,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -270,11 +269,9 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      apmname.SecretToken(as.Name),
-			Labels:    labels.NewLabels(as.Name),
+			Labels:    common.AddHasCredentialsAnnotation(labels.NewLabels(as.Name)),
 		},
-		Data: map[string][]byte{
-			SecretTokenKey: []byte(rand.String(24)),
-		},
+		Data: make(map[string][]byte),
 	}
 	// reuse the secret token if it already exists
 	var existingSecret corev1.Secret
@@ -284,6 +281,8 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	}
 	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
 		expectedApmServerSecret.Data[SecretTokenKey] = token
+	} else {
+		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(24)
 	}
 
 	return reconciler.ReconcileSecret(c, expectedApmServerSecret, as)

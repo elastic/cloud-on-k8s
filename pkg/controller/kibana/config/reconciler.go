@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
@@ -42,9 +43,9 @@ func ReconcileConfigSecret(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kb.Namespace,
 			Name:      SecretName(kb),
-			Labels: map[string]string{
+			Labels: common.AddHasCredentialsAnnotation(map[string]string{
 				label.KibanaNameLabelName: kb.Name,
-			},
+			}),
 		},
 		Data: map[string][]byte{
 			SettingsFilename:  settingsYamlBytes,
