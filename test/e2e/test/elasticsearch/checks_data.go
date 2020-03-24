@@ -50,9 +50,9 @@ func NewDataIntegrityCheck(k *test.K8sClient, b Builder) *DataIntegrityCheck {
 	}
 }
 
-func (d *DataIntegrityCheck) WithSoftDeletesEnabled(value bool) *DataIntegrityCheck {
-	d.createIndexSettings.SoftDeletesEnabled = &value
-	return d
+func (dc *DataIntegrityCheck) WithSoftDeletesEnabled(value bool) *DataIntegrityCheck {
+	dc.createIndexSettings.SoftDeletesEnabled = &value
+	return dc
 }
 
 type createIndexSettings struct {
