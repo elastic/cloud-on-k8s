@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -117,4 +118,53 @@ func ValidateBuilderHashAnnotation(pod corev1.Pod, hash string) error {
 		return fmt.Errorf("pod %s was not upgraded (yet?) to match the expected specification", pod.Name)
 	}
 	return nil
+}
+
+// LabelTestPods labels:
+// - operator pod,
+// - e2e runner pod
+func LabelTestPods(c k8s.Client, ctx Context, key, value string) error {
+	// label operator pod
+	if err := labelPod(
+		c,
+		ctx.Operator.Name+"-0",
+		ctx.Operator.Namespace,
+		key,
+		value); err != nil {
+		return err
+	}
+
+	// find and label E2E test runner pod
+	podList := corev1.PodList{}
+	ns := client.InNamespace(ctx.E2ENamespace)
+	if err := c.List(&podList, ns); err != nil {
+		return err
+	}
+
+	for _, pod := range podList.Items {
+		if strings.HasPrefix(pod.Name, "eck-"+ctx.TestRun) {
+			return labelPod(
+				c,
+				pod.Name,
+				ctx.E2ENamespace,
+				key,
+				value)
+		}
+	}
+
+	return errors.New("e2e runner pod not found")
+
+}
+
+func labelPod(client k8s.Client, name, namespace, key, value string) error {
+	pod := corev1.Pod{}
+	if err := client.Get(types.NamespacedName{
+		Namespace: namespace,
+		Name:      name,
+	}, &pod); err != nil {
+		return err
+	}
+
+	pod.Labels[key] = value
+	return client.Update(&pod)
 }

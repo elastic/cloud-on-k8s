@@ -11,6 +11,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,20 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				pods := corev1.PodList{}
 				err := k.Client.List(&pods)
 				require.NoError(t, err)
+			},
+		},
+		{
+			Name: "Label test pods",
+			Test: func(t *testing.T) {
+				err := test.LabelTestPods(
+					k.Client,
+					test.Ctx(),
+					run.TestNameLabel,
+					b.Elasticsearch.Labels[run.TestNameLabel])
+				require.NoError(t, err)
+			},
+			Skip: func() bool {
+				return test.Ctx().Local
 			},
 		},
 		{

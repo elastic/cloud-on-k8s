@@ -227,7 +227,7 @@ func (r *VersionUpgrade) retrieveTLSCerts() ([]*x509.Certificate, error) {
 	var certsSecret corev1.Secret
 	nsn := types.NamespacedName{
 		Namespace: r.ents.Namespace,
-		Name:      certificates.HTTPCertsInternalSecretName(entsname.EntSearchNamer, r.ents.Name),
+		Name:      certificates.InternalCertsSecretName(entsname.EntSearchNamer, r.ents.Name),
 	}
 	if err := r.k8sClient.Get(nsn, &certsSecret); err != nil {
 		return nil, err

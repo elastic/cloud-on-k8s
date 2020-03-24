@@ -4,7 +4,7 @@
 
 // +build integration
 
-package watches
+package watches_test
 
 import (
 	"testing"
@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
 )
@@ -32,7 +33,7 @@ func TestMain(m *testing.M) {
 // The test just checks that everything fits together and reconciliations are correctly triggered
 // from the EventHandler. More detailed behaviour is tested in `handler_test.go`.
 func TestDynamicEnqueueRequest(t *testing.T) {
-	eventHandler := NewDynamicEnqueueRequest()
+	eventHandler := watches.NewDynamicEnqueueRequest()
 	// create a controller that watches secrets and enqueues requests into a chan
 	requests := make(chan reconcile.Request)
 	addToManager := func(mgr manager.Manager, params operator.Parameters) error {
@@ -66,7 +67,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	assert.NoError(t, c.Create(testObj))
 
 	// Add a named watch for the first object
-	assert.NoError(t, eventHandler.AddHandler(NamedWatch{
+	assert.NoError(t, eventHandler.AddHandler(watches.NamedWatch{
 		Watched: []types.NamespacedName{watched},
 		Watcher: watching,
 		Name:    "test-watch-1",

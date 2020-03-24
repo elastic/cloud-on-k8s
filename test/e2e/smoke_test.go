@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -36,16 +37,21 @@ func TestSmoke(t *testing.T) {
 
 	ns := test.Ctx().ManagedNamespace(0)
 	randSuffix := rand.String(4)
+	testName := "TestSmoke"
 	esBuilder = esBuilder.
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
 		WithRestrictedSecurityContext().
-		WithDefaultPersistentVolumes()
+		WithDefaultPersistentVolumes().
+		WithLabel(run.TestNameLabel, testName).
+		WithPodLabel(run.TestNameLabel, testName)
 	kbBuilder = kbBuilder.
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithLabel(run.TestNameLabel, testName).
+		WithPodLabel(run.TestNameLabel, testName)
 	apmBuilder = apmBuilder.
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
@@ -53,7 +59,9 @@ func TestSmoke(t *testing.T) {
 		WithConfig(map[string]interface{}{
 			"apm-server.ilm.enabled": false,
 		}).
-		WithRestrictedSecurityContext()
+		WithRestrictedSecurityContext().
+		WithLabel(run.TestNameLabel, testName).
+		WithPodLabel(run.TestNameLabel, testName)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
 		RunSequential(t)
