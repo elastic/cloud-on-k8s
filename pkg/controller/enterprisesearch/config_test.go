@@ -13,6 +13,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
@@ -105,7 +106,8 @@ func Test_parseConfigRef(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrappedFakeClient(tt.secrets...)
 			w := watches.NewDynamicWatches()
-			got, err := parseConfigRef(c, w, tt.ents)
+			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: record.NewFakeRecorder(10)}
+			got, err := parseConfigRef(driver, tt.ents)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {

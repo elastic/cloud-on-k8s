@@ -18,6 +18,8 @@ import (
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -41,8 +43,8 @@ func ConfigSecretVolume(ents entsv1beta1.EnterpriseSearch) volume.SecretVolume {
 
 // Reconcile reconciles the configuration of Enterprise Search: it generates the right configuration and
 // stores it in a secret that is kept up to date.
-func ReconcileConfig(client k8s.Client, dynamicWatches watches.DynamicWatches, ents entsv1beta1.EnterpriseSearch) (corev1.Secret, error) {
-	cfg, err := newConfig(client, dynamicWatches, ents)
+func ReconcileConfig(driver driver.Interface, ents entsv1beta1.EnterpriseSearch) (corev1.Secret, error) {
+	cfg, err := newConfig(driver, ents)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -64,7 +66,7 @@ func ReconcileConfig(client k8s.Client, dynamicWatches watches.DynamicWatches, e
 		},
 	}
 
-	return reconciler.ReconcileSecret(client, expectedConfigSecret, &ents)
+	return reconciler.ReconcileSecret(driver.K8sClient(), expectedConfigSecret, &ents)
 }
 
 // newConfig builds a single merged config from:
@@ -74,13 +76,13 @@ func ReconcileConfig(client k8s.Client, dynamicWatches watches.DynamicWatches, e
 // - user-provided plaintext configuration
 // - user-provided secret configuration
 // In case of duplicate settings, the last one takes precedence.
-func newConfig(c k8s.Client, dynamicWatches watches.DynamicWatches, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
-	reusedCfg, err := getOrCreateReusableSettings(c, ents)
+func newConfig(driver driver.Interface, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+	reusedCfg, err := getOrCreateReusableSettings(driver.K8sClient(), ents)
 	if err != nil {
 		return nil, err
 	}
 	tlsCfg := tlsConfig(ents)
-	associationCfg, err := associationConfig(c, ents)
+	associationCfg, err := associationConfig(driver.K8sClient(), ents)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +94,7 @@ func newConfig(c k8s.Client, dynamicWatches watches.DynamicWatches, ents entsv1b
 	if err != nil {
 		return nil, err
 	}
-	userProvidedSecretCfg, err := parseConfigRef(c, dynamicWatches, ents)
+	userProvidedSecretCfg, err := parseConfigRef(driver, ents)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +165,7 @@ func configRefWatchName(ents types.NamespacedName) string {
 
 // parseConfigRef builds a single merged CanonicalConfig from the secrets referenced in configReg,
 // and ensures watches are correctly set on those secrets.
-func parseConfigRef(c k8s.Client, dynamicWatches watches.DynamicWatches, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
+func parseConfigRef(driver driver.Interface, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	cfg := settings.NewCanonicalConfig()
 	secretNames := make([]string, 0, len(ents.Spec.ConfigRef))
 	for _, secretRef := range ents.Spec.ConfigRef {
@@ -173,12 +175,12 @@ func parseConfigRef(c k8s.Client, dynamicWatches watches.DynamicWatches, ents en
 		secretNames = append(secretNames, secretRef.SecretName)
 	}
 	nsn := k8s.ExtractNamespacedName(&ents)
-	if err := watches.WatchUserProvidedSecrets(nsn, dynamicWatches, configRefWatchName(nsn), secretNames); err != nil {
+	if err := watches.WatchUserProvidedSecrets(nsn, driver.DynamicWatches(), configRefWatchName(nsn), secretNames); err != nil {
 		return nil, err
 	}
 	for _, secretName := range secretNames {
 		var secret corev1.Secret
-		if err := c.Get(types.NamespacedName{Namespace: ents.Namespace, Name: secretName}, &secret); err != nil {
+		if err := driver.K8sClient().Get(types.NamespacedName{Namespace: ents.Namespace, Name: secretName}, &secret); err != nil {
 			// the secret may not exist (yet) in the cache
 			// it may contain important settings such as encryption keys, that we don't want to generate ourselves
 			// let's explicitly error out
@@ -187,8 +189,9 @@ func parseConfigRef(c k8s.Client, dynamicWatches watches.DynamicWatches, ents en
 		if data, exists := secret.Data[ConfigFilename]; exists {
 			parsed, err := settings.ParseConfig(data)
 			if err != nil {
-				log.Error(err, "unable to parse configuration from secret",
-					"namespace", ents.Namespace, "ents_name", ents.Name, "secret_name", secretName)
+				msg := "unable to parse configuration from secret"
+				log.Error(err, "msg", "namespace", ents.Namespace, "ents_name", ents.Name, "secret_name", secretName)
+				driver.Recorder().Event(&ents, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 				return nil, err
 			}
 			if err := cfg.MergeWith(parsed); err != nil {
