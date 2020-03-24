@@ -1,0 +1,50 @@
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: hulk-elastic-stack
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: "Host(`elasticsearch.hulk`) && ((PathPrefix(`/_search`) && Method(`POST`)) || Method(`GET`))"
+      kind: Rule
+      services:
+        - name: hulk-elasticsearch-read
+          port: 9200
+          scheme: https
+      middlewares:
+        - name: hulk-middleware-chain
+    - match: "Host(`elasticsearch.hulk`) && Method(`DELETE`,`POST`,`PUT`)"
+      kind: Rule
+      services:
+        - name: hulk-elasticsearch-write
+          port: 9200
+          scheme: https
+      middlewares:
+        - name: hulk-middleware-chain
+    - match: "Host(`kibana.hulk`)"
+      kind: Rule
+      services:
+        - name: hulk-kb-http
+          port: 5601
+          scheme: https
+      middlewares:
+        - name: hulk-middleware-chain
+    - match: "Host(`apm.hulk`)"
+      kind: Rule
+      services:
+        - name: hulk-apm-http
+          port: 8200
+          scheme: https
+      middlewares:
+        - name: hulk-ip-whitelist
+        - name: hulk-circuit-breaker
+        - name: hulk-apm-ratelimit
+  tls:
+    secretName: hulk-certs
+    domains:
+      - sans:
+          - "elasticsearch.hulk"
+          - "kibana.hulk"
+          - "apm.hulk"

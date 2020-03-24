@@ -7,6 +7,7 @@ package elasticsearch
 import (
 	"reflect"
 
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,7 +61,9 @@ func newBuilder(name, randSuffix string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
+		Labels:    map[string]string{run.TestNameLabel: name},
 	}
+
 	return Builder{
 		Elasticsearch: esv1.Elasticsearch{
 			ObjectMeta: meta,
@@ -68,7 +71,9 @@ func newBuilder(name, randSuffix string) Builder {
 				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
-	}.WithSuffix(randSuffix)
+	}.
+		WithSuffix(randSuffix).
+		WithLabel(run.TestNameLabel, name)
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -197,6 +202,14 @@ func (b Builder) WithNodeSet(nodeSet esv1.NodeSet) Builder {
 		nodeSet.Config = &commonv1.Config{Data: map[string]interface{}{}}
 	}
 	nodeSet.Config.Data["node.store.allow_mmap"] = false
+
+	// Propagates test-name label from top level resource.
+	// Can be removed when https://github.com/elastic/cloud-on-k8s/issues/2652 is implemented.
+	if nodeSet.PodTemplate.Labels == nil {
+		nodeSet.PodTemplate.Labels = map[string]string{}
+	}
+	nodeSet.PodTemplate.Labels[run.TestNameLabel] = b.Elasticsearch.Labels[run.TestNameLabel]
+
 	b.Elasticsearch.Spec.NodeSets = append(b.Elasticsearch.Spec.NodeSets, nodeSet)
 	return b.WithDefaultPersistentVolumes()
 }
@@ -263,6 +276,7 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 
 func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
+		pt.Labels[run.TestNameLabel] = b.Elasticsearch.Labels[run.TestNameLabel]
 		b.Elasticsearch.Spec.NodeSets[i].PodTemplate = pt
 	}
 	return b
@@ -309,6 +323,18 @@ func (b Builder) WithEnvironmentVariable(name, value string) Builder {
 	return b
 }
 
+func (b Builder) WithLabel(key, value string) Builder {
+	if b.Elasticsearch.Labels == nil {
+		b.Elasticsearch.Labels = make(map[string]string)
+	}
+	b.Elasticsearch.Labels[key] = value
+
+	return b
+}
+
+// WithPodLabel sets the label in pod templates across all node sets.
+// All invocations can be removed when
+// https://github.com/elastic/cloud-on-k8s/issues/2652 is implemented.
 func (b Builder) WithPodLabel(key, value string) Builder {
 	for i := range b.Elasticsearch.Spec.NodeSets {
 		if b.Elasticsearch.Spec.NodeSets[i].PodTemplate.Labels == nil {
@@ -333,7 +359,7 @@ func (b Builder) TriggersRollingUpgrade() bool {
 	// Important: this only checks ES version and spec, other changes such as secure settings update
 	// are tricky to capture and ignored here.
 	isVersionUpgrade := b.MutatedFrom.Elasticsearch.Spec.Version != b.Elasticsearch.Spec.Version
-	httpOptionsChange := reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
+	httpOptionsChange := !reflect.DeepEqual(b.MutatedFrom.Elasticsearch.Spec.HTTP, b.Elasticsearch.Spec.HTTP)
 	for _, initialNs := range b.MutatedFrom.Elasticsearch.Spec.NodeSets {
 		for _, mutatedNs := range b.Elasticsearch.Spec.NodeSets {
 			if initialNs.Name == mutatedNs.Name &&

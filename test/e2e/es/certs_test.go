@@ -13,15 +13,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestUpdateHTTPCertSAN(t *testing.T) {
@@ -93,7 +94,7 @@ func getCert(k *test.K8sClient, ns string, esName string) ([]byte, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: ns,
-		Name:      certificates.PublicSecretName(esv1.ESNamer, esName, certificates.HTTPCAType),
+		Name:      certificates.PublicCertsSecretName(esv1.ESNamer, esName),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err

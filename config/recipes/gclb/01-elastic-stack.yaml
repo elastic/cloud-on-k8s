@@ -1,0 +1,72 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: hulk
+  labels:
+    app: hulk
+spec:
+  version: 7.6.1
+  http:
+    service:
+      metadata:
+        labels:
+          app: hulk
+        annotations:
+          # Enable TLS between GCLB and the application
+          cloud.google.com/app-protocols: '{"https":"HTTPS"}'
+          service.alpha.kubernetes.io/app-protocols: '{"https":"HTTPS"}'
+          # Comment out the following line if you are not using a VPC-native cluster
+          cloud.google.com/neg: '{"ingress": true}'
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.store.allow_mmap: false
+      # Enable anonymous access to allow GCLB health probes to succeed
+      xpack.security.authc:
+        anonymous:
+          username: anon
+          roles: monitoring_user
+    podTemplate:
+      spec:
+        containers:
+          - name: elasticsearch
+            # Override the readiness probe as GCLB reuses it for its own healthchecks
+            readinessProbe:
+              httpGet:
+                scheme: HTTPS
+                port: 9200
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: hulk
+  labels:
+    app: hulk
+spec:
+  version: 7.6.1
+  count: 1
+  http:
+    service:
+      metadata:
+        labels:
+          app: hulk
+        annotations:
+          # Enable TLS between GCLB and the application
+          cloud.google.com/app-protocols: '{"https":"HTTPS"}'
+          service.alpha.kubernetes.io/app-protocols: '{"https":"HTTPS"}'
+          # Comment out the following line if you are not using a VPC-native cluster
+          cloud.google.com/neg: '{"ingress": true}'
+  elasticsearchRef:
+    name: hulk
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          readinessProbe:
+            # Override the readiness probe as GCLB reuses it for its own healthchecks
+            httpGet:
+              scheme: HTTPS
+              path: "/login"
+              port: 5601

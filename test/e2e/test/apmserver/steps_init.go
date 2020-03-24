@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +25,20 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 				require.NoError(t, err)
 			},
 		},
-
+		{
+			Name: "Label test pods",
+			Test: func(t *testing.T) {
+				err := test.LabelTestPods(
+					k.Client,
+					test.Ctx(),
+					run.TestNameLabel,
+					b.ApmServer.Labels[run.TestNameLabel])
+				require.NoError(t, err)
+			},
+			Skip: func() bool {
+				return test.Ctx().Local
+			},
+		},
 		{
 			Name: "APM Server CRDs should exist",
 			Test: func(t *testing.T) {

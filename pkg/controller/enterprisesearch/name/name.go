@@ -11,7 +11,6 @@ import (
 const (
 	httpServiceSuffix = "http"
 	configSuffix      = "config"
-	userSuffix        = "user"
 	deploymentSuffix  = "server"
 )
 
@@ -29,8 +28,4 @@ func Deployment(entsName string) string {
 
 func Config(entsName string) string {
 	return EntSearchNamer.Suffix(entsName, configSuffix)
-}
-
-func DefaultUser(entsName string) string {
-	return EntSearchNamer.Suffix(entsName, userSuffix)
 }

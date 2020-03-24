@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -79,7 +78,7 @@ func Test_retrieveAssociatedUsers(t *testing.T) {
 
 func Test_parseAssociatedUserSecret(t *testing.T) {
 	type args struct {
-		secret v1.Secret
+		secret corev1.Secret
 	}
 	tests := []struct {
 		name    string
@@ -91,7 +90,7 @@ func Test_parseAssociatedUserSecret(t *testing.T) {
 			name:    "Simple kibana example",
 			wantErr: false,
 			args: args{
-				secret: v1.Secret{
+				secret: corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ns2-kibana-sample-kibana-user",
 						Namespace: "default",
@@ -113,7 +112,7 @@ func Test_parseAssociatedUserSecret(t *testing.T) {
 			name:    "Multi-roles example",
 			wantErr: false,
 			args: args{
-				secret: v1.Secret{
+				secret: corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ns2-kibana-sample-kibana-user",
 						Namespace: "default",
@@ -135,7 +134,7 @@ func Test_parseAssociatedUserSecret(t *testing.T) {
 			name:    "User name is missing",
 			wantErr: true,
 			args: args{
-				secret: v1.Secret{
+				secret: corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ns2-kibana-sample-kibana-user",
 						Namespace: "default",
@@ -152,7 +151,7 @@ func Test_parseAssociatedUserSecret(t *testing.T) {
 			name:    "Password is missing",
 			wantErr: true,
 			args: args{
-				secret: v1.Secret{
+				secret: corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ns2-kibana-sample-kibana-user",
 						Namespace: "default",

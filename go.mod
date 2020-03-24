@@ -42,6 +42,7 @@ require (
 	github.com/tsenart/vegeta v12.7.0+incompatible
 	go.elastic.co/apm v1.7.0
 	go.elastic.co/apm/module/apmelasticsearch v1.7.0
+	go.uber.org/automaxprocs v1.3.0
 	go.uber.org/zap v1.12.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	golang.org/x/net v0.0.0-20191011234655-491137f69257 // indirect
@@ -58,3 +59,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.5.0
 	sigs.k8s.io/controller-tools v0.2.5
 )
+
+// this is used by vegeta, but the version they use is older and did not include a licence. we require the licence and so pin this
+replace github.com/dgryski/go-gk => github.com/dgryski/go-gk v0.0.0-20200319235926-a69029f61654

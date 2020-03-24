@@ -13,16 +13,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.elastic.co/apm"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
+	"k8s.io/apimachinery/pkg/util/wait"
 	// allow gcp authentication
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/client-go/rest"
@@ -31,6 +28,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+
+	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -41,9 +40,12 @@ import (
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
 	entsassn "github.com/elastic/cloud-on-k8s/pkg/controller/entsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
@@ -56,7 +58,6 @@ import (
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -180,6 +181,17 @@ func init() {
 }
 
 func execute() {
+	// update GOMAXPROCS to container cpu limit if necessary
+	_, err := maxprocs.Set(maxprocs.Logger(func(s string, i ...interface{}) {
+		// maxprocs needs an sprintf format string with args, but our logger needs a string with optional key value pairs,
+		// so we need to do this translation
+		log.Info(fmt.Sprintf(s, i...))
+	}))
+	if err != nil {
+		log.Error(err, "Error setting GOMAXPROCS")
+		os.Exit(1)
+	}
+
 	if dev.Enabled {
 		// expose pprof if development mode is enabled
 		mux := http.NewServeMux()
@@ -221,7 +233,7 @@ func execute() {
 
 	// set the default container registry
 	containerRegistry := viper.GetString(operator.ContainerRegistryFlag)
-	log.Info("Setting default container registry", "registry", containerRegistry)
+	log.Info("Setting default container registry", "container_registry", containerRegistry)
 	container.SetContainerRegistry(containerRegistry)
 
 	// Get a config to talk to the apiserver

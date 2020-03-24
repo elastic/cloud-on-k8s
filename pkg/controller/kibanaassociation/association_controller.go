@@ -9,6 +9,15 @@ import (
 	"reflect"
 	"time"
 
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -16,7 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -27,15 +36,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // Kibana association controller
@@ -310,7 +310,7 @@ func (r *ReconcileAssociation) updateAssociationConf(ctx context.Context, expect
 	if !reflect.DeepEqual(expectedESAssoc, kibana.AssociationConf()) {
 		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		if err := association.UpdateAssociationConf(r.Client, kibana, expectedESAssoc); err != nil {
-			if errors.IsConflict(err) {
+			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}
 			log.Error(err, "Failed to update association configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
@@ -347,7 +347,7 @@ func (r *ReconcileAssociation) getElasticsearch(ctx context.Context, kibana *kbv
 			// remove connection details if they are set
 			span, _ = apm.StartSpan(ctx, "remove_assoc_conf", tracing.SpanTypeApp)
 			defer span.End()
-			if err := association.RemoveAssociationConf(r.Client, kibana); err != nil && !errors.IsConflict(err) {
+			if err := association.RemoveAssociationConf(r.Client, kibana); err != nil && !apierrors.IsConflict(err) {
 				log.Error(err, "Failed to remove Elasticsearch configuration from Kibana object",
 					"namespace", kibana.Namespace, "kibana_name", kibana.Name)
 				return es, commonv1.AssociationPending, err
@@ -368,7 +368,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kib
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(kibanaKey),
-		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esv1.ESNamer, es)},
+		Watched: []types.NamespacedName{certificates.PublicCertsSecretRef(esv1.ESNamer, es)},
 		Watcher: kibanaKey,
 	}); err != nil {
 		return association.CASecret{}, err

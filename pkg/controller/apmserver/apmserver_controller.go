@@ -15,7 +15,6 @@ import (
 	"go.elastic.co/apm"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	apmcerts "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
@@ -23,7 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -40,7 +38,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -229,7 +226,19 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	results := apmcerts.Reconcile(ctx, r, as, []corev1.Service{*svc}, r.CACertRotation, r.CertRotation)
+
+	_, results := certificates.Reconciler{
+		K8sClient:             r.K8sClient(),
+		DynamicWatches:        r.DynamicWatches(),
+		Object:                as,
+		TLSOptions:            as.Spec.HTTP.TLS,
+		Namer:                 apmname.APMNamer,
+		Labels:                labels.NewLabels(as.Name),
+		Services:              []corev1.Service{*svc},
+		CACertRotation:        r.CACertRotation,
+		CertRotation:          r.CertRotation,
+		GarbageCollectSecrets: true,
+	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
@@ -238,7 +247,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 
 	state, err = r.reconcileApmServerDeployment(ctx, state, as)
 	if err != nil {
-		if errors.IsConflict(err) {
+		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while updating status")
 			return reconcile.Result{Requeue: true}, nil
 		}
@@ -250,7 +259,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 
 	// update status
 	err = r.updateStatus(ctx, state)
-	if err != nil && errors.IsConflict(err) {
+	if err != nil && apierrors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status", "namespace", as.Namespace, "as", as.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}
@@ -348,7 +357,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		var httpCerts corev1.Secret
 		err := r.Get(types.NamespacedName{
 			Namespace: as.Namespace,
-			Name:      certificates.HTTPCertsInternalSecretName(apmname.APMNamer, as.Name),
+			Name:      certificates.InternalCertsSecretName(apmname.APMNamer, as.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
@@ -356,7 +365,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
-		httpCertsVolume := http.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
+		httpCertsVolume := certificates.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
 		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
 		apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1.ApmServerContainerName)
 		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())

@@ -77,6 +77,17 @@ func TestDetect(t *testing.T) {
 			},
 			wantErr: true,
 		},
+
+		{
+			name:            "LicenceNotWhitelisted",
+			includeIndirect: true,
+			overrides: map[string]dependency.Info{
+				"github.com/davecgh/go-spew":         dependency.Info{Name: "github.com/davecgh/go-spew", LicenceType: "Totally Legit License 2.0"},
+				"github.com/russross/blackfriday/v2": dependency.Info{Name: "github.com/russross/blackfriday/v2", LicenceType: "MIT"},
+				"github.com/davecgh/go-gk":           dependency.Info{Name: "github.com/davecgh/go-spew", LicenceType: "UNKNOWN"},
+			},
+			wantErr: true,
+		},
 	}
 
 	// create classifier
