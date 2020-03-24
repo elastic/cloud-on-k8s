@@ -40,6 +40,10 @@ func PublicCertsSecretName(namer name.Namer, ownerName string) string {
 	return namer.Suffix(ownerName, "http", certsPublicSecretName)
 }
 
+func PublicCASecretName(namer name.Namer, ownerName string) string {
+	return namer.Suffix(ownerName, "ca", certsPublicSecretName)
+}
+
 // PublicCertsSecretRef returns the NamespacedName for the Secret containing the publicly available HTTP CA.
 func PublicCertsSecretRef(namer name.Namer, es types.NamespacedName) types.NamespacedName {
 	return types.NamespacedName{
