@@ -36,6 +36,8 @@ const (
 	logBufferSize    = 1024              // Size of the log buffer (1KiB)
 	testRunLabel     = "test-run"        // name of the label applied to resources
 	testsLogFile     = "e2e-tests.json"  // name of file to keep all test logs in JSON format
+
+	TestNameLabel = "test-name" // name of the label applied to resources during each test
 )
 
 type stepFunc func() error
@@ -143,6 +145,11 @@ func (h *helper) initTestContext() error {
 		TestRegex:             h.testRegex,
 		TestRun:               h.testRunName,
 		TestTimeout:           h.testTimeout,
+		Pipeline:              h.pipeline,
+		BuildNumber:           h.buildNumber,
+		Provider:              h.provider,
+		ClusterName:           h.clusterName,
+		KubernetesVersion:     h.kubernetesVersion,
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
 		OcpCluster:            h.kubectl("get", "clusterversion") == nil,
 	}

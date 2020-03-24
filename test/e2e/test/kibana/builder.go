@@ -5,6 +5,7 @@
 package kibana
 
 import (
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,7 +50,10 @@ func newBuilder(name, randSuffix string) Builder {
 				},
 			},
 		},
-	}.WithSuffix(randSuffix)
+	}.
+		WithSuffix(randSuffix).
+		WithLabel(run.TestNameLabel, name).
+		WithPodLabel(run.TestNameLabel, name)
 }
 
 func (b Builder) WithSuffix(suffix string) Builder {
@@ -120,6 +124,17 @@ func (b Builder) WithMutatedFrom(mutatedFrom *Builder) Builder {
 }
 
 func (b Builder) WithLabel(key, value string) Builder {
+	if b.Kibana.Labels == nil {
+		b.Kibana.Labels = make(map[string]string)
+	}
+	b.Kibana.Labels[key] = value
+
+	return b
+}
+
+// WithPodLabel sets the label in the pod template. All invocations can be removed when
+// https://github.com/elastic/cloud-on-k8s/issues/2652 is implemented.
+func (b Builder) WithPodLabel(key, value string) Builder {
 	labels := b.Kibana.Spec.PodTemplate.Labels
 	if labels == nil {
 		labels = make(map[string]string)
