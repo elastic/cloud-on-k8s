@@ -64,10 +64,17 @@ func testPubkey(t *testing.T) *rsa.PublicKey {
 	return &key.PublicKey
 }
 
-func testPubkeyBytes(t *testing.T) []byte {
-	bytes, err := x509.MarshalPKIXPublicKey(testPubkey(t))
+func simulateRunningTrial(t *testing.T, k k8s.Client, secret v1.Secret) []byte {
+	l := licensing.EnterpriseLicense{
+		License: licensing.LicenseSpec{
+			Type: licensing.LicenseTypeEnterpriseTrial,
+		},
+	}
+	trialKey, err := licensing.InitTrial(k, testNs, secret, &l)
 	require.NoError(t, err)
-	return bytes
+	keyBytes, err := x509.MarshalPKIXPublicKey(trialKey)
+	require.NoError(t, err)
+	return keyBytes
 }
 
 func TestReconcileTrials_Reconcile(t *testing.T) {
@@ -79,6 +86,12 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			require.True(t, ok, "invalid annotation present")
 			require.Equal(t, msg, err)
 		}
+	}
+	requireNoValidationMsg := func(c k8s.Client) {
+		var sec v1.Secret
+		require.NoError(t, c.Get(trialSecretNsn, &sec))
+		_, ok := sec.Annotations[licensing.LicenseInvalidAnnotation]
+		require.False(t, ok, "no invalid annotation expected")
 	}
 
 	type fields struct {
@@ -120,23 +133,22 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 		{
 			name: "valid trial after operator restart",
 			fields: fields{
-				Client: k8s.WrappedFakeClient(
-					trialSecretSample(
+				Client: func() k8s.Client {
+					trialLicense := trialSecretSample(
 						true,
 						map[string][]byte{
 							"license": trialLicenseBytes(),
-						}),
-					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      licensing.TrialStatusSecretKey,
-							Namespace: testNs,
-						},
-						Data: map[string][]byte{licensing.TrialPubkeyKey: testPubkeyBytes(t)},
-					}),
+						})
+					client := k8s.WrappedFakeClient(
+						trialLicense,
+					)
+					simulateRunningTrial(t, client, *trialLicense)
+					return client
+				}(),
 				trialPubKey: nil, // simulating restart
 			},
 			wantErr:    false,
-			assertions: requireValidationMsg("trial license signature invalid"), // but not: trial can be started only once
+			assertions: requireNoValidationMsg,
 		},
 		{
 			name: "invalid: trial running but no status secret",
