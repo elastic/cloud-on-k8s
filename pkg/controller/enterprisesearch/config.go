@@ -158,12 +158,12 @@ func getExistingConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (*s
 	return cfg, nil
 }
 
-// configRefWatchName returns the name of the watch registered on
+// configRefWatchName returns the name of the watch registered on Kubernetes secrets referenced in `configRef`.
 func configRefWatchName(ents types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-configref", ents.Namespace, ents.Name)
 }
 
-// parseConfigRef builds a single merged CanonicalConfig from the secrets referenced in configReg,
+// parseConfigRef builds a single merged CanonicalConfig from the secrets referenced in configRef,
 // and ensures watches are correctly set on those secrets.
 func parseConfigRef(driver driver.Interface, ents entsv1beta1.EnterpriseSearch) (*settings.CanonicalConfig, error) {
 	cfg := settings.NewCanonicalConfig()
@@ -190,7 +190,7 @@ func parseConfigRef(driver driver.Interface, ents entsv1beta1.EnterpriseSearch) 
 			parsed, err := settings.ParseConfig(data)
 			if err != nil {
 				msg := "unable to parse configuration from secret"
-				log.Error(err, "msg", "namespace", ents.Namespace, "ents_name", ents.Name, "secret_name", secretName)
+				log.Error(err, msg, "namespace", ents.Namespace, "ents_name", ents.Name, "secret_name", secretName)
 				driver.Recorder().Event(&ents, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 				return nil, err
 			}

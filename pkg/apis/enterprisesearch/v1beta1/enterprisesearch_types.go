@@ -27,8 +27,9 @@ type EnterpriseSearchSpec struct {
 	Config *commonv1.Config `json:"config,omitempty"`
 
 	// ConfigRef contains references to Kubernetes Secrets holding the Enterprise Search configuration.
-	// Multiple secrets can be referenced: they are merged into a single configuration secret.
-	// If duplicate settings exist in multiple secrets, the last one takes precedence.
+	// Configuration settings are merged and have prcedence over plain text settings specified in  `config`.
+	// Multiple secrets can be referenced: if duplicate settings exist in multiple secrets,
+	// the last one takes precedence.
 	ConfigRef []ConfigSource `json:"configRef,omitempty"`
 
 	// HTTP holds the HTTP layer configuration for Enterprise Search resource.
