@@ -97,10 +97,7 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, certResources
 			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
 			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
 		},
-	}
-
-	if certResources.HTTPCACertProvided {
-		cfg[esv1.XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
+		esv1.XPackSecurityHttpSslCertificateAuthorities: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName),
 	}
 
 	// always enable the built-in file and native internal realms for user auth, ordered as first

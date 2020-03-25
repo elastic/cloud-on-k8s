@@ -107,8 +107,12 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		expectedSecretData := make(map[string][]byte)
 		expectedSecretData[CertFileName] = customCertificates.CertPem()
 		expectedSecretData[KeyFileName] = customCertificates.KeyPem()
-		if caPem := customCertificates.CAPem(); caPem != nil {
+		if caPem := customCertificates.CAPem(); len(caPem) > 0 {
 			expectedSecretData[CAFileName] = caPem
+		} else {
+			// Ensure that the CA certificate is never empty, otherwise Elasticsearch is not able to reload the certificates.
+			// See https://github.com/elastic/cloud-on-k8s/issues/2243
+			expectedSecretData[CAFileName] = EncodePEMCert(ca.Cert.Raw)
 		}
 
 		if !reflect.DeepEqual(secret.Data, expectedSecretData) {

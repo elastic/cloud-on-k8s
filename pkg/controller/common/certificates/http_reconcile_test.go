@@ -282,6 +282,9 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 			want: func(t *testing.T, cs *CertificatesSecret) {
 				assert.Equal(t, cs.Data[KeyFileName], key)
 				assert.Equal(t, cs.Data[CertFileName], tls)
+				// Even if user didn't provide a CA cert we don't want it to be empty
+				assert.True(t, len(cs.Data[CAFileName]) > 0)
+				assert.Equal(t, cs.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
 			},
 		},
 	}

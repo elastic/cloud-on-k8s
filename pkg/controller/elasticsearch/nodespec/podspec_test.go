@@ -89,7 +89,7 @@ var sampleES = esv1.Elasticsearch{
 }
 
 func TestBuildPodTemplateSpec(t *testing.T) {
-	certResources := certificates.CertificateResources{HTTPCACertProvided: true}
+	certResources := certificates.CertificateResources{}
 	nodeSet := sampleES.Spec.NodeSets[0]
 	ver, err := version.Parse(sampleES.Spec.Version)
 	require.NoError(t, err)
