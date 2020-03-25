@@ -1544,9 +1544,10 @@ spec:
               type: object
             configRef:
               description: 'ConfigRef contains references to Kubernetes Secrets holding
-                the Enterprise Search configuration. Multiple secrets can be referenced:
-                they are merged into a single configuration secret. If duplicate settings
-                exist in multiple secrets, the last one takes precedence.'
+                the Enterprise Search configuration. Configuration settings are merged
+                and have prcedence over plain text settings specified in  `config`.
+                Multiple secrets can be referenced: if duplicate settings exist in
+                multiple secrets, the last one takes precedence.'
               items:
                 description: ConfigSource references configuration settings to include
                   in the Enterprise Search configuration.
