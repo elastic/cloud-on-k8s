@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	escerts "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
 )
@@ -24,7 +23,6 @@ func NewMergedESConfig(
 	ver version.Version,
 	httpConfig commonv1.HTTPConfig,
 	userConfig commonv1.Config,
-	certResources *escerts.CertificateResources,
 ) (CanonicalConfig, error) {
 	userCfg, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
@@ -32,7 +30,7 @@ func NewMergedESConfig(
 	}
 	config := baseConfig(clusterName, ver).CanonicalConfig
 	err = config.MergeWith(
-		xpackConfig(ver, httpConfig, certResources).CanonicalConfig,
+		xpackConfig(ver, httpConfig).CanonicalConfig,
 		userCfg,
 	)
 	if err != nil {
@@ -68,7 +66,7 @@ func baseConfig(clusterName string, ver version.Version) *CanonicalConfig {
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, certResources *escerts.CertificateResources) *CanonicalConfig {
+func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -97,10 +95,7 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig, certResources
 			path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
 			path.Join(volume.RemoteCertificateAuthoritiesSecretVolumeMountPath, certificates.CAFileName),
 		},
-	}
-
-	if certResources.HTTPCACertProvided {
-		cfg[esv1.XPackSecurityHttpSslCertificateAuthorities] = path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName)
+		esv1.XPackSecurityHttpSslCertificateAuthorities: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CAFileName),
 	}
 
 	// always enable the built-in file and native internal realms for user auth, ordered as first
