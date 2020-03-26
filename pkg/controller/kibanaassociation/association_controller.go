@@ -21,7 +21,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -378,7 +377,7 @@ func (r *ReconcileAssociation) reconcileElasticsearchCA(ctx context.Context, kib
 		r.Client,
 		kibana,
 		es,
-		maps.Merge(labels.NewLabels(kibana.Name), associationLabels(kibana)),
+		maps.Merge(label.NewLabels(kibana.Name), associationLabels(kibana)),
 		ElasticsearchCASecretSuffix,
 	)
 }
