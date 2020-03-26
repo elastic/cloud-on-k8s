@@ -55,7 +55,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithError(err)
 	}
 
-	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, certResources, actualStatefulSets)
+	expectedResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources, actualStatefulSets)
 	if err != nil {
 		return results.WithError(err)
 	}
