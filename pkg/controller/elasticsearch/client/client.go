@@ -33,14 +33,16 @@ type BasicAuth struct {
 	Password string
 }
 
+type IndexRole struct {
+	Names      []string `json:"names,omitempty"`
+	Privileges []string `json:",omitempty"`
+}
+
 // Role represents an Elasticsearch role.
 type Role struct {
-	Cluster []string `json:"cluster,omitempty"`
-	/*Indices []struct {
-		Names      []string `json:"names,omitempty"`
-		Privileges []string `json:",omitempty"`
-	} `json:"indices,omitempty"`
-	Applications []struct {
+	Cluster []string    `json:"cluster,omitempty"`
+	Indices []IndexRole `json:"indices,omitempty"`
+	/*Applications []struct {
 		Application string   `json:"application"`
 		Privileges  []string `json:"privileges"`
 		Resources   []string `json:"resources,omitempty"`

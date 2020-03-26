@@ -18,12 +18,23 @@ const (
 	SuperUserBuiltinRole = "superuser"
 	// ProbeUserRole is the name of the role used by the internal probe user.
 	ProbeUserRole = "elastic_internal_probe_user"
+	// ApmDefaultUserRole is the name of the default role used by the APM Server instances.
+	ApmDefaultUserRole = "default_apm_user_role"
 )
 
 var (
 	// PredefinedRoles to create for internal needs.
 	PredefinedRoles = RolesFileContent{
 		ProbeUserRole: esclient.Role{Cluster: []string{"monitor"}},
+		ApmDefaultUserRole: esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{"apm-*"},
+					Privileges: []string{"manage", "create_doc", "create_index"},
+				},
+			},
+		},
 	}
 )
 

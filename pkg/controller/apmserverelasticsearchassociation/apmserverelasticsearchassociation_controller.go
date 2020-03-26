@@ -7,6 +7,7 @@ package apmserverelasticsearchassociation
 import (
 	"context"
 	"reflect"
+	"strings"
 	"time"
 
 	"go.elastic.co/apm"
@@ -35,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -49,6 +51,13 @@ const (
 var (
 	log            = logf.Log.WithName(name)
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+
+	// apmDefaultRoles are the default roles used by APM Server instances
+	apmDefaultRoles = strings.Join([]string{
+		user.ApmDefaultUserRole, // Retrieve cluster details (e.g. version) and manage apm-* indices
+		"kibana_user",           // Load dependencies, such as example dashboards, if available, into Kibana
+		"ingest_admin",          // Set up index templates
+	}, ",")
 )
 
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -291,7 +300,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		r.Client,
 		apmServer,
 		associationLabels(apmServer),
-		"superuser",
+		apmDefaultRoles,
 		apmUserSuffix,
 		es,
 	); err != nil { // TODO distinguish conflicts and non-recoverable errors here
