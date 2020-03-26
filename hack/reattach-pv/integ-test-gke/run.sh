@@ -27,6 +27,7 @@ PODS="mycluster-es-master-nodes-0 mycluster-es-master-nodes-1 mycluster-es-maste
 function wait_for_pods_exist() {
   wait_sec=5
   for pod in $PODS; do
+    # shellcheck disable=SC2034,2015
     for i in {1..5}; do kubectl get pod "$pod" > /dev/null && break || sleep $wait_sec; done
   done
 }

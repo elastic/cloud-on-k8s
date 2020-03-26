@@ -6,6 +6,7 @@
 
 set -eu
 
+# shellcheck disable=SC2016
 help() { 
   echo \
 'Manage a Docker registry in k8s.
@@ -36,8 +37,8 @@ kubectl-in-docker() {
   fi
 
   docker run -d --name registry-port-forwarder --net=host \
-    -v ~/.kube:/root/.kube -v ~/.minikube:$HOME/.minikube \
-    $build_tools_image kubectl $@
+    -v ~/.kube:/root/.kube -v ~/.minikube:"$HOME"/.minikube \
+    $build_tools_image kubectl "$@"
 }
 
 main() {
@@ -51,8 +52,9 @@ main() {
     ;;
     "port-forward start")
       kubectl wait pods -l k8s-app=kube-registry -n=kube-system --for condition=Ready --timeout 40s
-      local podName=$(kubectl get po -n kube-system | grep kube-registry-v0 | awk '{print $1}')
-      kubectl-in-docker port-forward -n=kube-system $podName 5000:5000
+      local podName
+      podName=$(kubectl get po -n kube-system | grep kube-registry-v0 | awk '{print $1}')
+      kubectl-in-docker port-forward -n=kube-system "$podName" 5000:5000
       docker exec registry-port-forwarder timeout 15 sh -c 'until nc -z localhost 5000; do sleep 0.5; done'
     ;;
     "port-forward stop")
