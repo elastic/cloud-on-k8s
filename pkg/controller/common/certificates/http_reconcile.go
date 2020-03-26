@@ -111,6 +111,7 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 			expectedSecretData[CAFileName] = caPem
 		} else {
 			// Ensure that the CA certificate is never empty, otherwise Elasticsearch is not able to reload the certificates.
+			// Default to our self-signed (useless) CA if none is provided by the user.
 			// See https://github.com/elastic/cloud-on-k8s/issues/2243
 			expectedSecretData[CAFileName] = EncodePEMCert(ca.Cert.Raw)
 		}
