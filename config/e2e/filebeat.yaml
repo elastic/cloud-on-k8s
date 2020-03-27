@@ -8,6 +8,8 @@ metadata:
     k8s-app: filebeat
 data:
   filebeat.yml: |-
+    max_backoff: 1s
+    close_inactive: 1h
     filebeat.autodiscover:
       providers:
         - type: kubernetes
