@@ -13,8 +13,6 @@
 
 # Exit immediately for non zero status
 set -e
-# Print commands
-set -x
 
 KIND_LOGGING=${KIND_LOGGING:-"-v 1"}
 CLUSTER_NAME=${KIND_CLUSTER_NAME:-eck-e2e}
@@ -52,7 +50,7 @@ EOT
 
     done
   else
-    # There's only the controle plane, no nodes
+    # There's only the control plane, no nodes
     workers=${CLUSTER_NAME}-control-plane
   fi
 
@@ -86,7 +84,9 @@ function setup_kind_cluster() {
     config_opts="--config ${MANIFEST}"
   fi
   # Create Kind cluster
-  if ! (kind "${KIND_LOGGING}" create cluster --name="${CLUSTER_NAME}" "${config_opts}" --retain --image "${NODE_IMAGE}"); then
+  # TODO: see if this lint rule can be re-enabled
+  # shellcheck disable=SC2086
+  if ! (kind ${KIND_LOGGING} create cluster --name="${CLUSTER_NAME}" ${config_opts} --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1
   fi
@@ -137,9 +137,11 @@ fi
 
 # Load images in the nodes, e.g. the operator image or the e2e container
 if [[ -n "${LOAD_IMAGES}" ]]; then
-  IMAGES=("${LOAD_IMAGES//,/ }")
+  IFS=',' read -r -a IMAGES <<< "${LOAD_IMAGES}"
   for image in "${IMAGES[@]}"; do
-          kind "${KIND_LOGGING}" --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
+          # TODO: see if this lint rule can be re-enabled
+          # shellcheck disable=SC2086
+          kind ${KIND_LOGGING} --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
   done
 fi
 
