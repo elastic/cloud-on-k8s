@@ -25,7 +25,7 @@ const (
 
 // clusterUnavailabilityThreshold is the accepted duration for the cluster to temporarily not respond to requests
 // (eg. during leader elections in the middle of a rolling upgrade).
-func cluserUnavailabilityThreshold(b Builder) time.Duration {
+func clusterUnavailabilityThreshold(b Builder) time.Duration {
 	cluster := b.Elasticsearch
 	if b.MutatedFrom != nil {
 		cluster = b.MutatedFrom.Elasticsearch
@@ -178,7 +178,7 @@ func (hc *ContinuousHealthCheck) AppendErr(err error) {
 
 // Start runs health checks in a goroutine, until stopped
 func (hc *ContinuousHealthCheck) Start() {
-	clusterUnavailability := clusterUnavailability{threshold: cluserUnavailabilityThreshold(hc.b)}
+	clusterUnavailability := clusterUnavailability{threshold: clusterUnavailabilityThreshold(hc.b)}
 	go func() {
 		ticker := time.NewTicker(test.DefaultRetryDelay)
 		for {

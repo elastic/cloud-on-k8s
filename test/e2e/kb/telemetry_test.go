@@ -6,9 +6,11 @@ package kb
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/pkg/about"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
@@ -28,14 +30,22 @@ func TestTelemetry(t *testing.T) {
 			{
 				Name: "Kibana should expose eck info in telemetry data",
 				Test: func(t *testing.T) {
-					uri := "/api/telemetry/v1/clusters/_stats"
-					payload := `{"timeRange":{"min":"0","max":"0"}}`
+					kbVersion := version.MustParse(kbBuilder.Kibana.Spec.Version)
+					apiVersion := "v1"
+					payload := telemetryRequest{}
+					if kbVersion.IsSameOrAfter(version.MustParse("7.2.0")) {
+						apiVersion = "v2"
+						payload.Unencrypted = true
+					}
+					uri := fmt.Sprintf("/api/telemetry/%s/clusters/_stats", apiVersion)
 					password, err := k.GetElasticPassword(kbBuilder.ElasticsearchRef().NamespacedName())
 					require.NoError(t, err)
-					body, err := kibana.DoRequest(k, kbBuilder.Kibana, password, "POST", uri, []byte(payload))
+					payloadBytes, err := json.Marshal(payload)
+					require.NoError(t, err)
+					body, err := kibana.DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes)
 					require.NoError(t, err)
 
-					var stats ClusterStats
+					var stats clusterStats
 					err = json.Unmarshal(body, &stats)
 					require.NoError(t, err)
 					eck := stats[0].StackStats.Kibana.Plugins.StaticTelemetry.Eck
@@ -47,12 +57,21 @@ func TestTelemetry(t *testing.T) {
 		}
 	}
 
-	test.Sequence(nil, stepsFn, esBuilder, kbBuilder)
+	test.Sequence(nil, stepsFn, esBuilder, kbBuilder).RunSequential(t)
 
 }
 
-// ClusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats
-type ClusterStats []struct {
+// telemetryRequest is the request body for v1/v2 Kibana telemetry requests
+type telemetryRequest struct {
+	TimeRange struct {
+		Min int `json:"min"`
+		Max int `json:"max"`
+	} `json:"timeRange"`
+	Unencrypted bool `json:"unencrypted,omitempty"`
+}
+
+// clusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats
+type clusterStats []struct {
 	StackStats struct {
 		Kibana struct {
 			Plugins struct {
