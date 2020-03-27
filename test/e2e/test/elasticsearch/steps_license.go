@@ -6,7 +6,6 @@ package elasticsearch
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -119,7 +118,7 @@ func (ltctx *LicenseTestContext) CreateEnterpriseTrialLicenseSecret(secretName s
 	}
 }
 
-func (ltctx *LicenseTestContext) CheckEnterpriseTrialLicenseInvalid(secretName string) test.Step {
+func (ltctx *LicenseTestContext) checkEnterpriseTrialLicenseValidation(secretName string, valid bool) test.Step {
 	return test.Step{
 		Name: "Check enterprise trial license is annotated as invalid",
 		Test: test.Eventually(func() error {
@@ -132,12 +131,20 @@ func (ltctx *LicenseTestContext) CheckEnterpriseTrialLicenseInvalid(secretName s
 				return err
 			}
 			_, exists := licenseSecret.Annotations[license.LicenseInvalidAnnotation]
-			if !exists {
-				return errors.New("license should be marked as invalid, but was not")
+			if exists == valid {
+				return fmt.Errorf("trial license should have validation annotation [%v] and annotation was present [%v]", !valid, exists)
 			}
 			return nil
 		}),
 	}
+}
+
+func (ltctx *LicenseTestContext) CheckEnterpriseTrialLicenseValid(secretName string) test.Step {
+	return ltctx.checkEnterpriseTrialLicenseValidation(secretName, true)
+}
+
+func (ltctx *LicenseTestContext) CheckEnterpriseTrialLicenseInvalid(secretName string) test.Step {
+	return ltctx.checkEnterpriseTrialLicenseValidation(secretName, false)
 }
 
 func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret(licenseSecretName string) test.Step {

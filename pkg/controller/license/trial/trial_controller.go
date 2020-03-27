@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	licensing "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/license/validation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -31,11 +30,17 @@ import (
 )
 
 const (
-	name = "trial-controller"
+	name              = "trial-controller"
+	EULAValidationMsg = `Please set the annotation elastic.co/eula to "accepted" to accept the EULA`
+	trialOnlyOnceMsg  = "trial can be started only once"
 )
 
 var (
-	log = logf.Log.WithName(name)
+	log              = logf.Log.WithName(name)
+	userFriendlyMsgs = map[licensing.LicenseStatus]string{
+		licensing.LicenseStatusInvalid: "trial license signature invalid",
+		licensing.LicenseStatusExpired: "trial license expired",
+	}
 )
 
 // ReconcileTrials reconciles Enterprise trial licenses.
@@ -69,14 +74,9 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, pkgerrors.Wrap(err, "while fetching trial license")
 	}
 
-	violations := validation.Validate(secret)
-	if len(violations) > 0 {
-		if secret.Annotations == nil {
-			secret.Annotations = map[string]string{}
-		}
-		// TODO (sabo): this is the only dependency on the license_validation, which was removed as part of removing the webhook package
-		// res := license_validation.Aggregate(violations)
-		// secret.Annotations[licensing.LicenseInvalidAnnotation] = string(res.Response.Result.Reason)
+	validationMsg := validateEULA(secret)
+	if validationMsg != "" {
+		setValidationMsg(&secret, validationMsg)
 		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
 	}
 
@@ -84,7 +84,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	var trialStatus corev1.Secret
 	err = r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
-		// 2. if not present create one + finalizer
+		// 2. if not present create one
 		err := r.initTrial(secret, license)
 		if err != nil {
 			return reconcile.Result{}, pkgerrors.Wrap(err, "failed to init trial")
@@ -106,12 +106,12 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 		status := verifier.Valid(license, time.Now())
 		if status != licensing.LicenseStatusValid {
-			secret.Annotations[licensing.LicenseInvalidAnnotation] = string(status)
+			setValidationMsg(&secret, userFriendlyMsgs[status])
 		}
 	} else {
 		// if the trial secret fields are not populated at this point a user is trying to start a trial a second time
 		// with an empty trial secret, which is not a supported use case.
-		secret.Annotations[licensing.LicenseInvalidAnnotation] = "trial can be started only once"
+		setValidationMsg(&secret, trialOnlyOnceMsg)
 	}
 	return reconcile.Result{}, r.Update(&secret)
 }
@@ -122,8 +122,8 @@ func (r *ReconcileTrials) isTrialRunning() bool {
 
 func (r *ReconcileTrials) initTrial(secret corev1.Secret, l licensing.EnterpriseLicense) error {
 	if r.isTrialRunning() {
-		// silent NOOP
-		return nil
+		setValidationMsg(&secret, trialOnlyOnceMsg)
+		return licensing.UpdateEnterpriseLicense(r, secret, l)
 	}
 
 	trialPubKey, err := licensing.InitTrial(r, r.operatorNamespace, secret, &l)
@@ -137,6 +137,13 @@ func (r *ReconcileTrials) initTrial(secret corev1.Secret, l licensing.Enterprise
 
 func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error {
 	if !r.isTrialRunning() {
+		// reinstate pubkey from status secret e.g. after operator restart
+		pubKeyBytes := trialStatus.Data[licensing.TrialPubkeyKey]
+		key, err := licensing.ParsePubKey(pubKeyBytes)
+		if err != nil {
+			return err
+		}
+		r.trialPubKey = key
 		return nil
 	}
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(r.trialPubKey)
@@ -146,9 +153,28 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 	if bytes.Equal(trialStatus.Data[licensing.TrialPubkeyKey], pubkeyBytes) {
 		return nil
 	}
+	if trialStatus.Data == nil {
+		trialStatus.Data = map[string][]byte{} // if trial status has been tampered with
+	}
 	trialStatus.Data[licensing.TrialPubkeyKey] = pubkeyBytes
 	return r.Update(&trialStatus)
 
+}
+
+func validateEULA(trialSecret corev1.Secret) string {
+	if licensing.IsEnterpriseTrial(trialSecret) &&
+		trialSecret.Annotations[licensing.EULAAnnotation] != licensing.EULAAcceptedValue {
+		return EULAValidationMsg
+	}
+	return ""
+}
+
+func setValidationMsg(secret *corev1.Secret, violation string) {
+	if secret.Annotations == nil {
+		secret.Annotations = map[string]string{}
+	}
+	log.Info("trial license invalid", "reason", violation)
+	secret.Annotations[licensing.LicenseInvalidAnnotation] = violation
 }
 
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileTrials {
