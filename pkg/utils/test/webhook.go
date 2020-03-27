@@ -59,12 +59,12 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 
 // RunValidationWebhookTests runs a series of ValidationWebhookTestCases
 func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, validator admission.Validator, tests ...ValidationWebhookTestCase) {
-	scheme.SetupScheme()
+	require.NoError(t, scheme.SetupScheme())
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()
 
 	webhook := admission.ValidatingWebhookFor(validator)
-	webhook.InjectScheme(clientgoscheme.Scheme)
-	webhook.InjectLogger(log)
+	require.NoError(t, webhook.InjectScheme(clientgoscheme.Scheme))
+	require.NoError(t, webhook.InjectLogger(log))
 
 	server := httptest.NewServer(webhook)
 	defer server.Close()
@@ -104,7 +104,7 @@ func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, valida
 			require.NoError(t, err)
 			defer func() {
 				if resp.Body != nil {
-					io.Copy(ioutil.Discard, resp.Body)
+					_, _ = io.Copy(ioutil.Discard, resp.Body)
 					resp.Body.Close()
 				}
 			}()
