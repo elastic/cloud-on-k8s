@@ -151,9 +151,9 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(ents.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", ents.Namespace, "ents_name", ents.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(ents.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ents.Namespace, "ents_name", ents.Name)
+		return common.CheckManagedRequeue, nil
 	}
 
 	if compatible, err := r.isCompatible(ctx, &ents); err != nil || !compatible {

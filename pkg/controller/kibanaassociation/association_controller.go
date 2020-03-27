@@ -141,9 +141,9 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		return reconcile.Result{}, tracing.CaptureError(ctx, r.onDelete(kbName))
 	}
 
-	if common.IsPaused(kibana.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(kibana.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
+		return common.CheckManagedRequeue, nil
 	}
 
 	compatible, err := r.isCompatible(ctx, &kibana)

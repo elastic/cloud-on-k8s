@@ -146,9 +146,9 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) Reconcile(request re
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(entSearch.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", entSearch.Namespace, "ents_name", entSearch.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(entSearch.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", entSearch.Namespace, "ents_name", entSearch.Name)
+		return common.CheckManagedRequeue, nil
 	}
 
 	// EnterpriseSearch is being deleted, short-circuit reconciliation and remove artifacts related to the association.

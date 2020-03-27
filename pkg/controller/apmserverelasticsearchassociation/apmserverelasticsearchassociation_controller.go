@@ -144,9 +144,9 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(apmServer.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(apmServer.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
+		return common.CheckManagedRequeue, nil
 	}
 
 	// ApmServer is being deleted, short-circuit reconciliation and remove artifacts related to the association.
