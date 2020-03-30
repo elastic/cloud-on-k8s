@@ -7,19 +7,22 @@ package association
 import (
 	"context"
 
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// DeleteOrphanedResources deletes resources created by an association that are left over from previous reconciliation
-// attempts. Common use case is an Elasticsearch reference in Kibana or APMServer spec that was removed.
+// DeleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
+// attempts. If a user changes namespace on a vertex of an association the standard reconcile mechanism will not delete the
+// now redundant old user object/secret. This function lists all resources that don't match the current name/namespace
+// combinations and deletes them.
 func DeleteOrphanedResources(
 	ctx context.Context,
 	c k8s.Client,

@@ -10,12 +10,17 @@ import (
 	"reflect"
 	"unsafe"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -23,7 +28,7 @@ import (
 )
 
 // FetchWithAssociation retrieves an object and extracts its association configuration.
-func FetchWithAssociation(ctx context.Context, client k8s.Client, request reconcile.Request, obj commonv1.Associator) error {
+func FetchWithAssociation(ctx context.Context, client k8s.Client, request reconcile.Request, obj commonv1.Associated) error {
 	span, _ := apm.StartSpan(ctx, "fetch_association", tracing.SpanTypeApp)
 	defer span.End()
 
@@ -38,6 +43,38 @@ func FetchWithAssociation(ctx context.Context, client k8s.Client, request reconc
 
 	obj.SetAssociationConf(assocConf)
 	return nil
+}
+
+// IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
+// This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
+func IsConfiguredIfSet(associated commonv1.Associated, r record.EventRecorder) bool {
+	esRef := associated.ElasticsearchRef()
+	if (&esRef).IsDefined() && !associated.AssociationConf().IsConfigured() {
+		r.Event(associated, v1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
+		log.Info("Elasticsearch association not established: skipping associated resource deployment reconciliation",
+			"kind", associated.GetObjectKind().GroupVersionKind().Kind,
+			"namespace", associated.GetNamespace(),
+			"name", associated.GetName(),
+		)
+		return false
+	}
+	return true
+}
+
+// ElasticsearchAuthSettings returns the user and the password to be used by an associated object to authenticate
+// against an Elasticsearch cluster.
+func ElasticsearchAuthSettings(c k8s.Client, associated commonv1.Associated) (username, password string, err error) {
+	assocConf := associated.AssociationConf()
+	if !assocConf.AuthIsConfigured() {
+		return "", "", nil
+	}
+
+	secretObjKey := types.NamespacedName{Namespace: associated.GetNamespace(), Name: assocConf.AuthSecretName}
+	var secret v1.Secret
+	if err := c.Get(secretObjKey, &secret); err != nil {
+		return "", "", err
+	}
+	return assocConf.AuthSecretKey, string(secret.Data[assocConf.AuthSecretKey]), nil
 }
 
 // GetAssociationConf extracts the association configuration from the given object by reading the annotations.

@@ -25,24 +25,18 @@ type CASecret struct {
 
 // ElasticsearchCACertSecretName returns the name of the secret holding the certificate chain used
 // by the associated resource to establish and validate a secured HTTP connection to Elasticsearch.
-func ElasticsearchCACertSecretName(associated commonv1.Associated, suffix string) string {
-	return associated.GetName() + "-" + suffix
+func ElasticsearchCACertSecretName(associated commonv1.Associated, associationName string) string {
+	return associated.GetName() + "-" + associationName + "-ca"
 }
 
 // ReconcileCASecret keeps in sync a copy of the Elasticsearch CA.
 // It is the responsibility of the controller to set a watch on the ES CA.
-func ReconcileCASecret(
-	client k8s.Client,
-	associated commonv1.Associated,
-	es types.NamespacedName,
-	labels map[string]string,
-	suffix string,
-) (CASecret, error) {
+func (r *Reconciler) ReconcileCASecret(associated commonv1.Associated, es types.NamespacedName) (CASecret, error) {
 	publicESHTTPCertificatesNSN := certificates.PublicCertsSecretRef(esv1.ESNamer, es)
 
 	// retrieve the HTTP certificates from ES namespace
 	var publicESHTTPCertificatesSecret corev1.Secret
-	if err := client.Get(publicESHTTPCertificatesNSN, &publicESHTTPCertificatesSecret); err != nil {
+	if err := r.Get(publicESHTTPCertificatesNSN, &publicESHTTPCertificatesSecret); err != nil {
 		if errors.IsNotFound(err) {
 			return CASecret{}, nil // probably not created yet, we'll be notified to reconcile later
 		}
@@ -53,12 +47,12 @@ func ReconcileCASecret(
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: associated.GetNamespace(),
-			Name:      ElasticsearchCACertSecretName(associated, suffix),
-			Labels:    labels,
+			Name:      ElasticsearchCACertSecretName(associated, r.AssociationName),
+			Labels:    r.AssociationLabels(k8s.ExtractNamespacedName(associated)),
 		},
 		Data: publicESHTTPCertificatesSecret.Data,
 	}
-	if _, err := reconciler.ReconcileSecret(client, expectedSecret, associated); err != nil {
+	if _, err := reconciler.ReconcileSecret(r, expectedSecret, associated); err != nil {
 		return CASecret{}, err
 	}
 

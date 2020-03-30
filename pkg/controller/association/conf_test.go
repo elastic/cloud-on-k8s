@@ -8,15 +8,17 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func TestFetchWithAssociation(t *testing.T) {
@@ -170,6 +172,96 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 	}
 
 	return kb
+}
+
+func TestElasticsearchAuthSettings(t *testing.T) {
+	apmServer := &apmv1.ApmServer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "apm-server-sample",
+			Namespace: "default",
+		},
+		Spec: apmv1.ApmServerSpec{},
+	}
+
+	apmServer.SetAssociationConf(&commonv1.AssociationConf{
+		URL: "https://elasticsearch-sample-es-http.default.svc:9200",
+	})
+
+	tests := []struct {
+		name         string
+		client       k8s.Client
+		assocConf    commonv1.AssociationConf
+		wantUsername string
+		wantPassword string
+		wantErr      bool
+	}{
+		{
+			name: "When auth details are defined",
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+			}),
+			assocConf: commonv1.AssociationConf{
+				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
+				AuthSecretKey:  "elastic-internal-apm",
+				CASecretName:   "ca-secret",
+				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
+			},
+			wantUsername: "elastic-internal-apm",
+			wantPassword: "a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy",
+		},
+		{
+			name: "When auth details are undefined",
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+			}),
+			assocConf: commonv1.AssociationConf{
+				CASecretName: "ca-secret",
+				URL:          "https://elasticsearch-sample-es-http.default.svc:9200",
+			},
+		},
+		{
+			name: "When the auth secret does not exist",
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "some-secret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+			}),
+			assocConf: commonv1.AssociationConf{
+				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
+				AuthSecretKey:  "elastic-internal-apm",
+				CASecretName:   "ca-secret",
+				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			apmServer.SetAssociationConf(&tt.assocConf)
+			gotUsername, gotPassword, err := ElasticsearchAuthSettings(tt.client, apmServer)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getCredentials() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotUsername != tt.wantUsername {
+				t.Errorf("getCredentials() gotUsername = %v, want %v", gotUsername, tt.wantUsername)
+			}
+			if gotPassword != tt.wantPassword {
+				t.Errorf("getCredentials() gotPassword = %v, want %v", gotPassword, tt.wantPassword)
+			}
+		})
+	}
 }
 
 func TestUpdateAssociationConf(t *testing.T) {
