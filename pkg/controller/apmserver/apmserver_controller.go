@@ -180,7 +180,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(as.ObjectMeta) {
+	if common.IsPaused(&as) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
 		return common.PauseRequeue, nil
 	}

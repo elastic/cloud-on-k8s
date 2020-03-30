@@ -24,8 +24,8 @@ var (
 )
 
 // IsPaused computes if a given controller is paused.
-func IsPaused(meta metav1.ObjectMeta) bool {
-	return getBoolFromAnnotation(meta.Annotations)
+func IsPaused(obj metav1.Object) bool {
+	return getBoolFromAnnotation(obj.GetAnnotations())
 }
 
 // Extract the desired state from the map that contains annotations.

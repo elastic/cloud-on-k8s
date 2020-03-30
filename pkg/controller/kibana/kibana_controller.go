@@ -138,7 +138,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	// skip reconciliation if paused
-	if common.IsPaused(kb.ObjectMeta) {
+	if common.IsPaused(&kb) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return common.PauseRequeue, nil
 	}

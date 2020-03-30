@@ -184,7 +184,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(es.ObjectMeta) {
+	if common.IsPaused(&es) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return common.PauseRequeue, nil
 	}

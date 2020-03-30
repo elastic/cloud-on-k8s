@@ -8,7 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type testcase struct {
@@ -60,12 +61,14 @@ func TestPauseCondition(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			for i, expectedState := range test.expectedState {
-				meta := v1.ObjectMeta{
-					Name:        "bar",
-					Namespace:   "foo",
-					Annotations: test.annotationSequence[i],
+				obj := corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "bar",
+						Namespace:   "foo",
+						Annotations: test.annotationSequence[i],
+					},
 				}
-				actualPauseState := IsPaused(meta)
+				actualPauseState := IsPaused(&obj)
 				assert.Equal(t, expectedState, actualPauseState)
 			}
 		})
