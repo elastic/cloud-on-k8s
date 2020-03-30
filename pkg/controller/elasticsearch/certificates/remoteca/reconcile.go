@@ -13,12 +13,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
+
+const (
+	// TypeLabelValue is a type used to identify a Secret which contains the CA of a remote cluster.
+	TypeLabelValue = "remote-ca"
+)
+
+func LabelSelector(esName string) client.MatchingLabels {
+	return map[string]string{
+		label.ClusterNameLabelName: esName,
+		common.TypeLabelName:       TypeLabelValue,
+	}
+}
 
 // Reconcile fetches the list of remote certificate authorities and concatenates them into a single Secret
 func Reconcile(
@@ -30,7 +42,7 @@ func Reconcile(
 	if err := c.List(
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
-		remoteca.LabelSelector(es.Name),
+		LabelSelector(es.Name),
 	); err != nil {
 		return err
 	}

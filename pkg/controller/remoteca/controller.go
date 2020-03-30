@@ -9,17 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +17,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
 const (
@@ -39,6 +41,16 @@ const (
 var (
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 )
+
+// Add creates a new RemoteCa Controller and adds it to the manager with default RBAC.
+func Add(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+	r := NewReconciler(mgr, accessReviewer, params)
+	c, err := common.NewController(mgr, name, r, params)
+	if err != nil {
+		return err
+	}
+	return AddWatches(c, r)
+}
 
 // NewReconciler returns a new reconcile.Reconciler
 func NewReconciler(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) *ReconcileRemoteCa {
@@ -85,7 +97,7 @@ func (r *ReconcileRemoteCa) Reconcile(request reconcile.Request) (reconcile.Resu
 		return reconcile.Result{}, err
 	}
 
-	if common.IsPaused(es.ObjectMeta) {
+	if common.IsPaused(&es) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
 		return common.PauseRequeue, nil
 	}
@@ -250,7 +262,7 @@ func remoteClustersInvolvedWith(
 	if err := c.List(
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
-		LabelSelector(es.Name),
+		remoteca.LabelSelector(es.Name),
 	); err != nil {
 		return nil, err
 	}
@@ -267,7 +279,7 @@ func remoteClustersInvolvedWith(
 	if err := c.List(
 		&remoteCAList,
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:            TypeLabelValue,
+			common.TypeLabelName:            remoteca.TypeLabelValue,
 			RemoteClusterNamespaceLabelName: es.Namespace,
 			RemoteClusterNameLabelName:      es.Name,
 		}),
