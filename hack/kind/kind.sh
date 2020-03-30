@@ -14,7 +14,12 @@
 # Exit immediately for non zero status
 set -e
 
-KIND_LOGGING=${KIND_LOGGING:-"-v 1"}
+if [ -n "${KIND_LOGGING}" ]; then
+  IFS=' ' read -r -a log_lvl <<< "${KIND_LOGGING}"
+else
+  log_lvl=("-v" "1")
+fi
+
 CLUSTER_NAME=${KIND_CLUSTER_NAME:-eck-e2e}
 NODES=3
 MANIFEST=/tmp/cluster.yml
@@ -25,7 +30,7 @@ scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 
 function check_kind() {
   echo "Check if Kind is installed..."
-  if ! kind --help > /dev/null; then
+  if ! command -v kind ; then
     echo "Looks like Kind is not installed."
     exit 1
   fi
@@ -79,14 +84,13 @@ function setup_kind_cluster() {
     echo "No existing kind cluster with name ${CLUSTER_NAME}. Continue..."
   fi
 
-  config_opts=""
+  config_opts=()
   if [[ ${NODES} -gt 0 ]]; then
-    config_opts="--config ${MANIFEST}"
+    config_opts+=("--config" "${MANIFEST}")
   fi
   # Create Kind cluster
   # TODO: see if this lint rule can be re-enabled
-  # shellcheck disable=SC2086
-  if ! (kind ${KIND_LOGGING} create cluster --name="${CLUSTER_NAME}" ${config_opts} --retain --image "${NODE_IMAGE}"); then
+  if ! (kind "${log_lvl[@]}" create cluster --name="${CLUSTER_NAME}" "${config_opts[@]}" --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1
   fi
@@ -139,9 +143,7 @@ fi
 if [[ -n "${LOAD_IMAGES}" ]]; then
   IFS=',' read -r -a IMAGES <<< "${LOAD_IMAGES}"
   for image in "${IMAGES[@]}"; do
-          # TODO: see if this lint rule can be re-enabled
-          # shellcheck disable=SC2086
-          kind ${KIND_LOGGING} --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
+  kind "${log_lvl[@]}" --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
   done
 fi
 
