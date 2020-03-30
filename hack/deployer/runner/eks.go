@@ -148,8 +148,11 @@ func (e *EKSDriver) ensureWorkDir() error {
 }
 
 func (e *EKSDriver) GetCredentials() error {
-	log.Printf("NOOP as eksctl populates ./kube/config by default")
-	return nil
+	if err := e.fetchSecrets(); err != nil {
+		return fmt.Errorf("while fetching secrets %w", err)
+	}
+	log.Printf("writing kubeconfig")
+	return e.newCmd("eksctl utils write-kubeconfig --name {{.ClusterName}} --region {{.Region}}").Run()
 }
 
 func (e *EKSDriver) clusterExists() (bool, error) {
