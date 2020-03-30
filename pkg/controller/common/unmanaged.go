@@ -36,28 +36,28 @@ func getBoolFromAnnotation(annotations map[string]string) bool {
 		return false
 	}
 
-	parse := func(ann string, defaultValue bool) bool {
+	parse := func(ann string, defaultValue bool) (bool, bool) {
 		stateAsString, exists := annotations[ann]
 		if !exists {
-			return defaultValue
+			return defaultValue, false
 		}
 
 		expectedState, err := strconv.ParseBool(stateAsString)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Cannot parse %s=%s as a bool, defaulting to %t", ann, stateAsString, defaultValue))
-			return defaultValue
+			return defaultValue, true
 		}
-		return expectedState
+		return expectedState, true
 	}
 
-	_, set := annotations[ManagedAnnotation]
-	if set {
-		return !parse(ManagedAnnotation, true)
-	}
-	_, set = annotations[LegacyPauseAnnoation]
-	if set {
+	managed, newExists := parse(ManagedAnnotation, true)
+	paused, legacyExists := parse(LegacyPauseAnnoation, false)
+	if legacyExists && !newExists {
 		log.Info(fmt.Sprintf("Using legacy annotation %s. Please consider moving to %s", LegacyPauseAnnoation, ManagedAnnotation))
-		return parse(LegacyPauseAnnoation, false)
+		return paused
 	}
-	return false
+	if legacyExists && newExists {
+			log.Info(fmt.Sprintf("Both %s and %s are set, preferring %s", LegacyPauseAnnoation, ManagedAnnotation, ManagedAnnotation))
+	}
+	return !managed
 }

@@ -7,7 +7,6 @@ package common
 import (
 	"testing"
 
-	log2 "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -23,7 +22,6 @@ type testcase struct {
 }
 
 func TestUnmanagedCondition(t *testing.T) {
-	log2.InitLogger()
 	var tests = []testcase{
 		{
 			name: "Simple unmanaged/managed simulation (a.k.a the Happy Path)",
@@ -84,7 +82,7 @@ func TestUnmanagedCondition(t *testing.T) {
 					Annotations: test.annotationSequence[i],
 				}
 				actualPauseState := IsUnmanaged(meta)
-				assert.Equal(t, expectedState, actualPauseState)
+				assert.Equal(t, expectedState, actualPauseState, test.annotationSequence[i])
 			}
 		})
 	}
