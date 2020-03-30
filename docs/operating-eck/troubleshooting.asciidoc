@@ -173,8 +173,7 @@ you can get errors reporting a conflict while updating a resource. You can ignor
 [id="{p}-exclude-resource"]
 == Exclude resources from reconciliation
 
-When debugging, you might need to temporarily exclude an Elastic stack resource from management by ECK. When you do that no Kubernetes object depending on that stack resource is modified while you investigate.
-To do this, set the annotation `eck.k8s.elastic.co/managed` to `false` on any resource controlled by the operator:
+For debugging purposes, you might want to temporarily prevent ECK from modifying Kubernetes resources belonging to a particular Elastic Stack resource. To do this, annotate the Elastic object with `eck.k8s.elastic.co/managed=false`. This annotation can be added to any of the following types of objects:
 
 - Elasticsearch
 - Kibana
