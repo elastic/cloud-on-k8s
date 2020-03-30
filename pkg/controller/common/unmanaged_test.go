@@ -7,6 +7,7 @@ package common
 import (
 	"testing"
 
+	log2 "github.com/elastic/cloud-on-k8s/pkg/utils/log"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -22,6 +23,7 @@ type testcase struct {
 }
 
 func TestUnmanagedCondition(t *testing.T) {
+	log2.InitLogger()
 	var tests = []testcase{
 		{
 			name: "Simple unmanaged/managed simulation (a.k.a the Happy Path)",
@@ -58,20 +60,18 @@ func TestUnmanagedCondition(t *testing.T) {
 		{
 			name: "Still support legacy annotation",
 			annotationSequence: []map[string]string{
-				{LegacyPauseAnnoation: "true"},                              // still support legacy for backwards compatibility
-				{LegacyPauseAnnoation: "false", ManagedAnnotation: "false"}, // OR if both defined
+				{LegacyPauseAnnoation: "true"}, // still support legacy for backwards compatibility
+				{LegacyPauseAnnoation: "false"},
+				{LegacyPauseAnnoation: "foo"},
+				{LegacyPauseAnnoation: "false", ManagedAnnotation: "false"}, // new one wins if both defined
 				{LegacyPauseAnnoation: "true", ManagedAnnotation: "true"},
-				{LegacyPauseAnnoation: "foo", ManagedAnnotation: "bar"},  // both invalid
-				{LegacyPauseAnnoation: "true", ManagedAnnotation: "foo"}, // one of two valid
-				{LegacyPauseAnnoation: "foo", ManagedAnnotation: "false"},
 			},
 			expectedState: []bool{
 				true,
-				true,
-				true,
+				false,
 				false,
 				true,
-				true,
+				false,
 			},
 		},
 	}

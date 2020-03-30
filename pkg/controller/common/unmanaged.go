@@ -5,6 +5,7 @@
 package common
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -35,7 +36,7 @@ func getBoolFromAnnotation(annotations map[string]string) bool {
 		return false
 	}
 
-	test := func(ann string, defaultValue bool) bool {
+	parse := func(ann string, defaultValue bool) bool {
 		stateAsString, exists := annotations[ann]
 		if !exists {
 			return defaultValue
@@ -43,11 +44,20 @@ func getBoolFromAnnotation(annotations map[string]string) bool {
 
 		expectedState, err := strconv.ParseBool(stateAsString)
 		if err != nil {
-			log.Error(err, "Cannot parse %s as a bool, defaulting to %s: \"%v\"", annotations[ann], ann, defaultValue)
+			log.Error(err, fmt.Sprintf("Cannot parse %s=%s as a bool, defaulting to %t", ann, stateAsString, defaultValue))
 			return defaultValue
 		}
 		return expectedState
 	}
-	return test(LegacyPauseAnnoation, false) || !test(ManagedAnnotation, true)
 
+	_, set := annotations[ManagedAnnotation]
+	if set {
+		return !parse(ManagedAnnotation, true)
+	}
+	_, set = annotations[LegacyPauseAnnoation]
+	if set {
+		log.Info(fmt.Sprintf("Using legacy annotation %s. Please consider moving to %s", LegacyPauseAnnoation, ManagedAnnotation))
+		return parse(LegacyPauseAnnoation, false)
+	}
+	return false
 }
