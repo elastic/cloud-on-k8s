@@ -35,10 +35,12 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
-	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
+	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -46,9 +48,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-	entsassn "github.com/elastic/cloud-on-k8s/pkg/controller/entsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
 	licensetrial "github.com/elastic/cloud-on-k8s/pkg/controller/license/trial"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/remoteca"
@@ -354,16 +354,16 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "EnterpriseSearch")
 		os.Exit(1)
 	}
-	if err = asesassn.Add(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
+	if err = associationctl.AddApmES(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "apm-es-association")
 		os.Exit(1)
 	}
-	if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
+	if err = controller.AddKibanaES(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "kibana-es-association")
 		os.Exit(1)
 	}
-	if err = entsassn.Add(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "EnterpriseSearchAssociation")
+	if err = controller.AddEntSearchES(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "ents-es-association")
 		os.Exit(1)
 	}
 	if err = remoteca.Add(mgr, accessReviewer, params); err != nil {
@@ -417,8 +417,9 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 		os.Exit(1)
 	}
 	err = ugc.
-		For(&apmv1.ApmServerList{}, asesassn.AssociationLabelNamespace, asesassn.AssociationLabelName).
-		For(&kbv1.KibanaList{}, kbassn.AssociationLabelNamespace, kbassn.AssociationLabelName).
+		For(&apmv1.ApmServerList{}, associationctl.ApmESAssociationLabelNamespace, associationctl.ApmESAssociationLabelName).
+		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
+		For(&entsv1beta1.EnterpriseSearchList{}, associationctl.EntSearchESAssociationLabelNamespace, associationctl.EntSearchESAssociationLabelName).
 		DoGarbageCollection()
 	if err != nil {
 		log.Error(err, "user garbage collector failed")
