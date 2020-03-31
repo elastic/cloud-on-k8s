@@ -26,7 +26,9 @@
 === Enhancements
 
 * Improve secure string generation {pull}2794[#2794]
+* Rename pause annotation {pull}2783[#2783]
 * Add validation webhook configurations for all resource types {pull}2781[#2781]
+* Surface EULA validation in annotation for trials {pull}2742[#2742]
 * Add automaxprocs {pull}2724[#2724]
 * Make transport service customizable {pull}2691[#2691]
 * Add the transport service DNS name to the CSR {pull}2687[#2687]
@@ -57,6 +59,7 @@
 
 * Fix labels on ES CA secret for Kibana association {pull}2773[#2773] (issue: {issue}2698[#2698])
 * Ensure that HTTP CA cert is always set {pull}2772[#2772]
+* License check: update remote cluster logs and events {pull}2746[#2746]
 * Fix transport certificates reconciliation {pull}2740[#2740]
 * Rename registry field as it clashes with ECS {pull}2737[#2737]
 * Prevent pod deletion while ES node still contains shards {pull}2715[#2715]
