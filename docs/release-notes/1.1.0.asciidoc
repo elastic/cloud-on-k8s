@@ -9,16 +9,14 @@
 === Breaking changes
 
 * Remove operator roles {pull}2530[#2530]
+* Name container ports according to protocol {pull}2498[#2498] (issue: {issue}2483[#2483])
 
 
 [[feature-1.1.0]]
 [float]
 === New features
 
-* Toggle read-only mode on Enterprise Search version upgrade {pull}2757[#2757]
-* Ensure secret keys exist in Enterprise Search configuration {pull}2734[#2734]
 * Allow referencing K8s Secrets holding Enterprise Search configuration {pull}2729[#2729]
-* Add the EnterpriseSearch CRD and controller {pull}2688[#2688]
 * Add a tool to recreate a deleted cluster from existing PersistentVolumeClaims {pull}2551[#2551]
 * Add local K8S remote cluster support {pull}2543[#2543]
 * Add basic APM agent instrumentation {pull}2462[#2462]
@@ -30,11 +28,10 @@
 * Improve secure string generation {pull}2794[#2794]
 * Add validation webhook configurations for all resource types {pull}2781[#2781]
 * Add automaxprocs {pull}2724[#2724]
-* Don&#39;t create the default Enterprise Search user {pull}2700[#2700]
 * Make transport service customizable {pull}2691[#2691]
 * Add the transport service DNS name to the CSR {pull}2687[#2687]
 * Update transport cert verification to full {pull}2659[#2659]
-* Don&#39;t call the voting config exclusions API at every single reconciliation {pull}2642[#2642] (issue: {issue}2605[#2605])
+* Do not call the voting config exclusions API at every single reconciliation {pull}2642[#2642] (issue: {issue}2605[#2605])
 * User-provided config take precedence over operator config {pull}2636[#2636]
 * Validate duplicated nodeSet names {pull}2631[#2631]
 * Support Elastic stack version 8.0 {pull}2613[#2613]
@@ -44,7 +41,6 @@
 * Add operator flag to define default container registry {pull}2537[#2537]
 * Rename log.logger to event.dataset as recommended in ECS {pull}2534[#2534]
 * Make readiness probes independent of the host/container network {pull}2528[#2528]
-* Name container ports according to protocol {pull}2498[#2498] (issue: {issue}2483[#2483])
 * Bump controller-tools {pull}2497[#2497] (issue: {issue}2490[#2490])
 * Extend Clusterwide rbac roles for elastic crds {pull}2495[#2495]
 * Control associations across namespaces with ServiceAccount and RBAC {pull}2482[#2482]
