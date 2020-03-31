@@ -47,7 +47,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
-	filteredCurrCfg, err := getOrCreateReusableSettings(client, kb)
+	reusableSettings, err := getOrCreateReusableSettings(client, kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -69,7 +69,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	if !kb.RequiresAssociation() {
 		// merge the configuration with userSettings last so they take precedence
 		if err := cfg.MergeWith(
-			filteredCurrCfg,
+			reusableSettings,
 			versionSpecificCfg,
 			kibanaTLSCfg,
 			userSettings); err != nil {
@@ -85,7 +85,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 
 	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
-		filteredCurrCfg,
+		reusableSettings,
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
