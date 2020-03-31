@@ -35,6 +35,7 @@ type fakeESClient struct { //nolint:maligned
 	EnableShardAllocationCalled bool
 
 	SyncedFlushCalled bool
+	FlushCalled       bool
 
 	nodes             esclient.Nodes
 	GetNodesCallCount int
@@ -76,6 +77,11 @@ func (f *fakeESClient) EnableShardAllocation(_ context.Context) error {
 
 func (f *fakeESClient) SyncedFlush(_ context.Context) error {
 	f.SyncedFlushCalled = true
+	return nil
+}
+
+func (f *fakeESClient) Flush(_ context.Context) error {
+	f.FlushCalled = true
 	return nil
 }
 

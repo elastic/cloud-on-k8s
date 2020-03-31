@@ -5,15 +5,19 @@
 package driver
 
 import (
+	"context"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 func podWithRevision(name, revision string) *corev1.Pod {
@@ -193,6 +197,35 @@ func Test_healthyPods(t *testing.T) {
 			want := tt.args.pods.toHealthyPods()
 			assert.Equal(t, len(want), len(got))
 			assert.Equal(t, want, got)
+		})
+	}
+}
+
+func Test_doFlush(t *testing.T) {
+	tests := []struct {
+		name                string
+		es                  esv1.Elasticsearch
+		wantSyncFlushCalled bool
+		wantFlushCalled     bool
+	}{
+		{
+			name:                "flush when target version is 8.x",
+			es:                  esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{Version: "8.0.0"}},
+			wantFlushCalled:     true,
+			wantSyncFlushCalled: false,
+		},
+		{
+			name:                "sync flush when target version is below 8.x",
+			es:                  esv1.Elasticsearch{Spec: esv1.ElasticsearchSpec{Version: "7.6.0"}},
+			wantFlushCalled:     false,
+			wantSyncFlushCalled: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeClient := &fakeESClient{}
+			err := doFlush(context.Background(), tt.es, fakeClient)
+			require.NoError(t, err)
 		})
 	}
 }
