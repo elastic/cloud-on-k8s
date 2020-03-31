@@ -238,6 +238,7 @@ SecretRef is a reference to a secret that exists in the same namespace.
 
 .Appears In:
 ****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-configsource[$$ConfigSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-filerealmsource[$$FileRealmSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-rolesource[$$RoleSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions[$$TLSOptions$$]
@@ -886,6 +887,24 @@ Package v1beta1 contains API schema definitions for managing Enterprise Search r
 
 
 
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-configsource"]
+=== ConfigSource 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`SecretRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretref[$$SecretRef$$]__ | SecretName references a Kubernetes secret in the same namespace as the EnterpriseSearch resource. Enterprise Search settings must be specified as yaml, under a single "enterprise-search.yml" entry. 
+ Example: --- kind: Secret apiVersion: v1 metadata: 	name: smtp-credentials stringData:  enterprise-search.yml: |-    email.account.enabled: true    email.account.smtp.auth: plain    email.account.smtp.starttls.enable: false    email.account.smtp.host: 127.0.0.1    email.account.smtp.port: 25    email.account.smtp.user: myuser    email.account.smtp.password: mypassword    email.account.email_defaults.from: my@email.com ---
+|===
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearch"]
 === EnterpriseSearch 
 
@@ -921,6 +940,7 @@ EnterpriseSearchSpec holds the specification of an Enterprise Search resource.
 | *`image`* __string__ | Image is the Enterprise Search Docker image to deploy.
 | *`count`* __integer__ | Count of Enterprise Search instances to deploy.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Enterprise Search configuration.
+| *`configRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-configsource[$$ConfigSource$$] array__ | ConfigRef contains references to Kubernetes Secrets holding the Enterprise Search configuration. Configuration settings are merged and have prcedence over plain text settings specified in  `config`. Multiple secrets can be referenced: if duplicate settings exist in multiple secrets, the last one takes precedence.
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for Enterprise Search resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the Elasticsearch cluster running in the same Kubernetes cluster.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Enterprise Search pods.
