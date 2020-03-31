@@ -137,10 +137,9 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	// skip reconciliation if paused
-	if common.IsPaused(kb.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(kb.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
+		return reconcile.Result{}, nil
 	}
 
 	// check for compatibility with the operator version
