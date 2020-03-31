@@ -186,7 +186,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 
 	if common.IsUnmanaged(es.ObjectMeta) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name)
-		return common.CheckManagedRequeue, nil
+		return reconcile.Result{}, nil
 	}
 
 	selector := map[string]string{label.ClusterNameLabelName: es.Name}

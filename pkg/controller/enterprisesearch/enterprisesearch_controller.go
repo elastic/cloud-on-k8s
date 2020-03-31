@@ -153,7 +153,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 
 	if common.IsUnmanaged(ents.ObjectMeta) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ents.Namespace, "ents_name", ents.Name)
-		return common.CheckManagedRequeue, nil
+		return reconcile.Result{}, nil
 	}
 
 	if compatible, err := r.isCompatible(ctx, &ents); err != nil || !compatible {

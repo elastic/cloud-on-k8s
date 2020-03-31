@@ -182,7 +182,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 
 	if common.IsUnmanaged(as.ObjectMeta) {
 		log.Info("Object currently not managed by this controller. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
-		return common.CheckManagedRequeue, nil
+		return reconcile.Result{}, nil
 	}
 
 	if compatible, err := r.isCompatible(ctx, &as); err != nil || !compatible {

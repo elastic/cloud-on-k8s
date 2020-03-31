@@ -139,7 +139,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	if common.IsUnmanaged(kb.ObjectMeta) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
-		return common.CheckManagedRequeue, nil
+		return reconcile.Result{}, nil
 	}
 
 	// check for compatibility with the operator version

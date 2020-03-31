@@ -39,20 +39,20 @@ func TestUnmanagedCondition(t *testing.T) {
 			},
 		},
 		{
-			name: "Can't parse or empty annotation",
+			name: "Anything but 'false' means managed",
 			annotationSequence: []map[string]string{
 				{ManagedAnnotation: ""}, // empty annotation
 				{ManagedAnnotation: "false"},
-				{ManagedAnnotation: "XXXX"}, // unable to parse this one
-				{ManagedAnnotation: "1"},    // 1 == true
-				{ManagedAnnotation: "0"},    // 0 == false
+				{ManagedAnnotation: "XXXX"}, // unable to parse these
+				{ManagedAnnotation: "1"},
+				{ManagedAnnotation: "0"},
 			},
 			expectedState: []bool{
 				false,
 				true,
 				false,
 				false,
-				true,
+				false,
 			},
 		},
 		{
@@ -61,15 +61,15 @@ func TestUnmanagedCondition(t *testing.T) {
 				{LegacyPauseAnnoation: "true"}, // still support legacy for backwards compatibility
 				{LegacyPauseAnnoation: "false"},
 				{LegacyPauseAnnoation: "foo"},
-				{LegacyPauseAnnoation: "false", ManagedAnnotation: "false"}, // new one wins if both defined
-				{LegacyPauseAnnoation: "true", ManagedAnnotation: "true"},
+				{LegacyPauseAnnoation: "false", ManagedAnnotation: "false"}, // new one takes precedence
+				{LegacyPauseAnnoation: "true", ManagedAnnotation: "true"}, // but legacy is respected if true
 			},
 			expectedState: []bool{
 				true,
 				false,
 				false,
 				true,
-				false,
+				true,
 			},
 		},
 	}
