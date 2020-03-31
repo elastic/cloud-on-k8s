@@ -55,7 +55,7 @@ var (
 	// apmDefaultRoles are the default roles used by APM Server instances
 	apmDefaultRoles = strings.Join([]string{
 		user.ApmDefaultUserRole, // Retrieve cluster details (e.g. version) and manage apm-* indices
-		"kibana_user",           // Load dependencies, such as example dashboards, if available, into Kibana
+		"apm_user",              // Load dependencies, such as example dashboards, if available, into Kibana
 		"ingest_admin",          // Set up index templates
 	}, ",")
 )
