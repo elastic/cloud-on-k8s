@@ -14,11 +14,8 @@
 # Exit immediately for non zero status
 set -e
 
-if [ -n "${KIND_LOGGING}" ]; then
-  IFS=' ' read -r -a log_lvl <<< "${KIND_LOGGING}"
-else
-  log_lvl=("-v" "1")
-fi
+KIND_LOG_LEVEL=${KIND_LOG_LEVEL:-"1"}
+log_lvl=("-v" "$KIND_LOG_LEVEL")
 
 CLUSTER_NAME=${KIND_CLUSTER_NAME:-eck-e2e}
 NODES=3
