@@ -27,7 +27,7 @@ var (
 	PredefinedRoles = RolesFileContent{
 		ProbeUserRole: esclient.Role{Cluster: []string{"monitor"}},
 		ApmDefaultUserRole: esclient.Role{
-			Cluster: []string{"monitor", "manage_ilm"},
+			Cluster: []string{"monitor", "manage_ilm", "manage_api_key"},
 			Indices: []esclient.IndexRole{
 				{
 					Names:      []string{"apm-*"},
