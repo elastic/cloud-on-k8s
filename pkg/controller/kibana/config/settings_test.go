@@ -52,6 +52,71 @@ elasticsearch:
     verificationMode: certificate
 `)
 
+func Test_reuseOrGenerateSecrets(t *testing.T) {
+	defaultKb := mkKibana()
+	type args struct {
+		c      k8s.Client
+		kibana kbv1.Kibana
+	}
+	tests := []struct {
+		name      string
+		args      args
+		assertion func(*testing.T, *settings.CanonicalConfig, error)
+		wantErr   bool
+	}{
+		{
+			name: "Do not override existing encryption keys",
+			args: args{
+				c: k8s.WrappedFakeClient(
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
+						Data: map[string][]byte{
+							SettingsFilename: defaultConfig,
+						},
+					},
+				),
+				kibana: defaultKb,
+			},
+			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				expectedSettings := settings.MustCanonicalConfig(map[string]interface{}{
+					"xpack.security.encryptionKey": "thisismyencryptionkey",
+				})
+				assert.Equal(t, expectedSettings, got)
+			},
+		},
+		{
+			name: "Create new encryption keys",
+			args: args{
+				c: k8s.WrappedFakeClient(
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{Namespace: defaultKb.Namespace, Name: SecretName(defaultKb)},
+						Data: map[string][]byte{
+							SettingsFilename: associationConfig,
+						},
+					},
+				),
+				kibana: defaultKb,
+			},
+			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
+				// Unpack the configuration to check that some default reusable settings have been generated
+				var r reusableSettings
+				assert.NoError(t, got.Unpack(&r))
+				assert.Equal(t, len(r.EncryptionKey), 64) // Kibana encryption key length should be 64
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := getOrCreateReusableSettings(tt.args.c, tt.args.kibana)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getOrCreateReusableSettings() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			tt.assertion(t, got, err)
+		})
+	}
+}
+
 func TestNewConfigSettings(t *testing.T) {
 	defaultKb := mkKibana()
 	existingSecret := &corev1.Secret{
@@ -405,39 +470,6 @@ func Test_getExistingConfig(t *testing.T) {
 				require.NotNil(t, result)
 				assert.True(t, (*ucfg.Config)(result).HasField(tc.expectKey))
 			}
-		})
-	}
-}
-
-func Test_filterExistingConfig(t *testing.T) {
-	tests := []struct {
-		name      string
-		cfg       *settings.CanonicalConfig
-		want      *settings.CanonicalConfig
-		expectErr bool
-	}{
-		{
-			name: "happy path",
-			cfg: settings.MustCanonicalConfig(map[string]interface{}{
-				XpackSecurityEncryptionKey: "value",
-				"notakey":                  "notavalue",
-			}),
-			want: settings.MustCanonicalConfig(map[string]interface{}{
-				XpackSecurityEncryptionKey: "value",
-			}),
-			expectErr: false,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			actual, err := filterExistingConfig(tc.cfg)
-			if tc.expectErr {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-			assert.Equal(t, tc.want, actual)
 		})
 	}
 }
