@@ -17,3 +17,8 @@ for PKG in $(go list github.com/elastic/cloud-on-k8s/test/e2e/...); do
         go test -v -failfast -timeout=4h -tags=e2e -p=1 "$PKG" "$@"
     fi
 done
+
+# sleep 1s to allow filebeat to read all logs with 1s max_backoff
+# minimizes race condition in filebeat between reading log file and
+# stopping reading due to pod termination autodiscovery event
+sleep 1
