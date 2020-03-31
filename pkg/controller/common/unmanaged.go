@@ -48,11 +48,11 @@ func IsUnmanaged(meta metav1.ObjectMeta) bool {
 	managed, newExists := parse(ManagedAnnotation, true)
 	paused, legacyExists := parse(LegacyPauseAnnoation, false)
 	if legacyExists && !newExists {
-		log.V(-1).Info(fmt.Sprintf("Using legacy annotation %s. Please consider moving to %s", LegacyPauseAnnoation, ManagedAnnotation), "namespace", meta.Namespace, "name", meta.Name)
+		log.Info(fmt.Sprintf("Using legacy annotation %s. Please consider moving to %s", LegacyPauseAnnoation, ManagedAnnotation), "namespace", meta.Namespace, "name", meta.Name)
 		return paused
 	}
 	if legacyExists && newExists {
-		log.V(-1).Info(fmt.Sprintf("Both %s and %s are set, preferring %s", LegacyPauseAnnoation, ManagedAnnotation, ManagedAnnotation), "namespace", meta.Namespace, "name", meta.Name)
+		log.Info(fmt.Sprintf("Both %s and %s are set, preferring %s", LegacyPauseAnnoation, ManagedAnnotation, ManagedAnnotation), "namespace", meta.Namespace, "name", meta.Name)
 	}
 	return !managed
 }
