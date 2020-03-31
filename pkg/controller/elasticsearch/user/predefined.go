@@ -135,7 +135,7 @@ func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.Namespac
 		if password, exists := secret.Data[u.Name]; exists {
 			users[i].Password = password
 		} else {
-			users[i].Password = common.RandomPasswordBytes()
+			users[i].Password = common.FixedLengthRandomPasswordBytes()
 		}
 	}
 	return users, nil

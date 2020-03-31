@@ -8,8 +8,8 @@ import (
 	"github.com/sethvargo/go-password/password"
 )
 
-// RandomPasswordBytes generates a random password
-func RandomPasswordBytes() []byte {
+// FixedLengthRandomPasswordBytes generates a random password
+func FixedLengthRandomPasswordBytes() []byte {
 	return RandomBytes(24)
 }
 

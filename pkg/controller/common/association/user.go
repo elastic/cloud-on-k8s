@@ -107,7 +107,7 @@ func ReconcileEsUser(
 	if existingPassword, exists := existingSecret.Data[usrKey.Name]; exists {
 		password = existingPassword
 	} else {
-		password = common.RandomPasswordBytes()
+		password = common.FixedLengthRandomPasswordBytes()
 	}
 	expectedSecret.Data[usrKey.Name] = password
 
