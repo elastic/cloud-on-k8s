@@ -62,7 +62,7 @@ func TestUnmanagedCondition(t *testing.T) {
 				{LegacyPauseAnnoation: "false"},
 				{LegacyPauseAnnoation: "foo"},
 				{LegacyPauseAnnoation: "false", ManagedAnnotation: "false"}, // new one takes precedence
-				{LegacyPauseAnnoation: "true", ManagedAnnotation: "true"}, // but legacy is respected if true
+				{LegacyPauseAnnoation: "true", ManagedAnnotation: "true"},   // but legacy is respected if true
 			},
 			expectedState: []bool{
 				true,
