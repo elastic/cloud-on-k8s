@@ -29,7 +29,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -179,7 +178,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 
 func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
 	// Clean up watches
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(configRefWatchName(obj))
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *entsv1beta1.EnterpriseSearch) (bool, error) {
@@ -199,7 +198,18 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	results := ReconcileCertificates(ctx, r, &ents, []corev1.Service{*svc}, r.CACertRotation, r.CertRotation)
+	_, results := certificates.Reconciler{
+		K8sClient:             r.K8sClient(),
+		DynamicWatches:        r.DynamicWatches(),
+		Object:                &ents,
+		TLSOptions:            ents.Spec.HTTP.TLS,
+		Namer:                 entsname.EntSearchNamer,
+		Labels:                NewLabels(ents.Name),
+		Services:              []corev1.Service{*svc},
+		CACertRotation:        r.CACertRotation,
+		CertRotation:          r.CertRotation,
+		GarbageCollectSecrets: true,
+	}.ReconcileCAAndHTTPCerts(ctx)
 	if results.HasError() {
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, &ents, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
@@ -210,7 +220,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	configSecret, err := ReconcileConfig(r.K8sClient(), ents)
+	configSecret, err := ReconcileConfig(r, ents)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -270,7 +280,7 @@ func buildConfigHash(c k8s.Client, ents entsv1beta1.EnterpriseSearch, configSecr
 
 	// - in the Enterprise Search TLS certificates
 	var tlsCertSecret corev1.Secret
-	tlsSecretKey := types.NamespacedName{Namespace: ents.Namespace, Name: certificates.HTTPCertsInternalSecretName(entsname.EntSearchNamer, ents.Name)}
+	tlsSecretKey := types.NamespacedName{Namespace: ents.Namespace, Name: certificates.InternalCertsSecretName(entsname.EntSearchNamer, ents.Name)}
 	if err := c.Get(tlsSecretKey, &tlsCertSecret); err != nil {
 		return "", err
 	}

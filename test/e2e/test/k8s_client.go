@@ -10,18 +10,6 @@ import (
 	"fmt"
 	"os"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +23,18 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 type K8sClient struct {
@@ -189,7 +189,7 @@ func (k *K8sClient) GetElasticPassword(nsn types.NamespacedName) (string, error)
 
 func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerNamespace, ownerName string) ([]*x509.Certificate, error) {
 	var secret corev1.Secret
-	secretNSN := http.PublicCertsSecretRef(
+	secretNSN := certificates.PublicCertsSecretRef(
 		namer,
 		types.NamespacedName{
 			Namespace: ownerNamespace,

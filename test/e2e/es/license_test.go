@@ -108,6 +108,7 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 		return test.StepList{
 			licenseTestContext.Init(),
 			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeTrial),
+			licenseTestContext.CheckEnterpriseTrialLicenseValid(trialSecretName),
 			// upgrade from trial to a paid-for license
 			licenseTestContext.CreateEnterpriseLicenseSecret(licenseSecretName, licenseBytes),
 			licenseTestContext.CheckElasticsearchLicense(

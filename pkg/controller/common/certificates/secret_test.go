@@ -2,15 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package http
+package certificates
 
 import (
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
 func TestCertificatesSecret(t *testing.T) {
@@ -28,9 +26,9 @@ func TestCertificatesSecret(t *testing.T) {
 			name: "Simple chain",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
-					certificates.CAFileName:   ca,
-					certificates.CertFileName: tls,
-					certificates.KeyFileName:  key,
+					CAFileName:   ca,
+					CertFileName: tls,
+					KeyFileName:  key,
 				},
 			},
 			wantCa:    ca,
@@ -42,8 +40,8 @@ func TestCertificatesSecret(t *testing.T) {
 			name: "No CA cert",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
-					certificates.CertFileName: tls,
-					certificates.KeyFileName:  key,
+					CertFileName: tls,
+					KeyFileName:  key,
 				},
 			},
 			wantCa:    nil,
@@ -85,9 +83,9 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 			name: "Happy path",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
-					certificates.CAFileName:   ca,
-					certificates.CertFileName: tls,
-					certificates.KeyFileName:  key,
+					CAFileName:   ca,
+					CertFileName: tls,
+					KeyFileName:  key,
 				},
 			},
 			wantErr: false,
@@ -103,7 +101,7 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 			name: "No cert",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
-					certificates.KeyFileName: key,
+					KeyFileName: key,
 				},
 			},
 			wantErr: true,
@@ -112,8 +110,8 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 			name: "No key",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
-					certificates.CAFileName:   ca,
-					certificates.CertFileName: tls,
+					CAFileName:   ca,
+					CertFileName: tls,
 				},
 			},
 			wantErr: true,
@@ -122,8 +120,8 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 			name: "No CA cert",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
-					certificates.CertFileName: tls,
-					certificates.KeyFileName:  key,
+					CertFileName: tls,
+					KeyFileName:  key,
 				},
 			},
 			wantErr: false,
@@ -132,8 +130,8 @@ func TestCertificatesSecret_Validate(t *testing.T) {
 			name: "Corrupted key",
 			s: CertificatesSecret{
 				Data: map[string][]byte{
-					certificates.CertFileName: tls,
-					certificates.KeyFileName:  corruptedKey,
+					CertFileName: tls,
+					KeyFileName:  corruptedKey,
 				},
 			},
 			wantErr: true,

@@ -35,6 +35,8 @@ spec:
   ttlSecondsAfterFinished: 360
   template:
     metadata:
+      annotations:
+        co.elastic.logs/json.keys_under_root: "true"
       labels:
         test-run: {{ .Context.TestRun }}
     spec:

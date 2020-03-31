@@ -12,7 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -103,6 +103,6 @@ func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.
 	if !ents.Spec.HTTP.TLS.Enabled() {
 		return builder
 	}
-	vol := http.HTTPCertSecretVolume(name.EntSearchNamer, ents.Name)
+	vol := certificates.HTTPCertSecretVolume(name.EntSearchNamer, ents.Name)
 	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 }

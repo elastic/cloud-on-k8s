@@ -101,6 +101,13 @@ func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
 
 // NewVerifier creates a new license verifier from a DER encoded public key.
 func NewVerifier(pubKeyBytes []byte) (*Verifier, error) {
+	key, err := ParsePubKey(pubKeyBytes)
+	return &Verifier{
+		PublicKey: key,
+	}, err
+}
+
+func ParsePubKey(pubKeyBytes []byte) (*rsa.PublicKey, error) {
 	pub, err := x509.ParsePKIXPublicKey(pubKeyBytes)
 	if err != nil {
 		return nil, err
@@ -109,9 +116,7 @@ func NewVerifier(pubKeyBytes []byte) (*Verifier, error) {
 	if !ok {
 		return nil, errors.New("public key is not an RSA key")
 	}
-	return &Verifier{
-		PublicKey: pubKey,
-	}, nil
+	return pubKey, nil
 }
 
 // Signer signs Enterprise licenses.

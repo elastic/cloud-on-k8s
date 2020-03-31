@@ -60,7 +60,7 @@ EOT
 
 function cleanup_kind_cluster() {
   echo "Cleaning up kind cluster"
-  kind delete cluster --name=${CLUSTER_NAME}
+  kind delete cluster --name="${CLUSTER_NAME}"
 }
 
 function setup_kind_cluster() {
@@ -77,7 +77,7 @@ function setup_kind_cluster() {
 
   # Delete any previous e2e Kind cluster
   echo "Deleting previous Kind cluster with name=${CLUSTER_NAME}"
-  if ! (kind delete cluster --name=${CLUSTER_NAME}) > /dev/null; then
+  if ! (kind delete cluster --name="${CLUSTER_NAME}") > /dev/null; then
     echo "No existing kind cluster with name ${CLUSTER_NAME}. Continue..."
   fi
 
@@ -86,18 +86,18 @@ function setup_kind_cluster() {
     config_opts="--config ${MANIFEST}"
   fi
   # Create Kind cluster
-  if ! (kind ${KIND_LOGGING} create cluster --name=${CLUSTER_NAME} ${config_opts} --retain --image "${NODE_IMAGE}"); then
+  if ! (kind "${KIND_LOGGING}" create cluster --name="${CLUSTER_NAME}" "${config_opts}" --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1
   fi
 
   # persist kubeconfig for reliabililty in following kubectl commands
   TMPKUBECONFIG=$(mktemp)
-  kind --name=${CLUSTER_NAME} get kubeconfig > ${TMPKUBECONFIG}
+  kind --name="${CLUSTER_NAME}" get kubeconfig > "${TMPKUBECONFIG}"
 
   # setup storage
-  kubectl --kubeconfig=${TMPKUBECONFIG} delete storageclass standard || true
-  kubectl --kubeconfig=${TMPKUBECONFIG} apply -f "${scriptpath}/local-path-storage.yaml"
+  kubectl --kubeconfig="${TMPKUBECONFIG}" delete storageclass standard || true
+  kubectl --kubeconfig="${TMPKUBECONFIG}" apply -f "${scriptpath}/local-path-storage.yaml"
 
   echo "Kind setup complete"
 }
@@ -137,9 +137,9 @@ fi
 
 # Load images in the nodes, e.g. the operator image or the e2e container
 if [[ -n "${LOAD_IMAGES}" ]]; then
-  IMAGES=(${LOAD_IMAGES//,/ })
+  IMAGES=("${LOAD_IMAGES//,/ }")
   for image in "${IMAGES[@]}"; do
-          kind ${KIND_LOGGING} --name ${CLUSTER_NAME} load docker-image --nodes ${workers} "${image}"
+          kind "${KIND_LOGGING}" --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
   done
 fi
 
