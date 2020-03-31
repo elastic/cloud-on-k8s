@@ -375,6 +375,9 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 					Name:      "apmserver",
 					Namespace: "default",
 				},
+				Spec: apmv1.ApmServerSpec{
+					Version: "7.6.1",
+				},
 			},
 			fields: fields{
 				resources:      []runtime.Object{},
@@ -392,6 +395,28 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 			},
 			wantRequeue: false,
 		},
+		{
+			name: "Validation failure",
+			as: apmv1.ApmServer{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "apmserver",
+					Namespace: "default",
+				},
+				Spec: apmv1.ApmServerSpec{
+					Version: "7.x.1",
+				},
+			},
+			fields: fields{
+				resources:      []runtime.Object{},
+				recorder:       record.NewFakeRecorder(100),
+				dynamicWatches: watches.NewDynamicWatches(),
+				Parameters:     operator.Parameters{},
+			},
+			args: args{
+				request: reconcile.Request{},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -408,8 +433,9 @@ func TestReconcileApmServer_doReconcile(t *testing.T) {
 			}
 			require.NotNil(t, got)
 			require.Equal(t, got.Requeue, tt.wantRequeue)
-			// We just check that the requeue is not zero
-			require.True(t, got.RequeueAfter > 0)
+			if tt.wantRequeue {
+				require.True(t, got.RequeueAfter > 0)
+			}
 		})
 	}
 }

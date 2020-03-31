@@ -220,6 +220,11 @@ func (r *ReconcileApmServer) isCompatible(ctx context.Context, as *apmv1.ApmServ
 }
 
 func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
+	// Run validation in case the webhook is disabled
+	if err := r.validate(ctx, as); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	state := NewState(request, as)
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as), as)
 	if err != nil {
@@ -265,6 +270,19 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	res, err := results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, as, events.EventReconciliationError, "Reconciliation error: %v", err)
 	return res, err
+}
+
+func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) error {
+	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
+	defer span.End()
+
+	if err := as.ValidateCreate(); err != nil {
+		log.Error(err, "Validation failed")
+		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, err.Error())
+		return tracing.CaptureError(vctx, err)
+	}
+
+	return nil
 }
 
 func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {

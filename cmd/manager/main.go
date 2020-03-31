@@ -13,29 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"go.elastic.co/apm"
-	"k8s.io/client-go/kubernetes"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-
-	"k8s.io/apimachinery/pkg/util/wait"
-	// allow gcp authentication
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
-
-	"go.uber.org/automaxprocs/maxprocs"
-
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
+	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	asesassn "github.com/elastic/cloud-on-k8s/pkg/controller/apmserverelasticsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -58,6 +43,21 @@ import (
 	licensing "github.com/elastic/cloud-on-k8s/pkg/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"go.elastic.co/apm"
+	"go.uber.org/automaxprocs/maxprocs"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // allow gcp authentication
+	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 const (
@@ -450,14 +450,24 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 		}
 	}
 
-	// setup v1 and v1beta1 webhooks
-	if err := (&esv1.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
-		log.Error(err, "unable to create webhook", "version", "v1", "webhook", "Elasticsearch")
-		os.Exit(1)
+	// setup webhooks for supported types
+	webhookObjects := []interface {
+		runtime.Object
+		SetupWebhookWithManager(manager.Manager) error
+	}{
+		&apmv1.ApmServer{},
+		&apmv1beta1.ApmServer{},
+		&entsv1beta1.EnterpriseSearch{},
+		&esv1.Elasticsearch{},
+		&esv1beta1.Elasticsearch{},
+		&kbv1.Kibana{},
+		&kbv1beta1.Kibana{},
 	}
-	if err := (&esv1beta1.Elasticsearch{}).SetupWebhookWithManager(mgr); err != nil {
-		log.Error(err, "unable to create webhook", "version", "v1beta1", "webhook", "Elasticsearch")
-		os.Exit(1)
+	for _, obj := range webhookObjects {
+		if err := obj.SetupWebhookWithManager(mgr); err != nil {
+			gvk := obj.GetObjectKind().GroupVersionKind()
+			log.Error(err, "Failed to setup webhook", "group", gvk.Group, "version", gvk.Version, "kind", gvk.Kind)
+		}
 	}
 
 	// wait for the secret to be populated in the local filesystem before returning
