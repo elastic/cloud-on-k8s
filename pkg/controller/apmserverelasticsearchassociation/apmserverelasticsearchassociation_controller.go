@@ -34,6 +34,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
@@ -51,14 +52,29 @@ const (
 var (
 	log            = logf.Log.WithName(name)
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
-
-	// apmDefaultRoles are the default roles used by APM Server instances
-	apmDefaultRoles = strings.Join([]string{
-		user.ApmDefaultUserRole, // Retrieve cluster details (e.g. version) and manage apm-* indices
-		"apm_user",              // Load dependencies, such as example dashboards, if available, into Kibana
-		"ingest_admin",          // Set up index templates
-	}, ",")
 )
+
+// getRoles returns for a given version of the APM Server the set of required roles.
+func getRoles(v version.Version) string {
+	// 7.5.x and above
+	if v.IsSameOrAfter(version.From(7, 5, 0)) {
+		return strings.Join([]string{
+			user.ApmUserRoleV75, // Retrieve cluster details (e.g. version) and manage apm-* indices
+			"ingest_admin",      // Set up index templates
+		}, ",")
+	}
+
+	// 7.1.x to 7.4.x
+	if v.IsSameOrAfter(version.From(7, 1, 0)) {
+		return strings.Join([]string{
+			user.ApmUserRoleV7, // Retrieve cluster details (e.g. version) and manage apm-* indices
+			"ingest_admin",     // Set up index templates
+		}, ",")
+	}
+
+	// 6.8
+	return user.ApmUserRoleV6
+}
 
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -300,7 +316,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		r.Client,
 		apmServer,
 		associationLabels(apmServer),
-		apmDefaultRoles,
+		getRoles(version.MustParse(apmServer.Spec.Version)),
 		apmUserSuffix,
 		es,
 	); err != nil { // TODO distinguish conflicts and non-recoverable errors here
