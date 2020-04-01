@@ -70,10 +70,10 @@ spec:
 [id="{p}-traffic-splitting-by-node-type"]
 == Create services for exposing different node types
 
-The following examples illustrate how to create services for accessing different types of Elasticsearch nodes. The procedure for exposing services publicly is the same as described in <<{p}-allow-public-accss>>.
+The following examples illustrate how to create services for accessing different types of Elasticsearch nodes. The procedure for exposing services publicly is the same as described in <<{p}-allow-public-access>>.
 
 .Coordinator nodes
-[id="{p}-traffic-splitting-coordinator-nodes"]
+[[{p}-traffic-splitting-coordinator-nodes]]
 [source,yaml]
 ----
 apiVersion: v1
@@ -94,7 +94,7 @@ spec:
 ----
 
 .Ingest nodes
-[id="{p}-traffic-splitting-ingest-nodes"]
+[[{p}-traffic-splitting-ingest-nodes]]
 [source,yaml]
 ----
 apiVersion: v1
@@ -112,7 +112,7 @@ spec:
 ----
 
 .Non-master nodes
-[id="{p}-traffic-splitting-non-master-nodes"]
+[[{p}-traffic-splitting-non-master-nodes]]
 [source,yaml]
 ----
 apiVersion: v1
