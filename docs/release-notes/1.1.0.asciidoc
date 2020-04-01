@@ -16,7 +16,6 @@
 [float]
 === New features
 
-* Allow referencing K8s Secrets holding Enterprise Search configuration {pull}2729[#2729]
 * Add a tool to recreate a deleted cluster from existing PersistentVolumeClaims {pull}2551[#2551]
 * Add local K8S remote cluster support {pull}2543[#2543]
 * Add basic APM agent instrumentation {pull}2462[#2462]
@@ -36,7 +35,7 @@
 * Do not call the voting config exclusions API at every single reconciliation {pull}2642[#2642] (issue: {issue}2605[#2605])
 * User-provided config take precedence over operator config {pull}2636[#2636]
 * Validate duplicated nodeSet names {pull}2631[#2631]
-* Support Elastic stack version 8.0 {pull}2613[#2613]
+* Stub initial support for Elastic stack version 8.0 {pull}2613[#2613]
 * Don&#39;t request ES to clear routing allocation exclude at every reconciliation {pull}2610[#2610] (issue: {issue}1522[#1522])
 * Get endpoints as part of the diagnostics bundle {pull}2603[#2603] (issue: {issue}2602[#2602])
 * ECK dump: export controller revisions {pull}2538[#2538]
@@ -44,7 +43,7 @@
 * Rename log.logger to event.dataset as recommended in ECS {pull}2534[#2534]
 * Make readiness probes independent of the host/container network {pull}2528[#2528]
 * Bump controller-tools {pull}2497[#2497] (issue: {issue}2490[#2490])
-* Extend Clusterwide rbac roles for elastic crds {pull}2495[#2495]
+* Extend cluster-wide rbac roles for elastic crds {pull}2495[#2495]
 * Control associations across namespaces with ServiceAccount and RBAC {pull}2482[#2482]
 * Allow webhook cert directory to be overridden {pull}2476[#2476] (issue: {issue}2463[#2463])
 * Logging: add minimal support for ECS {pull}2457[#2457] (issue: {issue}2002[#2002])
