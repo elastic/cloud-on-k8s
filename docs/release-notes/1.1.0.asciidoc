@@ -36,7 +36,7 @@
 * User-provided config take precedence over operator config {pull}2636[#2636]
 * Validate duplicated nodeSet names {pull}2631[#2631]
 * Stub initial support for Elastic stack version 8.0 {pull}2613[#2613]
-* Don&#39;t request ES to clear routing allocation exclude at every reconciliation {pull}2610[#2610] (issue: {issue}1522[#1522])
+* Do not request ES to clear routing allocation exclude at every reconciliation {pull}2610[#2610] (issue: {issue}1522[#1522])
 * Get endpoints as part of the diagnostics bundle {pull}2603[#2603] (issue: {issue}2602[#2602])
 * ECK dump: export controller revisions {pull}2538[#2538]
 * Add operator flag to define default container registry {pull}2537[#2537]
@@ -66,7 +66,7 @@
 * Ensure StatefulSets have been processed by the StatefulSet controller before doing any upgrade {pull}2591[#2591] (issues: {issue}2393[#2393], {issue}2434[#2434])
 * Use cert rotate parameter {pull}2541[#2541] (issue: {issue}2540[#2540])
 * Do not mutate object when validating unknown fields {pull}2536[#2536]
-* Mark the Version field required &amp; adapt CRD generation for trivialVersions {pull}2480[#2480] (issues: {issue}2395[#2395], {issue}2479[#2479])
+* Mark the Version field required and adapt CRD generation for trivialVersions {pull}2480[#2480] (issues: {issue}2395[#2395], {issue}2479[#2479])
 * Cluster bootstrap: ignore ES error when retrieving cluster UUID {pull}2438[#2438]
 
 
