@@ -59,6 +59,9 @@ hulk-kb-http        ClusterIP      10.19.247.151   <none>           5601/TCP   1
 You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of the resource manifest.
 On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur costs.
 
+NOTE: By default, the Elasticsearch service created by ECK is configured to route traffic to all Elasticsearch nodes in the cluster. Depending on your cluster configuration, you may want more control over the set of nodes that handle different types of traffic (query, ingest, and so on). See <<{p}-traffic-splitting>> for more information.
+
+
 [source,yaml,subs="attributes"]
 ----
 apiVersion: <kind>.k8s.elastic.co/{eck_crd_version}
