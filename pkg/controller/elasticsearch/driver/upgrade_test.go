@@ -226,6 +226,8 @@ func Test_doFlush(t *testing.T) {
 			fakeClient := &fakeESClient{}
 			err := doFlush(context.Background(), tt.es, fakeClient)
 			require.NoError(t, err)
+			require.Equal(t, tt.wantSyncFlushCalled, fakeClient.SyncedFlushCalled)
+			require.Equal(t, tt.wantFlushCalled, fakeClient.FlushCalled)
 		})
 	}
 }
