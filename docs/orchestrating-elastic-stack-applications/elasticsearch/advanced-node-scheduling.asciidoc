@@ -200,7 +200,7 @@ spec:
                     - ssd
 ----
 
-This example restricts Elasticsearch nodes from being scheduled on Kubernetes hosts tagged with `environment: e2e` or `environment: production`. It favors nodes tagged with `diskType: ssd`.
+This example restricts Elasticsearch nodes so they are only scheduled on Kubernetes hosts tagged with `environment: e2e` or `environment: production`. It favors nodes tagged with `diskType: ssd`.
 
 [id="{p}-availability-zone-awareness"]
 == Availability zone awareness
