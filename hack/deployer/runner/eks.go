@@ -43,8 +43,11 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
-	awsAccessKey       = "AWS_ACCESS_KEY"        // nolint
-	awsSecretAccessKey = "AWS_SECRET_ACCESS_KEY" // nolint
+	awsAccessKeyID      = "aws_access_key_id"     // nolint
+	awsSecretAccessKey  = "aws_secret_access_key" // nolint
+	credentialsTemplate = `[default]
+%s = %s
+%s = %s`
 )
 
 func init() {
@@ -79,9 +82,7 @@ type EKSDriver struct {
 
 func (e *EKSDriver) newCmd(cmd string) *Command {
 	return NewCommand(cmd).
-		AsTemplate(e.ctx).
-		WithVariable(awsAccessKey, e.ctx[awsAccessKey].(string)).
-		WithVariable(awsSecretAccessKey, e.ctx[awsSecretAccessKey].(string))
+		AsTemplate(e.ctx)
 }
 
 func (e *EKSDriver) Execute() error {
@@ -89,7 +90,9 @@ func (e *EKSDriver) Execute() error {
 	if err := e.fetchSecrets(); err != nil {
 		return fmt.Errorf("while fetching secrets %w", err)
 	}
-
+	if err := e.writeAWSCredentials(); err != nil {
+		return err
+	}
 	exists, err := e.clusterExists()
 	if err != nil {
 		return fmt.Errorf("while checking cluster exists %w", err)
@@ -151,6 +154,11 @@ func (e *EKSDriver) GetCredentials() error {
 	if err := e.fetchSecrets(); err != nil {
 		return fmt.Errorf("while fetching secrets %w", err)
 	}
+	// while we could configure eksctl to take credentials from environment variables
+	// we need to create a shared AWS credentials file for any subsequent kubectl commands to succeed
+	if err := e.writeAWSCredentials(); err != nil {
+		return err
+	}
 	log.Printf("writing kubeconfig")
 	return e.newCmd("eksctl utils write-kubeconfig --name {{.ClusterName}} --region {{.Region}}").Run()
 }
@@ -174,7 +182,7 @@ func (e *EKSDriver) fetchSecrets() error {
 		"instance-profile": "InstanceProfileARN",
 		"instance-role":    "InstanceRoleARN",
 		"service-role":     "ServiceRoleARN",
-		"access-key":       awsAccessKey,
+		"access-key":       awsAccessKeyID,
 		"secret-key":       awsSecretAccessKey,
 	} {
 		val, err := client.Get(EKSVaultPath, vaultKey)
@@ -184,6 +192,27 @@ func (e *EKSDriver) fetchSecrets() error {
 		e.ctx[ctxKey] = val
 	}
 	return nil
+}
+
+func (e *EKSDriver) writeAWSCredentials() error {
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(dir, ".aws")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err = os.Mkdir(path, 0600); err != nil {
+			return err
+		}
+	}
+	file := filepath.Join(path, "credentials")
+	if _, err := os.Stat(file); err == nil {
+		// don't overwrite existing credentials
+		return nil
+	}
+	log.Printf("Writing aws credentials")
+	fileContents := fmt.Sprintf(credentialsTemplate, awsAccessKeyID, e.ctx[awsAccessKeyID], awsSecretAccessKey, e.ctx[awsSecretAccessKey])
+	return ioutil.WriteFile(file, []byte(fileContents), 0600)
 }
 
 var _ Driver = &EKSDriver{}

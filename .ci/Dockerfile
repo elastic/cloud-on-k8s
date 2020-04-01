@@ -44,9 +44,13 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
 
 # AWS CLI to upload YAML on S3
 RUN apt-get update && apt-get --no-install-recommends -y install \
-    awscli && \
+    unzip && \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install
 
 # Azure CLI to provision AKS clusters
 RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash
