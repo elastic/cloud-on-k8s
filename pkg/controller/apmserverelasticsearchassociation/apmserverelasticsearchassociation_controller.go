@@ -61,6 +61,7 @@ func getRoles(v version.Version) string {
 		return strings.Join([]string{
 			user.ApmUserRoleV75, // Retrieve cluster details (e.g. version) and manage apm-* indices
 			"ingest_admin",      // Set up index templates
+			"apm_system",        // To collect metrics about APM Server
 		}, ",")
 	}
 
@@ -69,11 +70,15 @@ func getRoles(v version.Version) string {
 		return strings.Join([]string{
 			user.ApmUserRoleV7, // Retrieve cluster details (e.g. version) and manage apm-* indices
 			"ingest_admin",     // Set up index templates
+			"apm_system",       // To collect metrics about APM Server
 		}, ",")
 	}
 
 	// 6.8
-	return user.ApmUserRoleV6
+	return strings.Join([]string{
+		user.ApmUserRoleV6, // Retrieve cluster details (e.g. version) and manage apm-* indices
+		"apm_system",       // To collect metrics about APM Server
+	}, ",")
 }
 
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller

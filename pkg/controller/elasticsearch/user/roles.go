@@ -35,7 +35,7 @@ var (
 			Cluster: []string{"monitor", "manage_index_templates"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{"apm-*"},
+					Names:      []string{"apm-*", ".monitoring-beats-*"},
 					Privileges: []string{"write", "create_index"},
 				},
 			},
@@ -44,7 +44,7 @@ var (
 			Cluster: []string{"monitor", "manage_ilm", "manage_index_templates"},
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{"apm-*"},
+					Names:      []string{"apm-*", ".monitoring-beats-*"},
 					Privileges: []string{"manage", "write", "create_index"},
 				},
 			},
@@ -53,7 +53,7 @@ var (
 			Cluster: []string{"monitor", "manage_ilm", "manage_api_key"}, // manage_api_key has been introduced in 7.5
 			Indices: []esclient.IndexRole{
 				{
-					Names:      []string{"apm-*"},
+					Names:      []string{"apm-*", ".monitoring-beats-*"},
 					Privileges: []string{"manage", "create_doc", "create_index"},
 				},
 			},
