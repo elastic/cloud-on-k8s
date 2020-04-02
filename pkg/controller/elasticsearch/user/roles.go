@@ -19,11 +19,11 @@ const (
 	// ProbeUserRole is the name of the role used by the internal probe user.
 	ProbeUserRole = "elastic_internal_probe_user"
 
-	// ApmUserRoleV6 is the name of the role used by the association user for 6.8.x APMServer instances.
+	// ApmUserRoleV6 is the name of the role used by 6.8.x APMServer instances to connect to Elasticsearch.
 	ApmUserRoleV6 = "eck_apm_user_role_v6"
-	// ApmUserRoleV7 is the name of the role used by the association user for APMServer instances from version 7.1 to 7.4 included.
+	// ApmUserRoleV7 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.1 to 7.4 included.
 	ApmUserRoleV7 = "eck_apm_user_role_v7"
-	// ApmUserRoleV75 is the name of the role used by the association user for APMServer instances from version 7.5
+	// ApmUserRoleV75 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.5
 	ApmUserRoleV75 = "eck_apm_user_role_v75"
 )
 
