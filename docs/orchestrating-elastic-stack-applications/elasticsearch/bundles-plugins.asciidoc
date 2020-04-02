@@ -64,5 +64,5 @@ spec:
             name: synonyms <2>
 ----
 
-<1> Elasticsearch runs by convention in a container called 'elasticsearch'
-<2> Assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s)
+<1> Elasticsearch runs by convention in a container called 'elasticsearch'.
+<2> Assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s).
