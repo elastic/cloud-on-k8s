@@ -50,6 +50,7 @@ type GkeSettings struct {
 	GcpScopes        string `yaml:"gcpScopes"`
 	ClusterIPv4CIDR  string `yaml:"clusterIpv4Cidr"`
 	ServicesIPv4CIDR string `yaml:"servicesIpv4Cidr"`
+	DiskSetup        string `yaml:"diskSetup"`
 }
 
 // AksSettings encapsulates settings specific to AKS
@@ -78,7 +79,8 @@ type EKSSettings struct {
 	NodeAMI   string `yaml:"nodeAMI"`
 	NodeCount int    `yaml:"nodeCount"`
 	Region    string `yaml:"region"`
-	WorkDir   string `yaml:"string"`
+	WorkDir   string `yaml:"workDir"`
+	DiskSetup string `yaml:"diskSetup"`
 }
 
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file

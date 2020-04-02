@@ -1,10 +1,3 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
-
-package runner
-
-const GkeSsdProvisioner = `
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -23,23 +16,69 @@ kind: ConfigMap
 metadata:
   name: setup-disks
 data:
+  format.sh: |-
+    #!/bin/bash
+    # Mounts Amazon EC2 NVMe instance storage as ext4 to /mnt/ssd[0-9]
+    # Inspired by https://github.com/brunsgaard/eks-nvme-ssd-provisioner/blob/master/eks-nvme-ssd-provisioner.sh
+
+    set -o errexit
+    set -o nounset
+    set -o pipefail
+
+    # TODO custom docker image
+    apt-get update && apt-get -y install nvme-cli
+
+    SSD_NVME_DEVICE_LIST=($(nvme list | grep "Amazon EC2 NVMe Instance Storage" | cut -d " " -f 1 || true))
+    SSD_NVME_DEVICE_COUNT=${#SSD_NVME_DEVICE_LIST[@]}
+    FILESYSTEM_BLOCK_SIZE=${FILESYSTEM_BLOCK_SIZE:-4096}  # Bytes
+
+    # Checking if provisioning already happend
+    if [[ "$(ls -A /mnt/disks)" ]]
+    then
+      echo 'Volumes already present in "/mnt/disks"'
+      echo -e "\n$(ls -Al /mnt/disks | tail -n +2)\n"
+      echo "I assume that provisioning already happend, doing nothing!"
+      exit 0
+    fi
+
+    # Perform provisioning based on nvme device count
+    case $SSD_NVME_DEVICE_COUNT in
+    "0")
+      echo 'No devices found of type "Amazon EC2 NVMe Instance Storage"'
+      exit 1
+      ;;
+    *)
+      for (( i=0; i<${SSD_NVME_DEVICE_COUNT}; i++ ));
+      do
+        DEVICE=${SSD_NVME_DEVICE_LIST[$i]}
+        mkfs.ext4 -m 0 -b $FILESYSTEM_BLOCK_SIZE $DEVICE
+        DIR=ssd$i
+        MNTPOINT=/mnt/disks/$DIR
+        UUID=$(blkid -s UUID -o value $DEVICE)
+        mkdir -p $MNTPOINT
+        mount -o defaults,noatime,discard,nobarrier --uuid $UUID $MNTPOINT
+      done
+      ;;
+    esac
+
+    echo "NVMe SSD provisioning is done"
   entrypoint.sh: |-
     #!/bin/sh
-    for i in \$(seq 1 10);
+    for i in $(seq 1 10);
     do
-    disk_name="/mnt/disks/ssd0/disk-\$i"
-    mount_point="/mnt/disks/pvs/pv-\$i"
-    echo "Creating pv-\$i"
-    mkdir -p "\${disk_name}" "\${mount_point}"
-    if mountpoint -q -- "\${mount_point}"; then
-      echo "\${mount_point} already mounted"
+    disk_name="/mnt/disks/ssd0/disk-$i"
+    mount_point="/mnt/disks/pvs/pv-$i"
+    echo "Creating pv-$i"
+    mkdir -p "${disk_name}" "${mount_point}"
+    if mountpoint -q -- "${mount_point}"; then
+      echo "${mount_point} already mounted"
     else
-      echo "Binding \${disk_name} to \${mount_point}"
-      mount --bind "\${disk_name}" "\${mount_point}"
+      echo "Binding ${disk_name} to ${mount_point}"
+      mount --bind "${disk_name}" "${mount_point}"
     fi
     done
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: local-volume-provisioner
@@ -57,7 +96,20 @@ spec:
     spec:
       serviceAccountName: local-storage-admin
       initContainers:
-      - name: install
+      - name: disk-format
+        image: debian:stretch-slim
+        securityContext:
+          privileged: true
+        command:
+        - "/bin/format.sh"
+        volumeMounts:
+          - mountPath: /bin/format.sh
+            name: setup-disks
+            subPath: format.sh
+          - mountPath:  /mnt/disks
+            name: e2e-default
+            mountPropagation: Bidirectional
+      - name: disk-mounts
         image: busybox
         securityContext:
           privileged: true
@@ -153,4 +205,3 @@ roleRef:
   kind: ClusterRole
   name: local-storage-provisioner-node-clusterrole
   apiGroup: rbac.authorization.k8s.io
-`

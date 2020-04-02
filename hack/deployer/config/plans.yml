@@ -12,6 +12,7 @@ plans:
     adminUsername: admin
     localSsdCount: 1
     nodeCountPerZone: 1
+    diskSetup: kubectl apply -k hack/deployer/config/local-disks
     gcpScopes: https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append
 - id: gke-dev
   operation: create
@@ -26,6 +27,7 @@ plans:
     adminUsername: admin
     localSsdCount: 1
     nodeCountPerZone: 1
+    diskSetup: kubectl apply -k hack/deployer/config/local-disks
     # gke creates a secondary IP range for all Pods of a cluster
     # gke defaults to a /14 subnet, which allows 262k Pods per cluster, but only 62 subnets to be created
     # /20 allows 4094 subnets, with up to 4094 IPs (Pods) per subnet
@@ -76,6 +78,18 @@ plans:
     region: europe-west1
     nodeCount: 3
     overwriteDefaultKubeconfig: false
+- id: eks-ci
+  operation: create
+  clusterName: ci
+  provider: eks
+  machineType: c5d.xlarge
+  serviceAccount: false
+  kubernetesVersion: 1.14
+  eks:
+    region: eu-central-1
+    nodeCount: 3
+    nodeAMI: static
+    diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
 - id: eks-dev
   operation: create
   clusterName: dev
@@ -87,6 +101,7 @@ plans:
     region: eu-west-2
     nodeCount: 3
     nodeAMI: static
+    diskSetup: kubectl apply -f hack/deployer/config/local-disks/ssd-provisioner.yaml
 - id: e2e-monitor
   operation: create
   clusterName: e2e-monitor

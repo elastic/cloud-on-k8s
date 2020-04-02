@@ -119,7 +119,13 @@ func (e *EKSDriver) Execute() error {
 			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0644); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
-			return e.newCmd(`eksctl create cluster -f {{.CreateCfgFile}}`).Run()
+			if err := e.newCmd(`eksctl create cluster -f {{.CreateCfgFile}}`).Run(); err != nil {
+				return err
+			}
+			if err := createStorageClass(NoProvisioner); err != nil {
+				return err
+			}
+			return NewCommand(e.plan.EKS.DiskSetup).Run()
 		}
 		log.Printf("not creating cluster as it already exists")
 	}
