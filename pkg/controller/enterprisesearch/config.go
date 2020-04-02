@@ -59,7 +59,7 @@ func ReconcileConfig(driver driver.Interface, ents entsv1beta1.EnterpriseSearch)
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ents.Namespace,
 			Name:      name.Config(ents.Name),
-			Labels:    common.AddCredentialsLabel(NewLabels(ents.Name)),
+			Labels:    common.AddCredentialsLabel(Labels(ents.Name)),
 		},
 		Data: map[string][]byte{
 			ConfigFilename: cfgBytes,

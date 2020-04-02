@@ -67,6 +67,22 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	}
 }
 
+func podsToReconcilerequest(object handler.MapObject) []reconcile.Request {
+	labels := object.Meta.GetLabels()
+	entsName, isSet := labels[EnterpriseSearchNameLabelName]
+	if !isSet {
+		return nil
+	}
+	return []reconcile.Request{
+		{
+			NamespacedName: types.NamespacedName{
+				Namespace: object.Meta.GetNamespace(),
+				Name:      entsName,
+			},
+		},
+	}
+}
+
 func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch for changes to EnterpriseSearch
 	err := c.Watch(&source.Kind{Type: &entsv1beta1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{})
@@ -79,6 +95,15 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 		IsController: true,
 		OwnerType:    &entsv1beta1.EnterpriseSearch{},
 	}); err != nil {
+		return err
+	}
+
+	// Watch Pods to be notified about Pods going up/down during version upgrades.
+	// Unfortunately watching deployment only is not enough since we may miss a Pod deletion event.
+	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(podsToReconcilerequest),
+		}); err != nil {
 		return err
 	}
 
@@ -210,7 +235,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		Object:                &ents,
 		TLSOptions:            ents.Spec.HTTP.TLS,
 		Namer:                 entsname.EntSearchNamer,
-		Labels:                NewLabels(ents.Name),
+		Labels:                Labels(ents.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        r.CACertRotation,
 		CertRotation:          r.CertRotation,
@@ -228,6 +253,12 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 
 	configSecret, err := ReconcileConfig(r, ents)
 	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// toggle read-only mode for Enterprise Search version upgrades
+	upgrade := VersionUpgrade{k8sClient: r.K8sClient(), recorder: r.Recorder(), ents: ents, dialer: r.Dialer}
+	if err := upgrade.Handle(ctx); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -278,7 +309,7 @@ func NewService(ents entsv1beta1.EnterpriseSearch) *corev1.Service {
 	svc.ObjectMeta.Namespace = ents.Namespace
 	svc.ObjectMeta.Name = entsname.HTTPService(ents.Name)
 
-	labels := NewLabels(ents.Name)
+	labels := Labels(ents.Name)
 	ports := []corev1.ServicePort{
 		{
 			Name:     ents.Spec.HTTP.Protocol(),

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParse(t *testing.T) {
@@ -231,6 +233,142 @@ func TestMin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := Min(tt.args); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Min() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestVersion_IsSame(t *testing.T) {
+	tests := []struct {
+		name string
+		v1   Version
+		v2   Version
+		want bool
+	}{
+		{
+			name: "same version (different labels)",
+			v1:   Version{Major: 7, Minor: 7, Patch: 0, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 7, Patch: 0, Label: "v2"},
+			want: true,
+		},
+		{
+			name: "not the same patch",
+			v1:   Version{Major: 7, Minor: 7, Patch: 0, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 7, Patch: 1, Label: "v2"},
+			want: false,
+		},
+		{
+			name: "not the same minor",
+			v1:   Version{Major: 7, Minor: 7, Patch: 0, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 8, Patch: 0, Label: "v2"},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.v1.IsSame(tt.v2))
+		})
+	}
+}
+
+func TestVersion_IsAfter(t *testing.T) {
+	tests := []struct {
+		name string
+		v1   Version
+		v2   Version
+		want bool
+	}{
+		{
+			name: "same version",
+			v1:   Version{Major: 7, Minor: 7, Patch: 0, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 7, Patch: 0, Label: "v2"},
+			want: false,
+		},
+		{
+			name: "lower patch",
+			v1:   Version{Major: 7, Minor: 7, Patch: 1, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 7, Patch: 2, Label: "v2"},
+			want: false,
+		},
+		{
+			name: "higher patch",
+			v1:   Version{Major: 7, Minor: 7, Patch: 1, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 7, Patch: 0, Label: "v2"},
+			want: true,
+		},
+		{
+			name: "higher minor (lower patch)",
+			v1:   Version{Major: 7, Minor: 8, Patch: 0, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 7, Patch: 1, Label: "v2"},
+			want: true,
+		},
+		{
+			name: "lower minor (higher patch)",
+			v1:   Version{Major: 7, Minor: 7, Patch: 1, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 8, Patch: 0, Label: "v2"},
+			want: false,
+		},
+		{
+			name: "higher major (lower minor)",
+			v1:   Version{Major: 8, Minor: 0, Patch: 0, Label: "v1"},
+			v2:   Version{Major: 7, Minor: 7, Patch: 1, Label: "v2"},
+			want: true,
+		},
+		{
+			name: "lower major (higher minor)",
+			v1:   Version{Major: 7, Minor: 7, Patch: 1, Label: "v1"},
+			v2:   Version{Major: 8, Minor: 0, Patch: 0, Label: "v2"},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.v1.IsAfter(tt.v2))
+		})
+	}
+}
+
+func TestFromLabels(t *testing.T) {
+	labelName := "label-with-version"
+	tests := []struct {
+		name    string
+		labels  map[string]string
+		want    *Version
+		wantErr bool
+	}{
+		{
+			name:    "happy path",
+			labels:  map[string]string{labelName: "7.7.0"},
+			want:    &Version{Major: 7, Minor: 7, Patch: 0},
+			wantErr: false,
+		},
+		{
+			name:    "label not set",
+			labels:  map[string]string{},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "labels nil",
+			labels:  map[string]string{},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "invalid version",
+			labels:  map[string]string{labelName: "invalid"},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := FromLabels(tt.labels, labelName)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
 			}
 		})
 	}

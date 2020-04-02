@@ -6,18 +6,15 @@ package client
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"go.elastic.co/apm/module/apmelasticsearch"
 )
 
 const (
@@ -115,49 +112,11 @@ func NewElasticsearchClient(
 	v version.Version,
 	caCerts []*x509.Certificate,
 ) Client {
-	certPool := x509.NewCertPool()
-	for _, c := range caCerts {
-		certPool.AddCert(c)
-	}
-
-	transportConfig := http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs: certPool,
-
-			// We use our own certificate verification because we permit users to provide their own certificates, which may not
-			// be valid for the k8s service URL (though our self-signed certificates are). For instance, users may use a certificate
-			// issued by a public CA for Elasticsearch. We opt to skip verifying here since we're not validating based on DNS names
-			// or IP addresses, which means we have to do our own verification in VerifyPeerCertificate instead.
-
-			// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
-			// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
-			InsecureSkipVerify: true,
-			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-				return errors.New("tls: verify peer certificate not setup")
-			},
-		},
-	}
-
-	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-		if verifiedChains != nil {
-			return errors.New("tls: non-nil verifiedChains argument breaks crypto/tls.Config.VerifyPeerCertificate contract")
-		}
-		_, _, err := cryptutil.VerifyCertificateExceptServerName(rawCerts, transportConfig.TLSClientConfig)
-		return err
-	}
-
-	// use the custom dialer if provided
-	if dialer != nil {
-		transportConfig.DialContext = dialer.DialContext
-	}
-
 	base := &baseClient{
 		Endpoint: esURL,
 		User:     esUser,
 		caCerts:  caCerts,
-		HTTP: &http.Client{
-			Transport: apmelasticsearch.WrapRoundTripper(&transportConfig),
-		},
+		HTTP:     common.HTTPClient(dialer, caCerts),
 	}
 	return versioned(base, v)
 }
