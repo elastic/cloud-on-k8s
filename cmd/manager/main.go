@@ -18,7 +18,6 @@ import (
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
@@ -30,8 +29,6 @@ import (
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch"
-	entsassn "github.com/elastic/cloud-on-k8s/pkg/controller/entsearchassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	kbassn "github.com/elastic/cloud-on-k8s/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/license"
@@ -350,20 +347,12 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "Kibana")
 		os.Exit(1)
 	}
-	if err = enterprisesearch.Add(mgr, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "EnterpriseSearch")
-		os.Exit(1)
-	}
 	if err = asesassn.Add(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ApmServerElasticsearchAssociation")
 		os.Exit(1)
 	}
 	if err = kbassn.Add(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "KibanaAssociation")
-		os.Exit(1)
-	}
-	if err = entsassn.Add(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "EnterpriseSearchAssociation")
 		os.Exit(1)
 	}
 	if err = remoteca.Add(mgr, accessReviewer, params); err != nil {
@@ -457,7 +446,6 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 	}{
 		&apmv1.ApmServer{},
 		&apmv1beta1.ApmServer{},
-		&entsv1beta1.EnterpriseSearch{},
 		&esv1.Elasticsearch{},
 		&esv1beta1.Elasticsearch{},
 		&kbv1.Kibana{},
