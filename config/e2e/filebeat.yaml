@@ -112,8 +112,9 @@ spec:
                   fieldPath: spec.nodeName
           securityContext:
             runAsUser: 0
-            # If using Red Hat OpenShift uncomment this:
-            #privileged: true
+            {{ if .OcpCluster }}
+            privileged: true
+            {{end}}
           resources:
             limits:
               memory: 200Mi
@@ -231,3 +232,39 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: filebeat
+---
+{{ if .OcpCluster }}
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: filebeat
+allowHostDirVolumePlugin: true
+allowHostIPC: false
+allowHostNetwork: true
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: true
+allowedCapabilities: []
+defaultAddCapabilities: []
+fsGroup:
+  type: RunAsAny
+groups:
+  - system:cluster-admins
+  - system:nodes
+priority: 0
+readOnlyRootFilesystem: false
+requiredDropCapabilities: []
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+seccompProfiles:
+  - '*'
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:{{ .E2ENamespace }}:filebeat
+volumes:
+  - '*'
+{{end}}

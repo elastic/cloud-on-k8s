@@ -18,7 +18,7 @@ write_deployer_config() { cat > $ROOT/deployer-config.yml; }
 
 # detect dev local execution
 if [[ ${BUILD_ID:-} == "" ]]; then
-  BUILD_NUMBER=local-dev-$(date +%s)t
+  BUILD_NUMBER=0 # keeping all build_numbers as numbers
   BUILD_TAG=local-dev-$(date +%s)t
   # need to be declared but not required for local execution
   VAULT_ROLE_ID="dev"
