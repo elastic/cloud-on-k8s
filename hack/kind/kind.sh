@@ -13,10 +13,10 @@
 
 # Exit immediately for non zero status
 set -e
-# Print commands
-set -x
 
-KIND_LOGGING=${KIND_LOGGING:-"-v 1"}
+KIND_LOG_LEVEL=${KIND_LOG_LEVEL:-"1"}
+log_lvl=("-v" "$KIND_LOG_LEVEL")
+
 CLUSTER_NAME=${KIND_CLUSTER_NAME:-eck-e2e}
 NODES=3
 MANIFEST=/tmp/cluster.yml
@@ -27,7 +27,7 @@ scriptpath="$( cd "$(dirname "$0")" ; pwd -P )"
 
 function check_kind() {
   echo "Check if Kind is installed..."
-  if ! kind --help > /dev/null; then
+  if ! command -v kind ; then
     echo "Looks like Kind is not installed."
     exit 1
   fi
@@ -52,7 +52,7 @@ EOT
 
     done
   else
-    # There's only the controle plane, no nodes
+    # There's only the control plane, no nodes
     workers=${CLUSTER_NAME}-control-plane
   fi
 
@@ -60,7 +60,7 @@ EOT
 
 function cleanup_kind_cluster() {
   echo "Cleaning up kind cluster"
-  kind delete cluster --name=${CLUSTER_NAME}
+  kind delete cluster --name="${CLUSTER_NAME}"
 }
 
 function setup_kind_cluster() {
@@ -77,27 +77,28 @@ function setup_kind_cluster() {
 
   # Delete any previous e2e Kind cluster
   echo "Deleting previous Kind cluster with name=${CLUSTER_NAME}"
-  if ! (kind delete cluster --name=${CLUSTER_NAME}) > /dev/null; then
+  if ! (kind delete cluster --name="${CLUSTER_NAME}") > /dev/null; then
     echo "No existing kind cluster with name ${CLUSTER_NAME}. Continue..."
   fi
 
-  config_opts=""
+  config_opts=()
   if [[ ${NODES} -gt 0 ]]; then
-    config_opts="--config ${MANIFEST}"
+    config_opts+=("--config" "${MANIFEST}")
   fi
   # Create Kind cluster
-  if ! (kind ${KIND_LOGGING} create cluster --name=${CLUSTER_NAME} ${config_opts} --retain --image "${NODE_IMAGE}"); then
+  # TODO: see if this lint rule can be re-enabled
+  if ! (kind "${log_lvl[@]}" create cluster --name="${CLUSTER_NAME}" "${config_opts[@]}" --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1
   fi
 
   # persist kubeconfig for reliabililty in following kubectl commands
   TMPKUBECONFIG=$(mktemp)
-  kind --name=${CLUSTER_NAME} get kubeconfig > ${TMPKUBECONFIG}
+  kind --name="${CLUSTER_NAME}" get kubeconfig > "${TMPKUBECONFIG}"
 
   # setup storage
-  kubectl --kubeconfig=${TMPKUBECONFIG} delete storageclass standard || true
-  kubectl --kubeconfig=${TMPKUBECONFIG} apply -f "${scriptpath}/local-path-storage.yaml"
+  kubectl --kubeconfig="${TMPKUBECONFIG}" delete storageclass standard || true
+  kubectl --kubeconfig="${TMPKUBECONFIG}" apply -f "${scriptpath}/local-path-storage.yaml"
 
   echo "Kind setup complete"
 }
@@ -137,9 +138,9 @@ fi
 
 # Load images in the nodes, e.g. the operator image or the e2e container
 if [[ -n "${LOAD_IMAGES}" ]]; then
-  IMAGES=(${LOAD_IMAGES//,/ })
+  IFS=',' read -r -a IMAGES <<< "${LOAD_IMAGES}"
   for image in "${IMAGES[@]}"; do
-          kind ${KIND_LOGGING} --name ${CLUSTER_NAME} load docker-image --nodes ${workers} "${image}"
+  kind "${log_lvl[@]}" --name "${CLUSTER_NAME}" load docker-image --nodes "${workers}" "${image}"
   done
 fi
 

@@ -18,7 +18,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -55,9 +54,9 @@ var (
 	testCA            *CA
 	testRSAPrivateKey *rsa.PrivateKey
 	pemCert           []byte
-	testES            = esv1.Elasticsearch{ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
+	testES            = esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
 	testSvc           = corev1.Service{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-service",
 			Namespace: "default",
 		},
@@ -105,7 +104,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 	key := loadFileBytes("tls.key")
 
 	owner := &esv1.Elasticsearch{
-		ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 	}
 
 	certificate := &CertificatesSecret{
@@ -259,14 +258,14 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 			name: "should use custom certificates if provided",
 			args: args{
 				c: k8s.WrappedFakeClient(&corev1.Secret{
-					ObjectMeta: v1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
+					ObjectMeta: metav1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
 					Data: map[string][]byte{
 						CertFileName: tls,
 						KeyFileName:  key,
 					},
 				}),
 				es: esv1.Elasticsearch{
-					ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
+					ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
 					Spec: esv1.ElasticsearchSpec{
 						HTTP: commonv1.HTTPConfig{
 							TLS: commonv1.TLSOptions{
@@ -282,6 +281,9 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 			want: func(t *testing.T, cs *CertificatesSecret) {
 				assert.Equal(t, cs.Data[KeyFileName], key)
 				assert.Equal(t, cs.Data[CertFileName], tls)
+				// Even if user didn't provide a CA cert we don't want it to be empty
+				assert.True(t, len(cs.Data[CAFileName]) > 0)
+				assert.Equal(t, cs.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
 			},
 		},
 	}
@@ -330,7 +332,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 			name: "with svcs and user-provided SANs",
 			args: args{
 				es: esv1.Elasticsearch{
-					ObjectMeta: v1.ObjectMeta{Namespace: "test", Name: "test"},
+					ObjectMeta: metav1.ObjectMeta{Namespace: "test", Name: "test"},
 					Spec: esv1.ElasticsearchSpec{
 						HTTP: commonv1.HTTPConfig{
 							TLS: commonv1.TLSOptions{
@@ -356,7 +358,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				},
 				svcs: []corev1.Service{
 					{
-						ObjectMeta: v1.ObjectMeta{
+						ObjectMeta: metav1.ObjectMeta{
 							Namespace: "svc-namespace",
 							Name:      "svc-name",
 						},

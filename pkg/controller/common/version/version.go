@@ -13,6 +13,32 @@ import (
 	"github.com/pkg/errors"
 )
 
+// supported Stack versions. See https://www.elastic.co/support/matrix#matrix_compatibility
+var (
+	SupportedAPMServerVersions        = MinMaxVersion{Min: From(6, 2, 0), Max: From(8, 99, 99)}
+	SupportedEnterpriseSearchVersions = MinMaxVersion{Min: From(7, 7, 0), Max: From(8, 99, 99)}
+	SupportedKibanaVersions           = MinMaxVersion{Min: From(6, 8, 0), Max: From(8, 99, 99)}
+)
+
+// MinMaxVersion holds the minimum and maximum supported versions.
+type MinMaxVersion struct {
+	Min Version
+	Max Version
+}
+
+// WithinRange returns an error if the given version is not within the range of minimum and maximum versions.
+func (mmv MinMaxVersion) WithinRange(v Version) error {
+	if !v.IsSameOrAfter(mmv.Min) {
+		return fmt.Errorf("version %s is lower than the lowest supported version of %s", v, mmv.Min)
+	}
+
+	if !mmv.Max.IsSameOrAfter(v) {
+		return fmt.Errorf("version %s is higher than the highest supported version of %s", v, mmv.Max)
+	}
+
+	return nil
+}
+
 // Version is a parsed version
 type Version struct {
 	Major int

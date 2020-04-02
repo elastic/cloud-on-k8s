@@ -41,7 +41,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -180,9 +179,9 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(as.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(as.ObjectMeta) {
+		log.Info("Object currently not managed by this controller. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
+		return reconcile.Result{}, nil
 	}
 
 	if compatible, err := r.isCompatible(ctx, &as); err != nil || !compatible {
@@ -221,6 +220,11 @@ func (r *ReconcileApmServer) isCompatible(ctx context.Context, as *apmv1.ApmServ
 }
 
 func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.Request, as *apmv1.ApmServer) (reconcile.Result, error) {
+	// Run validation in case the webhook is disabled
+	if err := r.validate(ctx, as); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	state := NewState(request, as)
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(*as), as)
 	if err != nil {
@@ -268,6 +272,19 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 	return res, err
 }
 
+func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) error {
+	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
+	defer span.End()
+
+	if err := as.ValidateCreate(); err != nil {
+		log.Error(err, "Validation failed")
+		k8s.EmitErrorEvent(r.recorder, err, as, events.EventReasonValidation, err.Error())
+		return tracing.CaptureError(vctx, err)
+	}
+
+	return nil
+}
+
 func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
@@ -280,11 +297,9 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      apmname.SecretToken(as.Name),
-			Labels:    labels.NewLabels(as.Name),
+			Labels:    common.AddCredentialsLabel(labels.NewLabels(as.Name)),
 		},
-		Data: map[string][]byte{
-			SecretTokenKey: []byte(rand.String(24)),
-		},
+		Data: make(map[string][]byte),
 	}
 	// reuse the secret token if it already exists
 	var existingSecret corev1.Secret
@@ -294,6 +309,8 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	}
 	if token, exists := existingSecret.Data[SecretTokenKey]; exists {
 		expectedApmServerSecret.Data[SecretTokenKey] = token
+	} else {
+		expectedApmServerSecret.Data[SecretTokenKey] = common.RandomBytes(24)
 	}
 
 	return reconciler.ReconcileSecret(c, expectedApmServerSecret, as)

@@ -275,8 +275,11 @@ func (b Builder) WithDefaultPersistentVolumes() Builder {
 }
 
 func (b Builder) WithPodTemplate(pt corev1.PodTemplateSpec) Builder {
+	if pt.Labels == nil {
+		pt.Labels = make(map[string]string)
+	}
+	pt.Labels[run.TestNameLabel] = b.Elasticsearch.Labels[run.TestNameLabel]
 	for i := range b.Elasticsearch.Spec.NodeSets {
-		pt.Labels[run.TestNameLabel] = b.Elasticsearch.Labels[run.TestNameLabel]
 		b.Elasticsearch.Spec.NodeSets[i].PodTemplate = pt
 	}
 	return b

@@ -5,8 +5,6 @@
 package user
 
 import (
-	"reflect"
-
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 const (
@@ -90,30 +87,13 @@ func reconcilePredefinedUsers(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: secretNsn.Namespace,
 			Name:      secretNsn.Name,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Labels:    common.AddCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(&es))),
 		},
 		Data: secretData,
 	}
 
-	var reconciled corev1.Secret
-	// TODO: factorize with https://github.com/elastic/cloud-on-k8s/issues/2626
-	return users, reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Owner:      &es,
-		Expected:   &expected,
-		Reconciled: &reconciled,
-		NeedsUpdate: func() bool {
-			// update if secret content is different
-			return !reflect.DeepEqual(expected.Data, reconciled.Data) ||
-				// or expected labels are not there
-				!maps.IsSubset(expected.Labels, reconciled.Labels)
-		},
-		UpdateReconciled: func() {
-			reconciled.Data = expected.Data
-			maps.Merge(reconciled.Labels, expected.Labels)
-			maps.Merge(reconciled.Annotations, expected.Annotations)
-		},
-	})
+	_, err = reconciler.ReconcileSecret(c, expected, &es)
+	return users, err
 }
 
 // reuseOrGeneratePassword updates the users with existing passwords reused from the existing K8s secret,
@@ -136,7 +116,7 @@ func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.Namespac
 		if password, exists := secret.Data[u.Name]; exists {
 			users[i].Password = password
 		} else {
-			users[i].Password = common.RandomPasswordBytes()
+			users[i].Password = common.FixedLengthRandomPasswordBytes()
 		}
 	}
 	return users, nil

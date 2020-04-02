@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -29,7 +30,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -176,9 +176,9 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(ents.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", ents.Namespace, "ents_name", ents.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(ents.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ents.Namespace, "ents_name", ents.Name)
+		return reconcile.Result{}, nil
 	}
 
 	if compatible, err := r.isCompatible(ctx, &ents); err != nil || !compatible {
@@ -204,7 +204,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 
 func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
 	// Clean up watches
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(configRefWatchName(obj))
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *entsv1beta1.EnterpriseSearch) (bool, error) {
@@ -217,6 +217,11 @@ func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *ents
 }
 
 func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request reconcile.Request, ents entsv1beta1.EnterpriseSearch) (reconcile.Result, error) {
+	// Run validation in case the webhook is disabled
+	if err := r.validate(ctx, &ents); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	state := NewState(request, &ents)
 
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(ents), &ents)
@@ -246,7 +251,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	configSecret, err := ReconcileConfig(r.K8sClient(), ents)
+	configSecret, err := ReconcileConfig(r, ents)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -280,6 +285,19 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	res, err := results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, &ents, events.EventReconciliationError, "Reconciliation error: %v", err)
 	return res, nil
+}
+
+func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ents *entsv1beta1.EnterpriseSearch) error {
+	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
+	defer span.End()
+
+	if err := ents.ValidateCreate(); err != nil {
+		log.Error(err, "Validation failed")
+		k8s.EmitErrorEvent(r.recorder, err, ents, events.EventReasonValidation, err.Error())
+		return tracing.CaptureError(vctx, err)
+	}
+
+	return nil
 }
 
 func NewService(ents entsv1beta1.EnterpriseSearch) *corev1.Service {

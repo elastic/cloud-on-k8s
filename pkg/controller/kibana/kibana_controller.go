@@ -137,10 +137,9 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	// skip reconciliation if paused
-	if common.IsPaused(kb.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(kb.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name)
+		return reconcile.Result{}, nil
 	}
 
 	// check for compatibility with the operator version
@@ -180,6 +179,11 @@ func (r *ReconcileKibana) isCompatible(ctx context.Context, kb *kbv1.Kibana) (bo
 }
 
 func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Request, kb *kbv1.Kibana) (reconcile.Result, error) {
+	// Run validation in case the webhook is disabled
+	if err := r.validate(ctx, kb); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	driver, err := newDriver(r, r.dynamicWatches, r.recorder, kb)
 	if err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
@@ -198,6 +202,19 @@ func (r *ReconcileKibana) doReconcile(ctx context.Context, request reconcile.Req
 	res, err := results.WithError(err).Aggregate()
 	k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReconciliationError, "Reconciliation error: %v", err)
 	return res, err
+}
+
+func (r *ReconcileKibana) validate(ctx context.Context, kb *kbv1.Kibana) error {
+	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
+	defer span.End()
+
+	if err := kb.ValidateCreate(); err != nil {
+		log.Error(err, "Validation failed")
+		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventReasonValidation, err.Error())
+		return tracing.CaptureError(vctx, err)
+	}
+
+	return nil
 }
 
 func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {

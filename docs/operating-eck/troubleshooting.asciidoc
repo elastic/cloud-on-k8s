@@ -13,7 +13,7 @@ Most common issues can be identified and resolved by following these instruction
 - <<{p}-describe-failing-resources,Describe failing resources>>
 - <<{p}-eck-debug-logs,Enable ECK debug logs>>
 - <<{p}-view-logs>>
-- <<{p}-pause-controllers,Pause ECK controllers>>
+- <<{p}-exclude-resource,Exclude a resource from reconciliation>>
 - <<{p}-get-k8s-events,Get Kubernetes events>>
 - <<{p}-exec-into-containers,Exec into containers>>
 - <<{p}-webhook-troubleshooting,Troubleshoot webhook>>
@@ -170,11 +170,10 @@ Due to link:https://github.com/eBay/Kubernetes/blob/master/docs/devel/api-conven
 you can get errors reporting a conflict while updating a resource. You can ignore them, as the update goes through at the next reconciliation attempt, which will happen almost immediately.
 
 
-[id="{p}-pause-controllers"]
-== Pause ECK controllers
+[id="{p}-exclude-resource"]
+== Exclude resources from reconciliation
 
-When debugging Elasticsearch, you night need to "pause" the operator reconciliations, so that no resource gets modified or created in the meantime.
-To do this, set the annotation `common.k8s.elastic.co/pause` to `true` to any resource controlled by the operator:
+For debugging purposes, you might want to temporarily prevent ECK from modifying Kubernetes resources belonging to a particular Elastic Stack resource. To do this, annotate the Elastic object with `eck.k8s.elastic.co/managed=false`. This annotation can be added to any of the following types of objects:
 
 - Elasticsearch
 - Kibana
@@ -184,14 +183,14 @@ To do this, set the annotation `common.k8s.elastic.co/pause` to `true` to any re
 ----
 metadata:
   annotations:
-    common.k8s.elastic.co/pause: "true"
+    eck.k8s.elastic.co/managed: "false"
 ----
 
 Or in one line:
 
 [source,sh]
 ----
-kubectl annotate elasticsearch quickstart --overwrite common.k8s.elastic.co/pause=true
+kubectl annotate elasticsearch quickstart --overwrite eck.k8s.elastic.co/managed=false
 ----
 
 [id="{p}-get-k8s-events"]

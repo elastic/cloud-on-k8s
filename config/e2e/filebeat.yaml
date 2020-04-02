@@ -8,25 +8,26 @@ metadata:
     k8s-app: filebeat
 data:
   filebeat.yml: |-
+    max_backoff: 1s # reduces worst case delay between log being written and picked up by Filebeat to 1s
+    close_inactive: 1h # keep harvester open for 1h on inactive files as our test timeout is longer than default 5m
     filebeat.autodiscover:
       providers:
         - type: kubernetes
           host: ${NODE_NAME}
           hints.enabled: true
-          templates:
-          - config:
-            - type: container
-              paths:
-              - /var/log/containers/*${data.kubernetes.container.id}.log
-              fields_under_root: true
-              fields:
-                pipeline: {{ .Pipeline }}
-                build_number: {{ .BuildNumber }}
-                provider: {{ .Provider }}
-                clusterName: {{ .ClusterName }}
-                kubernetes_version: {{ .KubernetesVersion }}
-                stack_version: {{ .ElasticStackVersion }}
-                e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
+          hints.default_config:
+            type: container
+            paths:
+            - /var/log/containers/*${data.kubernetes.container.id}.log
+            fields_under_root: true
+            fields:
+              pipeline: {{ .Pipeline }}
+              build_number: {{ .BuildNumber }}
+              provider: {{ .Provider }}
+              clusterName: {{ .ClusterName }}
+              kubernetes_version: {{ .KubernetesVersion }}
+              stack_version: {{ .ElasticStackVersion }}
+              e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
           appenders:
           - type: config
             condition:
