@@ -128,7 +128,7 @@ main() {
     local dest=$OUTPUT_DIR
     if [[ -n $ZIP ]]; then
       dest=$OUTPUT_DIR-$(date +%d_%b_%Y_%H_%M_%S).tgz
-      tar czf "$dest" "$OUTPUT_DIR/*"
+      tar czf "$dest" "$OUTPUT_DIR"/*
     fi
     echo "ECK info dumped to $dest"
   fi
@@ -163,8 +163,11 @@ get_logs() {
 # list_pods_names lists the names of the pods in a specified namespace
 list_pods_names() {
   local ns=$1 label=${2:-""}
-  [[ "$label" != "" ]] && label="-l $label"
-  kubectl get pods -n "$ns" "$label" --no-headers=true -o name 
+  if [[ "$label" != "" ]]; then
+    kubectl get pods -n "$ns" -l "$label" --no-headers=true -o name
+  else
+    kubectl get pods -n "$ns" --no-headers=true -o name
+  fi
 }
 
 # to_stdin_or_file redirects stdin to a file if OUTPUT_DIR is defined, else to stdout
