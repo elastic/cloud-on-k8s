@@ -92,13 +92,10 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		return r.enableReadOnlyMode(ctx)
 	}
 
-	oldVersionStillRunning, err := r.priorVersionStillRunning(*expectedVersion)
-	if err != nil {
+	// if the old version is still running, we cannot disable read-only mode yet
+	// we'll retry eventually once pod rotation is over
+	if oldVersionStillRunning, err := r.isPriorVersionStillRunning(*expectedVersion); err != nil || oldVersionStillRunning {
 		return err
-	}
-	if oldVersionStillRunning {
-		// cannot disable read-only mode yet, we'll retry eventually once pod rotation is over
-		return nil
 	}
 
 	return r.disableReadOnlyMode(ctx)
@@ -246,8 +243,8 @@ func (r *VersionUpgrade) isVersionUpgrade(expectedVersion version.Version) (bool
 	return expectedVersion.IsAfter(*podVersion), nil
 }
 
-// priorVersionStillRunning returns true if at least one Pod runs a version prior to the expected one.
-func (r *VersionUpgrade) priorVersionStillRunning(expectedVersion version.Version) (bool, error) {
+// isPriorVersionStillRunning returns true if at least one Pod runs a version prior to the expected one.
+func (r *VersionUpgrade) isPriorVersionStillRunning(expectedVersion version.Version) (bool, error) {
 	pods, err := r.getActualPods()
 	if err != nil {
 		return false, err

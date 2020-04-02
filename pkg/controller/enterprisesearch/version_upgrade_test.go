@@ -257,7 +257,7 @@ func Test_hasReadOnlyAnnotationTrue(t *testing.T) {
 	}
 }
 
-func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
+func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 	tests := []struct {
 		name string
 		ents entsv1beta1.EnterpriseSearch
@@ -296,7 +296,7 @@ func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
 				k8sClient: c,
 				ents:      tt.ents,
 			}
-			got, err := r.priorVersionStillRunning(version.MustParse(tt.ents.Spec.Version))
+			got, err := r.isPriorVersionStillRunning(version.MustParse(tt.ents.Spec.Version))
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
@@ -343,7 +343,7 @@ func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
 	}
 }
 
-func TestVersionUpgrade_isVersionUpgrade1(t *testing.T) {
+func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
 	entsv77 := entSearchWithVersion("7.7.0", nil)
 	deploymentv77 := deploymentWithVersion("7.7.0")
 	entsv78 := entSearchWithVersion("7.8.0", nil)
