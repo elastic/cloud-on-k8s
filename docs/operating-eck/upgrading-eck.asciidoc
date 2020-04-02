@@ -53,7 +53,7 @@ Once the operator has been upgraded and you are ready to let the resource become
 
 
 [source,shell,subs="attributes,callouts"]
-.Resume Elastic resource managment by the operator
+.Resume Elastic resource management by the operator
 ----
 RM_ANNOTATION='common.k8s.elastic.co/pause-' <1>
 
