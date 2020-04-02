@@ -38,9 +38,9 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.EnterpriseSearch, configHash string) deployment.Params {
 	podSpec := newPodSpec(ents, configHash)
 
-	deploymentLabels := EnterpriseSearchLabels(ents.Name)
+	deploymentLabels := Labels(ents.Name)
 
-	podLabels := maps.Merge(EnterpriseSearchLabels(ents.Name), VersionLabels(ents))
+	podLabels := maps.Merge(Labels(ents.Name), VersionLabels(ents))
 	// merge with user-provided labels
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 

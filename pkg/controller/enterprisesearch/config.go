@@ -56,7 +56,7 @@ func ReconcileConfig(client k8s.Client, ents entsv1beta1.EnterpriseSearch) (core
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: ents.Namespace,
 			Name:      name.Config(ents.Name),
-			Labels:    EnterpriseSearchLabels(ents.Name),
+			Labels:    Labels(ents.Name),
 		},
 		Data: map[string][]byte{
 			ConfigFilename: cfgBytes,

@@ -15,12 +15,14 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	entsname "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -40,6 +42,7 @@ const (
 // VersionUpgrade toggles read-only mode on Enterprise Search during version upgrades.
 type VersionUpgrade struct {
 	k8sClient  k8s.Client
+	recorder   record.EventRecorder
 	ents       entsv1beta1.EnterpriseSearch
 	dialer     net.Dialer   // optional custom dialer for the http client
 	httpClient *http.Client // custom http client, will be created if nil
@@ -56,9 +59,10 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		// A version upgrade is scheduled, but we don't know how to reach the Enterprise Search API
 		// since we don't have any Elasticsearch user available.
 		// Move on with the upgrade: this will cause the Pod in the new version to crash at startup with explicit logs.
-		log.Info("Detected version upgrade with no association to Elasticsearch, "+
-			"please toggle read-only mode manually, otherwise the new version will crash at startup.",
-			"namespace", r.ents.Namespace, "ents_name", r.ents.Name)
+		msg := "Detected version upgrade with no association to Elasticsearch, " +
+			"please toggle read-only mode manually, otherwise the new version will crash at startup."
+		log.Info(msg, "namespace", r.ents.Namespace, "ents_name", r.ents.Name)
+		r.recorder.Event(&r.ents, corev1.EventTypeWarning, events.EventReasonUpgraded, msg)
 		return nil
 	}
 
@@ -93,7 +97,7 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 	return r.k8sClient.Update(&r.ents)
 }
 
-// enableReadOnlyMode disables read-only mode through an API call, if enabled previously,
+// disableReadOnlyMode disables read-only mode through an API call, if enabled previously,
 // and removes the read-only mode annotation.
 func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 	if !hasReadOnlyAnnotationTrue(r.ents) {
@@ -216,7 +220,7 @@ func (r *VersionUpgrade) isVersionUpgrade() (bool, error) {
 func (r *VersionUpgrade) getActualPods() ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	ns := client.InNamespace(r.ents.Namespace)
-	if err := r.k8sClient.List(&pods, client.MatchingLabels(EnterpriseSearchLabels(r.ents.Name)), ns); err != nil {
+	if err := r.k8sClient.List(&pods, client.MatchingLabels(Labels(r.ents.Name)), ns); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil

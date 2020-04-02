@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
@@ -180,6 +181,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 				k8sClient:  k8sClient,
 				ents:       tt.ents,
 				httpClient: httpClient,
+				recorder:   record.NewFakeRecorder(10),
 			}
 			err := r.Handle(context.Background())
 			require.NoError(t, err)
