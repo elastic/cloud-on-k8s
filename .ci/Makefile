@@ -60,6 +60,8 @@ ifneq (,$(IS_SNAPSHOT_BUILD))
        SECRET_FIELD_PREFIX ?= dev-
 endif
 
+get-test-artifacts: get-monitoring-secrets get-test-license get-elastic-public-key
+
 ##  Build
 
 # read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
