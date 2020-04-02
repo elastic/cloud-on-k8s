@@ -8,12 +8,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,12 +53,17 @@ type VersionUpgrade struct {
 
 // Handle Enterprise Search version upgrades if necessary, by toggling read-only mode.
 func (r *VersionUpgrade) Handle(ctx context.Context) error {
-	isUpgrade, err := r.isVersionUpgrade()
+	expectedVersion, err := version.Parse(r.ents.Spec.Version)
 	if err != nil {
 		return err
 	}
 
-	if isUpgrade && !r.ents.AssociationConf().AuthIsConfigured() {
+	upgradeRequested, err := r.isVersionUpgrade(*expectedVersion)
+	if err != nil {
+		return err
+	}
+
+	if upgradeRequested && !r.ents.AssociationConf().AuthIsConfigured() {
 		// A version upgrade is scheduled, but we don't know how to reach the Enterprise Search API
 		// since we don't have any Elasticsearch user available.
 		// Move on with the upgrade: this will cause the Pod in the new version to crash at startup with explicit logs.
@@ -66,9 +74,33 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		return nil
 	}
 
-	if isUpgrade {
+	actualPods, err := r.getActualPods()
+	if err != nil {
+		return err
+	}
+
+	if upgradeRequested {
+		if len(actualPods) == 0 {
+			msg := "a version upgrade is scheduled, but no Pod in the prior version is running:" +
+				"waiting for at least one Pod in the prior version to be running in order to enable read-only mode"
+			log.Info(msg, "namespace", r.ents.Namespace, "ents_name", r.ents.Name)
+			r.recorder.Event(&r.ents, corev1.EventTypeWarning, events.EventReasonDelayed, msg)
+			// surface this as an error, since rather unexpected, and abort reconciliation
+			return errors.New(msg)
+		}
+		// enable read-only mode before moving on with the deployment upgrade
 		return r.enableReadOnlyMode(ctx)
 	}
+
+	oldVersionStillRunning, err := r.priorVersionStillRunning(*expectedVersion)
+	if err != nil {
+		return err
+	}
+	if oldVersionStillRunning {
+		// cannot disable read-only mode yet, we'll retry eventually once pod rotation is over
+		return nil
+	}
+
 	return r.disableReadOnlyMode(ctx)
 }
 
@@ -193,13 +225,29 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 	return req, nil
 }
 
-// isVersionUpgrade returns true if at least one Pod runs a version prior to the one
+// isVersionUpgrade returns true if the existing Deployment specifies a version prior to the one
 // specified in the EnterpriseSearch resource.
-func (r *VersionUpgrade) isVersionUpgrade() (bool, error) {
-	expectedVersion, err := version.Parse(r.ents.Spec.Version)
+func (r *VersionUpgrade) isVersionUpgrade(expectedVersion version.Version) (bool, error) {
+	var deployment appsv1.Deployment
+	nsn := types.NamespacedName{Name: entsname.Deployment(r.ents.Name), Namespace: r.ents.Namespace}
+	err := r.k8sClient.Get(nsn, &deployment)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// first deployment, not an upgrade
+			return false, nil
+		}
+		return false, err
+	}
+
+	podVersion, err := version.FromLabels(deployment.Spec.Template.Labels, VersionLabelName)
 	if err != nil {
 		return false, err
 	}
+	return expectedVersion.IsAfter(*podVersion), nil
+}
+
+// priorVersionStillRunning returns true if at least one Pod runs a version prior to the expected one.
+func (r *VersionUpgrade) priorVersionStillRunning(expectedVersion version.Version) (bool, error) {
 	pods, err := r.getActualPods()
 	if err != nil {
 		return false, err

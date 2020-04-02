@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,6 +21,8 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	entsname "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -61,6 +64,16 @@ func podWithVersion(name string, version string) *corev1.Pod {
 	}
 }
 
+func deploymentWithVersion(version string) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: entsname.Deployment("ents")},
+		Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
+				VersionLabelName: version,
+			}}}},
+	}
+}
+
 // fakeRoundTrip mocks HTTP calls to the Enterprise Search API
 type fakeRoundTrip struct {
 	checks *roundTripChecks
@@ -91,16 +104,16 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 	tests := []struct {
 		name            string
 		ents            entsv1beta1.EnterpriseSearch
-		pods            []runtime.Object
+		runtimeObjs     []runtime.Object
 		httpChecks      roundTripChecks
 		wantUpdatedEnts entsv1beta1.EnterpriseSearch
+		wantErr         string
 	}{
 		{
 			name: "no version upgrade: nothing to do",
 			ents: entSearchWithVersion("7.7.0", nil),
-			pods: []runtime.Object{
-				podWithVersion("pod1", "7.7.0"),
-				podWithVersion("pod2", "7.7.0"),
+			runtimeObjs: []runtime.Object{
+				deploymentWithVersion("7.7.0"),
 			},
 			httpChecks: roundTripChecks{
 				called: false,
@@ -110,7 +123,8 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 		{
 			name: "version upgrade requested: enable read-only mode",
 			ents: entSearchWithVersion("7.7.1", nil),
-			pods: []runtime.Object{
+			runtimeObjs: []runtime.Object{
+				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
 				podWithVersion("pod2", "7.7.0"),
 			},
@@ -125,11 +139,21 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			}),
 		},
 		{
+			name: "version upgrade requested, but no Pod running: error out",
+			ents: entSearchWithVersion("7.7.1", nil),
+			runtimeObjs: []runtime.Object{
+				deploymentWithVersion("7.7.0"),
+			},
+			wantErr: "a version upgrade is scheduled, but no Pod in the prior version is running:" +
+				"waiting for at least one Pod in the prior version to be running in order to enable read-only mode",
+		},
+		{
 			name: "version upgrade requested, but annotation already set: do nothing",
 			ents: entSearchWithVersion("7.7.1", map[string]string{
 				ReadOnlyModeAnnotationName: "true",
 			}),
-			pods: []runtime.Object{
+			runtimeObjs: []runtime.Object{
+				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
 				podWithVersion("pod2", "7.7.0"),
 			},
@@ -145,7 +169,8 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			ents: entSearchWithVersion("7.7.1", map[string]string{
 				ReadOnlyModeAnnotationName: "true",
 			}),
-			pods: []runtime.Object{
+			runtimeObjs: []runtime.Object{
+				deploymentWithVersion("7.7.1"),
 				podWithVersion("pod1", "7.7.1"),
 				podWithVersion("pod2", "7.7.1"),
 			},
@@ -161,7 +186,8 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			name: "version upgrade requested, but no association configured : do nothing",
 			ents: entsv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ents"},
 				Spec: entsv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
-			pods: []runtime.Object{
+			runtimeObjs: []runtime.Object{
+				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
 				podWithVersion("pod2", "7.7.0"),
 			},
@@ -175,7 +201,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 	for _, tt := range tests {
 		checks := roundTripChecks{returnStatusCode: tt.httpChecks.returnStatusCode}
 		httpClient := &http.Client{Transport: fakeRoundTrip{checks: &checks}}
-		k8sClient := k8s.WrappedFakeClient(append(append(tt.pods, &esUserSecret), &tt.ents)...)
+		k8sClient := k8s.WrappedFakeClient(append(append(tt.runtimeObjs, &esUserSecret), &tt.ents)...)
 		t.Run(tt.name, func(t *testing.T) {
 			r := &VersionUpgrade{
 				k8sClient:  k8sClient,
@@ -184,7 +210,11 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 				recorder:   record.NewFakeRecorder(10),
 			}
 			err := r.Handle(context.Background())
-			require.NoError(t, err)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err, tt.wantErr)
+			}
 			require.Equal(t, tt.httpChecks, checks)
 		})
 	}
@@ -266,7 +296,7 @@ func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
 				k8sClient: c,
 				ents:      tt.ents,
 			}
-			got, err := r.isVersionUpgrade()
+			got, err := r.priorVersionStillRunning(version.MustParse(tt.ents.Spec.Version))
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
@@ -309,6 +339,46 @@ func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
 			require.True(t, ok)
 			require.Equal(t, esUser, basicAuthUser)
 			require.Equal(t, esPassword, basicAuthPassword)
+		})
+	}
+}
+
+func TestVersionUpgrade_isVersionUpgrade1(t *testing.T) {
+	entsv77 := entSearchWithVersion("7.7.0", nil)
+	deploymentv77 := deploymentWithVersion("7.7.0")
+	entsv78 := entSearchWithVersion("7.8.0", nil)
+
+	tests := []struct {
+		name            string
+		runtimeObjs     []runtime.Object
+		ents            entsv1beta1.EnterpriseSearch
+		expectedVersion version.Version
+		want            bool
+	}{
+		{
+			name:            "7.7.0 to 7.7.0: not a version upgrade",
+			runtimeObjs:     []runtime.Object{deploymentv77},
+			ents:            entsv77,
+			expectedVersion: version.MustParse(entsv77.Spec.Version),
+			want:            false,
+		},
+		{
+			name:            "7.7.0 to 7.8.0: version upgrade",
+			runtimeObjs:     []runtime.Object{deploymentv77},
+			ents:            entsv78,
+			expectedVersion: version.MustParse(entsv78.Spec.Version),
+			want:            true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &VersionUpgrade{
+				k8sClient: k8s.WrappedFakeClient(tt.runtimeObjs...),
+				ents:      tt.ents,
+			}
+			got, err := r.isVersionUpgrade(tt.expectedVersion)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
