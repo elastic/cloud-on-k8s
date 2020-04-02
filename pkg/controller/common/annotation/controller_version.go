@@ -14,7 +14,7 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -135,17 +135,17 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.
 	return false, nil
 }
 
-// checkExistingResources returns a bool indicating if there are existing resources created for a given resource.
+// checkExistingResources returns a bool indicating if there are existing resources owned for a given resource.
 // The labels provided must exactly match.
-func checkExistingResources(client k8s.Client, obj runtime.Object, labels map[string]string) (bool, error) {
+func checkExistingResources(client k8s.Client, owner runtime.Object, labels map[string]string) (bool, error) {
 
-	metaObject, err := meta.Accessor(obj)
+	metaOwner, err := meta.Accessor(owner)
 	if err != nil {
 		return false, err
 	}
 
 	labelSelector := ctrlclient.MatchingLabels(labels)
-	nsSelector := ctrlclient.InNamespace(metaObject.GetNamespace())
+	nsSelector := ctrlclient.InNamespace(metaOwner.GetNamespace())
 
 	var svcs corev1.ServiceList
 	err = client.List(&svcs, labelSelector, nsSelector)
@@ -153,9 +153,10 @@ func checkExistingResources(client k8s.Client, obj runtime.Object, labels map[st
 		return false, err
 	}
 
-	// We only want Services managed by this particular instance of the parent object
+	// If we list any services owned by the owner successfully, then we know this owner resource was reconciled
+	// by an old version since any owner resources reconciled by a 0.9.0+ operator would have a label already.
 	for _, svc := range svcs.Items {
-		if v1.IsControlledBy(&svc, metaObject) {
+		if metav1.IsControlledBy(&svc, metaOwner) {
 			return true, nil
 		}
 	}
