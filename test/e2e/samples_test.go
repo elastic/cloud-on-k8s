@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -27,8 +28,8 @@ func TestSamples(t *testing.T) {
 
 	decoder := helper.NewYAMLDecoder()
 	for _, sample := range sampleFiles {
-		builders := createBuilders(t, decoder, sample)
 		testName := mkTestName(t, sample)
+		builders := createBuilders(t, decoder, sample, testName)
 		t.Run(testName, func(t *testing.T) {
 			test.Sequence(nil, test.EmptySteps, builders...).RunSequential(t)
 		})
@@ -41,10 +42,13 @@ func mkTestName(t *testing.T, path string) string {
 	baseName := filepath.Base(path)
 	baseName = strings.TrimSuffix(baseName, ".yaml")
 	parentDir := filepath.Base(filepath.Dir(path))
-	return filepath.Join(parentDir, baseName)
+	testName := filepath.Join(parentDir, baseName)
+
+	// testName will be used as label, so avoid using illegal chars
+	return strings.ReplaceAll(testName, "/", "-")
 }
 
-func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile string) []test.Builder {
+func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testName string) []test.Builder {
 	t.Helper()
 
 	f, err := os.Open(sampleFile)
@@ -54,22 +58,29 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile string
 	namespace := test.Ctx().ManagedNamespace(0)
 	suffix := rand.String(4)
 	transform := func(builder test.Builder) test.Builder {
+		fullTestName := "TestSamples-" + testName
 		switch b := builder.(type) {
 		case elasticsearch.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
-				WithRestrictedSecurityContext()
+				WithRestrictedSecurityContext().
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName)
 		case kibana.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakElasticsearchRef(b.Kibana.Spec.ElasticsearchRef, suffix)).
-				WithRestrictedSecurityContext()
+				WithRestrictedSecurityContext().
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName)
 		case apmserver.Builder:
 			return b.WithNamespace(namespace).
 				WithSuffix(suffix).
 				WithElasticsearchRef(tweakElasticsearchRef(b.ApmServer.Spec.ElasticsearchRef, suffix)).
 				WithConfig(map[string]interface{}{"apm-server.ilm.enabled": false}).
-				WithRestrictedSecurityContext()
+				WithRestrictedSecurityContext().
+				WithLabel(run.TestNameLabel, fullTestName).
+				WithPodLabel(run.TestNameLabel, fullTestName)
 		default:
 			return b
 		}

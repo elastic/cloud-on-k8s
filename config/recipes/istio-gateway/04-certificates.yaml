@@ -1,0 +1,32 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: ekmnt-elasticsearch-cert
+  namespace: istio-system
+  labels:
+    app: ekmnt
+spec:
+  secretName: ekmnt-elasticsearch-cert
+  dnsNames:
+    - "elasticsearch.ekmnt"
+  isCA: true
+  issuerRef:
+    name: selfsigning-issuer
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: ekmnt-kibana-cert
+  namespace: istio-system
+  labels:
+    app: ekmnt
+spec:
+  secretName: ekmnt-kibana-cert
+  dnsNames:
+    - "kibana.ekmnt"
+  isCA: true
+  issuerRef:
+    name: selfsigning-issuer
+    kind: ClusterIssuer

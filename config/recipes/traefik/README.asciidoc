@@ -1,0 +1,75 @@
+= Use Traefik to expose Elastic Stack applications
+
+This recipe illustrates how to use link:https://containo.us/traefik/[Traefik] to expose Elasticsearch, Kibana and APM Server resources to the outside world. It demonstrates how to route Elasticsearch traffic by node type and how to use Traefik middleware to add security and resiliency features.
+
+== Prerequisites
+
+- Traefik 2.1 or higher installed with the Kubernetes CRD provider. See: https://docs.traefik.io/providers/kubernetes-crd/
++
+NOTE: This recipe uses TLS to secure in-cluster communications. As the ECK generated certificates are self-signed, you will need to configure Traefik to trust those certificates. One way of doing this is to add the `--serverstransport.insecureskipverify=true` flag to the Traefik deployment.
+- link:https://cert-manager.io[cert-manager] to issue custom TLS certificates. A self-signed cluster issuer can be created with the following manifest:
++
+[source,yaml]
+----
+include::00-prereq-cluster-issuer.yaml[]
+----
+
+== Recipe
+
+Create a certificate with SANs for each of the services you wish to expose.
+
+[source,yaml]
+----
+include::01-certificate.yaml[]
+----
+
+Deploy Elastic Stack applications.
+
+[source,yaml]
+----
+include::02-elastic-stack.yaml[]
+----
+
+Create services to expose ingest nodes and coordinator nodes.
+
+[source,yaml]
+----
+include::03-node-type-svc.yaml[]
+----
+
+Create Traefik middleware for IP filtering, circuit breaking, and rate-limiting.
+
+[source,yaml]
+----
+include::04-middleware.yaml[]
+----
+
+Create the ingress route.
+
+[source,yaml]
+----
+include::05-ingress-route.yaml[]
+----
+
+== Testing
+
+Obtain the Traefik load balancer IP address. This assumes that Traefik is installed in the `traefik` namespace.
+
+[source,sh]
+----
+export INGRESS_HOST=$(kubectl get svc traefik -n traefik -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
+----
+
+Obtain the Elasticsearch password.
+
+[source,sh]
+----
+ELASTICSEARCH_PASSWORD=$(kubectl get secret hulk-es-elastic-user -o=go-template='{{ .data.elastic | base64decode}}')
+----
+
+Access Elasticsearch.
+
+[source,sh]
+----
+curl --resolve "elasticsearch.hulk:443:$INGRESS_HOST" -k -u "elastic:$ELASTICSEARCH_PASSWORD" -XGET 'https://elasticsearch.hulk/_cat/health?v'
+----

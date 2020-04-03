@@ -16,7 +16,35 @@ data:
           hints.default_config:
             type: container
             paths:
-              - /var/log/containers/*${data.kubernetes.container.id}.log
+            - /var/log/containers/*${data.kubernetes.container.id}.log
+            fields_under_root: true
+            fields:
+              pipeline: {{ .Pipeline }}
+              build_number: {{ .BuildNumber }}
+              provider: {{ .Provider }}
+              clusterName: {{ .ClusterName }}
+              kubernetes_version: {{ .KubernetesVersion }}
+              stack_version: {{ .ElasticStackVersion }}
+              e2e_test_id: {{ .Pipeline }}-{{ .BuildNumber }}-{{ .Provider }}-{{ .ClusterName }}-{{ .KubernetesVersion }}-{{ .ElasticStackVersion }}
+          appenders:
+          - type: config
+            condition:
+              equals:
+                kubernetes.pod.labels.control-plane: {{ .Operator.Name }}
+            config:
+              json.keys_under_root: true
+              processors:
+              - convert:
+                  mode: rename
+                  ignore_missing: true
+                  fields:
+                  - { from: error, to: _error}
+                  - { from: source, to: event.source }
+              - convert:
+                  mode: rename
+                  ignore_missing: true
+                  fields:
+                  - { from: _error, to: error.message }
 
     processors:
       - add_cloud_metadata:

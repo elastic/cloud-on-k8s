@@ -40,6 +40,11 @@ type runFlags struct {
 	ignoreWebhookFailures bool
 	logVerbosity          int
 	testTimeout           time.Duration
+	pipeline              string
+	buildNumber           string
+	provider              string
+	clusterName           string
+	kubernetesVersion     string
 }
 
 var log logr.Logger
@@ -81,6 +86,11 @@ func Command() *cobra.Command {
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")
 	cmd.Flags().StringVar(&flags.testRunName, "test-run-name", randomTestRunName(), "Name of this test run")
 	cmd.Flags().DurationVar(&flags.testTimeout, "test-timeout", 5*time.Minute, "Timeout before failing a test")
+	cmd.Flags().StringVar(&flags.pipeline, "pipeline", "", "E2E test pipeline name")
+	cmd.Flags().StringVar(&flags.buildNumber, "build-number", "", "E2E test build number")
+	cmd.Flags().StringVar(&flags.provider, "provider", "", "E2E test infrastructure provider")
+	cmd.Flags().StringVar(&flags.clusterName, "clusterName", "", "E2E test Kubernetes cluster name")
+	cmd.Flags().StringVar(&flags.kubernetesVersion, "kubernetes-version", "", "Kubernetes version")
 	cmd.Flags().BoolVar(&flags.logToFile, "log-to-file", false, "Specifies if should log test output to file. Disabled by default.")
 	cmd.Flags().BoolVar(&flags.ignoreWebhookFailures, "ignore-webhook-failures", false, "Specifies if webhook errors should be ignored. Useful when running test locally. False by default")
 	logutil.BindFlags(cmd.PersistentFlags())

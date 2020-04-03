@@ -8,8 +8,10 @@
 
 set -eu
 
-: "${CHECK_PATH:=$(dirname $0)/../*}" # root project directory
+# shellcheck disable=2086
+: "${CHECK_PATH:=$(dirname $0)/../../*}" # root project directory
 
+# shellcheck disable=SC2086
 files=$(grep \
     --include=\*.go --exclude-dir=vendor \
     --include=\*.sh \

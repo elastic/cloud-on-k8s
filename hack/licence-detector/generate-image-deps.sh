@@ -18,15 +18,15 @@ SCRATCH_DIR=${SCRATCH_DIR:-$(mktemp -d)}
 
 install_tern() {
     (
-        cd $SCRATCH_DIR
+        cd "$SCRATCH_DIR"
         python3 -m venv ternenv
         ternenv/bin/pip install tern
     )
 }
 
 generate_csv() {
-    ${SCRATCH_DIR}/ternenv/bin/tern -l report -f json -i "${IMAGE_NAME}:${IMAGE_TAG}" | \
-        jq -r '.images[].image.layers[].packages |= sort_by(.name) | .images[].image.layers[].packages[] | [.name, .version, .pkg_license, .proj_url] | @csv' > ${OUT_FILE}
+    "${SCRATCH_DIR}"/ternenv/bin/tern -l report -f json -i "${IMAGE_NAME}:${IMAGE_TAG}" | \
+        jq -r '.images[].image.layers[].packages |= sort_by(.name) | .images[].image.layers[].packages[] | [.name, .version, .pkg_license, .proj_url] | @csv' > "${OUT_FILE}"
 }
 
 

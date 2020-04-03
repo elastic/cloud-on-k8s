@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -53,7 +52,7 @@ func TestReconcileStatefulSet(t *testing.T) {
 	tests := []struct {
 		name                    string
 		c                       k8s.Client
-		expected                v1.StatefulSet
+		expected                appsv1.StatefulSet
 		wantExpectationsUpdated bool
 	}{
 		{

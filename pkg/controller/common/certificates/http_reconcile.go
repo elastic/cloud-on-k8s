@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package http
+package certificates
 
 import (
 	cryptorand "crypto/rand"
@@ -14,77 +14,63 @@ import (
 	"strings"
 	"time"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
-var (
-	log = logf.Log.WithName("http")
-)
-
-// ReconcileHTTPCertificates reconciles the internal resources for the HTTP certificate.
-func ReconcileHTTPCertificates(
-	driver driver.Interface,
-	owner metav1.Object,
-	namer name.Namer,
-	ca *certificates.CA,
-	tls commonv1.TLSOptions,
-	labels map[string]string,
-	services []corev1.Service,
-	rotationParams certificates.RotationParams,
-) (*CertificatesSecret, error) {
-	ownerNSN := k8s.ExtractNamespacedName(owner)
-	customCertificates, err := GetCustomCertificates(driver.K8sClient(), ownerNSN, tls)
-	if err != nil {
-		return nil, err
+// ReconcilePublicHTTPCerts reconciles the Secret containing the HTTP Certificate currently in use, and the CA of
+// the certificate if available.
+func (r Reconciler) ReconcilePublicHTTPCerts(internalCerts *CertificatesSecret) error {
+	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(r.Object))
+	expected := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: nsn.Namespace,
+			Name:      nsn.Name,
+			Labels:    r.Labels,
+		},
+		Data: map[string][]byte{
+			CertFileName: internalCerts.CertPem(),
+		},
+	}
+	if caPem := internalCerts.CAPem(); caPem != nil {
+		expected.Data[CAFileName] = caPem
 	}
 
-	if err := reconcileDynamicWatches(driver.DynamicWatches(), ownerNSN, namer, tls); err != nil {
-		return nil, err
-	}
-
-	internalCerts, err := reconcileHTTPInternalCertificatesSecret(
-		driver.K8sClient(), owner, namer, tls, labels, services, customCertificates, ca, rotationParams,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return internalCerts, nil
+	_, err := reconciler.ReconcileSecret(r.K8sClient, expected, r.Object)
+	return err
 }
 
-// reconcileHTTPInternalCertificatesSecret ensures that the internal HTTP certificate secret has the correct content.
-func reconcileHTTPInternalCertificatesSecret(
-	c k8s.Client,
-	owner metav1.Object,
-	namer name.Namer,
-	tls commonv1.TLSOptions,
-	labels map[string]string,
-	svcs []corev1.Service,
-	customCertificates *CertificatesSecret,
-	ca *certificates.CA,
-	rotationParams certificates.RotationParams,
-) (*CertificatesSecret, error) {
+// ReconcileInternalHTTPCerts reconciles the internal resources for the HTTP certificate.
+func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, error) {
+	ownerNSN := k8s.ExtractNamespacedName(r.Object)
+	customCertificates, err := GetCustomCertificates(r.K8sClient, ownerNSN, r.TLSOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := reconcileDynamicWatches(r.DynamicWatches, ownerNSN, r.Namer, r.TLSOptions); err != nil {
+		return nil, err
+	}
+
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: owner.GetNamespace(),
-			Name:      certificates.HTTPCertsInternalSecretName(namer, owner.GetName()),
+			Namespace: r.Object.GetNamespace(),
+			Name:      InternalCertsSecretName(r.Namer, r.Object.GetName()),
 		},
 	}
 
 	shouldCreateSecret := false
-	if err := c.Get(k8s.ExtractNamespacedName(&secret), &secret); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.K8sClient.Get(k8s.ExtractNamespacedName(&secret), &secret); err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		shouldCreateSecret = true
@@ -98,14 +84,14 @@ func reconcileHTTPInternalCertificatesSecret(
 	needsUpdate := false
 
 	// ensure our labels are set on the secret.
-	for k, v := range labels {
+	for k, v := range r.Labels {
 		if current, ok := secret.Labels[k]; !ok || current != v {
 			secret.Labels[k] = v
 			needsUpdate = true
 		}
 	}
 
-	if err := controllerutil.SetControllerReference(owner, &secret, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(r.Object, &secret, scheme.Scheme); err != nil {
 		return nil, err
 	}
 
@@ -119,10 +105,15 @@ func reconcileHTTPInternalCertificatesSecret(
 			return nil, err
 		}
 		expectedSecretData := make(map[string][]byte)
-		expectedSecretData[certificates.CertFileName] = customCertificates.CertPem()
-		expectedSecretData[certificates.KeyFileName] = customCertificates.KeyPem()
-		if caPem := customCertificates.CAPem(); caPem != nil {
-			expectedSecretData[certificates.CAFileName] = caPem
+		expectedSecretData[CertFileName] = customCertificates.CertPem()
+		expectedSecretData[KeyFileName] = customCertificates.KeyPem()
+		if caPem := customCertificates.CAPem(); len(caPem) > 0 {
+			expectedSecretData[CAFileName] = caPem
+		} else {
+			// Ensure that the CA certificate is never empty, otherwise Elasticsearch is not able to reload the certificates.
+			// Default to our self-signed (useless) CA if none is provided by the user.
+			// See https://github.com/elastic/cloud-on-k8s/issues/2243
+			expectedSecretData[CAFileName] = EncodePEMCert(ca.Cert.Raw)
 		}
 
 		if !reflect.DeepEqual(secret.Data, expectedSecretData) {
@@ -131,7 +122,7 @@ func reconcileHTTPInternalCertificatesSecret(
 		}
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
-			&secret, k8s.ExtractNamespacedName(owner), namer, tls, svcs, ca, rotationParams,
+			&secret, ownerNSN, r.Namer, r.TLSOptions, r.Services, ca, r.CertRotation,
 		)
 		if err != nil {
 			return nil, err
@@ -142,19 +133,19 @@ func reconcileHTTPInternalCertificatesSecret(
 	if needsUpdate {
 		if shouldCreateSecret {
 			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-			if err := c.Create(&secret); err != nil {
+			if err := r.K8sClient.Create(&secret); err != nil {
 				return nil, err
 			}
 		} else {
 			log.Info("Updating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
-			if err := c.Update(&secret); err != nil {
+			if err := r.K8sClient.Update(&secret); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	result := CertificatesSecret(secret)
-	return &result, nil
+	internalCerts := CertificatesSecret(secret)
+	return &internalCerts, nil
 }
 
 // ensureInternalSelfSignedCertificateSecretContents ensures that contents of a secret containing self-signed
@@ -167,16 +158,16 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	namer name.Namer,
 	tls commonv1.TLSOptions,
 	svcs []corev1.Service,
-	ca *certificates.CA,
-	rotationParam certificates.RotationParams,
+	ca *CA,
+	rotationParam RotationParams,
 ) (bool, error) {
 	secretWasChanged := false
 
 	// verify that the secret contains a parsable private key, create if it does not exist
 	var privateKey *rsa.PrivateKey
 	needsNewPrivateKey := true
-	if privateKeyData, ok := secret.Data[certificates.KeyFileName]; ok {
-		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
+	if privateKeyData, ok := secret.Data[KeyFileName]; ok {
+		storedPrivateKey, err := ParsePEMPrivateKey(privateKeyData)
 		if err != nil {
 			log.Error(err, "Unable to parse stored private key", "namespace", secret.Namespace, "secret_name", secret.Name)
 		} else {
@@ -194,7 +185,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 		privateKey = generatedPrivateKey
 		secretWasChanged = true
-		secret.Data[certificates.KeyFileName] = certificates.EncodePEMPrivateKey(*privateKey)
+		secret.Data[KeyFileName] = EncodePEMPrivateKey(*privateKey)
 	}
 
 	// check if the existing cert should be re-issued
@@ -230,8 +221,8 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 		secretWasChanged = true
 		// store certificate and signed certificate in a secret mounted into the pod
-		secret.Data[certificates.CAFileName] = certificates.EncodePEMCert(ca.Cert.Raw)
-		secret.Data[certificates.CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
+		secret.Data[CAFileName] = EncodePEMCert(ca.Cert.Raw)
+		secret.Data[CertFileName] = EncodePEMCert(certData, ca.Cert.Raw)
 	}
 
 	return secretWasChanged, nil
@@ -251,7 +242,7 @@ func shouldIssueNewHTTPCertificate(
 	tls commonv1.TLSOptions,
 	secret *corev1.Secret,
 	svcs []corev1.Service,
-	ca *certificates.CA,
+	ca *CA,
 	certReconcileBefore time.Duration,
 ) bool {
 	validatedTemplate := createValidatedHTTPCertificateTemplate(
@@ -260,11 +251,11 @@ func shouldIssueNewHTTPCertificate(
 
 	var certificate *x509.Certificate
 
-	certData, ok := secret.Data[certificates.CertFileName]
+	certData, ok := secret.Data[CertFileName]
 	if !ok {
 		return true
 	}
-	certs, err := certificates.ParsePEMCerts(certData)
+	certs, err := ParsePEMCerts(certData)
 	if err != nil {
 		log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
 		return true
@@ -331,10 +322,10 @@ func createValidatedHTTPCertificateTemplate(
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
-) *certificates.ValidatedCertificateTemplate {
+) *ValidatedCertificateTemplate {
 
 	defaultSuffixes := strings.Join(namer.DefaultSuffixes, "-")
-	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(certificates.HTTPCAType)
+	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(HTTPCAType)
 	cnNameParts := []string{
 		shortName,
 		owner.Namespace,
@@ -366,7 +357,7 @@ func createValidatedHTTPCertificateTemplate(
 		}
 	}
 
-	certificateTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
+	certificateTemplate := ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         certCommonName,
 			OrganizationalUnit: []string{owner.Name},

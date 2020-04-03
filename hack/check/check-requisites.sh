@@ -17,13 +17,13 @@ reset="\e[39m"
 all_found=true
 
 check() {
-    local exec_name="$@"
-    printf "Checking for $exec_name... "
-    if ! command -v $exec_name >/dev/null 2>&1; then
-        printf "${red}not found${reset}"
+    local exec_name=$*
+    printf "Checking for %s..." "$exec_name"
+    if ! command -v "$exec_name" >/dev/null 2>&1; then
+        printf "%snot found%s" "${red}" "${reset}"
         all_found=false
     else
-        printf "${green}found${reset}"
+        printf "%sfound%s" "${green}" "${reset}"
     fi
     printf "\n"
 }
@@ -31,47 +31,51 @@ check() {
 check_oneof() {
     local found_one=false
 
-    for exec_name in $@
+    for exec_name in "$@"
     do
-        printf "Checking for (optional) $exec_name... "
-        if ! command -v $exec_name >/dev/null 2>&1; then
-            printf "${red}not found${reset}"
+        printf "Checking for (optional) %s..." "$exec_name"
+        if ! command -v "$exec_name" >/dev/null 2>&1; then
+            printf "%snot found%s" "${red}" "${reset}"
         else
-            printf "${green}found${reset}"
+            printf "%sfound%s" "${green}" "${reset}"
             found_one=true
         fi
         printf "\n"
     done
 
     if [[ "$found_one" != "true" ]]; then
-        echo "At least one of [$@] must be installed."
+        echo "At least one of [$*] must be installed."
         all_found=false
     fi
 }
 
 check_go_version() {
-    local major=$(go version | sed -E "s|.* go([1-9]).[0-9]*[0-9.]* .*|\1|")
-    local minor=$(go version | sed -E "s|.* go[1-9].([0-9]*)[0-9.]* .*|\1|")
+    local major
+    major=$(go version | sed -E "s|.* go([1-9]).[0-9]*[0-9.]* .*|\1|")
+    local minor
+    minor=$(go version | sed -E "s|.* go[1-9].([0-9]*)[0-9.]* .*|\1|")
 
-    printf "Checking for go >= 1.$MIN_GO_VERSION... "
+    printf "Checking for go >= 1.%s..." "$MIN_GO_VERSION"
     if [[ "$major" -gt 1 ]] || [[ "$minor" -ge $MIN_GO_VERSION ]]; then
-        printf "${green}ok${reset} ($major.$minor)"
+        printf "%sok%s (%s.%s)" "${green}" "${reset}" "$major" "$minor"
     else
-        printf "${red}ko${reset} ($major.$minor)"
+        printf "%sko$%s (%s.%s)" "${red}" "${reset}" "$major" "$minor"
         all_found=false
     fi
     printf "\n"
 }
 
 check_kubectl_version() {
-    local major=$(kubectl --client=true version | grep -Eo 'Major:"[0-9]*' | grep -Eo '[0-9]+')
-    local minor=$(kubectl --client=true version | grep -Eo 'Minor:"[0-9]*' | grep -Eo '[0-9]+')
+    local major
+    major=$(kubectl --client=true version | grep -Eo 'Major:"[0-9]*' | grep -Eo '[0-9]+')
+    local minor
+    minor=$(kubectl --client=true version | grep -Eo 'Minor:"[0-9]*' | grep -Eo '[0-9]+')
 
-    printf "Checking for kubectl >= 1.$MIN_KUBECTL_VERSION... "
+    printf "Checking for kubectl >= 1.%s... " "$MIN_KUBECTL_VERSION"
     if [[ "$major" -gt 1 ]] || [[ "$minor" -ge $MIN_KUBECTL_VERSION ]]; then
-        printf "${green}ok${reset} ($major.$minor)"
+        printf "%sok%s (%s.%s)" "${green}" "${reset}" "$major" "$minor"
     else
-        printf "${red}ko${reset} ($major.$minor)"
+        printf "%sko$%s (%s.%s)" "${red}" "${reset}" "$major" "$minor"
         all_found=false
     fi
     printf "\n"
@@ -87,8 +91,8 @@ check_kubectl_version
 
 echo
 if [[ "$all_found" != "true" ]]; then
-    printf "${red}Error${reset}: some requirements not satified.\n" >&2
+    printf "%sError%s: some requirements not satified.\n" "${red}" "${reset}" >&2
     exit 1
 else
-    printf "${green}OK${reset}: all requirements met.\n"
+    printf "%sOK%s: all requirements met.\n" "${green}" "${reset}"
 fi

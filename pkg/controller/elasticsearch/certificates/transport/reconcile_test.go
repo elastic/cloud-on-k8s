@@ -41,7 +41,7 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    func(*testing.T, corev1.Secret)
+		want    func(*testing.T, *corev1.Secret)
 		wantErr bool
 	}{
 		{
@@ -50,12 +50,12 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				c:     k8s.WrappedFakeClient(),
 				owner: testES,
 			},
-			want: func(t *testing.T, secret corev1.Secret) {
+			want: func(t *testing.T, secret *corev1.Secret) {
 				// owner references are set upon creation, so ignore for comparison
 				expected := defaultSecretWith(func(s *corev1.Secret) {
 					s.OwnerReferences = secret.OwnerReferences
 				})
-				comparison.AssertEqual(t, expected, &secret)
+				comparison.AssertEqual(t, expected, secret)
 			},
 		},
 		{
@@ -66,11 +66,32 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				})),
 				owner: testES,
 			},
-			want: func(t *testing.T, secret corev1.Secret) {
+			want: func(t *testing.T, secret *corev1.Secret) {
 				// UID should be kept the same
 				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.UID = types.UID("42")
-				}), &secret)
+				}), secret)
+			},
+		},
+		{
+			name: "should not modify the secret data if already exists",
+			args: args{
+				c: k8s.WrappedFakeClient(defaultSecretWith(func(secret *corev1.Secret) {
+					secret.ObjectMeta.UID = types.UID("42")
+					secret.Data = map[string][]byte{
+						"existing": []byte("data"),
+					}
+				})),
+				owner: testES,
+			},
+			want: func(t *testing.T, secret *corev1.Secret) {
+				// UID and data should be kept
+				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
+					secret.ObjectMeta.UID = types.UID("42")
+					secret.Data = map[string][]byte{
+						"existing": []byte("data"),
+					}
+				}), secret)
 			},
 		},
 		{
@@ -81,10 +102,10 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 				})),
 				owner: testES,
 			},
-			want: func(t *testing.T, secret corev1.Secret) {
+			want: func(t *testing.T, secret *corev1.Secret) {
 				comparison.AssertEqual(t, defaultSecretWith(func(secret *corev1.Secret) {
 					secret.ObjectMeta.Labels["foo"] = "bar"
-				}), &secret)
+				}), secret)
 			},
 		},
 	}

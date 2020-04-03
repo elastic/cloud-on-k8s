@@ -1,0 +1,48 @@
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hulk-middleware-chain
+spec:
+  chain:
+    middlewares:
+    #- name: hulk-ip-whitelist
+    - name: hulk-limit-concurrent
+    - name: hulk-circuit-breaker
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hulk-ip-whitelist
+spec:
+  ipWhiteList:
+    sourceRange:
+      - 127.0.0.1/32
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hulk-limit-concurrent
+spec:
+  inFlightReq:
+    amount: 10
+    sourceCriterion:
+      ipStrategy:
+        depth: 1
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hulk-circuit-breaker
+spec:
+  circuitBreaker:
+    expression: "LatencyAtQuantileMS(50.0) > 500 || ResponseCodeRatio(400,600,0,600) > 0.25"
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hulk-apm-ratelimit
+spec:
+  rateLimit:
+    average: 100
+    burst: 50

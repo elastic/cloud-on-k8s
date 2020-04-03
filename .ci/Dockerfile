@@ -1,7 +1,9 @@
 # Docker image used for continuous integration
 FROM golang:1.13-stretch
 
-ENV GOLANGCILINT_VERSION=1.21.0
+# TODO: update to >1.24.0 once https://github.com/golangci/golangci-lint/issues/994 is fixed, as jenkins OOMs when running 1.24.0
+ENV GOLANGCILINT_VERSION=1.23.8
+ENV SHELLCHECK_VERSION=0.7.0
 ENV KUBEBUILDER_VERSION=2.0.0
 ENV GCLOUD_VERSION=277.0.0
 ENV KUBECTL_VERSION=1.14.7
@@ -42,15 +44,24 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
     tar xzf docker-${DOCKER_VERSION}.tgz --strip 1 -C /usr/local/bin docker/docker && \
     rm docker-${DOCKER_VERSION}.tgz
 
-# AWS CLI to upload YAML on S3
+# xz-utils to decompress shellcheck and unzip for aws-cli
 RUN apt-get update && apt-get --no-install-recommends -y install \
-    unzip && \
+    unzip xz-utils && \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# AWS CLI v2 to upload YAML on S3 and run eksctl
 RUN curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
-    ./aws/install
+    ./aws/install && \
+    rm awscliv2.zip
+
+# shellcheck
+ENV PATH=${PATH}:/usr/local/shellcheck
+RUN curl -fsSLO https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz && \
+    tar -xf shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz && \
+    mv shellcheck-v${SHELLCHECK_VERSION} /usr/local/shellcheck && \
+    rm shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz
 
 # Azure CLI to provision AKS clusters
 RUN curl -sSL https://aka.ms/InstallAzureCLIDeb | bash

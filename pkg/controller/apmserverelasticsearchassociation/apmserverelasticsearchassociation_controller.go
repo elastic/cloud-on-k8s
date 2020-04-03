@@ -9,26 +9,8 @@ import (
 	"reflect"
 	"time"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -38,6 +20,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 )
 
 const (
@@ -332,7 +332,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) getElasticsearch(ctx contex
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
-			if err := association.RemoveAssociationConf(r.Client, apmServer); err != nil && !errors.IsConflict(err) {
+			if err := association.RemoveAssociationConf(r.Client, apmServer); err != nil && !apierrors.IsConflict(err) {
 				log.Error(err, "Failed to remove Elasticsearch output from APMServer object", "namespace", apmServer.Namespace, "name", apmServer.Name)
 				return commonv1.AssociationPending, err
 			}
@@ -351,7 +351,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) updateAssocConf(ctx context
 	if !reflect.DeepEqual(expectedAssocConf, apmServer.AssociationConf()) {
 		log.Info("Updating APMServer spec with Elasticsearch association configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
 		if err := association.UpdateAssociationConf(r.Client, apmServer, expectedAssocConf); err != nil {
-			if errors.IsConflict(err) {
+			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}
 			log.Error(err, "Failed to update APMServer association configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
@@ -381,7 +381,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileElasticsearchCA(ct
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(apmKey),
-		Watched: []types.NamespacedName{http.PublicCertsSecretRef(esv1.ESNamer, es)},
+		Watched: []types.NamespacedName{certificates.PublicCertsSecretRef(esv1.ESNamer, es)},
 		Watcher: apmKey,
 	}); err != nil {
 		return association.CASecret{}, err

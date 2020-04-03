@@ -9,9 +9,12 @@ import (
 	"crypto/x509"
 	"time"
 
+	"go.elastic.co/apm"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -19,9 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"go.elastic.co/apm"
-	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 type CertificateResources struct {
@@ -30,9 +30,6 @@ type CertificateResources struct {
 
 	// TransportCA is the CA used for Transport certificates
 	TransportCA *certificates.CA
-
-	// HTTPCACertProvided indicates whether ca.crt key is defined in the certificate secret.
-	HTTPCACertProvided bool
 }
 
 // Reconcile reconciles the certificates of a cluster.
@@ -54,58 +51,35 @@ func Reconcile(
 		results.WithError(err)
 	}
 
-	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
+	// label certificates secrets with the cluster name
+	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
-	httpCA, err := certificates.ReconcileCAForOwner(
-		driver.K8sClient(),
-		esv1.ESNamer,
-		&es,
-		labels,
-		certificates.HTTPCAType,
-		caRotation,
-	)
-	if err != nil {
-		return nil, results.WithError(err)
+	// reconcile HTTP CA and cert
+	var httpCerts *certificates.CertificatesSecret
+	httpCerts, results = certificates.Reconciler{
+		K8sClient:      driver.K8sClient(),
+		DynamicWatches: driver.DynamicWatches(),
+		Object:         &es,
+		TLSOptions:     es.Spec.HTTP.TLS,
+		Namer:          esv1.ESNamer,
+		Labels:         certsLabels,
+		Services:       services,
+		CACertRotation: caRotation,
+		CertRotation:   certRotation,
+		// ES is able to hot-reload TLS certificates: let's keep secrets around even though TLS is disabled.
+		// In case TLS is toggled on/off/on quickly enough, removing the secret would prevent future certs to be available.
+		GarbageCollectSecrets: false,
+	}.ReconcileCAAndHTTPCerts(ctx)
+	if results.HasError() {
+		return nil, results
 	}
 
-	// make sure to requeue before the CA cert expires
-	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCA.Cert.NotAfter, caRotation.RotateBefore),
-	})
-
-	// discover and maybe reconcile for the http certificates to use
-	httpCertificates, err := http.ReconcileHTTPCertificates(
-		driver,
-		&es,
-		esv1.ESNamer,
-		httpCA,
-		es.Spec.HTTP.TLS,
-		labels,
-		services,
-		certRotation,
-	)
-	if err != nil {
-		return nil, results.WithError(err)
-	}
-
-	primaryCert, err := certificates.GetPrimaryCertificate(httpCertificates.CertPem())
-	if err != nil {
-		return nil, results.WithError(err)
-	}
-	results.WithResult(reconcile.Result{
-		RequeueAfter: certificates.ShouldRotateIn(time.Now(), primaryCert.NotAfter, certRotation.RotateBefore),
-	})
-
-	// reconcile http public certs secret:
-	if err := http.ReconcileHTTPCertsPublicSecret(driver.K8sClient(), &es, esv1.ESNamer, httpCertificates); err != nil {
-		return nil, results.WithError(err)
-	}
-
+	// reconcile transport CA and certs
 	transportCA, err := certificates.ReconcileCAForOwner(
 		driver.K8sClient(),
 		esv1.ESNamer,
 		&es,
-		labels,
+		certsLabels,
 		certificates.TransportCAType,
 		caRotation,
 	)
@@ -134,15 +108,13 @@ func Reconcile(
 		return nil, results
 	}
 
-	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCertificates.CertPem())
+	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCerts.CertPem())
 	if err != nil {
 		return nil, results.WithError(err)
 	}
 
-	httpCACertProvided := len(httpCertificates.Data[certificates.CAFileName]) > 0
 	return &CertificateResources{
 		TrustedHTTPCertificates: trustedHTTPCertificates,
 		TransportCA:             transportCA,
-		HTTPCACertProvided:      httpCACertProvided,
 	}, results
 }

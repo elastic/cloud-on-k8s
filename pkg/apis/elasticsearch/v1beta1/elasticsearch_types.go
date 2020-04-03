@@ -223,12 +223,12 @@ type Elasticsearch struct {
 }
 
 // IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted
-func (e Elasticsearch) IsMarkedForDeletion() bool {
-	return !e.DeletionTimestamp.IsZero()
+func (es Elasticsearch) IsMarkedForDeletion() bool {
+	return !es.DeletionTimestamp.IsZero()
 }
 
-func (e Elasticsearch) SecureSettings() []commonv1beta1.SecretSource {
-	return e.Spec.SecureSettings
+func (es Elasticsearch) SecureSettings() []commonv1beta1.SecretSource {
+	return es.Spec.SecureSettings
 }
 
 // +kubebuilder:object:root=true

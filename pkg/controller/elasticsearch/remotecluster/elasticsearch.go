@@ -36,11 +36,12 @@ func UpdateSettings(
 	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
 	defer span.End()
 
+	expectedRemoteClusters := getExpectedRemoteClusters(es)
 	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
 	if err != nil {
 		return err
 	}
-	if !enabled {
+	if !enabled && len(expectedRemoteClusters) > 0 {
 		log.Info(
 			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,
@@ -53,7 +54,6 @@ func UpdateSettings(
 	if err != nil {
 		return err
 	}
-	expectedRemoteClusters := getExpectedRemoteClusters(es)
 
 	remoteClusters := make(map[string]esclient.RemoteCluster)
 	// RemoteClusters to add or update

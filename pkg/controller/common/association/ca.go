@@ -13,7 +13,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -39,7 +38,7 @@ func ReconcileCASecret(
 	labels map[string]string,
 	suffix string,
 ) (CASecret, error) {
-	publicESHTTPCertificatesNSN := http.PublicCertsSecretRef(esv1.ESNamer, es)
+	publicESHTTPCertificatesNSN := certificates.PublicCertsSecretRef(esv1.ESNamer, es)
 
 	// retrieve the HTTP certificates from ES namespace
 	var publicESHTTPCertificatesSecret corev1.Secret

@@ -50,10 +50,10 @@ var updateValidations = []updateValidation{
 	pvcModification,
 }
 
-func (r *Elasticsearch) check(validations []validation) field.ErrorList {
+func (es *Elasticsearch) check(validations []validation) field.ErrorList {
 	var errs field.ErrorList
 	for _, val := range validations {
-		if err := val(r); err != nil {
+		if err := val(es); err != nil {
 			errs = append(errs, err...)
 		}
 	}

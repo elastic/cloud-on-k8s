@@ -90,18 +90,6 @@ func (r *ReconcileRemoteCa) Reconcile(request reconcile.Request) (reconcile.Resu
 		return common.PauseRequeue, nil
 	}
 
-	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
-	if err != nil {
-		return defaultRequeue, err
-	}
-	if !enabled {
-		log.Info(
-			"Remote cluster controller is an enterprise feature. Enterprise features are disabled",
-			"namespace", es.Namespace, "es_name", es.Name,
-		)
-		return reconcile.Result{}, nil
-	}
-
 	return doReconcile(ctx, r, &es)
 }
 
@@ -133,6 +121,18 @@ func doReconcile(
 	expectedRemoteClusters, err := getExpectedRemoteClusters(ctx, r.Client, localEs)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
+	if err != nil {
+		return defaultRequeue, err
+	}
+	if !enabled && len(expectedRemoteClusters) > 0 {
+		log.V(1).Info(
+			"Remote cluster controller is an enterprise feature. Enterprise features are disabled",
+			"namespace", localEs.Namespace, "es_name", localEs.Name,
+		)
+		return reconcile.Result{}, nil
 	}
 
 	// Get all the clusters to which this reconciled cluster is connected to according to the existing remote CAs.

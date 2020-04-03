@@ -5,9 +5,10 @@
 package webhook
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 )
 
 // Params are params to create and manage the webhook resources (Cert secret and ValidatingWebhookConfiguration)
