@@ -32,14 +32,14 @@ func CreateCommand() *cobra.Command {
 			}
 
 			switch provider {
-			case runner.GkeDriverID:
+			case runner.GKEDriverID:
 				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
 				if err != nil {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultGkeRunConfigTemplate, user, gCloudProject)
-				fullPath := path.Join(filePath, runner.GkeConfigFileName)
+				data := fmt.Sprintf(runner.DefaultGKERunConfigTemplate, user, gCloudProject)
+				fullPath := path.Join(filePath, runner.GKEConfigFileName)
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
 				}

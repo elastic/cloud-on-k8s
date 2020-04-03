@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	GkeDriverID                     = "gke"
-	GkeVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-gcp-k8s-operator"
-	GkeServiceAccountVaultFieldName = "service-account"
-	GkeConfigFileName               = "deployer-config-gke.yml"
-	DefaultGkeRunConfigTemplate     = `id: gke-dev
+	GKEDriverID                     = "gke"
+	GKEVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-gcp-k8s-operator"
+	GKEServiceAccountVaultFieldName = "service-account"
+	GKEConfigFileName               = "deployer-config-gke.yml"
+	DefaultGKERunConfigTemplate     = `id: gke-dev
 overrides:
   clusterName: %s-dev-cluster
   gke:
@@ -27,24 +27,24 @@ overrides:
 var (
 	// GKE uses 18 chars to prefix the pvc created by a cluster
 	pvcPrefixMaxLength      = 18
-	GkeStorageProvisioner   = "kubernetes.io/no-provisioner"
+	GKEStorageProvisioner   = "kubernetes.io/no-provisioner"
 	defaultClusterIPv4CIDR  = "/20"
 	defaultServicesIPv4CIDR = "/20"
 )
 
 func init() {
-	drivers[GkeDriverID] = &GkeDriverFactory{}
+	drivers[GKEDriverID] = &GKEDriverFactory{}
 }
 
-type GkeDriverFactory struct {
+type GKEDriverFactory struct {
 }
 
-type GkeDriver struct {
+type GKEDriver struct {
 	plan Plan
 	ctx  map[string]interface{}
 }
 
-func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
+func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 	pvcPrefix := plan.ClusterName
 	if len(pvcPrefix) > pvcPrefixMaxLength {
 		pvcPrefix = pvcPrefix[0:pvcPrefixMaxLength]
@@ -60,7 +60,7 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 		servicesIPv4CIDR = plan.Gke.ServicesIPv4CIDR
 	}
 
-	return &GkeDriver{
+	return &GKEDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
 			"GCloudProject":     plan.Gke.GCloudProject,
@@ -79,7 +79,7 @@ func (gdf *GkeDriverFactory) Create(plan Plan) (Driver, error) {
 	}, nil
 }
 
-func (d *GkeDriver) Execute() error {
+func (d *GKEDriver) Execute() error {
 	if err := d.auth(); err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func (d *GkeDriver) Execute() error {
 		if err := d.configureDocker(); err != nil {
 			return err
 		}
-		if err := createStorageClass(GkeStorageProvisioner); err != nil {
+		if err := createStorageClass(GKEStorageProvisioner); err != nil {
 			return err
 		}
 		if err := d.createSsdProvider(); err != nil {
@@ -129,13 +129,13 @@ func (d *GkeDriver) Execute() error {
 	return err
 }
 
-func (d *GkeDriver) createSsdProvider() error {
+func (d *GKEDriver) createSsdProvider() error {
 	return NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
-EOF`, GkeSsdProvisioner)).Run()
+EOF`, GKESsdProvisioner)).Run()
 }
 
-func (d *GkeDriver) auth() error {
+func (d *GKEDriver) auth() error {
 	if d.plan.ServiceAccount {
 		log.Println("Authenticating as service account...")
 
@@ -146,7 +146,7 @@ func (d *GkeDriver) auth() error {
 
 		keyFileName := "gke_service_account_key.json"
 		defer os.Remove(keyFileName)
-		if err := client.ReadIntoFile(keyFileName, GkeVaultPath, GkeServiceAccountVaultFieldName); err != nil {
+		if err := client.ReadIntoFile(keyFileName, GKEVaultPath, GKEServiceAccountVaultFieldName); err != nil {
 			return err
 		}
 
@@ -166,7 +166,7 @@ func (d *GkeDriver) auth() error {
 	return NewCommand("gcloud auth login").Run()
 }
 
-func (d *GkeDriver) clusterExists() (bool, error) {
+func (d *GKEDriver) clusterExists() (bool, error) {
 	log.Println("Checking if cluster exists...")
 
 	cmd := "gcloud beta container clusters --project {{.GCloudProject}} describe {{.ClusterName}} --region {{.Region}}"
@@ -178,7 +178,7 @@ func (d *GkeDriver) clusterExists() (bool, error) {
 	return err == nil, err
 }
 
-func (d *GkeDriver) create() error {
+func (d *GKEDriver) create() error {
 	log.Println("Creating cluster...")
 
 	opts := []string{}
@@ -199,7 +199,7 @@ func (d *GkeDriver) create() error {
 		Run()
 }
 
-func (d *GkeDriver) bindRoles() error {
+func (d *GKEDriver) bindRoles() error {
 	log.Println("Binding roles...")
 	user, err := NewCommand(`gcloud auth list --filter=status:ACTIVE --format="value(account)"`).Output()
 	if err != nil {
@@ -209,18 +209,18 @@ func (d *GkeDriver) bindRoles() error {
 	return NewCommand(cmd).Run()
 }
 
-func (d *GkeDriver) configureDocker() error {
+func (d *GKEDriver) configureDocker() error {
 	log.Println("Configuring Docker...")
 	return NewCommand("gcloud auth configure-docker --quiet").Run()
 }
 
-func (d *GkeDriver) GetCredentials() error {
+func (d *GKEDriver) GetCredentials() error {
 	log.Println("Getting credentials...")
 	cmd := "gcloud container clusters --project {{.GCloudProject}} get-credentials {{.ClusterName}} --region {{.Region}}"
 	return NewCommand(cmd).AsTemplate(d.ctx).Run()
 }
 
-func (d *GkeDriver) delete() error {
+func (d *GKEDriver) delete() error {
 	log.Println("Deleting cluster...")
 	cmd := "gcloud beta --quiet --project {{.GCloudProject}} container clusters delete {{.ClusterName}} --region {{.Region}}"
 	if err := NewCommand(cmd).AsTemplate(d.ctx).Run(); err != nil {
