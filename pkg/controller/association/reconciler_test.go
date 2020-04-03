@@ -215,6 +215,7 @@ func TestReconciler_Reconcile_resourceNotFound_OnDeletion(t *testing.T) {
 	var secret corev1.Secret
 	err = r.Client.Get(k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
 	require.Error(t, err)
+	require.True(t, apierrors.IsNotFound(err))
 }
 
 func TestReconciler_Reconcile_Unmanaged(t *testing.T) {
@@ -231,7 +232,6 @@ func TestReconciler_Reconcile_DeletionTimestamp(t *testing.T) {
 	kb := sampleKibanaWithESRef()
 	now := metav1.NewTime(time.Now())
 	kb.DeletionTimestamp = &now
-	// set the pause annotation
 	r := testReconciler(&kb)
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	// should do nothing

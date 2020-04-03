@@ -143,7 +143,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, associated commonv1.Associ
 	assocLabels := r.AssociationLabels(assocKey)
 
 	// garbage collect leftover resources that are not required anymore
-	if err := DeleteOrphanedResources(ctx, r, associated, assocLabels); err != nil {
+	if err := deleteOrphanedResources(ctx, r, associated, assocLabels); err != nil {
 		r.log(associated).Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 

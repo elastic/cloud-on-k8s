@@ -24,7 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
-func TestDeleteOrphanedResources(t *testing.T) {
+func Test_deleteOrphanedResources(t *testing.T) {
 	userInEsNamespace := "default-kibana-foo-kibana-user" // in the es namespace
 	userInKibanaNamespace := "kibana-foo-kibana-es-user"  // nolint
 
@@ -300,7 +300,7 @@ func TestDeleteOrphanedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrappedFakeClient(tt.initialObjects...)
-			if err := DeleteOrphanedResources(context.Background(), c, &tt.kibana, associationLabels); (err != nil) != tt.wantErr {
+			if err := deleteOrphanedResources(context.Background(), c, &tt.kibana, associationLabels); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

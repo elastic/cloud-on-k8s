@@ -37,7 +37,7 @@ func remoteCAObjectMeta(
 				RemoteClusterNamespaceLabelName: remote.Namespace,
 				RemoteClusterNameLabelName:      remote.Name,
 			},
-			remoteca.LabelSelector(owner.Name),
+			remoteca.Labels(owner.Name),
 		),
 	}
 }

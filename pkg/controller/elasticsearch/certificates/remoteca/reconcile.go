@@ -25,7 +25,7 @@ const (
 	TypeLabelValue = "remote-ca"
 )
 
-func LabelSelector(esName string) client.MatchingLabels {
+func Labels(esName string) client.MatchingLabels {
 	return map[string]string{
 		label.ClusterNameLabelName: esName,
 		common.TypeLabelName:       TypeLabelValue,
@@ -42,7 +42,7 @@ func Reconcile(
 	if err := c.List(
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
-		LabelSelector(es.Name),
+		Labels(es.Name),
 	); err != nil {
 		return err
 	}

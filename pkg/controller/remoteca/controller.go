@@ -262,7 +262,7 @@ func remoteClustersInvolvedWith(
 	if err := c.List(
 		&remoteCAList,
 		client.InNamespace(es.Namespace),
-		remoteca.LabelSelector(es.Name),
+		remoteca.Labels(es.Name),
 	); err != nil {
 		return nil, err
 	}
