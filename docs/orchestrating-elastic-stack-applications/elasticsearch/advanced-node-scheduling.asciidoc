@@ -119,10 +119,9 @@ spec:
         affinity:
           podAntiAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
-            - podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    elasticsearch.k8s.elastic.co/cluster-name: quickstart
+            - labelSelector:
+                matchLabels:
+                  elasticsearch.k8s.elastic.co/cluster-name: quickstart
               topologyKey: kubernetes.io/hostname
 ----
 
