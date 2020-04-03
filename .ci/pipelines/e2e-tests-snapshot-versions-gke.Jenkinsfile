@@ -55,17 +55,6 @@ pipeline {
                 )}"""
             }
             parallel {
-                stage("7.6.2-SNAPSHOT") {
-                     agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        script {
-                            runWith(lib, failedTests, "eck-76-snapshot-${BUILD_NUMBER}-e2e", "7.6.1-SNAPSHOT")
-                        }
-                    }
-                }
                 stage("7.7.0-SNAPSHOT") {
                      agent {
                         label 'linux'
@@ -107,7 +96,6 @@ pipeline {
         cleanup {
             script {
                 clusters = [
-                    "eck-76-snapshot-${BUILD_NUMBER}-e2e",
                     "eck-77-snapshot-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {

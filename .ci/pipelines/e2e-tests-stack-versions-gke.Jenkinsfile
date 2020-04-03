@@ -95,14 +95,14 @@ pipeline {
                         }
                     }
                 }
-                stage("7.6.0") {
+                stage("7.6.2") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-76-${BUILD_NUMBER}-e2e", "7.6.0")
+                            runWith(lib, failedTests, "eck-76-${BUILD_NUMBER}-e2e", "7.6.2")
                         }
                     }
                 }
