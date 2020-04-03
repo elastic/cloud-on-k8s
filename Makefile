@@ -373,7 +373,12 @@ ifeq ($(REGISTRY), eu.gcr.io)
 	# this is used by the cloud-on-k8s-e2e-tests-ocp job
 	@ gcloud auth configure-docker --quiet
 endif
+ifeq ($(REGISTRY), docker.elastic.co)
+	@ docker tag $(E2E_IMG) push.$(E2E_IMG)
+	@ docker push push.$(E2E_IMG)
+else
 	docker push $(E2E_IMG)
+endif
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
