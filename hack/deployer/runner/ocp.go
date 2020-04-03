@@ -100,7 +100,7 @@ func (gdf *OCPDriverFactory) Create(plan Plan) (Driver, error) {
 			"AdminUsername":              plan.OCP.AdminUsername,
 			"KubernetesVersion":          plan.KubernetesVersion,
 			"MachineType":                plan.MachineType,
-			"LocalSsdCount":              plan.OCP.LocalSsdCount,
+			"LocalSSDCount":              plan.OCP.LocalSSDCount,
 			"NodeCount":                  plan.OCP.NodeCount,
 			"BaseDomain":                 baseDomain,
 			"WorkDir":                    plan.OCP.WorkDir,

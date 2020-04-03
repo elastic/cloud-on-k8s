@@ -44,7 +44,7 @@ type GKESettings struct {
 	GCloudProject    string `yaml:"gCloudProject"`
 	Region           string `yaml:"region"`
 	AdminUsername    string `yaml:"adminUsername"`
-	LocalSsdCount    int    `yaml:"localSsdCount"`
+	LocalSSDCount    int    `yaml:"localSSDCount"`
 	NodeCountPerZone int    `yaml:"nodeCountPerZone"`
 	GcpScopes        string `yaml:"gcpScopes"`
 	ClusterIPv4CIDR  string `yaml:"clusterIpv4Cidr"`
@@ -68,7 +68,7 @@ type OCPSettings struct {
 	WorkDir                    string `yaml:"workDir"`
 	PullSecret                 string `yaml:"pullSecret"`
 	OverwriteDefaultKubeconfig bool   `yaml:"overwriteDefaultKubeconfig"`
-	LocalSsdCount              int    `yaml:"localSsdCount"`
+	LocalSSDCount              int    `yaml:"localSSDCount"`
 	NodeCount                  int    `yaml:"nodeCount"`
 }
 

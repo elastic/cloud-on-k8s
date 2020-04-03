@@ -70,7 +70,7 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 			"AdminUsername":     plan.GKE.AdminUsername,
 			"KubernetesVersion": plan.KubernetesVersion,
 			"MachineType":       plan.MachineType,
-			"LocalSsdCount":     plan.GKE.LocalSsdCount,
+			"LocalSSDCount":     plan.GKE.LocalSSDCount,
 			"GcpScopes":         plan.GKE.GcpScopes,
 			"NodeCountPerZone":  plan.GKE.NodeCountPerZone,
 			"ClusterIPv4CIDR":   clusterIPv4CIDR,
@@ -119,7 +119,7 @@ func (d *GKEDriver) Execute() error {
 		if err := createStorageClass(GKEStorageProvisioner); err != nil {
 			return err
 		}
-		if err := d.createSsdProvider(); err != nil {
+		if err := d.createSSDProvider(); err != nil {
 			return err
 		}
 	default:
@@ -129,7 +129,7 @@ func (d *GKEDriver) Execute() error {
 	return err
 }
 
-func (d *GKEDriver) createSsdProvider() error {
+func (d *GKEDriver) createSSDProvider() error {
 	return NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
 EOF`, GKESSDProvisioner)).Run()
@@ -189,7 +189,7 @@ func (d *GKEDriver) create() error {
 	return NewCommand(`gcloud beta container --project {{.GCloudProject}} clusters create {{.ClusterName}} ` +
 		`--region {{.Region}} --username {{.AdminUsername}} --cluster-version {{.KubernetesVersion}} ` +
 		`--machine-type {{.MachineType}} --image-type COS --disk-type pd-ssd --disk-size 30 ` +
-		`--local-ssd-count {{.LocalSsdCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
+		`--local-ssd-count {{.LocalSSDCount}} --scopes {{.GcpScopes}} --num-nodes {{.NodeCountPerZone}} ` +
 		`--enable-stackdriver-kubernetes --addons HorizontalPodAutoscaling,HttpLoadBalancing ` +
 		`--no-enable-autoupgrade --no-enable-autorepair --enable-ip-alias --metadata disable-legacy-endpoints=true ` +
 		`--network projects/{{.GCloudProject}}/global/networks/default ` +
