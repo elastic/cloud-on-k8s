@@ -43,7 +43,7 @@ func CreateCommand() *cobra.Command {
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
 				}
-			case runner.AksDriverID:
+			case runner.AKSDriverID:
 				resourceGroup, err := GetEnvVar("RESOURCE_GROUP")
 				if err != nil {
 					return err
@@ -54,8 +54,8 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup, acrName)
-				fullPath := path.Join(filePath, runner.AksConfigFileName)
+				data := fmt.Sprintf(runner.DefaultAKSRunConfigTemplate, user, resourceGroup, acrName)
+				fullPath := path.Join(filePath, runner.AKSConfigFileName)
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
 				}

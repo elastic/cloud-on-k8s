@@ -24,7 +24,7 @@ type Plan struct {
 	KubernetesVersion string       `yaml:"kubernetesVersion"`
 	MachineType       string       `yaml:"machineType"`
 	GKE               *GKESettings `yaml:"gke,omitempty"`
-	Aks               *AksSettings `yaml:"aks,omitempty"`
+	AKS               *AKSSettings `yaml:"aks,omitempty"`
 	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
 	VaultInfo         *VaultInfo   `yaml:"vaultInfo,omitempty"`
 	ServiceAccount    bool         `yaml:"serviceAccount"`
@@ -51,8 +51,8 @@ type GKESettings struct {
 	ServicesIPv4CIDR string `yaml:"servicesIpv4Cidr"`
 }
 
-// AksSettings encapsulates settings specific to AKS
-type AksSettings struct {
+// AKSSettings encapsulates settings specific to AKS
+type AKSSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
 	AcrName       string `yaml:"acrName"`
