@@ -104,9 +104,9 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(associated) {
-		r.log(associated).Info("Object is paused. Skipping reconciliation")
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(associated) {
+		r.log(associated).Info("Object is currently not managed by this controller. Skipping reconciliation")
+		return reconcile.Result{}, nil
 	}
 
 	if !associated.GetDeletionTimestamp().IsZero() {

@@ -14,6 +14,7 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -134,25 +135,30 @@ func ReconcileCompatibility(ctx context.Context, client k8s.Client, obj runtime.
 	return false, nil
 }
 
-// checkExistingResources returns a bool indicating if there are existing resources created for a given resource.
+// checkExistingResources returns a bool indicating if there are existing resources owned for a given resource.
 // The labels provided must exactly match.
-func checkExistingResources(client k8s.Client, obj runtime.Object, labels map[string]string) (bool, error) {
+func checkExistingResources(client k8s.Client, owner runtime.Object, labels map[string]string) (bool, error) {
 
-	accessor := meta.NewAccessor()
-	namespace, err := accessor.Namespace(obj)
+	metaOwner, err := meta.Accessor(owner)
 	if err != nil {
-		log.Error(err, "error getting namespace", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 		return false, err
 	}
+
 	labelSelector := ctrlclient.MatchingLabels(labels)
-	nsSelector := ctrlclient.InNamespace(namespace)
-	// if there's no controller version annotation on the object, then we need to see maybe the object has been reconciled by an older, incompatible controller version
+	nsSelector := ctrlclient.InNamespace(metaOwner.GetNamespace())
+
 	var svcs corev1.ServiceList
 	err = client.List(&svcs, labelSelector, nsSelector)
 	if err != nil {
 		return false, err
 	}
-	// if we listed any services successfully, then we know this cluster was reconciled by an old version since any objects reconciled by a 0.9.0+ operator would have a label
-	return len(svcs.Items) != 0, nil
 
+	// If we list any services owned by the owner successfully, then we know this owner resource was reconciled
+	// by an old version since any owner resources reconciled by a 0.9.0+ operator would have a label already.
+	for _, svc := range svcs.Items {
+		if metav1.IsControlledBy(&svc, metaOwner) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

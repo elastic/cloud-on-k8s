@@ -13,6 +13,32 @@ import (
 	"github.com/pkg/errors"
 )
 
+// supported Stack versions. See https://www.elastic.co/support/matrix#matrix_compatibility
+var (
+	SupportedAPMServerVersions        = MinMaxVersion{Min: From(6, 2, 0), Max: From(8, 99, 99)}
+	SupportedEnterpriseSearchVersions = MinMaxVersion{Min: From(7, 7, 0), Max: From(8, 99, 99)}
+	SupportedKibanaVersions           = MinMaxVersion{Min: From(6, 8, 0), Max: From(8, 99, 99)}
+)
+
+// MinMaxVersion holds the minimum and maximum supported versions.
+type MinMaxVersion struct {
+	Min Version
+	Max Version
+}
+
+// WithinRange returns an error if the given version is not within the range of minimum and maximum versions.
+func (mmv MinMaxVersion) WithinRange(v Version) error {
+	if !v.IsSameOrAfter(mmv.Min) {
+		return fmt.Errorf("version %s is lower than the lowest supported version of %s", v, mmv.Min)
+	}
+
+	if !mmv.Max.IsSameOrAfter(v) {
+		return fmt.Errorf("version %s is higher than the highest supported version of %s", v, mmv.Max)
+	}
+
+	return nil
+}
+
 // Version is a parsed version
 type Version struct {
 	Major int
@@ -88,9 +114,19 @@ func MustParse(version string) Version {
 
 // IsSameOrAfter returns true if the receiver is the same version or newer than the argument. Labels are ignored.
 func (v *Version) IsSameOrAfter(other Version) bool {
+	return v.IsSame(other) || v.IsAfter(other)
+}
+
+// IsSameOrAfter returns true if the receiver is the same version as the argument. Labels are ignored.
+func (v *Version) IsSame(other Version) bool {
+	return v.Major == other.Major && v.Minor == other.Minor && v.Patch == other.Patch
+}
+
+// IsAfter returns true if the receiver version is newer than the argument. Labels are ignored.
+func (v *Version) IsAfter(other Version) bool {
 	return v.Major > other.Major ||
 		(v.Major == other.Major && v.Minor > other.Minor) ||
-		(v.Major == other.Major && v.Minor == other.Minor && v.Patch >= other.Patch)
+		(v.Major == other.Major && v.Minor == other.Minor && v.Patch > other.Patch)
 }
 
 // Min returns the minimum version in vs or nil.
@@ -103,4 +139,16 @@ func Min(vs []Version) *Version {
 		v = &vs[0]
 	}
 	return v
+}
+
+func FromLabels(labels map[string]string, labelName string) (*Version, error) {
+	labelValue, ok := labels[labelName]
+	if !ok {
+		return nil, errors.Errorf("version label %s is missing", labelName)
+	}
+	v, err := Parse(labelValue)
+	if err != nil {
+		return nil, errors.Wrapf(err, "version label %s is invalid: %s", labelName, labelValue)
+	}
+	return v, nil
 }

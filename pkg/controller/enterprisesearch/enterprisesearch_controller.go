@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -29,7 +30,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -67,6 +67,22 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEn
 	}
 }
 
+func podsToReconcilerequest(object handler.MapObject) []reconcile.Request {
+	labels := object.Meta.GetLabels()
+	entsName, isSet := labels[EnterpriseSearchNameLabelName]
+	if !isSet {
+		return nil
+	}
+	return []reconcile.Request{
+		{
+			NamespacedName: types.NamespacedName{
+				Namespace: object.Meta.GetNamespace(),
+				Name:      entsName,
+			},
+		},
+	}
+}
+
 func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 	// Watch for changes to EnterpriseSearch
 	err := c.Watch(&source.Kind{Type: &entsv1beta1.EnterpriseSearch{}}, &handler.EnqueueRequestForObject{})
@@ -79,6 +95,15 @@ func addWatches(c controller.Controller, r *ReconcileEnterpriseSearch) error {
 		IsController: true,
 		OwnerType:    &entsv1beta1.EnterpriseSearch{},
 	}); err != nil {
+		return err
+	}
+
+	// Watch Pods to be notified about Pods going up/down during version upgrades.
+	// Unfortunately watching deployment only is not enough since we may miss a Pod deletion event.
+	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(podsToReconcilerequest),
+		}); err != nil {
 		return err
 	}
 
@@ -151,9 +176,9 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(&ents) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", ents.Namespace, "ents_name", ents.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(&ents) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ents.Namespace, "ents_name", ents.Name)
+		return reconcile.Result{}, nil
 	}
 
 	if compatible, err := r.isCompatible(ctx, &ents); err != nil || !compatible {
@@ -179,7 +204,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 
 func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
 	// Clean up watches
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(configRefWatchName(obj))
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *entsv1beta1.EnterpriseSearch) (bool, error) {
@@ -192,6 +217,11 @@ func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ents *ents
 }
 
 func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request reconcile.Request, ents entsv1beta1.EnterpriseSearch) (reconcile.Result, error) {
+	// Run validation in case the webhook is disabled
+	if err := r.validate(ctx, &ents); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	state := NewState(request, &ents)
 
 	svc, err := common.ReconcileService(ctx, r.Client, NewService(ents), &ents)
@@ -205,7 +235,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		Object:                &ents,
 		TLSOptions:            ents.Spec.HTTP.TLS,
 		Namer:                 entsname.EntSearchNamer,
-		Labels:                NewLabels(ents.Name),
+		Labels:                Labels(ents.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        r.CACertRotation,
 		CertRotation:          r.CertRotation,
@@ -221,8 +251,14 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		return reconcile.Result{}, err
 	}
 
-	configSecret, err := ReconcileConfig(r.K8sClient(), ents)
+	configSecret, err := ReconcileConfig(r, ents)
 	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// toggle read-only mode for Enterprise Search version upgrades
+	upgrade := VersionUpgrade{k8sClient: r.K8sClient(), recorder: r.Recorder(), ents: ents, dialer: r.Dialer}
+	if err := upgrade.Handle(ctx); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -251,6 +287,19 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 	return res, nil
 }
 
+func (r *ReconcileEnterpriseSearch) validate(ctx context.Context, ents *entsv1beta1.EnterpriseSearch) error {
+	span, vctx := apm.StartSpan(ctx, "validate", tracing.SpanTypeApp)
+	defer span.End()
+
+	if err := ents.ValidateCreate(); err != nil {
+		log.Error(err, "Validation failed")
+		k8s.EmitErrorEvent(r.recorder, err, ents, events.EventReasonValidation, err.Error())
+		return tracing.CaptureError(vctx, err)
+	}
+
+	return nil
+}
+
 func NewService(ents entsv1beta1.EnterpriseSearch) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: ents.Spec.HTTP.Service.ObjectMeta,
@@ -260,7 +309,7 @@ func NewService(ents entsv1beta1.EnterpriseSearch) *corev1.Service {
 	svc.ObjectMeta.Namespace = ents.Namespace
 	svc.ObjectMeta.Name = entsname.HTTPService(ents.Name)
 
-	labels := NewLabels(ents.Name)
+	labels := Labels(ents.Name)
 	ports := []corev1.ServicePort{
 		{
 			Name:     ents.Spec.HTTP.Protocol(),

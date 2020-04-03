@@ -146,6 +146,8 @@ var (
 			Namespace: kibanaNamespace,
 			Name:      "kbname-kibana-user",
 			Labels: map[string]string{
+				"eck.k8s.elastic.co/credentials":             "true",
+				"elasticsearch.k8s.elastic.co/cluster-name":  "esname",
 				"kibanaassociation.k8s.elastic.co/name":      "kbname",
 				"kibanaassociation.k8s.elastic.co/namespace": "kbns",
 			},
@@ -214,15 +216,14 @@ func TestReconciler_Reconcile_resourceNotFound_OnDeletion(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestReconciler_Reconcile_Paused(t *testing.T) {
+func TestReconciler_Reconcile_Unmanaged(t *testing.T) {
 	kb := sampleKibanaWithESRef()
-	// set the pause annotation
-	kb.Annotations = map[string]string{common.PauseAnnotationName: "true"}
+	kb.Annotations = map[string]string{common.ManagedAnnotation: "false"}
 	r := testReconciler(&kb)
 	res, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
 	// should do nothing
 	require.NoError(t, err)
-	require.Equal(t, common.PauseRequeue, res)
+	require.Equal(t, reconcile.Result{}, res)
 }
 
 func TestReconciler_Reconcile_DeletionTimestamp(t *testing.T) {

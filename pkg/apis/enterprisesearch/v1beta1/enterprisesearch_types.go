@@ -26,6 +26,12 @@ type EnterpriseSearchSpec struct {
 	// Config holds the Enterprise Search configuration.
 	Config *commonv1.Config `json:"config,omitempty"`
 
+	// ConfigRef contains references to Kubernetes Secrets holding the Enterprise Search configuration.
+	// Configuration settings are merged and have prcedence over plain text settings specified in  `config`.
+	// Multiple secrets can be referenced: if duplicate settings exist in multiple secrets,
+	// the last one takes precedence.
+	ConfigRef []ConfigSource `json:"configRef,omitempty"`
+
 	// HTTP holds the HTTP layer configuration for Enterprise Search resource.
 	HTTP commonv1.HTTPConfig `json:"http,omitempty"`
 
@@ -41,6 +47,31 @@ type EnterpriseSearchSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+}
+
+// ConfigSource references configuration settings to include in the Enterprise Search configuration.
+type ConfigSource struct {
+	// SecretName references a Kubernetes secret in the same namespace as the EnterpriseSearch resource.
+	// Enterprise Search settings must be specified as yaml, under a single "enterprise-search.yml" entry.
+	//
+	// Example:
+	// ---
+	// kind: Secret
+	// apiVersion: v1
+	// metadata:
+	// 	name: smtp-credentials
+	// stringData:
+	//  enterprise-search.yml: |-
+	//    email.account.enabled: true
+	//    email.account.smtp.auth: plain
+	//    email.account.smtp.starttls.enable: false
+	//    email.account.smtp.host: 127.0.0.1
+	//    email.account.smtp.port: 25
+	//    email.account.smtp.user: myuser
+	//    email.account.smtp.password: mypassword
+	//    email.account.email_defaults.from: my@email.com
+	// ---
+	commonv1.SecretRef `json:",inline"`
 }
 
 // EnterpriseSearchHealth expresses the health of the Enterprise Search instances.

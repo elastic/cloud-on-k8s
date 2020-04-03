@@ -4,11 +4,17 @@
 
 package common
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+)
 
 const (
 	// TypeLabelName used to represent a resource type in k8s resources
 	TypeLabelName = "common.k8s.elastic.co/type"
+
+	credentialsLabel = "eck.k8s.elastic.co/credentials"
 )
 
 // TrueFalseLabel is a label that has a true/false value.
@@ -29,4 +35,9 @@ func (l TrueFalseLabel) AsMap(value bool) map[string]string {
 	return map[string]string{
 		string(l): strconv.FormatBool(value),
 	}
+}
+
+// AddCredentialsLabel adds a label used to describe a resource which contains some credentials, either a clear-text password or a token.
+func AddCredentialsLabel(original map[string]string) map[string]string {
+	return maps.Merge(map[string]string{credentialsLabel: "true"}, original)
 }

@@ -1,0 +1,72 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.1.0]]
+== {n} version 1.1.0
+
+[[breaking-1.1.0]]
+[float]
+=== Breaking changes
+
+* Remove operator roles {pull}2530[#2530]
+* Name container ports according to protocol {pull}2498[#2498] (issue: {issue}2483[#2483])
+
+
+[[feature-1.1.0]]
+[float]
+=== New features
+
+* Add a tool to recreate a deleted cluster from existing PersistentVolumeClaims {pull}2551[#2551]
+* Add local K8S remote cluster support {pull}2543[#2543]
+* Add basic APM agent instrumentation {pull}2462[#2462]
+
+[[enhancement-1.1.0]]
+[float]
+=== Enhancements
+
+* Improve secure string generation {pull}2794[#2794]
+* Rename pause annotation {pull}2783[#2783]
+* Add validation webhook configurations for all resource types {pull}2781[#2781]
+* Surface EULA validation in annotation for trials {pull}2742[#2742]
+* Add automaxprocs {pull}2724[#2724]
+* Make transport service customizable {pull}2691[#2691]
+* Add the transport service DNS name to the CSR {pull}2687[#2687]
+* Update transport cert verification to full {pull}2659[#2659]
+* Do not call the voting config exclusions API at every single reconciliation {pull}2642[#2642] (issue: {issue}2605[#2605])
+* User-provided config take precedence over operator config {pull}2636[#2636]
+* Validate duplicated nodeSet names {pull}2631[#2631]
+* Stub initial support for Elastic stack version 8.0 {pull}2613[#2613]
+* Do not request ES to clear routing allocation exclude at every reconciliation {pull}2610[#2610] (issue: {issue}1522[#1522])
+* Get endpoints as part of the diagnostics bundle {pull}2603[#2603] (issue: {issue}2602[#2602])
+* ECK dump: export controller revisions {pull}2538[#2538]
+* Add operator flag to define default container registry {pull}2537[#2537]
+* Rename log.logger to event.dataset as recommended in ECS {pull}2534[#2534]
+* Make readiness probes independent of the host/container network {pull}2528[#2528]
+* Bump controller-tools {pull}2497[#2497] (issue: {issue}2490[#2490])
+* Extend cluster-wide rbac roles for elastic crds {pull}2495[#2495]
+* Control associations across namespaces with ServiceAccount and RBAC {pull}2482[#2482]
+* Allow webhook cert directory to be overridden {pull}2476[#2476] (issue: {issue}2463[#2463])
+* Logging: add minimal support for ECS {pull}2457[#2457] (issue: {issue}2002[#2002])
+* Facilitate filebeat autodiscovery with hints annotation {pull}2439[#2439]
+* Add config validation for unknown fields {pull}2433[#2433]
+* Synchronously request the Cluster UUID {pull}2399[#2399] (issue: {issue}2397[#2397])
+* Ensure Kibana encryption key is specified {pull}2278[#2278] (issue: {issue}1738[#1738])
+
+[[bug-1.1.0]]
+[float]
+=== Bug fixes
+
+* Fix labels on ES CA secret for Kibana association {pull}2773[#2773] (issue: {issue}2698[#2698])
+* Ensure that HTTP CA cert is always set {pull}2772[#2772]
+* License check: update remote cluster logs and events {pull}2746[#2746]
+* Fix transport certificates reconciliation {pull}2740[#2740]
+* Rename registry field as it clashes with ECS {pull}2737[#2737]
+* Prevent pod deletion while ES node still contains shards {pull}2715[#2715]
+* Association controller bug fixes {pull}2679[#2679]
+* Ensure StatefulSets have been processed by the StatefulSet controller before doing any upgrade {pull}2591[#2591] (issues: {issue}2393[#2393], {issue}2434[#2434])
+* Use cert rotate parameter {pull}2541[#2541] (issue: {issue}2540[#2540])
+* Do not mutate object when validating unknown fields {pull}2536[#2536]
+* Mark the Version field required and adapt CRD generation for trivialVersions {pull}2480[#2480] (issues: {issue}2395[#2395], {issue}2479[#2479])
+* Cluster bootstrap: ignore ES error when retrieving cluster UUID {pull}2438[#2438]
+
+
