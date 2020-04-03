@@ -163,7 +163,7 @@ get_logs() {
 # list_pods_names lists the names of the pods in a specified namespace
 list_pods_names() {
   local ns=$1 label=${2:-""}
-  if [[ "$label" != "" ]]; then
+  if [[ -n $label ]]; then
     kubectl get pods -n "$ns" -l "$label" --no-headers=true -o name
   else
     kubectl get pods -n "$ns" --no-headers=true -o name
