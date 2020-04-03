@@ -55,6 +55,10 @@ func (c *clientV6) SyncedFlush(ctx context.Context) error {
 	return c.post(ctx, "/_flush/synced", nil, nil)
 }
 
+func (c *clientV6) Flush(ctx context.Context) error {
+	return c.post(ctx, "/_flush", nil, nil)
+}
+
 func (c *clientV6) GetClusterHealth(ctx context.Context) (Health, error) {
 	var result Health
 	return result, c.get(ctx, "/_cluster/health", &result)

@@ -192,6 +192,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "Do not attempt to delete an already terminating Pod",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("master-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("node-0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
@@ -210,6 +211,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "All Pods are upgraded",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
 					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
@@ -227,6 +229,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "3 healthy master and data nodes, allow the last to be upgraded",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
 					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
@@ -244,6 +247,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "3 healthy masters, allow the deletion of 1",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
@@ -261,6 +265,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "3 healthy masters, allow the deletion of 1 even if maxUnavailable > 1",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
@@ -278,6 +283,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "2 healthy masters out of 5, maxUnavailable is 2, allow the deletion of the unhealthy one",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("master-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
@@ -297,6 +303,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "1 master and 1 data node, wait for the node to be upgraded first",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("master-0").isMaster(true).isData(false).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("node-0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
@@ -313,6 +320,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "Do not delete healthy node if red",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
@@ -328,6 +336,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "Do not delete healthy node if health is unknown",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("master-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
@@ -343,6 +352,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "Allow deletion of unhealthy node if not green",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
@@ -393,6 +403,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "Allow deletion of healthy node if yellow and node is upgrading",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
 					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
@@ -574,6 +585,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "Do not delete last healthy master",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
 					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false),
@@ -590,6 +602,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		{
 			name: "Pod deleted while upgrading",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					newTestPod("masters-0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
@@ -609,6 +622,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 			// some nodes. The fake cluster state used in this test is in the testdata/cluster_state.json
 			name: "Do not delete Pods that share some shards",
 			fields: fields{
+				esVersion: "7.5.0",
 				upgradeTestPods: newUpgradeTestPods(
 					// 5 data nodes
 					newTestPod("elasticsearch-sample-es-nodes-4").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
