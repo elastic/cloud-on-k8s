@@ -14,6 +14,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -43,12 +44,16 @@ func (r *Reconciler) ReconcileCASecret(associated commonv1.Associated, es types.
 		return CASecret{}, err
 	}
 
+	labels := r.AssociationLabels(k8s.ExtractNamespacedName(associated))
+	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
+	labels[eslabel.ClusterNameLabelName] = es.Name
+
 	// Certificate data should be copied over a secret in the associated namespace
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: associated.GetNamespace(),
 			Name:      ElasticsearchCACertSecretName(associated, r.AssociationName),
-			Labels:    r.AssociationLabels(k8s.ExtractNamespacedName(associated)),
+			Labels:    labels,
 		},
 		Data: publicESHTTPCertificatesSecret.Data,
 	}

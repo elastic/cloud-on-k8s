@@ -122,6 +122,7 @@ var (
 			Namespace: kibanaNamespace,
 			Name:      "kbname-kb-es-ca",
 			Labels: map[string]string{
+				"elasticsearch.k8s.elastic.co/cluster-name":  "esname",
 				"kibanaassociation.k8s.elastic.co/name":      "kbname",
 				"kibanaassociation.k8s.elastic.co/namespace": "kbns",
 			},
