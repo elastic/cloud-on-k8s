@@ -87,12 +87,7 @@ func (e *EKSDriver) newCmd(cmd string) *Command {
 
 func (e *EKSDriver) Execute() error {
 	defer e.runCleanup()
-	if err := e.fetchSecrets(); err != nil {
-		return fmt.Errorf("while fetching secrets %w", err)
-	}
-	if err := e.writeAWSCredentials(); err != nil {
-		return err
-	}
+	e.auth()
 	exists, err := e.clusterExists()
 	if err != nil {
 		return fmt.Errorf("while checking cluster exists %w", err)
@@ -157,16 +152,9 @@ func (e *EKSDriver) ensureWorkDir() error {
 }
 
 func (e *EKSDriver) GetCredentials() error {
-	if err := e.fetchSecrets(); err != nil {
-		return fmt.Errorf("while fetching secrets %w", err)
-	}
-	// while we could configure eksctl to take credentials from environment variables
-	// we need to create a shared AWS credentials file for any subsequent kubectl commands to succeed
-	if err := e.writeAWSCredentials(); err != nil {
-		return err
-	}
+	e.auth()
 	log.Printf("writing kubeconfig")
-	return e.newCmd("eksctl utils write-kubeconfig --name {{.ClusterName}} --region {{.Region}}").Run()
+	return e.newCmd("eksctl utils write-kubeconfig --cluster {{.ClusterName}} --region {{.Region}}").Run()
 }
 
 func (e *EKSDriver) clusterExists() (bool, error) {
@@ -176,6 +164,18 @@ func (e *EKSDriver) clusterExists() (bool, error) {
 		return false, nil
 	}
 	return err == nil, err
+}
+
+func (e *EKSDriver) auth() error {
+	if err := e.fetchSecrets(); err != nil {
+		return fmt.Errorf("while fetching secrets %w", err)
+	}
+	// while we could configure eksctl to take credentials from environment variables
+	// we need to create a shared AWS credentials file for any subsequent kubectl commands to succeed
+	if err := e.writeAWSCredentials(); err != nil {
+		return fmt.Errorf("while writing .aws/credentias %w", err)
+	}
+	return nil
 }
 
 // fetchSecrets gets secret configuration data from vault and populates driver's context map with it.
