@@ -76,10 +76,8 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 			case runner.EKSDriverID:
-				token, err := GetEnvVar("GITHUB_TOKEN")
-				if err != nil {
-					return err
-				}
+				// optional variable for local dev use
+				token, _ := os.LookupEnv("GITHUB_TOKEN")
 
 				vaultAddr, err := GetEnvVar("VAULT_ADDR")
 				if err != nil {

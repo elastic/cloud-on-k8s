@@ -260,7 +260,6 @@ overrides:
   clusterName: $BUILD_TAG
   vaultInfo:
     address: $VAULT_ADDR
-    token: $GITHUB_TOKEN
     roleId: $VAULT_ROLE_ID
     secretId: $VAULT_SECRET_ID
 CFG
