@@ -51,28 +51,28 @@ func (gdf *GKEDriverFactory) Create(plan Plan) (Driver, error) {
 	}
 
 	clusterIPv4CIDR := defaultClusterIPv4CIDR
-	if plan.Gke.ClusterIPv4CIDR != "" {
-		clusterIPv4CIDR = plan.Gke.ClusterIPv4CIDR
+	if plan.GKE.ClusterIPv4CIDR != "" {
+		clusterIPv4CIDR = plan.GKE.ClusterIPv4CIDR
 	}
 
 	servicesIPv4CIDR := defaultServicesIPv4CIDR
-	if plan.Gke.ServicesIPv4CIDR != "" {
-		servicesIPv4CIDR = plan.Gke.ServicesIPv4CIDR
+	if plan.GKE.ServicesIPv4CIDR != "" {
+		servicesIPv4CIDR = plan.GKE.ServicesIPv4CIDR
 	}
 
 	return &GKEDriver{
 		plan: plan,
 		ctx: map[string]interface{}{
-			"GCloudProject":     plan.Gke.GCloudProject,
+			"GCloudProject":     plan.GKE.GCloudProject,
 			"ClusterName":       plan.ClusterName,
 			"PVCPrefix":         pvcPrefix,
-			"Region":            plan.Gke.Region,
-			"AdminUsername":     plan.Gke.AdminUsername,
+			"Region":            plan.GKE.Region,
+			"AdminUsername":     plan.GKE.AdminUsername,
 			"KubernetesVersion": plan.KubernetesVersion,
 			"MachineType":       plan.MachineType,
-			"LocalSsdCount":     plan.Gke.LocalSsdCount,
-			"GcpScopes":         plan.Gke.GcpScopes,
-			"NodeCountPerZone":  plan.Gke.NodeCountPerZone,
+			"LocalSsdCount":     plan.GKE.LocalSsdCount,
+			"GcpScopes":         plan.GKE.GcpScopes,
+			"NodeCountPerZone":  plan.GKE.NodeCountPerZone,
 			"ClusterIPv4CIDR":   clusterIPv4CIDR,
 			"ServicesIPv4CIDR":  servicesIPv4CIDR,
 		},
@@ -132,7 +132,7 @@ func (d *GKEDriver) Execute() error {
 func (d *GKEDriver) createSsdProvider() error {
 	return NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
 %s
-EOF`, GKESsdProvisioner)).Run()
+EOF`, GKESSDProvisioner)).Run()
 }
 
 func (d *GKEDriver) auth() error {
@@ -244,7 +244,7 @@ func (d *GKEDriver) delete() error {
 		cmd = `gcloud compute disks delete {{.Name}} --project {{.GCloudProject}} --zone {{.Zone}} --quiet`
 		err := NewCommand(cmd).
 			AsTemplate(map[string]interface{}{
-				"GCloudProject": d.plan.Gke.GCloudProject,
+				"GCloudProject": d.plan.GKE.GCloudProject,
 				"Name":          name,
 				"Zone":          zone,
 			}).

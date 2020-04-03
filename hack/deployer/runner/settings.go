@@ -23,7 +23,7 @@ type Plan struct {
 	Provider          string       `yaml:"provider"`
 	KubernetesVersion string       `yaml:"kubernetesVersion"`
 	MachineType       string       `yaml:"machineType"`
-	Gke               *GkeSettings `yaml:"gke,omitempty"`
+	GKE               *GKESettings `yaml:"gke,omitempty"`
 	Aks               *AksSettings `yaml:"aks,omitempty"`
 	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
 	VaultInfo         *VaultInfo   `yaml:"vaultInfo,omitempty"`
@@ -39,8 +39,8 @@ type VaultInfo struct {
 	ClientToken string `yaml:"clientToken"`
 }
 
-// GkeSettings encapsulates settings specific to GKE
-type GkeSettings struct {
+// GKESettings encapsulates settings specific to GKE
+type GKESettings struct {
 	GCloudProject    string `yaml:"gCloudProject"`
 	Region           string `yaml:"region"`
 	AdminUsername    string `yaml:"adminUsername"`
@@ -59,7 +59,7 @@ type AksSettings struct {
 	NodeCount     int    `yaml:"nodeCount"`
 }
 
-// GkeSettings encapsulates settings specific to GKE
+// GKESettings encapsulates settings specific to GKE
 type OcpSettings struct {
 	BaseDomain                 string `yaml:"baseDomain"`
 	GCloudProject              string `yaml:"gCloudProject"`

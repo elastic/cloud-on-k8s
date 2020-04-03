@@ -4,7 +4,7 @@
 
 package runner
 
-const GKESsdProvisioner = `
+const GKESSDProvisioner = `
 ---
 apiVersion: v1
 kind: ConfigMap
