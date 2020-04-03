@@ -17,7 +17,7 @@ const (
 	AKSDriverID                    = "aks"
 	AKSVaultPath                   = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
 	AKSResourceGroupVaultFieldName = "resource-group"
-	AKSAcrNameVaultFieldName       = "acr-name"
+	AKSACRNameVaultFieldName       = "acr-name"
 	AKSConfigFileName              = "deployer-config-aks.yml"
 	DefaultAKSRunConfigTemplate    = `id: aks-dev
 overrides:
@@ -54,12 +54,12 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 			plan.AKS.ResourceGroup = resourceGroup
 		}
 
-		if plan.AKS.AcrName == "" {
-			acrName, err := vaultClient.Get(AKSVaultPath, AKSAcrNameVaultFieldName)
+		if plan.AKS.ACRName == "" {
+			acrName, err := vaultClient.Get(AKSVaultPath, AKSACRNameVaultFieldName)
 			if err != nil {
 				return nil, err
 			}
-			plan.AKS.AcrName = acrName
+			plan.AKS.ACRName = acrName
 		}
 	}
 
@@ -71,7 +71,7 @@ func (gdf *AKSDriverFactory) Create(plan Plan) (Driver, error) {
 			"NodeCount":         plan.AKS.NodeCount,
 			"MachineType":       plan.MachineType,
 			"KubernetesVersion": plan.KubernetesVersion,
-			"AcrName":           plan.AKS.AcrName,
+			"ACRName":           plan.AKS.ACRName,
 			"Location":          plan.AKS.Location,
 		},
 		vaultClient: vaultClient,
@@ -187,7 +187,7 @@ func (d *AKSDriver) create() error {
 
 func (d *AKSDriver) configureDocker() error {
 	log.Print("Configuring Docker...")
-	if err := NewCommand("az acr login --name {{.AcrName}}").AsTemplate(d.ctx).Run(); err != nil {
+	if err := NewCommand("az acr login --name {{.ACRName}}").AsTemplate(d.ctx).Run(); err != nil {
 		return err
 	}
 
@@ -202,16 +202,16 @@ func (d *AKSDriver) configureDocker() error {
 		return err
 	}
 
-	cmd = `az acr show --resource-group {{.ResourceGroup}} --name {{.AcrName}} --query "id" --output tsv`
+	cmd = `az acr show --resource-group {{.ResourceGroup}} --name {{.ACRName}} --query "id" --output tsv`
 	acrIds, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
 	if err != nil {
 		return err
 	}
 
-	return NewCommand(`az role assignment create --assignee {{.ClientId}} --role acrpull --scope {{.AcrId}}`).
+	return NewCommand(`az role assignment create --assignee {{.ClientId}} --role acrpull --scope {{.ACRId}}`).
 		AsTemplate(map[string]interface{}{
 			"ClientId": clientIds[0],
-			"AcrId":    acrIds[0],
+			"ACRId":    acrIds[0],
 		}).
 		Run()
 }

@@ -55,7 +55,7 @@ type GKESettings struct {
 type AKSSettings struct {
 	ResourceGroup string `yaml:"resourceGroup"`
 	Location      string `yaml:"location"`
-	AcrName       string `yaml:"acrName"`
+	ACRName       string `yaml:"acrName"`
 	NodeCount     int    `yaml:"nodeCount"`
 }
 
