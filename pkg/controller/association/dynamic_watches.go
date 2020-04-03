@@ -21,7 +21,7 @@ func esWatchName(associated types.NamespacedName) string {
 
 // esUserWatchName returns the name of the watch setup on the ES user secret.
 func esUserWatchName(associated types.NamespacedName) string {
-	return associated.Namespace + "-" + associated.Name + "-es-watch"
+	return associated.Namespace + "-" + associated.Name + "-es-user-watch"
 }
 
 // esCAWatchName returns the name of the watch setup on the secret that
