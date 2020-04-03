@@ -87,7 +87,9 @@ func (e *EKSDriver) newCmd(cmd string) *Command {
 
 func (e *EKSDriver) Execute() error {
 	defer e.runCleanup()
-	e.auth()
+	if err := e.auth(); err != nil {
+		return err
+	}
 	exists, err := e.clusterExists()
 	if err != nil {
 		return fmt.Errorf("while checking cluster exists %w", err)
@@ -152,7 +154,9 @@ func (e *EKSDriver) ensureWorkDir() error {
 }
 
 func (e *EKSDriver) GetCredentials() error {
-	e.auth()
+	if err := e.auth(); err != nil {
+		return err
+	}
 	log.Printf("writing kubeconfig")
 	return e.newCmd("eksctl utils write-kubeconfig --cluster {{.ClusterName}} --region {{.Region}}").Run()
 }
