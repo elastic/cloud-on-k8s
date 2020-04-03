@@ -227,6 +227,73 @@ LAST SEEN   FIRST SEEN   COUNT     NAME                                    KIND 
 You can set filters for Kibana and APM Server too.
 Note that the default TTL for events in Kubernetes is 1h, so unless your cluster settings have been modified you will not see events older than 1h.
 
+
+[id="{p}-resize-pv"]
+== Resizing persistent volumes
+
+To increase or decrease the size of a disk, you cannot change the size of the volumeClaimTemplate directly. This is because StatefulSets do not allow modifications to volumeClaimTemplates. To work around this, you can create a new nodeSet with the new size, and remove the old nodeSet from your Elasticsearch spec. For instance, just changing the name of nodeSet and the size in the existing Elasticsearch spec. ECK will automatically begin to migrate data to the new nodeSet and remove the old one when it is fully drained. Please see the <<{p}-statefulsets>> documentation for more detail.
+
+For a concrete example, imagine you started with this:
+
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+  - name: default
+    count: 3
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+      node.store.allow_mmap: false
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: standard
+----
+
+and want to increase it to 10Gi of storage. You can change the nodeSet name and the volume size like so:
+[source,yaml,subs="attributes"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  nodeSets:
+  - name: default-10Gi
+    count: 3
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+      node.store.allow_mmap: false
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: standard
+----
+
+and ECK will automatically create a new StatefulSet and begin migrating data into it.
+
 [id="{p}-exec-into-containers"]
 == Exec into containers
 
