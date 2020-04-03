@@ -25,7 +25,7 @@ type Plan struct {
 	MachineType       string       `yaml:"machineType"`
 	GKE               *GKESettings `yaml:"gke,omitempty"`
 	AKS               *AKSSettings `yaml:"aks,omitempty"`
-	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
+	OCP               *OCPSettings `yaml:"ocp,omitempty"`
 	VaultInfo         *VaultInfo   `yaml:"vaultInfo,omitempty"`
 	ServiceAccount    bool         `yaml:"serviceAccount"`
 	Psp               bool         `yaml:"psp"`
@@ -60,7 +60,7 @@ type AKSSettings struct {
 }
 
 // GKESettings encapsulates settings specific to GKE
-type OcpSettings struct {
+type OCPSettings struct {
 	BaseDomain                 string `yaml:"baseDomain"`
 	GCloudProject              string `yaml:"gCloudProject"`
 	Region                     string `yaml:"region"`

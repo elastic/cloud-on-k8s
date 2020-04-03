@@ -16,7 +16,7 @@ func DefaultSecurityContext() *corev1.PodSecurityContext {
 		RunAsNonRoot: BoolPtr(true),
 	}
 
-	if !Ctx().OcpCluster {
+	if !Ctx().OCPCluster {
 		defaultUserID := int64(1000)
 		dscc.RunAsUser = &defaultUserID
 		dscc.FSGroup = &defaultUserID

@@ -72,7 +72,7 @@ func defaultContext() Context {
 			ManagedNamespaces: []string{"mercury", "venus"},
 		},
 		TestRun:    "e2e-default",
-		OcpCluster: false,
+		OCPCluster: false,
 	}
 }
 
@@ -93,7 +93,7 @@ type Context struct {
 	AutoPortForwarding    bool              `json:"auto_port_forwarding"`
 	Local                 bool              `json:"local"`
 	IgnoreWebhookFailures bool              `json:"ignore_webhook_failures"`
-	OcpCluster            bool              `json:"ocp_cluster"`
+	OCPCluster            bool              `json:"ocp_cluster"`
 	Pipeline              string            `json:"pipeline"`
 	BuildNumber           string            `json:"build_number"`
 	Provider              string            `json:"provider"`

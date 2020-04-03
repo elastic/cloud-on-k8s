@@ -151,7 +151,7 @@ func (h *helper) initTestContext() error {
 		ClusterName:           h.clusterName,
 		KubernetesVersion:     h.kubernetesVersion,
 		IgnoreWebhookFailures: h.ignoreWebhookFailures,
-		OcpCluster:            h.kubectl("get", "clusterversion") == nil,
+		OCPCluster:            h.kubectl("get", "clusterversion") == nil,
 	}
 
 	for i, ns := range h.managedNamespaces {

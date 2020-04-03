@@ -35,7 +35,7 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 			// TODO: Must be removed when APM Server docker image is fixed
 			Name: "Add apm-server service account to anyuid (OpenShift Only)",
 			Test: func(t *testing.T) {
-				if !test.Ctx().OcpCluster {
+				if !test.Ctx().OCPCluster {
 					return
 				}
 

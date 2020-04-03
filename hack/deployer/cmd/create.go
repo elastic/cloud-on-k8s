@@ -59,7 +59,7 @@ func CreateCommand() *cobra.Command {
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
 				}
-			case runner.OcpDriverID:
+			case runner.OCPDriverID:
 				gCloudProject, err := GetEnvVar("GCLOUD_PROJECT")
 				if err != nil {
 					return err
@@ -70,8 +70,8 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
-				fullPath := path.Join(filePath, runner.OcpConfigFileName)
+				data := fmt.Sprintf(runner.DefaultOCPRunConfigTemplate, user, gCloudProject, pullSecret)
+				fullPath := path.Join(filePath, runner.OCPConfigFileName)
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err
 				}
