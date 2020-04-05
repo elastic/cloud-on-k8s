@@ -82,7 +82,7 @@ plans:
   operation: create
   clusterName: ci
   provider: eks
-  machineType: c5d.xlarge
+  machineType: c5d.2xlarge
   serviceAccount: false
   kubernetesVersion: 1.14
   eks:
@@ -94,7 +94,7 @@ plans:
   operation: create
   clusterName: dev
   provider: eks
-  machineType: c5d.xlarge
+  machineType: c5d.2xlarge
   serviceAccount: false
   kubernetesVersion: 1.14
   eks:
