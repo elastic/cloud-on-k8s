@@ -374,6 +374,7 @@ ifeq ($(REGISTRY), eu.gcr.io)
 	@ gcloud auth configure-docker --quiet
 endif
 ifeq ($(REGISTRY), docker.elastic.co)
+    @ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 	@ docker tag $(E2E_IMG) push.$(E2E_IMG)
 	@ docker push push.$(E2E_IMG)
 else
