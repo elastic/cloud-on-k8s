@@ -100,7 +100,7 @@ func (e *EKSDriver) Execute() error {
 			log.Printf("Deleting cluster ...")
 			return e.newCmd("eksctl delete cluster --name {{.ClusterName}} --region {{.Region}}").Run()
 		}
-		log.Printf("not deleting cluster as it does not exist")
+		log.Printf("Not deleting cluster as it does not exist")
 	case CreateAction:
 		if !exists {
 			log.Printf("Creating cluster ...")
@@ -124,7 +124,7 @@ func (e *EKSDriver) Execute() error {
 			}
 			return NewCommand(e.plan.EKS.DiskSetup).Run()
 		}
-		log.Printf("not creating cluster as it already exists")
+		log.Printf("Not creating cluster as it already exists")
 	}
 	return nil
 }
@@ -157,7 +157,7 @@ func (e *EKSDriver) GetCredentials() error {
 	if err := e.auth(); err != nil {
 		return err
 	}
-	log.Printf("writing kubeconfig")
+	log.Printf("Writing kubeconfig")
 	return e.newCmd("eksctl utils write-kubeconfig --cluster {{.ClusterName}} --region {{.Region}}").Run()
 }
 
@@ -177,7 +177,7 @@ func (e *EKSDriver) auth() error {
 	// while we could configure eksctl to take credentials from environment variables
 	// we need to create a shared AWS credentials file for any subsequent kubectl commands to succeed
 	if err := e.writeAWSCredentials(); err != nil {
-		return fmt.Errorf("while writing .aws/credentias %w", err)
+		return fmt.Errorf("while writing .aws/credentials %w", err)
 	}
 	return nil
 }
