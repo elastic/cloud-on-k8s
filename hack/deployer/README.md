@@ -44,7 +44,7 @@ Deployer uses two config files:
 
 You can adjust many parameters that clusters are deployed with. Exhaustive list is defined in [settings.go](runner/settings.go).
 
-Running `make switch-*` will generate `config/deployer-config-*.yml` file for the respective provider using environment variables specific to that providers configuration needs. After the file is generated, you can make edit it to suit your needs and run `make bootstrap-cloud` to deploy. Currently chosen provider is stored in `config/provider` file.
+Running `make switch-*` (eg. `make-switch-gke`) changes the current context. Running `make create-default-config` generates `config/deployer-config-*.yml` file for the respective provider using environment variables specific to that providers configuration needs. After the file is generated, you can make edit it to suit your needs and run `make bootstrap-cloud` to deploy. Currently chosen provider is stored in `config/provider` file.
 
 You can run deployer directly (not via Makefile in repo root). For details run:
 
