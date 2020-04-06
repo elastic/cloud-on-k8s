@@ -37,15 +37,19 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 
 func (r *ReconcileEnterpriseSearch) deploymentParams(ents entsv1beta1.EnterpriseSearch, configHash string) deployment.Params {
 	podSpec := newPodSpec(ents, configHash)
-	podLabels := NewLabels(ents.Name)
+
+	deploymentLabels := Labels(ents.Name)
+
+	podLabels := maps.Merge(Labels(ents.Name), VersionLabels(ents))
+	// merge with user-provided labels
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
 		Name:            entsname.Deployment(ents.Name),
 		Namespace:       ents.Namespace,
 		Replicas:        ents.Spec.Count,
-		Selector:        NewLabels(ents.Name),
-		Labels:          NewLabels(ents.Name),
+		Selector:        deploymentLabels,
+		Labels:          deploymentLabels,
 		PodTemplateSpec: podSpec,
 		Strategy:        appsv1.RollingUpdateDeploymentStrategyType,
 	}

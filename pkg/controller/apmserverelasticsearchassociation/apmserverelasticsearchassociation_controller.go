@@ -7,6 +7,7 @@ package apmserverelasticsearchassociation
 import (
 	"context"
 	"reflect"
+	"strings"
 	"time"
 
 	"go.elastic.co/apm"
@@ -33,8 +34,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -50,6 +53,33 @@ var (
 	log            = logf.Log.WithName(name)
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
+
+// getRoles returns for a given version of the APM Server the set of required roles.
+func getRoles(v version.Version) string {
+	// 7.5.x and above
+	if v.IsSameOrAfter(version.From(7, 5, 0)) {
+		return strings.Join([]string{
+			user.ApmUserRoleV75, // Retrieve cluster details (e.g. version) and manage apm-* indices
+			"ingest_admin",      // Set up index templates
+			"apm_system",        // To collect metrics about APM Server
+		}, ",")
+	}
+
+	// 7.1.x to 7.4.x
+	if v.IsSameOrAfter(version.From(7, 1, 0)) {
+		return strings.Join([]string{
+			user.ApmUserRoleV7, // Retrieve cluster details (e.g. version) and manage apm-* indices
+			"ingest_admin",     // Set up index templates
+			"apm_system",       // To collect metrics about APM Server
+		}, ",")
+	}
+
+	// 6.8
+	return strings.Join([]string{
+		user.ApmUserRoleV6, // Retrieve cluster details (e.g. version) and manage apm-* indices
+		"apm_system",       // To collect metrics about APM Server
+	}, ",")
+}
 
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -144,9 +174,9 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(apmServer.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(apmServer.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
+		return reconcile.Result{}, nil
 	}
 
 	// ApmServer is being deleted, short-circuit reconciliation and remove artifacts related to the association.
@@ -291,7 +321,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(ctx conte
 		r.Client,
 		apmServer,
 		associationLabels(apmServer),
-		"superuser",
+		getRoles(version.MustParse(apmServer.Spec.Version)),
 		apmUserSuffix,
 		es,
 	); err != nil { // TODO distinguish conflicts and non-recoverable errors here

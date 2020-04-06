@@ -87,7 +87,7 @@ func reconcilePredefinedUsers(
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: secretNsn.Namespace,
 			Name:      secretNsn.Name,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Labels:    common.AddCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(&es))),
 		},
 		Data: secretData,
 	}
@@ -116,7 +116,7 @@ func reuseOrGeneratePassword(c k8s.Client, users users, secretRef types.Namespac
 		if password, exists := secret.Data[u.Name]; exists {
 			users[i].Password = password
 		} else {
-			users[i].Password = common.RandomPasswordBytes()
+			users[i].Password = common.FixedLengthRandomPasswordBytes()
 		}
 	}
 	return users, nil

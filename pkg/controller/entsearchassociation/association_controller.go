@@ -146,9 +146,9 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) Reconcile(request re
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsPaused(entSearch.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", entSearch.Namespace, "ents_name", entSearch.Name)
-		return common.PauseRequeue, nil
+	if common.IsUnmanaged(entSearch.ObjectMeta) {
+		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", entSearch.Namespace, "ents_name", entSearch.Name)
+		return reconcile.Result{}, nil
 	}
 
 	// EnterpriseSearch is being deleted, short-circuit reconciliation and remove artifacts related to the association.
@@ -372,7 +372,7 @@ func (r *ReconcileEnterpriseSearchElasticsearchAssociation) reconcileElasticsear
 		return association.CASecret{}, err
 	}
 	// Build the labels applied on the secret
-	labels := enterprisesearch.NewLabels(entSearch.Name)
+	labels := enterprisesearch.Labels(entSearch.Name)
 	labels[AssociationLabelName] = entSearch.Name
 	return association.ReconcileCASecret(
 		r.Client,

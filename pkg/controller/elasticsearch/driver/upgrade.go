@@ -10,6 +10,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -213,17 +214,35 @@ func disableShardsAllocation(ctx context.Context, esClient esclient.Client) erro
 	return esClient.DisableReplicaShardsAllocation(ctx)
 }
 
-func doSyncFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Client) error {
+func doFlush(ctx context.Context, es esv1.Elasticsearch, esClient esclient.Client) error {
 	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
-	err := esClient.SyncedFlush(ctx)
-	if esclient.IsConflict(err) {
-		// Elasticsearch returns an error if the synced flush fails due to concurrent indexing operations.
-		// The HTTP status code in that case will be 409 CONFLICT. We ignore that and consider synced flush best effort.
-		log.Info("synced flush failed with 409 CONFLICT. Ignoring.", "namespace", es.Namespace, "es_name", es.Name)
-		return nil
+
+	targetEsVersion, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return err
 	}
-	return err
+
+	switch {
+	case targetEsVersion.Major >= 8:
+		// Starting version 8.0, synced flush is not necessary anymore. A normal flush should be used instead.
+		// During an upgrade from 7.x to 8.x we may have at least one Pod running 8.x already,
+		// hence we check the target version here and not the currently running version.
+		// It's ok to run a standard flush before 8.x, just not as optimal.
+		log.Info("Requesting a flush", "es_name", es.Name, "namespace", es.Namespace)
+		return esClient.Flush(ctx)
+	default:
+		// Pre 8.0, we should perform a synced flush (best-effort).
+		log.Info("Requesting a synced flush", "es_name", es.Name, "namespace", es.Namespace)
+		err := esClient.SyncedFlush(ctx)
+		if esclient.IsConflict(err) {
+			// Elasticsearch returns an error if the synced flush fails due to concurrent indexing operations.
+			// The HTTP status code in that case will be 409 CONFLICT. We ignore that and consider synced flush best effort.
+			log.Info("synced flush failed with 409 CONFLICT. Ignoring.", "namespace", es.Namespace, "es_name", es.Name)
+			return nil
+		}
+		return err
+	}
 }
 
 func (d *defaultDriver) MaybeEnableShardsAllocation(
@@ -291,8 +310,8 @@ func (ctx *rollingUpgradeCtx) prepareClusterForNodeRestart(esClient esclient.Cli
 		}
 	}
 
-	// Request a sync flush to optimize indices recovery when the node restarts.
-	if err := doSyncFlush(ctx.parentCtx, ctx.ES, esClient); err != nil {
+	// Request a flush to optimize indices recovery when the node restarts.
+	if err := doFlush(ctx.parentCtx, ctx.ES, esClient); err != nil {
 		return err
 	}
 

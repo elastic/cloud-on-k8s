@@ -18,12 +18,46 @@ const (
 	SuperUserBuiltinRole = "superuser"
 	// ProbeUserRole is the name of the role used by the internal probe user.
 	ProbeUserRole = "elastic_internal_probe_user"
+
+	// ApmUserRoleV6 is the name of the role used by 6.8.x APMServer instances to connect to Elasticsearch.
+	ApmUserRoleV6 = "eck_apm_user_role_v6"
+	// ApmUserRoleV7 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.1 to 7.4 included.
+	ApmUserRoleV7 = "eck_apm_user_role_v7"
+	// ApmUserRoleV75 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.5
+	ApmUserRoleV75 = "eck_apm_user_role_v75"
 )
 
 var (
 	// PredefinedRoles to create for internal needs.
 	PredefinedRoles = RolesFileContent{
 		ProbeUserRole: esclient.Role{Cluster: []string{"monitor"}},
+		ApmUserRoleV6: esclient.Role{
+			Cluster: []string{"monitor", "manage_index_templates"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{"apm-*"},
+					Privileges: []string{"write", "create_index"},
+				},
+			},
+		},
+		ApmUserRoleV7: esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm", "manage_index_templates"},
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{"apm-*"},
+					Privileges: []string{"manage", "write", "create_index"},
+				},
+			},
+		},
+		ApmUserRoleV75: esclient.Role{
+			Cluster: []string{"monitor", "manage_ilm", "manage_api_key"}, // manage_api_key has been introduced in 7.5
+			Indices: []esclient.IndexRole{
+				{
+					Names:      []string{"apm-*"},
+					Privileges: []string{"manage", "create_doc", "create_index"},
+				},
+			},
+		},
 	}
 )
 

@@ -4,8 +4,17 @@
 
 package client
 
+import (
+	"context"
+	"errors"
+)
+
 type clientV8 struct {
 	clientV7
+}
+
+func (c *clientV8) SyncedFlush(ctx context.Context) error {
+	return errors.New("synced flush is not supported in Elasticsearch 8.x")
 }
 
 // Equal returns true if c2 can be considered the same as c

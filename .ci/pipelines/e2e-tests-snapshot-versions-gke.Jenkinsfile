@@ -55,17 +55,6 @@ pipeline {
                 )}"""
             }
             parallel {
-                stage("7.6.2-SNAPSHOT") {
-                     agent {
-                        label 'linux'
-                    }
-                    steps {
-                        checkout scm
-                        script {
-                            runWith(lib, failedTests, "eck-76-snapshot-${BUILD_NUMBER}-e2e", "7.6.1-SNAPSHOT")
-                        }
-                    }
-                }
                 stage("7.7.0-SNAPSHOT") {
                      agent {
                         label 'linux'
@@ -107,7 +96,6 @@ pipeline {
         cleanup {
             script {
                 clusters = [
-                    "eck-76-snapshot-${BUILD_NUMBER}-e2e",
                     "eck-77-snapshot-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
@@ -125,7 +113,7 @@ pipeline {
 def runWith(lib, failedTests, clusterName, stackVersion) {
     sh ".ci/setenvconfig e2e/stack-versions $clusterName $stackVersion"
     script {
-        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: "make -C .ci get-monitoring-secrets get-test-license get-elastic-public-key TARGET=ci-e2e ci")
+        env.SHELL_EXIT_CODE = sh(returnStatus: true, script: "make -C .ci get-test-artifacts TARGET=ci-e2e ci")
 
         sh 'make -C .ci TARGET=e2e-generate-xml ci'
         junit "e2e-tests.xml"

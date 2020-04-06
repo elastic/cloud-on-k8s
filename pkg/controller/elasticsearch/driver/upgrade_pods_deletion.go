@@ -62,7 +62,6 @@ func (ctx *rollingUpgradeCtx) Delete() ([]corev1.Pod, error) {
 		return podsToDelete, nil
 	}
 
-	// Disable shard allocation
 	if err := ctx.prepareClusterForNodeRestart(ctx.esClient, ctx.esState); err != nil {
 		return podsToDelete, err
 	}

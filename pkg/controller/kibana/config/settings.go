@@ -8,17 +8,16 @@ import (
 	"context"
 	"path"
 
-	"github.com/elastic/go-ucfg"
 	"github.com/pkg/errors"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
@@ -48,12 +47,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	span, _ := apm.StartSpan(ctx, "new_config_settings", tracing.SpanTypeApp)
 	defer span.End()
 
-	currentConfig, err := getExistingConfig(client, kb)
-	if err != nil {
-		return CanonicalConfig{}, err
-	}
-
-	filteredCurrCfg, err := filterExistingConfig(currentConfig)
+	reusableSettings, err := getOrCreateReusableSettings(client, kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -75,7 +69,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	if !kb.RequiresAssociation() {
 		// merge the configuration with userSettings last so they take precedence
 		if err := cfg.MergeWith(
-			filteredCurrCfg,
+			reusableSettings,
 			versionSpecificCfg,
 			kibanaTLSCfg,
 			userSettings); err != nil {
@@ -91,7 +85,7 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 
 	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
-		filteredCurrCfg,
+		reusableSettings,
 		versionSpecificCfg,
 		kibanaTLSCfg,
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
@@ -108,6 +102,11 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	}
 
 	return CanonicalConfig{cfg}, nil
+}
+
+// reusableSettings captures secrets settings in the Kibana configuration that we want to reuse.
+type reusableSettings struct {
+	EncryptionKey string `config:"xpack.security.encryptionKey"`
 }
 
 // getExistingConfig retrieves the canonical config for a given Kibana, if one exists
@@ -135,23 +134,24 @@ func getExistingConfig(client k8s.Client, kb kbv1.Kibana) (*settings.CanonicalCo
 	return cfg, nil
 }
 
-// filterExistingConfig filters an existing config for only items we want to preserve between spec changes
+// getOrCreateReusableSettings filters an existing config for only items we want to preserve between spec changes
 // because they cannot be generated deterministically, e.g. encryption keys
-func filterExistingConfig(cfg *settings.CanonicalConfig) (*settings.CanonicalConfig, error) {
-	if cfg == nil {
-		return nil, nil
-	}
-	val, err := (*ucfg.Config)(cfg).String(XpackSecurityEncryptionKey, -1, settings.Options...)
+func getOrCreateReusableSettings(c k8s.Client, kb kbv1.Kibana) (*settings.CanonicalConfig, error) {
+	cfg, err := getExistingConfig(c, kb)
 	if err != nil {
-		log.V(1).Info("Current config does not contain key", "key", XpackSecurityEncryptionKey, "error", err)
-		return nil, nil
-	}
-	filteredCfg, err := settings.NewSingleValue(XpackSecurityEncryptionKey, val)
-	if err != nil {
-		log.Error(err, "Error filtering current config")
 		return nil, err
 	}
-	return filteredCfg, nil
+
+	var r reusableSettings
+	if cfg == nil {
+		r = reusableSettings{}
+	} else if err := cfg.Unpack(&r); err != nil {
+		return nil, err
+	}
+	if len(r.EncryptionKey) == 0 {
+		r.EncryptionKey = string(common.RandomBytes(64))
+	}
+	return settings.MustCanonicalConfig(r), nil
 }
 
 func baseSettings(kb *kbv1.Kibana) map[string]interface{} {
@@ -159,8 +159,6 @@ func baseSettings(kb *kbv1.Kibana) map[string]interface{} {
 		ServerName: kb.Name,
 		ServerHost: "0",
 		XpackMonitoringUiContainerElasticsearchEnabled: true,
-		// this will get overriden if one already exists or is specified by the user
-		XpackSecurityEncryptionKey: rand.String(64),
 	}
 
 	if kb.RequiresAssociation() {
