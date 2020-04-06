@@ -120,6 +120,16 @@ func (ents *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.Association
 	ents.assocConf = assocConf
 }
 
+func (ents *EnterpriseSearch) AssociationStatus() commonv1.AssociationStatus {
+	return ents.Status.Association
+}
+
+func (ents *EnterpriseSearch) SetAssociationStatus(status commonv1.AssociationStatus) {
+	ents.Status.Association = status
+}
+
+var _ commonv1.Associated = &EnterpriseSearch{}
+
 // +kubebuilder:object:root=true
 
 // EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.

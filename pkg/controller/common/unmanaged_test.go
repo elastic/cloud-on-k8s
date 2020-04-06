@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -76,12 +77,13 @@ func TestUnmanagedCondition(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			for i, expectedState := range test.expectedState {
-				meta := v1.ObjectMeta{
+				// testing with a secret, but could be any kind
+				obj := corev1.Secret{ObjectMeta: v1.ObjectMeta{
 					Name:        "bar",
 					Namespace:   "foo",
 					Annotations: test.annotationSequence[i],
-				}
-				actualPauseState := IsUnmanaged(meta)
+				}}
+				actualPauseState := IsUnmanaged(&obj)
 				assert.Equal(t, expectedState, actualPauseState, test.annotationSequence[i])
 			}
 		})

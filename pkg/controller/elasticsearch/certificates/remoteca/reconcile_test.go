@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/remotecluster/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -43,7 +42,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       remoteca.TypeLabelValue,
+								common.TypeLabelName:       TypeLabelValue,
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
@@ -54,7 +53,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       remoteca.TypeLabelValue,
+								common.TypeLabelName:       TypeLabelValue,
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},
@@ -74,7 +73,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       remoteca.TypeLabelValue,
+								common.TypeLabelName:       TypeLabelValue,
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert1\n")},
@@ -96,7 +95,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "ns1",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "es1",
-								common.TypeLabelName:       remoteca.TypeLabelValue,
+								common.TypeLabelName:       TypeLabelValue,
 							},
 						},
 						Data: map[string][]byte{certificates.CAFileName: []byte("cert2\n")},

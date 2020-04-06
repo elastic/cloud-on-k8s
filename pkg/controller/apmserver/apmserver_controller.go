@@ -18,9 +18,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -179,7 +179,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(as.ObjectMeta) {
+	if common.IsUnmanaged(&as) {
 		log.Info("Object currently not managed by this controller. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name)
 		return reconcile.Result{}, nil
 	}

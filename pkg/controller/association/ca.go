@@ -14,6 +14,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -25,40 +26,38 @@ type CASecret struct {
 
 // ElasticsearchCACertSecretName returns the name of the secret holding the certificate chain used
 // by the associated resource to establish and validate a secured HTTP connection to Elasticsearch.
-func ElasticsearchCACertSecretName(associated commonv1.Associated, suffix string) string {
-	return associated.GetName() + "-" + suffix
+func ElasticsearchCACertSecretName(associated commonv1.Associated, associationName string) string {
+	return associated.GetName() + "-" + associationName + "-ca"
 }
 
 // ReconcileCASecret keeps in sync a copy of the Elasticsearch CA.
 // It is the responsibility of the controller to set a watch on the ES CA.
-func ReconcileCASecret(
-	client k8s.Client,
-	associated commonv1.Associated,
-	es types.NamespacedName,
-	labels map[string]string,
-	suffix string,
-) (CASecret, error) {
+func (r *Reconciler) ReconcileCASecret(associated commonv1.Associated, es types.NamespacedName) (CASecret, error) {
 	publicESHTTPCertificatesNSN := certificates.PublicCertsSecretRef(esv1.ESNamer, es)
 
 	// retrieve the HTTP certificates from ES namespace
 	var publicESHTTPCertificatesSecret corev1.Secret
-	if err := client.Get(publicESHTTPCertificatesNSN, &publicESHTTPCertificatesSecret); err != nil {
+	if err := r.Get(publicESHTTPCertificatesNSN, &publicESHTTPCertificatesSecret); err != nil {
 		if errors.IsNotFound(err) {
 			return CASecret{}, nil // probably not created yet, we'll be notified to reconcile later
 		}
 		return CASecret{}, err
 	}
 
+	labels := r.AssociationLabels(k8s.ExtractNamespacedName(associated))
+	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
+	labels[eslabel.ClusterNameLabelName] = es.Name
+
 	// Certificate data should be copied over a secret in the associated namespace
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: associated.GetNamespace(),
-			Name:      ElasticsearchCACertSecretName(associated, suffix),
+			Name:      ElasticsearchCACertSecretName(associated, r.AssociationName),
 			Labels:    labels,
 		},
 		Data: publicESHTTPCertificatesSecret.Data,
 	}
-	if _, err := reconciler.ReconcileSecret(client, expectedSecret, associated); err != nil {
+	if _, err := reconciler.ReconcileSecret(r, expectedSecret, associated); err != nil {
 		return CASecret{}, err
 	}
 

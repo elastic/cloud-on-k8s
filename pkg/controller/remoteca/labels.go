@@ -8,11 +8,11 @@ import (
 	"fmt"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -20,8 +20,6 @@ const (
 	RemoteClusterNamespaceLabelName = "elasticsearch.k8s.elastic.co/remote-cluster-namespace"
 	// RemoteClusterNameLabelName used to represent the name of the RemoteCluster in a TrustRelationship.
 	RemoteClusterNameLabelName = "elasticsearch.k8s.elastic.co/remote-cluster-name"
-	// TypeLabelValue is a type used to identify a Secret which contains the CA of a remote cluster.
-	TypeLabelValue = "remote-ca"
 	// remoteCASecretSuffix is the suffix added to the aforementioned Secret.
 	remoteCASecretSuffix = "remote-ca"
 )
@@ -34,12 +32,13 @@ func remoteCAObjectMeta(
 	return metav1.ObjectMeta{
 		Name:      name,
 		Namespace: owner.Namespace,
-		Labels: map[string]string{
-			RemoteClusterNamespaceLabelName: remote.Namespace,
-			RemoteClusterNameLabelName:      remote.Name,
-			label.ClusterNameLabelName:      owner.Name,
-			common.TypeLabelName:            TypeLabelValue,
-		},
+		Labels: maps.Merge(
+			map[string]string{
+				RemoteClusterNamespaceLabelName: remote.Namespace,
+				RemoteClusterNameLabelName:      remote.Name,
+			},
+			remoteca.Labels(owner.Name),
+		),
 	}
 }
 
@@ -52,11 +51,4 @@ func remoteCASecretName(
 		fmt.Sprintf("%s-%s-%s", localClusterName, remoteCluster.Namespace, remoteCluster.Name),
 		remoteCASecretSuffix,
 	)
-}
-
-func LabelSelector(esName string) client.MatchingLabels {
-	return map[string]string{
-		label.ClusterNameLabelName: esName,
-		common.TypeLabelName:       TypeLabelValue,
-	}
 }

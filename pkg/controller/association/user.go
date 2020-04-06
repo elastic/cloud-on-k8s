@@ -60,8 +60,8 @@ func secretKey(associated commonv1.Associated, userSuffix string) types.Namespac
 	}
 }
 
-// ClearTextSecretKeySelector creates a SecretKeySelector for the associated user secret
-func ClearTextSecretKeySelector(associated commonv1.Associated, userSuffix string) *corev1.SecretKeySelector {
+// UserSecretKeySelector creates a SecretKeySelector for the associated user secret.
+func UserSecretKeySelector(associated commonv1.Associated, userSuffix string) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: userSecretObjectName(associated, userSuffix),

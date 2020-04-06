@@ -137,3 +137,13 @@ func (as *ApmServer) SetAssociationConf(assocConf *commonv1.AssociationConf) {
 func (as *ApmServer) EffectiveVersion() string {
 	return strings.TrimSuffix(as.Spec.Version, "-SNAPSHOT")
 }
+
+func (as *ApmServer) AssociationStatus() commonv1.AssociationStatus {
+	return as.Status.Association
+}
+
+func (as *ApmServer) SetAssociationStatus(status commonv1.AssociationStatus) {
+	as.Status.Association = status
+}
+
+var _ commonv1.Associated = &ApmServer{}

@@ -17,15 +17,15 @@ const (
 )
 
 // IsUnmanaged checks if a given resource is currently unmanaged.
-func IsUnmanaged(meta metav1.ObjectMeta) bool {
-	managed, exists := meta.Annotations[ManagedAnnotation]
+func IsUnmanaged(object metav1.Object) bool {
+	managed, exists := object.GetAnnotations()[ManagedAnnotation]
 	if exists && managed == "false" {
 		return true
 	}
 
-	paused, exists := meta.Annotations[LegacyPauseAnnoation]
+	paused, exists := object.GetAnnotations()[LegacyPauseAnnoation]
 	if exists {
-		log.Info(fmt.Sprintf("%s is deprecated, please use %s", LegacyPauseAnnoation, ManagedAnnotation), "namespace", meta.Namespace, "name", meta.Name)
+		log.Info(fmt.Sprintf("%s is deprecated, please use %s", LegacyPauseAnnoation, ManagedAnnotation), "namespace", object.GetNamespace(), "name", object.GetName())
 	}
 	return exists && paused == "true"
 }

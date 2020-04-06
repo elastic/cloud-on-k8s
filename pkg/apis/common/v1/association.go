@@ -30,14 +30,9 @@ type Associated interface {
 	ElasticsearchRef() ObjectSelector
 	AssociationConf() *AssociationConf
 	ServiceAccountName() string
-}
-
-// Associator describes an object that allows its association to be set.
-// +kubebuilder:object:generate=false
-type Associator interface {
-	metav1.Object
-	runtime.Object
 	SetAssociationConf(*AssociationConf)
+	AssociationStatus() AssociationStatus
+	SetAssociationStatus(status AssociationStatus)
 }
 
 // AssociationConf holds the association configuration of an Elasticsearch cluster.

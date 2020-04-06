@@ -22,7 +22,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -33,33 +32,34 @@ const (
 	associationLabelNamespace = "association.k8s.elastic.co/namespace"
 )
 
-var esFixture = esv1.Elasticsearch{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "es-foo",
-		Namespace: "default",
-		UID:       "f8d564d9-885e-11e9-896d-08002703f062",
-	},
-}
-
-var kibanaFixtureUID types.UID = "82257b19-8862-11e9-896d-08002703f062"
-
-var kibanaFixtureObjectMeta = metav1.ObjectMeta{
-	Name:      "kibana-foo",
-	Namespace: "default",
-	UID:       kibanaFixtureUID,
-}
-
-var kibanaFixture = kbv1.Kibana{
-	ObjectMeta: kibanaFixtureObjectMeta,
-	Spec: kbv1.KibanaSpec{
-		ElasticsearchRef: commonv1.ObjectSelector{
-			Name:      esFixture.Name,
-			Namespace: esFixture.Namespace,
-		},
-	},
-}
-
 func Test_reconcileEsUser(t *testing.T) {
+
+	esFixture := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "es-foo",
+			Namespace: "default",
+			UID:       "f8d564d9-885e-11e9-896d-08002703f062",
+		},
+	}
+
+	var kibanaFixtureUID types.UID = "82257b19-8862-11e9-896d-08002703f062"
+
+	kibanaFixtureObjectMeta := metav1.ObjectMeta{
+		Name:      "kibana-foo",
+		Namespace: "default",
+		UID:       kibanaFixtureUID,
+	}
+
+	kibanaFixture := kbv1.Kibana{
+		ObjectMeta: kibanaFixtureObjectMeta,
+		Spec: kbv1.KibanaSpec{
+			ElasticsearchRef: commonv1.ObjectSelector{
+				Name:      esFixture.Name,
+				Namespace: esFixture.Namespace,
+			},
+		},
+	}
+
 	type args struct {
 		initialObjects []runtime.Object
 		kibana         kbv1.Kibana
@@ -178,10 +178,8 @@ func Test_reconcileEsUser(t *testing.T) {
 							Namespace: "default",
 							Name:      userSecretName,
 							Labels: map[string]string{
-								kblabel.KibanaNameLabelName: kibanaFixture.Name,
-								common.TypeLabelName:        kblabel.Type,
-								associationLabelName:        kibanaFixture.Name,
-								associationLabelNamespace:   kibanaFixture.Namespace,
+								associationLabelName:      kibanaFixture.Name,
+								associationLabelNamespace: kibanaFixture.Namespace,
 							},
 						},
 						Data: map[string][]byte{

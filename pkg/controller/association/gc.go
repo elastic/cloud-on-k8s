@@ -5,9 +5,6 @@
 package association
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -15,11 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-)
 
-var (
-	log = logf.Log.WithName("association")
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (

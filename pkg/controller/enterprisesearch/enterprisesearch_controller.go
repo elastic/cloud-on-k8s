@@ -23,9 +23,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
@@ -176,7 +176,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if common.IsUnmanaged(ents.ObjectMeta) {
+	if common.IsUnmanaged(&ents) {
 		log.Info("Object is currently not managed by this controller. Skipping reconciliation", "namespace", ents.Namespace, "ents_name", ents.Name)
 		return reconcile.Result{}, nil
 	}
