@@ -64,11 +64,12 @@ func TestAnnotationCreated(t *testing.T) {
 // TestMissingAnnotationOldVersion tests that we skip reconciling an object missing annotations that has already been reconciled by
 // a previous operator version, and add an annotation indicating an old controller version
 func TestMissingAnnotationOldVersion(t *testing.T) {
-
+	trueVar := true
 	es := &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "es",
+			UID:       "bc99a102-1385-4c53-be43-23d53e46bb5d",
 		},
 	}
 	svc := &corev1.Service{
@@ -76,7 +77,18 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 			Namespace: "ns",
 			Name:      "svc",
 			Labels: map[string]string{
-				label.ClusterNameLabelName: "es",
+				"elasticsearch.k8s.elastic.co/cluster-name": "es",
+				"common.k8s.elastic.co/type":                "elasticsearch",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "elasticsearch.k8s.elastic.co/v1alpha1",
+					Kind:               "Elasticsearch",
+					Name:               "es",
+					UID:                "bc99a102-1385-4c53-be43-23d53e46bb5d",
+					Controller:         &trueVar,
+					BlockOwnerDeletion: &trueVar,
+				},
 			},
 		},
 	}
