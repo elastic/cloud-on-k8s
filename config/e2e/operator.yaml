@@ -270,5 +270,6 @@ spec:
   ports:
     - port: 443
       targetPort: 9443
+      name: webhook
   selector:
     control-plane: {{ .Operator.Name }}
