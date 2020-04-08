@@ -72,7 +72,7 @@ func xpackConfig(ver version.Version, httpCfg commonv1.HTTPConfig) *CanonicalCon
 		// x-pack security general settings
 		esv1.XPackSecurityEnabled:                      "true",
 		esv1.XPackSecurityAuthcReservedRealmEnabled:    "false",
-		esv1.XPackSecurityTransportSslVerificationMode: "full",
+		esv1.XPackSecurityTransportSslVerificationMode: "certificate",
 
 		// x-pack security http settings
 		esv1.XPackSecurityHttpSslEnabled:     httpCfg.TLS.Enabled(),
