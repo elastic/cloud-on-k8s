@@ -140,7 +140,7 @@ spec:
   ports:
     - port: 443
       targetPort: 9443
-      name: webhook
+      name: https-webhook
   selector:
     control-plane: elastic-operator
 ---
