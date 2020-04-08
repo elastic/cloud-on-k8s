@@ -1,0 +1,3 @@
+# Remove the first init container which does AWS specific NVMe provisioning in GKE environments
+- op: remove
+  path: /spec/template/spec/initContainers/0

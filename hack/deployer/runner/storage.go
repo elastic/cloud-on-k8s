@@ -14,6 +14,7 @@ import (
 var (
 	StorageClassProvisionerRegExp = regexp.MustCompile(`provisioner:.+\n`)
 	DefaultStorageClass           = ""
+	NoProvisioner                 = "kubernetes.io/no-provisioner"
 )
 
 // createStorageClass based on default storageclass, creates new, non-default class with "volumeBindingMode: WaitForFirstConsumer"

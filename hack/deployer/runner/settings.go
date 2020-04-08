@@ -17,7 +17,7 @@ type Plans struct {
 
 // Plan encapsulates information needed to provision a cluster
 type Plan struct {
-	Id                string       `yaml:"id"` //nolint
+	Id                string       `yaml:"id"` // nolint
 	Operation         string       `yaml:"operation"`
 	ClusterName       string       `yaml:"clusterName"`
 	Provider          string       `yaml:"provider"`
@@ -26,6 +26,7 @@ type Plan struct {
 	Gke               *GkeSettings `yaml:"gke,omitempty"`
 	Aks               *AksSettings `yaml:"aks,omitempty"`
 	Ocp               *OcpSettings `yaml:"ocp,omitempty"`
+	EKS               *EKSSettings `yaml:"eks,omitempty"`
 	VaultInfo         *VaultInfo   `yaml:"vaultInfo,omitempty"`
 	ServiceAccount    bool         `yaml:"serviceAccount"`
 	Psp               bool         `yaml:"psp"`
@@ -33,8 +34,8 @@ type Plan struct {
 
 type VaultInfo struct {
 	Address     string `yaml:"address"`
-	RoleId      string `yaml:"roleId"`   //nolint
-	SecretId    string `yaml:"secretId"` //nolint
+	RoleId      string `yaml:"roleId"`   // nolint
+	SecretId    string `yaml:"secretId"` // nolint
 	Token       string `yaml:"token"`
 	ClientToken string `yaml:"clientToken"`
 }
@@ -49,6 +50,7 @@ type GkeSettings struct {
 	GcpScopes        string `yaml:"gcpScopes"`
 	ClusterIPv4CIDR  string `yaml:"clusterIpv4Cidr"`
 	ServicesIPv4CIDR string `yaml:"servicesIpv4Cidr"`
+	DiskSetup        string `yaml:"diskSetup"`
 }
 
 // AksSettings encapsulates settings specific to AKS
@@ -59,7 +61,7 @@ type AksSettings struct {
 	NodeCount     int    `yaml:"nodeCount"`
 }
 
-// GkeSettings encapsulates settings specific to GKE
+// OcpSettings encapsulates settings specific to GKE
 type OcpSettings struct {
 	BaseDomain                 string `yaml:"baseDomain"`
 	GCloudProject              string `yaml:"gCloudProject"`
@@ -72,9 +74,18 @@ type OcpSettings struct {
 	NodeCount                  int    `yaml:"nodeCount"`
 }
 
+// EKSSettings are specific to Amazon EKS.
+type EKSSettings struct {
+	NodeAMI   string `yaml:"nodeAMI"`
+	NodeCount int    `yaml:"nodeCount"`
+	Region    string `yaml:"region"`
+	WorkDir   string `yaml:"workDir"`
+	DiskSetup string `yaml:"diskSetup"`
+}
+
 // RunConfig encapsulates Id used to choose a plan and a map of overrides to apply to the plan, expected to map to a file
 type RunConfig struct {
-	Id        string                 `yaml:"id"` //nolint
+	Id        string                 `yaml:"id"` // nolint
 	Overrides map[string]interface{} `yaml:"overrides"`
 }
 

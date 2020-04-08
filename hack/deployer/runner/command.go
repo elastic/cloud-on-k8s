@@ -6,6 +6,7 @@ package runner
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -64,6 +65,10 @@ func (c *Command) OutputContainsAny(tokens ...string) (bool, error) {
 		}
 	}
 
+	if err != nil {
+		// provide additional context to callers otherwise it is really hard to figure out what went wrong
+		err = fmt.Errorf("%s with err: %w", out, err)
+	}
 	return false, err
 }
 

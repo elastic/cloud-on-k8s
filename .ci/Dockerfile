@@ -11,6 +11,7 @@ ENV DOCKER_VERSION=18.03.1-ce
 ENV GOTESTSUM_VERSION=0.3.5
 ENV KIND_VERSION=0.7.0
 ENV OPENSHIFT_TOOLS_VERSION=4.3.0
+ENV EKSCTL_VERSION=0.16.0
 
 # golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
@@ -43,11 +44,17 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
     tar xzf docker-${DOCKER_VERSION}.tgz --strip 1 -C /usr/local/bin docker/docker && \
     rm docker-${DOCKER_VERSION}.tgz
 
-# AWS CLI to upload YAML on S3 and xz-utils to decompress shellcheck
+# xz-utils to decompress shellcheck and unzip for aws-cli
 RUN apt-get update && apt-get --no-install-recommends -y install \
-    awscli xz-utils && \
+    unzip xz-utils && \
     apt-get clean && apt-get autoclean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# AWS CLI v2 to upload YAML on S3 and run eksctl
+RUN curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm awscliv2.zip
 
 # shellcheck
 ENV PATH=${PATH}:/usr/local/shellcheck
@@ -78,6 +85,11 @@ RUN curl -fsSLO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/${OPEN
     tar -zxf openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz oc && \
     mv oc /usr/local/bin/oc && \
     rm openshift-client-linux-${OPENSHIFT_TOOLS_VERSION}.tar.gz
+
+RUN curl -fsSLO "https://github.com/weaveworks/eksctl/releases/download/${EKSCTL_VERSION}/eksctl_Linux_amd64.tar.gz" && \
+    tar xzf eksctl_Linux_amd64.tar.gz && \
+    mv eksctl /usr/local/bin/eksctl && \
+    rm eksctl_Linux_amd64.tar.gz
 
 # Cache ECK Go dependencies in this Docker image
 WORKDIR /go/src/github.com/elastic/cloud-on-k8s

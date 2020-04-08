@@ -27,7 +27,6 @@ overrides:
 var (
 	// GKE uses 18 chars to prefix the pvc created by a cluster
 	pvcPrefixMaxLength      = 18
-	GkeStorageProvisioner   = "kubernetes.io/no-provisioner"
 	defaultClusterIPv4CIDR  = "/20"
 	defaultServicesIPv4CIDR = "/20"
 )
@@ -116,7 +115,7 @@ func (d *GkeDriver) Execute() error {
 		if err := d.configureDocker(); err != nil {
 			return err
 		}
-		if err := createStorageClass(GkeStorageProvisioner); err != nil {
+		if err := createStorageClass(NoProvisioner); err != nil {
 			return err
 		}
 		if err := d.createSsdProvider(); err != nil {
@@ -130,9 +129,7 @@ func (d *GkeDriver) Execute() error {
 }
 
 func (d *GkeDriver) createSsdProvider() error {
-	return NewCommand(fmt.Sprintf(`cat <<EOF | kubectl apply -f -
-%s
-EOF`, GkeSsdProvisioner)).Run()
+	return NewCommand(d.plan.Gke.DiskSetup).Run()
 }
 
 func (d *GkeDriver) auth() error {
