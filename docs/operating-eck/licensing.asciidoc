@@ -9,7 +9,7 @@ endif::[]
 
 When you install the default distribution of ECK, you receive a Basic license. Any Elastic stack application you manage through ECK will also be Basic licensed. Go to https://www.elastic.co/subscriptions to see which features are included in the Basic license for free.
 
-IMPORTANT: ECK is only offered in two licensing tiers: Basic and Enterprise. Similar to the Elastic Stack, customers are able to download and use ECK with a Basic license for free. Basic license users can avail of support from GitHub or through our link:https://discuss.elastic.co[community]. A paid Enterprise subscription is required to engage the Elastic support team. For more detail on Enterprise subscriptions, see link:https://www.elastic.co/subscriptions[here].
+IMPORTANT: ECK is only offered in two licensing tiers: Basic and Enterprise. Similar to the Elastic Stack, customers are able to download and use ECK with a Basic license for free. Basic license users can avail of support from GitHub or through our link:https://discuss.elastic.co[community]. A paid Enterprise subscription is required to engage the Elastic support team. For more details, see the link:https://www.elastic.co/subscriptions[Elastic subscriptions].
 
 [float]
 == Start a trial
