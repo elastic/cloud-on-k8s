@@ -323,6 +323,9 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
 	defer func() {
 		cancelFunc()
+		if deadline, _ := ctx.Deadline(); deadline.Before(time.Now()) {
+			log.Info("Test job timeout exceeded", "timeout", jobTimeout)
+		}
 		runtime.HandleCrash()
 	}()
 
