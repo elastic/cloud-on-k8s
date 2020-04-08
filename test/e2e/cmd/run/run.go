@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	jobTimeout       = 200 * time.Minute // time to wait for the test job to finish
+	jobTimeout       = 300 * time.Minute // time to wait for the test job to finish
 	kubePollInterval = 10 * time.Second  // Kube API polling interval
 	logBufferSize    = 1024              // Size of the log buffer (1KiB)
 	testRunLabel     = "test-run"        // name of the label applied to resources
@@ -323,6 +323,9 @@ func (h *helper) monitorTestJob(client *kubernetes.Clientset) error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), jobTimeout)
 	defer func() {
 		cancelFunc()
+		if deadline, _ := ctx.Deadline(); deadline.Before(time.Now()) {
+			log.Info("Test job timeout exceeded", "timeout", jobTimeout)
+		}
 		runtime.HandleCrash()
 	}()
 
