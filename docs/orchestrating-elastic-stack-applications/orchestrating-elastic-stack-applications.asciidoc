@@ -16,6 +16,7 @@ endif::[]
 - <<{p}-customize-pods>>
 - <<{p}-managing-compute-resources>>
 - <<{p}-upgrading-stack>>
+- <<{p}-rotate-credentials>>
 --
 
 include::elasticsearch-specification.asciidoc[leveloffset=+1]
@@ -25,3 +26,4 @@ include::accessing-elastic-services.asciidoc[leveloffset=+1]
 include::customize-pods.asciidoc[leveloffset=+1]
 include::managing-compute-resources.asciidoc[leveloffset=+1]
 include::upgrading-stack.asciidoc[leveloffset=+1]
+include::rotate-credentials.asciidoc[leveloffset=+1]
