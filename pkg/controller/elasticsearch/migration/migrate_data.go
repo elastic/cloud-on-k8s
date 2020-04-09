@@ -23,10 +23,8 @@ const (
 	AllocationExcludeAnnotationName = "elasticsearch.k8s.elastic.co/allocation-exclude"
 )
 
-// IsMigratingData looks only at the presence of shards on a given node
-// and checks if there is at least one other copy of the shard in the cluster
-// that is started and not relocating.
-func IsMigratingData(ctx context.Context, shardLister esclient.ShardLister, podName string) (bool, error) {
+// NodeHasShard returns true if the given ES Pod is holding at least one shard (primary or replica).
+func NodeHasShard(ctx context.Context, shardLister esclient.ShardLister, podName string) (bool, error) {
 	shards, err := shardLister.GetShards(ctx)
 	if err != nil {
 		return false, err

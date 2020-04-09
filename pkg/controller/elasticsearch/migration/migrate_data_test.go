@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIsMigratingData(t *testing.T) {
+func TestNodeHasShard(t *testing.T) {
 	type args struct {
 		shardLister client.ShardLister
 		podName     string
@@ -42,72 +42,38 @@ func TestIsMigratingData(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Node needs to be completely evacuated",
+			name: "Node has one shard",
 			args: args{
 				podName: "A",
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "B"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
+					{Index: "index-1", Shard: "0", NodeName: "A"},
+					{Index: "index-1", Shard: "0", NodeName: "B"},
+					{Index: "index-1", Shard: "0", NodeName: "C"},
 				}),
 			},
 			want: true,
 		},
 		{
-			name: "Nothing to migrate",
+			name: "No shard on the node",
 			args: args{
 				podName: "A",
 				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "B"},
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "C"},
+					{Index: "index-1", Shard: "0", NodeName: "B"},
+					{Index: "index-1", Shard: "0", NodeName: "C"},
 				}),
 			},
 			want: false,
 		},
-		{
-			name: "Only copy needs migration",
-			args: args{
-				podName: "A",
-				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
-					{Index: "index-1", Shard: "1", State: client.STARTED, NodeName: "B"},
-					{Index: "index-1", Shard: "2", State: client.STARTED, NodeName: "C"},
-				}),
-			},
-			want: true,
-		},
-		{
-			name: "Relocation is migration",
-			args: args{
-				podName: "A",
-				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.RELOCATING, NodeName: "A"},
-					{Index: "index-1", Shard: "0", State: client.INITIALIZING, NodeName: "B"},
-				}),
-			},
-			want: true,
-		},
-		{
-			name: "Copy is initializing",
-			args: args{
-				podName: "A",
-				shardLister: NewFakeShardLister([]client.Shard{
-					{Index: "index-1", Shard: "0", State: client.STARTED, NodeName: "A"},
-					{Index: "index-1", Shard: "0", State: client.INITIALIZING, NodeName: "B"},
-				}),
-			},
-			want: true,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := IsMigratingData(context.Background(), tt.args.shardLister, tt.args.podName)
+			got, err := NodeHasShard(context.Background(), tt.args.shardLister, tt.args.podName)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("IsMigratingData() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NodeHasShard() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("IsMigratingData() = %v, want %v", got, tt.want)
+				t.Errorf("NodeHasShard() = %v, want %v", got, tt.want)
 			}
 		})
 	}
