@@ -95,6 +95,10 @@ pipeline {
                 build job: 'cloud-on-k8s-e2e-tests-ocp',
                     parameters: [string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage)],
                     wait: false
+
+                build job: 'cloud-on-k8s-e2e-tests-eks',
+                    parameters: [string(name: 'JKS_PARAM_OPERATOR_IMAGE', value: operatorImage)],
+                    wait: false
             }
         }
         unsuccessful {
