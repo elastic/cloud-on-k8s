@@ -363,6 +363,7 @@ E2E_IMG ?= $(BASE_IMG)-e2e-tests:$(TAG)
 STACK_VERSION ?= 7.6.0
 E2E_JSON ?= false
 TEST_TIMEOUT ?= 5m
+E2E_SKIP_CLEANUP ?= false
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
@@ -396,7 +397,8 @@ e2e-run:
 		--provider=$(E2E_PROVIDER) \
 		--clusterName=$(CLUSTER_NAME) \
 		--kubernetes-version=$(KUBERNETES_VERSION) \
-		--monitoring-secrets=$(MONITORING_SECRETS)
+		--monitoring-secrets=$(MONITORING_SECRETS) \
+		--skip-cleanup=$(E2E_SKIP_CLEANUP)
 
 e2e-generate-xml:
 	@ gotestsum --junitfile e2e-tests.xml --raw-command cat e2e-tests.json
@@ -437,6 +439,10 @@ ci-e2e: setup-e2e e2e-run
 
 ci-build-operator-e2e-run: E2E_JSON := true
 ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
+
+ci-build-operator-e2e-run-indefinitely: E2E_JSON := true
+ci-build-operator-e2e-run-indefinitely: setup-e2e build-operator-image
+	while true; do echo make e2e-run; done
 
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
