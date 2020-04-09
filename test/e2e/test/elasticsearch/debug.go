@@ -22,7 +22,7 @@ func printShards(clientFactory func() (client.Client, error)) func() {
 		}
 		catShards, err := http.NewRequest(
 			http.MethodGet,
-			"/_cat/shards",
+			"/_cat/shards?v",
 			nil,
 		)
 		if err != nil {
