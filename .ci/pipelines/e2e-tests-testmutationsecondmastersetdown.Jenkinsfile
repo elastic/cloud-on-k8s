@@ -56,6 +56,7 @@ pipeline {
                 
                 sh 'echo TESTS_MATCH = TestMutationSecondMasterSetDown >> .env'
                 sh 'echo E2E_SKIP_CLEANUP = true >> .env'
+                sh 'sed "s/CLUSTER_NAME=eck-e2e/CLUSTER_NAME=eck-debug-e2e/" -i .env'
                 
                 script {
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci')
