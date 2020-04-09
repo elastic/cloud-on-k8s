@@ -13,9 +13,10 @@ import (
 
 // Step represents a single test
 type Step struct {
-	Name string
-	Test func(t *testing.T)
-	Skip func() bool // returns true if the test should be skipped
+	Name      string
+	Test      func(t *testing.T)
+	Skip      func() bool // returns true if the test should be skipped
+	OnFailure func()      // additional step specific callback on failure
 }
 
 // StepList defines a list of Step
@@ -40,6 +41,9 @@ func (l StepList) RunSequential(t *testing.T) {
 		}
 		if !t.Run(ts.Name, ts.Test) {
 			logf.Log.Error(errors.New("test failure"), "stopping early")
+			if ts.OnFailure != nil {
+				ts.OnFailure()
+			}
 			t.FailNow()
 		}
 	}
