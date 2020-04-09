@@ -61,8 +61,8 @@ pipeline {
                 script {
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci')
 
-                    sh 'make -C .ci TARGET=e2e-generate-xml ci'
-                    junit "e2e-tests.xml"
+                    //sh 'make -C .ci TARGET=e2e-generate-xml ci'
+                    //junit "e2e-tests.xml"
 
                     if (env.SHELL_EXIT_CODE != 0) {
                         failedTests = lib.getListOfFailedTests()
