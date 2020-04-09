@@ -440,10 +440,6 @@ ci-e2e: setup-e2e e2e-run
 ci-build-operator-e2e-run: E2E_JSON := true
 ci-build-operator-e2e-run: setup-e2e build-operator-image e2e-run
 
-ci-build-operator-e2e-run-indefinitely: E2E_JSON := true
-ci-build-operator-e2e-run-indefinitely: setup-e2e build-operator-image
-	while true; do echo make e2e-run; done
-
 run-deployer: build-deployer
 	./hack/deployer/deployer execute --plans-file hack/deployer/config/plans.yml --config-file deployer-config.yml
 
