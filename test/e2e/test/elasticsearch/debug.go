@@ -26,7 +26,7 @@ func printShardsAndAllocation(clientFactory func() (client.Client, error)) func(
 }
 
 func printResponse(esClient client.Client, url string) {
-	catShards, err := http.NewRequest(
+	request, err := http.NewRequest(
 		http.MethodGet,
 		url,
 		nil,
@@ -36,13 +36,13 @@ func printResponse(esClient client.Client, url string) {
 		return
 	}
 	fmt.Println("GET " + url)
-	shards, err := esClient.Request(context.Background(), catShards)
+	response, err := esClient.Request(context.Background(), request)
 	if err != nil {
-		fmt.Printf("error while fetching shards: %v \n", err)
+		fmt.Printf("error while making request %s: %v \n", url, err)
 		return
 	}
-	defer shards.Body.Close()
-	bytes, err := ioutil.ReadAll(shards.Body)
+	defer response.Body.Close()
+	bytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Printf("error while reading response body: %v \n", err)
 		return
