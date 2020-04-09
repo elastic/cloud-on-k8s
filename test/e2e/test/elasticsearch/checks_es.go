@@ -81,6 +81,7 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 			}
 			return nil
 		}),
+		OnFailure: printShardsAndAllocation(e.newESClient),
 	}
 }
 

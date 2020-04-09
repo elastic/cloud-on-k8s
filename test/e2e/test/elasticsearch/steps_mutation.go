@@ -125,6 +125,9 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 				Test: test.Eventually(func() error { // nolint
 					return dataIntegrityCheck.Verify()
 				}),
+				OnFailure: printShardsAndAllocation(func() (esclient.Client, error) {
+					return NewElasticsearchClient(b.Elasticsearch, k)
+				}),
 			},
 		})
 }
