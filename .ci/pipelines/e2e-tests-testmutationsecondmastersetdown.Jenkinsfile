@@ -56,6 +56,8 @@ pipeline {
                 
                 sh 'echo TESTS_MATCH = TestMutationSecondMasterSetDown >> .env'
                 sh 'echo E2E_SKIP_CLEANUP = true >> .env'
+                // temporarily disabling json output to work around parsing errors
+                sh 'echo E2E_JSON = false >> .env'
                 sh 'sed "s/CLUSTER_NAME=eck-e2e/CLUSTER_NAME=eck-debug-e2e/" -i .env'
                 
                 script {
