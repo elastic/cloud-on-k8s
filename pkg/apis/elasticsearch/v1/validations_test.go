@@ -365,7 +365,35 @@ func Test_pvcModified(t *testing.T) {
 			},
 			expectErrors: true,
 		},
-
+		{
+			name:    "same size with different unit accepted",
+			current: current,
+			proposed: &Elasticsearch{
+				Spec: ElasticsearchSpec{
+					Version: "7.2.0",
+					NodeSets: []NodeSet{
+						{
+							Name: "master",
+							VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+								{
+									ObjectMeta: metav1.ObjectMeta{
+										Name: "elasticsearch-data",
+									},
+									Spec: corev1.PersistentVolumeClaimSpec{
+										Resources: corev1.ResourceRequirements{
+											Requests: corev1.ResourceList{
+												corev1.ResourceStorage: resource.MustParse("5120Mi"),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectErrors: false,
+		},
 		{
 			name:    "same size accepted",
 			current: current,
