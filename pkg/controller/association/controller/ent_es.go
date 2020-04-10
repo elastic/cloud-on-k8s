@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
@@ -17,24 +17,24 @@ import (
 )
 
 const (
-	// EntSearchESAssociationLabelName marks resources created by this controller for easier retrieval.
-	EntSearchESAssociationLabelName = "entsearchassociation.k8s.elastic.co/name"
-	// EntSearchESLabelNamespace marks resources created by this controller for easier retrieval.
-	EntSearchESAssociationLabelNamespace = "entsearchassociation.k8s.elastic.co/namespace"
+	// EntESAssociationLabelName marks resources created by this controller for easier retrieval.
+	EntESAssociationLabelName = "entassociation.k8s.elastic.co/name"
+	// EntESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	EntESAssociationLabelNamespace = "entassociation.k8s.elastic.co/namespace"
 )
 
-func AddEntSearchES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &entsv1beta1.EnterpriseSearch{} },
-		AssociationName:       "ents-es",
-		AssociatedShortName:   "ents",
+		AssociatedObjTemplate: func() commonv1.Associated { return &entv1beta1.EnterpriseSearch{} },
+		AssociationName:       "ent-es",
+		AssociatedShortName:   "ent",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				EntSearchESAssociationLabelName:      associated.Name,
-				EntSearchESAssociationLabelNamespace: associated.Namespace,
+				EntESAssociationLabelName:      associated.Name,
+				EntESAssociationLabelNamespace: associated.Namespace,
 			}
 		},
-		UserSecretSuffix: "ents-user",
+		UserSecretSuffix: "ent-user",
 		ESUserRole:       esuser.SuperUserBuiltinRole,
 	})
 }

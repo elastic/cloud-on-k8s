@@ -21,13 +21,13 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	entsname "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
+	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
@@ -46,14 +46,14 @@ const (
 type VersionUpgrade struct {
 	k8sClient  k8s.Client
 	recorder   record.EventRecorder
-	ents       entsv1beta1.EnterpriseSearch
+	ent        entv1beta1.EnterpriseSearch
 	dialer     net.Dialer   // optional custom dialer for the http client
 	httpClient *http.Client // custom http client, will be created if nil
 }
 
 // Handle Enterprise Search version upgrades if necessary, by toggling read-only mode.
 func (r *VersionUpgrade) Handle(ctx context.Context) error {
-	expectedVersion, err := version.Parse(r.ents.Spec.Version)
+	expectedVersion, err := version.Parse(r.ent.Spec.Version)
 	if err != nil {
 		return err
 	}
@@ -63,14 +63,14 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		return err
 	}
 
-	if upgradeRequested && !r.ents.AssociationConf().AuthIsConfigured() {
+	if upgradeRequested && !r.ent.AssociationConf().AuthIsConfigured() {
 		// A version upgrade is scheduled, but we don't know how to reach the Enterprise Search API
 		// since we don't have any Elasticsearch user available.
 		// Move on with the upgrade: this will cause the Pod in the new version to crash at startup with explicit logs.
 		msg := "Detected version upgrade with no association to Elasticsearch, " +
 			"please toggle read-only mode manually, otherwise the new version will crash at startup."
-		log.Info(msg, "namespace", r.ents.Namespace, "ents_name", r.ents.Name)
-		r.recorder.Event(&r.ents, corev1.EventTypeWarning, events.EventReasonUpgraded, msg)
+		log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
+		r.recorder.Event(&r.ent, corev1.EventTypeWarning, events.EventReasonUpgraded, msg)
 		return nil
 	}
 
@@ -83,8 +83,8 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 		if len(actualPods) == 0 {
 			msg := "a version upgrade is scheduled, but no Pod in the prior version is running:" +
 				"waiting for at least one Pod in the prior version to be running in order to enable read-only mode"
-			log.Info(msg, "namespace", r.ents.Namespace, "ents_name", r.ents.Name)
-			r.recorder.Event(&r.ents, corev1.EventTypeWarning, events.EventReasonDelayed, msg)
+			log.Info(msg, "namespace", r.ent.Namespace, "ent_name", r.ent.Name)
+			r.recorder.Event(&r.ent, corev1.EventTypeWarning, events.EventReasonDelayed, msg)
 			// surface this as an error, since rather unexpected, and abort reconciliation
 			return errors.New(msg)
 		}
@@ -104,13 +104,13 @@ func (r *VersionUpgrade) Handle(ctx context.Context) error {
 // enableReadOnlyMode enables read-only mode through an API call, if not already done,
 // and stores the read-only mode state in an annotation on the Enterprise Search resource.
 func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
-	if hasReadOnlyAnnotationTrue(r.ents) {
+	if hasReadOnlyAnnotationTrue(r.ent) {
 		// nothing to do, already done
 		return nil
 	}
 
 	log.Info("Enabling read-only mode for version upgrade",
-		"namespace", r.ents.Namespace, "ents_name", r.ents.Name, "target_version", r.ents.Spec.Version)
+		"namespace", r.ent.Namespace, "ent_name", r.ent.Name, "target_version", r.ent.Spec.Version)
 
 	// call the Enterprise Search API
 	if err := r.setReadOnlyMode(ctx, true); err != nil {
@@ -119,23 +119,23 @@ func (r *VersionUpgrade) enableReadOnlyMode(ctx context.Context) error {
 
 	// annotate the resource to avoid doing the same API call over and over again
 	// (in practice, it may happen again if the next reconciliation does not have an up-to-date cache)
-	if r.ents.Annotations == nil {
-		r.ents.Annotations = map[string]string{}
+	if r.ent.Annotations == nil {
+		r.ent.Annotations = map[string]string{}
 	}
-	r.ents.Annotations[ReadOnlyModeAnnotationName] = "true"
-	return r.k8sClient.Update(&r.ents)
+	r.ent.Annotations[ReadOnlyModeAnnotationName] = "true"
+	return r.k8sClient.Update(&r.ent)
 }
 
 // disableReadOnlyMode disables read-only mode through an API call, if enabled previously,
 // and removes the read-only mode annotation.
 func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
-	if !hasReadOnlyAnnotationTrue(r.ents) {
+	if !hasReadOnlyAnnotationTrue(r.ent) {
 		// nothing to do, read-only was not set
 		return nil
 	}
 
 	log.Info("Disabling read-only mode",
-		"namespace", r.ents.Namespace, "ents_name", r.ents.Name)
+		"namespace", r.ent.Namespace, "ent_name", r.ent.Name)
 
 	// call the Enterprise Search API
 	if err := r.setReadOnlyMode(ctx, false); err != nil {
@@ -144,14 +144,14 @@ func (r *VersionUpgrade) disableReadOnlyMode(ctx context.Context) error {
 
 	// remove the annotation to avoid doing the same API call over and over again
 	// (in practice, it may happen again if the next reconciliation does not have an up-to-date cache)
-	delete(r.ents.Annotations, ReadOnlyModeAnnotationName)
-	return r.k8sClient.Update(&r.ents)
+	delete(r.ent.Annotations, ReadOnlyModeAnnotationName)
+	return r.k8sClient.Update(&r.ent)
 }
 
 // hasReadOnlyAnnotationTrue returns true if the read-only mode annotation is set to true,
 // and false otherwise.
-func hasReadOnlyAnnotationTrue(ents entsv1beta1.EnterpriseSearch) bool {
-	value, exists := ents.Annotations[ReadOnlyModeAnnotationName]
+func hasReadOnlyAnnotationTrue(ent entv1beta1.EnterpriseSearch) bool {
+	value, exists := ent.Annotations[ReadOnlyModeAnnotationName]
 	return exists && value == "true"
 }
 
@@ -197,12 +197,12 @@ func (r *VersionUpgrade) setReadOnlyMode(ctx context.Context, enabled bool) erro
 // serviceURL builds the URL of the Enterprise Search service.
 func (r *VersionUpgrade) serviceURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%d",
-		r.ents.Spec.HTTP.Protocol(), entsname.HTTPService(r.ents.Name), r.ents.Namespace, HTTPPort)
+		r.ent.Spec.HTTP.Protocol(), entName.HTTPService(r.ent.Name), r.ent.Namespace, HTTPPort)
 }
 
 // readOnlyModeRequest builds the HTTP request to toggle the read-only mode on Enterprise Search.
 func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error) {
-	username, password, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ents)
+	username, password, err := association.ElasticsearchAuthSettings(r.k8sClient, &r.ent)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ func (r *VersionUpgrade) readOnlyModeRequest(enabled bool) (*http.Request, error
 // specified in the EnterpriseSearch resource.
 func (r *VersionUpgrade) isVersionUpgrade(expectedVersion version.Version) (bool, error) {
 	var deployment appsv1.Deployment
-	nsn := types.NamespacedName{Name: entsname.Deployment(r.ents.Name), Namespace: r.ents.Namespace}
+	nsn := types.NamespacedName{Name: entName.Deployment(r.ent.Name), Namespace: r.ent.Namespace}
 	err := r.k8sClient.Get(nsn, &deployment)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -264,8 +264,8 @@ func (r *VersionUpgrade) isPriorVersionStillRunning(expectedVersion version.Vers
 // getActualPods returns all existing Pods for this Enterprise Search resource.
 func (r *VersionUpgrade) getActualPods() ([]corev1.Pod, error) {
 	var pods corev1.PodList
-	ns := client.InNamespace(r.ents.Namespace)
-	if err := r.k8sClient.List(&pods, client.MatchingLabels(Labels(r.ents.Name)), ns); err != nil {
+	ns := client.InNamespace(r.ent.Namespace)
+	if err := r.k8sClient.List(&pods, client.MatchingLabels(Labels(r.ent.Name)), ns); err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
@@ -275,8 +275,8 @@ func (r *VersionUpgrade) getActualPods() ([]corev1.Pod, error) {
 func (r *VersionUpgrade) retrieveTLSCerts() ([]*x509.Certificate, error) {
 	var certsSecret corev1.Secret
 	nsn := types.NamespacedName{
-		Namespace: r.ents.Namespace,
-		Name:      certificates.InternalCertsSecretName(entsname.EntSearchNamer, r.ents.Name),
+		Namespace: r.ent.Namespace,
+		Name:      certificates.InternalCertsSecretName(entName.EntNamer, r.ent.Name),
 	}
 	if err := r.k8sClient.Get(nsn, &certsSecret); err != nil {
 		return nil, err

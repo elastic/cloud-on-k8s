@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -41,7 +41,7 @@ var (
 	}
 )
 
-func readinessProbe(ents entsv1beta1.EnterpriseSearch) corev1.Probe {
+func readinessProbe(ent entv1beta1.EnterpriseSearch) corev1.Probe {
 	return corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 60, // initial startup is pretty slow
@@ -53,7 +53,7 @@ func readinessProbe(ents entsv1beta1.EnterpriseSearch) corev1.Probe {
 				Command: []string{"bash", "-c",
 					fmt.Sprintf(
 						`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/swiftype-app-version -k -s`,
-						ents.Spec.HTTP.Protocol(),
+						ent.Spec.HTTP.Protocol(),
 						HTTPPort,
 					),
 				},
@@ -62,35 +62,35 @@ func readinessProbe(ents entsv1beta1.EnterpriseSearch) corev1.Probe {
 	}
 }
 
-func newPodSpec(ents entsv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
-	cfgVolume := ConfigSecretVolume(ents)
+func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
+	cfgVolume := ConfigSecretVolume(ent)
 
 	builder := defaults.NewPodTemplateBuilder(
-		ents.Spec.PodTemplate, entsv1beta1.EnterpriseSearchContainerName).
+		ent.Spec.PodTemplate, entv1beta1.EnterpriseSearchContainerName).
 		WithResources(DefaultResources).
-		WithDockerImage(ents.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, ents.Spec.Version)).
+		WithDockerImage(ent.Spec.Image, container.ImageRepository(container.EnterpriseSearchImage, ent.Spec.Version)).
 		WithPorts([]corev1.ContainerPort{
-			{Name: ents.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
+			{Name: ent.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 		}).
-		WithReadinessProbe(readinessProbe(ents)).
+		WithReadinessProbe(readinessProbe(ent)).
 		WithVolumes(cfgVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount()).
 		WithEnv(DefaultEnv...).
 		// ensure the Pod gets rotated on config change
 		WithLabels(map[string]string{ConfigHashLabelName: configHash})
 
-	builder = withESCertsVolume(builder, ents)
-	builder = withHTTPCertsVolume(builder, ents)
+	builder = withESCertsVolume(builder, ent)
+	builder = withHTTPCertsVolume(builder, ent)
 
 	return builder.PodTemplate
 }
 
-func withESCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {
-	if !ents.AssociationConf().CAIsConfigured() {
+func withESCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {
+	if !ent.AssociationConf().CAIsConfigured() {
 		return builder
 	}
 	vol := volume.NewSecretVolumeWithMountPath(
-		ents.AssociationConf().GetCASecretName(),
+		ent.AssociationConf().GetCASecretName(),
 		"es-certs",
 		ESCertsPath,
 	)
@@ -99,10 +99,10 @@ func withESCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.En
 		WithVolumeMounts(vol.VolumeMount())
 }
 
-func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ents entsv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {
-	if !ents.Spec.HTTP.TLS.Enabled() {
+func withHTTPCertsVolume(builder *defaults.PodTemplateBuilder, ent entv1beta1.EnterpriseSearch) *defaults.PodTemplateBuilder {
+	if !ent.Spec.HTTP.TLS.Enabled() {
 		return builder
 	}
-	vol := certificates.HTTPCertSecretVolume(name.EntSearchNamer, ents.Name)
+	vol := certificates.HTTPCertSecretVolume(name.EntNamer, ent.Name)
 	return builder.WithVolumes(vol.Volume()).WithVolumeMounts(vol.VolumeMount())
 }

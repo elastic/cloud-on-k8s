@@ -11,7 +11,7 @@ elasticsearch:
   ssl:
     certificate_authority: /mnt/elastic-internal/es-certs/tls.crt
     enabled: true
-  username: default-entsearch-sample-entsearch-es-user
+  username: default-ent-sample-ent-es-user
 ent_search:
   auth:
     source: elasticsearch-native
