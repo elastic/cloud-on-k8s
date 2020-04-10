@@ -18,7 +18,7 @@ kind: EnterpriseSearch
 metadata:
   name: ent-sample
 spec:
-  version: 7.6.0
+  version: 7.7.0
   image: $DOCKER_IMAGE
   count: 1
   elasticsearchRef:
