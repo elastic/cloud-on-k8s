@@ -7,13 +7,14 @@ package v1
 import (
 	"fmt"
 	"net"
-	"reflect"
+
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	esversion "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/version"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 const (
@@ -153,8 +154,9 @@ func pvcModification(current, proposed *Elasticsearch) field.ErrorList {
 		}
 
 		// ssets do not allow modifications to fields other than 'replicas', 'template', and 'updateStrategy'
-		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims
-		if !reflect.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
+		// reflection isn't ideal, but okay here since the ES object does not have the status of the claims.
+		// Checking semantic equality here allows providing PVC storage size with different units (eg. 1Ti vs. 1024Gi).
+		if !apiequality.Semantic.DeepEqual(node.VolumeClaimTemplates, currNode.VolumeClaimTemplates) {
 			errs = append(errs, field.Invalid(field.NewPath("spec").Child("nodeSet").Index(i).Child("volumeClaimTemplates"), node.VolumeClaimTemplates, pvcImmutableMsg))
 		}
 	}
