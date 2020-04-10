@@ -33,72 +33,72 @@ var (
 	}
 )
 
-// +kubebuilder:webhook:path=/validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch,mutating=false,failurePolicy=ignore,groups=enterprisesearch.k8s.elastic.co,resources=enterprisesearches,verbs=create;update,versions=v1beta1,name=elastic-entsearch-validation-v1beta1.k8s.elastic.co
+// +kubebuilder:webhook:path=/validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch,mutating=false,failurePolicy=ignore,groups=enterprisesearch.k8s.elastic.co,resources=enterprisesearches,verbs=create;update,versions=v1beta1,name=elastic-ent-validation-v1beta1.k8s.elastic.co
 
 var _ webhook.Validator = &EnterpriseSearch{}
 
-func (ents *EnterpriseSearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (ent *EnterpriseSearch) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(ents).
+		For(ent).
 		Complete()
 }
 
-func (ents *EnterpriseSearch) ValidateCreate() error {
-	validationLog.V(1).Info("Validate create", "name", ents.Name)
-	return ents.validate(nil)
+func (ent *EnterpriseSearch) ValidateCreate() error {
+	validationLog.V(1).Info("Validate create", "name", ent.Name)
+	return ent.validate(nil)
 }
 
-func (ents *EnterpriseSearch) ValidateDelete() error {
-	validationLog.V(1).Info("Validate delete", "name", ents.Name)
+func (ent *EnterpriseSearch) ValidateDelete() error {
+	validationLog.V(1).Info("Validate delete", "name", ent.Name)
 	return nil
 }
 
-func (ents *EnterpriseSearch) ValidateUpdate(old runtime.Object) error {
-	validationLog.V(1).Info("Validate update", "name", ents.Name)
+func (ent *EnterpriseSearch) ValidateUpdate(old runtime.Object) error {
+	validationLog.V(1).Info("Validate update", "name", ent.Name)
 	oldObj, ok := old.(*EnterpriseSearch)
 	if !ok {
 		return errors.New("cannot cast old object to EnterpriseSearch type")
 	}
 
-	return ents.validate(oldObj)
+	return ent.validate(oldObj)
 }
 
-func (ents *EnterpriseSearch) validate(old *EnterpriseSearch) error {
+func (ent *EnterpriseSearch) validate(old *EnterpriseSearch) error {
 	var errors field.ErrorList
 	if old != nil {
 		for _, uc := range updateChecks {
-			if err := uc(old, ents); err != nil {
+			if err := uc(old, ent); err != nil {
 				errors = append(errors, err...)
 			}
 		}
 
 		if len(errors) > 0 {
-			return apierrors.NewInvalid(groupKind, ents.Name, errors)
+			return apierrors.NewInvalid(groupKind, ent.Name, errors)
 		}
 	}
 
 	for _, dc := range defaultChecks {
-		if err := dc(ents); err != nil {
+		if err := dc(ent); err != nil {
 			errors = append(errors, err...)
 		}
 	}
 
 	if len(errors) > 0 {
-		return apierrors.NewInvalid(groupKind, ents.Name, errors)
+		return apierrors.NewInvalid(groupKind, ent.Name, errors)
 	}
 	return nil
 }
 
-func checkNoUnknownFields(ents *EnterpriseSearch) field.ErrorList {
-	return commonv1.NoUnknownFields(ents, ents.ObjectMeta)
+func checkNoUnknownFields(ent *EnterpriseSearch) field.ErrorList {
+	return commonv1.NoUnknownFields(ent, ent.ObjectMeta)
 }
 
-func checkNameLength(ents *EnterpriseSearch) field.ErrorList {
-	return commonv1.CheckNameLength(ents)
+func checkNameLength(ent *EnterpriseSearch) field.ErrorList {
+	return commonv1.CheckNameLength(ent)
 }
 
-func checkSupportedVersion(ents *EnterpriseSearch) field.ErrorList {
-	return commonv1.CheckSupportedStackVersion(ents.Spec.Version, version.SupportedEnterpriseSearchVersions)
+func checkSupportedVersion(ent *EnterpriseSearch) field.ErrorList {
+	return commonv1.CheckSupportedStackVersion(ent.Spec.Version, version.SupportedEnterpriseSearchVersions)
 }
 
 func checkNoDowngrade(prev, curr *EnterpriseSearch) field.ErrorList {

@@ -18,7 +18,7 @@ import (
 	apmv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1beta1"
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
@@ -361,8 +361,8 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "kibana-es-association")
 		os.Exit(1)
 	}
-	if err = controller.AddEntSearchES(mgr, accessReviewer, params); err != nil {
-		log.Error(err, "unable to create controller", "controller", "ents-es-association")
+	if err = controller.AddEntES(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "ent-es-association")
 		os.Exit(1)
 	}
 	if err = remoteca.Add(mgr, accessReviewer, params); err != nil {
@@ -418,7 +418,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 	err = ugc.
 		For(&apmv1.ApmServerList{}, associationctl.ApmESAssociationLabelNamespace, associationctl.ApmESAssociationLabelName).
 		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
-		For(&entsv1beta1.EnterpriseSearchList{}, associationctl.EntSearchESAssociationLabelNamespace, associationctl.EntSearchESAssociationLabelName).
+		For(&entv1beta1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
 		DoGarbageCollection()
 	if err != nil {
 		log.Error(err, "user garbage collector failed")
@@ -457,7 +457,7 @@ func setupWebhook(mgr manager.Manager, certRotation certificates.RotationParams,
 	}{
 		&apmv1.ApmServer{},
 		&apmv1beta1.ApmServer{},
-		&entsv1beta1.EnterpriseSearch{},
+		&entv1beta1.EnterpriseSearch{},
 		&esv1.Elasticsearch{},
 		&esv1beta1.Elasticsearch{},
 		&kbv1.Kibana{},

@@ -14,18 +14,17 @@ const (
 	deploymentSuffix  = "server"
 )
 
-// EntSearchNamer is a Namer that is configured with the defaults for resources related to an EnterpriseSearch resource.
-// TODO: "entsearch" looks better but we reach the 28 chars suffix limit for certs secret :(
-var EntSearchNamer = common_name.NewNamer("ents")
+// EntNamer is a Namer that is configured with the defaults for resources related to an EnterpriseSearch resource.
+var EntNamer = common_name.NewNamer("ent")
 
-func HTTPService(entsName string) string {
-	return EntSearchNamer.Suffix(entsName, httpServiceSuffix)
+func HTTPService(entName string) string {
+	return EntNamer.Suffix(entName, httpServiceSuffix)
 }
 
-func Deployment(entsName string) string {
-	return EntSearchNamer.Suffix(entsName, deploymentSuffix)
+func Deployment(entName string) string {
+	return EntNamer.Suffix(entName, deploymentSuffix)
 }
 
-func Config(entsName string) string {
-	return EntSearchNamer.Suffix(entsName, configSuffix)
+func Config(entName string) string {
+	return EntNamer.Suffix(entName, configSuffix)
 }

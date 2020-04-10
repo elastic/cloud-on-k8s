@@ -1514,7 +1514,7 @@ spec:
     listKind: EnterpriseSearchList
     plural: enterprisesearches
     shortNames:
-    - entsearch
+    - ent
     singular: enterprisesearch
   scope: Namespaced
   subresources:

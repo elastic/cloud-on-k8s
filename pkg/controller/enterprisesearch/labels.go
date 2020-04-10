@@ -5,7 +5,7 @@
 package enterprisesearch
 
 import (
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 )
 
@@ -19,15 +19,15 @@ const (
 )
 
 // Labels returns labels that identify the given Enterprise Search resource
-func Labels(entsName string) map[string]string {
+func Labels(entName string) map[string]string {
 	return map[string]string{
-		EnterpriseSearchNameLabelName: entsName,
+		EnterpriseSearchNameLabelName: entName,
 		common.TypeLabelName:          Type,
 	}
 }
 
-func VersionLabels(ents entsv1beta1.EnterpriseSearch) map[string]string {
+func VersionLabels(ent entv1beta1.EnterpriseSearch) map[string]string {
 	return map[string]string{
-		VersionLabelName: ents.Spec.Version,
+		VersionLabelName: ent.Spec.Version,
 	}
 }

@@ -16,24 +16,24 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func entSearchWithConfigRef(secretNames ...string) entsv1beta1.EnterpriseSearch {
-	entSearch := entsv1beta1.EnterpriseSearch{
+func entWithConfigRef(secretNames ...string) entv1beta1.EnterpriseSearch {
+	ent := entv1beta1.EnterpriseSearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
-			Name:      "entsearch",
+			Name:      "ent",
 		},
 	}
 	for _, secretName := range secretNames {
-		entSearch.Spec.ConfigRef = append(entSearch.Spec.ConfigRef, entsv1beta1.ConfigSource{
+		ent.Spec.ConfigRef = append(ent.Spec.ConfigRef, entv1beta1.ConfigSource{
 			SecretRef: commonv1.SecretRef{SecretName: secretName}})
 	}
-	return entSearch
+	return ent
 }
 
 func secretWithConfig(name string, cfg []byte) *corev1.Secret {
@@ -52,7 +52,7 @@ func Test_parseConfigRef(t *testing.T) {
 	tests := []struct {
 		name        string
 		secrets     []runtime.Object
-		ents        entsv1beta1.EnterpriseSearch
+		ent         entv1beta1.EnterpriseSearch
 		wantConfig  *settings.CanonicalConfig
 		wantWatches bool
 		wantErr     bool
@@ -60,7 +60,7 @@ func Test_parseConfigRef(t *testing.T) {
 		{
 			name:        "no configRef specified",
 			secrets:     nil,
-			ents:        entSearchWithConfigRef(),
+			ent:         entWithConfigRef(),
 			wantConfig:  settings.NewCanonicalConfig(),
 			wantWatches: false,
 		},
@@ -71,7 +71,7 @@ func Test_parseConfigRef(t *testing.T) {
 				secretWithConfig("secret-2", []byte("a: b-2\nc: d")),
 				secretWithConfig("secret-3", []byte("a: b-3")),
 			},
-			ents: entSearchWithConfigRef("secret-1", "secret-2", "secret-3"),
+			ent: entWithConfigRef("secret-1", "secret-2", "secret-3"),
 			wantConfig: settings.MustCanonicalConfig(map[string]string{
 				"a": "b-3",
 				"c": "d",
@@ -84,7 +84,7 @@ func Test_parseConfigRef(t *testing.T) {
 				secretWithConfig("secret-1", []byte("a: b\nc: d")),
 				secretWithConfig("secret-2", []byte("a: b-2\nc: d")),
 			},
-			ents:        entSearchWithConfigRef("secret-1", "secret-2", "secret-3"),
+			ent:         entWithConfigRef("secret-1", "secret-2", "secret-3"),
 			wantConfig:  nil,
 			wantWatches: true,
 			wantErr:     true,
@@ -96,7 +96,7 @@ func Test_parseConfigRef(t *testing.T) {
 				secretWithConfig("secret-2", []byte("a: b-2\nc: d")),
 				secretWithConfig("secret-3", []byte("invalidyaml")),
 			},
-			ents:        entSearchWithConfigRef("secret-1", "secret-2", "secret-3"),
+			ent:         entWithConfigRef("secret-1", "secret-2", "secret-3"),
 			wantConfig:  nil,
 			wantWatches: true,
 			wantErr:     true,
@@ -107,7 +107,7 @@ func Test_parseConfigRef(t *testing.T) {
 			c := k8s.WrappedFakeClient(tt.secrets...)
 			w := watches.NewDynamicWatches()
 			driver := &ReconcileEnterpriseSearch{dynamicWatches: w, Client: c, recorder: record.NewFakeRecorder(10)}
-			got, err := parseConfigRef(driver, tt.ents)
+			got, err := parseConfigRef(driver, tt.ent)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -125,8 +125,8 @@ func Test_parseConfigRef(t *testing.T) {
 
 func Test_reuseOrGenerateSecrets(t *testing.T) {
 	type args struct {
-		c    k8s.Client
-		ents entsv1beta1.EnterpriseSearch
+		c   k8s.Client
+		ent entv1beta1.EnterpriseSearch
 	}
 	tests := []struct {
 		name      string
@@ -139,14 +139,14 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.WrappedFakeClient(
 					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample-ents-config"},
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfigWithReusableSettings),
 						},
 					},
 				),
-				ents: entsv1beta1.EnterpriseSearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample"},
+				ent: entv1beta1.EnterpriseSearch{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample"},
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
@@ -162,14 +162,14 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.WrappedFakeClient(
 					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample-ents-config"},
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfig),
 						},
 					},
 				),
-				ents: entsv1beta1.EnterpriseSearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample"},
+				ent: entv1beta1.EnterpriseSearch{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample"},
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
@@ -186,14 +186,14 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			args: args{
 				c: k8s.WrappedFakeClient(
 					&v1.Secret{
-						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample-ents-config"},
+						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample-ent-config"},
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfig),
 						},
 					},
 				),
-				ents: entsv1beta1.EnterpriseSearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample"},
+				ent: entv1beta1.EnterpriseSearch{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample"},
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
@@ -209,8 +209,8 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			name: "No configuration to reuse",
 			args: args{
 				c: k8s.WrappedFakeClient(),
-				ents: entsv1beta1.EnterpriseSearch{
-					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample"},
+				ent: entv1beta1.EnterpriseSearch{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent-sample"},
 				},
 			},
 			assertion: func(t *testing.T, got *settings.CanonicalConfig, err error) {
@@ -225,7 +225,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getOrCreateReusableSettings(tt.args.c, tt.args.ents)
+			got, err := getOrCreateReusableSettings(tt.args.c, tt.args.ent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getOrCreateReusableSettings() error = %v, wantErr %v", err, tt.wantErr)
 				return

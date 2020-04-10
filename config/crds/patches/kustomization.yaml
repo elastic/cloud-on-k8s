@@ -48,4 +48,4 @@ patchesJson6902:
       version: v1beta1
       kind: CustomResourceDefinition
       name: enterprisesearches.enterprisesearch.k8s.elastic.co
-    path: entsearch-patches.yaml
+    path: ent-patches.yaml

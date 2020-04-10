@@ -19,10 +19,10 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	entsv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	entsname "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
+	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -45,18 +45,18 @@ var (
 	}
 )
 
-func entSearchWithVersion(version string, annotations map[string]string) entsv1beta1.EnterpriseSearch {
-	ents := entsv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ents", Annotations: annotations},
-		Spec: entsv1beta1.EnterpriseSearchSpec{Version: version}}
-	ents.SetAssociationConf(&associationConf)
-	return ents
+func entWithVersion(version string, annotations map[string]string) entv1beta1.EnterpriseSearch {
+	ent := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent", Annotations: annotations},
+		Spec: entv1beta1.EnterpriseSearchSpec{Version: version}}
+	ent.SetAssociationConf(&associationConf)
+	return ent
 }
 
 func podWithVersion(name string, version string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns", Name: name, Labels: map[string]string{
-				EnterpriseSearchNameLabelName: "ents",
+				EnterpriseSearchNameLabelName: "ent",
 				common.TypeLabelName:          Type,
 				VersionLabelName:              version,
 			},
@@ -66,7 +66,7 @@ func podWithVersion(name string, version string) *corev1.Pod {
 
 func deploymentWithVersion(version string) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: entsname.Deployment("ents")},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: entName.Deployment("ent")},
 		Spec: appsv1.DeploymentSpec{Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
 				VersionLabelName: version,
@@ -102,27 +102,27 @@ func (f fakeRoundTrip) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func TestVersionUpgrade_Handle(t *testing.T) {
 	tests := []struct {
-		name            string
-		ents            entsv1beta1.EnterpriseSearch
-		runtimeObjs     []runtime.Object
-		httpChecks      roundTripChecks
-		wantUpdatedEnts entsv1beta1.EnterpriseSearch
-		wantErr         string
+		name           string
+		ent            entv1beta1.EnterpriseSearch
+		runtimeObjs    []runtime.Object
+		httpChecks     roundTripChecks
+		wantUpdatedEnt entv1beta1.EnterpriseSearch
+		wantErr        string
 	}{
 		{
 			name: "no version upgrade: nothing to do",
-			ents: entSearchWithVersion("7.7.0", nil),
+			ent:  entWithVersion("7.7.0", nil),
 			runtimeObjs: []runtime.Object{
 				deploymentWithVersion("7.7.0"),
 			},
 			httpChecks: roundTripChecks{
 				called: false,
 			},
-			wantUpdatedEnts: entSearchWithVersion("7.7.0", nil),
+			wantUpdatedEnt: entWithVersion("7.7.0", nil),
 		},
 		{
 			name: "version upgrade requested: enable read-only mode",
-			ents: entSearchWithVersion("7.7.1", nil),
+			ent:  entWithVersion("7.7.1", nil),
 			runtimeObjs: []runtime.Object{
 				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
@@ -130,17 +130,17 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			},
 			httpChecks: roundTripChecks{
 				called:           true,
-				withURL:          "https://ents-ents-http.ns.svc:3002/api/ent/v1/internal/read_only_mode",
+				withURL:          "https://ent-ent-http.ns.svc:3002/api/ent/v1/internal/read_only_mode",
 				withBody:         "{\"enabled\": true}",
 				returnStatusCode: 200,
 			},
-			wantUpdatedEnts: entSearchWithVersion("7.7.0", map[string]string{
+			wantUpdatedEnt: entWithVersion("7.7.0", map[string]string{
 				ReadOnlyModeAnnotationName: "true",
 			}),
 		},
 		{
 			name: "version upgrade requested, but no Pod running: error out",
-			ents: entSearchWithVersion("7.7.1", nil),
+			ent:  entWithVersion("7.7.1", nil),
 			runtimeObjs: []runtime.Object{
 				deploymentWithVersion("7.7.0"),
 			},
@@ -149,7 +149,7 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 		},
 		{
 			name: "version upgrade requested, but annotation already set: do nothing",
-			ents: entSearchWithVersion("7.7.1", map[string]string{
+			ent: entWithVersion("7.7.1", map[string]string{
 				ReadOnlyModeAnnotationName: "true",
 			}),
 			runtimeObjs: []runtime.Object{
@@ -160,13 +160,13 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			httpChecks: roundTripChecks{
 				called: false,
 			},
-			wantUpdatedEnts: entSearchWithVersion("7.7.0", map[string]string{
+			wantUpdatedEnt: entWithVersion("7.7.0", map[string]string{
 				ReadOnlyModeAnnotationName: "true",
 			}),
 		},
 		{
 			name: "version upgrade over: disable read-only mode",
-			ents: entSearchWithVersion("7.7.1", map[string]string{
+			ent: entWithVersion("7.7.1", map[string]string{
 				ReadOnlyModeAnnotationName: "true",
 			}),
 			runtimeObjs: []runtime.Object{
@@ -176,16 +176,16 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			},
 			httpChecks: roundTripChecks{
 				called:           true,
-				withURL:          "https://ents-ents-http.ns.svc:3002/api/ent/v1/internal/read_only_mode",
+				withURL:          "https://ent-ent-http.ns.svc:3002/api/ent/v1/internal/read_only_mode",
 				withBody:         "{\"enabled\": false}",
 				returnStatusCode: 200,
 			},
-			wantUpdatedEnts: entSearchWithVersion("7.7.0", map[string]string{}),
+			wantUpdatedEnt: entWithVersion("7.7.0", map[string]string{}),
 		},
 		{
 			name: "version upgrade requested, but no association configured : do nothing",
-			ents: entsv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ents"},
-				Spec: entsv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Spec: entv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
 			runtimeObjs: []runtime.Object{
 				deploymentWithVersion("7.7.0"),
 				podWithVersion("pod1", "7.7.0"),
@@ -194,18 +194,18 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 			httpChecks: roundTripChecks{
 				called: false,
 			},
-			wantUpdatedEnts: entsv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ents"},
-				Spec: entsv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
+			wantUpdatedEnt: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Spec: entv1beta1.EnterpriseSearchSpec{Version: "7.7.1"}},
 		},
 	}
 	for _, tt := range tests {
 		checks := roundTripChecks{returnStatusCode: tt.httpChecks.returnStatusCode}
 		httpClient := &http.Client{Transport: fakeRoundTrip{checks: &checks}}
-		k8sClient := k8s.WrappedFakeClient(append(append(tt.runtimeObjs, &esUserSecret), &tt.ents)...)
+		k8sClient := k8s.WrappedFakeClient(append(append(tt.runtimeObjs, &esUserSecret), &tt.ent)...)
 		t.Run(tt.name, func(t *testing.T) {
 			r := &VersionUpgrade{
 				k8sClient:  k8sClient,
-				ents:       tt.ents,
+				ent:        tt.ent,
 				httpClient: httpClient,
 				recorder:   record.NewFakeRecorder(10),
 			}
@@ -223,26 +223,26 @@ func TestVersionUpgrade_Handle(t *testing.T) {
 func Test_hasReadOnlyAnnotationTrue(t *testing.T) {
 	tests := []struct {
 		name string
-		ents entsv1beta1.EnterpriseSearch
+		ent  entv1beta1.EnterpriseSearch
 		want bool
 	}{
 		{
 			name: "annotation set to true: true",
-			ents: entsv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ents",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
 				Annotations: map[string]string{ReadOnlyModeAnnotationName: "true"},
 			}},
 			want: true,
 		},
 		{
 			name: "no annotation set: false",
-			ents: entsv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ents",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
 				Annotations: nil,
 			}},
 			want: false,
 		},
 		{
 			name: "annotation set to anything else: false",
-			ents: entsv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ents",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent",
 				Annotations: map[string]string{ReadOnlyModeAnnotationName: "anything-else"},
 			}},
 			want: false,
@@ -250,7 +250,7 @@ func Test_hasReadOnlyAnnotationTrue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hasReadOnlyAnnotationTrue(tt.ents); got != tt.want {
+			if got := hasReadOnlyAnnotationTrue(tt.ent); got != tt.want {
 				t.Errorf("hasReadOnlyAnnotationTrue() = %v, want %v", got, tt.want)
 			}
 		})
@@ -260,19 +260,19 @@ func Test_hasReadOnlyAnnotationTrue(t *testing.T) {
 func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 	tests := []struct {
 		name string
-		ents entsv1beta1.EnterpriseSearch
+		ent  entv1beta1.EnterpriseSearch
 		pods []runtime.Object
 		want bool
 	}{
 		{
 			name: "no Pods exist: not a version upgrade",
-			ents: entSearchWithVersion("7.7.1", nil),
+			ent:  entWithVersion("7.7.1", nil),
 			pods: []runtime.Object{},
 			want: false,
 		},
 		{
 			name: "all Pods match the expected version: not a version upgrade",
-			ents: entSearchWithVersion("7.7.0", nil),
+			ent:  entWithVersion("7.7.0", nil),
 			pods: []runtime.Object{
 				podWithVersion("pod1", "7.7.0"),
 				podWithVersion("pod2", "7.7.0"),
@@ -281,7 +281,7 @@ func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 		},
 		{
 			name: "at least one Pod has an earlier version: version upgrade",
-			ents: entSearchWithVersion("7.7.1", nil),
+			ent:  entWithVersion("7.7.1", nil),
 			pods: []runtime.Object{
 				podWithVersion("pod1", "7.7.1"),
 				podWithVersion("pod2", "7.7.0"),
@@ -294,9 +294,9 @@ func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &VersionUpgrade{
 				k8sClient: c,
-				ents:      tt.ents,
+				ent:       tt.ent,
 			}
-			got, err := r.isPriorVersionStillRunning(version.MustParse(tt.ents.Spec.Version))
+			got, err := r.isPriorVersionStillRunning(version.MustParse(tt.ent.Spec.Version))
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
@@ -304,7 +304,7 @@ func TestVersionUpgrade_isPriorVersionStillRunning(t *testing.T) {
 }
 
 func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
-	ents := entSearchWithVersion("7.7.0", nil)
+	ent := entWithVersion("7.7.0", nil)
 
 	tests := []struct {
 		name     string
@@ -315,14 +315,14 @@ func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
 		{
 			name:     "read-only enabled",
 			enabled:  true,
-			wantURL:  "https://ents-ents-http.ns.svc:3002/api/ent/v1/internal/read_only_mode",
+			wantURL:  "https://ent-ent-http.ns.svc:3002/api/ent/v1/internal/read_only_mode",
 			wantBody: "{\"enabled\": true}",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(&ents, &esUserSecret)
-			u := &VersionUpgrade{k8sClient: c, ents: ents}
+			c := k8s.WrappedFakeClient(&ent, &esUserSecret)
+			u := &VersionUpgrade{k8sClient: c, ent: ent}
 			req, err := u.readOnlyModeRequest(tt.enabled)
 			require.NoError(t, err)
 
@@ -344,29 +344,29 @@ func TestVersionUpgrade_readOnlyModeRequest(t *testing.T) {
 }
 
 func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
-	entsv77 := entSearchWithVersion("7.7.0", nil)
+	entv77 := entWithVersion("7.7.0", nil)
 	deploymentv77 := deploymentWithVersion("7.7.0")
-	entsv78 := entSearchWithVersion("7.8.0", nil)
+	entv78 := entWithVersion("7.8.0", nil)
 
 	tests := []struct {
 		name            string
 		runtimeObjs     []runtime.Object
-		ents            entsv1beta1.EnterpriseSearch
+		ent             entv1beta1.EnterpriseSearch
 		expectedVersion version.Version
 		want            bool
 	}{
 		{
 			name:            "7.7.0 to 7.7.0: not a version upgrade",
 			runtimeObjs:     []runtime.Object{deploymentv77},
-			ents:            entsv77,
-			expectedVersion: version.MustParse(entsv77.Spec.Version),
+			ent:             entv77,
+			expectedVersion: version.MustParse(entv77.Spec.Version),
 			want:            false,
 		},
 		{
 			name:            "7.7.0 to 7.8.0: version upgrade",
 			runtimeObjs:     []runtime.Object{deploymentv77},
-			ents:            entsv78,
-			expectedVersion: version.MustParse(entsv78.Spec.Version),
+			ent:             entv78,
+			expectedVersion: version.MustParse(entv78.Spec.Version),
 			want:            true,
 		},
 	}
@@ -374,7 +374,7 @@ func TestVersionUpgrade_isVersionUpgrade(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &VersionUpgrade{
 				k8sClient: k8s.WrappedFakeClient(tt.runtimeObjs...),
-				ents:      tt.ents,
+				ent:       tt.ent,
 			}
 			got, err := r.isVersionUpgrade(tt.expectedVersion)
 			require.NoError(t, err)

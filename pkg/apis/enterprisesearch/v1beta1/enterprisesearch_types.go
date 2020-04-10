@@ -95,37 +95,37 @@ type EnterpriseSearchStatus struct {
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
-func (ents EnterpriseSearchStatus) IsDegraded(prev EnterpriseSearchStatus) bool {
-	return prev.Health == EnterpriseSearchGreen && ents.Health != EnterpriseSearchRed
+func (ent EnterpriseSearchStatus) IsDegraded(prev EnterpriseSearchStatus) bool {
+	return prev.Health == EnterpriseSearchGreen && ent.Health != EnterpriseSearchRed
 }
 
 // IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted
-func (ents *EnterpriseSearch) IsMarkedForDeletion() bool {
-	return !ents.DeletionTimestamp.IsZero()
+func (ent *EnterpriseSearch) IsMarkedForDeletion() bool {
+	return !ent.DeletionTimestamp.IsZero()
 }
 
-func (ents *EnterpriseSearch) ServiceAccountName() string {
-	return ents.Spec.ServiceAccountName
+func (ent *EnterpriseSearch) ServiceAccountName() string {
+	return ent.Spec.ServiceAccountName
 }
 
-func (ents *EnterpriseSearch) ElasticsearchRef() commonv1.ObjectSelector {
-	return ents.Spec.ElasticsearchRef
+func (ent *EnterpriseSearch) ElasticsearchRef() commonv1.ObjectSelector {
+	return ent.Spec.ElasticsearchRef
 }
 
-func (ents *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {
-	return ents.assocConf
+func (ent *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {
+	return ent.assocConf
 }
 
-func (ents *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {
-	ents.assocConf = assocConf
+func (ent *EnterpriseSearch) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	ent.assocConf = assocConf
 }
 
-func (ents *EnterpriseSearch) AssociationStatus() commonv1.AssociationStatus {
-	return ents.Status.Association
+func (ent *EnterpriseSearch) AssociationStatus() commonv1.AssociationStatus {
+	return ent.Status.Association
 }
 
-func (ents *EnterpriseSearch) SetAssociationStatus(status commonv1.AssociationStatus) {
-	ents.Status.Association = status
+func (ent *EnterpriseSearch) SetAssociationStatus(status commonv1.AssociationStatus) {
+	ent.Status.Association = status
 }
 
 var _ commonv1.Associated = &EnterpriseSearch{}
@@ -133,7 +133,7 @@ var _ commonv1.Associated = &EnterpriseSearch{}
 // +kubebuilder:object:root=true
 
 // EnterpriseSearch is a Kubernetes CRD to represent Enterprise Search.
-// +kubebuilder:resource:categories=elastic,shortName=entsearch
+// +kubebuilder:resource:categories=elastic,shortName=ent
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"

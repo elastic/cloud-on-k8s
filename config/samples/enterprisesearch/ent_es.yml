@@ -16,7 +16,7 @@ spec:
 apiVersion: enterprisesearch.k8s.elastic.co/v1beta1
 kind: EnterpriseSearch
 metadata:
-  name: entsearch-sample
+  name: ent-sample
 spec:
   version: 7.6.0
   image: $DOCKER_IMAGE
