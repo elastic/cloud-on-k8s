@@ -5,9 +5,6 @@
 package k8s
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
@@ -16,10 +13,7 @@ import (
 )
 
 func Scheme() *runtime.Scheme {
-	if err := scheme.SetupScheme(); err != nil {
-		fmt.Println("Cannot setup scheme for fake K8s client", err)
-		os.Exit(1)
-	}
+	scheme.SetupScheme()
 	return k8sscheme.Scheme
 }
 

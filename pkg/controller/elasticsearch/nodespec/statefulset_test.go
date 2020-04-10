@@ -17,7 +17,7 @@ import (
 )
 
 func Test_setVolumeClaimsControllerReference(t *testing.T) {
-	_ = scheme.SetupScheme()
+	scheme.SetupScheme()
 	varTrue := true
 	varFalse := false
 	es := esv1.Elasticsearch{

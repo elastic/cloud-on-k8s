@@ -24,7 +24,7 @@ import (
 )
 
 func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
-	_ = commonscheme.SetupScheme()
+	commonscheme.SetupScheme()
 	w := watches.NewDynamicWatches()
 	for _, name := range watchNames {
 		_ = w.Secrets.AddHandler(watches.NamedWatch{

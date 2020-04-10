@@ -103,7 +103,7 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.NoError(t, scheme.SetupScheme())
+			scheme.SetupScheme()
 			client := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
 			e := NewExpectedStatefulSetUpdates(client)
 			for i := range tt.expectGenerations {

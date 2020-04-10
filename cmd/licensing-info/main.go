@@ -54,10 +54,7 @@ func newK8sClient() client.Client {
 		log.Fatal(err, "Failed to get a Kubernetes config")
 	}
 
-	err = eckscheme.SetupScheme()
-	if err != nil {
-		log.Fatal(err, "Failed to set up the ECK scheme")
-	}
+	eckscheme.SetupScheme()
 
 	c, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {

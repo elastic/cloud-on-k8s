@@ -103,7 +103,7 @@ func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, count int) err
 }
 
 func TestUpdateMinimumMasterNodes(t *testing.T) {
-	require.NoError(t, scheme.SetupScheme())
+	scheme.SetupScheme()
 	esName := "es"
 	ns := "ns"
 	nsn := types.NamespacedName{Name: esName, Namespace: ns}

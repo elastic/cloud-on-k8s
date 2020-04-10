@@ -59,7 +59,7 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 
 // RunValidationWebhookTests runs a series of ValidationWebhookTestCases
 func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, validator admission.Validator, tests ...ValidationWebhookTestCase) {
-	require.NoError(t, scheme.SetupScheme())
+	scheme.SetupScheme()
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()
 
 	webhook := admission.ValidatingWebhookFor(validator)

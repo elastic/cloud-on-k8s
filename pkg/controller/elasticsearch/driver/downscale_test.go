@@ -876,7 +876,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 }
 
 func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
-	require.NoError(t, commonscheme.SetupScheme())
+	commonscheme.SetupScheme()
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
 	ssetMasters := sset.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
 	masterPods := []corev1.Pod{

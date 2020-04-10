@@ -35,7 +35,7 @@ var Config *rest.Config
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M) {
 	// add CRDs scheme to the client
-	_ = controllerscheme.SetupScheme()
+	controllerscheme.SetupScheme()
 
 	t := &envtest.Environment{
 		CRDDirectoryPaths:        []string{CRDsRelativePath},

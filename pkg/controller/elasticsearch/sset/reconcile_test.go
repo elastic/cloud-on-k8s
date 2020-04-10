@@ -25,7 +25,7 @@ import (
 )
 
 func TestReconcileStatefulSet(t *testing.T) {
-	require.NoError(t, commonscheme.SetupScheme())
+	commonscheme.SetupScheme()
 	es := esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",

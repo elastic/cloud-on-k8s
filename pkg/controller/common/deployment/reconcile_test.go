@@ -48,7 +48,7 @@ func TestWithTemplateHash(t *testing.T) {
 }
 
 func TestReconcile(t *testing.T) {
-	require.NoError(t, commonscheme.SetupScheme())
+	commonscheme.SetupScheme()
 	k8sClient := k8s.WrappedFakeClient()
 	expected := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{

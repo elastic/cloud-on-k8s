@@ -52,6 +52,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=aks
 CLUSTER_NAME=$BUILD_TAG
 KUBERNETES_VERSION=default
+TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: aks-ci
@@ -124,6 +125,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
 KUBERNETES_VERSION="${clusterVersion}"
+TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -164,6 +166,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=kind
 CLUSTER_NAME=kind-$BUILD_NUMBER
 KUBERNETES_VERSION=default
+TEST_OPTS=-race
 ENV
 ;;
 
@@ -186,6 +189,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=eck-e2e-$BUILD_NUMBER
 KUBERNETES_VERSION=default
+TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -222,6 +226,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=ocp
 CLUSTER_NAME=$BUILD_TAG
 KUBERNETES_VERSION=default
+TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: ocp-ci
@@ -253,6 +258,7 @@ MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secr
 
 OPERATOR_IMAGE = $JKS_PARAM_OPERATOR_IMAGE
 TEST_TIMEOUT = 10m
+TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: eks-ci
@@ -290,6 +296,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=${clusterName}
 KUBERNETES_VERSION=default
+TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: gke-ci
@@ -322,6 +329,7 @@ BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=gke
 CLUSTER_NAME=eck-pr-$BUILD_NUMBER
 KUBERNETES_VERSION=default
+TEST_OPTS=-race
 ENV
 write_deployer_config <<CFG
 id: gke-ci

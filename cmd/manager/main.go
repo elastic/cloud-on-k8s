@@ -240,15 +240,9 @@ func execute() {
 	cfg := ctrl.GetConfigOrDie()
 	// Setup Scheme for all resources
 	log.Info("Setting up scheme")
-	if err := controllerscheme.SetupScheme(); err != nil {
-		log.Error(err, "Error setting up scheme")
-		os.Exit(1)
-	}
+	controllerscheme.SetupScheme()
 	// also set up the v1beta1 scheme, used by the v1beta1 webhook
-	if err := controllerscheme.SetupV1beta1Scheme(); err != nil {
-		log.Error(err, "Error setting up v1beta1 schemes")
-		os.Exit(1)
-	}
+	controllerscheme.SetupV1beta1Scheme()
 
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("Setting up manager")
