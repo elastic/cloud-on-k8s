@@ -21,9 +21,8 @@ import (
 // propagated from the main driver.
 type downscaleContext struct {
 	// clients
-	k8sClient   k8s.Client
-	esClient    esclient.Client
-	shardLister esclient.ShardLister
+	k8sClient k8s.Client
+	esClient  esclient.Client
 	// driver states
 	resourcesState reconcile.ResourcesState
 	observedState  observer.State
@@ -49,7 +48,6 @@ func newDownscaleContext(
 	return downscaleContext{
 		k8sClient:      k8sClient,
 		esClient:       esClient,
-		shardLister:    esClient,
 		resourcesState: resourcesState,
 		observedState:  observedState,
 		reconcileState: reconcileState,

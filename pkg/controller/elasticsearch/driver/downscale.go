@@ -181,11 +181,11 @@ func calculatePerformableDownscale(
 	}
 	// iterate on all leaving nodes (ordered by highest ordinal first)
 	for _, node := range downscale.leavingNodeNames() {
-		migrating, err := migration.NodeHasShard(ctx.parentCtx, ctx.shardLister, node)
+		evacuated, err := migration.NodeEvacuated(ctx.parentCtx, ctx.esClient, node)
 		if err != nil {
 			return performableDownscale, err
 		}
-		if migrating {
+		if !evacuated {
 			ssetLogger(downscale.statefulSet).V(1).Info("Data migration not over yet, skipping node deletion", "node", node)
 			ctx.reconcileState.UpdateElasticsearchMigrating(ctx.resourcesState, ctx.observedState)
 			// no need to check other nodes since we remove them in order and this one isn't ready anyway

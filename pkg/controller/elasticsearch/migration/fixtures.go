@@ -22,35 +22,37 @@ func loadFileBytes(fileName string) []byte {
 	return contents
 }
 
-type fakeShardLister struct {
-	shards esclient.Shards
-	err    error
-}
-
-func (f *fakeShardLister) GetShards(_ context.Context) (esclient.Shards, error) {
-	return f.shards, f.err
+type fakeClient struct {
+	esclient.Client
+	exclusions string
+	shards     esclient.Shards
+	err        error
 }
 
 func NewFakeShardLister(shards esclient.Shards) esclient.ShardLister {
-	return &fakeShardLister{shards: shards}
+	return &fakeClient{shards: shards}
 }
 
 func NewFakeShardListerWithError(shards esclient.Shards, err error) esclient.ShardLister {
-	return &fakeShardLister{shards: shards, err: err}
+	return &fakeClient{shards: shards, err: err}
 }
 
 func NewFakeShardFromFile(fileName string) esclient.ShardLister {
 	var cs esclient.Shards
 	sampleClusterState := loadFileBytes(fileName)
 	err := json.Unmarshal(sampleClusterState, &cs)
-	return &fakeShardLister{shards: cs, err: err}
+	return &fakeClient{shards: cs, err: err}
 }
 
-type fakeAllocationSetter struct {
-	value string
-}
-
-func (f *fakeAllocationSetter) ExcludeFromShardAllocation(_ context.Context, nodes string) error {
-	f.value = nodes
+func (f *fakeClient) ExcludeFromShardAllocation(_ context.Context, nodes string) error {
+	f.exclusions = nodes
 	return nil
+}
+
+func (f *fakeClient) ExcludedFromShardAllocation(_ context.Context) (string, error) {
+	return f.exclusions, f.err
+}
+
+func (f *fakeClient) GetShards(_ context.Context) (esclient.Shards, error) {
+	return f.shards, f.err
 }

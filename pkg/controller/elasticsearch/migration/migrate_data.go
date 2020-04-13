@@ -38,6 +38,19 @@ func NodeHasShard(ctx context.Context, shardLister esclient.ShardLister, podName
 	return false, nil
 }
 
+// NodeEvacuated tests whether a node identified by podName is excluded from shard allocation and does not contain any shards.
+func NodeEvacuated(ctx context.Context, esClient esclient.Client, podName string) (bool, error) {
+	exclusions, err := esClient.ExcludedFromShardAllocation(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !strings.Contains(exclusions, podName) {
+		return false, nil
+	}
+	hasShards, err := NodeHasShard(ctx, esClient, podName)
+	return !hasShards, err
+}
+
 // allocationExcludeFromAnnotation returns the allocation exclude value stored in an annotation.
 // May be empty if not set.
 func allocationExcludeFromAnnotation(es esv1.Elasticsearch) string {
@@ -59,7 +72,7 @@ func MigrateData(
 	ctx context.Context,
 	c k8s.Client,
 	es esv1.Elasticsearch,
-	allocationSetter esclient.AllocationSetter,
+	allocationFilter esclient.AllocationFilter,
 	leavingNodes []string,
 ) error {
 	// compute the expected exclusion value
@@ -74,7 +87,7 @@ func MigrateData(
 		return nil
 	}
 	log.Info("Setting routing allocation excludes", "namespace", es.Namespace, "es_name", es.Name, "value", exclusions)
-	if err := allocationSetter.ExcludeFromShardAllocation(ctx, exclusions); err != nil {
+	if err := allocationFilter.ExcludeFromShardAllocation(ctx, exclusions); err != nil {
 		return err
 	}
 	// store updated value in an annotation so we don't make the same call over and over again

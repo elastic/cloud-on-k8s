@@ -8,11 +8,14 @@ import (
 	"context"
 )
 
-// AllocationSetter captures Elasticsearch API calls around allocation filtering.
-type AllocationSetter interface {
+// AllocationFilter captures Elasticsearch API calls around allocation filtering.
+type AllocationFilter interface {
 	// ExcludeFromShardAllocation takes a comma-separated string of node names and
 	// configures transient allocation exclusions for the given nodes.
 	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
+
+	// ExcludedFromShardAllocation returns the excluded node names from transient cluster settings.
+	ExcludedFromShardAllocation(ctx context.Context) (string, error)
 }
 
 // ShardLister captures Elasticsearch API calls around shards retrieval.
@@ -37,6 +40,16 @@ func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string)
 		},
 	}
 	return c.put(ctx, "/_cluster/settings", allocationSettings, nil)
+}
+
+func (c *clientV6) ExcludedFromShardAllocation(ctx context.Context) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, DefaultReqTimeout)
+	defer cancel()
+	var allocationSettings ClusterRoutingAllocation
+	if err := c.get(ctx, "/_cluster/settings", &allocationSettings); err != nil {
+		return "", err
+	}
+	return allocationSettings.Transient.Cluster.Routing.Allocation.Exclude.Name, nil
 }
 
 func (c *clientV6) GetShards(ctx context.Context) (Shards, error) {

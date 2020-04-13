@@ -6,6 +6,7 @@ package migration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -197,15 +198,82 @@ func TestMigrateData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			allocationSetter := fakeAllocationSetter{}
+			esClient := fakeClient{}
 			c := k8s.WrappedFakeClient(&tt.es)
-			err := MigrateData(context.Background(), c, tt.es, &allocationSetter, tt.leavingNodes)
+			err := MigrateData(context.Background(), c, tt.es, &esClient, tt.leavingNodes)
 			require.NoError(t, err)
-			assert.Contains(t, allocationSetter.value, tt.want)
+			assert.Contains(t, esClient.exclusions, tt.want)
 			var retrievedES esv1.Elasticsearch
 			err = c.Get(k8s.ExtractNamespacedName(&tt.es), &retrievedES)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantEs.Annotations, retrievedES.Annotations)
+		})
+	}
+}
+
+func TestNodeEvacuated(t *testing.T) {
+	type args struct {
+		esClient client.Client
+		podName  string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "false: not excluded from allocation",
+			args: args{
+				esClient: &fakeClient{},
+				podName:  "pod-1",
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "false: node still contains shards",
+			args: args{
+				esClient: &fakeClient{shards: []client.Shard{
+					{
+						Index: "index-1",
+						Shard: "0",
+					},
+				}},
+				podName: "pod-1",
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "true: node excluded and empty",
+			args: args{
+				esClient: &fakeClient{exclusions: "pod-1"},
+				podName:  "pod-1",
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "errors are handled",
+			args: args{
+				esClient: &fakeClient{err: errors.New("boom")},
+				podName:  "pod-1",
+			},
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NodeEvacuated(context.Background(), tt.args.esClient, tt.args.podName)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NodeEvacuated() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("NodeEvacuated() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

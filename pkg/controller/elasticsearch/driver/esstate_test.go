@@ -27,8 +27,8 @@ type fakeESClient struct { //nolint:maligned
 	AddVotingConfigExclusionsCalled     bool
 	AddVotingConfigExclusionsCalledWith []string
 
-	ExcludeFromShardAllocationCalled     bool
-	ExcludeFromShardAllocationCalledWith string
+	ExcludeFromShardAllocationCalled bool
+	CurrentAllocationFilters         string
 
 	DisableReplicaShardsAllocationCalled bool
 
@@ -45,6 +45,8 @@ type fakeESClient struct { //nolint:maligned
 
 	health                      esclient.Health
 	GetClusterHealthCalledCount int
+
+	shards esclient.Shards
 }
 
 func (f *fakeESClient) SetMinimumMasterNodes(_ context.Context, n int) error {
@@ -61,8 +63,12 @@ func (f *fakeESClient) AddVotingConfigExclusions(_ context.Context, nodeNames []
 
 func (f *fakeESClient) ExcludeFromShardAllocation(_ context.Context, nodes string) error {
 	f.ExcludeFromShardAllocationCalled = true
-	f.ExcludeFromShardAllocationCalledWith = nodes
+	f.CurrentAllocationFilters = nodes
 	return nil
+}
+
+func (f *fakeESClient) ExcludedFromShardAllocation(_ context.Context) (string, error) {
+	return f.CurrentAllocationFilters, nil
 }
 
 func (f *fakeESClient) DisableReplicaShardsAllocation(_ context.Context) error {
@@ -98,6 +104,10 @@ func (f *fakeESClient) GetClusterRoutingAllocation(_ context.Context) (esclient.
 func (f *fakeESClient) GetClusterHealth(_ context.Context) (esclient.Health, error) {
 	f.GetClusterHealthCalledCount++
 	return f.health, nil
+}
+
+func (f *fakeESClient) GetShards(_ context.Context) (esclient.Shards, error) {
+	return f.shards, nil
 }
 
 // -- ESState tests
