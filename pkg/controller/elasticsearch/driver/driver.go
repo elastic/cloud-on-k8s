@@ -66,6 +66,9 @@ type DefaultDriverParameters struct {
 
 	// ES is the Elasticsearch resource to reconcile
 	ES esv1.Elasticsearch
+	// ES cached client builder
+	EsCachedClientBuilder esclient.CachedClientBuilder
+
 	// SupportedVersions verifies whether we can support upgrading from the current pods.
 	SupportedVersions esversion.LowestHighestSupportedVersions
 
@@ -276,7 +279,10 @@ func (d *defaultDriver) newElasticsearchClient(
 	caCerts []*x509.Certificate,
 ) esclient.Client {
 	url := services.ElasticsearchURL(d.ES, state.CurrentPodsByPhase[corev1.PodRunning])
-	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user, v, caCerts)
+	return d.EsCachedClientBuilder.NewElasticsearchCachedClient(
+		k8s.ExtractNamespacedName(&d.ES),
+		esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user, v, caCerts),
+	)
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported

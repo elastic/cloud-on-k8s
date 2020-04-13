@@ -36,6 +36,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	commonversion "github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
@@ -67,10 +68,11 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileEl
 	observerSettings := observer.DefaultSettings
 	observerSettings.Tracer = params.Tracer
 	return &ReconcileElasticsearch{
-		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(name),
-		licenseChecker: license.NewLicenseChecker(client, params.OperatorNamespace),
-		esObservers:    observer.NewManager(observerSettings),
+		Client:                client,
+		recorder:              mgr.GetEventRecorderFor(name),
+		licenseChecker:        license.NewLicenseChecker(client, params.OperatorNamespace),
+		esCachedClientBuilder: esclient.NewCachedClientBuilder(),
+		esObservers:           observer.NewManager(observerSettings),
 
 		dynamicWatches: watches.NewDynamicWatches(),
 		expectations:   expectations.NewClustersExpectations(client),
@@ -157,6 +159,8 @@ type ReconcileElasticsearch struct {
 	operator.Parameters
 	recorder       record.EventRecorder
 	licenseChecker license.Checker
+
+	esCachedClientBuilder esclient.CachedClientBuilder
 
 	esObservers *observer.Manager
 
@@ -294,17 +298,18 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 
 	return driver.NewDefaultDriver(driver.DefaultDriverParameters{
-		OperatorParameters: r.Parameters,
-		ES:                 es,
-		ReconcileState:     reconcileState,
-		Client:             r.Client,
-		Recorder:           r.recorder,
-		Version:            *ver,
-		Expectations:       r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
-		Observers:          r.esObservers,
-		DynamicWatches:     r.dynamicWatches,
-		SupportedVersions:  *supported,
-		LicenseChecker:     r.licenseChecker,
+		OperatorParameters:    r.Parameters,
+		ES:                    es,
+		EsCachedClientBuilder: r.esCachedClientBuilder,
+		ReconcileState:        reconcileState,
+		Client:                r.Client,
+		Recorder:              r.recorder,
+		Version:               *ver,
+		Expectations:          r.expectations.ForCluster(k8s.ExtractNamespacedName(&es)),
+		Observers:             r.esObservers,
+		DynamicWatches:        r.dynamicWatches,
+		SupportedVersions:     *supported,
+		LicenseChecker:        r.licenseChecker,
 	}).Reconcile(ctx)
 }
 
@@ -335,6 +340,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 
 // onDelete garbage collect resources when a Elasticsearch cluster is deleted
 func (r *ReconcileElasticsearch) onDelete(es types.NamespacedName) {
+	r.esCachedClientBuilder.Forget(es)
 	r.expectations.RemoveCluster(es)
 	r.esObservers.StopObserving(es)
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(es))
