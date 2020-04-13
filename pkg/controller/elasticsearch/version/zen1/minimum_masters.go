@@ -24,10 +24,6 @@ var (
 	log = logf.Log.WithName("zen1")
 )
 
-const (
-	Zen1MiniumMasterNodesAnnotationName = "elasticsearch.k8s.elastic.co/minimum-master-nodes"
-)
-
 // SetupMinimumMasterNodesConfig modifies the ES config of the given resources to setup
 // zen1 minimum master nodes.
 // This function should not be called unless all the expectations are met.
@@ -126,7 +122,7 @@ func UpdateMinimumMasterNodes(
 		return true, nil
 	}
 
-	return false, UpdateMinimumMasterNodesTo(ctx, es, c, esClient, minimumMasterNodes)
+	return false, UpdateMinimumMasterNodesTo(ctx, es, esClient, minimumMasterNodes)
 }
 
 // UpdateMinimumMasterNodesTo calls the ES API to update the value of zen1 minimum_master_nodes
@@ -135,15 +131,9 @@ func UpdateMinimumMasterNodes(
 func UpdateMinimumMasterNodesTo(
 	ctx context.Context,
 	es esv1.Elasticsearch,
-	c k8s.Client,
 	esClient client.Client,
 	minimumMasterNodes int,
 ) error {
-	// Check if we really need to update minimum_master_nodes with an API call
-	if minimumMasterNodes == minimumMasterNodesFromAnnotation(es) {
-		return nil
-	}
-
 	log.Info("Updating minimum master nodes",
 		"how", "api",
 		"namespace", es.Namespace,
@@ -152,30 +142,5 @@ func UpdateMinimumMasterNodesTo(
 	)
 	ctx, cancel := context.WithTimeout(ctx, client.DefaultReqTimeout)
 	defer cancel()
-	if err := esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes); err != nil {
-		return nil
-	}
-	// Save the current value in an annotation
-	return annotateWithMinimumMasterNodes(c, es, minimumMasterNodes)
-}
-
-func minimumMasterNodesFromAnnotation(es esv1.Elasticsearch) int {
-	annotationStr, set := es.Annotations[Zen1MiniumMasterNodesAnnotationName]
-	if !set {
-		return 0
-	}
-	mmn, err := strconv.Atoi(annotationStr)
-	if err != nil {
-		// this is an optimization only, drop the error
-		return 0
-	}
-	return mmn
-}
-
-func annotateWithMinimumMasterNodes(c k8s.Client, es esv1.Elasticsearch, minimumMasterNodes int) error {
-	if es.Annotations == nil {
-		es.Annotations = make(map[string]string)
-	}
-	es.Annotations[Zen1MiniumMasterNodesAnnotationName] = strconv.Itoa(minimumMasterNodes)
-	return c.Update(&es)
+	return esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
 }
