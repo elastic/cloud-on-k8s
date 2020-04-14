@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log"
 
-	eckscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/license"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
@@ -54,10 +54,7 @@ func newK8sClient() client.Client {
 		log.Fatal(err, "Failed to get a Kubernetes config")
 	}
 
-	err = eckscheme.SetupScheme()
-	if err != nil {
-		log.Fatal(err, "Failed to set up the ECK scheme")
-	}
+	controllerscheme.SetupScheme()
 
 	c, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {

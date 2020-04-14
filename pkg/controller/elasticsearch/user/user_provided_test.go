@@ -14,7 +14,7 @@ import (
 
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -24,7 +24,7 @@ import (
 )
 
 func initDynamicWatches(watchNames ...string) watches.DynamicWatches {
-	_ = commonscheme.SetupScheme()
+	controllerscheme.SetupScheme()
 	w := watches.NewDynamicWatches()
 	for _, name := range watchNames {
 		_ = w.Secrets.AddHandler(watches.NamedWatch{

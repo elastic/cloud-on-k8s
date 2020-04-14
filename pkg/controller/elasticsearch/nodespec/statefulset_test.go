@@ -13,11 +13,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 )
 
 func Test_setVolumeClaimsControllerReference(t *testing.T) {
-	_ = scheme.SetupScheme()
+	controllerscheme.SetupScheme()
 	varTrue := true
 	varFalse := false
 	es := esv1.Elasticsearch{

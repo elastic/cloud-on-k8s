@@ -61,6 +61,9 @@ GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
 	-X github.com/elastic/cloud-on-k8s/pkg/about.buildSnapshot=$(SNAPSHOT)
 
+# options for 'go test'. for instance, set to "-race" to enable the race checker
+TEST_OPTS ?=
+
 ## -- Namespaces
 
 # namespace in which the operator is deployed (see config/operator)
@@ -126,18 +129,18 @@ reattach-pv:
 ## -- tests
 
 unit: clean
-	go test ./pkg/... ./cmd/... -cover
+	go test ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 unit-xml: clean
-	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/...
+	gotestsum --junitfile unit-tests.xml -- -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 integration: GO_TAGS += integration
 integration: clean generate-crds
-	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover
+	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -cover $(TEST_OPTS)
 
 integration-xml: GO_TAGS += integration
 integration-xml: clean generate-crds
-	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/...
+	gotestsum --junitfile integration-tests.xml -- -tags='$(GO_TAGS)' -cover ./pkg/... ./cmd/... $(TEST_OPTS)
 
 lint:
 	golangci-lint run
@@ -405,7 +408,7 @@ e2e-generate-xml:
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	go test ./test/e2e/... -run=dryrun > /dev/null
+	go test ./test/e2e/... -run=dryrun $(TEST_OPTS) > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.

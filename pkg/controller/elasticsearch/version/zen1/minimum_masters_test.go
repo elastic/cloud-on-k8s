@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	settings2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -103,7 +103,7 @@ func (f *fakeESClient) SetMinimumMasterNodes(ctx context.Context, count int) err
 }
 
 func TestUpdateMinimumMasterNodes(t *testing.T) {
-	require.NoError(t, scheme.SetupScheme())
+	controllerscheme.SetupScheme()
 	esName := "es"
 	ns := "ns"
 	nsn := types.NamespacedName{Name: esName, Namespace: ns}
