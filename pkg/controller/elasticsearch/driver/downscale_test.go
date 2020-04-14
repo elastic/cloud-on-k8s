@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
@@ -876,7 +876,7 @@ func Test_doDownscale_zen2VotingConfigExclusions(t *testing.T) {
 }
 
 func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
-	commonscheme.SetupScheme()
+	controllerscheme.SetupScheme()
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: ssetMaster3Replicas.Namespace, Name: "es"}}
 	ssetMasters := sset.TestSset{Name: "masters", Version: "6.8.0", Replicas: 3, Master: true, Data: false}.Build()
 	masterPods := []corev1.Pod{

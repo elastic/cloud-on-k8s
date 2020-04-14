@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/stretchr/testify/require"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,7 +59,7 @@ func ValidationWebhookFailed(causeRegexes ...string) func(*testing.T, *admission
 
 // RunValidationWebhookTests runs a series of ValidationWebhookTestCases
 func RunValidationWebhookTests(t *testing.T, gvk metav1.GroupVersionKind, validator admission.Validator, tests ...ValidationWebhookTestCase) {
-	scheme.SetupScheme()
+	controllerscheme.SetupScheme()
 	decoder := serializer.NewCodecFactory(clientgoscheme.Scheme).UniversalDeserializer()
 
 	webhook := admission.ValidatingWebhookFor(validator)

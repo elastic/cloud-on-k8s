@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -87,7 +87,7 @@ func TestExpectedPodDeletions_DeletionsSatisfied(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			scheme.SetupScheme()
+			controllerscheme.SetupScheme()
 			client := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
 			e := NewExpectedPodDeletions(client)
 			for i := range tt.expectDeletions {

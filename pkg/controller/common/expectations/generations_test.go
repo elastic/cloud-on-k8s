@@ -7,7 +7,7 @@ package expectations
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -103,7 +103,7 @@ func TestExpectedStatefulSetUpdates_GenerationsSatisfied(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			scheme.SetupScheme()
+			controllerscheme.SetupScheme()
 			client := k8s.WrapClient(fake.NewFakeClient(tt.resources...))
 			e := NewExpectedStatefulSetUpdates(client)
 			for i := range tt.expectGenerations {

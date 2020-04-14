@@ -5,7 +5,7 @@
 package k8s
 
 import (
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -13,7 +13,7 @@ import (
 )
 
 func Scheme() *runtime.Scheme {
-	scheme.SetupScheme()
+	controllerscheme.SetupScheme()
 	return k8sscheme.Scheme
 }
 

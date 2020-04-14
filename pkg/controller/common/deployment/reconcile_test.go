@@ -14,7 +14,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	commonscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
+	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
@@ -48,7 +48,7 @@ func TestWithTemplateHash(t *testing.T) {
 }
 
 func TestReconcile(t *testing.T) {
-	commonscheme.SetupScheme()
+	controllerscheme.SetupScheme()
 	k8sClient := k8s.WrappedFakeClient()
 	expected := appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
