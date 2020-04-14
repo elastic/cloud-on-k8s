@@ -71,29 +71,29 @@ func Test_cachedClient_DeleteVotingConfigExclusions(t *testing.T) {
 
 	// DeleteVotingConfigExclusions should be called on a new client
 	es1FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-	assert.NoError(t, es1FakeCachedClient.DeleteVotingConfigExclusions(nil, false))
+	assert.NoError(t, es1FakeCachedClient.DeleteVotingConfigExclusions(context.Background(), false))
 	assert.Equal(t, 1, es1FakeClient.deleteVotingConfigExclusionsCalled)
 
 	// second call should hit the cache
 	es1FakeCachedClient = cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-	assert.NoError(t, es1FakeCachedClient.DeleteVotingConfigExclusions(nil, false))
+	assert.NoError(t, es1FakeCachedClient.DeleteVotingConfigExclusions(context.Background(), false))
 	assert.Equal(t, 1, es1FakeClient.deleteVotingConfigExclusionsCalled)
 
 	// Set a config exclusion
 	es1FakeCachedClient = cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(nil, []string{"foo"}, ""))
+	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(context.Background(), []string{"foo"}, ""))
 	assert.Equal(t, 1, es1FakeClient.addVotingConfigExclusionsCalled)
 	assert.Equal(t, []string{"foo"}, es1FakeClient.votingConfigExclusions)
 
 	// call returns an error
 	es1FakeCachedClient = cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
 	es1FakeClient.err = fmt.Errorf("error")
-	assert.Error(t, es1FakeCachedClient.DeleteVotingConfigExclusions(nil, false))
+	assert.Error(t, es1FakeCachedClient.DeleteVotingConfigExclusions(context.Background(), false))
 	assert.Equal(t, 2, es1FakeClient.deleteVotingConfigExclusionsCalled)
 
 	es1FakeClient.err = nil
 	es1FakeCachedClient = cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-	assert.NoError(t, es1FakeCachedClient.DeleteVotingConfigExclusions(nil, false))
+	assert.NoError(t, es1FakeCachedClient.DeleteVotingConfigExclusions(context.Background(), false))
 	assert.Equal(t, 3, es1FakeClient.deleteVotingConfigExclusionsCalled)
 	assert.Equal(t, []string(nil), es1FakeClient.votingConfigExclusions)
 
@@ -105,30 +105,30 @@ func Test_cachedClient_AddVotingConfigExclusions(t *testing.T) {
 
 	// AddVotingConfigExclusions should be called on a new client
 	es1FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(nil, []string{"foo"}, ""))
+	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(context.Background(), []string{"foo"}, ""))
 	assert.Equal(t, 1, es1FakeClient.addVotingConfigExclusionsCalled)
 	assert.Equal(t, []string{"foo"}, es1FakeClient.votingConfigExclusions)
 
 	// second call should hit the cache
 	es1FakeCachedClient = cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(nil, []string{"foo"}, ""))
+	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(context.Background(), []string{"foo"}, ""))
 	assert.Equal(t, 1, es1FakeClient.addVotingConfigExclusionsCalled)
 	assert.Equal(t, []string{"foo"}, es1FakeClient.votingConfigExclusions)
 
 	// Update config exclusion
 	es1FakeCachedClient = cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(nil, []string{"foo", "bar"}, ""))
+	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(context.Background(), []string{"foo", "bar"}, ""))
 	assert.Equal(t, 2, es1FakeClient.addVotingConfigExclusionsCalled)
 	assert.Equal(t, []string{"bar", "foo"}, es1FakeClient.votingConfigExclusions)
 
 	// call returns an error
 	es1FakeClient.err = fmt.Errorf("error")
 	es1FakeCachedClient = cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-	assert.Error(t, es1FakeCachedClient.AddVotingConfigExclusions(nil, []string{"foo"}, ""))
+	assert.Error(t, es1FakeCachedClient.AddVotingConfigExclusions(context.Background(), []string{"foo"}, ""))
 	assert.Equal(t, 3, es1FakeClient.addVotingConfigExclusionsCalled)
 
 	es1FakeClient.err = nil
-	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(nil, []string{"foo", "bar"}, ""))
+	assert.NoError(t, es1FakeCachedClient.AddVotingConfigExclusions(context.Background(), []string{"foo", "bar"}, ""))
 	assert.Equal(t, 4, es1FakeClient.addVotingConfigExclusionsCalled)
 
 }
@@ -188,11 +188,11 @@ func Test_cachedClient_ExcludeFromShardAllocation(t *testing.T) {
 		// Simulate API calls
 		if step.es1Value != nil {
 			es1FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-			_ = es1FakeCachedClient.ExcludeFromShardAllocation(nil, *step.es1Value)
+			_ = es1FakeCachedClient.ExcludeFromShardAllocation(context.Background(), *step.es1Value)
 		}
 		if step.es2Value != nil {
 			es2FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es2, &es2FakeClient)
-			_ = es2FakeCachedClient.ExcludeFromShardAllocation(nil, *step.es2Value)
+			_ = es2FakeCachedClient.ExcludeFromShardAllocation(context.Background(), *step.es2Value)
 		}
 		assert.Equal(t, step.es1ExpectedCalled, es1FakeClient.excludeFromShardAllocationCalled)
 		assert.Equal(t, step.es2ExpectedCalled, es2FakeClient.excludeFromShardAllocationCalled)
@@ -264,11 +264,11 @@ func Test_cachedClient_SetMinimumMasterNodes(t *testing.T) {
 		// Simulate API calls
 		if step.es1Value != nil {
 			es1FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-			_ = es1FakeCachedClient.SetMinimumMasterNodes(nil, *step.es1Value)
+			_ = es1FakeCachedClient.SetMinimumMasterNodes(context.Background(), *step.es1Value)
 		}
 		if step.es2Value != nil {
 			es2FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es2, &es2FakeClient)
-			_ = es2FakeCachedClient.SetMinimumMasterNodes(nil, *step.es2Value)
+			_ = es2FakeCachedClient.SetMinimumMasterNodes(context.Background(), *step.es2Value)
 		}
 		assert.Equal(t, step.es1ExpectedCalled, es1FakeClient.setMinimumMasterNodesCalled)
 		assert.Equal(t, step.es2ExpectedCalled, es2FakeClient.setMinimumMasterNodesCalled)
