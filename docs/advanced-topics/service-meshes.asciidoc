@@ -84,6 +84,7 @@ spec:
     podTemplate:
       metadata:
         annotations:
+          traffic.sidecar.istio.io/includeInboundPorts: "*"
           traffic.sidecar.istio.io/excludeOutboundPorts: "9300" <2>
           traffic.sidecar.istio.io/excludeInboundPorts: "9300"
       spec:
