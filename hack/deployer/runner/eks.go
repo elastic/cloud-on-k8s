@@ -98,7 +98,7 @@ func (e *EKSDriver) Execute() error {
 	case DeleteAction:
 		if exists {
 			log.Printf("Deleting cluster ...")
-			return e.newCmd("eksctl delete cluster --name {{.ClusterName}} --region {{.Region}}").Run()
+			return e.newCmd("eksctl delete cluster -v 0 --name {{.ClusterName}} --region {{.Region}}").Run()
 		}
 		log.Printf("Not deleting cluster as it does not exist")
 	case CreateAction:
@@ -116,7 +116,7 @@ func (e *EKSDriver) Execute() error {
 			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0644); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
-			if err := e.newCmd(`eksctl create cluster -f {{.CreateCfgFile}}`).Run(); err != nil {
+			if err := e.newCmd(`eksctl create cluster -v 0 -f {{.CreateCfgFile}}`).Run(); err != nil {
 				return err
 			}
 			if err := createStorageClass(NoProvisioner); err != nil {
