@@ -249,6 +249,7 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	// modify the deployment: 2 replicas instead of 3
 	var dep appsv1.Deployment
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent"}, &dep)
+	require.NoError(t, err)
 	replicas := int32(2)
 	dep.Spec.Replicas = &replicas
 	err = r.Client.Update(&dep)
@@ -256,19 +257,23 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	// delete the http service
 	var service corev1.Service
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: entName.HTTPService(sample.Name)}, &service)
+	require.NoError(t, err)
 	err = r.Client.Delete(&service)
 	require.NoError(t, err)
 	// delete the configuration secret entry
 	var config corev1.Secret
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent-config"}, &config)
+	require.NoError(t, err)
 	config.Data = nil
 	err = r.Client.Update(&config)
 	require.NoError(t, err)
 	// delete the http certs data
 	var httpInternalSecret corev1.Secret
 	err = r.Client.Get(types.NamespacedName{Namespace: "ns", Name: "sample-ent-http-certs-internal"}, &httpInternalSecret)
+	require.NoError(t, err)
 	httpInternalSecret.Data = nil
 	err = r.Client.Update(&httpInternalSecret)
+	require.NoError(t, err)
 
 	// call again: all resources should be updated to revert our manual changes above
 	res, err = r.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: "sample", Namespace: "ns"}})
