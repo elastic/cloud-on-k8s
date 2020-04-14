@@ -19,20 +19,14 @@ import (
 
 func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	ctx context.Context,
-	state State,
 	ent entv1beta1.EnterpriseSearch,
 	configHash string,
-) (State, error) {
+) (appsv1.Deployment, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
 	deploy := deployment.New(r.deploymentParams(ent, configHash))
-	result, err := deployment.Reconcile(r.K8sClient(), deploy, &ent)
-	if err != nil {
-		return state, err
-	}
-	state.UpdateEnterpriseSearchState(result)
-	return state, nil
+	return deployment.Reconcile(r.K8sClient(), deploy, &ent)
 }
 
 func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1beta1.EnterpriseSearch, configHash string) deployment.Params {

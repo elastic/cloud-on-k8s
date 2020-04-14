@@ -277,3 +277,166 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	// all resources should be the same
 	checkResources()
 }
+
+func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
+	tests := []struct {
+		name       string
+		ent        entv1beta1.EnterpriseSearch
+		deploy     appsv1.Deployment
+		svcName    string
+		wantStatus entv1beta1.EnterpriseSearchStatus
+		wantEvent  bool
+	}{
+		{
+			name: "happy path",
+			ent:  entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"}},
+			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
+				AvailableReplicas: 3,
+				Conditions: []appsv1.DeploymentCondition{
+					{
+						Type:   appsv1.DeploymentAvailable,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			}},
+			svcName: "http-service",
+			wantStatus: entv1beta1.EnterpriseSearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
+					AvailableNodes: 3,
+				},
+				Health:          "green",
+				ExternalService: "http-service",
+			},
+		},
+		{
+			name: "preserve existing association status",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status: entv1beta1.EnterpriseSearchStatus{Association: commonv1.AssociationEstablished}},
+			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
+				AvailableReplicas: 3,
+				Conditions: []appsv1.DeploymentCondition{
+					{
+						Type:   appsv1.DeploymentAvailable,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			}},
+			svcName: "http-service",
+			wantStatus: entv1beta1.EnterpriseSearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
+					AvailableNodes: 3,
+				},
+				Health:          "green",
+				ExternalService: "http-service",
+				Association:     commonv1.AssociationEstablished,
+			},
+		},
+		{
+			name: "red health if deployment not available",
+			ent:  entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"}},
+			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
+				AvailableReplicas: 3,
+				Conditions: []appsv1.DeploymentCondition{
+					{
+						Type:   appsv1.DeploymentAvailable,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			}},
+			svcName: "http-service",
+			wantStatus: entv1beta1.EnterpriseSearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
+					AvailableNodes: 3,
+				},
+				Health:          "red",
+				ExternalService: "http-service",
+			},
+		},
+		{
+			name: "update existing status when replicas count changes",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status: entv1beta1.EnterpriseSearchStatus{
+					ReconcilerStatus: commonv1.ReconcilerStatus{
+						AvailableNodes: 3,
+					},
+					Health:          "green",
+					ExternalService: "http-service",
+				}},
+			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
+				AvailableReplicas: 4,
+				Conditions: []appsv1.DeploymentCondition{
+					{
+						Type:   appsv1.DeploymentAvailable,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			}},
+			svcName: "http-service",
+			wantStatus: entv1beta1.EnterpriseSearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
+					AvailableNodes: 4,
+				},
+				Health:          "green",
+				ExternalService: "http-service",
+			},
+		},
+		{
+			name: "emit an event when health goes from green to red",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status: entv1beta1.EnterpriseSearchStatus{
+					ReconcilerStatus: commonv1.ReconcilerStatus{
+						AvailableNodes: 3,
+					},
+					Health:          "green",
+					ExternalService: "http-service",
+				}},
+			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
+				AvailableReplicas: 3,
+				Conditions: []appsv1.DeploymentCondition{
+					{
+						Type:   appsv1.DeploymentAvailable,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			}},
+			svcName: "http-service",
+			wantStatus: entv1beta1.EnterpriseSearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
+					AvailableNodes: 3,
+				},
+				Health:          "red",
+				ExternalService: "http-service",
+			},
+			wantEvent: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.WrappedFakeClient(&tt.ent)
+			fakeRecorder := record.NewFakeRecorder(10)
+			r := &ReconcileEnterpriseSearch{
+				Client:   c,
+				recorder: fakeRecorder,
+			}
+			err := r.updateStatus(tt.ent, tt.deploy, tt.svcName)
+			require.NoError(t, err)
+
+			var updatedEnt entv1beta1.EnterpriseSearch
+			err = c.Get(k8s.ExtractNamespacedName(&tt.ent), &updatedEnt)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantStatus, updatedEnt.Status)
+
+			if tt.wantEvent {
+				<-fakeRecorder.Events
+			} else {
+				// no event expected
+				select {
+				case e := <-fakeRecorder.Events:
+					require.Fail(t, "no event expected but got one", "event", e)
+				default:
+					// ok
+				}
+			}
+		})
+	}
+}
