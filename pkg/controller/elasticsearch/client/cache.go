@@ -6,6 +6,8 @@ package client
 
 import (
 	"context"
+	"reflect"
+	"sort"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -32,9 +34,15 @@ func NewCachedClientBuilder() CachedClientBuilder {
 }
 
 type cachedState struct {
-	es                     types.NamespacedName
-	allocationSettings     *string
-	zen1MinimumMasterNodes *int
+	es                          types.NamespacedName
+	allocationSettings          *string
+	zen1MinimumMasterNodes      *int
+	votingConfigExclusionsState *votingConfigExclusionsState
+}
+
+type votingConfigExclusionsState struct {
+	initialized            bool
+	votingConfigExclusions []string
 }
 
 var _ CachedClientBuilder = &cache{}
@@ -64,7 +72,10 @@ func (c *cache) newState(es types.NamespacedName) *cachedState {
 	if value, ok := c.states[es]; ok {
 		return value
 	}
-	c.states[es] = &cachedState{es: es}
+	c.states[es] = &cachedState{
+		es:                          es,
+		votingConfigExclusionsState: &votingConfigExclusionsState{},
+	}
 	return c.states[es]
 }
 
@@ -94,6 +105,40 @@ func (c *cachedClient) Equal(c2 Client) bool {
 		return false
 	}
 	return c.Client.Equal(other.Client)
+}
+
+func (c *cachedClient) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+	// Sort the node names in order to have a stable comparison
+	sort.Strings(nodeNames)
+	if c.votingConfigExclusionsState.initialized && reflect.DeepEqual(nodeNames, c.votingConfigExclusionsState.votingConfigExclusions) {
+		log.V(1).Info("Cached voting config exclusions", "namespace", c.es.Namespace, "es_name", c.es.Name, "nodes", nodeNames)
+		return nil
+	}
+	log.Info("Setting voting config exclusions", "namespace", c.es.Namespace, "nodes", nodeNames)
+	if err := c.Client.AddVotingConfigExclusions(ctx, nodeNames, timeout); err != nil {
+		c.votingConfigExclusionsState.initialized = false
+		c.votingConfigExclusionsState.votingConfigExclusions = nil
+		return err
+	}
+	c.votingConfigExclusionsState.initialized = true
+	c.votingConfigExclusionsState.votingConfigExclusions = nodeNames
+	return nil
+}
+
+func (c *cachedClient) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+	if c.votingConfigExclusionsState.initialized && len(c.votingConfigExclusionsState.votingConfigExclusions) == 0 {
+		log.V(1).Info("Cached delete voting config exclusions", "namespace", c.es.Namespace, "es_name", c.es.Name)
+		return nil
+	}
+	log.Info("Delete voting config exclusions", "namespace", c.es.Namespace, "es_name", c.es.Name)
+	if err := c.Client.DeleteVotingConfigExclusions(ctx, waitForRemoval); err != nil {
+		c.votingConfigExclusionsState.initialized = false
+		c.votingConfigExclusionsState.votingConfigExclusions = nil
+		return err
+	}
+	c.votingConfigExclusionsState.initialized = true
+	c.votingConfigExclusionsState.votingConfigExclusions = nil
+	return nil
 }
 
 func (c *cachedClient) SetMinimumMasterNodes(ctx context.Context, minimumMasterNodes int) error {
