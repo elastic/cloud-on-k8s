@@ -534,7 +534,6 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 	type args struct {
 		ctx       downscaleContext
 		downscale ssetDownscale
-		state     *downscaleState
 	}
 	tests := []struct {
 		name    string
