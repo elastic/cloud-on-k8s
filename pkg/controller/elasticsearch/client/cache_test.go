@@ -7,7 +7,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -278,31 +277,5 @@ func Test_cachedClient_SetMinimumMasterNodes(t *testing.T) {
 		if step.es2ExpectedValue != nil {
 			assert.Equal(t, *step.es2ExpectedValue, es2FakeClient.minimumMasterNodes)
 		}
-	}
-}
-
-func Test_cache_Forget(t *testing.T) {
-	type fields struct {
-		mu     sync.RWMutex
-		states map[types.NamespacedName]*cachedState
-	}
-	type args struct {
-		es types.NamespacedName
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		{},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &cache{
-				mu:     tt.fields.mu,
-				states: tt.fields.states,
-			}
-			c.Forget(tt.args.es)
-		})
 	}
 }

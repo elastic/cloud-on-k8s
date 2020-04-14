@@ -8,12 +8,8 @@ import (
 	"context"
 	"strings"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
-
-var log = logf.Log.WithName("migrate-data")
 
 // NodeHasShard returns true if the given ES Pod is holding at least one shard (primary or replica).
 func NodeHasShard(ctx context.Context, shardLister esclient.ShardLister, podName string) (bool, error) {
