@@ -185,12 +185,6 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if ent.IsMarkedForDeletion() {
-		// Enterprise Search will be deleted, clean up resources
-		r.onDelete(k8s.ExtractNamespacedName(&ent))
-		return reconcile.Result{}, nil
-	}
-
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &ent, r.OperatorInfo.BuildInfo.Version); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
