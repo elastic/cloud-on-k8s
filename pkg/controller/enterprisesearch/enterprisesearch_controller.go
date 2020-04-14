@@ -199,6 +199,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(configRefWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(tlsSecretWatchName(obj))
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1beta1.EnterpriseSearch) (bool, error) {
@@ -347,7 +348,7 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	return fmt.Sprintf("%x", configHash.Sum(nil)), nil
 }
 
-func tlsSecretWatchName(ent entv1beta1.EnterpriseSearch) string {
+func tlsSecretWatchName(ent types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-es-auth-secret", ent.Namespace, ent.Name)
 }
 
@@ -357,7 +358,7 @@ func watchEsTLSCertsSecret(ent entv1beta1.EnterpriseSearch, watched watches.Dyna
 		return nil
 	}
 	return watched.Secrets.AddHandler(watches.NamedWatch{
-		Name:    tlsSecretWatchName(ent),
+		Name:    tlsSecretWatchName(k8s.ExtractNamespacedName(&ent)),
 		Watched: []types.NamespacedName{{Namespace: ent.Namespace, Name: ent.AssociationConf().GetCASecretName()}},
 		Watcher: k8s.ExtractNamespacedName(&ent),
 	})
