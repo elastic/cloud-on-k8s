@@ -19,12 +19,13 @@ var log = logf.Log.WithName("cached-client")
 type CachedClientBuilder interface {
 
 	// NewElasticsearchCachedClient returns an Elasticsearch client that relies on a cache for some operations.
-	// Important: do not use the client concurrently for a same operation. Concurrent calls of a given operation is not thread-safe.
+	// Do not use the resulting client concurrently for a same operation. Concurrent calls of a given operation is not thread-safe.
 	NewElasticsearchCachedClient(
 		es types.NamespacedName,
 		client Client,
 	) Client
 
+	// Forget deletes data stored in memory for a given Elasticsearch cluster.
 	Forget(es types.NamespacedName)
 }
 
@@ -33,6 +34,7 @@ func NewCachedClientBuilder() CachedClientBuilder {
 	return &cache{states: map[types.NamespacedName]*cachedState{}}
 }
 
+// cachedState holds the cached state for a given Elasticsearch cluster.
 type cachedState struct {
 	es                          types.NamespacedName
 	allocationSettings          *string
@@ -47,6 +49,7 @@ type votingConfigExclusionsState struct {
 
 var _ CachedClientBuilder = &cache{}
 
+// cache is the internal structure that holds the states of the ES clusters.
 type cache struct {
 	mu     sync.RWMutex
 	states map[types.NamespacedName]*cachedState

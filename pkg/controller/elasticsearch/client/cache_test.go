@@ -14,32 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func Test_cache_Forget(t *testing.T) {
-	type fields struct {
-		mu     sync.RWMutex
-		states map[types.NamespacedName]*cachedState
-	}
-	type args struct {
-		es types.NamespacedName
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &cache{
-				mu:     tt.fields.mu,
-				states: tt.fields.states,
-			}
-			c.Forget(tt.args.es)
-		})
-	}
-}
-
 type fakeESClient struct {
 	Client
 	err error
@@ -160,43 +134,36 @@ func Test_cachedClient_AddVotingConfigExclusions(t *testing.T) {
 }
 
 func Test_cachedClient_ExcludeFromShardAllocation(t *testing.T) {
-	cacheClientBuilder := NewCachedClientBuilder()
-
-	es1FakeClient := fakeESClient{}
-	es1FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-
-	es2FakeClient := fakeESClient{}
-	es2FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es2, &es2FakeClient)
 
 	steps := []struct {
-		es1Value, es2Value                   *string
-		es1ExpectedValue, es2ExpectedValue   *string
-		es1ExpectedCalled, es2ExpectedCalled int
-		es1Error, es2Error                   error
+		es1Value, es2Value                   *string // value to set when calling the api
+		es1ExpectedValue, es2ExpectedValue   *string // expected value stored in the fake client
+		es1ExpectedCalled, es2ExpectedCalled int     // number of time an api is called
+		es1Error, es2Error                   error   // used to simulate an error
 	}{
 		{
-			es1Value:          stringPtr("node1"),
+			es1Value:          stringPtr("node1"), // exclude node "node1" on es1
 			es1ExpectedValue:  stringPtr("node1"),
-			es1ExpectedCalled: 1,
-			es2ExpectedCalled: 0,
+			es1ExpectedCalled: 1, // es1 api should be called once
+			es2ExpectedCalled: 0, // es2 api should not be called
 		},
 		{
-			es1Value:          stringPtr("node1"),
+			es1Value:          stringPtr("node1"), // "node1" is still the only node excluded on es1
 			es1ExpectedValue:  stringPtr("node1"),
-			es2Value:          stringPtr("node2"),
+			es2Value:          stringPtr("node2"), // exclude node "node2" on es2
 			es2ExpectedValue:  stringPtr("node2"),
 			es1ExpectedCalled: 1, // same value, es1 is not called
-			es2ExpectedCalled: 1,
+			es2ExpectedCalled: 1, // es2 api should be called once
 		},
 		{
-			es1Value:          stringPtr("node1_2"),
+			es1Value:          stringPtr("node1_2"), // "node1_2" is a new excluded node on es1
 			es1ExpectedValue:  stringPtr("node1_2"),
-			es1ExpectedCalled: 2,
+			es1ExpectedCalled: 2, // es1 api should be called
 			es2ExpectedCalled: 1,
 		},
 		{
 			es1Value:          stringPtr("node1"),
-			es1Error:          fmt.Errorf("error"),
+			es1Error:          fmt.Errorf("error"), // simulate error while calling es1 api
 			es2ExpectedValue:  stringPtr("node2"),
 			es1ExpectedCalled: 3,
 			es2ExpectedCalled: 1,
@@ -210,6 +177,9 @@ func Test_cachedClient_ExcludeFromShardAllocation(t *testing.T) {
 		},
 	}
 
+	es1FakeClient := fakeESClient{}
+	es2FakeClient := fakeESClient{}
+	cacheClientBuilder := NewCachedClientBuilder()
 	for _, step := range steps {
 		// Set error field in fake client
 		es1FakeClient.err = step.es1Error
@@ -217,9 +187,11 @@ func Test_cachedClient_ExcludeFromShardAllocation(t *testing.T) {
 
 		// Simulate API calls
 		if step.es1Value != nil {
+			es1FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
 			_ = es1FakeCachedClient.ExcludeFromShardAllocation(nil, *step.es1Value)
 		}
 		if step.es2Value != nil {
+			es2FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es2, &es2FakeClient)
 			_ = es2FakeCachedClient.ExcludeFromShardAllocation(nil, *step.es2Value)
 		}
 		assert.Equal(t, step.es1ExpectedCalled, es1FakeClient.excludeFromShardAllocationCalled)
@@ -238,43 +210,36 @@ func intPtr(value int) *int {
 }
 
 func Test_cachedClient_SetMinimumMasterNodes(t *testing.T) {
-	cacheClientBuilder := NewCachedClientBuilder()
-
-	es1FakeClient := fakeESClient{}
-	es1FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
-
-	es2FakeClient := fakeESClient{}
-	es2FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es2, &es2FakeClient)
 
 	steps := []struct {
-		es1Value, es2Value                   *int
-		es1ExpectedValue, es2ExpectedValue   *int
-		es1ExpectedCalled, es2ExpectedCalled int
-		es1Error, es2Error                   error
+		es1Value, es2Value                   *int  // value to set when calling the api
+		es1ExpectedValue, es2ExpectedValue   *int  // expected value stored in the fake client
+		es1ExpectedCalled, es2ExpectedCalled int   // number of time an api is called
+		es1Error, es2Error                   error // used to simulate an error
 	}{
 		{
-			es1Value:          intPtr(1),
+			es1Value:          intPtr(1), // set initial m_m_n for es1 to 1
 			es1ExpectedValue:  intPtr(1),
-			es1ExpectedCalled: 1,
-			es2ExpectedCalled: 0,
+			es1ExpectedCalled: 1, // es1 api should be called once
+			es2ExpectedCalled: 0, // es2 api should not be called
 		},
 		{
 			es1Value:          intPtr(1),
 			es1ExpectedValue:  intPtr(1),
-			es2Value:          intPtr(2),
+			es2Value:          intPtr(2), // set m_m_n for es2 to 2
 			es2ExpectedValue:  intPtr(2),
-			es1ExpectedCalled: 1, // same value, es1 is not called
-			es2ExpectedCalled: 1,
+			es1ExpectedCalled: 1, // same value, es1 should not be called
+			es2ExpectedCalled: 1, // es2 api should be called
 		},
 		{
-			es1Value:          intPtr(3),
+			es1Value:          intPtr(3), // update m_m_n for es1 to 3
 			es1ExpectedValue:  intPtr(3),
-			es1ExpectedCalled: 2,
+			es1ExpectedCalled: 2, // es1 api should be called
 			es2ExpectedCalled: 1,
 		},
 		{
 			es1Value:          intPtr(1),
-			es1Error:          fmt.Errorf("error"),
+			es1Error:          fmt.Errorf("error"), // simulate error while calling es1 api
 			es2ExpectedValue:  intPtr(2),
 			es1ExpectedCalled: 3,
 			es2ExpectedCalled: 1,
@@ -282,12 +247,15 @@ func Test_cachedClient_SetMinimumMasterNodes(t *testing.T) {
 		{
 			es1Value:          intPtr(3),
 			es1ExpectedValue:  intPtr(3),
-			es2ExpectedValue:  intPtr(2), // es2 value should still be in memory
-			es1ExpectedCalled: 4,         // API must be called after the error at the previous step
+			es2ExpectedValue:  intPtr(2),
+			es1ExpectedCalled: 4, // es1 api must be called after the error at the previous step
 			es2ExpectedCalled: 1,
 		},
 	}
 
+	es1FakeClient := fakeESClient{}
+	es2FakeClient := fakeESClient{}
+	cacheClientBuilder := NewCachedClientBuilder()
 	for _, step := range steps {
 		// Set error field in fake client
 		es1FakeClient.err = step.es1Error
@@ -295,9 +263,11 @@ func Test_cachedClient_SetMinimumMasterNodes(t *testing.T) {
 
 		// Simulate API calls
 		if step.es1Value != nil {
+			es1FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es1, &es1FakeClient)
 			_ = es1FakeCachedClient.SetMinimumMasterNodes(nil, *step.es1Value)
 		}
 		if step.es2Value != nil {
+			es2FakeCachedClient := cacheClientBuilder.NewElasticsearchCachedClient(es2, &es2FakeClient)
 			_ = es2FakeCachedClient.SetMinimumMasterNodes(nil, *step.es2Value)
 		}
 		assert.Equal(t, step.es1ExpectedCalled, es1FakeClient.setMinimumMasterNodesCalled)
@@ -308,5 +278,31 @@ func Test_cachedClient_SetMinimumMasterNodes(t *testing.T) {
 		if step.es2ExpectedValue != nil {
 			assert.Equal(t, *step.es2ExpectedValue, es2FakeClient.minimumMasterNodes)
 		}
+	}
+}
+
+func Test_cache_Forget(t *testing.T) {
+	type fields struct {
+		mu     sync.RWMutex
+		states map[types.NamespacedName]*cachedState
+	}
+	type args struct {
+		es types.NamespacedName
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &cache{
+				mu:     tt.fields.mu,
+				states: tt.fields.states,
+			}
+			c.Forget(tt.args.es)
+		})
 	}
 }
