@@ -5,28 +5,14 @@
 package license
 
 import (
+	"crypto/rand"
 	"crypto/rsa"
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type failingClient struct {
-	k8s.Client
-}
-
-func (failingClient) Create(o runtime.Object, opts ...client.CreateOption) error {
-	return errors.New("boom")
-}
 
 func TestInitTrial(t *testing.T) {
 	licenseFixture := EnterpriseLicense{
@@ -35,7 +21,6 @@ func TestInitTrial(t *testing.T) {
 		},
 	}
 	type args struct {
-		c k8s.Client
 		l *EnterpriseLicense
 	}
 	tests := []struct {
@@ -47,30 +32,13 @@ func TestInitTrial(t *testing.T) {
 		{
 			name: "nil license",
 			args: args{
-				c: k8s.WrappedFakeClient(),
 				l: nil,
-			},
-			wantErr: true,
-		},
-		{
-			name: "failing client",
-			args: args{
-				c: failingClient{},
-				l: &EnterpriseLicense{
-					License: LicenseSpec{
-						Type: LicenseTypeEnterpriseTrial,
-					},
-				},
-			},
-			want: func(_ *EnterpriseLicense, key *rsa.PublicKey) {
-				require.Nil(t, key)
 			},
 			wantErr: true,
 		},
 		{
 			name: "not a trial license",
 			args: args{
-				c: k8s.WrappedFakeClient(),
 				l: &EnterpriseLicense{},
 			},
 			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {
@@ -82,12 +50,6 @@ func TestInitTrial(t *testing.T) {
 		{
 			name: "successful trial start",
 			args: args{
-				c: k8s.WrappedFakeClient(&corev1.Secret{
-					ObjectMeta: v1.ObjectMeta{
-						Namespace: "elastic-system",
-						Name:      string(LicenseTypeEnterpriseTrial),
-					},
-				}),
 				l: &licenseFixture,
 			},
 			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {
@@ -99,26 +61,15 @@ func TestInitTrial(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitTrial(
-				tt.args.c,
-				"elastic-system",
-				corev1.Secret{
-					ObjectMeta: v1.ObjectMeta{
-						Namespace: "elastic-system",
-						Name:      string(LicenseTypeEnterpriseTrial),
-						Labels: map[string]string{
-							common.TypeLabelName: Type,
-						},
-					},
-				},
+			rnd := rand.Reader
+			tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
+			err = InitTrial(
+				tmpPrivKey,
 				tt.args.l,
 			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitTrial() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if tt.want != nil {
-				tt.want(tt.args.l, got)
 			}
 		})
 	}

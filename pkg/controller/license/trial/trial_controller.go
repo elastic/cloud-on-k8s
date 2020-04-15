@@ -50,6 +50,7 @@ type ReconcileTrials struct {
 	// iteration is the number of times this controller has run its Reconcile method.
 	iteration         int64
 	trialPubKey       *rsa.PublicKey
+	trialPrivateKey   *rsa.PrivateKey
 	operatorNamespace string
 }
 
@@ -80,63 +81,76 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
 	}
 
-	// 1. fetch trial status secret
-	var trialStatus corev1.Secret
-	err = r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
-	if errors.IsNotFound(err) {
-		// 2. if not present create one
-		err := r.initTrial(secret, license)
-		if err != nil {
-			return reconcile.Result{}, pkgerrors.Wrap(err, "failed to init trial")
-		}
-		return reconcile.Result{}, nil
+	// 1. reconcile trial status secret
+	if err := r.reconcileTrialStatus(request.NamespacedName); err != nil {
+		return reconcile.Result{}, err
 	}
-	if err != nil {
-		return reconcile.Result{}, pkgerrors.Wrap(err, "failed to retrieve trial status")
-	}
-	// 3. reconcile trial status
-	if err := r.reconcileTrialStatus(trialStatus); err != nil {
-		return reconcile.Result{}, pkgerrors.Wrap(err, "failed to reconcile trial status")
-	}
-	// 4. update trial secret if invalid to give user feedback
+
+	// 2. reconcile the trial license itself
 	trialSecretPopulated := license.IsMissingFields() == nil
-	if r.isTrialRunning() && trialSecretPopulated {
+	switch {
+	case r.isTrialRunning() && !trialSecretPopulated:
+		// if the trial secret fields are not populated at this point a user is trying to start a trial a second time
+		// with an empty trial secret, which is not a supported use case.
+		setValidationMsg(&secret, trialOnlyOnceMsg)
+	case !trialSecretPopulated && r.isTrialActivationInProgress():
+		// trial is not running yet and the license secret is empty: init the trial
+		if err := licensing.InitTrial(r.trialPrivateKey, &license); err != nil {
+			return reconcile.Result{}, err
+		}
+	case trialSecretPopulated:
 		verifier := licensing.Verifier{
 			PublicKey: r.trialPubKey,
 		}
 		status := verifier.Valid(license, time.Now())
 		if status != licensing.LicenseStatusValid {
 			setValidationMsg(&secret, userFriendlyMsgs[status])
+		} else {
+			// complete the trial activation we don't need the private key anymore
+			return r.completeTrialActivation()
 		}
-	} else {
-		// if the trial secret fields are not populated at this point a user is trying to start a trial a second time
-		// with an empty trial secret, which is not a supported use case.
-		setValidationMsg(&secret, trialOnlyOnceMsg)
 	}
-	return reconcile.Result{}, r.Update(&secret)
+	return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
 }
 
 func (r *ReconcileTrials) isTrialRunning() bool {
-	return r.trialPubKey != nil
+	return r.trialPubKey != nil && r.trialPrivateKey == nil
 }
 
-func (r *ReconcileTrials) initTrial(secret corev1.Secret, l licensing.EnterpriseLicense) error {
-	if r.isTrialRunning() {
-		setValidationMsg(&secret, trialOnlyOnceMsg)
-		return licensing.UpdateEnterpriseLicense(r, secret, l)
-	}
+func (r *ReconcileTrials) isTrialActivationInProgress() bool {
+	return r.trialPrivateKey != nil && r.trialPubKey != nil
+}
 
-	trialPubKey, err := licensing.InitTrial(r, r.operatorNamespace, secret, &l)
+func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) error {
+	var trialStatus corev1.Secret
+	var err error
+	err = r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
+	if errors.IsNotFound(err) {
+		if !r.isTrialRunning() {
+			// we have no key in memory nor in the status: generate a new one
+			if err := r.startTrialActivation(); err != nil {
+				return err
+			}
+		}
+
+		// we have the key in memory but the status secret is missing: recreate it
+		if r.trialPrivateKey != nil {
+			// handle a combination of operator crashes and API errors on trial activation by keeping the PK around
+			trialStatus, err = licensing.ExpectedTrialStatusWithPK(r.operatorNamespace, license, r.trialPrivateKey)
+		} else {
+			trialStatus, err = licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialPubKey)
+		}
+		if err != nil {
+			return fmt.Errorf("while creating expected trial status %w", err)
+		}
+		return r.Create(&trialStatus)
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("while fetching trial status %w", err)
 	}
-	// retain pub key in memory for later iterations
-	r.trialPubKey = trialPubKey
-	return nil
-}
 
-func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error {
-	if !r.isTrialRunning() {
+	// the status is there but we don't have anything in memory
+	if r.trialPubKey == nil {
 		// reinstate pubkey from status secret e.g. after operator restart
 		pubKeyBytes := trialStatus.Data[licensing.TrialPubkeyKey]
 		key, err := licensing.ParsePubKey(pubKeyBytes)
@@ -144,21 +158,52 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 			return err
 		}
 		r.trialPubKey = key
+		// also reinstate the private key if the operator failed just before the trial was started
+		privKeyBytes, exists := trialStatus.Data[licensing.TrialPrivateKey]
+		if exists {
+			privateKey, err := x509.ParsePKCS1PrivateKey(privKeyBytes)
+			if err != nil {
+				return fmt.Errorf("while parsing trial private key %w", err)
+			}
+			r.trialPrivateKey = privateKey
+		}
 		return nil
 	}
+	// if trial status exists, but:
+	// - has been tampered with: reconstruct it
+	// - we need to update it to complete the trial activation
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(r.trialPubKey)
 	if err != nil {
 		return err
 	}
-	if bytes.Equal(trialStatus.Data[licensing.TrialPubkeyKey], pubkeyBytes) {
+	if bytes.Equal(trialStatus.Data[licensing.TrialPubkeyKey], pubkeyBytes) &&
+		trialStatus.Data[licensing.TrialPrivateKey] == nil {
 		return nil
 	}
-	if trialStatus.Data == nil {
-		trialStatus.Data = map[string][]byte{} // if trial status has been tampered with
-	}
-	trialStatus.Data[licensing.TrialPubkeyKey] = pubkeyBytes
-	return r.Update(&trialStatus)
 
+	trialStatus.Data = map[string][]byte{
+		licensing.TrialPubkeyKey: pubkeyBytes,
+	}
+	return r.Update(&trialStatus)
+}
+
+func (r *ReconcileTrials) startTrialActivation() error {
+	key, err := licensing.NewTrialKey()
+	if err != nil {
+		return err
+	}
+	r.trialPubKey = &key.PublicKey
+	r.trialPrivateKey = key
+	return nil
+}
+
+func (r *ReconcileTrials) completeTrialActivation() (reconcile.Result, error) {
+	if r.trialPrivateKey == nil {
+		return reconcile.Result{}, nil
+	}
+	r.trialPrivateKey = nil
+	// requeue to update trial status
+	return reconcile.Result{Requeue: true}, nil
 }
 
 func validateEULA(trialSecret corev1.Secret) string {

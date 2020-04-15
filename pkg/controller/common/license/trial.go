@@ -9,74 +9,84 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
 const (
 	TrialStatusSecretKey = "trial-status"
 	TrialPubkeyKey       = "pubkey"
+	TrialPrivateKey      = "key"
 
 	TrialLicenseSecretName      = "trial.k8s.elastic.co/secret-name"      // nolint
 	TrialLicenseSecretNamespace = "trial.k8s.elastic.co/secret-namespace" // nolint
 )
 
-func InitTrial(c k8s.Client, operatorNamespace string, secret corev1.Secret, l *EnterpriseLicense) (*rsa.PublicKey, error) {
-	if l == nil {
-		return nil, errors.New("license is nil")
+func ExpectedTrialStatusWithPK(operatorNamespace string, license types.NamespacedName, key *rsa.PrivateKey) (corev1.Secret, error) {
+	status, err := ExpectedTrialStatus(operatorNamespace, license, &key.PublicKey)
+	if err != nil {
+		return status, err
 	}
 
-	if err := populateTrialLicense(l); err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to populate trial license")
-	}
-	log.Info("Starting enterprise trial", "start", l.StartTime(), "end", l.ExpiryTime())
-	rnd := rand.Reader
-	tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
+	// handle a combination of operator crashes and API errors on trial activation by keeping this around
+	status.Data[TrialPrivateKey] = x509.MarshalPKCS1PrivateKey(key)
+	return status, nil
+}
+
+func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName, key *rsa.PublicKey) (corev1.Secret, error) {
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(key)
 	if err != nil {
-		return nil, err
+		return corev1.Secret{}, err
 	}
-	// sign trial license
-	signer := NewSigner(tmpPrivKey)
-	sig, err := signer.Sign(*l)
-	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to sign license")
-	}
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(&tmpPrivKey.PublicKey)
-	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to marshal public key for trial status")
-	}
-	trialStatus := corev1.Secret{
+	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: operatorNamespace,
 			Name:      TrialStatusSecretKey,
-			Labels: map[string]string{
-				LicenseLabelName: l.License.UID,
-			},
 			Annotations: map[string]string{
-				TrialLicenseSecretName:      secret.Name,
-				TrialLicenseSecretNamespace: secret.Namespace,
+				TrialLicenseSecretName:      license.Name,
+				TrialLicenseSecretNamespace: license.Namespace,
 			},
 		},
 		Data: map[string][]byte{
 			TrialPubkeyKey: pubkeyBytes,
 		},
-	}
-	err = c.Create(&trialStatus)
+	}, nil
+}
+
+func NewTrialKey() (*rsa.PrivateKey, error) {
+	rnd := rand.Reader
+	trialKey, err := rsa.GenerateKey(rnd, 2048)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "failed to create trial status")
+		return nil, fmt.Errorf("while generating trial key %w", err)
 	}
+	return trialKey, nil
+}
+
+func InitTrial(key *rsa.PrivateKey, l *EnterpriseLicense) error {
+	if l == nil {
+		return errors.New("license is nil")
+	}
+	if err := populateTrialLicense(l); err != nil {
+		return pkgerrors.Wrap(err, "failed to populate trial license")
+	}
+
+	log.Info("Starting enterprise trial", "start", l.StartTime(), "end", l.ExpiryTime())
+	// sign trial license
+	signer := NewSigner(key)
+	sig, err := signer.Sign(*l)
+	if err != nil {
+		return pkgerrors.Wrap(err, "failed to sign license")
+	}
+
 	l.License.Signature = string(sig)
-	// return pub key to retain in memory for later iterations
-	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(
-		UpdateEnterpriseLicense(c, secret, *l),
-		"failed to update trial license",
-	)
+	return nil
 }
 
 // populateTrialLicense adds missing fields to a trial license.
