@@ -204,18 +204,7 @@ func addWatches(c controller.Controller) error {
 					},
 				}
 			}
-
-			if obj.Meta.GetName() != licensing.TrialStatusSecretKey {
-				return nil
-			}
-			return []reconcile.Request{
-				{
-					NamespacedName: types.NamespacedName{
-						Namespace: secret.Annotations[licensing.TrialLicenseSecretNamespace],
-						Name:      secret.Annotations[licensing.TrialLicenseSecretName],
-					},
-				},
-			}
+			return nil
 		}),
 	}); err != nil {
 		return err
