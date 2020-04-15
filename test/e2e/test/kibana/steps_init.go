@@ -5,12 +5,9 @@
 package kibana
 
 import (
-	"testing"
-
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,53 +17,50 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return []test.Step{
 		{
 			Name: "K8S should be accessible",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				pods := corev1.PodList{}
-				err := k.Client.List(&pods)
-				require.NoError(t, err)
-			},
+				return k.Client.List(&pods)
+			}),
 		},
 		{
 			Name: "Label test pods",
-			Test: func(t *testing.T) {
-				err := test.LabelTestPods(
+			Test: test.Eventually(func() error {
+				return test.LabelTestPods(
 					k.Client,
 					test.Ctx(),
 					run.TestNameLabel,
 					b.Kibana.Labels[run.TestNameLabel])
-				require.NoError(t, err)
-			},
+			}),
 			Skip: func() bool {
 				return test.Ctx().Local
 			},
 		},
 		{
 			Name: "Kibana CRDs should exist",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				crds := []runtime.Object{
 					&kbv1.KibanaList{},
 				}
 				for _, crd := range crds {
-					err := k.Client.List(crd)
-					require.NoError(t, err)
+					if err := k.Client.List(crd); err != nil {
+						return err
+					}
 				}
-			},
+				return nil
+			}),
 		},
 		{
 			Name: "Remove Kibana if it already exists",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
-					if err != nil {
-						// might not exist, which is ok
-						require.True(t, apierrors.IsNotFound(err))
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
 					}
 				}
 				// wait for Kibana pods to disappear
-				test.Eventually(func() error {
-					return k.CheckPodCount(0, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
-				})(t)
-			},
+				return k.CheckPodCount(0, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
+			}),
 		},
 	}
 }
