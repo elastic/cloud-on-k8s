@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -28,6 +30,47 @@ var ssetv7 = appsv1.StatefulSet{
 			},
 		},
 	},
+}
+
+func TestRetrieveActualStatefulSets(t *testing.T) {
+	type args struct {
+		c  k8s.Client
+		es types.NamespacedName
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    StatefulSetList
+		wantErr bool
+	}{
+		{
+			name: "StatefulSet should be sorted by name",
+			args: args{
+				c: k8s.WrappedFakeClient(
+					TestSset{Name: "sset1"}.BuildPtr(),
+					TestSset{Name: "sset3"}.BuildPtr(),
+					TestSset{Name: "sset2"}.BuildPtr(),
+				),
+			},
+			want: StatefulSetList{
+				TestSset{Name: "sset1"}.Build(),
+				TestSset{Name: "sset2"}.Build(),
+				TestSset{Name: "sset3"}.Build(),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := RetrieveActualStatefulSets(tt.args.c, tt.args.es)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RetrieveActualStatefulSets() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RetrieveActualStatefulSets() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestESVersionMatch(t *testing.T) {
