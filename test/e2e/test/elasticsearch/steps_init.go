@@ -6,18 +6,17 @@ package elasticsearch
 
 import (
 	"fmt"
-	"testing"
+
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/webhook"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // InitTestSteps includes pre-requisite tests (eg. is k8s accessible),
@@ -26,37 +25,37 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{
 		{
 			Name: "K8S should be accessible",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				pods := corev1.PodList{}
-				err := k.Client.List(&pods)
-				require.NoError(t, err)
-			},
+				return k.Client.List(&pods)
+			}),
 		},
 		{
 			Name: "Label test pods",
-			Test: func(t *testing.T) {
-				err := test.LabelTestPods(
+			Test: test.Eventually(func() error {
+				return test.LabelTestPods(
 					k.Client,
 					test.Ctx(),
 					run.TestNameLabel,
 					b.Elasticsearch.Labels[run.TestNameLabel])
-				require.NoError(t, err)
-			},
+			}),
 			Skip: func() bool {
 				return test.Ctx().Local
 			},
 		},
 		{
 			Name: "Elasticsearch CRDs should exist",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				crds := []runtime.Object{
 					&esv1.ElasticsearchList{},
 				}
 				for _, crd := range crds {
-					err := k.Client.List(crd)
-					require.NoError(t, err)
+					if err := k.Client.List(crd); err != nil {
+						return err
+					}
 				}
-			},
+				return nil
+			}),
 		},
 		{
 			Name: "Webhook endpoint should not be empty",
@@ -83,32 +82,29 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 		},
 		{
 			Name: "Remove Elasticsearch if it already exists",
-			Test: func(t *testing.T) {
+			Test: test.Eventually(func() error {
 				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
-					if err != nil {
-						// might not exist, which is ok
-						require.True(t, apierrors.IsNotFound(err))
-					}
-				}
-				// wait for ES pods to disappear
-				test.Eventually(func() error {
-					return k.CheckPodCount(0, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
-				})(t)
-
-				// it may take some extra time for Elasticsearch to be fully deleted
-				test.Eventually(func() error {
-					var es esv1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
-					if err == nil {
-						return fmt.Errorf("elasticsearch %s is still there", k8s.ExtractNamespacedName(&b.Elasticsearch))
-					}
-					return nil
-				})(t)
-			},
+				}
+				// wait for ES pods to disappear
+				if err := k.CheckPodCount(0, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...); err != nil {
+					return err
+				}
+
+				// it may take some extra time for Elasticsearch to be fully deleted
+				var es esv1.Elasticsearch
+				err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
+				if err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+				if err == nil {
+					return fmt.Errorf("elasticsearch %s is still there", k8s.ExtractNamespacedName(&b.Elasticsearch))
+				}
+				return nil
+			}),
 		},
 	}
 }
