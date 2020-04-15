@@ -11,18 +11,17 @@ endif::[]
 [id="{p}-ga-upgrade"]
 == Upgrade to ECK {eck_version}
 
-ECK reached general availability (GA) status with the link:https://www.elastic.co/blog/elastic-cloud-on-kubernetes-ECK-is-now-generally-available[release of version 1.0.0]. The latest available GA version is {eck_version}. It is compatible with the previous beta release (1.0.0-beta1) and can be upgraded in-place (<<{p}-ga-openshift, with a few exceptions>>). Previous alpha releases, up to and including version 0.9.0, are not compatible with the GA and beta releases and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.0-beta/k8s-upgrading-eck.html[require extra work to upgrade].
-
+ECK reached general availability (GA) status with the link:https://www.elastic.co/blog/elastic-cloud-on-kubernetes-ECK-is-now-generally-available[release of version 1.0.0]. The latest available GA version is {eck_version}. It is compatible with the previous GA releases (1.0.0 and 1.0.1) and the beta release (1.0.0-beta1), and can be upgraded in-place <<{p}-ga-openshift, with a few exceptions>>. Previous alpha releases, up to and including version 0.9.0, are not compatible with the GA and beta releases and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.0-beta/k8s-upgrading-eck.html[require extra work to upgrade].
 
 [float]
 [id="{p}-beta-to-ga-upgrade"]
-=== Upgrade from beta to {eck_version}
+=== Upgrade from beta or previous GA releases to ECK {eck_version}
 
 CAUTION: The upgrade process results in an update to all the existing managed resources. This triggers a rolling restart of all Elasticsearch and Kibana pods. <<{p}-beta-to-ga-rolling-restart, Guidance>> is available on controlling this process more gracefully.
 
 IMPORTANT: If you are running Openshift 3.11 or a Kubernetes version older than 1.13, skip to the <<{p}-ga-openshift, upgrade instructions for older Kubernetes releases>>.
 
-Follow the instructions in <<{p}-deploy-eck>> to upgrade from the beta version of ECK to a GA version. The versions are mostly compatible and all that is required is an update to the ECK binary and the CRDs. After the upgrade, ensure that your Elasticsearch, Kibana, and APM Server manifests are updated to use the `v1` API version instead of `v1beta1`.
+Follow the instructions in <<{p}-deploy-eck>> to upgrade ECK to the latest version. This will update the ECK installation to the latest binary and update the CRDs and other ECK resources in the cluster. If you are upgrading from the beta version, ensure that your Elasticsearch, Kibana, and APM Server manifests are updated to use the `v1` API version instead of `v1beta1` after the upgrade.
 
 [float]
 [id="{p}-beta-to-ga-rolling-restart"]
@@ -68,6 +67,6 @@ NOTE: The ECK source repository contains a link:https://github.com/elastic/cloud
 
 [float]
 [id="{p}-ga-openshift"]
-=== Upgrade from beta to {eck_version} in older versions of Kubernetes
+=== Upgrade from beta to GA on older versions of Kubernetes
 
-If you are running Openshift 3.11 or a Kubernetes version older than 1.13, in-place upgrade is not possible due to an link:https://github.com/kubernetes/kubernetes/issues/73752[upstream bug]. You should backup your existing manifests, <<{p}-snapshots,take snapshots>>, <<{p}-uninstalling-eck,uninstall ECK>> and then <<{p}-deploy-eck,install the new version of ECK>>. Afterwards, you can update your manifests to use the `v1` API version and restore state from the snapshots.
+If you are running Openshift 3.11 or a Kubernetes version older than 1.13 and have existing resources created using the `v1beta1` API version, in-place upgrade is not possible due to an link:https://github.com/kubernetes/kubernetes/issues/73752[upstream bug]. You have to completely uninstall the existing ECK operator (which will cause all existing Elastic Stack applications to be deleted) and install the new version of the operator. Make sure to backup your existing manifests and <<{p}-snapshots,take snapshots of Elasticsearch clusters>> before <<{p}-uninstalling-eck,uninstalling ECK>>. Then you can <<{p}-deploy-eck,install the new version of ECK>>, update your manifests to the `v1` API version, re-create the Elastic Stack deployments, and restore data from the snapshots.
