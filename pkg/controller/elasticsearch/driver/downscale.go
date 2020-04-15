@@ -51,7 +51,7 @@ func HandleDownscale(
 	// migrate data away from nodes that should be removed
 	// if leavingNodes is empty, it clears any existing settings
 	leavingNodes := leavingNodeNames(downscales)
-	if err := migration.MigrateData(downscaleCtx.parentCtx, downscaleCtx.k8sClient, downscaleCtx.es, downscaleCtx.esClient, leavingNodes); err != nil {
+	if err := migration.MigrateData(downscaleCtx.parentCtx, downscaleCtx.es, downscaleCtx.esClient, leavingNodes); err != nil {
 		return results.WithError(err)
 	}
 
@@ -286,5 +286,5 @@ func maybeUpdateZen1ForDownscale(
 		"Downscaling from 2 to 1 master nodes: unsafe operation",
 	)
 	minimumMasterNodes := 1
-	return zen1.UpdateMinimumMasterNodesTo(ctx, es, c, esClient, minimumMasterNodes)
+	return zen1.UpdateMinimumMasterNodesTo(ctx, es, esClient, minimumMasterNodes)
 }

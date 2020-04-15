@@ -34,14 +34,6 @@ func (f *fakeVotingConfigExclusionsESClient) AddVotingConfigExclusions(ctx conte
 	return nil
 }
 
-func withVotingConfigAnnotation(es esv1.Elasticsearch, value string) *esv1.Elasticsearch {
-	clone := es.DeepCopy()
-	clone.Annotations = map[string]string{
-		VotingConfigExclusionsAnnotationName: value,
-	}
-	return clone
-}
-
 func Test_ClearVotingConfigExclusions(t *testing.T) {
 	// dummy statefulset with 3 pods
 	statefulSet3rep := sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 3, Master: true, Data: true}.Build()
@@ -60,13 +52,12 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 	// simulate 2 pods out of the 3
 	statefulSet2rep := sset.TestSset{Name: "nodes", Version: "7.2.0", Replicas: 2, Master: true, Data: true}.Build()
 	tests := []struct {
-		name                       string
-		c                          k8s.Client
-		es                         *esv1.Elasticsearch
-		actualStatefulSets         sset.StatefulSetList
-		wantCall                   bool
-		wantRequeue                bool
-		wantVotingConfigAnnotation string
+		name               string
+		c                  k8s.Client
+		es                 *esv1.Elasticsearch
+		actualStatefulSets sset.StatefulSetList
+		wantCall           bool
+		wantRequeue        bool
 	}{
 		{
 			name: "no v7 nodes",
@@ -75,36 +66,16 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			actualStatefulSets: sset.StatefulSetList{
 				createStatefulSetWithESVersion("6.8.0"),
 			},
-			wantCall:                   false,
-			wantRequeue:                false,
-			wantVotingConfigAnnotation: "",
+			wantCall:    false,
+			wantRequeue: false,
 		},
 		{
-			name:                       "3/3 nodes there, no annotation set: should clear",
-			c:                          k8s.WrappedFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
-			es:                         &es,
-			actualStatefulSets:         sset.StatefulSetList{statefulSet3rep},
-			wantCall:                   true,
-			wantRequeue:                false,
-			wantVotingConfigAnnotation: "",
-		},
-		{
-			name:                       "3/3 nodes there, annotation already set, should do nothing",
-			c:                          k8s.WrappedFakeClient(withVotingConfigAnnotation(es, ""), &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
-			es:                         withVotingConfigAnnotation(es, ""),
-			actualStatefulSets:         sset.StatefulSetList{statefulSet3rep},
-			wantCall:                   false,
-			wantRequeue:                false,
-			wantVotingConfigAnnotation: "",
-		},
-		{
-			name:                       "3/3 nodes there, annotation set to the wrong value, should clear",
-			c:                          k8s.WrappedFakeClient(withVotingConfigAnnotation(es, "node1"), &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
-			es:                         withVotingConfigAnnotation(es, "node1"),
-			actualStatefulSets:         sset.StatefulSetList{statefulSet3rep},
-			wantCall:                   true,
-			wantRequeue:                false,
-			wantVotingConfigAnnotation: "",
+			name:               "3/3 nodes there, should clear",
+			c:                  k8s.WrappedFakeClient(&es, &statefulSet3rep, &pods[0], &pods[1], &pods[2]),
+			es:                 &es,
+			actualStatefulSets: sset.StatefulSetList{statefulSet3rep},
+			wantCall:           true,
+			wantRequeue:        false,
 		},
 		{
 			name:               "2/3 nodes there: cannot clear, should requeue",
@@ -133,7 +104,6 @@ func Test_ClearVotingConfigExclusions(t *testing.T) {
 			var retrievedES esv1.Elasticsearch
 			err = tt.c.Get(k8s.ExtractNamespacedName(tt.es), &retrievedES)
 			require.NoError(t, err)
-			require.Equal(t, tt.wantVotingConfigAnnotation, retrievedES.Annotations[VotingConfigExclusionsAnnotationName])
 		})
 	}
 }
@@ -148,13 +118,12 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 		Master:      true,
 	}.BuildPtr()
 	tests := []struct {
-		name                       string
-		es                         *esv1.Elasticsearch
-		c                          k8s.Client
-		excludeNodes               []string
-		wantAPICalled              bool
-		wantAPICalledWith          []string
-		wantVotingConfigAnnotation string
+		name              string
+		es                *esv1.Elasticsearch
+		c                 k8s.Client
+		excludeNodes      []string
+		wantAPICalled     bool
+		wantAPICalledWith []string
 	}{
 		{
 			name: "some zen1 masters: do nothing",
@@ -170,39 +139,12 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 			wantAPICalled: false,
 		},
 		{
-			name:                       "setting already applied based on annotation: do nothing",
-			es:                         withVotingConfigAnnotation(es, "node1,node2"),
-			c:                          k8s.WrappedFakeClient(withVotingConfigAnnotation(es, "node1,node2")),
-			excludeNodes:               []string{"node1", "node2"},
-			wantAPICalled:              false,
-			wantVotingConfigAnnotation: "node1,node2",
-		},
-		{
-			name:                       "no annotation: set voting config exclusions",
-			es:                         &es,
-			c:                          k8s.WrappedFakeClient(&es, masterPod),
-			excludeNodes:               []string{"node1", "node2"},
-			wantAPICalled:              true,
-			wantAPICalledWith:          []string{"node1", "node2"},
-			wantVotingConfigAnnotation: "node1,node2",
-		},
-		{
-			name:                       "empty annotation: set voting config exclusions",
-			es:                         withVotingConfigAnnotation(es, ""),
-			c:                          k8s.WrappedFakeClient(withVotingConfigAnnotation(es, ""), masterPod),
-			excludeNodes:               []string{"node1", "node2"},
-			wantAPICalled:              true,
-			wantAPICalledWith:          []string{"node1", "node2"},
-			wantVotingConfigAnnotation: "node1,node2",
-		},
-		{
-			name:                       "annotation mismatch: set voting config exclusions",
-			es:                         withVotingConfigAnnotation(es, "node1"),
-			c:                          k8s.WrappedFakeClient(withVotingConfigAnnotation(es, "node1"), masterPod),
-			excludeNodes:               []string{"node1", "node2"},
-			wantAPICalled:              true,
-			wantAPICalledWith:          []string{"node1", "node2"},
-			wantVotingConfigAnnotation: "node1,node2",
+			name:              "set voting config exclusions",
+			es:                &es,
+			c:                 k8s.WrappedFakeClient(&es, masterPod),
+			excludeNodes:      []string{"node1", "node2"},
+			wantAPICalled:     true,
+			wantAPICalledWith: []string{"node1", "node2"},
 		},
 	}
 	for _, tt := range tests {
@@ -215,15 +157,6 @@ func TestAddToVotingConfigExclusions(t *testing.T) {
 			var retrievedES esv1.Elasticsearch
 			err = tt.c.Get(k8s.ExtractNamespacedName(tt.es), &retrievedES)
 			require.NoError(t, err)
-			require.Equal(t, tt.wantVotingConfigAnnotation, retrievedES.Annotations[VotingConfigExclusionsAnnotationName])
 		})
 	}
-}
-
-func Test_serializeExcludedNodesForAnnotation1(t *testing.T) {
-	nodes := []string{"nodeA", "nodeC", "nodeB"}
-	// should be sorted alphabetically in a single comma-separated string
-	require.Equal(t, "nodeA,nodeB,nodeC", serializeExcludedNodesForAnnotation(nodes))
-	// initial slice should not be mutated
-	require.Equal(t, []string{"nodeA", "nodeC", "nodeB"}, nodes)
 }
