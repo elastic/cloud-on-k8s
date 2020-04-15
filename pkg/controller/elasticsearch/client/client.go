@@ -78,6 +78,8 @@ type Client interface {
 	ClusterBootstrappedForZen2(ctx context.Context) (bool, error)
 	// UpdateRemoteClusterSettings updates the remote clusters of a cluster.
 	UpdateRemoteClusterSettings(ctx context.Context, settings RemoteClustersSettings) error
+	// GetRemoteClusterSettings retrieves the remote clusters of a cluster.
+	GetRemoteClusterSettings(ctx context.Context) (RemoteClustersSettings, error)
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	//
 	// If timeout is the empty string, the default is used.

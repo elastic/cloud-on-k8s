@@ -6,6 +6,7 @@ package remotecluster
 
 import (
 	"context"
+	"sort"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -25,6 +26,7 @@ var log = logf.Log.WithName("remotecluster")
 const enterpriseFeaturesDisabledMsg = "Remote cluster is an enterprise feature. Enterprise features are disabled"
 
 // UpdateSettings updates the remote clusters in the persistent settings by calling the Elasticsearch API.
+// See the documentation of updateSettingsInternal for more information about the algorithm.
 func UpdateSettings(
 	ctx context.Context,
 	c k8s.Client,
@@ -32,81 +34,135 @@ func UpdateSettings(
 	eventRecorder record.EventRecorder,
 	licenseChecker license.Checker,
 	es esv1.Elasticsearch,
-) error {
+) (bool, error) {
 	span, _ := apm.StartSpan(ctx, "update_remote_clusters", tracing.SpanTypeApp)
 	defer span.End()
 
-	expectedRemoteClusters := getExpectedRemoteClusters(es)
+	remoteClustersInSpec := getRemoteClustersInSpec(es)
 	enabled, err := licenseChecker.EnterpriseFeaturesEnabled()
 	if err != nil {
-		return err
+		return true, err
 	}
-	if !enabled && len(expectedRemoteClusters) > 0 {
+	if !enabled && len(remoteClustersInSpec) > 0 {
 		log.Info(
 			enterpriseFeaturesDisabledMsg,
 			"namespace", es.Namespace, "es_name", es.Name,
 		)
 		eventRecorder.Eventf(&es, corev1.EventTypeWarning, events.EventAssociationError, enterpriseFeaturesDisabledMsg)
-		return nil
+		return false, nil
 	}
 
-	currentRemoteClusters, err := getCurrentRemoteClusters(es)
-	if err != nil {
-		return err
-	}
-
-	remoteClusters := make(map[string]esclient.RemoteCluster)
-	// RemoteClusters to add or update
-	for name, remoteCluster := range expectedRemoteClusters {
-		if currentConfigHash, ok := currentRemoteClusters[name]; !ok || currentConfigHash != remoteCluster.ConfigHash {
-			// Declare remote cluster in ES
-			seedHosts := []string{services.ExternalTransportServiceHost(remoteCluster.ElasticsearchRef.NamespacedName())}
-			log.Info("Adding or updating remote cluster",
-				"namespace", es.Namespace,
-				"es_name", es.Name,
-				"remote_cluster", remoteCluster.Name,
-				"seeds", seedHosts,
-			)
-			remoteClusters[name] = esclient.RemoteCluster{Seeds: seedHosts}
-		}
-	}
-
-	// RemoteClusters to remove
-	for name := range currentRemoteClusters {
-		if _, ok := expectedRemoteClusters[name]; !ok {
-			log.Info("Removing remote cluster",
-				"namespace", es.Namespace,
-				"es_name", es.Name,
-				"remote_cluster", name,
-			)
-			remoteClusters[name] = esclient.RemoteCluster{Seeds: nil}
-		}
-	}
-
-	if len(remoteClusters) > 0 {
-		// Apply the settings
-		if err := updateSettings(esClient, remoteClusters); err != nil {
-			return err
-		}
-		// Update the annotation
-		return annotateWithRemoteClusters(c, es, expectedRemoteClusters)
-	}
-	return nil
+	return updateSettingsInternal(remoteClustersInSpec, c, esClient, es)
 }
 
-// getExpectedRemoteClusters returns a map with the expected remote clusters
+// updateSettingsInternal updates remote clusters in Elasticsearch. It also keeps track of any remote clusters which
+// have been declared in the Elasticsearch spec. The purpose is to delete remote clusters which were managed by
+// the operator but are not desired anymore, without removing the ones which have been added by the user.
+// The following algorithm is used:
+// 1. Get the list of the previously declared remote clusters from the annotation
+// 2. Ensure that all remote clusters in the Elasticsearch spec are present in the annotation
+// 3. For each remote cluster in the annotation which is not the Spec, either:
+//   3.1 Schedule its deletion from the Elasticsearch settings
+//   3.2 Otherwise remove it from the annotation
+// 4. Update the annotation on the Elasticsearch object
+// 5. Apply the settings through the Elasticsearch API
+func updateSettingsInternal(
+	remoteClustersInSpec map[string]esv1.RemoteCluster,
+	c k8s.Client,
+	esClient esclient.Client,
+	es esv1.Elasticsearch,
+) (bool, error) {
+	remoteClustersInAnnotation := getRemoteClustersInAnnotation(es)
+
+	// Retrieve the remote clusters currently declared in Elasticsearch
+	remoteClustersInEs, err := getRemoteClustersInElasticsearch(esClient)
+	if err != nil {
+		return true, err
+	}
+
+	var remoteClustersToDelete []string
+	// For each remote cluster in the annotation, either:
+	// * Schedule its deletion if it exists in the Elasticsearch settings
+	// * Remove it from the annotation if it does not exist anymore in Elasticsearch settings
+	for remoteClusterInAnnotation := range remoteClustersInAnnotation {
+		if _, inSpec := remoteClustersInSpec[remoteClusterInAnnotation]; inSpec {
+			continue
+		}
+		_, inElasticsearch := remoteClustersInEs[remoteClusterInAnnotation]
+		if inElasticsearch {
+			// This remote cluster is in the annotation and in Elasticsearch but not in the Spec: we should delete it
+			remoteClustersToDelete = append(remoteClustersToDelete, remoteClusterInAnnotation)
+		} else {
+			// This remote cluster in the annotation is neither in the Spec or in Elasticsearch, we don't need to track it anymore
+			delete(remoteClustersInAnnotation, remoteClusterInAnnotation)
+		}
+	}
+
+	var remoteClustersToUpdate []string // only used for logging
+	// remoteClustersToApply are clusters to add (or update) based on what is specified in the Elasticsearch spec.
+	remoteClustersToApply := make(map[string]esclient.RemoteCluster)
+	for name, remoteCluster := range remoteClustersInSpec {
+		remoteClustersToUpdate = append(remoteClustersToUpdate, name)
+		// Declare remote cluster in ES
+		seedHosts := []string{services.ExternalTransportServiceHost(remoteCluster.ElasticsearchRef.NamespacedName())}
+		remoteClustersToApply[name] = esclient.RemoteCluster{Seeds: seedHosts}
+		// Ensure this cluster is tracked in the annotation
+		remoteClustersInAnnotation[name] = struct{}{}
+	}
+
+	// RemoteClusters to remove from Elasticsearch
+	for _, name := range remoteClustersToDelete {
+		remoteClustersToApply[name] = esclient.RemoteCluster{Seeds: nil}
+	}
+
+	// Update the annotation
+	if err := annotateWithCreatedRemoteClusters(c, es, remoteClustersInAnnotation); err != nil {
+		return true, err
+	}
+
+	// Since the annotation is update before Elasticsearch we should requeue to sync the annotation
+	// if some clusters are deleted from Elasticsearch.
+	shouldRequeue := len(remoteClustersToDelete) > 0
+	if len(remoteClustersToApply) > 0 {
+		// Apply the settings
+		sort.Strings(remoteClustersToUpdate)
+		sort.Strings(remoteClustersToDelete)
+		log.Info("Updating remote cluster settings",
+			"namespace", es.Namespace,
+			"es_name", es.Name,
+			"updated_remote_clusters", remoteClustersToUpdate,
+			"deleted_remote_clusters", remoteClustersToDelete,
+		)
+		return shouldRequeue, updateSettings(esClient, remoteClustersToApply)
+	}
+	return shouldRequeue, nil
+}
+
+// getRemoteClustersInElasticsearch returns all the remote clusters currently declared in Elasticsearch
+func getRemoteClustersInElasticsearch(esClient esclient.Client) (map[string]struct{}, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	defer cancel()
+	remoteClustersInEs := make(map[string]struct{})
+	remoteClusterSettings, err := esClient.GetRemoteClusterSettings(ctx)
+	if err != nil {
+		return remoteClustersInEs, err
+	}
+	for remoteClusterName := range remoteClusterSettings.PersistentSettings.Cluster.RemoteClusters {
+		remoteClustersInEs[remoteClusterName] = struct{}{}
+	}
+	return remoteClustersInEs, nil
+}
+
+// getRemoteClustersInSpec returns a map with the expected remote clusters as declared by the user in the Elasticsearch specification.
 // A map is returned here because it will be used to quickly compare with the ones that are new or missing.
-func getExpectedRemoteClusters(es esv1.Elasticsearch) map[string]expectedRemoteClusterConfiguration {
-	remoteClusters := make(map[string]expectedRemoteClusterConfiguration)
+func getRemoteClustersInSpec(es esv1.Elasticsearch) map[string]esv1.RemoteCluster {
+	remoteClusters := make(map[string]esv1.RemoteCluster)
 	for _, remoteCluster := range es.Spec.RemoteClusters {
 		if !remoteCluster.ElasticsearchRef.IsDefined() {
 			continue
 		}
 		remoteCluster.ElasticsearchRef = remoteCluster.ElasticsearchRef.WithDefaultNamespace(es.Namespace)
-		remoteClusters[remoteCluster.Name] = expectedRemoteClusterConfiguration{
-			RemoteCluster: remoteCluster,
-			ConfigHash:    remoteCluster.ConfigHash(),
-		}
+		remoteClusters[remoteCluster.Name] = remoteCluster
 	}
 	return remoteClusters
 }
