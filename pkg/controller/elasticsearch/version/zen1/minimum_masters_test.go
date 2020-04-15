@@ -162,38 +162,7 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 			c:                  k8s.WrappedFakeClient(createMasterPodsWithVersion("nodes", "7.1.0", 3)...),
 		},
 		{
-			name:               "correct mmn already set in ES annotation",
-			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
-			actualStatefulSets: sset.StatefulSetList{ssetSample},
-			es: esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      esName,
-					Namespace: ns,
-					Annotations: map[string]string{
-						Zen1MiniumMasterNodesAnnotationName: "2",
-					},
-				},
-			},
-			wantCalled: false,
-		},
-		{
-			name:               "mmn should be updated, it's different in the ES annotation",
-			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
-			actualStatefulSets: sset.StatefulSetList{ssetSample},
-			es: esv1.Elasticsearch{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      esName,
-					Namespace: ns,
-					Annotations: map[string]string{
-						Zen1MiniumMasterNodesAnnotationName: "1",
-					},
-				},
-			},
-			wantCalled:     true,
-			wantCalledWith: 2,
-		},
-		{
-			name:               "mmn should be updated, it isn't set in the ES annotation",
+			name:               "mmn should be updated",
 			c:                  k8s.WrappedFakeClient(&podsReady3[0], &podsReady3[1], &podsReady3[2]),
 			actualStatefulSets: sset.StatefulSetList{ssetSample},
 			es:                 esv1.Elasticsearch{ObjectMeta: k8s.ToObjectMeta(nsn)},
