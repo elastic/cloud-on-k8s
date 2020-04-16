@@ -26,7 +26,7 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    map[string]string
+		want    map[string]struct{}
 		wantErr bool
 	}{
 		{
@@ -38,7 +38,7 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 					Annotations: map[string]string{},
 				},
 			}},
-			want: map[string]string{},
+			want: map[string]struct{}{},
 		},
 		{
 			name: "Decode annotation into a list of remote cluster",
@@ -46,24 +46,20 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "ns1",
 					Namespace:   "es1",
-					Annotations: map[string]string{"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns2-cluster-2":"3795207740","ns5-cluster-8":"XXXXXXXXXX"}`},
+					Annotations: map[string]string{"elasticsearch.k8s.elastic.co/managed-remote-clusters": `ns2-cluster-2,ns5-cluster-8`},
 				},
 			}},
-			want: map[string]string{
-				"ns2-cluster-2": "3795207740",
-				"ns5-cluster-8": "XXXXXXXXXX",
+			want: map[string]struct{}{
+				"ns2-cluster-2": {},
+				"ns5-cluster-8": {},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getCurrentRemoteClusters(tt.args.es)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getCurrentRemoteClusters() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := getRemoteClustersInAnnotation(tt.args.es)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getCurrentRemoteClusters() = %v, want %v", got, tt.want)
+				t.Errorf("getRemoteClustersInAnnotation() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -71,12 +67,16 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 
 type fakeESClient struct {
 	esclient.Client
-	settings esclient.RemoteClustersSettings
-	called   bool
+	existingSettings, updatedSettings esclient.RemoteClustersSettings
+	called                            bool
+}
+
+func (f *fakeESClient) GetRemoteClusterSettings(_ context.Context) (esclient.RemoteClustersSettings, error) {
+	return f.existingSettings, nil
 }
 
 func (f *fakeESClient) UpdateRemoteClusterSettings(_ context.Context, settings esclient.RemoteClustersSettings) error {
-	f.settings = settings
+	f.updatedSettings = settings
 	f.called = true
 	return nil
 }
@@ -114,22 +114,39 @@ func (fakeLicenseChecker) Valid(_ license.EnterpriseLicense) (bool, error) {
 }
 
 func TestUpdateSettings(t *testing.T) {
+	emptySettings := esclient.RemoteClustersSettings{PersistentSettings: &esclient.SettingsGroup{}}
 	type args struct {
 		esClient       *fakeESClient
 		es             *esv1.Elasticsearch
 		licenseChecker license.Checker
 	}
 	tests := []struct {
-		name         string
-		args         args
-		wantErr      bool
-		wantEsCalled bool
-		wantSettings esclient.RemoteClustersSettings
+		name           string
+		args           args
+		wantAnnotation string
+		wantRequeue    bool
+		wantErr        bool
+		wantEsCalled   bool
+		wantSettings   esclient.RemoteClustersSettings
 	}{
+		{
+			name: "Nothing to create, nothing to delete",
+			args: args{
+				esClient:       &fakeESClient{existingSettings: emptySettings},
+				licenseChecker: &fakeLicenseChecker{true},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					nil,
+				),
+			},
+			wantRequeue:  false,
+			wantEsCalled: false,
+		},
 		{
 			name: "Create a new remote cluster",
 			args: args{
-				esClient:       &fakeESClient{},
+				esClient:       &fakeESClient{existingSettings: emptySettings},
 				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
@@ -141,7 +158,8 @@ func TestUpdateSettings(t *testing.T) {
 					},
 				),
 			},
-			wantEsCalled: true,
+			wantAnnotation: "ns2-es2",
+			wantEsCalled:   true,
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -155,7 +173,9 @@ func TestUpdateSettings(t *testing.T) {
 		{
 			name: "Create a new remote cluster with no namespace",
 			args: args{
-				esClient:       &fakeESClient{},
+				esClient: &fakeESClient{
+					existingSettings: esclient.RemoteClustersSettings{PersistentSettings: &esclient.SettingsGroup{}},
+				},
 				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
@@ -166,7 +186,8 @@ func TestUpdateSettings(t *testing.T) {
 						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
 					}),
 			},
-			wantEsCalled: true,
+			wantEsCalled:   true,
+			wantAnnotation: "ns1-es2",
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -178,71 +199,162 @@ func TestUpdateSettings(t *testing.T) {
 			},
 		},
 		{
-			name: "Remote cluster already exists, do not make an API call",
+			name: "Custom remote cluster added by user should not be deleted",
 			args: args{
-				esClient:       &fakeESClient{},
+				esClient: &fakeESClient{
+					existingSettings: esclient.RemoteClustersSettings{
+						PersistentSettings: &esclient.SettingsGroup{
+							Cluster: esclient.RemoteClusters{
+								RemoteClusters: map[string]esclient.RemoteCluster{
+									"es-custom-remote-es": {Seeds: []string{"somewhere:9300"}},
+								},
+							},
+						},
+					},
+				},
 				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"2221154215"}`,
+						"elasticsearch.k8s.elastic.co/managed-remote-clusters": `ns2-es2`,
 					},
 					esv1.RemoteCluster{
-						Name:             "ns1-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
-					}),
-			},
-			wantEsCalled: false,
-		},
-		{
-			name: "Remote cluster already exists but has been updated, we should make an API call",
-			args: args{
-				esClient:       &fakeESClient{},
-				licenseChecker: &fakeLicenseChecker{true},
-				es: newEsWithRemoteClusters(
-					"ns1",
-					"es1",
-					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"8851644973"}`,
+						Name:             "ns2-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2", Namespace: "ns2"},
 					},
-					esv1.RemoteCluster{
-						Name:             "ns1-es2",
-						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
-					}),
+				),
 			},
-			wantEsCalled: true,
+			wantEsCalled:   true,
+			wantAnnotation: "ns2-es2",
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
 						RemoteClusters: map[string]esclient.RemoteCluster{
-							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
+							"ns2-es2": {Seeds: []string{"es2-es-transport.ns2.svc:9300"}},
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "Remove existing cluster",
+			name: "Sync. annotation, do not delete custom remote cluster added by user",
 			args: args{
-				esClient:       &fakeESClient{},
+				esClient: &fakeESClient{
+					existingSettings: esclient.RemoteClustersSettings{
+						PersistentSettings: &esclient.SettingsGroup{
+							Cluster: esclient.RemoteClusters{
+								RemoteClusters: map[string]esclient.RemoteCluster{
+									"es-custom-remote-es": {Seeds: []string{"somewhere:9300"}},
+								},
+							},
+						},
+					},
+				},
 				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `{"to-be-deleted":"8538658922","ns1-es2":"2221154215"}`,
+						"elasticsearch.k8s.elastic.co/managed-remote-clusters": `ns1-es2,ns2-es2"`, // ns1-es2 should be removed from the annotation
+					},
+					esv1.RemoteCluster{
+						Name:             "ns2-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2", Namespace: "ns2"},
+					},
+				),
+			},
+			wantRequeue:    false,
+			wantAnnotation: "ns2-es2",
+			wantEsCalled:   true,
+			wantSettings: esclient.RemoteClustersSettings{
+				PersistentSettings: &esclient.SettingsGroup{
+					Cluster: esclient.RemoteClusters{
+						RemoteClusters: map[string]esclient.RemoteCluster{
+							"ns2-es2": {Seeds: []string{"es2-es-transport.ns2.svc:9300"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Remote clusters already exists, we should still make an API call",
+			args: args{
+				esClient: &fakeESClient{
+					existingSettings: esclient.RemoteClustersSettings{
+						PersistentSettings: &esclient.SettingsGroup{
+							Cluster: esclient.RemoteClusters{
+								RemoteClusters: map[string]esclient.RemoteCluster{
+									"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
+									"ns1-es3": {Seeds: []string{"es3-es-transport.ns1.svc:9300"}},
+								},
+							},
+						},
+					},
+				},
+				licenseChecker: &fakeLicenseChecker{true},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{
+						"elasticsearch.k8s.elastic.co/managed-remote-clusters": `ns1-es2`,
+					},
+					esv1.RemoteCluster{
+						Name:             "ns1-es2",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
+					}, esv1.RemoteCluster{
+						Name:             "ns1-es3",
+						ElasticsearchRef: commonv1.ObjectSelector{Name: "es3"},
+					}),
+			},
+			wantEsCalled:   true,
+			wantAnnotation: "ns1-es2,ns1-es3",
+			wantSettings: esclient.RemoteClustersSettings{
+				PersistentSettings: &esclient.SettingsGroup{
+					Cluster: esclient.RemoteClusters{
+						RemoteClusters: map[string]esclient.RemoteCluster{
+							"ns1-es2": {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
+							"ns1-es3": {Seeds: []string{"es3-es-transport.ns1.svc:9300"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Remove previously managed cluster cluster",
+			args: args{
+				esClient: &fakeESClient{
+					existingSettings: esclient.RemoteClustersSettings{
+						PersistentSettings: &esclient.SettingsGroup{
+							Cluster: esclient.RemoteClusters{
+								RemoteClusters: map[string]esclient.RemoteCluster{
+									"ns1-es2":       {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
+									"to-be-deleted": {Seeds: []string{"somewhere:9300"}},
+								},
+							},
+						},
+					},
+				},
+				licenseChecker: &fakeLicenseChecker{true},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{
+						"elasticsearch.k8s.elastic.co/managed-remote-clusters": `ns1-es2,to-be-deleted`,
 					},
 					esv1.RemoteCluster{
 						Name:             "ns1-es2",
 						ElasticsearchRef: commonv1.ObjectSelector{Name: "es2"},
 					}),
 			},
-			wantEsCalled: true,
+			wantRequeue:    true,
+			wantAnnotation: "ns1-es2,to-be-deleted",
+			wantEsCalled:   true,
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
 						RemoteClusters: map[string]esclient.RemoteCluster{
+							"ns1-es2":       {Seeds: []string{"es2-es-transport.ns1.svc:9300"}},
 							"to-be-deleted": {Seeds: nil},
 						},
 					},
@@ -266,15 +378,26 @@ func TestUpdateSettings(t *testing.T) {
 			wantEsCalled: false,
 		},
 		{
-			name: "Multiple changes in one call: remote cluster already exists but has been updated, one is added and a last one is removed.",
+			name: "Multiple changes: remote cluster already exists but has been updated, one is added and a last one is removed.",
 			args: args{
-				esClient:       &fakeESClient{},
+				esClient: &fakeESClient{
+					existingSettings: esclient.RemoteClustersSettings{
+						PersistentSettings: &esclient.SettingsGroup{
+							Cluster: esclient.RemoteClusters{
+								RemoteClusters: map[string]esclient.RemoteCluster{
+									"ns1-es2": {Seeds: []string{"somewhere:9300"}},
+									"ns1-es5": {Seeds: []string{"somewhere:9300"}},
+								},
+							},
+						},
+					},
+				},
 				licenseChecker: &fakeLicenseChecker{true},
 				es: newEsWithRemoteClusters(
 					"ns1",
 					"es1",
 					map[string]string{
-						"elasticsearch.k8s.elastic.co/remote-clusters": `{"ns1-es2":"8851644973","ns1-es5":"8851644973"}`,
+						"elasticsearch.k8s.elastic.co/managed-remote-clusters": `ns1-es2,ns1-es5`,
 					},
 					esv1.RemoteCluster{
 						Name:             "ns1-es2",
@@ -286,7 +409,9 @@ func TestUpdateSettings(t *testing.T) {
 					},
 				),
 			},
-			wantEsCalled: true,
+			wantRequeue:    true, // ns1-es5 has been deleted, requeue to sync the annotation
+			wantEsCalled:   true,
+			wantAnnotation: "ns1-es2,ns1-es4,ns1-es5",
 			wantSettings: esclient.RemoteClustersSettings{
 				PersistentSettings: &esclient.SettingsGroup{
 					Cluster: esclient.RemoteClusters{
@@ -303,20 +428,27 @@ func TestUpdateSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.args.es)
-			if err := UpdateSettings(
+			shouldRequeue, err := UpdateSettings(
 				context.Background(),
 				client,
 				tt.args.esClient,
 				record.NewFakeRecorder(100),
 				tt.args.licenseChecker,
 				*tt.args.es,
-			); (err != nil) != tt.wantErr {
+			)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("UpdateRemoteClusterSettings() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			// Check the settings
+			// Check the annotation set on Elasticsearch
+			es := &esv1.Elasticsearch{}
+			assert.NoError(t, client.Get(k8s.ExtractNamespacedName(tt.args.es), es))
+			assert.Equal(t, tt.wantAnnotation, es.Annotations["elasticsearch.k8s.elastic.co/managed-remote-clusters"])
+			// Check the requeue result
+			assert.Equal(t, tt.wantRequeue, shouldRequeue)
+			// Check the updatedSettings
 			assert.Equal(t, tt.wantEsCalled, tt.args.esClient.called)
 			if tt.wantEsCalled {
-				assert.Equal(t, tt.wantSettings, tt.args.esClient.settings)
+				assert.Equal(t, tt.wantSettings, tt.args.esClient.updatedSettings)
 			}
 		})
 	}
