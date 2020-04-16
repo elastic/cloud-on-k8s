@@ -5,7 +5,6 @@
 package license
 
 import (
-	"crypto/rand"
 	"crypto/rsa"
 	"testing"
 	"time"
@@ -14,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInitTrial(t *testing.T) {
+func TestInitTrialLicense(t *testing.T) {
 	licenseFixture := EnterpriseLicense{
 		License: LicenseSpec{
 			Type: LicenseTypeEnterpriseTrial,
@@ -61,13 +60,9 @@ func TestInitTrial(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rnd := rand.Reader
-			tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
+			state, err := NewTrialState()
 			require.NoError(t, err)
-			err = InitTrial(
-				tmpPrivKey,
-				tt.args.l,
-			)
+			err = state.InitTrialLicense(tt.args.l)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitTrial() error = %v, wantErr %v", err, tt.wantErr)
 				return

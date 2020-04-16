@@ -5,8 +5,6 @@
 package trial
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
 	"fmt"
 	"testing"
 	"time"
@@ -48,16 +46,8 @@ func trialLicenseSecretSample(annotated bool, data map[string][]byte) *corev1.Se
 	return &sec
 }
 
-func trialStatusSecretSample(t *testing.T, key *rsa.PrivateKey, includePK bool) *corev1.Secret {
-	var status corev1.Secret
-	var err error
-	keys := licensing.TrialKeys{
-		PublicKey: &key.PublicKey,
-	}
-	if includePK {
-		keys.PrivateKey = key
-	}
-	status, err = licensing.ExpectedTrialStatus(testNs, trialLicenseNsn, keys)
+func trialStatusSecretSample(t *testing.T, state licensing.TrialState) *corev1.Secret {
+	status, err := licensing.ExpectedTrialStatus(testNs, trialLicenseNsn, state)
 	require.NoError(t, err)
 	return &status
 }
@@ -70,31 +60,35 @@ func trialLicenseBytes() []byte {
 
 }
 
-func testTrialKey(t *testing.T) *rsa.PrivateKey {
-	key, err := licensing.NewTrialKey()
+func trialStateSample(t *testing.T) licensing.TrialState {
+	state, err := licensing.NewTrialState()
 	require.NoError(t, err)
-	return key
+	return state
 }
 
-func simulateRunningTrial(t *testing.T, k k8s.Client, secret corev1.Secret) []byte {
+func runningTrialSample(t *testing.T) licensing.TrialState {
+	state := trialStateSample(t)
+	state.CompleteTrialActivation()
+	return state
+}
+
+func simulateRunningTrial(t *testing.T, k k8s.Client, secret corev1.Secret) {
 	l := licensing.EnterpriseLicense{
 		License: licensing.LicenseSpec{
 			Type: licensing.LicenseTypeEnterpriseTrial,
 		},
 	}
-	key := testTrialKey(t)
-	status := trialStatusSecretSample(t, key, false)
-	require.NoError(t, k.Create(status))
-	err := licensing.InitTrial(key, &l)
+	state, err := licensing.NewTrialState()
+	require.NoError(t, err)
+	err = state.InitTrialLicense(&l)
 	require.NoError(t, err)
 	require.NoError(t, licensing.UpdateEnterpriseLicense(k, secret, l))
-	keyBytes, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
-	require.NoError(t, err)
-	return keyBytes
+	state.CompleteTrialActivation()
+	statusSecret := trialStatusSecretSample(t, state)
+	require.NoError(t, k.Create(statusSecret))
 }
 
 func TestReconcileTrials_Reconcile(t *testing.T) {
-	trialKeySample := testTrialKey(t)
 
 	requireValidationMsg := func(msg string) func(c k8s.Client) {
 		return func(c k8s.Client) {
@@ -132,9 +126,8 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 	}
 
 	type fields struct {
-		Client          k8s.Client
-		trialPubKey     *rsa.PublicKey
-		trialPrivateKey *rsa.PrivateKey
+		Client     k8s.Client
+		trialState licensing.TrialState
 	}
 	tests := []struct {
 		name       string
@@ -163,13 +156,11 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			fields: fields{
 				Client: func() k8s.Client {
 					trialLicense := trialLicenseSecretSample(true, nil)
-					client := k8s.WrappedFakeClient(
-						trialLicense,
-					)
+					client := k8s.WrappedFakeClient(trialLicense)
 					simulateRunningTrial(t, client, *trialLicense)
 					return client
 				}(),
-				trialPubKey: nil, // simulating restart
+				trialState: licensing.TrialState{}, // simulating restart
 			},
 			wantErr:    false,
 			assertions: requireValidTrial,
@@ -177,9 +168,8 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 		{
 			name: "can start trial after error during trial status creation",
 			fields: fields{
-				Client:          k8s.WrappedFakeClient(trialLicenseSecretSample(true, nil)), // no trial status
-				trialPubKey:     &trialKeySample.PublicKey,                                  // but trial being activated
-				trialPrivateKey: trialKeySample,
+				Client:     k8s.WrappedFakeClient(trialLicenseSecretSample(true, nil)), // no trial status
+				trialState: trialStateSample(t),
 			},
 			wantErr:    false,
 			assertions: requireValidTrial,
@@ -189,15 +179,10 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			fields: fields{
 				Client: func() k8s.Client {
 					// simulating operator crash right after trial status has been written
-					status, err := licensing.ExpectedTrialStatus(testNs, trialLicenseNsn, licensing.TrialKeys{
-						PrivateKey: trialKeySample,
-						PublicKey:  &trialKeySample.PublicKey,
-					})
+					status, err := licensing.ExpectedTrialStatus(testNs, trialLicenseNsn, trialStateSample(t))
 					require.NoError(t, err)
 					return k8s.WrappedFakeClient(trialLicenseSecretSample(true, nil), &status)
 				}(),
-				trialPubKey:     nil,
-				trialPrivateKey: nil,
 			},
 			wantErr:    false,
 			assertions: requireValidTrial,
@@ -207,10 +192,9 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			fields: fields{
 				Client: k8s.WrappedFakeClient(
 					trialLicenseSecretSample(true, nil),
-					trialStatusSecretSample(t, testTrialKey(t), true), // simulate a different key
+					trialStatusSecretSample(t, trialStateSample(t)), // simulate a different key
 				),
-				trialPubKey:     &trialKeySample.PublicKey,
-				trialPrivateKey: nil,
+				trialState: runningTrialSample(t),
 			},
 			wantErr:    false,
 			assertions: requireValidationMsg(trialOnlyOnceMsg),
@@ -220,10 +204,9 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			fields: fields{
 				Client: k8s.WrappedFakeClient(
 					trialLicenseSecretSample(true, nil),
-					trialStatusSecretSample(t, testTrialKey(t), true), // simulating a different key
+					trialStatusSecretSample(t, trialStateSample(t)), // simulating a different key
 				),
-				trialPubKey:     &trialKeySample.PublicKey,
-				trialPrivateKey: trialKeySample,
+				trialState: trialStateSample(t),
 			},
 			wantErr:    false,
 			assertions: requireValidTrial,
@@ -231,8 +214,8 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 		{
 			name: "invalid: trial running but no status secret",
 			fields: fields{
-				Client:      k8s.WrappedFakeClient(trialLicenseSecretSample(true, nil)),
-				trialPubKey: &trialKeySample.PublicKey,
+				Client:     k8s.WrappedFakeClient(trialLicenseSecretSample(true, nil)),
+				trialState: runningTrialSample(t),
 			},
 			wantErr:    false,
 			assertions: requireValidationMsg(trialOnlyOnceMsg),
@@ -243,9 +226,9 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 				Client: k8s.WrappedFakeClient(
 					// user creates a new trial secret
 					trialLicenseSecretSample(true, nil),
-					trialStatusSecretSample(t, trialKeySample, false),
+					trialStatusSecretSample(t, trialStateSample(t)),
 				),
-				trialPubKey: &trialKeySample.PublicKey, // but trial is already running
+				trialState: runningTrialSample(t), // but trial is already running
 			},
 			wantErr:    false,
 			assertions: requireValidationMsg(trialOnlyOnceMsg),
@@ -261,7 +244,17 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 						Namespace: testNs,
 					},
 				}),
-				trialPubKey: &trialKeySample.PublicKey,
+				trialState: runningTrialSample(t),
+			},
+			wantErr:    false,
+			assertions: requireValidationMsg("trial license signature invalid"),
+		},
+		{
+			name: "invalid: trial license but no trial running",
+			fields: fields{
+				Client: k8s.WrappedFakeClient(trialLicenseSecretSample(true, map[string][]byte{
+					"license": trialLicenseBytes(),
+				})),
 			},
 			wantErr:    false,
 			assertions: requireValidationMsg("trial license signature invalid"),
@@ -271,12 +264,9 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			r := &ReconcileTrials{
-				Client:   tt.fields.Client,
-				recorder: record.NewFakeRecorder(10),
-				trialKeys: licensing.TrialKeys{
-					PrivateKey: tt.fields.trialPrivateKey,
-					PublicKey:  tt.fields.trialPubKey,
-				},
+				Client:            tt.fields.Client,
+				recorder:          record.NewFakeRecorder(10),
+				trialState:        tt.fields.trialState,
 				operatorNamespace: testNs,
 			}
 			_, err := r.Reconcile(reconcile.Request{
@@ -297,24 +287,22 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 }
 
 func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
-	keySample := testTrialKey(t)
 
 	assertTrialActivationState := func(r *ReconcileTrials, status corev1.Secret) {
-		require.True(t, r.trialKeys.IsTrialActivationInProgress())
-		require.Contains(t, status.Data, licensing.TrialPrivateKey)
+		require.True(t, r.trialState.IsTrialActivationInProgress())
+		require.Equal(t, status.Data[licensing.TrialActivationKey], []byte("true"))
 		require.Contains(t, status.Data, licensing.TrialPubkeyKey)
 	}
 
 	assertTrialRunningState := func(r *ReconcileTrials, status corev1.Secret) {
-		require.True(t, r.trialKeys.IsTrialRunning())
-		require.NotContains(t, status.Data, licensing.TrialPrivateKey)
+		require.True(t, r.trialState.IsTrialRunning())
+		require.Equal(t, status.Data[licensing.TrialActivationKey], []byte("false"))
 		require.Contains(t, status.Data, licensing.TrialPubkeyKey)
 	}
 
 	type fields struct {
-		Client          k8s.Client
-		trialPubKey     *rsa.PublicKey
-		trialPrivateKey *rsa.PrivateKey
+		Client     k8s.Client
+		trialState licensing.TrialState
 	}
 	tests := []struct {
 		name       string
@@ -333,9 +321,8 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 		{
 			name: "recreates missing trial status during trial activation",
 			fields: fields{
-				Client:          k8s.WrappedFakeClient(),
-				trialPubKey:     &keySample.PublicKey,
-				trialPrivateKey: keySample,
+				Client:     k8s.WrappedFakeClient(),
+				trialState: trialStateSample(t),
 			},
 			wantErr:    false,
 			assertions: assertTrialActivationState,
@@ -343,9 +330,8 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 		{
 			name: "recreates missing trial status after trial activation",
 			fields: fields{
-				Client:          k8s.WrappedFakeClient(),
-				trialPubKey:     &keySample.PublicKey,
-				trialPrivateKey: nil,
+				Client:     k8s.WrappedFakeClient(),
+				trialState: runningTrialSample(t),
 			},
 			wantErr:    false,
 			assertions: assertTrialRunningState,
@@ -354,7 +340,7 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 		{
 			name: "restore trial status memory on operator restart during activation: ok",
 			fields: fields{
-				Client: k8s.WrappedFakeClient(trialStatusSecretSample(t, keySample, true)),
+				Client: k8s.WrappedFakeClient(trialStatusSecretSample(t, trialStateSample(t))),
 			},
 			wantErr:    false,
 			assertions: assertTrialActivationState,
@@ -362,7 +348,7 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 		{
 			name: "restore trial status memory on operator restart during trial: ok",
 			fields: fields{
-				Client: k8s.WrappedFakeClient(trialStatusSecretSample(t, keySample, false)),
+				Client: k8s.WrappedFakeClient(trialStatusSecretSample(t, runningTrialSample(t))),
 			},
 			wantErr:    false,
 			assertions: assertTrialRunningState,
@@ -385,22 +371,19 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 		{
 			name: "update trial status from memory",
 			fields: fields{
-				Client:      k8s.WrappedFakeClient(trialStatusSecretSample(t, testTrialKey(t), true)),
-				trialPubKey: &keySample.PublicKey,
+				Client:     k8s.WrappedFakeClient(trialStatusSecretSample(t, trialStateSample(t))),
+				trialState: runningTrialSample(t),
 			},
 			wantErr:    false,
-			assertions: assertTrialRunningState, // never restore the private key
+			assertions: assertTrialRunningState,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileTrials{
-				Client:   tt.fields.Client,
-				recorder: record.NewFakeRecorder(10),
-				trialKeys: licensing.TrialKeys{
-					PrivateKey: tt.fields.trialPrivateKey,
-					PublicKey:  tt.fields.trialPubKey,
-				},
+				Client:            tt.fields.Client,
+				recorder:          record.NewFakeRecorder(10),
+				trialState:        tt.fields.trialState,
 				operatorNamespace: testNs,
 			}
 			if err := r.reconcileTrialStatus(trialLicenseNsn); (err != nil) != tt.wantErr {

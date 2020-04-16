@@ -47,7 +47,7 @@ type ReconcileTrials struct {
 	recorder record.EventRecorder
 	// iteration is the number of times this controller has run its Reconcile method.
 	iteration         int64
-	trialKeys         licensing.TrialKeys
+	trialState        licensing.TrialState
 	operatorNamespace string
 }
 
@@ -86,18 +86,18 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	// 2. reconcile the trial license itself
 	trialSecretPopulated := license.IsMissingFields() == nil
 	switch {
-	case r.trialKeys.IsTrialRunning() && !trialSecretPopulated:
+	case r.trialState.IsTrialRunning() && !trialSecretPopulated:
 		// if the trial license fields are not populated at this point a user is trying to start a trial a second time
 		// with an empty trial secret, which is not a supported use case.
 		setValidationMsg(&secret, trialOnlyOnceMsg)
-	case !trialSecretPopulated && r.trialKeys.IsTrialActivationInProgress():
+	case !trialSecretPopulated && r.trialState.IsTrialActivationInProgress():
 		// trial is not running yet and the license secret is empty: init the trial
-		if err := licensing.InitTrial(r.trialKeys.PrivateKey, &license); err != nil {
+		if err := r.trialState.InitTrialLicense(&license); err != nil {
 			return reconcile.Result{}, err
 		}
 	case trialSecretPopulated:
 		verifier := licensing.Verifier{
-			PublicKey: r.trialKeys.PublicKey,
+			PublicKey: r.trialState.PublicKey,
 		}
 		status := verifier.Valid(license, time.Now())
 		if status != licensing.LicenseStatusValid {
@@ -115,7 +115,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 	var err error
 	err = r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
-		if !r.trialKeys.IsTrialRunning() {
+		if !r.trialState.IsTrialRunning() {
 			// we have no key in memory nor in the status: generate a new one
 			if err := r.startTrialActivation(); err != nil {
 				return err
@@ -123,7 +123,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 		}
 
 		// we have the key in memory but the status secret is missing: recreate it
-		trialStatus, err = licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialKeys)
+		trialStatus, err = licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 		if err != nil {
 			return fmt.Errorf("while creating expected trial status %w", err)
 		}
@@ -134,18 +134,18 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 	}
 
 	// the status is there but we don't have anything in memory recover the keys
-	if r.trialKeys.PublicKey == nil {
-		recoveredKeys, err := licensing.NewTrialKeysFromStatus(trialStatus)
+	if r.trialState.PublicKey == nil {
+		recoveredKeys, err := licensing.NewTrialStateFromStatus(trialStatus)
 		if err != nil {
 			return err
 		}
-		r.trialKeys = recoveredKeys
-		return nil
+		r.trialState = recoveredKeys
 	}
 	// if trial status exists, but:
 	// - has been tampered with: reconstruct it
 	// - we need to update it to complete the trial activation
-	expected, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialKeys)
+	// - we need to update it because we just regenerated it after a crash
+	expected, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 	if err != nil {
 		return err
 	}
@@ -157,21 +157,21 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 }
 
 func (r *ReconcileTrials) startTrialActivation() error {
-	keys, err := licensing.NewTrialKeys()
+	keys, err := licensing.NewTrialState()
 	if err != nil {
 		return err
 	}
-	r.trialKeys = keys
+	r.trialState = keys
 	return nil
 }
 
 func (r *ReconcileTrials) completeTrialActivation() (reconcile.Result, error) {
-	if r.trialKeys.PrivateKey == nil {
-		return reconcile.Result{}, nil
+	if r.trialState.CompleteTrialActivation() {
+		// requeue to update trial status
+		return reconcile.Result{Requeue: true}, nil
 	}
-	r.trialKeys.PrivateKey = nil
-	// requeue to update trial status
-	return reconcile.Result{Requeue: true}, nil
+	return reconcile.Result{}, nil
+
 }
 
 func validateEULA(trialSecret corev1.Secret) string {
