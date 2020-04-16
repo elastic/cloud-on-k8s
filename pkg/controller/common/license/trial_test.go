@@ -63,6 +63,7 @@ func TestInitTrial(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rnd := rand.Reader
 			tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
+			require.NoError(t, err)
 			err = InitTrial(
 				tmpPrivKey,
 				tt.args.l,
