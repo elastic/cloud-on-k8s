@@ -109,8 +109,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) error {
 	var trialStatus corev1.Secret
-	var err error
-	err = r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
+	err := r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		if !r.trialState.IsTrialRunning() {
 			// we have no state in memory nor in the status secret: start the activation process
@@ -130,7 +129,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 		return fmt.Errorf("while fetching trial status %w", err)
 	}
 
-	// the status secret is there but we don't have anything in memory recover the state
+	// the status secret is there but we don't have anything in memory: recover the state
 	if r.trialState.IsEmpty() {
 		recoveredKeys, err := licensing.NewTrialStateFromStatus(trialStatus)
 		if err != nil {
@@ -154,11 +153,11 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 }
 
 func (r *ReconcileTrials) startTrialActivation() error {
-	keys, err := licensing.NewTrialState()
+	state, err := licensing.NewTrialState()
 	if err != nil {
 		return err
 	}
-	r.trialState = keys
+	r.trialState = state
 	return nil
 }
 
