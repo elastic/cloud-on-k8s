@@ -98,7 +98,7 @@ func updateSettingsInternal(
 		}
 	}
 
-	var remoteClustersToUpdate []string // only used for logging
+	remoteClustersToUpdate := make([]string, 0, len(remoteClustersInSpec)) // only used for logging
 	// remoteClustersToApply are clusters to add (or update) based on what is specified in the Elasticsearch spec.
 	remoteClustersToApply := make(map[string]esclient.RemoteCluster)
 	for name, remoteCluster := range remoteClustersInSpec {
