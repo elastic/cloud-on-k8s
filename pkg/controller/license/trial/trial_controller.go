@@ -5,9 +5,8 @@
 package trial
 
 import (
-	"bytes"
-	"crypto/x509"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -146,18 +145,14 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 	// if trial status exists, but:
 	// - has been tampered with: reconstruct it
 	// - we need to update it to complete the trial activation
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(r.trialKeys.PublicKey)
+	expected, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialKeys)
 	if err != nil {
 		return err
 	}
-	if bytes.Equal(trialStatus.Data[licensing.TrialPubkeyKey], pubkeyBytes) &&
-		trialStatus.Data[licensing.TrialPrivateKey] == nil {
+	if reflect.DeepEqual(expected.Data, trialStatus.Data) {
 		return nil
 	}
-
-	trialStatus.Data = map[string][]byte{
-		licensing.TrialPubkeyKey: pubkeyBytes,
-	}
+	trialStatus.Data = expected.Data
 	return r.Update(&trialStatus)
 }
 
