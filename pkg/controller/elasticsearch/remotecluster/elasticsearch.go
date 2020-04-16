@@ -63,7 +63,7 @@ func UpdateSettings(
 // The following algorithm is used:
 // 1. Get the list of the previously declared remote clusters from the annotation
 // 2. Ensure that all remote clusters in the Elasticsearch spec are present in the annotation
-// 3. For each remote cluster in the annotation which is not the Spec, either:
+// 3. For each remote cluster in the annotation which is not in the Spec, either:
 //   3.1 Schedule its deletion from the Elasticsearch settings
 //   3.2 Otherwise remove it from the annotation
 // 4. Update the annotation on the Elasticsearch object
@@ -73,7 +73,7 @@ func updateSettingsInternal(
 	c k8s.Client,
 	esClient esclient.Client,
 	es esv1.Elasticsearch,
-) (bool, error) {
+) (requeue bool, err error) {
 	remoteClustersInAnnotation := getRemoteClustersInAnnotation(es)
 
 	// Retrieve the remote clusters currently declared in Elasticsearch
@@ -83,7 +83,7 @@ func updateSettingsInternal(
 	}
 
 	var remoteClustersToDelete []string
-	// For each remote cluster in the annotation, either:
+	// For each remote cluster in the annotation but not in the spec, either:
 	// * Schedule its deletion if it exists in the Elasticsearch settings
 	// * Remove it from the annotation if it does not exist anymore in Elasticsearch settings
 	for remoteClusterInAnnotation := range remoteClustersInAnnotation {
@@ -122,9 +122,9 @@ func updateSettingsInternal(
 		return true, err
 	}
 
-	// Since the annotation is update before Elasticsearch we should requeue to sync the annotation
+	// Since the annotation is updated before Elasticsearch we should requeue to sync the annotation
 	// if some clusters are deleted from Elasticsearch.
-	shouldRequeue := len(remoteClustersToDelete) > 0
+	requeue = len(remoteClustersToDelete) > 0
 	if len(remoteClustersToApply) > 0 {
 		// Apply the settings
 		sort.Strings(remoteClustersToUpdate)
@@ -135,9 +135,9 @@ func updateSettingsInternal(
 			"updated_remote_clusters", remoteClustersToUpdate,
 			"deleted_remote_clusters", remoteClustersToDelete,
 		)
-		return shouldRequeue, updateSettings(esClient, remoteClustersToApply)
+		return requeue, updateSettings(esClient, remoteClustersToApply)
 	}
-	return shouldRequeue, nil
+	return requeue, nil
 }
 
 // getRemoteClustersInElasticsearch returns all the remote clusters currently declared in Elasticsearch
