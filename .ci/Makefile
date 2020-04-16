@@ -25,7 +25,8 @@ NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;
 endif
 endif
 
-CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
+CI_SHA1  := $(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}' | cut -c-8)
+CI_IMAGE ?= docker.elastic.co/eck-ci/eck-ci-tools:$(CI_SHA1)
 
 print-ci-image:
 	@ echo $(CI_IMAGE)

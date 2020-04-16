@@ -35,8 +35,6 @@ case $environment in
 ######################################
 
 write_env <<ENV
-REGISTRY = cloudonk8s.azurecr.io
-REPOSITORY = operators
 IMG_SUFFIX = -ci
 
 GO_TAGS = release
@@ -70,8 +68,6 @@ CFG
 ######################################
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 
 GO_TAGS = release
@@ -109,8 +105,6 @@ clusterVersion=$2
 clusterName=$3
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 
 GO_TAGS = release
@@ -150,8 +144,6 @@ kindNodeImage=$2
 clusterVersion=$3
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 
 GO_TAGS = release
@@ -176,8 +168,6 @@ ENV
 ######################################
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 
 GO_TAGS = release
@@ -210,8 +200,6 @@ CFG
 ######################################
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 
 GO_TAGS = release
@@ -247,7 +235,6 @@ CFG
 ######################################
 
 write_env <<ENV
-REGISTRY = docker.elastic.co
 REPOSITORY = eck-snapshots
 IMG_SUFFIX = -ci
 ELASTIC_DOCKER_LOGIN = eckadmin
@@ -282,8 +269,6 @@ isSnapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
 operatorImage=${OPERATOR_IMAGE:-$JKS_PARAM_OPERATOR_IMAGE}
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 IS_SNAPSHOT_BUILD = ${isSnapshotVersion}
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
@@ -318,8 +303,6 @@ CFG
 ######################################
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
 
 TESTS_MATCH = TestSmoke
@@ -408,7 +391,6 @@ ENV
 ######################################
 
 write_env <<ENV
-REGISTRY = docker.elastic.co
 REPOSITORY = eck-snapshots
 IMG_SUFFIX = -dev-ci
 IS_SNAPSHOT_BUILD = yes
