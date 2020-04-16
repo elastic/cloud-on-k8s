@@ -13,6 +13,8 @@ endif::[]
 
 ECK reached general availability (GA) status with the link:https://www.elastic.co/blog/elastic-cloud-on-kubernetes-ECK-is-now-generally-available[release of version 1.0.0]. The latest available GA version is {eck_version}. It is compatible with the previous GA releases (1.0.0 and 1.0.1) and the beta release (1.0.0-beta1), and can be upgraded in-place <<{p}-ga-openshift, with a few exceptions>>. Previous alpha releases, up to and including version 0.9.0, are not compatible with the GA and beta releases and link:https://www.elastic.co/guide/en/cloud-on-k8s/1.0-beta/k8s-upgrading-eck.html[require extra work to upgrade].
 
+Before upgrading, refer to the <<release-notes-{eck_version}, release notes>> to make sure your current setup is not affected by any of the <<breaking-{eck_version}, breaking changes>>. Note that the release notes only list the changes since the last release. If you are skipping over any intermediate versions during the upgrade -- such as going directly from 1.0.0-beta1 to {eck_version} -- review the release notes of each of skipped releases to fully understand all the breaking changes you might encounter during and after the upgrade.
+
 [float]
 [id="{p}-beta-to-ga-upgrade"]
 === Upgrade from beta or previous GA releases to ECK {eck_version}
