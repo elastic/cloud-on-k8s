@@ -38,7 +38,7 @@ type TrialState struct {
 
 // NewTrialState creates a set of trial keys by generating a new RSA key pair.
 func NewTrialState() (TrialState, error) {
-	key, err := NewTrialKey()
+	key, err := newTrialKey()
 	if err != nil {
 		return TrialState{}, err
 	}
@@ -100,6 +100,8 @@ func (tk *TrialState) InitTrialLicense(l *EnterpriseLicense) error {
 	return nil
 }
 
+// CompleteTrialActivation should be called once a trial license has been successfully generated and verified.
+// Returns false if the trial activation had been completed previously.
 func (tk *TrialState) CompleteTrialActivation() bool {
 	if tk.privateKey == nil {
 		return false
@@ -131,7 +133,7 @@ func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName,
 	return secret, nil
 }
 
-func NewTrialKey() (*rsa.PrivateKey, error) {
+func newTrialKey() (*rsa.PrivateKey, error) {
 	rnd := rand.Reader
 	trialKey, err := rsa.GenerateKey(rnd, 2048)
 	if err != nil {
