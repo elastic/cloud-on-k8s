@@ -94,7 +94,7 @@ pipeline {
             script {
                 if (notOnlyDocs() && failedTests.size() == 0) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-debug-e2e")],
+                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-debug-e2e-${BUILD_NUMBER}")],
                         wait: false
                 }
             }
