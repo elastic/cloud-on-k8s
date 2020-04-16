@@ -20,8 +20,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const testNs = "ns-1"
-const trialLicenseName = "eck-trial" // user's choice but constant simplifies test setup
+const (
+	testNs           = "ns-1"
+	trialLicenseName = "eck-trial" // user's choice but constant simplifies test setup
+)
 
 var trialLicenseNsn = types.NamespacedName{
 	Namespace: testNs,
@@ -57,7 +59,6 @@ func trialLicenseBytes() []byte {
 		`{"license": {"uid": "x", "type": "enterprise-trial", "issue_date_in_millis": 1, "expiry_date_in_millis": %d, "issued_to": "x", "issuer": "x", "start_date_in_millis": 1, "cluster_licenses": null, "Version": 0}}`,
 		chrono.ToMillis(time.Now().Add(24*time.Hour)), // simulate a license still valid for 24 hours
 	))
-
 }
 
 func trialStateSample(t *testing.T) licensing.TrialState {

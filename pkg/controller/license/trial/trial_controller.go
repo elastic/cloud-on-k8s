@@ -167,7 +167,6 @@ func (r *ReconcileTrials) completeTrialActivation() (reconcile.Result, error) {
 		return reconcile.Result{Requeue: true}, nil
 	}
 	return reconcile.Result{}, nil
-
 }
 
 func validateEULA(trialSecret corev1.Secret) string {
