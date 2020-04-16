@@ -29,7 +29,7 @@ const (
 	TrialLicenseSecretNamespace = "trial.k8s.elastic.co/secret-namespace" // nolint
 )
 
-// TrialKeys
+// TrialKeys capture the in-memory representation of the trial status.
 type TrialKeys struct {
 	PrivateKey *rsa.PrivateKey
 	PublicKey  *rsa.PublicKey
