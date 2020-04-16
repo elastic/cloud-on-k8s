@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
@@ -535,7 +534,6 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 	type args struct {
 		ctx       downscaleContext
 		downscale ssetDownscale
-		state     *downscaleState
 	}
 	tests := []struct {
 		name    string
@@ -552,7 +550,6 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  3,
 					finalReplicas:   3,
 				},
-				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
@@ -571,7 +568,6 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 					targetReplicas:  2,
 					finalReplicas:   2,
 				},
-				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
 				initialReplicas: 3,
@@ -580,89 +576,30 @@ func Test_calculatePerformableDownscale(t *testing.T) {
 			},
 		},
 		{
-			name: "downscale not possible from 3 to 2 (would violate maxUnavailable)",
+			name: "downscale not possible: data migration not complete",
 			args: args{
 				ctx: downscaleContext{
-					observedState: observer.State{},
-					shardLister:   migration.NewFakeShardLister(esclient.Shards{}),
+					reconcileState: reconcile.NewState(esv1.Elasticsearch{}),
+					shardLister: migration.NewFakeShardLister(esclient.Shards{
+						{
+							Index:    "index-1",
+							Shard:    "0",
+							NodeName: "default-2",
+						},
+					}),
 				},
 				downscale: ssetDownscale{
-					initialReplicas: 3,
-					targetReplicas:  3,
-					finalReplicas:   2,
-				},
-				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(0)},
-			},
-			want: ssetDownscale{
-				initialReplicas: 3,
-				targetReplicas:  3,
-				finalReplicas:   2,
-			},
-		},
-		{
-			name: "downscale not possible: one master already removed",
-			args: args{
-				ctx: downscaleContext{
-					shardLister: migration.NewFakeShardLister(esclient.Shards{}),
-				},
-				downscale: ssetDownscale{
-					statefulSet:     ssetMaster3Replicas,
-					initialReplicas: 3,
-					targetReplicas:  3,
-					finalReplicas:   2,
-				},
-				// a master node has already been removed
-				state: &downscaleState{masterRemovalInProgress: true, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
-			},
-			want: ssetDownscale{
-				statefulSet:     ssetMaster3Replicas,
-				initialReplicas: 3,
-				targetReplicas:  3,
-				finalReplicas:   2,
-			},
-		},
-		{
-			name: "downscale only possible from 3 to 2 instead of 3 to 1 (1 master at a time)",
-			args: args{
-				ctx: downscaleContext{
-					shardLister: migration.NewFakeShardLister(esclient.Shards{}),
-				},
-				downscale: ssetDownscale{
-					statefulSet:     ssetMaster3Replicas,
+					statefulSet:     sset.TestSset{Name: "default"}.Build(),
 					initialReplicas: 3,
 					targetReplicas:  2,
-					finalReplicas:   1,
+					finalReplicas:   2,
 				},
-				// invariants limits us to one master node downscale only
-				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 3, removalsAllowed: pointer.Int32(1)},
 			},
 			want: ssetDownscale{
-				statefulSet:     ssetMaster3Replicas,
+				statefulSet:     sset.TestSset{Name: "default"}.Build(),
 				initialReplicas: 3,
-				targetReplicas:  2,
-				finalReplicas:   1,
-			},
-		},
-		{
-			name: "downscale not possible: cannot remove the last master",
-			args: args{
-				ctx: downscaleContext{
-					shardLister: migration.NewFakeShardLister(esclient.Shards{}),
-				},
-				downscale: ssetDownscale{
-					statefulSet:     ssetMaster3Replicas,
-					initialReplicas: 1,
-					targetReplicas:  1,
-					finalReplicas:   0,
-				},
-				// only one master is running
-				state: &downscaleState{masterRemovalInProgress: false, runningMasters: 1, removalsAllowed: pointer.Int32(1)},
-			},
-			want: ssetDownscale{
-				statefulSet:     ssetMaster3Replicas,
-				initialReplicas: 1,
-				targetReplicas:  1,
-				finalReplicas:   0,
+				targetReplicas:  3,
+				finalReplicas:   2,
 			},
 		},
 	}
