@@ -103,6 +103,7 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			require.Equal(t, msg, err)
 		}
 	}
+
 	requireNoValidationMsg := func(c k8s.Client) {
 		var sec corev1.Secret
 		require.NoError(t, c.Get(trialLicenseNsn, &sec))

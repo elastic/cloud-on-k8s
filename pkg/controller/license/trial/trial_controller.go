@@ -90,7 +90,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	trialSecretPopulated := license.IsMissingFields() == nil
 	switch {
 	case r.isTrialRunning() && !trialSecretPopulated:
-		// if the trial secret fields are not populated at this point a user is trying to start a trial a second time
+		// if the trial license fields are not populated at this point a user is trying to start a trial a second time
 		// with an empty trial secret, which is not a supported use case.
 		setValidationMsg(&secret, trialOnlyOnceMsg)
 	case !trialSecretPopulated && r.isTrialActivationInProgress():
@@ -106,7 +106,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		if status != licensing.LicenseStatusValid {
 			setValidationMsg(&secret, userFriendlyMsgs[status])
 		} else {
-			// complete the trial activation we don't need the private key anymore
+			// valid trial license: complete trial activation
 			return r.completeTrialActivation()
 		}
 	}
