@@ -5,58 +5,42 @@
 package remotecluster
 
 import (
-	"encoding/json"
+	"sort"
+	"strings"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/pkg/errors"
 )
 
 const (
-	RemoteClustersAnnotationName = "elasticsearch.k8s.elastic.co/remote-clusters"
+	// ManagedRemoteClustersAnnotationName holds the list of the remote clusters which have been created
+	ManagedRemoteClustersAnnotationName = "elasticsearch.k8s.elastic.co/managed-remote-clusters"
 )
 
-type expectedRemoteClusterConfiguration struct {
-	esv1.RemoteCluster
-
-	// ConfigHash is the hash of the remote cluster configuration. It is used to detect when the settings must be updated.
-	ConfigHash string `json:"configHash"`
-}
-
-// getCurrentRemoteClusters returns a map with the current configuration hash of the remote clusters declared in Elasticsearch.
+// getRemoteClustersInAnnotation returns a set that contains a list of remote clusters that may have been declared in Elasticsearch.
 // A map is returned here to quickly compare with the ones that are new or missing.
 // If there's no remote clusters the map is empty but not nil.
-func getCurrentRemoteClusters(es esv1.Elasticsearch) (map[string]string, error) {
-	serializedRemoteClusters, ok := es.Annotations[RemoteClustersAnnotationName]
-	remoteClusters := make(map[string]string)
+func getRemoteClustersInAnnotation(es esv1.Elasticsearch) map[string]struct{} {
+	remoteClusters := make(map[string]struct{})
+	serializedRemoteClusters, ok := es.Annotations[ManagedRemoteClustersAnnotationName]
 	if !ok {
-		return remoteClusters, nil
+		return remoteClusters
 	}
-	if err := json.Unmarshal([]byte(serializedRemoteClusters), &remoteClusters); err != nil {
-		return nil, err
+	for _, remoteClusterInAnnotation := range strings.Split(serializedRemoteClusters, ",") {
+		remoteClusters[remoteClusterInAnnotation] = struct{}{}
 	}
-
-	return remoteClusters, nil
+	return remoteClusters
 }
 
-func annotateWithRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClusters map[string]expectedRemoteClusterConfiguration) error {
-	// Store a map with the configuration hash for every remote cluster
-	remoteClusterConfigurations := make(map[string]string, len(remoteClusters))
-	for _, remoteCluster := range remoteClusters {
-		// remoteCluster.Name is set by the user, it is supposed to be unique
-		remoteClusterConfigurations[remoteCluster.Name] = remoteCluster.RemoteCluster.ConfigHash()
-	}
-
-	// serialize the remote clusters list and update the object
-	serializedRemoteClusters, err := json.Marshal(remoteClusterConfigurations)
-	if err != nil {
-		return errors.Wrapf(err, "failed to serialize configuration")
-	}
-
+func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClusters map[string]struct{}) error {
 	if es.Annotations == nil {
 		es.Annotations = make(map[string]string)
 	}
-
-	es.Annotations[RemoteClustersAnnotationName] = string(serializedRemoteClusters)
+	annotation := make([]string, 0, len(remoteClusters))
+	for remoteCluster := range remoteClusters {
+		annotation = append(annotation, remoteCluster)
+	}
+	sort.Strings(annotation)
+	es.Annotations[ManagedRemoteClustersAnnotationName] = strings.Join(annotation, ",")
 	return c.Update(&es)
 }

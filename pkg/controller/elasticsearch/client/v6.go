@@ -88,6 +88,11 @@ func (c *clientV6) UpdateRemoteClusterSettings(ctx context.Context, settings Rem
 	return c.put(ctx, "/_cluster/settings", &settings, nil)
 }
 
+func (c *clientV6) GetRemoteClusterSettings(ctx context.Context) (RemoteClustersSettings, error) {
+	remoteClustersSettings := RemoteClustersSettings{}
+	return remoteClustersSettings, c.get(ctx, "/_cluster/settings", &remoteClustersSettings)
+}
+
 func (c *clientV6) GetLicense(ctx context.Context) (License, error) {
 	var license LicenseResponse
 	return license.License, c.get(ctx, "/_xpack/license", &license)
