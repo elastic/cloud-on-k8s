@@ -6,6 +6,7 @@ package sset
 
 import (
 	"fmt"
+	"sort"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,11 +25,15 @@ var log = logf.Log.WithName("statefulset")
 type StatefulSetList []appsv1.StatefulSet
 
 // RetrieveActualStatefulSets returns the list of existing StatefulSets labeled for the given es cluster.
+// It is sorted using a natural order sort so that algorithms which are using the resulting list are more predictable and stable.
 func RetrieveActualStatefulSets(c k8s.Client, es types.NamespacedName) (StatefulSetList, error) {
 	var ssets appsv1.StatefulSetList
 	ns := client.InNamespace(es.Namespace)
 	matchLabels := label.NewLabelSelectorForElasticsearchClusterName(es.Name)
 	err := c.List(&ssets, ns, matchLabels)
+	sort.Slice(ssets.Items, func(i, j int) bool {
+		return ssets.Items[i].Name < ssets.Items[j].Name
+	})
 	return StatefulSetList(ssets.Items), err
 }
 
