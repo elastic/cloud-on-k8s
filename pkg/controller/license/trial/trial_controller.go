@@ -113,13 +113,13 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 	err = r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		if !r.trialState.IsTrialRunning() {
-			// we have no key in memory nor in the status: generate a new one
+			// we have no state in memory nor in the status secret: start the activation process
 			if err := r.startTrialActivation(); err != nil {
 				return err
 			}
 		}
 
-		// we have the key in memory but the status secret is missing: recreate it
+		// we have state in memory but the status secret is missing: recreate it
 		trialStatus, err = licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 		if err != nil {
 			return fmt.Errorf("while creating expected trial status %w", err)
@@ -130,7 +130,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 		return fmt.Errorf("while fetching trial status %w", err)
 	}
 
-	// the status is there but we don't have anything in memory recover the keys
+	// the status secret is there but we don't have anything in memory recover the state
 	if r.trialState.IsEmpty() {
 		recoveredKeys, err := licensing.NewTrialStateFromStatus(trialStatus)
 		if err != nil {
@@ -141,7 +141,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 	// if trial status exists, but:
 	// - has been tampered with: reconstruct it
 	// - we need to update it to complete the trial activation
-	// - we need to update it because we just regenerated it after a crash
+	// - we need to update it because we just regenerated the state after a crash
 	expected, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 	if err != nil {
 		return err

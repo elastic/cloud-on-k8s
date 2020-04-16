@@ -30,7 +30,7 @@ const (
 	TrialLicenseSecretNamespace = "trial.k8s.elastic.co/secret-namespace" // nolint
 )
 
-// TrialState capture the in-memory representation of the trial status.
+// TrialState captures the in-memory representation of the trial status.
 type TrialState struct {
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
@@ -50,21 +50,21 @@ func NewTrialState() (TrialState, error) {
 
 // NewTrialStateFromStatus reconstructs trial state from a trial status secret.
 func NewTrialStateFromStatus(trialStatus corev1.Secret) (TrialState, error) {
+	// create new keys if the operator failed just before the trial was started
+	trialActivation, err := strconv.ParseBool(string(trialStatus.Data[TrialActivationKey]))
+	if err == nil && trialActivation {
+		return NewTrialState()
+	}
+
 	// reinstate pubkey from status secret e.g. after operator restart
 	pubKeyBytes := trialStatus.Data[TrialPubkeyKey]
 	key, err := ParsePubKey(pubKeyBytes)
 	if err != nil {
 		return TrialState{}, err
 	}
-	keys := TrialState{
+	return TrialState{
 		publicKey: key,
-	}
-	// create new keys if the operator failed just before the trial was started
-	trialActivation, err := strconv.ParseBool(string(trialStatus.Data[TrialActivationKey]))
-	if err == nil && trialActivation {
-		return NewTrialState()
-	}
-	return keys, nil
+	}, nil
 }
 
 // IsTrialRunning returns true if a trial has been successfully started at some point in the past.
@@ -77,10 +77,12 @@ func (tk *TrialState) IsTrialActivationInProgress() bool {
 	return tk.privateKey != nil && tk.publicKey != nil
 }
 
+// IsEmpty returns true on an empty state struct.
 func (tk *TrialState) IsEmpty() bool {
 	return tk.privateKey == nil && tk.publicKey == nil
 }
 
+// InitTrialLicense initialises and signs the given license based on the current state.
 func (tk *TrialState) InitTrialLicense(l *EnterpriseLicense) error {
 	if !tk.IsTrialActivationInProgress() {
 		return errors.New("trial has already been activated")
