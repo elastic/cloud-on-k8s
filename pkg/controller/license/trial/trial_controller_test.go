@@ -51,11 +51,13 @@ func trialLicenseSecretSample(annotated bool, data map[string][]byte) *corev1.Se
 func trialStatusSecretSample(t *testing.T, key *rsa.PrivateKey, includePK bool) *corev1.Secret {
 	var status corev1.Secret
 	var err error
-	if includePK {
-		status, err = licensing.ExpectedTrialStatusWithPK(testNs, trialLicenseNsn, key)
-	} else {
-		status, err = licensing.ExpectedTrialStatus(testNs, trialLicenseNsn, &key.PublicKey)
+	keys := licensing.TrialKeys{
+		PublicKey: &key.PublicKey,
 	}
+	if includePK {
+		keys.PrivateKey = key
+	}
+	status, err = licensing.ExpectedTrialStatus(testNs, trialLicenseNsn, keys)
 	require.NoError(t, err)
 	return &status
 }
@@ -187,7 +189,10 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			fields: fields{
 				Client: func() k8s.Client {
 					// simulating operator crash right after trial status has been written
-					status, err := licensing.ExpectedTrialStatusWithPK(testNs, trialLicenseNsn, trialKeySample)
+					status, err := licensing.ExpectedTrialStatus(testNs, trialLicenseNsn, licensing.TrialKeys{
+						PrivateKey: trialKeySample,
+						PublicKey:  &trialKeySample.PublicKey,
+					})
 					require.NoError(t, err)
 					return k8s.WrappedFakeClient(trialLicenseSecretSample(true, nil), &status)
 				}(),
@@ -266,10 +271,12 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			r := &ReconcileTrials{
-				Client:            tt.fields.Client,
-				recorder:          record.NewFakeRecorder(10),
-				trialPubKey:       tt.fields.trialPubKey,
-				trialPrivateKey:   tt.fields.trialPrivateKey,
+				Client:   tt.fields.Client,
+				recorder: record.NewFakeRecorder(10),
+				trialKeys: licensing.TrialKeys{
+					PrivateKey: tt.fields.trialPrivateKey,
+					PublicKey:  tt.fields.trialPubKey,
+				},
 				operatorNamespace: testNs,
 			}
 			_, err := r.Reconcile(reconcile.Request{
@@ -293,15 +300,13 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 	keySample := testTrialKey(t)
 
 	assertTrialActivationState := func(r *ReconcileTrials, status corev1.Secret) {
-		require.NotNil(t, r.trialPrivateKey)
-		require.NotNil(t, r.trialPubKey)
+		require.True(t, r.trialKeys.IsTrialActivationInProgress())
 		require.Contains(t, status.Data, licensing.TrialPrivateKey)
 		require.Contains(t, status.Data, licensing.TrialPubkeyKey)
 	}
 
 	assertTrialRunningState := func(r *ReconcileTrials, status corev1.Secret) {
-		require.Nil(t, r.trialPrivateKey)
-		require.NotNil(t, r.trialPubKey)
+		require.True(t, r.trialKeys.IsTrialRunning())
 		require.NotContains(t, status.Data, licensing.TrialPrivateKey)
 		require.Contains(t, status.Data, licensing.TrialPubkeyKey)
 	}
@@ -390,10 +395,12 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ReconcileTrials{
-				Client:            tt.fields.Client,
-				recorder:          record.NewFakeRecorder(10),
-				trialPubKey:       tt.fields.trialPubKey,
-				trialPrivateKey:   tt.fields.trialPrivateKey,
+				Client:   tt.fields.Client,
+				recorder: record.NewFakeRecorder(10),
+				trialKeys: licensing.TrialKeys{
+					PrivateKey: tt.fields.trialPrivateKey,
+					PublicKey:  tt.fields.trialPubKey,
+				},
 				operatorNamespace: testNs,
 			}
 			if err := r.reconcileTrialStatus(trialLicenseNsn); (err != nil) != tt.wantErr {

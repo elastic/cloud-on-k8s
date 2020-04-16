@@ -29,23 +29,64 @@ const (
 	TrialLicenseSecretNamespace = "trial.k8s.elastic.co/secret-namespace" // nolint
 )
 
-func ExpectedTrialStatusWithPK(operatorNamespace string, license types.NamespacedName, key *rsa.PrivateKey) (corev1.Secret, error) {
-	status, err := ExpectedTrialStatus(operatorNamespace, license, &key.PublicKey)
-	if err != nil {
-		return status, err
-	}
-
-	// handle a combination of operator crashes and API errors on trial activation by keeping this around
-	status.Data[TrialPrivateKey] = x509.MarshalPKCS1PrivateKey(key)
-	return status, nil
+// TrialKeys
+type TrialKeys struct {
+	PrivateKey *rsa.PrivateKey
+	PublicKey  *rsa.PublicKey
 }
 
-func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName, key *rsa.PublicKey) (corev1.Secret, error) {
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(key)
+// NewTrialKeys creates a set of trial keys by generating a new key.
+func NewTrialKeys() (TrialKeys, error) {
+	key, err := NewTrialKey()
+	if err != nil {
+		return TrialKeys{}, err
+	}
+	return TrialKeys{
+		PrivateKey: key,
+		PublicKey:  &key.PublicKey,
+	}, nil
+}
+
+// NewTrialKeysFromStatus reconstructs trial keys from a trial status secret.
+func NewTrialKeysFromStatus(trialStatus corev1.Secret) (TrialKeys, error) {
+	// reinstate pubkey from status secret e.g. after operator restart
+	pubKeyBytes := trialStatus.Data[TrialPubkeyKey]
+	key, err := ParsePubKey(pubKeyBytes)
+	if err != nil {
+		return TrialKeys{}, err
+	}
+	keys := TrialKeys{
+		PublicKey: key,
+	}
+	// also reinstate the private key if the operator failed just before the trial was started
+	privKeyBytes, exists := trialStatus.Data[TrialPrivateKey]
+	if exists {
+		privateKey, err := x509.ParsePKCS1PrivateKey(privKeyBytes)
+		if err != nil {
+			return TrialKeys{}, fmt.Errorf("while parsing trial private key %w", err)
+		}
+		keys.PrivateKey = privateKey
+	}
+	return keys, nil
+}
+
+// IsTrialRunning returns true if a trial has been successfully started at some point in the past.
+func (tk *TrialKeys) IsTrialRunning() bool {
+	return tk.PublicKey != nil && tk.PrivateKey == nil
+}
+
+// IsTrialActivtationInProgress returns true if we are in the process of starting a trial.
+func (tk *TrialKeys) IsTrialActivationInProgress() bool {
+	return tk.PrivateKey != nil && tk.PublicKey != nil
+}
+
+// ExpectedTrialStatus creates the expected state of the trial status secret for the given keys for reconciliation.
+func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName, keys TrialKeys) (corev1.Secret, error) {
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(keys.PublicKey)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
-	return corev1.Secret{
+	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: operatorNamespace,
 			Name:      TrialStatusSecretKey,
@@ -57,7 +98,13 @@ func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName,
 		Data: map[string][]byte{
 			TrialPubkeyKey: pubkeyBytes,
 		},
-	}, nil
+	}
+	if keys.PrivateKey != nil {
+		// handle a combination of operator crashes and API errors on trial activation by keeping this around
+		secret.Data[TrialPrivateKey] = x509.MarshalPKCS1PrivateKey(keys.PrivateKey)
+
+	}
+	return secret, nil
 }
 
 func NewTrialKey() (*rsa.PrivateKey, error) {
