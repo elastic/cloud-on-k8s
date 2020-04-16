@@ -96,10 +96,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 			return reconcile.Result{}, err
 		}
 	case trialSecretPopulated:
-		verifier := licensing.Verifier{
-			PublicKey: r.trialState.PublicKey,
-		}
-		status := verifier.Valid(license, time.Now())
+		status := r.trialState.LicenseVerifier().Valid(license, time.Now())
 		if status != licensing.LicenseStatusValid {
 			setValidationMsg(&secret, userFriendlyMsgs[status])
 		} else {
@@ -134,7 +131,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 	}
 
 	// the status is there but we don't have anything in memory recover the keys
-	if r.trialState.PublicKey == nil {
+	if r.trialState.IsEmpty() {
 		recoveredKeys, err := licensing.NewTrialStateFromStatus(trialStatus)
 		if err != nil {
 			return err

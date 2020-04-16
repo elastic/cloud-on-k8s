@@ -194,7 +194,7 @@ func TestNewTrialStateFromStatus(t *testing.T) {
 			want: func(s TrialState) {
 				require.True(t, s.IsTrialRunning())
 				require.True(t, reflect.DeepEqual(s, TrialState{
-					PublicKey: &key.PublicKey,
+					publicKey: &key.PublicKey,
 				}))
 			},
 			wantErr: false,
@@ -212,13 +212,13 @@ func TestNewTrialStateFromStatus(t *testing.T) {
 			want: func(s TrialState) {
 				require.True(t, s.IsTrialRunning())
 				require.True(t, reflect.DeepEqual(s, TrialState{
-					PublicKey: &key.PublicKey,
+					publicKey: &key.PublicKey,
 				}))
 			},
 			wantErr: false,
 		},
 		{
-			name: "err on garbage status",
+			name: "error on garbage status",
 			args: args{
 				trialStatus: v1.Secret{
 					Data: map[string][]byte{
@@ -245,7 +245,7 @@ func TestNewTrialStateFromStatus(t *testing.T) {
 			want: func(s TrialState) {
 				require.True(t, s.IsTrialActivationInProgress())
 				require.False(t, reflect.DeepEqual(s, TrialState{
-					PublicKey: &key.PublicKey,
+					publicKey: &key.PublicKey,
 				}))
 			},
 		},

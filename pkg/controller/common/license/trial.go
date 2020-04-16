@@ -33,10 +33,10 @@ const (
 // TrialState capture the in-memory representation of the trial status.
 type TrialState struct {
 	privateKey *rsa.PrivateKey
-	PublicKey  *rsa.PublicKey
+	publicKey  *rsa.PublicKey
 }
 
-// NewTrialState creates a set of trial keys by generating a new RSA key pair.
+// NewTrialState creates a new trial state based on a new RSA key pair.
 func NewTrialState() (TrialState, error) {
 	key, err := newTrialKey()
 	if err != nil {
@@ -44,11 +44,11 @@ func NewTrialState() (TrialState, error) {
 	}
 	return TrialState{
 		privateKey: key,
-		PublicKey:  &key.PublicKey,
+		publicKey:  &key.PublicKey,
 	}, nil
 }
 
-// NewTrialStateFromStatus reconstructs trial keys from a trial status secret.
+// NewTrialStateFromStatus reconstructs trial state from a trial status secret.
 func NewTrialStateFromStatus(trialStatus corev1.Secret) (TrialState, error) {
 	// reinstate pubkey from status secret e.g. after operator restart
 	pubKeyBytes := trialStatus.Data[TrialPubkeyKey]
@@ -57,7 +57,7 @@ func NewTrialStateFromStatus(trialStatus corev1.Secret) (TrialState, error) {
 		return TrialState{}, err
 	}
 	keys := TrialState{
-		PublicKey: key,
+		publicKey: key,
 	}
 	// create new keys if the operator failed just before the trial was started
 	trialActivation, err := strconv.ParseBool(string(trialStatus.Data[TrialActivationKey]))
@@ -69,12 +69,16 @@ func NewTrialStateFromStatus(trialStatus corev1.Secret) (TrialState, error) {
 
 // IsTrialRunning returns true if a trial has been successfully started at some point in the past.
 func (tk *TrialState) IsTrialRunning() bool {
-	return tk.PublicKey != nil && tk.privateKey == nil
+	return tk.publicKey != nil && tk.privateKey == nil
 }
 
 // IsTrialActivtationInProgress returns true if we are in the process of starting a trial.
 func (tk *TrialState) IsTrialActivationInProgress() bool {
-	return tk.privateKey != nil && tk.PublicKey != nil
+	return tk.privateKey != nil && tk.publicKey != nil
+}
+
+func (tk *TrialState) IsEmpty() bool {
+	return tk.privateKey == nil && tk.publicKey == nil
 }
 
 func (tk *TrialState) InitTrialLicense(l *EnterpriseLicense) error {
@@ -110,9 +114,14 @@ func (tk *TrialState) CompleteTrialActivation() bool {
 	return true
 }
 
-// ExpectedTrialStatus creates the expected state of the trial status secret for the given keys for reconciliation.
+// LicenseVerifier returns a verifier based on the current state/public key
+func (tk *TrialState) LicenseVerifier() *Verifier {
+	return &Verifier{PublicKey: tk.publicKey}
+}
+
+// ExpectedTrialStatus creates the expected state of the trial status secret for the given trail state for reconciliation purposes.
 func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName, state TrialState) (corev1.Secret, error) {
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(state.PublicKey)
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(state.publicKey)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
