@@ -26,6 +26,8 @@ var log = logf.Log.WithName("remotecluster")
 const enterpriseFeaturesDisabledMsg = "Remote cluster is an enterprise feature. Enterprise features are disabled"
 
 // UpdateSettings updates the remote clusters in the persistent settings by calling the Elasticsearch API.
+// A boolean is returned to indicate if a requeue should be scheduled to sync the annotation on the Elasticsearch object
+// when the remote clusters that are not expected anymore are actually deleted from the Elasticsearch settings.
 // See the documentation of updateSettingsInternal for more information about the algorithm.
 func UpdateSettings(
 	ctx context.Context,
