@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	// CreatedRemoteClustersAnnotationName holds the list of the remote clusters which have been created
-	CreatedRemoteClustersAnnotationName = "elasticsearch.k8s.elastic.co/managed-remote-clusters"
+	// ManagedRemoteClustersAnnotationName holds the list of the remote clusters which have been created
+	ManagedRemoteClustersAnnotationName = "elasticsearch.k8s.elastic.co/managed-remote-clusters"
 )
 
 // getRemoteClustersInAnnotation returns a set that contains a list of remote clusters that may have been declared in Elasticsearch.
@@ -22,7 +22,7 @@ const (
 // If there's no remote clusters the map is empty but not nil.
 func getRemoteClustersInAnnotation(es esv1.Elasticsearch) map[string]struct{} {
 	remoteClusters := make(map[string]struct{})
-	serializedRemoteClusters, ok := es.Annotations[CreatedRemoteClustersAnnotationName]
+	serializedRemoteClusters, ok := es.Annotations[ManagedRemoteClustersAnnotationName]
 	if !ok {
 		return remoteClusters
 	}
@@ -41,6 +41,6 @@ func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remo
 		annotation = append(annotation, remoteCluster)
 	}
 	sort.Strings(annotation)
-	es.Annotations[CreatedRemoteClustersAnnotationName] = strings.Join(annotation, ",")
+	es.Annotations[ManagedRemoteClustersAnnotationName] = strings.Join(annotation, ",")
 	return c.Update(&es)
 }
