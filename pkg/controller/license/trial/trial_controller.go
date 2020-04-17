@@ -154,8 +154,8 @@ func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret
 	// allow new trial state only if we don't have license that looks like it has been populated previously
 	allowNewState := license.IsMissingFields() != nil
 	// create new keys if the operator failed just before the trial was started
-	trialActivation := bytes.Equal(trialStatus.Data[licensing.TrialActivationKey], []byte("true"))
-	if trialActivation && allowNewState {
+	trialActivationInProgress := bytes.Equal(trialStatus.Data[licensing.TrialActivationKey], []byte("true"))
+	if trialActivationInProgress && allowNewState {
 		return licensing.NewTrialState()
 
 	}
