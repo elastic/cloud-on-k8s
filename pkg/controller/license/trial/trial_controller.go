@@ -85,26 +85,24 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// 2. reconcile the trial license itself
 	trialSecretPopulated := license.IsMissingFields() == nil
+	licenseStatus := r.validateLicense(license)
 	switch {
-	case r.trialState.IsTrialRunning() && !trialSecretPopulated:
-		// if the trial license fields are not populated at this point a user is trying to start a trial a second time
-		// with an empty trial secret, which is not a supported use case.
-		setValidationMsg(&secret, trialOnlyOnceMsg)
-	case !trialSecretPopulated && r.trialState.IsTrialActivationInProgress():
-		// trial is not running yet and the license secret is empty: init the trial
-		if err := r.trialState.InitTrialLicense(&license); err != nil {
-			return reconcile.Result{}, err
-		}
-	case trialSecretPopulated:
-		status := r.trialState.LicenseVerifier().Valid(license, time.Now())
-		if status != licensing.LicenseStatusValid {
-			setValidationMsg(&secret, userFriendlyMsgs[status])
-		} else {
-			// valid trial license: complete trial activation
-			return r.completeTrialActivation()
-		}
+	case !trialSecretPopulated && r.trialState.IsTrialRunning():
+		// user wants to start a trial for the second time
+		return r.invalidOperation(secret, trialOnlyOnceMsg)
+	case !trialSecretPopulated && !r.trialState.IsTrialRunning():
+		// user wants to init a trial for the first time
+		return r.initTrialLicense(secret, license)
+	case trialSecretPopulated && !validLicense(licenseStatus):
+		// existing license is invalid (expired or tampered with)
+		return r.invalidOperation(secret, userFriendlyMsgs[licenseStatus])
+	case trialSecretPopulated && validLicense(licenseStatus) && !r.trialState.IsTrialRunning():
+		// valid license, let's consider the trial started and complete the activation
+		return r.completeTrialActivation(request.NamespacedName)
+	case trialSecretPopulated && validLicense(licenseStatus) && r.trialState.IsTrialRunning():
+		// all good nothing to do
 	}
-	return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) error {
@@ -137,10 +135,10 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 		}
 		r.trialState = recoveredKeys
 	}
-	// if trial status exists, but:
-	// - has been tampered with: reconstruct it
-	// - we need to update it to complete the trial activation
-	// - we need to update it because we just regenerated the state after a crash
+	// if trial status exists, but we need to update it because:
+	// - has been tampered with
+	// - we need to complete the trial activation because if failed on a previous attempt
+	// - we just regenerated the state after a crash
 	expected, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
 	if err != nil {
 		return err
@@ -161,12 +159,36 @@ func (r *ReconcileTrials) startTrialActivation() error {
 	return nil
 }
 
-func (r *ReconcileTrials) completeTrialActivation() (reconcile.Result, error) {
+func (r *ReconcileTrials) completeTrialActivation(license types.NamespacedName) (reconcile.Result, error) {
 	if r.trialState.CompleteTrialActivation() {
+		status, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 		// requeue to update trial status
-		return reconcile.Result{Requeue: true}, nil
+		return reconcile.Result{}, r.Update(&status)
 	}
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileTrials) initTrialLicense(secret corev1.Secret, license licensing.EnterpriseLicense) (reconcile.Result, error) {
+	if err := r.trialState.InitTrialLicense(&license); err != nil {
+		return reconcile.Result{}, err
+	}
+	return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
+}
+
+func (r *ReconcileTrials) invalidOperation(secret corev1.Secret, msg string) (reconcile.Result, error) {
+	setValidationMsg(&secret, msg)
+	return reconcile.Result{}, r.Update(&secret)
+}
+
+func validLicense(status licensing.LicenseStatus) bool {
+	return status == licensing.LicenseStatusValid
+}
+
+func (r *ReconcileTrials) validateLicense(license licensing.EnterpriseLicense) licensing.LicenseStatus {
+	return r.trialState.LicenseVerifier().Valid(license, time.Now())
 }
 
 func validateEULA(trialSecret corev1.Secret) string {
