@@ -4,10 +4,11 @@
 
 # This Makefile is mostly used for continuous integration.
 
-ROOT_DIR := $(CURDIR)/..
-GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
+ROOT_DIR               := $(CURDIR)/..
+GO_MOUNT_PATH          ?= /go/src/github.com/elastic/cloud-on-k8s
 ALL_IN_ONE_OUTPUT_FILE ?= config/all-in-one.yaml
 S3_ECK_DIR             ?= s3://download.elasticsearch.org/downloads/eck
+ELASTIC_DOCKER_LOGIN   ?= eckadmin
 
 -include $(ROOT_DIR)/.env
 

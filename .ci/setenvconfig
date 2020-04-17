@@ -237,7 +237,6 @@ CFG
 write_env <<ENV
 REPOSITORY = eck-snapshots
 IMG_SUFFIX = -ci
-ELASTIC_DOCKER_LOGIN = eckadmin
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -350,14 +349,11 @@ CFG
 # IMG_VERSION is generated
 
 write_env <<ENV
-REGISTRY = docker.elastic.co
 REPOSITORY = eck-snapshots
 IMG_NAME = eck-operator
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-
-ELASTIC_DOCKER_LOGIN = eckadmin
 
 SNAPSHOT = true
 IMG_VERSION = $(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
@@ -370,14 +366,11 @@ ENV
 ###############
 
 write_env <<ENV
-REGISTRY = docker.elastic.co
 REPOSITORY = eck
 IMG_NAME = eck-operator
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-
-ELASTIC_DOCKER_LOGIN = eckadmin
 
 SNAPSHOT = false
 IMG_VERSION = $TAG_NAME
@@ -394,7 +387,6 @@ write_env <<ENV
 REPOSITORY = eck-snapshots
 IMG_SUFFIX = -dev-ci
 IS_SNAPSHOT_BUILD = yes
-ELASTIC_DOCKER_LOGIN = eckadmin
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
