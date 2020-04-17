@@ -164,7 +164,6 @@ func (r *ReconcileTrials) completeTrialActivation(license types.NamespacedName) 
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		// requeue to update trial status
 		return reconcile.Result{}, r.Update(&status)
 	}
 	return reconcile.Result{}, nil
