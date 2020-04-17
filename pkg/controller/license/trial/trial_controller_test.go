@@ -5,6 +5,7 @@
 package trial
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -288,6 +289,8 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 }
 
 func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
+	var licenseSample licensing.EnterpriseLicense
+	require.NoError(t, json.Unmarshal(trialLicenseBytes(), &licenseSample))
 
 	assertTrialActivationState := func(r *ReconcileTrials, status corev1.Secret) {
 		require.False(t, r.trialState.IsTrialStarted())
@@ -304,6 +307,7 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 	type fields struct {
 		Client     k8s.Client
 		trialState licensing.TrialState
+		license    licensing.EnterpriseLicense
 	}
 	tests := []struct {
 		name       string
@@ -370,6 +374,15 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "don't go back to activation state if a populated license exists",
+			fields: fields{
+				Client:  k8s.WrappedFakeClient(trialStatusSecretSample(t, trialStateSample(t))), // status still in activation phase
+				license: licenseSample,
+			},
+			wantErr:    false,
+			assertions: assertTrialRunningState,
+		},
+		{
 			name: "update trial status from memory",
 			fields: fields{
 				Client:     k8s.WrappedFakeClient(trialStatusSecretSample(t, trialStateSample(t))),
@@ -387,7 +400,7 @@ func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 				trialState:        tt.fields.trialState,
 				operatorNamespace: testNs,
 			}
-			if err := r.reconcileTrialStatus(trialLicenseNsn); (err != nil) != tt.wantErr {
+			if err := r.reconcileTrialStatus(trialLicenseNsn, tt.fields.license); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileTrialStatus() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.assertions != nil {

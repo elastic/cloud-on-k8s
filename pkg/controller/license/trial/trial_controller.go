@@ -5,6 +5,7 @@
 package trial
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -78,7 +79,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	// 1. reconcile trial status secret
-	if err := r.reconcileTrialStatus(request.NamespacedName); err != nil {
+	if err := r.reconcileTrialStatus(request.NamespacedName, license); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -104,7 +105,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) error {
+func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName, license licensing.EnterpriseLicense) error {
 	var trialStatus corev1.Secret
 	err := r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
@@ -116,7 +117,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 		}
 
 		// we have state in memory but the status secret is missing: recreate it
-		trialStatus, err = licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
+		trialStatus, err = licensing.ExpectedTrialStatus(r.operatorNamespace, licenseName, r.trialState)
 		if err != nil {
 			return fmt.Errorf("while creating expected trial status %w", err)
 		}
@@ -128,17 +129,17 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 
 	// the status secret is there but we don't have anything in memory: recover the state
 	if r.trialState.IsEmpty() {
-		recoveredKeys, err := licensing.NewTrialStateFromStatus(trialStatus)
+		recoveredState, err := recoverState(license, trialStatus, err)
 		if err != nil {
 			return err
 		}
-		r.trialState = recoveredKeys
+		r.trialState = recoveredState
 	}
 	// if trial status exists, but we need to update it because:
 	// - has been tampered with
 	// - we need to complete the trial activation because if failed on a previous attempt
 	// - we just regenerated the state after a crash
-	expected, err := licensing.ExpectedTrialStatus(r.operatorNamespace, license, r.trialState)
+	expected, err := licensing.ExpectedTrialStatus(r.operatorNamespace, licenseName, r.trialState)
 	if err != nil {
 		return err
 	}
@@ -147,6 +148,19 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 	}
 	trialStatus.Data = expected.Data
 	return r.Update(&trialStatus)
+}
+
+func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret, err error) (licensing.TrialState, error) {
+	// allow new trial state only if we don't have license that looks like it has been populated previously
+	allowNewState := license.IsMissingFields() != nil
+	// create new keys if the operator failed just before the trial was started
+	trialActivation := bytes.Equal(trialStatus.Data[licensing.TrialActivationKey], []byte("true"))
+	if err == nil && trialActivation && allowNewState {
+		return licensing.NewTrialState()
+
+	}
+	// otherwise just recover the public key
+	return licensing.NewTrialStateFromStatus(trialStatus)
 }
 
 func (r *ReconcileTrials) startTrialActivation() error {

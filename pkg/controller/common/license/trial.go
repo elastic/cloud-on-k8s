@@ -10,7 +10,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
@@ -50,12 +49,6 @@ func NewTrialState() (TrialState, error) {
 
 // NewTrialStateFromStatus reconstructs trial state from a trial status secret.
 func NewTrialStateFromStatus(trialStatus corev1.Secret) (TrialState, error) {
-	// create new keys if the operator failed just before the trial was started
-	trialActivation, err := strconv.ParseBool(string(trialStatus.Data[TrialActivationKey]))
-	if err == nil && trialActivation {
-		return NewTrialState()
-	}
-
 	// reinstate pubkey from status secret e.g. after operator restart
 	pubKeyBytes := trialStatus.Data[TrialPubkeyKey]
 	key, err := ParsePubKey(pubKeyBytes)
