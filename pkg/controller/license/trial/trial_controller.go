@@ -84,22 +84,22 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	// 2. reconcile the trial license itself
-	trialSecretPopulated := license.IsMissingFields() == nil
+	trialLicensePopulated := license.IsMissingFields() == nil
 	licenseStatus := r.validateLicense(license)
 	switch {
-	case !trialSecretPopulated && r.trialState.IsTrialRunning():
+	case !trialLicensePopulated && r.trialState.IsTrialStarted():
 		// user wants to start a trial for the second time
 		return r.invalidOperation(secret, trialOnlyOnceMsg)
-	case !trialSecretPopulated && !r.trialState.IsTrialRunning():
+	case !trialLicensePopulated && !r.trialState.IsTrialStarted():
 		// user wants to init a trial for the first time
 		return r.initTrialLicense(secret, license)
-	case trialSecretPopulated && !validLicense(licenseStatus):
+	case trialLicensePopulated && !validLicense(licenseStatus):
 		// existing license is invalid (expired or tampered with)
 		return r.invalidOperation(secret, userFriendlyMsgs[licenseStatus])
-	case trialSecretPopulated && validLicense(licenseStatus) && !r.trialState.IsTrialRunning():
+	case trialLicensePopulated && validLicense(licenseStatus) && !r.trialState.IsTrialStarted():
 		// valid license, let's consider the trial started and complete the activation
 		return r.completeTrialActivation(request.NamespacedName)
-	case trialSecretPopulated && validLicense(licenseStatus) && r.trialState.IsTrialRunning():
+	case trialLicensePopulated && validLicense(licenseStatus) && r.trialState.IsTrialStarted():
 		// all good nothing to do
 	}
 	return reconcile.Result{}, nil
@@ -109,7 +109,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(license types.NamespacedName) err
 	var trialStatus corev1.Secret
 	err := r.Get(types.NamespacedName{Namespace: r.operatorNamespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
-		if !r.trialState.IsTrialRunning() {
+		if !r.trialState.IsTrialStarted() {
 			// we have no state in memory nor in the status secret: start the activation process
 			if err := r.startTrialActivation(); err != nil {
 				return err

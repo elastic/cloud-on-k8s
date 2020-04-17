@@ -290,13 +290,13 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 func TestReconcileTrials_reconcileTrialStatus(t *testing.T) {
 
 	assertTrialActivationState := func(r *ReconcileTrials, status corev1.Secret) {
-		require.True(t, r.trialState.IsTrialActivationInProgress())
+		require.False(t, r.trialState.IsTrialStarted())
 		require.Equal(t, status.Data[licensing.TrialActivationKey], []byte("true"))
 		require.Contains(t, status.Data, licensing.TrialPubkeyKey)
 	}
 
 	assertTrialRunningState := func(r *ReconcileTrials, status corev1.Secret) {
-		require.True(t, r.trialState.IsTrialRunning())
+		require.True(t, r.trialState.IsTrialStarted())
 		require.Equal(t, status.Data[licensing.TrialActivationKey], []byte("false"))
 		require.Contains(t, status.Data, licensing.TrialPubkeyKey)
 	}

@@ -192,7 +192,7 @@ func TestNewTrialStateFromStatus(t *testing.T) {
 				},
 			},
 			want: func(s TrialState) {
-				require.True(t, s.IsTrialRunning())
+				require.True(t, s.IsTrialStarted())
 				require.True(t, reflect.DeepEqual(s, TrialState{
 					publicKey: &key.PublicKey,
 				}))
@@ -210,7 +210,7 @@ func TestNewTrialStateFromStatus(t *testing.T) {
 				},
 			},
 			want: func(s TrialState) {
-				require.True(t, s.IsTrialRunning())
+				require.True(t, s.IsTrialStarted())
 				require.True(t, reflect.DeepEqual(s, TrialState{
 					publicKey: &key.PublicKey,
 				}))
@@ -228,8 +228,7 @@ func TestNewTrialStateFromStatus(t *testing.T) {
 			},
 			wantErr: true,
 			want: func(state TrialState) {
-				require.False(t, state.IsTrialRunning())
-				require.False(t, state.IsTrialActivationInProgress())
+				require.False(t, state.IsTrialStarted())
 			},
 		},
 		{
@@ -243,7 +242,7 @@ func TestNewTrialStateFromStatus(t *testing.T) {
 				},
 			},
 			want: func(s TrialState) {
-				require.True(t, s.IsTrialActivationInProgress())
+				require.False(t, s.IsTrialStarted())
 				require.False(t, reflect.DeepEqual(s, TrialState{
 					publicKey: &key.PublicKey,
 				}))

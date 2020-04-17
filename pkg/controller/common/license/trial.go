@@ -67,14 +67,9 @@ func NewTrialStateFromStatus(trialStatus corev1.Secret) (TrialState, error) {
 	}, nil
 }
 
-// IsTrialRunning returns true if a trial has been successfully started at some point in the past.
-func (tk *TrialState) IsTrialRunning() bool {
+// IsTrialStarted returns true if a trial has been successfully started at some point in the past.
+func (tk *TrialState) IsTrialStarted() bool {
 	return tk.publicKey != nil && tk.privateKey == nil
-}
-
-// IsTrialActivtationInProgress returns true if we are in the process of starting a trial.
-func (tk *TrialState) IsTrialActivationInProgress() bool {
-	return tk.privateKey != nil && tk.publicKey != nil
 }
 
 // IsEmpty returns true on an empty state struct.
@@ -84,7 +79,7 @@ func (tk *TrialState) IsEmpty() bool {
 
 // InitTrialLicense initialises and signs the given license based on the current state.
 func (tk *TrialState) InitTrialLicense(l *EnterpriseLicense) error {
-	if !tk.IsTrialActivationInProgress() {
+	if tk.privateKey == nil {
 		return errors.New("trial has already been activated")
 	}
 	if l == nil {
@@ -121,7 +116,7 @@ func (tk *TrialState) LicenseVerifier() *Verifier {
 	return &Verifier{PublicKey: tk.publicKey}
 }
 
-// ExpectedTrialStatus creates the expected state of the trial status secret for the given trail state for reconciliation purposes.
+// ExpectedTrialStatus creates the expected state of the trial status secret for the given trial state for reconciliation purposes.
 func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName, state TrialState) (corev1.Secret, error) {
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(state.publicKey)
 	if err != nil {
@@ -138,7 +133,7 @@ func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName,
 		},
 		Data: map[string][]byte{
 			TrialPubkeyKey:     pubkeyBytes,
-			TrialActivationKey: []byte(strconv.FormatBool(state.IsTrialActivationInProgress())),
+			TrialActivationKey: []byte(strconv.FormatBool(!state.IsTrialStarted())),
 		},
 	}
 	return secret, nil
