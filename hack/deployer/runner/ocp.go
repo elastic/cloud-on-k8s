@@ -182,7 +182,6 @@ func (d *OcpDriver) Execute() error {
 }
 
 func (d *OcpDriver) auth() error {
-	_ = NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run()
 
 	if d.plan.ServiceAccount {
 		log.Println("Authenticating as service account...")
@@ -199,7 +198,8 @@ func (d *OcpDriver) auth() error {
 		if err := client.ReadIntoFile(keyFileName, OcpVaultPath, OcpServiceAccountVaultFieldName); err != nil {
 			return err
 		}
-		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
+		log.Println("Setting $GCLOUD_KEYFILE_JSON...")
+		return os.Setenv("GCLOUD_KEYFILE_JSON", keyFileName)
 	}
 
 	log.Println("Authenticating as user...")
@@ -212,6 +212,7 @@ func (d *OcpDriver) auth() error {
 		return nil
 	}
 
+	_ = NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run()
 	return NewCommand("gcloud auth login").Run()
 }
 
