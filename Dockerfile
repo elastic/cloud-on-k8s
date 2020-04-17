@@ -21,8 +21,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 			-ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
 			-o elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
-# Copy the controller-manager into a thin image
-FROM centos:7
+# Copy the operator binary into a thin image
+FROM centos:8
 
 RUN set -x \
     && groupadd --system --gid 101 elastic \
