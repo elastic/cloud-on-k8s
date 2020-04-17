@@ -118,6 +118,9 @@ func (tk *TrialState) LicenseVerifier() *Verifier {
 
 // ExpectedTrialStatus creates the expected state of the trial status secret for the given trial state for reconciliation purposes.
 func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName, state TrialState) (corev1.Secret, error) {
+	if state.IsEmpty() {
+		return corev1.Secret{}, errors.New("cannot create trial status from uninitialised trial state")
+	}
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(state.publicKey)
 	if err != nil {
 		return corev1.Secret{}, err
@@ -132,9 +135,11 @@ func ExpectedTrialStatus(operatorNamespace string, license types.NamespacedName,
 			},
 		},
 		Data: map[string][]byte{
-			TrialPubkeyKey:     pubkeyBytes,
-			TrialActivationKey: []byte(strconv.FormatBool(!state.IsTrialStarted())),
+			TrialPubkeyKey: pubkeyBytes,
 		},
+	}
+	if !state.IsTrialStarted() {
+		secret.Data[TrialActivationKey] = []byte("true")
 	}
 	return secret, nil
 }

@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestInitTrialLicense(t *testing.T) {
@@ -258,6 +260,92 @@ func TestNewTrialStateFromStatus(t *testing.T) {
 			}
 			if tt.want != nil {
 				tt.want(got)
+			}
+		})
+	}
+}
+
+func TestExpectedTrialStatus(t *testing.T) {
+	sampleKey, err := newTrialKey()
+	require.NoError(t, err)
+	pubKey, err := x509.MarshalPKIXPublicKey(&sampleKey.PublicKey)
+	require.NoError(t, err)
+
+	type args struct {
+		state TrialState
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    v1.Secret
+		wantErr bool
+	}{
+		{
+			name: "status during activation",
+			args: args{
+				state: TrialState{
+					publicKey:  &sampleKey.PublicKey,
+					privateKey: sampleKey,
+				},
+			},
+			want: v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      TrialStatusSecretKey,
+					Annotations: map[string]string{
+						TrialLicenseSecretName:      "name",
+						TrialLicenseSecretNamespace: "ns",
+					},
+				},
+				Data: map[string][]byte{
+					TrialPubkeyKey:     pubKey,
+					TrialActivationKey: []byte("true"),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "status after activation",
+			args: args{
+				state: TrialState{
+					publicKey: &sampleKey.PublicKey,
+				},
+			},
+			want: v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      TrialStatusSecretKey,
+					Annotations: map[string]string{
+						TrialLicenseSecretName:      "name",
+						TrialLicenseSecretNamespace: "ns",
+					},
+				},
+				Data: map[string][]byte{
+					TrialPubkeyKey: pubKey,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "with empty trial state",
+			args: args{
+				state: TrialState{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ExpectedTrialStatus("ns", types.NamespacedName{
+				Namespace: "ns",
+				Name:      "name",
+			}, tt.args.state)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ExpectedTrialStatus() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ExpectedTrialStatus() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

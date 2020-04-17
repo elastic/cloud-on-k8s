@@ -74,8 +74,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 	validationMsg := validateEULA(secret)
 	if validationMsg != "" {
-		setValidationMsg(&secret, validationMsg)
-		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
+		return r.invalidOperation(secret, validationMsg)
 	}
 
 	// 1. reconcile trial status secret
