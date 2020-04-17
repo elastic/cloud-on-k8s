@@ -57,7 +57,7 @@ ci-build-image:
 	)
 
 ifneq (,$(IS_SNAPSHOT_BUILD))
-       SECRET_FIELD_PREFIX ?= dev-
+	SECRET_FIELD_PREFIX ?= dev-
 endif
 
 get-test-artifacts: get-monitoring-secrets get-test-license get-elastic-public-key
