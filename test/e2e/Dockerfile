@@ -1,5 +1,5 @@
-# Run e2e tests
-FROM golang:1.13
+# Docker image for the E2E tests runner
+FROM golang:1.14.2
 
 ARG E2E_JSON
 ENV E2E_JSON $E2E_JSON

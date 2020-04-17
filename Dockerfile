@@ -1,5 +1,5 @@
-# Build the manager binary
-FROM golang:1.13 as builder
+# Build the operator binary
+FROM golang:1.14.2 as builder
 
 ARG GO_LDFLAGS
 ARG GO_TAGS
