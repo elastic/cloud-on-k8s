@@ -129,7 +129,7 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 
 	// the status secret is there but we don't have anything in memory: recover the state
 	if r.trialState.IsEmpty() {
-		recoveredState, err := recoverState(license, trialStatus, err)
+		recoveredState, err := recoverState(license, trialStatus)
 		if err != nil {
 			return err
 		}
@@ -150,12 +150,12 @@ func (r *ReconcileTrials) reconcileTrialStatus(licenseName types.NamespacedName,
 	return r.Update(&trialStatus)
 }
 
-func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret, err error) (licensing.TrialState, error) {
+func recoverState(license licensing.EnterpriseLicense, trialStatus corev1.Secret) (licensing.TrialState, error) {
 	// allow new trial state only if we don't have license that looks like it has been populated previously
 	allowNewState := license.IsMissingFields() != nil
 	// create new keys if the operator failed just before the trial was started
 	trialActivation := bytes.Equal(trialStatus.Data[licensing.TrialActivationKey], []byte("true"))
-	if err == nil && trialActivation && allowNewState {
+	if trialActivation && allowNewState {
 		return licensing.NewTrialState()
 
 	}
