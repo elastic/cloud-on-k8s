@@ -39,7 +39,7 @@ ci:
 ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
-ci-internal: ci-build-image
+ci-internal: docker-login ci-build-image
 	@ docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -49,18 +49,22 @@ ci-internal: ci-build-image
 		bash -c "$(DOCKER_CMD)"
 
 # build and push the CI image only if it does not yet exist
-ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
+ci-build-image:
 ci-build-image:
 	@ docker pull -q $(CI_IMAGE) || \
 	( \
 		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
-		docker login -u eckadmin -p $(DOCKER_PASSWORD) push.docker.elastic.co && \
 		docker push push.$(CI_IMAGE) \
 	)
 
 ifneq (,$(IS_SNAPSHOT_BUILD))
 	SECRET_FIELD_PREFIX ?= dev-
 endif
+
+# read docker password from Vault to push Docker images in the Elastic registry
+docker-login: ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
+docker-login:
+	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co 2> /dev/null
 
 get-test-artifacts: get-monitoring-secrets get-test-license get-elastic-public-key
 
@@ -81,10 +85,6 @@ get-monitoring-secrets:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=data -format=json secret/devops-ci/cloud-on-k8s/monitoring-cluster > monitoring-secrets.json
 
 ##  Release
-
-# read docker password from Vault to push Docker images in the Elastic registry
-get-docker-creds:
-	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ${ROOT_DIR}/.env
 
 # read AWS creds from Vault for YAML upload to S3
 yaml-upload: VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release

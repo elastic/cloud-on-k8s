@@ -43,7 +43,7 @@ pipeline {
          stage("Build dev operator image") {
             steps {
                 sh '.ci/setenvconfig dev/build'
-                sh('make -C .ci  get-docker-creds get-elastic-public-key TARGET=ci-release ci')
+                sh('make -C .ci get-elastic-public-key TARGET=ci-release ci')
             }
          }
         stage('Run tests for different stack versions in GKE') {
