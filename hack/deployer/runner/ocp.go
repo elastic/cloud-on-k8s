@@ -182,7 +182,6 @@ func (d *OcpDriver) Execute() error {
 }
 
 func (d *OcpDriver) auth() error {
-	_ = NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run()
 
 	if d.plan.ServiceAccount {
 		log.Println("Authenticating as service account...")
@@ -199,6 +198,15 @@ func (d *OcpDriver) auth() error {
 		if err := client.ReadIntoFile(keyFileName, OcpVaultPath, OcpServiceAccountVaultFieldName); err != nil {
 			return err
 		}
+
+		// ensure gcloud & gsutil rely on credentials stored in gcpDir instead of using the default
+		// directory (~/.config/gcloud), to not tamper any default gcloud auth already set on the system
+		if err := os.Setenv("CLOUDSDK_CONFIG", gcpDir); err != nil {
+			return err
+		}
+		if err := NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run(); err != nil {
+			return err
+		}
 		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
 	}
 
@@ -212,6 +220,7 @@ func (d *OcpDriver) auth() error {
 		return nil
 	}
 
+	_ = NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run()
 	return NewCommand("gcloud auth login").Run()
 }
 
