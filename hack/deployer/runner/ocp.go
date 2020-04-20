@@ -27,9 +27,6 @@ overrides:
   ocp:
     gCloudProject: %s
     pullSecret: '%s'
-    useNonDefaultCloudSdkPath: true
-    serviceAccount: true
-    overwriteDefaultKubeconfig: true
 `
 
 	OcpInstallerConfigTemplate = `apiVersion: v1
