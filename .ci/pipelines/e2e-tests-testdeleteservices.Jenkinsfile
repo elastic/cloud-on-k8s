@@ -46,11 +46,6 @@ pipeline {
             }
         }*/
         stage("E2E tests") {
-            when {
-                expression {
-                    notOnlyDocs()
-                }
-            }
             steps {
                 sh '.ci/setenvconfig e2e/master'
                 
@@ -63,8 +58,8 @@ pipeline {
                     env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=ci-build-operator-e2e-run ci')
 
                     if (env.SHELL_EXIT_CODE != 0) {
-                        sh 'make -C .ci TARGET=e2e-generate-xml ci'
-                        junit "e2e-tests.xml"
+//                         sh 'make -C .ci TARGET=e2e-generate-xml ci'
+//                         junit "e2e-tests.xml"
                         failedTests = lib.getListOfFailedTests()
                     }
 
@@ -91,7 +86,7 @@ pipeline {
         }
         cleanup {
             script {
-                if (notOnlyDocs() && failedTests.size() == 0) {
+                if (failedTests.size() == 0) {
                     build job: 'cloud-on-k8s-e2e-cleanup',
                         parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-debug-endpoints-e2e-${BUILD_NUMBER}")],
                         wait: false
@@ -101,12 +96,4 @@ pipeline {
             cleanWs()
         }
     }
-}
-
-def notOnlyDocs() {
-    // grep succeeds if there is at least one line without docs/
-    return sh (
-        script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
-        returnStatus: true
-    ) == 0
 }
