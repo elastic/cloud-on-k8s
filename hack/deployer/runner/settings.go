@@ -61,7 +61,7 @@ type AksSettings struct {
 	NodeCount     int    `yaml:"nodeCount"`
 }
 
-// OcpSettings encapsulates settings specific to GKE
+// OcpSettings encapsulates settings specific to OCP on GCloud
 type OcpSettings struct {
 	BaseDomain                 string `yaml:"baseDomain"`
 	GCloudProject              string `yaml:"gCloudProject"`
@@ -72,6 +72,9 @@ type OcpSettings struct {
 	OverwriteDefaultKubeconfig bool   `yaml:"overwriteDefaultKubeconfig"`
 	LocalSsdCount              int    `yaml:"localSsdCount"`
 	NodeCount                  int    `yaml:"nodeCount"`
+	// UseNonDefaultCloudSDKPath, if true, sets $CLOUDSDK_CONFIG to a non-default value in order
+	// to not tamper existing gcloud credentials.
+	UseNonDefaultCloudSDKPath bool `yaml:"useNonDefaultCloudSdkPath"`
 }
 
 // EKSSettings are specific to Amazon EKS.

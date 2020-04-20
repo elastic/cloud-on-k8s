@@ -27,6 +27,9 @@ overrides:
   ocp:
     gCloudProject: %s
     pullSecret: '%s'
+    useNonDefaultCloudSdkPath: true
+    serviceAccount: true
+    overwriteDefaultKubeconfig: true
 `
 
 	OcpInstallerConfigTemplate = `apiVersion: v1
@@ -199,10 +202,13 @@ func (d *OcpDriver) auth() error {
 			return err
 		}
 
-		// ensure gcloud & gsutil rely on credentials stored in gcpDir instead of using the default
-		// directory (~/.config/gcloud), to not tamper any default gcloud auth already set on the system
-		if err := os.Setenv("CLOUDSDK_CONFIG", gcpDir); err != nil {
-			return err
+		if d.plan.Ocp.UseNonDefaultCloudSDKPath {
+			// ensure gcloud & gsutil rely on credentials stored in gcpDir instead of using the default
+			// directory (~/.config/gcloud), to not tamper any default gcloud auth already set on the system
+			log.Printf(fmt.Sprintf("Setting $CLOUDSDK_CONFIG=%s", gcpDir))
+			if err := os.Setenv("CLOUDSDK_CONFIG", gcpDir); err != nil {
+				return err
+			}
 		}
 		if err := NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run(); err != nil {
 			return err
