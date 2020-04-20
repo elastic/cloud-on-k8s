@@ -69,9 +69,9 @@ type OcpSettings struct {
 	AdminUsername              string `yaml:"adminUsername"`
 	WorkDir                    string `yaml:"workDir"`
 	PullSecret                 string `yaml:"pullSecret"`
-	OverwriteDefaultKubeconfig bool   `yaml:"overwriteDefaultKubeconfig"`
 	LocalSsdCount              int    `yaml:"localSsdCount"`
 	NodeCount                  int    `yaml:"nodeCount"`
+	OverwriteDefaultKubeconfig bool   `yaml:"overwriteDefaultKubeconfig"`
 	// UseNonDefaultCloudSDKPath, if true, sets $CLOUDSDK_CONFIG to a non-default value in order
 	// to not tamper existing gcloud credentials.
 	UseNonDefaultCloudSDKPath bool `yaml:"useNonDefaultCloudSdkPath"`
