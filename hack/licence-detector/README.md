@@ -73,6 +73,6 @@ To generate the dependency list (`docs/container-image-dependencies.csv`) for a 
 IMAGE_TAG=1.0.1 ./generate-image-deps.sh
 ```
 
-Note that Tern requires sudo access to mount the procfs file system and inspect the container layers. The script will prompt for the sudo password when needed.
+Note that Tern is Linux only (there are Vagrant instructions for OSX in the Tern repo) and requires sudo access to mount the procfs file system and inspect the container layers. The script will prompt for the sudo password when needed.
 
 This script requires Docker, Python, and jq to be installed on the machine.
