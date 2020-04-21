@@ -70,6 +70,7 @@ github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea/go.mod h1:E3G3o1h8I7cfc
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
 github.com/cpuguy83/go-md2man v1.0.10/go.mod h1:SmD6nW6nTyfqj6ABTjUi3V3JVMnlJmwcJI5acqYI6dE=
 github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7DoTY=
+github.com/cucumber/godog v0.8.1/go.mod h1:vSh3r/lM+psC1BPXvdkSEuNjmXfpVqrMGYAElF6hxnA=
 github.com/davecgh/go-spew v0.0.0-20151105211317-5215b55f46b2/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
@@ -473,10 +474,16 @@ github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 go.elastic.co/apm v1.7.0 h1:vd4ncfZ/Y2GIsWW7aFR4uQdqmfUbuHfUhglqOqEwrUI=
 go.elastic.co/apm v1.7.0/go.mod h1:IYfi/330rWC5Kfns1rM+kY+RPkIdgUziRF6Cbm9qlxQ=
+go.elastic.co/apm v1.7.2 h1:0nwzVIPp4PDBXSYYtN19+1W5V+sj+C25UjqxDVoKcA8=
+go.elastic.co/apm v1.7.2/go.mod h1:tCw6CkOJgkWnzEthFN9HUP1uL3Gjc/Ur6m7gRPLaoH0=
 go.elastic.co/apm/module/apmelasticsearch v1.7.0 h1:lcEOohYtLdnd1hBqsQlJX6p8djGWgRML1YXjv0L/Xfg=
 go.elastic.co/apm/module/apmelasticsearch v1.7.0/go.mod h1:EjopyfrJzqgwXp7ZpSX0lSWqzRrINrKMfUXIlBjeOXY=
+go.elastic.co/apm/module/apmelasticsearch v1.7.3-0.20200421085619-eea0ff3c17de h1:pH3DiXpr37z0rpH3TAhfR7AdiUJ1A0FTmjK0wgdAXLo=
+go.elastic.co/apm/module/apmelasticsearch v1.7.3-0.20200421085619-eea0ff3c17de/go.mod h1:ZyNFuyWdt42GBZkz0SogoLzDBrBGj4orxpiUuxYeYq8=
 go.elastic.co/apm/module/apmhttp v1.7.0 h1:dwUkUHlGR6W7FSAxdsZvO3tz+IaLxlXSnwH7ABahJdc=
 go.elastic.co/apm/module/apmhttp v1.7.0/go.mod h1:70/fYU6lgIII213g7As10lm2Ca/ZkGixeJBoyfrGKes=
+go.elastic.co/apm/module/apmhttp v1.7.2 h1:2mRh7SwBuEVLmJlX+hsMdcSg9xaielCLElaPn/+i34w=
+go.elastic.co/apm/module/apmhttp v1.7.2/go.mod h1:sTFWiWejnhSdZv6+dMgxGec2Nxe/ZKfHfz/xtRM+cRY=
 go.elastic.co/fastjson v1.0.0 h1:ooXV/ABvf+tBul26jcVViPT3sBir0PvXgibYB1IQQzg=
 go.elastic.co/fastjson v1.0.0/go.mod h1:PmeUOMMtLHQr9ZS9J9owrAVg0FkaZDRZJEFTTGHtchs=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
