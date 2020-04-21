@@ -21,6 +21,7 @@ import (
 )
 
 // This purely exists as workaround until the issue around closing connections in apm-go-agent is fixed.
+// It replicates https://github.com/elastic/apm-agent-go/pull/750 by adding the "CloseIdleConnections" method.
 
 // WrapRoundTripper returns an http.RoundTripper wrapping r, reporting each
 // request as a span to Elastic APM, if the request's context contains a
@@ -42,6 +43,7 @@ type roundTripper struct {
 	r http.RoundTripper
 }
 
+// CloseIdleConnections calls r.r.CloseIdleConnections if the method exists.
 func (r *roundTripper) CloseIdleConnections() {
 	type closeIdler interface {
 		CloseIdleConnections()
