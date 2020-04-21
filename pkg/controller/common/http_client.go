@@ -10,8 +10,7 @@ import (
 	"errors"
 	"net/http"
 
-	"go.elastic.co/apm/module/apmelasticsearch"
-
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/cryptutil"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
@@ -60,5 +59,5 @@ func HTTPClient(dialer net.Dialer, caCerts []*x509.Certificate) *http.Client {
 		transportConfig.DialContext = dialer.DialContext
 	}
 
-	return &http.Client{Transport: apmelasticsearch.WrapRoundTripper(&transportConfig)}
+	return &http.Client{Transport: tracing.WrapRoundTripper(&transportConfig)}
 }
