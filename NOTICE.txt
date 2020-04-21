@@ -1831,11 +1831,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm
-Version : v1.7.0
-Time    : 2020-01-10T03:30:49Z
+Version : v1.7.2
+Time    : 2020-03-19T02:03:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.7.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2042,11 +2042,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.7.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmelasticsearch
-Version : v1.7.0
-Time    : 2020-01-10T03:30:49Z
+Version : v1.7.3-0.20200421085619-eea0ff3c17de
+Time    : 2020-04-21T08:56:19Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch@v1.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch@v1.7.3-0.20200421085619-eea0ff3c17de/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -8325,6 +8325,37 @@ OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
 OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+Module  : github.com/cucumber/godog
+Version : v0.8.1
+Time    : 2020-02-10T17:55:33Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/cucumber/godog@v0.8.1/LICENSE:
+
+The MIT License (MIT)
+
+Copyright (c) SmartBear
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 
 --------------------------------------------------------------------------------
@@ -25422,11 +25453,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmhttp
-Version : v1.7.0
-Time    : 2020-01-10T03:30:49Z
+Version : v1.7.2
+Time    : 2020-03-19T02:03:18Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v1.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v1.7.2/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
