@@ -71,6 +71,11 @@ pipeline {
     }
 
     post {
+        success {
+            build job: 'cloud-on-k8s-e2e-cleanup',
+                parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-debug-e2e-${BUILD_NUMBER}")],
+                wait: false
+        }
         unsuccessful {
             script {
                 def msg = lib.generateSlackMessage("E2E tests failed!", env.BUILD_URL, failedTests)
@@ -86,14 +91,6 @@ pipeline {
             }
         }
         cleanup {
-            script {
-                if (failedTests.size() == 0) {
-                    build job: 'cloud-on-k8s-e2e-cleanup',
-                        parameters: [string(name: 'JKS_PARAM_GKE_CLUSTER', value: "eck-debug-e2e-${BUILD_NUMBER}")],
-                        wait: false
-                }
-            }
-
             cleanWs()
         }
     }
