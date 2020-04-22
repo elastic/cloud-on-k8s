@@ -335,7 +335,7 @@ func TestReconcileConfig(t *testing.T) {
 						Name:      "sample-ent-user",
 					},
 					Data: map[string][]byte{
-						"default-sample-ent-user": []byte("password"),
+						"ns-sample-ent-user": []byte("mypassword"),
 					},
 				},
 			},
@@ -343,7 +343,7 @@ func TestReconcileConfig(t *testing.T) {
 				"allow_es_settings_modification: true",
 				"elasticsearch:",
 				"host: https://elasticsearch-sample-es-http.default.svc:9200",
-				"password: \"\"", // hmmm
+				"password: mypassword",
 				"ssl:",
 				"certificate_authority: /mnt/elastic-internal/es-certs/tls.crt",
 				"enabled: true",
