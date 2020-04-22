@@ -327,6 +327,8 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 
 	// - in the Enterprise Search configuration file content
 	_, _ = configHash.Write(configSecret.Data[ConfigFilename])
+	// - in the readiness probe script content
+	_, _ = configHash.Write(configSecret.Data[ReadinessProbeFilename])
 
 	// - in the Enterprise Search TLS certificates
 	var tlsCertSecret corev1.Secret

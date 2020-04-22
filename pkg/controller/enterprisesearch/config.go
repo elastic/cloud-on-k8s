@@ -29,9 +29,11 @@ import (
 )
 
 const (
-	ESCertsPath     = "/mnt/elastic-internal/es-certs"
-	ConfigMountPath = "/mnt/elastic-internal/config"
-	ConfigFilename  = "enterprise-search.yml"
+	ESCertsPath              = "/mnt/elastic-internal/es-certs"
+	ConfigMountPath          = "/mnt/elastic-internal/config"
+	ConfigFilename           = "enterprise-search.yml"
+	ReadinessProbeFilename   = "readiness-probe.sh"
+	ReadinessProbeTimeoutSec = 5
 
 	SecretSessionSetting  = "secret_session_key"
 	EncryptionKeysSetting = "secret_management.encryption_keys"
@@ -43,6 +45,9 @@ func ConfigSecretVolume(ent entv1beta1.EnterpriseSearch) volume.SecretVolume {
 
 // Reconcile reconciles the configuration of Enterprise Search: it generates the right configuration and
 // stores it in a secret that is kept up to date.
+// The secret contains 2 entries:
+// - the Enterprise Search configuration file
+// - a bash script used as readiness probe
 func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (corev1.Secret, error) {
 	cfg, err := newConfig(driver, ent)
 	if err != nil {
@@ -50,6 +55,11 @@ func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (
 	}
 
 	cfgBytes, err := cfg.Render()
+	if err != nil {
+		return corev1.Secret{}, err
+	}
+
+	readinessProbeBytes, err := readinessProbeScript(ent, cfg)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -62,11 +72,62 @@ func ReconcileConfig(driver driver.Interface, ent entv1beta1.EnterpriseSearch) (
 			Labels:    common.AddCredentialsLabel(Labels(ent.Name)),
 		},
 		Data: map[string][]byte{
-			ConfigFilename: cfgBytes,
+			ConfigFilename:         cfgBytes,
+			ReadinessProbeFilename: readinessProbeBytes,
 		},
 	}
 
 	return reconciler.ReconcileSecret(driver.K8sClient(), expectedConfigSecret, &ent)
+}
+
+// partialConfigWithESAuth helps parsing the configuration file to retrieve ES credentials.
+type partialConfigWithESAuth struct {
+	Elasticsearch struct {
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+	} `yaml:"elasticsearch"`
+}
+
+// readinessProbeScript returns a bash script that requests the health endpoint.
+func readinessProbeScript(ent entv1beta1.EnterpriseSearch, config *settings.CanonicalConfig) ([]byte, error) {
+	url := fmt.Sprintf("%s://127.0.0.1:%d/api/ent/v1/internal/health", ent.Spec.HTTP.Protocol(), HTTPPort)
+
+	// retrieve Elasticsearch user credentials from the aggregated config since it could be user-provided
+	var esAuth partialConfigWithESAuth
+	if err := config.Unpack(&esAuth); err != nil {
+		return nil, err
+	}
+	basicAuthArgs := "" // no credentials: no basic auth
+	if esAuth.Elasticsearch.Username != "" {
+		basicAuthArgs = fmt.Sprintf("-u %s:%s", esAuth.Elasticsearch.Username, esAuth.Elasticsearch.Password)
+	}
+
+	return []byte(`#!/usr/bin/env bash
+
+	# fail should be called as a last resort to help the user to understand why the probe failed
+	function fail {
+	  timestamp=$(date --iso-8601=seconds)
+	  echo "{\"timestamp\": \"${timestamp}\", \"message\": \"readiness probe failed\", "$1"}" | tee /proc/1/fd/2 2> /dev/null
+	  exit 1
+	}
+
+	# request timeout can be overridden from an environment variable
+	READINESS_PROBE_TIMEOUT=${READINESS_PROBE_TIMEOUT:=` + fmt.Sprintf("%d", ReadinessProbeTimeoutSec) + `}
+
+	# request the health endpoint and expect http status code 200
+	status=$(curl -o /dev/null -w "%{http_code}" ` + url + ` ` + basicAuthArgs + ` -k -s --max-time ${READINESS_PROBE_TIMEOUT})
+	curl_rc=$?
+
+	if [[ ${curl_rc} -ne 0 ]]; then
+	  fail "\"curl_rc\": \"${curl_rc}\""
+	fi
+
+	if [[ ${status} == "200" ]]; then
+	  exit 0
+	else
+	  fail " \"status\": \"${status}\", \"version\":\"${version}\" "
+	fi
+`), nil
 }
 
 // newConfig builds a single merged config from:
