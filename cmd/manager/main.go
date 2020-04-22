@@ -23,7 +23,6 @@ import (
 	kbv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
 	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
@@ -351,11 +350,11 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "apm-es-association")
 		os.Exit(1)
 	}
-	if err = controller.AddKibanaES(mgr, accessReviewer, params); err != nil {
+	if err = associationctl.AddKibanaES(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "kibana-es-association")
 		os.Exit(1)
 	}
-	if err = controller.AddEntES(mgr, accessReviewer, params); err != nil {
+	if err = associationctl.AddEntES(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ent-es-association")
 		os.Exit(1)
 	}
