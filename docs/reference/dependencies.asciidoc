@@ -73,7 +73,6 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/Azure/go-autorest[$$github.com/Azure/go-autorest/tracing$$] | v0.5.0 | Apache-2.0
 | link:https://github.com/BurntSushi/toml[$$github.com/BurntSushi/toml$$] | v0.3.1 | MIT
 | link:https://github.com/BurntSushi/xgb[$$github.com/BurntSushi/xgb$$] | v0.0.0-20160522181843-27f122750802 | BSD-3-Clause
-| link:https://github.com/DATA-DOG/godog[$$github.com/DATA-DOG/godog$$] | v0.7.13 | BSD-3-Clause
 | link:https://github.com/Masterminds/goutils[$$github.com/Masterminds/goutils$$] | v1.1.0 | Apache-2.0
 | link:https://github.com/Masterminds/semver[$$github.com/Masterminds/semver$$] | v1.4.2 | MIT
 | link:https://github.com/NYTimes/gziphandler[$$github.com/NYTimes/gziphandler$$] | v0.0.0-20170623195520-56545f4a5d46 | Apache-2.0
