@@ -24,7 +24,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
-	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -347,7 +346,7 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "EnterpriseSearch")
 		os.Exit(1)
 	}
-	if err = associationctl.AddApmES(mgr, accessReviewer, params); err != nil {
+	if err = controller.AddApmES(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "apm-es-association")
 		os.Exit(1)
 	}
@@ -410,9 +409,9 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 		os.Exit(1)
 	}
 	err = ugc.
-		For(&apmv1.ApmServerList{}, associationctl.ApmESAssociationLabelNamespace, associationctl.ApmESAssociationLabelName).
-		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
-		For(&entv1beta1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
+		For(&apmv1.ApmServerList{}, controller.ApmESAssociationLabelNamespace, controller.ApmESAssociationLabelName).
+		For(&kbv1.KibanaList{}, controller.KibanaESAssociationLabelNamespace, controller.KibanaESAssociationLabelName).
+		For(&entv1beta1.EnterpriseSearchList{}, controller.EntESAssociationLabelNamespace, controller.EntESAssociationLabelName).
 		DoGarbageCollection()
 	if err != nil {
 		log.Error(err, "user garbage collector failed")
