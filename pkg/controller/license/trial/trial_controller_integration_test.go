@@ -59,9 +59,12 @@ func TestReconcile(t *testing.T) {
 		Namespace: operatorNs,
 		Name:      license.TrialStatusSecretKey,
 	}
-	require.NoError(t, c.Get(trialStatusKey, &trialStatus))
-	trialStatus.Data[license.TrialPubkeyKey] = []byte("foobar")
-	require.NoError(t, c.Update(&trialStatus))
+	// retry in case of edit conflict with reconciliation loop
+	test.RetryUntilSuccess(t, func() error {
+		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
+		trialStatus.Data[license.TrialPubkeyKey] = []byte("foobar")
+		return c.Update(&trialStatus)
+	})
 	test.RetryUntilSuccess(t, func() error {
 		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
 		if bytes.Equal(trialStatus.Data[license.TrialPubkeyKey], []byte("foobar")) {
