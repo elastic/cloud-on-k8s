@@ -22,6 +22,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const operatorNs = "test-system"
+
 func Test_Get(t *testing.T) {
 	es := esv1.Elasticsearch{
 		Spec: esv1.ElasticsearchSpec{
@@ -30,7 +32,7 @@ func Test_Get(t *testing.T) {
 			}},
 		},
 	}
-	licensingInfo, err := NewResourceReporter(k8s.FakeClient(&es)).Get()
+	licensingInfo, err := NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
 	assert.NoError(t, err)
 	assert.Equal(t, "21.47GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "1", licensingInfo.EnterpriseResourceUnits)
@@ -56,7 +58,7 @@ func Test_Get(t *testing.T) {
 			}},
 		},
 	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es)).Get()
+	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
 	assert.NoError(t, err)
 	assert.Equal(t, "644.25GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "11", licensingInfo.EnterpriseResourceUnits)
@@ -80,7 +82,7 @@ func Test_Get(t *testing.T) {
 			}},
 		},
 	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es)).Get()
+	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
 	assert.NoError(t, err)
 	assert.Equal(t, "171.80GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "3", licensingInfo.EnterpriseResourceUnits)
@@ -104,7 +106,7 @@ func Test_Get(t *testing.T) {
 			}},
 		},
 	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es)).Get()
+	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
 	assert.NoError(t, err)
 	assert.Equal(t, "171.80GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "3", licensingInfo.EnterpriseResourceUnits)
@@ -114,7 +116,7 @@ func Test_Get(t *testing.T) {
 			Count: 100,
 		},
 	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb)).Get()
+	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
 	assert.NoError(t, err)
 	assert.Equal(t, "107.37GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "2", licensingInfo.EnterpriseResourceUnits)
@@ -138,7 +140,7 @@ func Test_Get(t *testing.T) {
 			},
 		},
 	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb)).Get()
+	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
 	assert.NoError(t, err)
 	assert.Equal(t, "214.75GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "4", licensingInfo.EnterpriseResourceUnits)
@@ -160,7 +162,7 @@ func Test_Get(t *testing.T) {
 			},
 		},
 	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb)).Get()
+	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
 	assert.NoError(t, err)
 	assert.Equal(t, "204.80GB", licensingInfo.TotalManagedMemory)
 	assert.Equal(t, "4", licensingInfo.EnterpriseResourceUnits)
@@ -175,13 +177,12 @@ func Test_Start(t *testing.T) {
 	kb := kbv1.Kibana{Spec: kbv1.KibanaSpec{Count: 2}}
 	apm := apmv1.ApmServer{Spec: apmv1.ApmServerSpec{Count: 2}}
 	k8sClient := k8s.FakeClient(&es, &kb, &apm)
-	operatorNs := "test-system"
 	refreshPeriod := 1 * time.Second
 	waitFor := 10 * refreshPeriod
 	tick := refreshPeriod / 2
 
 	// start the resource reporter
-	go NewResourceReporter(k8sClient).Start(operatorNs, refreshPeriod)
+	go NewResourceReporter(k8sClient, operatorNs).Start(refreshPeriod)
 
 	// check that the licensing config map exists
 	assert.Eventually(t, func() bool {
