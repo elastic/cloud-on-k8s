@@ -49,6 +49,7 @@ func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Client) 
 		m.StopObserving(cluster)
 		return m.createObserver(cluster, esClient)
 	default:
+		esClient.Close()
 		return observer
 	}
 }

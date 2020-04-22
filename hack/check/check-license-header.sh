@@ -17,7 +17,7 @@ files=$(grep \
     --include=\*.sh \
     --include=Makefile \
     -L "Copyright Elasticsearch B.V." \
-    -r ${CHECK_PATH})
+    -r ${CHECK_PATH} || true)
 
 [ "$files" != "" ] \
     && echo -e "Error: file(s) without license header:\n$files" && exit 1 \

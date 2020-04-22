@@ -31,6 +31,8 @@ Flags:
 Example:
 
 ```
+# build the binary with a recent Go version
+go build
 # perform a dry run first
 ./reattach-pv --elasticsearch-manifest elasticsearch.yml --dry-run
 # then, execute again without the dry-run flag

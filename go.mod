@@ -41,8 +41,8 @@ require (
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/tsenart/vegeta v12.7.0+incompatible
-	go.elastic.co/apm v1.7.0
-	go.elastic.co/apm/module/apmelasticsearch v1.7.0
+	go.elastic.co/apm v1.7.2
+	go.elastic.co/apm/module/apmelasticsearch v1.7.3-0.20200421085619-eea0ff3c17de
 	go.uber.org/automaxprocs v1.3.0
 	go.uber.org/zap v1.12.0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
