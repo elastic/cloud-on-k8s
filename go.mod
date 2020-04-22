@@ -3,7 +3,6 @@ module github.com/elastic/cloud-on-k8s
 go 1.13
 
 require (
-	github.com/DATA-DOG/godog v0.7.13 // indirect
 	github.com/Masterminds/goutils v1.1.0 // indirect
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/Masterminds/sprig v2.20.0+incompatible
