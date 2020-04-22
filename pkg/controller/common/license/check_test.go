@@ -40,6 +40,11 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	}
 	require.NoError(t, trialState.InitTrialLicense(&validLegacyTrialFixture))
 
+	expiredTrialLicense := validTrialLicenseFixture
+	expiredTrialLicense.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(-1 * time.Hour))
+	expiredTrialSignatureBytes, err := NewSigner(trialState.privateKey).Sign(expiredTrialLicense)
+	require.NoError(t, err)
+
 	statusSecret, err := ExpectedTrialStatus(testNS, types.NamespacedName{}, trialState)
 	require.NoError(t, err)
 
@@ -81,6 +86,14 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 			name: "invalid trial: FAIL",
 			fields: fields{
 				initialObjects: []runtime.Object{asRuntimeObject(emptyTrialLicenseFixture), &statusSecret},
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "expired trial: FAIL",
+			fields: fields{
+				initialObjects: append(asRuntimeObjects(expiredTrialLicense, expiredTrialSignatureBytes), &statusSecret),
 			},
 			want:    false,
 			wantErr: false,

@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	AutogenLicenseIssuer = "Elastic k8s operator"
+	ECKLicenseIssuer = "Elastic k8s operator"
 
 	TrialStatusSecretKey = "trial-status"
 	TrialPubkeyKey       = "pubkey"
@@ -154,7 +154,7 @@ func populateTrialLicense(l *EnterpriseLicense) error {
 		return pkgerrors.Errorf("%s for %s is not a trial license", l.License.UID, l.License.IssuedTo)
 	}
 	if l.License.Issuer == "" {
-		l.License.Issuer = AutogenLicenseIssuer
+		l.License.Issuer = ECKLicenseIssuer
 	}
 	if l.License.IssuedTo == "" {
 		l.License.IssuedTo = "Unknown"

@@ -266,7 +266,7 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			name: "externally generated licenses are ignored",
 			fields: fields{
 				Client: k8s.WrappedFakeClient(trialLicenseSecretSample(true, map[string][]byte{
-					"license": []byte(strings.ReplaceAll(string(trialLicenseBytes()), licensing.AutogenLicenseIssuer, "Some other issuer")),
+					"license": []byte(strings.ReplaceAll(string(trialLicenseBytes()), licensing.ECKLicenseIssuer, "Some other issuer")),
 				})),
 			},
 			wantErr:    false,
