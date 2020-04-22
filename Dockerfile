@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 			-ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
 			-o elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
-# Copy the operator binary into a thin image
+# Copy the operator binary into a lighter image
 FROM centos:8
 
 RUN set -x \
