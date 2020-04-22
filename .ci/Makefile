@@ -39,7 +39,7 @@ ci:
 ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
-ci-internal: docker-login ci-build-image
+ci-internal: get-docker-creds ci-build-image
 	@ docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -50,10 +50,10 @@ ci-internal: docker-login ci-build-image
 
 # build and push the CI image only if it does not yet exist
 ci-build-image:
-ci-build-image:
 	@ docker pull -q $(CI_IMAGE) || \
 	( \
 		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
+		@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co && \
 		docker push push.$(CI_IMAGE) \
 	)
 
@@ -61,14 +61,15 @@ ifneq (,$(IS_SNAPSHOT_BUILD))
 	SECRET_FIELD_PREFIX ?= dev-
 endif
 
-# read docker password from Vault to push Docker images in the Elastic registry
-docker-login: ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
-docker-login:
-	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co 2> /dev/null
-
-get-test-artifacts: get-monitoring-secrets get-test-license get-elastic-public-key
+# read Docker registry creds from Vault and write them in the .env file to make them available from inside the CI container
+get-docker-creds: ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
+get-docker-creds:
+	@ echo "ELASTIC_DOCKER_LOGIN = $(ELASTIC_DOCKER_LOGIN)" >> ${ROOT_DIR}/.env
+	@ echo "ELASTIC_DOCKER_PASSWORD = $(ELASTIC_DOCKER_PASSWORD)" >> ${ROOT_DIR}/.env
 
 ##  Build
+
+get-test-artifacts: get-monitoring-secrets get-test-license get-elastic-public-key
 
 # read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
 get-elastic-public-key:
