@@ -40,7 +40,7 @@ pipeline {
                     steps {
                         checkout scm
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.12.10")
+                            runTests(lib, failedTests, "kindest/node:v1.12.10", "1.12")
                         }
                     }
                 }
@@ -51,7 +51,7 @@ pipeline {
                     steps {
                         checkout scm
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.16.4")
+                            runTests(lib, failedTests, "kindest/node:v1.16.4", "1.16")
                         }
                     }
                 }
@@ -62,7 +62,7 @@ pipeline {
                     steps {
                         checkout scm
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.17.0")
+                            runTests(lib, failedTests, "kindest/node:v1.17.0", "1.17")
                         }
                     }
                 }
@@ -96,8 +96,8 @@ pipeline {
 
 }
 
-def runTests(lib, failedTests, kindNodeImage) {
-    sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage"
+def runTests(lib, failedTests, kindNodeImage, clusterVersion) {
+    sh ".ci/setenvconfig e2e/kind-k8s-versions $kindNodeImage $clusterVersion"
     script {
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: 'make -C .ci get-test-artifacts TARGET=kind-e2e ci')
 

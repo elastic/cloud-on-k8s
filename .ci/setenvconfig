@@ -147,6 +147,7 @@ CFG
 ######################################
 
 kindNodeImage=$2
+clusterVersion=$3
 
 write_env <<ENV
 REGISTRY = eu.gcr.io
@@ -165,7 +166,7 @@ PIPELINE=e2e/kind-k8s-versions
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=kind
 CLUSTER_NAME=kind-$BUILD_NUMBER
-KUBERNETES_VERSION=default
+KUBERNETES_VERSION=${clusterVersion}
 TEST_OPTS=-race
 ENV
 ;;
