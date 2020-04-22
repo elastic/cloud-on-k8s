@@ -122,6 +122,22 @@ func TestPopulateTrialLicense(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			// technically this code path should not be possible: we use the new type when creating a new trial
+			// and we don't repopulate existing licenses
+			name: "legacy trial still supported",
+			args: args{
+				l: &EnterpriseLicense{
+					License: LicenseSpec{
+						Type: LicenseTypeLegacyTrial,
+					},
+				},
+			},
+			assertions: func(l EnterpriseLicense) {
+				require.NoError(t, l.IsMissingFields())
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -7,6 +7,7 @@ package trial
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -57,7 +58,7 @@ func trialStatusSecretSample(t *testing.T, state licensing.TrialState) *corev1.S
 
 func trialLicenseBytes() []byte {
 	return []byte(fmt.Sprintf(
-		`{"license": {"uid": "x", "type": "enterprise-trial", "issue_date_in_millis": 1, "expiry_date_in_millis": %d, "issued_to": "x", "issuer": "Elastic k8s operator", "start_date_in_millis": 1, "cluster_licenses": null, "Version": 0}}`,
+		`{"license": {"uid": "x", "type": "enterprise_trial", "issue_date_in_millis": 1, "expiry_date_in_millis": %d, "issued_to": "x", "issuer": "Elastic k8s operator", "start_date_in_millis": 1, "cluster_licenses": null, "Version": 0}}`,
 		chrono.ToMillis(time.Now().Add(24*time.Hour)), // simulate a license still valid for 24 hours
 	))
 }
@@ -260,6 +261,16 @@ func TestReconcileTrials_Reconcile(t *testing.T) {
 			},
 			wantErr:    false,
 			assertions: requireValidationMsg("trial license signature invalid"),
+		},
+		{
+			name: "externally generated licenses are ignored",
+			fields: fields{
+				Client: k8s.WrappedFakeClient(trialLicenseSecretSample(true, map[string][]byte{
+					"license": []byte(strings.ReplaceAll(string(trialLicenseBytes()), licensing.AutogenLicenseIssuer, "Some other issuer")),
+				})),
+			},
+			wantErr:    false,
+			assertions: requireNoValidationMsg,
 		},
 	}
 	for _, tt := range tests {
