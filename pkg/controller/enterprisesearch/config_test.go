@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -138,7 +137,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			name: "Do not override existing keys",
 			args: args{
 				c: k8s.WrappedFakeClient(
-					&v1.Secret{
+					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample-ents-config"},
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfigWithReusableSettings),
@@ -161,7 +160,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			name: "Do not override existing encryption keys, create missing session key",
 			args: args{
 				c: k8s.WrappedFakeClient(
-					&v1.Secret{
+					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample-ents-config"},
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfig),
@@ -185,7 +184,7 @@ func Test_reuseOrGenerateSecrets(t *testing.T) {
 			name: "Create missing keys",
 			args: args{
 				c: k8s.WrappedFakeClient(
-					&v1.Secret{
+					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "entsearch-sample-ents-config"},
 						Data: map[string][]byte{
 							ConfigFilename: []byte(existingConfig),

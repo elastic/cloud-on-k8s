@@ -137,20 +137,26 @@ func ReconcileEsUser(
 		},
 	}
 
-	// reuse the existing hash if valid
-	bcryptHash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
 	var existingUserSecret corev1.Secret
 	if err := c.Get(k8s.ExtractNamespacedName(&expectedEsUser), &existingUserSecret); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
+
+	// reuse the existing hash if valid
+	var bcryptHash []byte
 	if existingHash, exists := existingUserSecret.Data[esuser.PasswordHashField]; exists {
 		if bcrypt.CompareHashAndPassword(existingHash, password) == nil {
 			bcryptHash = existingHash
 		}
 	}
+
+	if bcryptHash == nil {
+		bcryptHash, err = bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+	}
+
 	expectedEsUser.Data[esuser.PasswordHashField] = bcryptHash
 
 	owner := es // user is owned by the es resource in es namespace
