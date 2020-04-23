@@ -50,11 +50,11 @@ ci-internal: get-docker-creds ci-build-image
 
 # build and push the CI image only if it does not yet exist
 ci-build-image:
-	@ docker pull -q $(CI_IMAGE) || \
+	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
 		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
 		@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co && \
-		docker push push.$(CI_IMAGE) \
+		docker push push.$(CI_IMAGE) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed' \
 	)
 
 ifneq (,$(IS_SNAPSHOT_BUILD))

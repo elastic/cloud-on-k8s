@@ -327,7 +327,7 @@ docker-build: go-generate
 
 docker-push: docker-login
 	@ docker tag $(OPERATOR_IMAGE) push.$(OPERATOR_IMAGE)
-	@ docker push push.$(OPERATOR_IMAGE)
+	@ docker push push.$(OPERATOR_IMAGE) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
@@ -352,7 +352,7 @@ e2e-docker-build: clean
 
 e2e-docker-push: docker-login
 	@ docker tag $(E2E_IMG) push.$(E2E_IMG)
-	@ docker push push.$(E2E_IMG)
+	@ docker push push.$(E2E_IMG) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
