@@ -13,7 +13,6 @@ var eSCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 
 // CaCertSecretVolume returns a SecretVolume to hold the Elasticsearch CA certs for the given Kibana resource.
 func CaCertSecretVolume(kb kbv1.Kibana) volume.SecretVolume {
-	// TODO: this is a little ugly as it reaches into the ES controller bits
 	return volume.NewSecretVolumeWithMountPath(
 		kb.AssociationConf().GetCASecretName(),
 		"elasticsearch-certs",
