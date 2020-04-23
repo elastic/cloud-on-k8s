@@ -207,6 +207,7 @@ func (d *OcpDriver) auth() error {
 				return err
 			}
 		}
+		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it
 		if err := NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run(); err != nil {
 			return err
 		}
