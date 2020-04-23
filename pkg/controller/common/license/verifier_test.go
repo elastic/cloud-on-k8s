@@ -57,6 +57,15 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "empty signature",
+			args: licenseFixtureV4,
+			verifyInput: func(l EnterpriseLicense) EnterpriseLicense {
+				l.License.Signature = ""
+				return l
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
