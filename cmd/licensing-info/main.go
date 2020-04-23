@@ -6,6 +6,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 
@@ -25,7 +26,7 @@ import (
 //
 // Example of use:
 //
-//  > go run cmd/licensing-info/main.go
+//  > go run cmd/licensing-info/main.go -operator-namespace <operator-namespace>
 //  {
 //    "timestamp": "2019-12-17T11:56:02+01:00",
 //    "license_level": "basic",
@@ -35,7 +36,10 @@ import (
 //
 
 func main() {
-	licensingInfo, err := license.NewResourceReporter(newK8sClient()).Get()
+	var operatorNamespace string
+	flag.StringVar(&operatorNamespace, "operator-namespace", "elastic-system", "indicates the namespace where the operator is deployed")
+	flag.Parse()
+	licensingInfo, err := license.NewResourceReporter(newK8sClient(), operatorNamespace).Get()
 	if err != nil {
 		log.Fatal(err, "Failed to get licensing info")
 	}

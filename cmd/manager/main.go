@@ -375,8 +375,8 @@ func execute() {
 	go func() {
 		time.Sleep(10 * time.Second)         // wait some arbitrary time for the manager to start
 		mgr.GetCache().WaitForCacheSync(nil) // wait until k8s client cache is initialized
-		r := licensing.NewResourceReporter(mgr.GetClient())
-		r.Start(operatorNamespace, licensing.ResourceReporterFrequency)
+		r := licensing.NewResourceReporter(mgr.GetClient(), operatorNamespace)
+		r.Start(licensing.ResourceReporterFrequency)
 	}()
 
 	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,

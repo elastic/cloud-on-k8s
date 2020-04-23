@@ -71,11 +71,11 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, Enterp
 }
 
 // CreateTrialLicense creates en empty secret with the correct meta data to start an enterprise trial
-func CreateTrialLicense(c k8s.Client, namespace string) error {
+func CreateTrialLicense(c k8s.Client, nsn types.NamespacedName) error {
 	return c.Create(&corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      string(LicenseTypeEnterpriseTrial),
-			Namespace: namespace,
+			Name:      nsn.Name,
+			Namespace: nsn.Namespace,
 			Labels: map[string]string{
 				common.TypeLabelName: Type,
 				LicenseLabelType:     string(LicenseTypeEnterpriseTrial),

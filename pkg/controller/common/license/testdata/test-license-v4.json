@@ -1,0 +1,41 @@
+{
+  "license": {
+    "uid": "840F0DB6-1906-452E-98C7-6F94E6012CD7",
+    "type": "enterprise",
+    "issue_date_in_millis": 1548115200000,
+    "start_date_in_millis": 1548115200000,
+    "expiry_date_in_millis": 1561247999999,
+    "max_resource_units": 20,
+    "issued_to": "test org",
+    "issuer": "test issuer",
+    "signature": "test signature",
+    "cluster_licenses": [
+      {
+        "license": {
+          "uid": "73117B2A-FEEA-4FEC-B8F6-49D764E9F1DA",
+          "type": "platinum",
+          "issue_date_in_millis": 1548115200000,
+          "expiry_date_in_millis": 1561247999999,
+          "max_nodes": 100,
+          "issued_to": "test org",
+          "issuer": "test issuer",
+          "signature": "test signature platinum",
+          "start_date_in_millis": 1548115200000
+        }
+      },
+      {
+        "license": {
+          "uid": "57E312E2-6EA0-49D0-8E65-AA5017742ACF",
+          "type": "enterprise",
+          "issue_date_in_millis": 1548115200000,
+          "expiry_date_in_millis": 1561247999999,
+          "max_resource_units": 50,
+          "issued_to": "test org",
+          "issuer": "test issuer",
+          "signature": "test signature enterprise",
+          "start_date_in_millis": 1548115200000
+        }
+      }
+    ]
+  }
+}

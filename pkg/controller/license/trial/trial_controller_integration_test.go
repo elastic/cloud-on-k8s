@@ -25,6 +25,11 @@ import (
 
 const operatorNs = "elastic-system"
 
+var testLicenseNSN = types.NamespacedName{
+	Namespace: operatorNs,
+	Name:      "eck-trial-license",
+}
+
 func TestMain(m *testing.M) {
 	test.RunWithK8s(m)
 }
@@ -36,7 +41,7 @@ func TestReconcile(t *testing.T) {
 	now := time.Now()
 
 	// Create trial initialisation is controlled via config
-	require.NoError(t, license.CreateTrialLicense(c, operatorNs))
+	require.NoError(t, license.CreateTrialLicense(c, testLicenseNSN))
 	checker := license.NewLicenseChecker(c, operatorNs)
 	// test trial initialisation on create
 	validateTrialStatus(t, checker, true)
@@ -54,9 +59,12 @@ func TestReconcile(t *testing.T) {
 		Namespace: operatorNs,
 		Name:      license.TrialStatusSecretKey,
 	}
-	require.NoError(t, c.Get(trialStatusKey, &trialStatus))
-	trialStatus.Data[license.TrialPubkeyKey] = []byte("foobar")
-	require.NoError(t, c.Update(&trialStatus))
+	// retry in case of edit conflict with reconciliation loop
+	test.RetryUntilSuccess(t, func() error {
+		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
+		trialStatus.Data[license.TrialPubkeyKey] = []byte("foobar")
+		return c.Update(&trialStatus)
+	})
 	test.RetryUntilSuccess(t, func() error {
 		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
 		if bytes.Equal(trialStatus.Data[license.TrialPubkeyKey], []byte("foobar")) {
@@ -66,9 +74,9 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// Delete the trial license
-	require.NoError(t, deleteTrial(c, string(license.LicenseTypeEnterpriseTrial)))
+	require.NoError(t, deleteTrial(c))
 	// recreate it with modified validity + 1 year
-	license.CreateTrialLicense(c, operatorNs)
+	require.NoError(t, license.CreateTrialLicense(c, testLicenseNSN))
 	// expect an invalid license
 	validateTrialStatus(t, checker, false)
 	// ClusterLicense should be GC'ed but can't be tested here
@@ -95,9 +103,9 @@ func validateTrialDuration(t *testing.T, license license.EnterpriseLicense, now 
 	assert.True(t, endDelta <= precision, "end date should be within %v, but was %v", precision, endDelta)
 }
 
-func deleteTrial(c k8s.Client, name string) error {
+func deleteTrial(c k8s.Client) error {
 	var trialLicense corev1.Secret
-	if err := c.Get(types.NamespacedName{Namespace: operatorNs, Name: name}, &trialLicense); err != nil {
+	if err := c.Get(testLicenseNSN, &trialLicense); err != nil {
 		return err
 	}
 	return c.Delete(&trialLicense)
