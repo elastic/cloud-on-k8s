@@ -10,11 +10,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR=${SCRIPT_DIR}/../..
+TEMP_DIR=$(mktemp -d)
+LICENCE_DETECTOR="github.com/elastic/go-licence-detector@v0.1.0"
 
-build_licence_detector() {
+trap '[[ $TEMP_DIR ]] && rm -rf "$TEMP_DIR"' EXIT
+
+get_licence_detector() {
     (
-        cd "$SCRIPT_DIR"
-        go build -v github.com/elastic/cloud-on-k8s/hack/licence-detector
+        cd "$TEMP_DIR"
+        GOBIN="$TEMP_DIR" GO111MODULE=on go get "$LICENCE_DETECTOR"
     )
 }
 
@@ -22,16 +26,17 @@ generate_notice() {
     (
         cd "$PROJECT_DIR"
         go mod download
-        go list -m -json all | "${SCRIPT_DIR}"/licence-detector \
-            -licenceData="${SCRIPT_DIR}"/licence.db \
+        go list -m -json all | "${TEMP_DIR}"/go-licence-detector \
             -depsTemplate="${SCRIPT_DIR}"/templates/dependencies.asciidoc.tmpl \
             -depsOut="${PROJECT_DIR}"/docs/reference/dependencies.asciidoc \
             -noticeTemplate="${SCRIPT_DIR}"/templates/NOTICE.txt.tmpl \
             -noticeOut="${PROJECT_DIR}"/NOTICE.txt \
             -overrides="${SCRIPT_DIR}"/overrides/overrides.json \
+            -rules="${SCRIPT_DIR}"/rules.json \
             -includeIndirect
     )
 }
 
-build_licence_detector
+echo "Generating notice file and dependency list"
+get_licence_detector
 generate_notice
