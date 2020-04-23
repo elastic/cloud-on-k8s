@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -280,4 +281,24 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		PodTemplateSpec: kibanaPodSpec,
 		Strategy:        strategyType,
 	}, nil
+}
+
+func NewService(kb kbv1.Kibana) *corev1.Service {
+	svc := corev1.Service{
+		ObjectMeta: kb.Spec.HTTP.Service.ObjectMeta,
+		Spec:       kb.Spec.HTTP.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = kb.Namespace
+	svc.ObjectMeta.Name = HTTPService(kb.Name)
+
+	labels := NewLabels(kb.Name)
+	ports := []corev1.ServicePort{
+		{
+			Name:     kb.Spec.HTTP.Protocol(),
+			Protocol: corev1.ProtocolTCP,
+			Port:     HTTPPort,
+		},
+	}
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
