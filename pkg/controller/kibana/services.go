@@ -9,7 +9,6 @@ import (
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 )
 
 func NewService(kb kbv1.Kibana) *corev1.Service {
@@ -19,7 +18,7 @@ func NewService(kb kbv1.Kibana) *corev1.Service {
 	}
 
 	svc.ObjectMeta.Namespace = kb.Namespace
-	svc.ObjectMeta.Name = kbname.HTTPService(kb.Name)
+	svc.ObjectMeta.Name = HTTPService(kb.Name)
 
 	labels := NewLabels(kb.Name)
 	ports := []corev1.ServicePort{

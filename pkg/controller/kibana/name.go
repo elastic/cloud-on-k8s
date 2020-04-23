@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package name
+package kibana
 
 import (
 	common_name "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"

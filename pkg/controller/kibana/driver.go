@@ -32,7 +32,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -97,7 +96,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	keystoreResources, err := keystore.NewResources(
 		d,
 		kb,
-		kbname.KBNamer,
+		KBNamer,
 		NewLabels(kb.Name),
 		initContainersParameters,
 	)
@@ -149,7 +148,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		var httpCerts corev1.Secret
 		err := d.client.Get(types.NamespacedName{
 			Namespace: kb.Namespace,
-			Name:      certificates.InternalCertsSecretName(kbname.KBNamer, kb.Name),
+			Name:      certificates.InternalCertsSecretName(KBNamer, kb.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
@@ -158,7 +157,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 			_, _ = configChecksum.Write(httpCert)
 		}
 
-		httpCertsVolume := certificates.HTTPCertSecretVolume(kbname.KBNamer, kb.Name)
+		httpCertsVolume := certificates.HTTPCertSecretVolume(KBNamer, kb.Name)
 		volumes = append(volumes, httpCertsVolume)
 	}
 
@@ -188,7 +187,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	}
 
 	return deployment.Params{
-		Name:            kbname.KBNamer.Suffix(kb.Name),
+		Name:            KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
 		Replicas:        kb.Spec.Count,
 		Selector:        NewLabels(kb.Name),
@@ -220,7 +219,7 @@ func (d *driver) Reconcile(
 		DynamicWatches:        d.DynamicWatches(),
 		Object:                kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
-		Namer:                 kbname.KBNamer,
+		Namer:                 KBNamer,
 		Labels:                labels.NewLabels(kb.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        params.CACertRotation,
