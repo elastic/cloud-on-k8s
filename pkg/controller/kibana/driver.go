@@ -34,7 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -107,7 +106,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		return deployment.Params{}, err
 	}
 
-	kibanaPodSpec := pod.NewPodTemplateSpec(*kb, keystoreResources)
+	kibanaPodSpec := NewPodTemplateSpec(*kb, keystoreResources)
 
 	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
 	// instances in case of any change in the CA file, secure settings or credentials contents.
@@ -165,7 +164,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	}
 
 	// attach volumes
-	kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
+	kibanaContainer := GetKibanaContainer(kibanaPodSpec.Spec)
 	for _, volume := range volumes {
 		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, volume.Volume())
 		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, volume.VolumeMount())

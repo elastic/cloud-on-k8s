@@ -14,7 +14,6 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 )
 
@@ -121,7 +120,7 @@ func mkService() corev1.Service {
 				{
 					Name:     "http",
 					Protocol: corev1.ProtocolTCP,
-					Port:     pod.HTTPPort,
+					Port:     HTTPPort,
 				},
 			},
 			Selector: map[string]string{

@@ -26,7 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -521,7 +520,7 @@ func expectedDeploymentParams() deployment.Params {
 							},
 						},
 					},
-					Resources: pod.DefaultResources,
+					Resources: DefaultResources,
 				}},
 				AutomountServiceAccountToken: &false,
 			},

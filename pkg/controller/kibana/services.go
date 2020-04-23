@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 )
 
 func NewService(kb kbv1.Kibana) *corev1.Service {
@@ -28,7 +27,7 @@ func NewService(kb kbv1.Kibana) *corev1.Service {
 		{
 			Name:     kb.Spec.HTTP.Protocol(),
 			Protocol: corev1.ProtocolTCP,
-			Port:     pod.HTTPPort,
+			Port:     HTTPPort,
 		},
 	}
 

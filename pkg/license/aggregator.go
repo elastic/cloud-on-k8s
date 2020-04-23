@@ -21,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	essettings "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
-	kbpod "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -93,7 +92,7 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 			kb.Spec.PodTemplate.Spec.Containers,
 			kbv1.KibanaContainerName,
 			kibana.EnvNodeOpts, memFromNodeOptions,
-			kbpod.DefaultMemoryLimits,
+			kibana.DefaultMemoryLimits,
 		)
 		if err != nil {
 			return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Kibana memory")
