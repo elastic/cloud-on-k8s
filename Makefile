@@ -6,8 +6,9 @@
 ##  --      Variables      --  ##
 #################################
 
-# reads file '.env', ignores if it doesn't exist
+# Read env files, ignores if they doesn't exist
 -include .env
+-include .registry.env
 
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash

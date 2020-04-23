@@ -64,8 +64,8 @@ endif
 # read Docker registry creds from Vault and write them in the .env file to make them available from inside the CI container
 get-docker-creds: ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
 get-docker-creds:
-	@ echo "ELASTIC_DOCKER_LOGIN = $(ELASTIC_DOCKER_LOGIN)" >> ${ROOT_DIR}/.env
-	@ echo "ELASTIC_DOCKER_PASSWORD = $(ELASTIC_DOCKER_PASSWORD)" >> ${ROOT_DIR}/.env
+	@ echo "ELASTIC_DOCKER_LOGIN = $(ELASTIC_DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
+	@ echo "ELASTIC_DOCKER_PASSWORD = $(ELASTIC_DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
 
 ##  Build
 
