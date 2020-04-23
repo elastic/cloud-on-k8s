@@ -10,13 +10,13 @@ import (
 
 const httpServiceSuffix = "http"
 
-// KBNamer is a Namer that is configured with the defaults for resources related to a Kibana resource.
-var KBNamer = common_name.NewNamer("kb")
+// Namer is a Namer that is configured with the defaults for resources related to a Kibana resource.
+var Namer = common_name.NewNamer("kb")
 
 func HTTPService(kbName string) string {
-	return KBNamer.Suffix(kbName, httpServiceSuffix)
+	return Namer.Suffix(kbName, httpServiceSuffix)
 }
 
 func Deployment(kbName string) string {
-	return KBNamer.Suffix(kbName)
+	return Namer.Suffix(kbName)
 }

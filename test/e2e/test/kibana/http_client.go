@@ -23,7 +23,7 @@ import (
 func NewKibanaClient(kb kbv1.Kibana, k *test.K8sClient) (*http.Client, error) {
 	var caCerts []*x509.Certificate
 	if kb.Spec.HTTP.TLS.Enabled() {
-		crts, err := k.GetHTTPCerts(kibana.KBNamer, kb.Namespace, kb.Name)
+		crts, err := k.GetHTTPCerts(kibana.Namer, kb.Namespace, kb.Name)
 		if err != nil {
 			return nil, err
 		}

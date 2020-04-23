@@ -115,7 +115,7 @@ func (d *driver) Reconcile(
 		DynamicWatches:        d.DynamicWatches(),
 		Object:                kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
-		Namer:                 KBNamer,
+		Namer:                 Namer,
 		Labels:                labels.NewLabels(kb.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        params.CACertRotation,
@@ -181,7 +181,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	keystoreResources, err := keystore.NewResources(
 		d,
 		kb,
-		KBNamer,
+		Namer,
 		NewLabels(kb.Name),
 		initContainersParameters,
 	)
@@ -233,7 +233,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		var httpCerts corev1.Secret
 		err := d.client.Get(types.NamespacedName{
 			Namespace: kb.Namespace,
-			Name:      certificates.InternalCertsSecretName(KBNamer, kb.Name),
+			Name:      certificates.InternalCertsSecretName(Namer, kb.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
@@ -242,7 +242,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 			_, _ = configChecksum.Write(httpCert)
 		}
 
-		httpCertsVolume := certificates.HTTPCertSecretVolume(KBNamer, kb.Name)
+		httpCertsVolume := certificates.HTTPCertSecretVolume(Namer, kb.Name)
 		volumes = append(volumes, httpCertsVolume)
 	}
 
@@ -272,7 +272,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	}
 
 	return deployment.Params{
-		Name:            KBNamer.Suffix(kb.Name),
+		Name:            Namer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
 		Replicas:        kb.Spec.Count,
 		Selector:        NewLabels(kb.Name),
