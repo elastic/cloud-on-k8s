@@ -253,12 +253,12 @@ func startTrial(t *testing.T, k8sClient client.Client) {
 		Name:      "eck-trial",
 	}
 	// simulate user kicking off the trial activation
-	commonlicense.CreateTrialLicense(wrappedClient, licenseNSN)
+	require.NoError(t, commonlicense.CreateTrialLicense(wrappedClient, licenseNSN))
 	// fetch user created license
 	licenseSecret, license, err := commonlicense.TrialLicense(wrappedClient, licenseNSN)
 	require.NoError(t, err)
 	// fill in and sign
-	err = trialState.InitTrialLicense(&license)
+	require.NoError(t, trialState.InitTrialLicense(&license))
 	status, err := commonlicense.ExpectedTrialStatus(operatorNs, licenseNSN, trialState)
 	require.NoError(t, err)
 	// persist status
