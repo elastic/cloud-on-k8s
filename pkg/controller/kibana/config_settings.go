@@ -22,7 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -31,6 +31,9 @@ const (
 	SettingsFilename = "kibana.yml"
 	// EnvNodeOpts is the environment variable name for the Node options that can be used to increase the Kibana maximum memory limit
 	EnvNodeOpts = "NODE_OPTS"
+
+	// esCertsVolumeMountPath is the directory containing Elasticsearch certificates.
+	esCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 )
 
 // Constants to use for the Kibana configuration settings.
@@ -213,9 +216,18 @@ func elasticsearchTLSSettings(kb kbv1.Kibana) map[string]interface{} {
 	}
 
 	if kb.AssociationConf().GetCACertProvided() {
-		esCertsVolumeMountPath := es.CaCertSecretVolume(kb).VolumeMount().MountPath
+		esCertsVolumeMountPath := esCaCertSecretVolume(kb).VolumeMount().MountPath
 		cfg[ElasticsearchSslCertificateAuthorities] = path.Join(esCertsVolumeMountPath, certificates.CAFileName)
 	}
 
 	return cfg
+}
+
+// esCaCertSecretVolume returns a SecretVolume to hold the Elasticsearch CA certs for the given Kibana resource.
+func esCaCertSecretVolume(kb kbv1.Kibana) volume.SecretVolume {
+	return volume.NewSecretVolumeWithMountPath(
+		kb.AssociationConf().GetCASecretName(),
+		"elasticsearch-certs",
+		esCertsVolumeMountPath,
+	)
 }
