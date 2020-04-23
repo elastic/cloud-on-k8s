@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -55,8 +54,8 @@ func Test_getStrategyType(t *testing.T) {
 					Name:      fmt.Sprintf("pod-%v-%v-%v", kbName, version, i),
 					Namespace: "default",
 					Labels: map[string]string{
-						label.KibanaNameLabelName:    kbName,
-						label.KibanaVersionLabelName: version,
+						KibanaNameLabelName:    kbName,
+						KibanaVersionLabelName: version,
 					},
 				},
 			})
@@ -71,7 +70,7 @@ func Test_getStrategyType(t *testing.T) {
 				t.FailNow()
 			}
 
-			delete(pod.Labels, label.KibanaVersionLabelName)
+			delete(pod.Labels, KibanaVersionLabelName)
 		}
 
 		return objects

@@ -13,7 +13,6 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 )
 
@@ -111,8 +110,8 @@ func mkService() corev1.Service {
 			Name:      "kibana-test-kb-http",
 			Namespace: "test",
 			Labels: map[string]string{
-				label.KibanaNameLabelName: "kibana-test",
-				common.TypeLabelName:      label.Type,
+				KibanaNameLabelName:  "kibana-test",
+				common.TypeLabelName: Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -124,8 +123,8 @@ func mkService() corev1.Service {
 				},
 			},
 			Selector: map[string]string{
-				label.KibanaNameLabelName: "kibana-test",
-				common.TypeLabelName:      label.Type,
+				KibanaNameLabelName:  "kibana-test",
+				common.TypeLabelName: Type,
 			},
 		},
 	}

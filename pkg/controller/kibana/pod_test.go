@@ -17,7 +17,6 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 )
 
 func TestNewPodTemplateSpec(t *testing.T) {
@@ -142,20 +141,20 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
-								"label1":                  "value1",
-								"label2":                  "value2",
-								label.KibanaNameLabelName: "overridden-kibana-name",
+								"label1":            "value1",
+								"label2":            "value2",
+								KibanaNameLabelName: "overridden-kibana-name",
 							},
 						},
 					},
 					Version: "7.4.0",
 				}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				labels := label.NewLabels("kibana-name")
-				labels[label.KibanaVersionLabelName] = "7.4.0"
+				labels := NewLabels("kibana-name")
+				labels[KibanaVersionLabelName] = "7.4.0"
 				labels["label1"] = "value1"
 				labels["label2"] = "value2"
-				labels[label.KibanaNameLabelName] = "overridden-kibana-name"
+				labels[KibanaNameLabelName] = "overridden-kibana-name"
 				assert.Equal(t, labels, pod.Labels)
 			},
 		},

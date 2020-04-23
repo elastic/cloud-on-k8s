@@ -7,15 +7,15 @@ package kibana
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"k8s.io/apimachinery/pkg/api/resource"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 
 	corev1 "k8s.io/api/core/v1"
@@ -66,8 +66,8 @@ func readinessProbe(useTLS bool) corev1.Probe {
 }
 
 func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
-	labels := label.NewLabels(kb.Name)
-	labels[label.KibanaVersionLabelName] = kb.Spec.Version
+	labels := NewLabels(kb.Name)
+	labels[KibanaVersionLabelName] = kb.Spec.Version
 	ports := getDefaultContainerPorts(kb)
 	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, kbv1.KibanaContainerName).
 		WithResources(DefaultResources).

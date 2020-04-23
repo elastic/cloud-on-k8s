@@ -32,7 +32,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -75,13 +74,13 @@ var _ driver2.Interface = &driver{}
 // running multiple versions simultaneously may lead to concurrency bugs and data corruption.
 func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
 	var pods corev1.PodList
-	var labels client.MatchingLabels = map[string]string{label.KibanaNameLabelName: kb.Name}
+	var labels client.MatchingLabels = map[string]string{KibanaNameLabelName: kb.Name}
 	if err := d.client.List(&pods, client.InNamespace(kb.Namespace), labels); err != nil {
 		return "", err
 	}
 
 	for _, pod := range pods.Items {
-		ver, ok := pod.Labels[label.KibanaVersionLabelName]
+		ver, ok := pod.Labels[KibanaVersionLabelName]
 		// if label is missing we assume that the last reconciliation was done by previous version of the operator
 		// to be safe, we assume the Kibana version has changed when operator was offline and use Recreate,
 		// otherwise we may run into data corruption/data loss.
@@ -99,7 +98,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		d,
 		kb,
 		kbname.KBNamer,
-		label.NewLabels(kb.Name),
+		NewLabels(kb.Name),
 		initContainersParameters,
 	)
 	if err != nil {
@@ -192,8 +191,8 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		Name:            kbname.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
 		Replicas:        kb.Spec.Count,
-		Selector:        label.NewLabels(kb.Name),
-		Labels:          label.NewLabels(kb.Name),
+		Selector:        NewLabels(kb.Name),
+		Labels:          NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
 		Strategy:        strategyType,
 	}, nil

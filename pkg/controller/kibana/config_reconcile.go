@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -73,7 +72,7 @@ func ReconcileConfigSecret(
 			Namespace: kb.Namespace,
 			Name:      SecretName(kb),
 			Labels: common.AddCredentialsLabel(map[string]string{
-				label.KibanaNameLabelName: kb.Name,
+				KibanaNameLabelName: kb.Name,
 			}),
 		},
 		Data: map[string][]byte{
