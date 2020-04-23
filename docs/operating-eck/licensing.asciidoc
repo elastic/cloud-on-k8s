@@ -24,7 +24,7 @@ metadata:
   name: eck-trial-license
   namespace: elastic-system
   labels:
-    license.k8s.elastic.co/type: enterprise-trial
+    license.k8s.elastic.co/type: enterprise_trial
   annotations:
     elastic.co/eula: accepted <1>
 EOF
@@ -38,7 +38,7 @@ At the end of the trial period, the Platinum and Enterprise features operate in 
 
 [float]
 == Add a license
-If you have a valid Enterprise subscription you will receive a license as a JSON file.
+If you have a valid Enterprise subscription or a trial license extension, you will receive a license as a JSON file.
 
 NOTE: Please note that ECK will only accept Enterprise licenses. You can not apply a single Platinum or Gold cluster license to ECK.
 

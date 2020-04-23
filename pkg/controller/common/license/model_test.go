@@ -136,6 +136,48 @@ var expectedLicenseSpec = EnterpriseLicense{
 	},
 }
 
+var expectedLicenseSpecV4 = EnterpriseLicense{
+	License: LicenseSpec{
+		UID:                "840F0DB6-1906-452E-98C7-6F94E6012CD7",
+		IssueDateInMillis:  1548115200000,
+		ExpiryDateInMillis: 1561247999999,
+		IssuedTo:           "test org",
+		Issuer:             "test issuer",
+		StartDateInMillis:  1548115200000,
+		Type:               "enterprise",
+		MaxResourceUnits:   20,
+		Signature:          "test signature",
+		ClusterLicenses: []ElasticsearchLicense{
+			{
+				License: client.License{
+					UID:                "73117B2A-FEEA-4FEC-B8F6-49D764E9F1DA",
+					IssueDateInMillis:  1548115200000,
+					ExpiryDateInMillis: 1561247999999,
+					IssuedTo:           "test org",
+					Issuer:             "test issuer",
+					StartDateInMillis:  1548115200000,
+					MaxNodes:           100,
+					Type:               "platinum",
+					Signature:          "test signature platinum",
+				},
+			},
+			{
+				License: client.License{
+					UID:                "57E312E2-6EA0-49D0-8E65-AA5017742ACF",
+					IssueDateInMillis:  1548115200000,
+					ExpiryDateInMillis: 1561247999999,
+					IssuedTo:           "test org",
+					Issuer:             "test issuer",
+					StartDateInMillis:  1548115200000,
+					MaxResourceUnits:   50,
+					Type:               "enterprise",
+					Signature:          "test signature enterprise",
+				},
+			},
+		},
+	},
+}
+
 func Test_unmarshalModel(t *testing.T) {
 	controllerscheme.SetupScheme()
 	type args struct {
@@ -155,13 +197,25 @@ func Test_unmarshalModel(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "valid input: OK",
+			name: "valid input: license v3 OK",
 			args: args{
 				licenseFile: "testdata/test-license.json",
 			},
 			wantErr: false,
 			assertion: func(el EnterpriseLicense) {
 				if diff := deep.Equal(el, expectedLicenseSpec); diff != nil {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "valid input: license v4 OK",
+			args: args{
+				licenseFile: "testdata/test-license-v4.json",
+			},
+			wantErr: false,
+			assertion: func(el EnterpriseLicense) {
+				if diff := deep.Equal(el, expectedLicenseSpecV4); diff != nil {
 					t.Error(diff)
 				}
 			},
