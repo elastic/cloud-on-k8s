@@ -77,7 +77,7 @@ func (l EnterpriseLicense) IsTrial() bool {
 
 // IsECKManagedTrial returns true if this license has been issued by ECK or if this is an empty license that ECK can fill in.
 func (l EnterpriseLicense) IsECKManagedTrial() bool {
-	return l.License.Issuer == ECKLicenseIssuer || l.License.Issuer == ""
+	return l.IsTrial() && (l.License.Issuer == ECKLicenseIssuer || l.License.Issuer == "")
 }
 
 // IsMissingFields returns an error if any of the required fields are missing. Expected state on trial licenses.

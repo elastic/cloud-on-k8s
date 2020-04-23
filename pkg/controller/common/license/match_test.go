@@ -94,7 +94,7 @@ func Test_bestMatchAt(t *testing.T) {
 			wantFound: false,
 		},
 		{
-			name: "success: prefer trial over expired platinum",
+			name: "success: prefer external trial over expired platinum",
 			args: args{
 				licenses: []EnterpriseLicense{
 					{
@@ -102,19 +102,29 @@ func Test_bestMatchAt(t *testing.T) {
 							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
 							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
 							ClusterLicenses: []ElasticsearchLicense{
-								{License: license(oneMonth, trial)},
 								{License: license(expired, platinum)},
 								{License: license(expired, platinum)},
 							},
 						},
 					},
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							Type:               LicenseTypeEnterpriseTrial,
+							Issuer:             "API",
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(oneMonth, platinum)},
+							},
+						},
+					},
 				},
 			},
-			want:      license(oneMonth, trial),
+			want:      license(oneMonth, platinum),
 			wantFound: true,
 		},
 		{
-			name: "success: prefer platinum over trial",
+			name: "success: prefer eck managed trial over expired platinum",
 			args: args{
 				licenses: []EnterpriseLicense{
 					{
@@ -122,7 +132,99 @@ func Test_bestMatchAt(t *testing.T) {
 							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
 							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
 							ClusterLicenses: []ElasticsearchLicense{
-								{License: license(oneMonth, trial)},
+								{License: license(expired, platinum)},
+								{License: license(expired, platinum)},
+							},
+						},
+					},
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							Type:               LicenseTypeEnterpriseTrial,
+						},
+					},
+				},
+			},
+			want:      license(client.License{}, trial),
+			wantFound: true,
+		},
+		{
+			name: "success: prefer platinum over external trial",
+			args: args{
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							Type:               LicenseTypeEnterprise,
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(twelveMonth, platinum)},
+								{License: license(twoMonth, gold)},
+							},
+						},
+					},
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							Type:               LicenseTypeEnterpriseTrial,
+							Issuer:             "API",
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(twelveMonth, trial)},
+							},
+						},
+					},
+				},
+			},
+			want:      license(twelveMonth, platinum),
+			wantFound: true,
+		},
+		{
+			name: "success: prefer platinum over eck managed trial",
+			args: args{
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							Type:               LicenseTypeEnterprise,
+							ClusterLicenses: []ElasticsearchLicense{
+								{License: license(twelveMonth, platinum)},
+								{License: license(twoMonth, gold)},
+							},
+						},
+					},
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							Type:               LicenseTypeEnterpriseTrial,
+						},
+					},
+				},
+			},
+			want:      license(twelveMonth, platinum),
+			wantFound: true,
+		},
+		{
+			name: "success: prefer external trial over eck managed trial",
+			args: args{
+				licenses: []EnterpriseLicense{
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							Type:               LicenseTypeEnterpriseTrial,
+						},
+					},
+					{
+						License: LicenseSpec{
+							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
+							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
+							Type:               LicenseTypeEnterpriseTrial,
+							Issuer:             "API",
+							ClusterLicenses: []ElasticsearchLicense{
 								{License: license(twelveMonth, platinum)},
 								{License: license(twoMonth, gold)},
 							},

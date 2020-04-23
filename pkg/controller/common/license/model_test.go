@@ -237,3 +237,65 @@ func Test_unmarshalModel(t *testing.T) {
 		})
 	}
 }
+
+func TestEnterpriseLicense_IsECKManagedTrial(t *testing.T) {
+	type fields struct {
+		License LicenseSpec
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name: "true: type trial and expected issuer ",
+			fields: fields{
+				License: LicenseSpec{
+					Type:   LicenseTypeEnterpriseTrial,
+					Issuer: ECKLicenseIssuer,
+				},
+			},
+			want: true,
+		},
+		{
+			name: "true: type legacy trial and expected issuer",
+			fields: fields{
+				License: LicenseSpec{
+					Type:   LicenseTypeLegacyTrial,
+					Issuer: ECKLicenseIssuer,
+				},
+			},
+			want: true,
+		},
+		{
+			name: "false: wrong type",
+			fields: fields{
+				License: LicenseSpec{
+					Type:   LicenseTypeEnterprise,
+					Issuer: ECKLicenseIssuer,
+				},
+			},
+			want: false,
+		},
+		{
+			name: "false: wrong issuer",
+			fields: fields{
+				License: LicenseSpec{
+					Type:   LicenseTypeEnterpriseTrial,
+					Issuer: "API",
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := EnterpriseLicense{
+				License: tt.fields.License,
+			}
+			if got := l.IsECKManagedTrial(); got != tt.want {
+				t.Errorf("IsECKManagedTrial() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
