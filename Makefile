@@ -32,12 +32,11 @@ endif
 
 ## -- Docker image
 
-REGISTRY ?= docker.elastic.co
-
 # for dev, suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
-REPOSITORY  ?= eck
+REGISTRY    ?= docker.elastic.co
+REPOSITORY  ?= eck-snapshots
 NAME        ?= eck-operator
 SNAPSHOT    ?= true
 VERSION     ?= $(shell cat VERSION)

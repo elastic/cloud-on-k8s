@@ -235,7 +235,6 @@ CFG
 ######################################
 
 write_env <<ENV
-REPOSITORY = eck-snapshots
 IMG_SUFFIX = -ci
 
 GO_TAGS = release
@@ -384,7 +383,6 @@ ENV
 ######################################
 
 write_env <<ENV
-REPOSITORY = eck-snapshots
 IMG_SUFFIX = -dev-ci
 IS_SNAPSHOT_BUILD = yes
 
