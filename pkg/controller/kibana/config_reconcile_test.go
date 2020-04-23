@@ -2,23 +2,25 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package config
+package kibana
 
 import (
 	"context"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/about"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/pkg/about"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 var defaultKibana = kbv1.Kibana{
@@ -114,6 +116,48 @@ func TestReconcileConfigSecret(t *testing.T) {
 			assert.NoError(t, err)
 			err = tt.assertions(secrets)
 			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestVersionDefaults(t *testing.T) {
+	testCases := []struct {
+		name    string
+		version string
+		want    *settings.CanonicalConfig
+	}{
+		{
+			name:    "6.x",
+			version: "6.8.5",
+			want:    settings.NewCanonicalConfig(),
+		},
+		{
+			name:    "7.x",
+			version: "7.1.0",
+			want:    settings.NewCanonicalConfig(),
+		},
+		{
+			name:    "7.6.0",
+			version: "7.6.0",
+			want: settings.MustCanonicalConfig(map[string]interface{}{
+				XpackLicenseManagementUIEnabled: false,
+			}),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			kb := &kbv1.Kibana{Spec: kbv1.KibanaSpec{Version: tc.version}}
+			v := version.MustParse(tc.version)
+
+			defaults := VersionDefaults(kb, v)
+			var have map[string]interface{}
+			require.NoError(t, defaults.Unpack(&have))
+
+			var want map[string]interface{}
+			require.NoError(t, tc.want.Unpack(&want))
+
+			require.Equal(t, want, have)
 		})
 	}
 }

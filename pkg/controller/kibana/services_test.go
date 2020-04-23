@@ -91,7 +91,15 @@ func TestNewService(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			kb := mkKibana(tc.httpConf)
+			kb := kbv1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "kibana-test",
+					Namespace: "test",
+				},
+				Spec: kbv1.KibanaSpec{
+					HTTP: tc.httpConf,
+				},
+			}
 			haveSvc := NewService(kb)
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
@@ -120,18 +128,6 @@ func mkService() corev1.Service {
 				label.KibanaNameLabelName: "kibana-test",
 				common.TypeLabelName:      label.Type,
 			},
-		},
-	}
-}
-
-func mkKibana(httpConf commonv1.HTTPConfig) kbv1.Kibana {
-	return kbv1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kibana-test",
-			Namespace: "test",
-		},
-		Spec: kbv1.KibanaSpec{
-			HTTP: httpConf,
 		},
 	}
 }

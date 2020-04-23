@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package config
+package kibana
 
 import (
 	"context"
@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
@@ -34,7 +33,26 @@ const (
 	EnvNodeOpts = "NODE_OPTS"
 )
 
-var log = logf.Log.WithName("kibana-config")
+// Constants to use for the Kibana configuration settings.
+const (
+	ServerName                                     = "server.name"
+	ServerHost                                     = "server.host"
+	XpackMonitoringUIContainerElasticsearchEnabled = "xpack.monitoring.ui.container.elasticsearch.enabled"
+	XpackLicenseManagementUIEnabled                = "xpack.license_management.ui.enabled" // >= 7.6
+	XpackSecurityEncryptionKey                     = "xpack.security.encryptionKey"
+
+	ElasticsearchSslCertificateAuthorities = "elasticsearch.ssl.certificateAuthorities"
+	ElasticsearchSslVerificationMode       = "elasticsearch.ssl.verificationMode"
+
+	ElasticsearchUsername = "elasticsearch.username"
+	ElasticsearchPassword = "elasticsearch.password"
+
+	ElasticsearchHosts = "elasticsearch.hosts"
+
+	ServerSSLEnabled     = "server.ssl.enabled"
+	ServerSSLCertificate = "server.ssl.certificate"
+	ServerSSLKey         = "server.ssl.key"
+)
 
 // CanonicalConfig contains configuration for Kibana ("kibana.yml"),
 // as a hierarchical key-value configuration.
@@ -104,6 +122,16 @@ func NewConfigSettings(ctx context.Context, client k8s.Client, kb kbv1.Kibana, v
 	return CanonicalConfig{cfg}, nil
 }
 
+// VersionDefaults generates any version specific settings that should exist by default.
+func VersionDefaults(kb *kbv1.Kibana, v version.Version) *settings.CanonicalConfig {
+	if v.IsSameOrAfter(version.From(7, 6, 0)) {
+		// setting exists only as of 7.6.0
+		return settings.MustCanonicalConfig(map[string]interface{}{XpackLicenseManagementUIEnabled: false})
+	}
+
+	return settings.NewCanonicalConfig()
+}
+
 // reusableSettings captures secrets settings in the Kibana configuration that we want to reuse.
 type reusableSettings struct {
 	EncryptionKey string `config:"xpack.security.encryptionKey"`
@@ -158,7 +186,7 @@ func baseSettings(kb *kbv1.Kibana) map[string]interface{} {
 	conf := map[string]interface{}{
 		ServerName: kb.Name,
 		ServerHost: "0",
-		XpackMonitoringUiContainerElasticsearchEnabled: true,
+		XpackMonitoringUIContainerElasticsearchEnabled: true,
 	}
 
 	if kb.RequiresAssociation() {

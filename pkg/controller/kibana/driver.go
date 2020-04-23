@@ -32,7 +32,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
@@ -128,7 +127,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		_, _ = configChecksum.Write(esAuthSecret.Data[kb.AssociationConf().GetAuthSecretKey()])
 	}
 
-	volumes := []commonvolume.SecretVolume{config.SecretVolume(*kb)}
+	volumes := []commonvolume.SecretVolume{SecretVolume(*kb)}
 
 	if kb.AssociationConf().CAIsConfigured() {
 		esPublicCAKey := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
@@ -175,11 +174,11 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 
 	// get config secret to add its content to the config checksum
 	configSecret := corev1.Secret{}
-	err = d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
+	err = d.client.Get(types.NamespacedName{Name: SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
 	if err != nil {
 		return deployment.Params{}, err
 	}
-	_, _ = configChecksum.Write(configSecret.Data[config.SettingsFilename])
+	_, _ = configChecksum.Write(configSecret.Data[SettingsFilename])
 
 	// add the checksum to a label for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)
@@ -235,12 +234,12 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	kbSettings, err := config.NewConfigSettings(ctx, d.client, *kb, d.version)
+	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	err = config.ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
+	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
 	if err != nil {
 		return results.WithError(err)
 	}

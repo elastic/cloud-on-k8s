@@ -19,4 +19,3 @@ func CaCertSecretVolume(kb kbv1.Kibana) volume.SecretVolume {
 		eSCertsVolumeMountPath,
 	)
 }
-
