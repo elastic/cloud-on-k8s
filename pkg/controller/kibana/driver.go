@@ -67,6 +67,92 @@ func (d *driver) Recorder() record.EventRecorder {
 
 var _ driver2.Interface = &driver{}
 
+func newDriver(
+	client k8s.Client,
+	watches watches.DynamicWatches,
+	recorder record.EventRecorder,
+	kb *kbv1.Kibana,
+) (*driver, error) {
+	ver, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
+		return nil, err
+	}
+
+	if !ver.IsSameOrAfter(minSupportedVersion) {
+		err := pkgerrors.Errorf("unsupported Kibana version: %s", ver)
+		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
+		return nil, err
+	}
+
+	return &driver{
+		client:         client,
+		dynamicWatches: watches,
+		recorder:       recorder,
+		version:        *ver,
+	}, nil
+}
+
+func (d *driver) Reconcile(
+	ctx context.Context,
+	state *State,
+	kb *kbv1.Kibana,
+	params operator.Parameters,
+) *reconciler.Results {
+	results := reconciler.NewResult(ctx)
+	if !association.IsConfiguredIfSet(kb, d.recorder) {
+		return results
+	}
+
+	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb), kb)
+	if err != nil {
+		// TODO: consider updating some status here?
+		return results.WithError(err)
+	}
+
+	_, results = certificates.Reconciler{
+		K8sClient:             d.K8sClient(),
+		DynamicWatches:        d.DynamicWatches(),
+		Object:                kb,
+		TLSOptions:            kb.Spec.HTTP.TLS,
+		Namer:                 KBNamer,
+		Labels:                labels.NewLabels(kb.Name),
+		Services:              []corev1.Service{*svc},
+		CACertRotation:        params.CACertRotation,
+		CertRotation:          params.CertRotation,
+		GarbageCollectSecrets: true,
+	}.ReconcileCAAndHTTPCerts(ctx)
+	if results.HasError() {
+		return results
+	}
+
+	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
+	defer span.End()
+
+	deploymentParams, err := d.deploymentParams(kb)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	expectedDp := deployment.New(deploymentParams)
+	reconciledDp, err := deployment.Reconcile(d.client, expectedDp, kb)
+	if err != nil {
+		return results.WithError(err)
+	}
+	state.UpdateKibanaState(reconciledDp)
+	return results
+}
+
 // getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
 // upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
 // running multiple versions simultaneously may lead to concurrency bugs and data corruption.
@@ -193,91 +279,5 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		Labels:          NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
 		Strategy:        strategyType,
-	}, nil
-}
-
-func (d *driver) Reconcile(
-	ctx context.Context,
-	state *State,
-	kb *kbv1.Kibana,
-	params operator.Parameters,
-) *reconciler.Results {
-	results := reconciler.NewResult(ctx)
-	if !association.IsConfiguredIfSet(kb, d.recorder) {
-		return results
-	}
-
-	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb), kb)
-	if err != nil {
-		// TODO: consider updating some status here?
-		return results.WithError(err)
-	}
-
-	_, results = certificates.Reconciler{
-		K8sClient:             d.K8sClient(),
-		DynamicWatches:        d.DynamicWatches(),
-		Object:                kb,
-		TLSOptions:            kb.Spec.HTTP.TLS,
-		Namer:                 KBNamer,
-		Labels:                labels.NewLabels(kb.Name),
-		Services:              []corev1.Service{*svc},
-		CACertRotation:        params.CACertRotation,
-		CertRotation:          params.CertRotation,
-		GarbageCollectSecrets: true,
-	}.ReconcileCAAndHTTPCerts(ctx)
-	if results.HasError() {
-		return results
-	}
-
-	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
-	defer span.End()
-
-	deploymentParams, err := d.deploymentParams(kb)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	expectedDp := deployment.New(deploymentParams)
-	reconciledDp, err := deployment.Reconcile(d.client, expectedDp, kb)
-	if err != nil {
-		return results.WithError(err)
-	}
-	state.UpdateKibanaState(reconciledDp)
-	return results
-}
-
-func newDriver(
-	client k8s.Client,
-	watches watches.DynamicWatches,
-	recorder record.EventRecorder,
-	kb *kbv1.Kibana,
-) (*driver, error) {
-	ver, err := version.Parse(kb.Spec.Version)
-	if err != nil {
-		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
-		return nil, err
-	}
-
-	if !ver.IsSameOrAfter(minSupportedVersion) {
-		err := pkgerrors.Errorf("unsupported Kibana version: %s", ver)
-		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
-		return nil, err
-	}
-
-	return &driver{
-		client:         client,
-		dynamicWatches: watches,
-		recorder:       recorder,
-		version:        *ver,
 	}, nil
 }
