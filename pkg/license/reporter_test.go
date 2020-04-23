@@ -12,14 +12,17 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	essettings "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	kbconfig "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const operatorNs = "test-system"
@@ -220,4 +223,46 @@ func Test_Start(t *testing.T) {
 			cm.Data["enterprise_resource_units"] == "3" &&
 			cm.Data["total_managed_memory"] == "175.02GB"
 	}, waitFor, tick)
+
+	startTrial(t, k8sClient)
+	// check that the license level has been updated
+	assert.Eventually(t, func() bool {
+		var cm corev1.ConfigMap
+		err := k8sClient.Get(context.Background(), types.NamespacedName{
+			Namespace: operatorNs,
+			Name:      licensingCfgMapName,
+		}, &cm)
+		if err != nil {
+			return false
+		}
+		return cm.Data["timestamp"] != "" &&
+			cm.Data["eck_license_level"] == string(commonlicense.LicenseTypeEnterpriseTrial) &&
+			cm.Data["enterprise_resource_units"] == "3" &&
+			cm.Data["total_managed_memory"] == "175.02GB"
+	}, waitFor, tick)
+
+}
+
+func startTrial(t *testing.T, k8sClient client.Client) {
+	// start a trial
+	trialState, err := commonlicense.NewTrialState()
+	require.NoError(t, err)
+	wrappedClient := k8s.WrapClient(k8sClient)
+	licenseNSN := types.NamespacedName{
+		Namespace: operatorNs,
+		Name:      "eck-trial",
+	}
+	// simulate user kicking off the trial activation
+	commonlicense.CreateTrialLicense(wrappedClient, licenseNSN)
+	// fetch user created license
+	licenseSecret, license, err := commonlicense.TrialLicense(wrappedClient, licenseNSN)
+	require.NoError(t, err)
+	// fill in and sign
+	err = trialState.InitTrialLicense(&license)
+	status, err := commonlicense.ExpectedTrialStatus(operatorNs, licenseNSN, trialState)
+	require.NoError(t, err)
+	// persist status
+	require.NoError(t, wrappedClient.Create(&status))
+	// persist updated license
+	require.NoError(t, commonlicense.UpdateEnterpriseLicense(wrappedClient, licenseSecret, license))
 }
