@@ -32,7 +32,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -41,7 +40,7 @@ var initContainersParameters = keystore.InitContainerParameters{
 	KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
 	KeystoreAddCommand:            `/usr/share/kibana/bin/kibana-keystore add "$key" --stdin < "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-	DataVolumePath:                volume.DataVolumeMountPath,
+	DataVolumePath:                DataVolumeMountPath,
 }
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.

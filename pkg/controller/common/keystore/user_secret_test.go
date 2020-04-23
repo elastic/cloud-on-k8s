@@ -21,9 +21,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
+
+var kbNamer = name.NewNamer("kb")
 
 func Test_secureSettingsWatchName(t *testing.T) {
 	require.Equal(t, "ns-name-secure-settings", SecureSettingsWatchName(types.NamespacedName{Namespace: "ns", Name: "name"}))
@@ -100,7 +101,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 				Watches:      tt.w,
 				FakeRecorder: record.NewFakeRecorder(1000),
 			}
-			vol, version, err := secureSettingsVolume(testDriver, &tt.kb, nil, kibana.KBNamer)
+			vol, version, err := secureSettingsVolume(testDriver, &tt.kb, nil, kbNamer)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantVolume, vol)
 			assert.Equal(t, tt.wantVersion, version)
@@ -164,7 +165,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				userSecrets: []corev1.Secret{
 					{},
 				},
-				namer: kibana.KBNamer,
+				namer: kbNamer,
 			},
 			want:    nil,
 			wantErr: false,
@@ -180,7 +181,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 							"key1": []byte("value1"),
 						}},
 				},
-				namer: kibana.KBNamer,
+				namer: kbNamer,
 			},
 			want: &corev1.Secret{
 				ObjectMeta: expectedMeta,
@@ -206,7 +207,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 						},
 					},
 				},
-				namer: kibana.KBNamer,
+				namer: kbNamer,
 			},
 			want: &corev1.Secret{
 				ObjectMeta: expectedMeta,
@@ -226,7 +227,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				}),
 				hasKeystore: kibanaFixture,
 				userSecrets: nil,
-				namer:       kibana.KBNamer,
+				namer:       kbNamer,
 			},
 			want:    nil,
 			wantErr: false,
@@ -237,7 +238,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 				c:           k8s.WrappedFakeClient(),
 				hasKeystore: kibanaFixture,
 				userSecrets: nil,
-				namer:       kibana.KBNamer,
+				namer:       kbNamer,
 			},
 			want:    nil,
 			wantErr: false,
@@ -259,7 +260,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 						},
 					},
 				},
-				namer: kibana.KBNamer,
+				namer: kbNamer,
 			},
 			want: &corev1.Secret{
 				ObjectMeta: expectedMeta,
@@ -287,7 +288,7 @@ func Test_reconcileSecureSettings(t *testing.T) {
 						},
 					},
 				},
-				namer: kibana.KBNamer,
+				namer: kbNamer,
 			},
 			want: &corev1.Secret{
 				ObjectMeta: expectedMeta,

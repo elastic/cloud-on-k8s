@@ -11,22 +11,29 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
 	// HTTPPort is the (default) port used by Kibana
-	HTTPPort = 5601
+	HTTPPort            = 5601
+	DataVolumeName      = "kibana-data"
+	DataVolumeMountPath = "/usr/share/kibana/data"
 )
 
 var (
+	// DataVolume is used to propagate the keystore file from the init container to
+	// Kibana running in the main container.
+	// Since Kibana is stateless and the keystore is created on pod start, an EmptyDir is fine here.
+	DataVolume = volume.NewEmptyDirVolume(DataVolumeName, DataVolumeMountPath)
+
 	DefaultMemoryLimits = resource.MustParse("1Gi")
 	DefaultResources    = corev1.ResourceRequirements{
 		Requests: map[corev1.ResourceName]resource.Quantity{
@@ -76,8 +83,8 @@ func NewPodTemplateSpec(kb kbv1.Kibana, keystore *keystore.Resources) corev1.Pod
 		WithDockerImage(kb.Spec.Image, container.ImageRepository(container.KibanaImage, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
-		WithVolumes(volume.KibanaDataVolume.Volume()).
-		WithVolumeMounts(volume.KibanaDataVolume.VolumeMount())
+		WithVolumes(DataVolume.Volume()).
+		WithVolumeMounts(DataVolume.VolumeMount())
 
 	if keystore != nil {
 		builder.WithVolumes(keystore.Volume).

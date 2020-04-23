@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -444,7 +443,7 @@ func expectedDeploymentParams() deployment.Params {
 			Spec: corev1.PodSpec{
 				Volumes: []corev1.Volume{
 					{
-						Name: volume.DataVolumeName,
+						Name: DataVolumeName,
 						VolumeSource: corev1.VolumeSource{
 							EmptyDir: &corev1.EmptyDirVolumeSource{},
 						},
@@ -480,9 +479,9 @@ func expectedDeploymentParams() deployment.Params {
 				Containers: []corev1.Container{{
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      volume.DataVolumeName,
+							Name:      DataVolumeName,
 							ReadOnly:  false,
-							MountPath: volume.DataVolumeMountPath,
+							MountPath: DataVolumeMountPath,
 						},
 						{
 							Name:      "config",
