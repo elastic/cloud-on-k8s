@@ -11,7 +11,7 @@ New and notable changes in version 1.1.0 of {n}. See <<release-notes-1.1.0>> for
 [id="{p}-110-remote-clusters"]
 ==== Remote cluster support
 
-Establishing uni-directional connections from ECK-managed Elasticsearch clusters to other Elasticsearch clusters for link:https://www.elastic.co/guide/en/elasticsearch/reference/current/xpack-ccr.html[cross-cluster replication] and link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-cross-cluster-search.html[cross-cluster search] purposes is now easy to achieve through a <<{p}-remote-clusters,few additions to the YAML manifest>>. This feature is available for all managed clusters running Elasticsearch 7.6 or higher with an Enterprise or Enterprise trial licence.
+Establishing uni-directional connections from ECK-managed Elasticsearch clusters to other Elasticsearch clusters for link:https://www.elastic.co/guide/en/elasticsearch/reference/current/xpack-ccr.html[cross-cluster replication] and link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-cross-cluster-search.html[cross-cluster search] purposes is now easy to achieve through a <<{p}-remote-clusters,few additions to the YAML manifest>>. This feature is available for all managed clusters running a supported version of Elasticsearch with an Enterprise or Enterprise trial licence.
 
 
 [float]
@@ -39,7 +39,7 @@ Access control policies can be enforced on cross-namespace Elasticsearch associa
 [id="{p}-110-kibana-encryption-key"]
 ==== Stable Kibana encryption key
 
-Unless the user has <<{p}-kibana-scaling,provided their own `xpack.security.encryptionKey`>>, the operator will generate a key that persists across restarts and upgrades. This prevents existing sessions from being invalidated due to a Kibana restart.
+<<{p}-kibana-scaling,Scaling Kibana>> is made easier with automatic provisioning of the encryption key. This also prevents existing sessions from being invalidated during a Kibana upgrade or a restart.
 
 
 [float]
