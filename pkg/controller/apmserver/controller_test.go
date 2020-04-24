@@ -19,7 +19,6 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -553,8 +552,8 @@ func mkService() corev1.Service {
 			Name:      "apm-test-apm-http",
 			Namespace: "test",
 			Labels: map[string]string{
-				labels.ApmServerNameLabelName: "apm-test",
-				common.TypeLabelName:          labels.Type,
+				ApmServerNameLabelName: "apm-test",
+				common.TypeLabelName:   Type,
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -566,8 +565,8 @@ func mkService() corev1.Service {
 				},
 			},
 			Selector: map[string]string{
-				labels.ApmServerNameLabelName: "apm-test",
-				common.TypeLabelName:          labels.Type,
+				ApmServerNameLabelName: "apm-test",
+				common.TypeLabelName:   Type,
 			},
 		},
 	}

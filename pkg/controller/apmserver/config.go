@@ -14,7 +14,6 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -59,7 +58,7 @@ func ReconcileConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, err
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
 			Name:      name.Config(as.Name),
-			Labels:    labels.NewLabels(as.Name),
+			Labels:    NewLabels(as.Name),
 		},
 		Data: map[string][]byte{
 			ApmCfgSecretKey: cfgBytes,
