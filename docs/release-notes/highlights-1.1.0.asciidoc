@@ -18,7 +18,7 @@ Establishing uni-directional connections from ECK-managed Elasticsearch clusters
 [id="{p}-110-declarative-user-management"]
 ==== Declarative user management
 
-File realm users and roles are now <<{p}-file-realm,configurable using Kubernetes secrets>>. This enables consistent and auditable user management practices and GitOps use cases.
+File realm users and roles are now <<{p}-users-and-roles,configurable using Kubernetes secrets>>. This enables consistent and auditable user management practices and GitOps use cases.
 
 
 [float]
