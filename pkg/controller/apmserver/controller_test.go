@@ -485,7 +485,6 @@ func Test_reconcileApmServerToken(t *testing.T) {
 	}
 }
 
-
 func TestNewService(t *testing.T) {
 	testCases := []struct {
 		name     string

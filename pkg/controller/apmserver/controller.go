@@ -15,7 +15,6 @@ import (
 	"go.elastic.co/apm"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
@@ -52,7 +51,7 @@ import (
 )
 
 const (
-	name                    = "apmserver-controller"
+	controllerName          = "apmserver-controller"
 	esCAChecksumLabelName   = "apm.k8s.elastic.co/es-ca-file-checksum"
 	configChecksumLabelName = "apm.k8s.elastic.co/config-file-checksum"
 
@@ -61,7 +60,7 @@ const (
 )
 
 var (
-	log = logf.Log.WithName(name)
+	log = logf.Log.WithName(controllerName)
 
 	// ApmServerBin is the apm server binary file
 	ApmServerBin = filepath.Join(ApmBaseDir, "apm-server")
@@ -78,7 +77,7 @@ var (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, name, reconciler, params)
+	c, err := common.NewController(mgr, controllerName, reconciler, params)
 	if err != nil {
 		return err
 	}
@@ -90,7 +89,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(name),
+		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
@@ -143,7 +142,7 @@ type ReconcileApmServer struct {
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
-	// iteration is the number of times this controller has run its Reconcile method
+	// iteration is the number of times this controller has run its ReconcileConfig method
 	iteration uint64
 }
 
@@ -161,7 +160,7 @@ func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 
 var _ driver.Interface = &ReconcileApmServer{}
 
-// Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
+// ReconcileConfig reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()
@@ -327,7 +326,7 @@ func (r *ReconcileApmServer) deploymentParams(
 
 	// Build a checksum of the configuration, add it to the pod labels so a change triggers a rolling update
 	configChecksum := sha256.New224()
-	_, _ = configChecksum.Write(params.ConfigSecret.Data[config.ApmCfgSecretKey])
+	_, _ = configChecksum.Write(params.ConfigSecret.Data[ApmCfgSecretKey])
 	if params.keystoreResources != nil {
 		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
 	}
@@ -340,7 +339,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		esCAVolume := volume.NewSecretVolumeWithMountPath(
 			esCASecretName,
 			"elasticsearch-certs",
-			filepath.Join(ApmBaseDir, config.CertificatesDir),
+			filepath.Join(ApmBaseDir, CertificatesDir),
 		)
 
 		// build a checksum of the cert file used by ES, which we can use to cause the Deployment to roll the Apm Server
@@ -417,7 +416,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	reconciledConfigSecret, err := config.Reconcile(r.Client, as)
+	reconciledConfigSecret, err := ReconcileConfig(r.Client, as)
 	if err != nil {
 		return state, err
 	}
