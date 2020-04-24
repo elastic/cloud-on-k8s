@@ -15,7 +15,6 @@ import (
 	"go.elastic.co/apm"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
@@ -235,7 +234,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		DynamicWatches:        r.DynamicWatches(),
 		Object:                as,
 		TLSOptions:            as.Spec.HTTP.TLS,
-		Namer:                 apmname.APMNamer,
+		Namer:                 APMNamer,
 		Labels:                NewLabels(as.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        r.CACertRotation,
@@ -295,7 +294,7 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
-			Name:      apmname.SecretToken(as.Name),
+			Name:      SecretToken(as.Name),
 			Labels:    common.AddCredentialsLabel(NewLabels(as.Name)),
 		},
 		Data: make(map[string][]byte),
@@ -373,7 +372,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		var httpCerts corev1.Secret
 		err := r.Get(types.NamespacedName{
 			Namespace: as.Namespace,
-			Name:      certificates.InternalCertsSecretName(apmname.APMNamer, as.Name),
+			Name:      certificates.InternalCertsSecretName(APMNamer, as.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
@@ -381,7 +380,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
-		httpCertsVolume := certificates.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
+		httpCertsVolume := certificates.HTTPCertSecretVolume(APMNamer, as.Name)
 		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
 		apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1.ApmServerContainerName)
 		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())
@@ -393,7 +392,7 @@ func (r *ReconcileApmServer) deploymentParams(
 	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
 
 	return deployment.Params{
-		Name:            apmname.Deployment(as.Name),
+		Name:            Deployment(as.Name),
 		Namespace:       as.Namespace,
 		Replicas:        as.Spec.Count,
 		Selector:        NewLabels(as.Name),
@@ -423,7 +422,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	keystoreResources, err := keystore.NewResources(
 		r,
 		as,
-		apmname.APMNamer,
+		APMNamer,
 		NewLabels(as.Name),
 		initContainerParameters,
 	)
@@ -483,7 +482,7 @@ func NewService(as apmv1.ApmServer) *corev1.Service {
 	}
 
 	svc.ObjectMeta.Namespace = as.Namespace
-	svc.ObjectMeta.Name = apmname.HTTPService(as.Name)
+	svc.ObjectMeta.Name = HTTPService(as.Name)
 
 	labels := NewLabels(as.Name)
 	ports := []corev1.ServicePort{

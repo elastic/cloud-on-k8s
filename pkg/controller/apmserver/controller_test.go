@@ -19,7 +19,6 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -464,7 +463,7 @@ func Test_reconcileApmServerToken(t *testing.T) {
 			c: k8s.WrappedFakeClient(&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "ns",
-					Name:      apmname.SecretToken(apm.Name),
+					Name:      SecretToken(apm.Name),
 				},
 				Data: map[string][]byte{
 					SecretTokenKey: []byte("existing"),

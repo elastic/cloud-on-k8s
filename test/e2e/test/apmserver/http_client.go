@@ -20,7 +20,6 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
@@ -50,7 +49,7 @@ func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, erro
 	var caCerts []*x509.Certificate
 	if as.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"
-		crts, err := k.GetHTTPCerts(name.APMNamer, as.Namespace, as.Name)
+		crts, err := k.GetHTTPCerts(apmserver.APMNamer, as.Namespace, as.Name)
 		if err != nil {
 			return nil, err
 		}
