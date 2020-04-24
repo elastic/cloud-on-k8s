@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -475,4 +476,24 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 		"status", state.ApmServer.Status,
 	)
 	return common.UpdateStatus(r.Client, state.ApmServer)
+}
+
+func NewService(as apmv1.ApmServer) *corev1.Service {
+	svc := corev1.Service{
+		ObjectMeta: as.Spec.HTTP.Service.ObjectMeta,
+		Spec:       as.Spec.HTTP.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = as.Namespace
+	svc.ObjectMeta.Name = apmname.HTTPService(as.Name)
+
+	labels := labels.NewLabels(as.Name)
+	ports := []corev1.ServicePort{
+		{
+			Name:     as.Spec.HTTP.Protocol(),
+			Protocol: corev1.ProtocolTCP,
+			Port:     HTTPPort,
+		},
+	}
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }

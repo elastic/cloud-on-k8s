@@ -18,13 +18,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -478,5 +482,106 @@ func Test_reconcileApmServerToken(t *testing.T) {
 				require.Equal(t, tt.reuseToken, got.Data[SecretTokenKey])
 			}
 		})
+	}
+}
+
+
+func TestNewService(t *testing.T) {
+	testCases := []struct {
+		name     string
+		httpConf commonv1.HTTPConfig
+		wantSvc  func() corev1.Service
+	}{
+		{
+			name: "no TLS",
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						Disabled: true,
+					},
+				},
+			},
+			wantSvc: mkService,
+		},
+		{
+			name: "self-signed certificate",
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					SelfSignedCertificate: &commonv1.SelfSignedCertificate{
+						SubjectAlternativeNames: []commonv1.SubjectAlternativeName{
+							{
+								DNS: "apm-test.local",
+							},
+						},
+					},
+				},
+			},
+			wantSvc: func() corev1.Service {
+				svc := mkService()
+				svc.Spec.Ports[0].Name = "https"
+				return svc
+			},
+		},
+		{
+			name: "user-provided certificate",
+			httpConf: commonv1.HTTPConfig{
+				TLS: commonv1.TLSOptions{
+					Certificate: commonv1.SecretRef{
+						SecretName: "my-cert",
+					},
+				},
+			},
+			wantSvc: func() corev1.Service {
+				svc := mkService()
+				svc.Spec.Ports[0].Name = "https"
+				return svc
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			apm := mkAPMServer(tc.httpConf)
+			haveSvc := NewService(apm)
+			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
+		})
+	}
+}
+
+func mkService() corev1.Service {
+	return corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "apm-test-apm-http",
+			Namespace: "test",
+			Labels: map[string]string{
+				labels.ApmServerNameLabelName: "apm-test",
+				common.TypeLabelName:          labels.Type,
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{
+				{
+					Name:     "http",
+					Protocol: corev1.ProtocolTCP,
+					Port:     HTTPPort,
+				},
+			},
+			Selector: map[string]string{
+				labels.ApmServerNameLabelName: "apm-test",
+				common.TypeLabelName:          labels.Type,
+			},
+		},
+	}
+}
+
+func mkAPMServer(httpConf commonv1.HTTPConfig) apmv1.ApmServer {
+	return apmv1.ApmServer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "apm-test",
+			Namespace: "test",
+		},
+		Spec: apmv1.ApmServerSpec{
+			HTTP: httpConf,
+		},
 	}
 }
