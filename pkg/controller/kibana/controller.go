@@ -9,18 +9,6 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +21,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const (
@@ -170,7 +170,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 }
 
 func (r *ReconcileKibana) isCompatible(ctx context.Context, kb *kbv1.Kibana) (bool, error) {
-	selector := map[string]string{label.KibanaNameLabelName: kb.Name}
+	selector := map[string]string{KibanaNameLabelName: kb.Name}
 	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, kb, selector, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, kb, events.EventCompatCheckError, "Error during compatibility check: %v", err)
@@ -240,4 +240,30 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+}
+
+// State holds the accumulated state during the reconcile loop including the response and a pointer to a Kibana
+// resource for status updates.
+type State struct {
+	Kibana  *kbv1.Kibana
+	Request reconcile.Request
+
+	originalKibana *kbv1.Kibana
+}
+
+// NewState creates a new reconcile state based on the given request and Kibana resource with the resource
+// state reset to empty.
+func NewState(request reconcile.Request, kb *kbv1.Kibana) State {
+	return State{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
+}
+
+// UpdateKibanaState updates the Kibana status based on the given deployment.
+func (s State) UpdateKibanaState(deployment appsv1.Deployment) {
+	s.Kibana.Status.AvailableNodes = deployment.Status.AvailableReplicas
+	s.Kibana.Status.Health = kbv1.KibanaRed
+	for _, c := range deployment.Status.Conditions {
+		if c.Type == appsv1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
+			s.Kibana.Status.Health = kbv1.KibanaGreen
+		}
+	}
 }

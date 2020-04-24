@@ -2,21 +2,21 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package pod
+package kibana
 
 import (
 	"testing"
 
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 )
 
 func TestNewPodTemplateSpec(t *testing.T) {
@@ -141,20 +141,20 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
-								"label1":                  "value1",
-								"label2":                  "value2",
-								label.KibanaNameLabelName: "overridden-kibana-name",
+								"label1":            "value1",
+								"label2":            "value2",
+								KibanaNameLabelName: "overridden-kibana-name",
 							},
 						},
 					},
 					Version: "7.4.0",
 				}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				labels := label.NewLabels("kibana-name")
-				labels[label.KibanaVersionLabelName] = "7.4.0"
+				labels := NewLabels("kibana-name")
+				labels[KibanaVersionLabelName] = "7.4.0"
 				labels["label1"] = "value1"
 				labels["label2"] = "value2"
-				labels[label.KibanaNameLabelName] = "overridden-kibana-name"
+				labels[KibanaNameLabelName] = "overridden-kibana-name"
 				assert.Equal(t, labels, pod.Labels)
 			},
 		},

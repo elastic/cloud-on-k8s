@@ -10,18 +10,18 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
 	essettings "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
-	kbconfig "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
-	kbpod "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // Aggregator aggregates the total of resources of all Elastic managed components
@@ -91,8 +91,8 @@ func (a Aggregator) aggregateKibanaMemory() (resource.Quantity, error) {
 		mem, err := containerMemLimits(
 			kb.Spec.PodTemplate.Spec.Containers,
 			kbv1.KibanaContainerName,
-			kbconfig.EnvNodeOpts, memFromNodeOptions,
-			kbpod.DefaultMemoryLimits,
+			kibana.EnvNodeOpts, memFromNodeOptions,
+			kibana.DefaultMemoryLimits,
 		)
 		if err != nil {
 			return resource.Quantity{}, errors.Wrap(err, "failed to aggregate Kibana memory")

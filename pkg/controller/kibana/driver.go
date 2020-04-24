@@ -22,6 +22,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -32,12 +33,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	commonvolume "github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/config"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/es"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/pod"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -46,7 +41,7 @@ var initContainersParameters = keystore.InitContainerParameters{
 	KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
 	KeystoreAddCommand:            `/usr/share/kibana/bin/kibana-keystore add "$key" --stdin < "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-	DataVolumePath:                volume.DataVolumeMountPath,
+	DataVolumePath:                DataVolumeMountPath,
 }
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
@@ -73,132 +68,29 @@ func (d *driver) Recorder() record.EventRecorder {
 
 var _ driver2.Interface = &driver{}
 
-// getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
-// upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
-// running multiple versions simultaneously may lead to concurrency bugs and data corruption.
-func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
-	var pods corev1.PodList
-	var labels client.MatchingLabels = map[string]string{label.KibanaNameLabelName: kb.Name}
-	if err := d.client.List(&pods, client.InNamespace(kb.Namespace), labels); err != nil {
-		return "", err
-	}
-
-	for _, pod := range pods.Items {
-		ver, ok := pod.Labels[label.KibanaVersionLabelName]
-		// if label is missing we assume that the last reconciliation was done by previous version of the operator
-		// to be safe, we assume the Kibana version has changed when operator was offline and use Recreate,
-		// otherwise we may run into data corruption/data loss.
-		if !ok || ver != kb.Spec.Version {
-			return appsv1.RecreateDeploymentStrategyType, nil
-		}
-	}
-
-	return appsv1.RollingUpdateDeploymentStrategyType, nil
-}
-
-func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
-	// setup a keystore with secure settings in an init container, if specified by the user
-	keystoreResources, err := keystore.NewResources(
-		d,
-		kb,
-		kbname.KBNamer,
-		label.NewLabels(kb.Name),
-		initContainersParameters,
-	)
+func newDriver(
+	client k8s.Client,
+	watches watches.DynamicWatches,
+	recorder record.EventRecorder,
+	kb *kbv1.Kibana,
+) (*driver, error) {
+	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
-		return deployment.Params{}, err
+		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
+		return nil, err
 	}
 
-	kibanaPodSpec := pod.NewPodTemplateSpec(*kb, keystoreResources)
-
-	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
-	// instances in case of any change in the CA file, secure settings or credentials contents.
-	// This is done because Kibana does not support updating those without restarting the process.
-	configChecksum := sha256.New224()
-	if keystoreResources != nil {
-		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
-	}
-	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
-	if kb.AssociationConf().AuthIsConfigured() {
-		esAuthKey := types.NamespacedName{Name: kb.AssociationConf().GetAuthSecretName(), Namespace: kb.Namespace}
-		esAuthSecret := corev1.Secret{}
-		if err := d.client.Get(esAuthKey, &esAuthSecret); err != nil {
-			return deployment.Params{}, err
-		}
-		_, _ = configChecksum.Write(esAuthSecret.Data[kb.AssociationConf().GetAuthSecretKey()])
+	if !ver.IsSameOrAfter(minSupportedVersion) {
+		err := pkgerrors.Errorf("unsupported Kibana version: %s", ver)
+		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
+		return nil, err
 	}
 
-	volumes := []commonvolume.SecretVolume{config.SecretVolume(*kb)}
-
-	if kb.AssociationConf().CAIsConfigured() {
-		esPublicCAKey := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
-		var esPublicCASecret corev1.Secret
-		if err := d.client.Get(esPublicCAKey, &esPublicCASecret); err != nil {
-			return deployment.Params{}, err
-		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
-			_, _ = configChecksum.Write(certPem)
-		}
-
-		esCertsVolume := es.CaCertSecretVolume(*kb)
-		volumes = append(volumes, esCertsVolume)
-		for i := range kibanaPodSpec.Spec.InitContainers {
-			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(kibanaPodSpec.Spec.InitContainers[i].VolumeMounts,
-				esCertsVolume.VolumeMount())
-		}
-	}
-
-	if kb.Spec.HTTP.TLS.Enabled() {
-		// fetch the secret to calculate the checksum
-		var httpCerts corev1.Secret
-		err := d.client.Get(types.NamespacedName{
-			Namespace: kb.Namespace,
-			Name:      certificates.InternalCertsSecretName(kbname.KBNamer, kb.Name),
-		}, &httpCerts)
-		if err != nil {
-			return deployment.Params{}, err
-		}
-		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
-			_, _ = configChecksum.Write(httpCert)
-		}
-
-		httpCertsVolume := certificates.HTTPCertSecretVolume(kbname.KBNamer, kb.Name)
-		volumes = append(volumes, httpCertsVolume)
-	}
-
-	// attach volumes
-	kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
-	for _, volume := range volumes {
-		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, volume.Volume())
-		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, volume.VolumeMount())
-	}
-
-	// get config secret to add its content to the config checksum
-	configSecret := corev1.Secret{}
-	err = d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
-	if err != nil {
-		return deployment.Params{}, err
-	}
-	_, _ = configChecksum.Write(configSecret.Data[config.SettingsFilename])
-
-	// add the checksum to a label for the deployment and its pods (the important bit is that the pod template
-	// changes, which will trigger a rolling update)
-	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
-
-	// decide the strategy type
-	strategyType, err := d.getStrategyType(kb)
-	if err != nil {
-		return deployment.Params{}, err
-	}
-
-	return deployment.Params{
-		Name:            kbname.KBNamer.Suffix(kb.Name),
-		Namespace:       kb.Namespace,
-		Replicas:        kb.Spec.Count,
-		Selector:        label.NewLabels(kb.Name),
-		Labels:          label.NewLabels(kb.Name),
-		PodTemplateSpec: kibanaPodSpec,
-		Strategy:        strategyType,
+	return &driver{
+		client:         client,
+		dynamicWatches: watches,
+		recorder:       recorder,
+		version:        *ver,
 	}, nil
 }
 
@@ -224,7 +116,7 @@ func (d *driver) Reconcile(
 		DynamicWatches:        d.DynamicWatches(),
 		Object:                kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
-		Namer:                 kbname.KBNamer,
+		Namer:                 Namer,
 		Labels:                labels.NewLabels(kb.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        params.CACertRotation,
@@ -235,12 +127,12 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	kbSettings, err := config.NewConfigSettings(ctx, d.client, *kb, d.version)
+	kbSettings, err := NewConfigSettings(ctx, d.client, *kb, d.version)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	err = config.ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
+	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -262,28 +154,151 @@ func (d *driver) Reconcile(
 	return results
 }
 
-func newDriver(
-	client k8s.Client,
-	watches watches.DynamicWatches,
-	recorder record.EventRecorder,
-	kb *kbv1.Kibana,
-) (*driver, error) {
-	ver, err := version.Parse(kb.Spec.Version)
+// getStrategyType decides which deployment strategy (RollingUpdate or Recreate) to use based on whether the version
+// upgrade is in progress. Kibana does not support a smooth rolling upgrade from one version to another:
+// running multiple versions simultaneously may lead to concurrency bugs and data corruption.
+func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType, error) {
+	var pods corev1.PodList
+	var labels client.MatchingLabels = map[string]string{KibanaNameLabelName: kb.Name}
+	if err := d.client.List(&pods, client.InNamespace(kb.Namespace), labels); err != nil {
+		return "", err
+	}
+
+	for _, pod := range pods.Items {
+		ver, ok := pod.Labels[KibanaVersionLabelName]
+		// if label is missing we assume that the last reconciliation was done by previous version of the operator
+		// to be safe, we assume the Kibana version has changed when operator was offline and use Recreate,
+		// otherwise we may run into data corruption/data loss.
+		if !ok || ver != kb.Spec.Version {
+			return appsv1.RecreateDeploymentStrategyType, nil
+		}
+	}
+
+	return appsv1.RollingUpdateDeploymentStrategyType, nil
+}
+
+func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
+	// setup a keystore with secure settings in an init container, if specified by the user
+	keystoreResources, err := keystore.NewResources(
+		d,
+		kb,
+		Namer,
+		NewLabels(kb.Name),
+		initContainersParameters,
+	)
 	if err != nil {
-		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Invalid version '%s': %v", kb.Spec.Version, err)
-		return nil, err
+		return deployment.Params{}, err
 	}
 
-	if !ver.IsSameOrAfter(minSupportedVersion) {
-		err := pkgerrors.Errorf("unsupported Kibana version: %s", ver)
-		k8s.EmitErrorEvent(recorder, err, kb, events.EventReasonValidation, "Unsupported Kibana version")
-		return nil, err
+	kibanaPodSpec := NewPodTemplateSpec(*kb, keystoreResources)
+
+	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
+	// instances in case of any change in the CA file, secure settings or credentials contents.
+	// This is done because Kibana does not support updating those without restarting the process.
+	configChecksum := sha256.New224()
+	if keystoreResources != nil {
+		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
+	}
+	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
+	if kb.AssociationConf().AuthIsConfigured() {
+		esAuthKey := types.NamespacedName{Name: kb.AssociationConf().GetAuthSecretName(), Namespace: kb.Namespace}
+		esAuthSecret := corev1.Secret{}
+		if err := d.client.Get(esAuthKey, &esAuthSecret); err != nil {
+			return deployment.Params{}, err
+		}
+		_, _ = configChecksum.Write(esAuthSecret.Data[kb.AssociationConf().GetAuthSecretKey()])
 	}
 
-	return &driver{
-		client:         client,
-		dynamicWatches: watches,
-		recorder:       recorder,
-		version:        *ver,
+	volumes := []commonvolume.SecretVolume{SecretVolume(*kb)}
+
+	if kb.AssociationConf().CAIsConfigured() {
+		esPublicCAKey := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
+		var esPublicCASecret corev1.Secret
+		if err := d.client.Get(esPublicCAKey, &esPublicCASecret); err != nil {
+			return deployment.Params{}, err
+		}
+		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
+			_, _ = configChecksum.Write(certPem)
+		}
+
+		esCertsVolume := esCaCertSecretVolume(*kb)
+		volumes = append(volumes, esCertsVolume)
+		for i := range kibanaPodSpec.Spec.InitContainers {
+			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(kibanaPodSpec.Spec.InitContainers[i].VolumeMounts,
+				esCertsVolume.VolumeMount())
+		}
+	}
+
+	if kb.Spec.HTTP.TLS.Enabled() {
+		// fetch the secret to calculate the checksum
+		var httpCerts corev1.Secret
+		err := d.client.Get(types.NamespacedName{
+			Namespace: kb.Namespace,
+			Name:      certificates.InternalCertsSecretName(Namer, kb.Name),
+		}, &httpCerts)
+		if err != nil {
+			return deployment.Params{}, err
+		}
+		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
+			_, _ = configChecksum.Write(httpCert)
+		}
+
+		httpCertsVolume := certificates.HTTPCertSecretVolume(Namer, kb.Name)
+		volumes = append(volumes, httpCertsVolume)
+	}
+
+	// attach volumes
+	kibanaContainer := GetKibanaContainer(kibanaPodSpec.Spec)
+	for _, volume := range volumes {
+		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, volume.Volume())
+		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, volume.VolumeMount())
+	}
+
+	// get config secret to add its content to the config checksum
+	configSecret := corev1.Secret{}
+	err = d.client.Get(types.NamespacedName{Name: SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
+	if err != nil {
+		return deployment.Params{}, err
+	}
+	_, _ = configChecksum.Write(configSecret.Data[SettingsFilename])
+
+	// add the checksum to a label for the deployment and its pods (the important bit is that the pod template
+	// changes, which will trigger a rolling update)
+	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+
+	// decide the strategy type
+	strategyType, err := d.getStrategyType(kb)
+	if err != nil {
+		return deployment.Params{}, err
+	}
+
+	return deployment.Params{
+		Name:            Namer.Suffix(kb.Name),
+		Namespace:       kb.Namespace,
+		Replicas:        kb.Spec.Count,
+		Selector:        NewLabels(kb.Name),
+		Labels:          NewLabels(kb.Name),
+		PodTemplateSpec: kibanaPodSpec,
+		Strategy:        strategyType,
 	}, nil
+}
+
+func NewService(kb kbv1.Kibana) *corev1.Service {
+	svc := corev1.Service{
+		ObjectMeta: kb.Spec.HTTP.Service.ObjectMeta,
+		Spec:       kb.Spec.HTTP.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = kb.Namespace
+	svc.ObjectMeta.Name = HTTPService(kb.Name)
+
+	labels := NewLabels(kb.Name)
+	ports := []corev1.ServicePort{
+		{
+			Name:     kb.Spec.HTTP.Protocol(),
+			Protocol: corev1.ProtocolTCP,
+			Port:     HTTPPort,
+		},
+	}
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
