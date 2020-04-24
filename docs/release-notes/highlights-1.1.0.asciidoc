@@ -36,13 +36,6 @@ Access control policies can be enforced on cross-namespace Elasticsearch associa
 
 
 [float]
-[id="{p}-110-kibana-encryption-key"]
-==== Stable Kibana encryption key
-
-<<{p}-kibana-scaling,Scaling Kibana>> is made easier with automatic provisioning of the encryption key. This also prevents existing sessions from being invalidated during a Kibana upgrade or a restart.
-
-
-[float]
 [id="{p}-110-beats-discovery"]
 ==== Filebeat discovery hints
 
