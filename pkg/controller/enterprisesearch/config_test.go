@@ -479,3 +479,112 @@ func TestReconcileConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcileConfig_ReadinessProbe(t *testing.T) {
+	tests := []struct {
+		name        string
+		runtimeObjs []runtime.Object
+		ent         entv1beta1.EnterpriseSearch
+		wantCmd     string
+	}{
+		{
+			name:        "create default readiness probe script (no es association)",
+			runtimeObjs: nil,
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+			},
+			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+		},
+		{
+			name: "update existing readiness probe script if different",
+			runtimeObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-config",
+					},
+					Data: map[string][]byte{
+						ReadinessProbeFilename: []byte("to update"),
+					},
+				},
+			},
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+			},
+			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health  -k -s --max-time ${READINESS_PROBE_TIMEOUT}`, // no ES basic auth
+		},
+		{
+			name: "with ES association: use ES user credentials",
+			ent: entWithAssociation("sample", commonv1.AssociationConf{
+				AuthSecretName: "sample-ent-user",
+				AuthSecretKey:  "ns-sample-ent-user",
+				CACertProvided: true,
+				CASecretName:   "sample-ent-es-ca",
+				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
+			}),
+			runtimeObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "sample-ent-user",
+					},
+					Data: map[string][]byte{
+						"ns-sample-ent-user": []byte("password"),
+					},
+				},
+			},
+			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u ns-sample-ent-user:password -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
+		},
+		{
+			name: "with es credentials in a user-provided config secret",
+			runtimeObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "my-config",
+					},
+					Data: map[string][]byte{
+						"enterprise-search.yml": []byte("elasticsearch.password: mypassword\nelasticsearch.username: myusername"),
+					},
+				},
+			},
+			ent: entv1beta1.EnterpriseSearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      "sample",
+				},
+				Spec: entv1beta1.EnterpriseSearchSpec{
+					ConfigRef: []entv1beta1.ConfigSource{
+						{SecretRef: commonv1.SecretRef{SecretName: "my-config"}},
+					},
+				},
+			},
+			wantCmd: `curl -o /dev/null -w "%{http_code}" https://127.0.0.1:3002/api/ent/v1/internal/health -u myusername:mypassword -k -s --max-time ${READINESS_PROBE_TIMEOUT}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			driver := &ReconcileEnterpriseSearch{
+				Client:         k8s.WrappedFakeClient(tt.runtimeObjs...),
+				recorder:       record.NewFakeRecorder(10),
+				dynamicWatches: watches.NewDynamicWatches(),
+			}
+
+			got, err := ReconcileConfig(driver, tt.ent)
+			require.NoError(t, err)
+
+			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)
+
+			var updatedResource corev1.Secret
+			err = driver.K8sClient().Get(k8s.ExtractNamespacedName(&got), &updatedResource)
+			assert.NoError(t, err)
+			assert.Equal(t, got.Data, updatedResource.Data)
+		})
+	}
+}
