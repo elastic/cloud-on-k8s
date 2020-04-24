@@ -234,7 +234,7 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		DynamicWatches:        r.DynamicWatches(),
 		Object:                as,
 		TLSOptions:            as.Spec.HTTP.TLS,
-		Namer:                 APMNamer,
+		Namer:                 Namer,
 		Labels:                NewLabels(as.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        r.CACertRotation,
@@ -372,7 +372,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		var httpCerts corev1.Secret
 		err := r.Get(types.NamespacedName{
 			Namespace: as.Namespace,
-			Name:      certificates.InternalCertsSecretName(APMNamer, as.Name),
+			Name:      certificates.InternalCertsSecretName(Namer, as.Name),
 		}, &httpCerts)
 		if err != nil {
 			return deployment.Params{}, err
@@ -380,7 +380,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
 			_, _ = configChecksum.Write(httpCert)
 		}
-		httpCertsVolume := certificates.HTTPCertSecretVolume(APMNamer, as.Name)
+		httpCertsVolume := certificates.HTTPCertSecretVolume(Namer, as.Name)
 		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
 		apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1.ApmServerContainerName)
 		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())
@@ -422,7 +422,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	keystoreResources, err := keystore.NewResources(
 		r,
 		as,
-		APMNamer,
+		Namer,
 		NewLabels(as.Name),
 		initContainerParameters,
 	)
