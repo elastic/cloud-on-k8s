@@ -119,8 +119,11 @@ func ParsePubKey(pubKeyBytes []byte) (*rsa.PublicKey, error) {
 	return pubKey, nil
 }
 
+// Signable represents data that can be signed by a Signer.
 type Signable interface {
+	// SignableContentBytes returns the data to be signed.
 	SignableContentBytes() ([]byte, error)
+	// Version indicates the version of the license spec used when generating SignableContentBytes.
 	Version() int
 }
 
