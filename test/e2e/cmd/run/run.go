@@ -140,6 +140,7 @@ func (h *helper) initTestContext() error {
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 		},
 		OperatorImage:         h.operatorImage,
+		PrivateKeyPath:        h.privateKeyPath,
 		TestLicense:           h.testLicense,
 		MonitoringSecrets:     h.monitoringSecrets,
 		TestRegex:             h.testRegex,

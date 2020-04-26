@@ -6,9 +6,13 @@ package elasticsearch
 
 import (
 	"context"
+	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,6 +96,41 @@ func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(secretName string
 				},
 			}
 			require.NoError(t, ltctx.k.Client.Create(&sec))
+		},
+	}
+}
+
+func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, privateKey *rsa.PrivateKey) test.Step {
+	return test.Step{
+		Name: "Creating a trial extension secret",
+		Test: func(t *testing.T) {
+			signer := license.NewSigner(privateKey)
+			clusterLicense, err := GenerateTestLicense(signer)
+			require.NoError(t, err)
+			trialExtension := license.EnterpriseLicense{
+				License: license.LicenseSpec{
+					UID:                clusterLicense.UID, // reuse ES license UID for simplicity
+					Type:               license.LicenseTypeEnterpriseTrial,
+					IssueDateInMillis:  chrono.ToMillis(time.Now()),
+					ExpiryDateInMillis: chrono.ToMillis(time.Now().Add(30 * 24 * time.Hour)),
+					MaxResourceUnits:   100,
+					IssuedTo:           clusterLicense.IssuedTo, // use same values as ES license
+					Issuer:             clusterLicense.Issuer,
+					StartDateInMillis:  chrono.ToMillis(time.Now()),
+					ClusterLicenses: []license.ElasticsearchLicense{
+						{
+							License: clusterLicense,
+						},
+					},
+				},
+			}
+			signature, err := signer.Sign(trialExtension)
+			require.NoError(t, err)
+			trialExtension.License.Signature = string(signature)
+			trialExtensionBytes, err := json.Marshal(trialExtension)
+			require.NoError(t, err)
+			ltctx.CreateEnterpriseLicenseSecret(secretName, trialExtensionBytes).Test(t)
+
 		},
 	}
 }

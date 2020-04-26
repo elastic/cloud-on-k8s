@@ -390,6 +390,7 @@ e2e-run:
 		--operator-image=$(OPERATOR_IMAGE) \
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
+		--private-key-path $(PRVIATE_KEY_PATH) \
 		--test-license=$(TEST_LICENSE) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
@@ -417,6 +418,7 @@ e2e-local:
 	@go run test/e2e/cmd/main.go run \
 		--test-run-name=e2e \
 		--test-context-out=$(LOCAL_E2E_CTX) \
+		--private-key-path=$(PRIVATE_KEY_PATH) \
 		--test-license=$(TEST_LICENSE) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \

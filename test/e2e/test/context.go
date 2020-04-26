@@ -85,6 +85,7 @@ type Context struct {
 	ElasticStackVersion   string            `json:"elastic_stack_version"`
 	LogVerbosity          int               `json:"log_verbosity"`
 	OperatorImage         string            `json:"operator_image"`
+	PrivateKeyPath        string            `json:"private_key_path"`
 	TestLicense           string            `json:"test_license"`
 	TestRegex             string            `json:"test_regex"`
 	TestRun               string            `json:"test_run"`

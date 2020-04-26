@@ -90,7 +90,7 @@ func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
 	if err != nil {
 		return err
 	}
-	contentBytes, err := json.Marshal(toVerifiableSpec(l))
+	contentBytes, err := l.SignableContentBytes()
 	if err != nil {
 		return err
 	}
@@ -119,6 +119,11 @@ func ParsePubKey(pubKeyBytes []byte) (*rsa.PublicKey, error) {
 	return pubKey, nil
 }
 
+type Signable interface {
+	SignableContentBytes() ([]byte, error)
+	Version() int
+}
+
 // Signer signs Enterprise licenses.
 type Signer struct {
 	Verifier
@@ -136,9 +141,8 @@ func NewSigner(privKey *rsa.PrivateKey) *Signer {
 }
 
 // Sign signs the given Enterprise license.
-func (s *Signer) Sign(l EnterpriseLicense) ([]byte, error) {
-	spec := toVerifiableSpec(l)
-	toSign, err := json.Marshal(spec)
+func (s *Signer) Sign(spec Signable) ([]byte, error) {
+	toSign, err := spec.SignableContentBytes()
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +167,7 @@ func (s *Signer) Sign(l EnterpriseLicense) ([]byte, error) {
 
 	buf := bytes.NewBuffer(sig)
 
-	if err := writeInt(buf, l.License.Version); err != nil {
+	if err := writeInt(buf, spec.Version()); err != nil {
 		return nil, err
 	}
 	if err := writeInt(buf, len(magic)); err != nil {
@@ -208,8 +212,8 @@ type licenseSpec struct {
 	Issuer             string `json:"issuer"`
 }
 
-func toVerifiableSpec(l EnterpriseLicense) licenseSpec {
-	return licenseSpec{
+func (l EnterpriseLicense) SignableContentBytes() ([]byte, error) {
+	return json.Marshal(licenseSpec{
 		UID:                l.License.UID,
 		LicenseType:        string(l.License.Type),
 		IssueDateInMillis:  l.License.IssueDateInMillis,
@@ -219,7 +223,11 @@ func toVerifiableSpec(l EnterpriseLicense) licenseSpec {
 		MaxResourceUnits:   l.License.MaxResourceUnits,
 		IssuedTo:           l.License.IssuedTo,
 		Issuer:             l.License.Issuer,
-	}
+	})
+}
+
+func (l EnterpriseLicense) Version() int {
+	return l.License.Version
 }
 
 func writeInt(buffer *bytes.Buffer, i int) error {
