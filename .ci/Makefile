@@ -68,7 +68,7 @@ get-test-artifacts: get-monitoring-secrets get-test-license get-elastic-public-k
 
 # read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
 get-elastic-public-key:
-	VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
+	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
 
 ##  Test
 
