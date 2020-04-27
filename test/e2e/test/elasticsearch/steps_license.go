@@ -10,9 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/chrono"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -109,14 +107,15 @@ func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, private
 			require.NoError(t, err)
 			trialExtension := license.EnterpriseLicense{
 				License: license.LicenseSpec{
-					UID:                clusterLicense.UID, // reuse ES license UID for simplicity
+					// reuse ES license values where possible for simplicity
+					UID:                clusterLicense.UID,
 					Type:               license.LicenseTypeEnterpriseTrial,
-					IssueDateInMillis:  chrono.ToMillis(time.Now()),
-					ExpiryDateInMillis: chrono.ToMillis(time.Now().Add(30 * 24 * time.Hour)),
+					IssueDateInMillis:  clusterLicense.IssueDateInMillis,
+					ExpiryDateInMillis: clusterLicense.ExpiryDateInMillis,
 					MaxResourceUnits:   100,
-					IssuedTo:           clusterLicense.IssuedTo, // use same values as ES license
+					IssuedTo:           clusterLicense.IssuedTo,
 					Issuer:             clusterLicense.Issuer,
-					StartDateInMillis:  chrono.ToMillis(time.Now()),
+					StartDateInMillis:  clusterLicense.StartDateInMillis,
 					ClusterLicenses: []license.ElasticsearchLicense{
 						{
 							License: clusterLicense,
@@ -130,7 +129,6 @@ func (ltctx *LicenseTestContext) CreateTrialExtension(secretName string, private
 			trialExtensionBytes, err := json.Marshal(trialExtension)
 			require.NoError(t, err)
 			ltctx.CreateEnterpriseLicenseSecret(secretName, trialExtensionBytes).Test(t)
-
 		},
 	}
 }

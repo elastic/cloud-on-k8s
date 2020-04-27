@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -132,7 +133,8 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 
 // TestEnterpriseTrialExtension tests that trial extensions can be successfully applied and take effect.
 func TestEnterpriseTrialExtension(t *testing.T) {
-	if test.Ctx().PrivateKeyPath == "" {
+	if _, err := os.Stat(test.Ctx().PrivateKeyPath); os.IsNotExist(err) {
+		// skip this test if the dev private key does not exist e.g. because we are testing a production build
 		t.SkipNow()
 	}
 	privateKeyBytes, err := ioutil.ReadFile(test.Ctx().PrivateKeyPath)
