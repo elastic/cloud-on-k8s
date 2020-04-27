@@ -30,11 +30,11 @@ pipeline {
                 }
             }
         }
-        stage('Validate Jenkins pipelines') {
+        /*stage('Validate Jenkins pipelines') {
             steps {
                 sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
             }
-        }
+        }*/
         stage('Run checks') {
             steps {
                 sh 'make -C .ci TARGET=ci-check ci'
