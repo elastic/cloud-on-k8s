@@ -185,12 +185,6 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if ent.IsMarkedForDeletion() {
-		// Enterprise Search will be deleted, clean up resources
-		r.onDelete(k8s.ExtractNamespacedName(&ent))
-		return reconcile.Result{}, nil
-	}
-
 	if err := annotation.UpdateControllerVersion(ctx, r.Client, &ent, r.OperatorInfo.BuildInfo.Version); err != nil {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
@@ -245,10 +239,6 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, request rec
 		res, err := results.Aggregate()
 		k8s.EmitErrorEvent(r.recorder, err, &ent, events.EventReconciliationError, "Certificate reconciliation error: %v", err)
 		return res, err
-	}
-
-	if err := watchEsTLSCertsSecret(ent, r.DynamicWatches()); err != nil {
-		return reconcile.Result{}, err
 	}
 
 	configSecret, err := ReconcileConfig(r, ent)
@@ -353,20 +343,4 @@ func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret
 	}
 
 	return fmt.Sprintf("%x", configHash.Sum(nil)), nil
-}
-
-func tlsSecretWatchName(ent entv1beta1.EnterpriseSearch) string {
-	return fmt.Sprintf("%s-%s-es-auth-secret", ent.Namespace, ent.Name)
-}
-
-// watchEsTLSCertsSecret sets up a dynamic watch for the Secret containing the associated Elasticsearch TLS CA certs.
-func watchEsTLSCertsSecret(ent entv1beta1.EnterpriseSearch, watched watches.DynamicWatches) error {
-	if !ent.AssociationConf().CAIsConfigured() {
-		return nil
-	}
-	return watched.Secrets.AddHandler(watches.NamedWatch{
-		Name:    tlsSecretWatchName(ent),
-		Watched: []types.NamespacedName{{Namespace: ent.Namespace, Name: ent.AssociationConf().GetCASecretName()}},
-		Watcher: k8s.ExtractNamespacedName(&ent),
-	})
 }
