@@ -97,7 +97,7 @@ func TestReconcileEnterpriseSearch_Reconcile_NotFound(t *testing.T) {
 	nsn := types.NamespacedName{Name: "sample", Namespace: "ns"}
 	err := watches.WatchUserProvidedSecrets(nsn, r.DynamicWatches(), configRefWatchName(nsn), []string{"watched-secret"})
 	require.NoError(t, err)
-	require.NotEmpty(t,  r.dynamicWatches.Secrets.Registrations())
+	require.NotEmpty(t, r.dynamicWatches.Secrets.Registrations())
 
 	result, err := r.Reconcile(reconcile.Request{NamespacedName: nsn})
 	require.NoError(t, err)
