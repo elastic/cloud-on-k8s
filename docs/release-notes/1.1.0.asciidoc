@@ -55,13 +55,14 @@
 [float]
 === Bug fixes
 
+* Check for ECK managed trials when matching licenses to clusters {pull}2942[#2942]
+* Use enterprise_trial as the trial license type {pull}2934[#2934]
 * Upgrade apm agent to latest master commit {pull}2921[#2921]
 * Close client after noop observer comparisons {pull}2916[#2916]
 * Use annotation to track created remote clusters {pull}2891[#2891]
 * Fix trial license validation issues {pull}2889[#2889]
 * Do not use annotations to cache Elasticsearch API calls {pull}2880[#2880]
 * Watch only trial license secret (not trial status) {pull}2879[#2879]
-* Add Elasticsearch client cache {pull}2875[#2875]
 * Do not reject PVC update when a different unit is used {pull}2857[#2857] (issue: {issue}2856[#2856])
 * Revert transport TLS certs verification from full to certificate {pull}2831[#2831] (issue: {issue}2823[#2823])
 * Fix labels on ES CA secret for Kibana association {pull}2773[#2773] (issue: {issue}2698[#2698])
