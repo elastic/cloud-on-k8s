@@ -69,7 +69,6 @@ ElasticsearchRef is a reference to the output Elasticsearch cluster running in t
 PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 *`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
 |===
 
 [id="apm-k8s-elastic-co-v1-apmserverspec"]
@@ -119,7 +118,6 @@ PodTemplate provides customisation options (labels, annotations, affinity rules,
 _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
 |===
 [id="{p}-apm-k8s-elastic-co-v1beta1"]
 === apm.k8s.elastic.co/v1beta1
@@ -175,7 +173,6 @@ ElasticsearchRef is a reference to the output Elasticsearch cluster running in t
 PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 *`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
 |===
 
 [id="apm-k8s-elastic-co-v1beta1-apmserverspec"]
@@ -225,7 +222,6 @@ PodTemplate provides customisation options (labels, annotations, affinity rules,
 _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-apm-server.html#k8s-apm-secure-settings
 |===
 [id="{p}-common-k8s-elastic-co-v1"]
 === common.k8s.elastic.co/v1
