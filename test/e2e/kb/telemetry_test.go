@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTelemetry(t *testing.T) {
@@ -29,7 +28,7 @@ func TestTelemetry(t *testing.T) {
 		return test.StepList{
 			{
 				Name: "Kibana should expose eck info in telemetry data",
-				Test: func(t *testing.T) {
+				Test: test.Eventually(func() error {
 					kbVersion := version.MustParse(kbBuilder.Kibana.Spec.Version)
 					apiVersion := "v1"
 					payload := telemetryRequest{}
@@ -39,20 +38,31 @@ func TestTelemetry(t *testing.T) {
 					}
 					uri := fmt.Sprintf("/api/telemetry/%s/clusters/_stats", apiVersion)
 					password, err := k.GetElasticPassword(kbBuilder.ElasticsearchRef().NamespacedName())
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 					payloadBytes, err := json.Marshal(payload)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
+					// this call may fail (status 500) if the .security-7 index is not fully initialized yet,
+					// in which case we'll just retry that test step
 					body, err := kibana.DoRequest(k, kbBuilder.Kibana, password, "POST", uri, payloadBytes)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					var stats clusterStats
 					err = json.Unmarshal(body, &stats)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 					eck := stats[0].StackStats.Kibana.Plugins.StaticTelemetry.Eck
 					if !eck.IsDefined() {
-						t.Errorf("eck info not defined properly in telemetry data: %+v", eck)
+							return fmt.Errorf("eck info not defined properly in telemetry data: %+v", eck)
 					}
-				},
+					return nil
+				}),
 			},
 		}
 	}
