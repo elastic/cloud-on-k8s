@@ -74,7 +74,7 @@ get-elastic-public-key:
 
 # read a dev private key used to generate dev licenses against non-production builds
 dev-private.key:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=dev-privkey  secret/devops-ci/cloud-on-k8s/license > dev-private.key
+	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=dev-privkey  secret/devops-ci/cloud-on-k8s/license | base64 --decode > dev-private.key
 
 # read some test licenses from Vault for E2E license tests
 get-test-license:
