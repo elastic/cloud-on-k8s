@@ -26,6 +26,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
@@ -240,6 +241,8 @@ func (r *ReconcileKibana) updateStatus(ctx context.Context, state State) error {
 func (r *ReconcileKibana) onDelete(obj types.NamespacedName) {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	// Clean up watches set on custom http tls certificates
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
 }
 
 // State holds the accumulated state during the reconcile loop including the response and a pointer to a Kibana
