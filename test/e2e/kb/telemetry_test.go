@@ -59,7 +59,7 @@ func TestTelemetry(t *testing.T) {
 					}
 					eck := stats[0].StackStats.Kibana.Plugins.StaticTelemetry.Eck
 					if !eck.IsDefined() {
-							return fmt.Errorf("eck info not defined properly in telemetry data: %+v", eck)
+						return fmt.Errorf("eck info not defined properly in telemetry data: %+v", eck)
 					}
 					return nil
 				}),
