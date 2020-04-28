@@ -199,6 +199,8 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 func (r *ReconcileEnterpriseSearch) onDelete(obj types.NamespacedName) {
 	// Clean up watches
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(configRefWatchName(obj))
+	// Clean up watches set on custom http tls certificates
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(entName.EntNamer, obj.Name))
 }
 
 func (r *ReconcileEnterpriseSearch) isCompatible(ctx context.Context, ent *entv1beta1.EnterpriseSearch) (bool, error) {
