@@ -42,7 +42,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://go.elastic.co/apm/module/apmelasticsearch[$$go.elastic.co/apm/module/apmelasticsearch$$] | v1.7.3-0.20200421085619-eea0ff3c17de | Apache-2.0
 | link:https://go.uber.org/automaxprocs[$$go.uber.org/automaxprocs$$] | v1.3.0 | MIT
 | link:https://go.uber.org/zap[$$go.uber.org/zap$$] | v1.12.0 | MIT
-| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.0.0-20191011191535-87dc89f01550 | BSD-3-Clause
+| link:https://golang.org/x/crypto[$$golang.org/x/crypto$$] | v0.0.0-20200427165652-729f1e841bcc | BSD-3-Clause
 | link:https://gopkg.in/yaml.v2[$$gopkg.in/yaml.v2$$] | v2.2.5 | Apache-2.0
 | link:https://gopkg.in/yaml.v3[$$gopkg.in/yaml.v3$$] | v3.0.0-20191120175047-4206685974f2 | MIT
 | link:https://gotest.tools[$$gotest.tools$$] | v2.2.0+incompatible | Apache-2.0

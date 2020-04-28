@@ -2310,11 +2310,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.0.0-20191011191535-87dc89f01550
-Time    : 2019-10-11T19:15:35Z
+Version : v0.0.0-20200427165652-729f1e841bcc
+Time    : 2020-04-27T16:56:52Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.0.0-20191011191535-87dc89f01550/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.0.0-20200427165652-729f1e841bcc/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
