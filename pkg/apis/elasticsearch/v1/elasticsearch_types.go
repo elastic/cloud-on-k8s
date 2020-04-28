@@ -51,7 +51,6 @@ type ElasticsearchSpec struct {
 	Auth Auth `json:"auth,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Elasticsearch.
-	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-es-secure-settings.html
 	// +kubebuilder:validation:Optional
 	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
 
