@@ -1509,7 +1509,6 @@ HTTP holds the HTTP layer configuration for Kibana.
 PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 *`secureSettings`* _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 |===
 
 [id="kibana-k8s-elastic-co-v1-kibanaspec"]
@@ -1559,7 +1558,6 @@ PodTemplate provides customisation options (labels, annotations, affinity rules,
 _xref:common-k8s-elastic-co-v1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 |===
 [id="{p}-kibana-k8s-elastic-co-v1beta1"]
 === kibana.k8s.elastic.co/v1beta1
@@ -1615,7 +1613,6 @@ HTTP holds the HTTP layer configuration for Kibana.
 PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the Kibana pods
 *`secureSettings`* _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_::
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 |===
 
 [id="kibana-k8s-elastic-co-v1beta1-kibanaspec"]
@@ -1665,5 +1662,4 @@ PodTemplate provides customisation options (labels, annotations, affinity rules,
 _xref:common-k8s-elastic-co-v1beta1-secretsource[$$[]SecretSource$$]_
 |
 SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 |===
