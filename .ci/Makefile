@@ -84,7 +84,7 @@ get-monitoring-secrets:
 
 # read docker password from Vault to push Docker images in the Elastic registry
 get-docker-creds:
-	echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ${ROOT_DIR}/.env
+	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ${ROOT_DIR}/.env
 
 # read AWS creds from Vault for YAML upload to S3
 yaml-upload: VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
