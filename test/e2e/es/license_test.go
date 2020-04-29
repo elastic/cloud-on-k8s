@@ -166,7 +166,7 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 			licenseTestContext.Init(),
 			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeTrial),
 			licenseTestContext.CheckEnterpriseTrialLicenseValid(trialSecretName),
-			// upgrade from trial to a paid-for license
+			// simulate a trial extension
 			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey)),
 			licenseTestContext.CheckElasticsearchLicense(
 				client.ElasticsearchLicenseTypePlatinum, // depends on ES version
