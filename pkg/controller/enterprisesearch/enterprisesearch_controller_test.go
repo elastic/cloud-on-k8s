@@ -278,14 +278,25 @@ func TestReconcileEnterpriseSearch_Reconcile_Create_Update_Resources(t *testing.
 	checkResources()
 }
 
+type fakeClientStatusCall struct {
+	updateCalled bool
+	k8s.Client
+}
+
+func (f *fakeClientStatusCall) Status() k8s.StatusWriter {
+	f.updateCalled = true // Status() has been requested for update
+	return f.Client.Status()
+}
+
 func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 	tests := []struct {
-		name       string
-		ent        entv1beta1.EnterpriseSearch
-		deploy     appsv1.Deployment
-		svcName    string
-		wantStatus entv1beta1.EnterpriseSearchStatus
-		wantEvent  bool
+		name                   string
+		ent                    entv1beta1.EnterpriseSearch
+		deploy                 appsv1.Deployment
+		svcName                string
+		wantStatus             entv1beta1.EnterpriseSearchStatus
+		wantEvent              bool
+		wantStatusUpdateCalled bool
 	}{
 		{
 			name: "happy path",
@@ -307,6 +318,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				Health:          "green",
 				ExternalService: "http-service",
 			},
+			wantStatusUpdateCalled: true,
 		},
 		{
 			name: "preserve existing association status",
@@ -330,6 +342,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				ExternalService: "http-service",
 				Association:     commonv1.AssociationEstablished,
 			},
+			wantStatusUpdateCalled: true,
 		},
 		{
 			name: "red health if deployment not available",
@@ -351,6 +364,7 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				Health:          "red",
 				ExternalService: "http-service",
 			},
+			wantStatusUpdateCalled: true,
 		},
 		{
 			name: "update existing status when replicas count changes",
@@ -379,6 +393,36 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				Health:          "green",
 				ExternalService: "http-service",
 			},
+			wantStatusUpdateCalled: true,
+		},
+		{
+			name: "don't do a status update if not necessary",
+			ent: entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+				Status: entv1beta1.EnterpriseSearchStatus{
+					ReconcilerStatus: commonv1.ReconcilerStatus{
+						AvailableNodes: 3,
+					},
+					Health:          "green",
+					ExternalService: "http-service",
+				}},
+			deploy: appsv1.Deployment{Status: appsv1.DeploymentStatus{
+				AvailableReplicas: 3,
+				Conditions: []appsv1.DeploymentCondition{
+					{
+						Type:   appsv1.DeploymentAvailable,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			}},
+			svcName: "http-service",
+			wantStatus: entv1beta1.EnterpriseSearchStatus{
+				ReconcilerStatus: commonv1.ReconcilerStatus{
+					AvailableNodes: 3,
+				},
+				Health:          "green",
+				ExternalService: "http-service",
+			},
+			wantStatusUpdateCalled: false,
 		},
 		{
 			name: "emit an event when health goes from green to red",
@@ -407,12 +451,13 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 				Health:          "red",
 				ExternalService: "http-service",
 			},
-			wantEvent: true,
+			wantEvent:              true,
+			wantStatusUpdateCalled: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrappedFakeClient(&tt.ent)
+			c := &fakeClientStatusCall{Client: k8s.WrappedFakeClient(&tt.ent)}
 			fakeRecorder := record.NewFakeRecorder(10)
 			r := &ReconcileEnterpriseSearch{
 				Client:   c,
@@ -420,6 +465,8 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 			}
 			err := r.updateStatus(tt.ent, tt.deploy, tt.svcName)
 			require.NoError(t, err)
+
+			require.Equal(t, tt.wantStatusUpdateCalled, c.updateCalled)
 
 			var updatedEnt entv1beta1.EnterpriseSearch
 			err = c.Get(k8s.ExtractNamespacedName(&tt.ent), &updatedEnt)
@@ -440,3 +487,35 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		})
 	}
 }
+
+//
+//func TestReconcileEnterpriseSearch_noUpdate(t *testing.T) {
+//	// don't update the status if expected == actual
+//
+//	ent := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
+//		Status: entv1beta1.EnterpriseSearchStatus{
+//			ReconcilerStatus: commonv1.ReconcilerStatus{
+//				AvailableNodes: 3,
+//			},
+//			Health:          "green",
+//			ExternalService: "http-service",
+//		}}
+//	deploy := appsv1.Deployment{Status: appsv1.DeploymentStatus{
+//		AvailableReplicas: 3,
+//		Conditions: []appsv1.DeploymentCondition{
+//			{
+//				Type:   appsv1.DeploymentAvailable,
+//				Status: corev1.ConditionTrue,
+//			},
+//		},
+//	}}
+//	expectedStatus := *(ent.Status.DeepCopy())
+//	r := &ReconcileEnterpriseSearch{Client: c}
+//	err := r.updateStatus(ent, deploy, "http-service")
+//	require.NoError(t, err)
+//
+//	var updatedEnt entv1beta1.EnterpriseSearch
+//	err = c.Get(k8s.ExtractNamespacedName(&ent), &updatedEnt)
+//	require.NoError(t, err)
+//	require.Equal(t, expectedStatus, updatedEnt.Status)
+//}
