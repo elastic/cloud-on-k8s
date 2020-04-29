@@ -35,7 +35,7 @@ Test the `cloud-on-k8s-e2e-tests-stack-versions` job:
 ```sh
 JKS_PARAM_OPERATOR_IMAGE=docker.elastic.co/eck-snapshots/eck-operator:1.0.1-SNAPSHOT-2020-02-05-7892889 \
   .ci/setenvconfig e2e/stack-versions eck-75-dev-e2e 7.5.1
-make -C .ci get-test-license get-elastic-public-key TARGET=ci-e2e ci
+make -C .ci test-license.json license.key TARGET=ci-e2e ci
 ```
 
 The CI Makefile will take care of setting up correct credentials in the `deployer-config.yml` file. For more details about settings in this file, see [deployer](/hack/deployer/README.md#advanced-usage).

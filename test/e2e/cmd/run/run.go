@@ -189,16 +189,12 @@ func (h *helper) initTestSecrets() error {
 	}
 
 	if h.privateKeyPath != "" {
-		if _, err := os.Stat(h.privateKeyPath); os.IsNotExist(err) {
-			// non-existing file indicates we should skip the test TODO revisit this
-		} else {
-			bytes, err := ioutil.ReadFile(h.privateKeyPath)
-			if err != nil {
-				return err
-			}
-			h.testSecrets["dev-private.key"] = string(bytes)
-			h.testContext.PrivateKeyPath = "/var/run/secrets/e2e/dev-private.key"
+		bytes, err := ioutil.ReadFile(h.privateKeyPath)
+		if err != nil {
+			return err
 		}
+		h.testSecrets["dev-private.key"] = string(bytes)
+		h.testContext.PrivateKeyPath = "/var/run/secrets/e2e/dev-private.key"
 	}
 
 	if h.monitoringSecrets != "" {
