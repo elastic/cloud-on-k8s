@@ -316,18 +316,14 @@ switch-eks:
 ##  --    Docker images    --  ##
 #################################
 
-docker-login:
-	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co 2> /dev/null
-
 docker-build: go-generate
 	docker build . \
 		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
 		--build-arg GO_TAGS='$(GO_TAGS)' \
 		-t $(OPERATOR_IMAGE)
 
-docker-push: docker-login
-	@ docker tag $(OPERATOR_IMAGE) push.$(OPERATOR_IMAGE)
-	@ docker push push.$(OPERATOR_IMAGE) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
+docker-push:
+	@ hack/ci/docker-push.sh $(OPERATOR_IMAGE)
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
@@ -351,9 +347,8 @@ E2E_SKIP_CLEANUP ?= false
 e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
-e2e-docker-push: docker-login
-	@ docker tag $(E2E_IMG) push.$(E2E_IMG)
-	@ docker push push.$(E2E_IMG) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
+e2e-docker-push:
+	@ hack/ci/docker-push.sh $(E2E_IMG)
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
