@@ -339,7 +339,8 @@ purge-gcr-images:
 ##  --   End to end tests    --  ##
 ###################################
 
-E2E_IMG          ?= docker.elastic.co/eck-ci/eck-e2e-tests:$(TAG)
+E2E_NAMESPACE    ?= eck-ci
+E2E_IMG          ?= docker.elastic.co/$(E2E_NAMESPACE)/eck-e2e-tests:$(TAG)
 TESTS_MATCH      ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 STACK_VERSION    ?= 7.6.0
 E2E_JSON         ?= false
