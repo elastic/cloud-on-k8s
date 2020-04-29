@@ -349,7 +349,7 @@ CFG
 
 write_env <<ENV
 NAMESPACE = eck-snapshots
-IMG_NAME = eck-operator
+IMG_SUFFIX =
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -366,7 +366,7 @@ ENV
 
 write_env <<ENV
 NAMESPACE = eck
-IMG_NAME = eck-operator
+IMG_SUFFIX =
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
