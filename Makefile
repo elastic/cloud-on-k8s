@@ -330,6 +330,17 @@ purge-gcr-images:
 		do gcloud container images untag $(BASE_IMG):$$i; \
 	done
 
+switch-registry-gcr:
+ifndef GCLOUD_PROJECT
+	$(error GCLOUD_PROJECT not set to use GCR)
+endif	
+	@ echo "REGISTRY = eu.gcr.io"               > .registry.env
+	@ echo "NAMESPACE = ${GCLOUD_PROJECT}"     >> .registry.env
+	@ echo "E2E_NAMESPACE = ${GCLOUD_PROJECT}" >> .registry.env
+
+switch-registry-dev:
+	@ echo "NAMESPACE = eck-dev"      > .registry.env
+	@ echo "E2E_NAMESPACE = eck-dev" >> .registry.env
 
 ###################################
 ##  --   End to end tests    --  ##
