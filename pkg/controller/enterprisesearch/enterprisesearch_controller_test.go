@@ -487,35 +487,3 @@ func TestReconcileEnterpriseSearch_updateStatus(t *testing.T) {
 		})
 	}
 }
-
-//
-//func TestReconcileEnterpriseSearch_noUpdate(t *testing.T) {
-//	// don't update the status if expected == actual
-//
-//	ent := entv1beta1.EnterpriseSearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "ent"},
-//		Status: entv1beta1.EnterpriseSearchStatus{
-//			ReconcilerStatus: commonv1.ReconcilerStatus{
-//				AvailableNodes: 3,
-//			},
-//			Health:          "green",
-//			ExternalService: "http-service",
-//		}}
-//	deploy := appsv1.Deployment{Status: appsv1.DeploymentStatus{
-//		AvailableReplicas: 3,
-//		Conditions: []appsv1.DeploymentCondition{
-//			{
-//				Type:   appsv1.DeploymentAvailable,
-//				Status: corev1.ConditionTrue,
-//			},
-//		},
-//	}}
-//	expectedStatus := *(ent.Status.DeepCopy())
-//	r := &ReconcileEnterpriseSearch{Client: c}
-//	err := r.updateStatus(ent, deploy, "http-service")
-//	require.NoError(t, err)
-//
-//	var updatedEnt entv1beta1.EnterpriseSearch
-//	err = c.Get(k8s.ExtractNamespacedName(&ent), &updatedEnt)
-//	require.NoError(t, err)
-//	require.Equal(t, expectedStatus, updatedEnt.Status)
-//}
