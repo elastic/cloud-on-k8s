@@ -1,6 +1,6 @@
 // This library overrides the default checkout behavior to enable sleep+retries if there are errors
 // Added to help overcome some recurring github connection issues
-// @Library('apm@current') _
+@Library('apm@current') _
 
 def failedTests = []
 def lib
@@ -30,11 +30,11 @@ pipeline {
                 }
             }
         }
-        /*stage('Validate Jenkins pipelines') {
+        stage('Validate Jenkins pipelines') {
             steps {
                 sh 'make -C .ci TARGET=validate-jenkins-pipelines ci'
             }
-        }*/
+        }
         stage('Run checks') {
             steps {
                 sh 'make -C .ci TARGET=ci-check ci'
@@ -113,7 +113,6 @@ pipeline {
 def runWith(lib, failedTests, clusterName, stackVersion) {
     sh ".ci/setenvconfig e2e/stack-versions $clusterName $stackVersion"
     script {
-        sh 'echo TESTS_MATCH = TestEnterpriseTrialExtension >> .env'
         env.SHELL_EXIT_CODE = sh(returnStatus: true, script: "make -C .ci get-test-artifacts TARGET=ci-e2e ci")
 
         sh 'make -C .ci TARGET=e2e-generate-xml ci'
