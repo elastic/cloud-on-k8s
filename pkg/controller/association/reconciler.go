@@ -53,7 +53,7 @@ type AssociationInfo struct {
 	// UserSecretSuffix is used as a suffix in the name of the secret holding user data in the associated namespace.
 	UserSecretSuffix string
 	// ESUserRole is the role to use for the Elasticsearch user created by the association.
-	ESUserRole string
+	ESUserRole func(commonv1.Associated) (string, error)
 }
 
 // userLabelSelector returns labels selecting the ES user secret, including association labels and user type label.
@@ -177,12 +177,17 @@ func (r *Reconciler) doReconcile(ctx context.Context, associated commonv1.Associ
 		return commonv1.AssociationFailed, err
 	}
 
+	userRole, err := r.ESUserRole(associated)
+	if err != nil {
+		return commonv1.AssociationFailed, err
+	}
+
 	if err := ReconcileEsUser(
 		ctx,
 		r.Client,
 		associated,
 		assocLabels,
-		r.ESUserRole,
+		userRole,
 		r.UserSecretSuffix,
 		es,
 	); err != nil {

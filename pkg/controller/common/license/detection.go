@@ -21,13 +21,11 @@ func isLicenseType(secret corev1.Secret, licenseType OperatorLicenseType) bool {
 
 // IsEnterpriseTrial returns true if the given secret is a wrapper for an Enterprise Trial license
 func IsEnterpriseTrial(secret corev1.Secret) bool {
-	return isLicenseType(secret, LicenseTypeEnterpriseTrial)
+	// we need to support legacy trial license secrets for backwards compatibility
+	return isLicenseType(secret, LicenseTypeEnterpriseTrial) || isLicenseType(secret, LicenseTypeLegacyTrial)
 }
 
-func IsEnterpriseLicense(secret corev1.Secret) bool {
-	return isLicenseType(secret, LicenseTypeEnterprise)
-}
-
+// IsOperatorLicense returns true if the given secret is a wrapper for an operator license.
 func IsOperatorLicense(secret corev1.Secret) bool {
 	scope, hasLabel := secret.Labels[LicenseLabelScope]
 	return hasLabel && scope == string(LicenseScopeOperator)

@@ -7,14 +7,15 @@ package kibana
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	kbname "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
@@ -33,7 +34,7 @@ func CheckKibanaPods(b Builder, k *test.K8sClient) test.Step {
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
 				Namespace: b.Kibana.Namespace,
-				Name:      kbname.Deployment(b.Kibana.Name),
+				Name:      kibana.Deployment(b.Kibana.Name),
 			}, &dep)
 			if b.Kibana.Spec.Count == 0 && apierrors.IsNotFound(err) {
 				return nil
@@ -85,7 +86,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 		Name: "Kibana services should be created",
 		Test: test.Eventually(func() error {
 			for _, s := range []string{
-				kbname.HTTPService(b.Kibana.Name),
+				kibana.HTTPService(b.Kibana.Name),
 			} {
 				if _, err := k.GetService(b.Kibana.Namespace, s); err != nil {
 					return err
@@ -102,7 +103,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 		Name: "Kibana services should have endpoints",
 		Test: test.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				kbname.HTTPService(b.Kibana.Name): int(b.Kibana.Spec.Count),
+				kibana.HTTPService(b.Kibana.Name): int(b.Kibana.Spec.Count),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana in this b

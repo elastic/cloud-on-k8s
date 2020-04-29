@@ -37,7 +37,7 @@ func NewLicenseChecker(client k8s.Client, operatorNamespace string) Checker {
 }
 
 func (lc *checker) publicKeyFor(l EnterpriseLicense) ([]byte, error) {
-	if !l.IsTrial() {
+	if !l.IsECKManagedTrial() {
 		return lc.publicKey, nil
 	}
 	var signatureSec corev1.Secret
@@ -87,9 +87,6 @@ func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
 
 // Valid returns true if the given Enterprise license is valid or an error if any.
 func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
-	if l.IsTrial() {
-		return true, nil
-	}
 	pk, err := lc.publicKeyFor(l)
 	if err != nil {
 		return false, errors.Wrap(err, "while loading signature secret")

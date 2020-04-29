@@ -25,29 +25,30 @@ type ResourceReporter struct {
 }
 
 // NewResourceReporter returns a new ResourceReporter
-func NewResourceReporter(client client.Client) ResourceReporter {
+func NewResourceReporter(client client.Client, operatorNs string) ResourceReporter {
 	c := k8s.WrapClient(client)
 	return ResourceReporter{
 		aggregator: Aggregator{
 			client: c,
 		},
 		licensingResolver: LicensingResolver{
-			client: c,
+			client:     c,
+			operatorNs: operatorNs,
 		},
 	}
 }
 
 // Start starts to report the licensing information repeatedly at regular intervals
-func (r ResourceReporter) Start(operatorNs string, refreshPeriod time.Duration) {
+func (r ResourceReporter) Start(refreshPeriod time.Duration) {
 	// report once as soon as possible to not wait the first tick
-	err := r.Report(operatorNs)
+	err := r.Report()
 	if err != nil {
 		log.Error(err, "Failed to report licensing information")
 	}
 
 	ticker := time.NewTicker(refreshPeriod)
 	for range ticker.C {
-		err := r.Report(operatorNs)
+		err := r.Report()
 		if err != nil {
 			log.Error(err, "Failed to report licensing information")
 		}
@@ -55,13 +56,13 @@ func (r ResourceReporter) Start(operatorNs string, refreshPeriod time.Duration) 
 }
 
 // Report reports the licensing information in a config map
-func (r ResourceReporter) Report(operatorNs string) error {
+func (r ResourceReporter) Report() error {
 	licensingInfo, err := r.Get()
 	if err != nil {
 		return err
 	}
 
-	return r.licensingResolver.Save(licensingInfo, operatorNs)
+	return r.licensingResolver.Save(licensingInfo)
 }
 
 // Get aggregates managed resources and returns the licensing information

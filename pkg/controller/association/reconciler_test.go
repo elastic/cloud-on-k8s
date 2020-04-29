@@ -48,7 +48,9 @@ var (
 			}
 		},
 		UserSecretSuffix: "kibana-user",
-		ESUserRole:       "kibana_system",
+		ESUserRole: func(associated commonv1.Associated) (string, error) {
+			return "kibana_system", nil
+		},
 	}
 
 	kibanaNamespace     = "kbns"

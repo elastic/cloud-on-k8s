@@ -73,16 +73,16 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 }
 
 // Save updates or creates licensing information in a config map
-func (r LicensingResolver) Save(info LicensingInfo, operatorNs string) error {
+func (r LicensingResolver) Save(info LicensingInfo) error {
 	data, err := info.toMap()
 	if err != nil {
 		return err
 	}
 
-	log.V(1).Info("Saving", "namespace", operatorNs, "configmap_name", licensingCfgMapName, "license_info", info)
+	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", licensingCfgMapName, "license_info", info)
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: operatorNs,
+			Namespace: r.operatorNs,
 			Name:      licensingCfgMapName,
 			Labels: map[string]string{
 				common.TypeLabelName: Type,

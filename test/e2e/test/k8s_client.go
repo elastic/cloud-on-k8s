@@ -33,7 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -330,7 +330,7 @@ func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
 func KibanaPodListOptions(kbNamespace, kbName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(kbNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		kblabel.KibanaNameLabelName: kbName,
+		kibana.KibanaNameLabelName: kbName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

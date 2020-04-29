@@ -5,7 +5,7 @@
 package enterprisesearch
 
 import (
-	"fmt"
+	"path"
 	"path/filepath"
 
 	corev1 "k8s.io/api/core/v1"
@@ -39,10 +39,7 @@ var (
 		{Name: "JAVA_OPTS", Value: DefaultJavaOpts},
 		{Name: "ENT_SEARCH_CONFIG_PATH", Value: filepath.Join(ConfigMountPath, ConfigFilename)},
 	}
-)
-
-func readinessProbe(ent entv1beta1.EnterpriseSearch) corev1.Probe {
-	return corev1.Probe{
+	ReadinessProbe = corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 60, // initial startup is pretty slow
 		PeriodSeconds:       10,
@@ -50,17 +47,11 @@ func readinessProbe(ent entv1beta1.EnterpriseSearch) corev1.Probe {
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
 			Exec: &corev1.ExecAction{
-				Command: []string{"bash", "-c",
-					fmt.Sprintf(
-						`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/swiftype-app-version -k -s`,
-						ent.Spec.HTTP.Protocol(),
-						HTTPPort,
-					),
-				},
+				Command: []string{"bash", path.Join(ConfigMountPath, ReadinessProbeFilename)},
 			},
 		},
 	}
-}
+)
 
 func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTemplateSpec {
 	cfgVolume := ConfigSecretVolume(ent)
@@ -72,7 +63,7 @@ func newPodSpec(ent entv1beta1.EnterpriseSearch, configHash string) corev1.PodTe
 		WithPorts([]corev1.ContainerPort{
 			{Name: ent.Spec.HTTP.Protocol(), ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 		}).
-		WithReadinessProbe(readinessProbe(ent)).
+		WithReadinessProbe(ReadinessProbe).
 		WithVolumes(cfgVolume.Volume()).
 		WithVolumeMounts(cfgVolume.VolumeMount()).
 		WithEnv(DefaultEnv...).
