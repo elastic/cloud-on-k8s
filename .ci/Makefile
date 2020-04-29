@@ -8,7 +8,7 @@ ROOT_DIR               := $(CURDIR)/..
 GO_MOUNT_PATH          ?= /go/src/github.com/elastic/cloud-on-k8s
 ALL_IN_ONE_OUTPUT_FILE ?= config/all-in-one.yaml
 S3_ECK_DIR             ?= s3://download.elasticsearch.org/downloads/eck
-ELASTIC_DOCKER_LOGIN   ?= eckadmin
+DOCKER_LOGIN           ?= eckadmin
 
 -include $(ROOT_DIR)/.env
 
@@ -41,7 +41,7 @@ ci:
 ci-interactive:
 	@ $(MAKE) DOCKER_OPTS=-i DOCKER_CMD=bash ci-internal
 
-ci-internal: get-docker-creds ci-build-image
+ci-internal: ci-build-image
 	@ docker run --rm -t $(DOCKER_OPTS) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
@@ -51,11 +51,12 @@ ci-internal: get-docker-creds ci-build-image
 		bash -c "$(DOCKER_CMD)"
 
 # build and push the CI image only if it does not yet exist
-ci-build-image:
+ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
+ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
 		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
-		@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co && \
+		docker login -u $(DOCKER_LOGIN) -p $(DOCKER_PASSWORD) push.docker.elastic.co 2> /dev/null && \
 		docker push push.$(CI_IMAGE) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed' \
 	)
 
@@ -64,10 +65,9 @@ ifneq (,$(IS_SNAPSHOT_BUILD))
 endif
 
 # read Docker registry creds from Vault and write them in the .env file to make them available from inside the CI container
-get-docker-creds: ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) vault read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
-get-docker-creds:
-	@ echo "ELASTIC_DOCKER_LOGIN = $(ELASTIC_DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
-	@ echo "ELASTIC_DOCKER_PASSWORD = $(ELASTIC_DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
+write-ci-docker-creds:
+	@ echo "DOCKER_LOGIN = $(DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
+	@ echo "DOCKER_PASSWORD = $(DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
 
 ##  Build
 
