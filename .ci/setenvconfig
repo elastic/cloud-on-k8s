@@ -348,7 +348,7 @@ CFG
 # IMG_VERSION is generated
 
 write_env <<ENV
-REPOSITORY = eck-snapshots
+NAMESPACE = eck-snapshots
 IMG_NAME = eck-operator
 
 GO_TAGS = release
@@ -365,7 +365,7 @@ ENV
 ###############
 
 write_env <<ENV
-REPOSITORY = eck
+NAMESPACE = eck
 IMG_NAME = eck-operator
 
 GO_TAGS = release

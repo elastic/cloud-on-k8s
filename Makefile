@@ -36,7 +36,7 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
 REGISTRY    ?= docker.elastic.co
-REPOSITORY  ?= eck-snapshots
+NAMESPACE   ?= eck-snapshots
 NAME        ?= eck-operator
 SNAPSHOT    ?= true
 VERSION     ?= $(shell cat VERSION)
@@ -44,7 +44,7 @@ TAG         ?= $(shell git rev-parse --short=8 --verify HEAD)
 IMG_NAME    ?= $(NAME)$(IMG_SUFFIX)
 IMG_VERSION ?= $(VERSION)-$(TAG)
 
-BASE_IMG       := $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)
+BASE_IMG       := $(REGISTRY)/$(NAMESPACE)/$(IMG_NAME)
 OPERATOR_IMAGE ?= $(BASE_IMG):$(IMG_VERSION)
 
 print-operator-image:
