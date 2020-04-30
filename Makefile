@@ -392,6 +392,7 @@ e2e-run:
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
 		--test-license=$(TEST_LICENSE) \
+		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
@@ -419,6 +420,7 @@ e2e-local:
 		--test-run-name=e2e \
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--test-license=$(TEST_LICENSE) \
+		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
 		--local \
