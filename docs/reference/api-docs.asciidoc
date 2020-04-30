@@ -18,7 +18,6 @@ endif::[]
 - xref:{anchor_prefix}-common-k8s-elastic-co-v1beta1[$$common.k8s.elastic.co/v1beta1$$]
 - xref:{anchor_prefix}-elasticsearch-k8s-elastic-co-v1[$$elasticsearch.k8s.elastic.co/v1$$]
 - xref:{anchor_prefix}-elasticsearch-k8s-elastic-co-v1beta1[$$elasticsearch.k8s.elastic.co/v1beta1$$]
-- xref:{anchor_prefix}-enterprisesearch-k8s-elastic-co-v1beta1[$$enterprisesearch.k8s.elastic.co/v1beta1$$]
 - xref:{anchor_prefix}-kibana-k8s-elastic-co-v1[$$kibana.k8s.elastic.co/v1$$]
 - xref:{anchor_prefix}-kibana-k8s-elastic-co-v1beta1[$$kibana.k8s.elastic.co/v1beta1$$]
 
@@ -235,7 +234,6 @@ SecretRef is a reference to a secret that exists in the same namespace.
 
 .Appears In:
 ****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-configsource[$$ConfigSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-filerealmsource[$$FileRealmSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-rolesource[$$RoleSource$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-tlsoptions[$$TLSOptions$$]
@@ -869,16 +867,6 @@ UpdateStrategy specifies how updates to the cluster should be performed.
 | Field | Description
 | *`changeBudget`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1beta1-changebudget[$$ChangeBudget$$]__ | ChangeBudget defines the constraints to consider when applying changes to the Elasticsearch cluster.
 |===
-
-
-
-
-
-[id="{anchor_prefix}-enterprisesearch-k8s-elastic-co-v1beta1"]
-== enterprisesearch.k8s.elastic.co/v1beta1
-
-Package v1beta1 contains API schema definitions for managing Enterprise Search resources.
-
 
 
 

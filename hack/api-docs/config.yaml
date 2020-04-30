@@ -5,10 +5,12 @@ processor:
     - "(Elasticsearch|Kibana|ApmServer|Reconciler|EnterpriseSearch)Status$"
     - "ElasticsearchSettings$"
     - "Associa(ted|tor|tionStatus|tionConf)$"
-    - "EnterpriseSearch"
+    - "EnterpriseSearch.*"
   ignoreFields:
     - "status$"
     - "TypeMeta$"
+  ignoreGroupVersions:
+    - "enterprisesearch"
 
 render:
   kubernetesVersion: 1.17
