@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -76,6 +77,11 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	actualStatefulSets, err = HandleUpscaleAndSpecChanges(upscaleCtx, actualStatefulSets, expectedResources)
 	if err != nil {
 		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReconciliationError, fmt.Sprintf("Failed to apply spec change: %v", err))
+		var podTemplateErr *sset.PodTemplateError
+		if errors.As(err, &podTemplateErr) {
+			// An error has been detected in one of the pod templates, let's update the phase to "invalid"
+			reconcileState.UpdateElasticsearchInvalid(err)
+		}
 		return results.WithError(err)
 	}
 
