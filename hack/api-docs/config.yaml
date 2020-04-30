@@ -5,6 +5,7 @@ processor:
     - "(Elasticsearch|Kibana|ApmServer|Reconciler|EnterpriseSearch)Status$"
     - "ElasticsearchSettings$"
     - "Associa(ted|tor|tionStatus|tionConf)$"
+    - "EnterpriseSearch"
   ignoreFields:
     - "status$"
     - "TypeMeta$"
