@@ -24,6 +24,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # Copy the operator binary into a lighter image
 FROM centos:8
 
+RUN yum update --setopt=tsflags=nodocs -y && yum clean all
+
 RUN set -x \
     && groupadd --system --gid 101 elastic \
     && useradd --system -g elastic -m --home /eck -c "eck user" --shell /bin/false --uid 101 elastic \

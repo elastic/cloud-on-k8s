@@ -11,7 +11,6 @@ import (
 const (
 	httpServiceSuffix = "http"
 	configSuffix      = "config"
-	deploymentSuffix  = "server"
 )
 
 // EntNamer is a Namer that is configured with the defaults for resources related to an EnterpriseSearch resource.
@@ -22,7 +21,7 @@ func HTTPService(entName string) string {
 }
 
 func Deployment(entName string) string {
-	return EntNamer.Suffix(entName, deploymentSuffix)
+	return EntNamer.Suffix(entName)
 }
 
 func Config(entName string) string {

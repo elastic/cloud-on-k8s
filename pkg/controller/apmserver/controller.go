@@ -280,6 +280,8 @@ func (r *ReconcileApmServer) validate(ctx context.Context, as *apmv1.ApmServer) 
 func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	// Clean up watches set on custom http tls certificates
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(apmname.APMNamer, obj.Name))
 }
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.

@@ -11,7 +11,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR=${SCRIPT_DIR}/../..
 TEMP_DIR=$(mktemp -d)
-LICENCE_DETECTOR="github.com/elastic/go-licence-detector@v0.1.0"
+LICENCE_DETECTOR="go.elastic.co/go-licence-detector@v0.1.1"
 
 trap '[[ $TEMP_DIR ]] && rm -rf "$TEMP_DIR"' EXIT
 
