@@ -131,12 +131,16 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 }
 
 // TestEnterpriseTrialExtension tests that trial extensions can be successfully applied and take effect.
+// Generates a development version of an Enterprise trial extension license with a development Elasticsearch license inside.
+// Then tests that ECK accepts this license and propagates the Elasticsearch license to the test Elasticsearch cluster.
+// Also tests that this trial extension license is preferred by ECK over any ECK-managed trial.
+// Finally tests that trial extensions can applied repeatedly as opposed to ECK-managed trials which are one-offs.
 func TestEnterpriseTrialExtension(t *testing.T) {
-	if test.Ctx().PrivateKeyPath == "" {
+	if test.Ctx().TestLicensePKeyPath == "" {
 		// skip this test if the dev private key is not configured e.g. because we are testing a production build
 		t.SkipNow()
 	}
-	privateKeyBytes, err := ioutil.ReadFile(test.Ctx().PrivateKeyPath)
+	privateKeyBytes, err := ioutil.ReadFile(test.Ctx().TestLicensePKeyPath)
 	require.NoError(t, err)
 	privateKey, err := x509.ParsePKCS8PrivateKey(privateKeyBytes)
 	require.NoError(t, err)

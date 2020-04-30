@@ -140,8 +140,8 @@ func (h *helper) initTestContext() error {
 			ManagedNamespaces: make([]string, len(h.managedNamespaces)),
 		},
 		OperatorImage:         h.operatorImage,
-		PrivateKeyPath:        h.privateKeyPath,
 		TestLicense:           h.testLicense,
+		TestLicensePKeyPath:   h.testLicensePKeyPath,
 		MonitoringSecrets:     h.monitoringSecrets,
 		TestRegex:             h.testRegex,
 		TestRun:               h.testRunName,
@@ -188,13 +188,13 @@ func (h *helper) initTestSecrets() error {
 		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
 	}
 
-	if h.privateKeyPath != "" {
-		bytes, err := ioutil.ReadFile(h.privateKeyPath)
+	if h.testLicensePKeyPath != "" {
+		bytes, err := ioutil.ReadFile(h.testLicensePKeyPath)
 		if err != nil {
 			return err
 		}
 		h.testSecrets["dev-private.key"] = string(bytes)
-		h.testContext.PrivateKeyPath = "/var/run/secrets/e2e/dev-private.key"
+		h.testContext.TestLicensePKeyPath = "/var/run/secrets/e2e/dev-private.key"
 	}
 
 	if h.monitoringSecrets != "" {
