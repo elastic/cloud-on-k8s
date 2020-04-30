@@ -134,7 +134,7 @@ type ReconcileApmServer struct {
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
-	// iteration is the number of times this controller has run its ReconcileConfig method
+	// iteration is the number of times this controller has run its reconcile method
 	iteration uint64
 }
 
@@ -152,7 +152,7 @@ func (r *ReconcileApmServer) Recorder() record.EventRecorder {
 
 var _ driver.Interface = &ReconcileApmServer{}
 
-// ReconcileConfig reads that state of the cluster for a ApmServer object and makes changes based on the state read
+// Reconcile reads that state of the cluster for a ApmServer object and makes changes based on the state read
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "as_name", &r.iteration)()

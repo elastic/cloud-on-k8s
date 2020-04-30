@@ -37,7 +37,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	reconciledConfigSecret, err := ReconcileConfig(r.Client, as)
+	reconciledConfigSecret, err := reconcileApmServerConfig(r.Client, as)
 	if err != nil {
 		return state, err
 	}

@@ -38,9 +38,9 @@ const (
 	ApmCfgSecretKey = "apm-server.yml" // nolint
 )
 
-// ReconcileConfig reconciles the configuration of the APM server: it first creates the configuration from the APM
+// reconcileApmServerConfig reconciles the configuration of the APM server: it first creates the configuration from the APM
 // specification and then reconcile the underlying secret.
-func ReconcileConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
 	// Create a new configuration from the APM object spec.
 	cfg, err := NewConfigFromSpec(client, as)
 	if err != nil {
@@ -52,7 +52,7 @@ func ReconcileConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, err
 		return corev1.Secret{}, err
 	}
 
-	// ReconcileConfig the configuration in a secret
+	// reconcile the configuration in a secret
 	expectedConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
