@@ -5,25 +5,20 @@
 package apmserver
 
 import (
-	"context"
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -345,137 +340,6 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 			deep.MaxDepth = 15
 			if diff := deep.Equal(got, tt.want.Params); diff != nil {
 				t.Error(diff)
-			}
-		})
-	}
-}
-
-func TestReconcileApmServer_doReconcile(t *testing.T) {
-	type fields struct {
-		resources      []runtime.Object
-		recorder       record.EventRecorder
-		dynamicWatches watches.DynamicWatches
-		Parameters     operator.Parameters
-	}
-	type args struct {
-		request reconcile.Request
-	}
-	tests := []struct {
-		name        string
-		as          apmv1.ApmServer
-		fields      fields
-		args        args
-		wantRequeue bool
-		wantErr     bool
-	}{
-		{
-			name: "If no error ensure a requeue is scheduled for CA",
-			as: apmv1.ApmServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "apmserver",
-					Namespace: "default",
-				},
-				Spec: apmv1.ApmServerSpec{
-					Version: "7.6.1",
-				},
-			},
-			fields: fields{
-				resources:      []runtime.Object{},
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters: operator.Parameters{
-					CACertRotation: certificates.RotationParams{
-						Validity:     certificates.DefaultCertValidity,
-						RotateBefore: certificates.DefaultRotateBefore,
-					},
-				},
-			},
-			args: args{
-				request: reconcile.Request{},
-			},
-			wantRequeue: false,
-		},
-		{
-			name: "Validation failure",
-			as: apmv1.ApmServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "apmserver",
-					Namespace: "default",
-				},
-				Spec: apmv1.ApmServerSpec{
-					Version: "7.x.1",
-				},
-			},
-			fields: fields{
-				resources:      []runtime.Object{},
-				recorder:       record.NewFakeRecorder(100),
-				dynamicWatches: watches.NewDynamicWatches(),
-				Parameters:     operator.Parameters{},
-			},
-			args: args{
-				request: reconcile.Request{},
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileApmServer{
-				Client:         k8s.WrappedFakeClient(&tt.as),
-				recorder:       tt.fields.recorder,
-				dynamicWatches: tt.fields.dynamicWatches,
-				Parameters:     tt.fields.Parameters,
-			}
-			got, err := r.doReconcile(context.Background(), tt.args.request, tt.as.DeepCopy())
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ReconcileApmServer.doReconcile() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			require.NotNil(t, got)
-			require.Equal(t, got.Requeue, tt.wantRequeue)
-			if tt.wantRequeue {
-				require.True(t, got.RequeueAfter > 0)
-			}
-		})
-	}
-}
-
-func Test_reconcileApmServerToken(t *testing.T) {
-	apm := &apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "apm",
-		},
-	}
-	tests := []struct {
-		name       string
-		c          k8s.Client
-		reuseToken []byte
-	}{
-		{
-			name: "no secret exists: create one",
-			c:    k8s.WrappedFakeClient(),
-		},
-		{
-			name: "reuse token if it already exists",
-			c: k8s.WrappedFakeClient(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "ns",
-					Name:      apmname.SecretToken(apm.Name),
-				},
-				Data: map[string][]byte{
-					SecretTokenKey: []byte("existing"),
-				},
-			}),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileApmServerToken(tt.c, apm)
-			require.NoError(t, err)
-			require.NotEmpty(t, got.Data[SecretTokenKey])
-			if tt.reuseToken != nil {
-				require.Equal(t, tt.reuseToken, got.Data[SecretTokenKey])
 			}
 		})
 	}

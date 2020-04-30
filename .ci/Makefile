@@ -60,32 +60,39 @@ ci-build-image: write-ci-docker-creds
 		docker push push.$(CI_IMAGE) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed' \
 	)
 
-ifneq (,$(IS_SNAPSHOT_BUILD))
-	SECRET_FIELD_PREFIX ?= dev-
-endif
-
-# read Docker registry creds from Vault and write them in the .env file to make them available from inside the CI container
+# make Docker creds available from inside the CI container through the .registry.env file
 write-ci-docker-creds:
 	@ echo "DOCKER_LOGIN = $(DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
 	@ echo "DOCKER_PASSWORD = $(DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
 
-##  Build
-
-get-test-artifacts: get-monitoring-secrets get-test-license get-elastic-public-key
-
-# read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
-get-elastic-public-key:
-	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
-
 ##  Test
 
+# all artifacts needed to run e2e tests
+get-test-artifacts: monitoring-secrets.json test-license.json license.key
+
+ifneq (,$(IS_SNAPSHOT_BUILD))
+       SECRET_FIELD_PREFIX ?= dev-
+get-test-artifacts: dev-private.key
+endif
+
+# read a dev private key used to generate dev licenses against non-production builds
+dev-private.key:
+	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=dev-privkey  secret/devops-ci/cloud-on-k8s/license | base64 --decode > dev-private.key
+
 # read some test licenses from Vault for E2E license tests
-get-test-license:
+test-license.json:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)enterprise  secret/devops-ci/cloud-on-k8s/test-licenses > test-license.json
 
 # read connection info and credentials to the E2E tests monitoring Elasticsearch cluster, to be used during E2E tests
-get-monitoring-secrets:
+monitoring-secrets.json:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=data -format=json secret/devops-ci/cloud-on-k8s/monitoring-cluster > monitoring-secrets.json
+
+##  Build
+
+# read Elastic public key from Vault into license.key, to build the operator for E2E tests or for a release
+license.key:
+	@ VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=$(SECRET_FIELD_PREFIX)pubkey secret/devops-ci/cloud-on-k8s/license | base64 --decode > license.key
+
 
 ##  Release
 

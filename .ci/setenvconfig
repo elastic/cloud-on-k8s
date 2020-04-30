@@ -270,6 +270,7 @@ write_env <<ENV
 IMG_SUFFIX = -ci
 IS_SNAPSHOT_BUILD = ${isSnapshotVersion}
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+TEST_LICENSE_PKEY_PATH = /go/src/github.com/elastic/cloud-on-k8s/.ci/dev-private.key
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = ${operatorImage}
