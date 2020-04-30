@@ -96,7 +96,7 @@ type EnterpriseSearchStatus struct {
 
 // IsDegraded returns true if the current status is worse than the previous.
 func (ent EnterpriseSearchStatus) IsDegraded(prev EnterpriseSearchStatus) bool {
-	return prev.Health == EnterpriseSearchGreen && ent.Health != EnterpriseSearchRed
+	return prev.Health == EnterpriseSearchGreen && ent.Health != EnterpriseSearchGreen
 }
 
 // IsMarkedForDeletion returns true if the EnterpriseSearch is going to be deleted
