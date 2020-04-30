@@ -171,7 +171,8 @@ go-run:
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default \
 				--namespaces=$(MANAGED_NAMESPACES) \
-				--manage-webhook-certs=false
+				--manage-webhook-certs=false \
+				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:
 	@(cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \

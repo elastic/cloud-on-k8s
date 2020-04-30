@@ -16,5 +16,5 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("portforward")
+	log = logf.Log.WithName("dev-portforward")
 )
