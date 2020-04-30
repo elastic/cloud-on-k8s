@@ -15,14 +15,13 @@ import (
 	"strings"
 	"time"
 
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
 const (
@@ -50,7 +49,7 @@ func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, erro
 	var caCerts []*x509.Certificate
 	if as.Spec.HTTP.TLS.Enabled() {
 		scheme = "https"
-		crts, err := k.GetHTTPCerts(name.APMNamer, as.Namespace, as.Name)
+		crts, err := k.GetHTTPCerts(apmserver.Namer, as.Namespace, as.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +57,7 @@ func NewApmServerClient(as apmv1.ApmServer, k *test.K8sClient) (*ApmClient, erro
 	}
 
 	inClusterURL := fmt.Sprintf(
-		"%s://%s.%s.svc:%d", scheme, as.Status.ExternalService, as.Namespace, config.DefaultHTTPPort,
+		"%s://%s.%s.svc:%d", scheme, as.Status.ExternalService, as.Namespace, apmserver.DefaultHTTPPort,
 	)
 
 	client := test.NewHTTPClient(caCerts)
