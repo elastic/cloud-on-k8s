@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/blang/semver"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -27,6 +28,15 @@ import (
 // TestPodTemplateValidation simulates a cluster update with a temporary invalid pod template.
 // The invalid pod template should not prevent the update to be eventually applied.
 func TestPodTemplateValidation(t *testing.T) {
+
+	kubernetesVersion, err := semver.ParseTolerant(test.Ctx().KubernetesVersion)
+	if err != nil {
+		t.Fatalf(
+			"Failed to parse the Kubernetes version: %v, err is %v", test.Ctx().KubernetesVersion, err)
+	}
+	if kubernetesVersion.LT(semver.MustParse("1.15.0")) {
+		t.SkipNow()
+	}
 
 	b := elasticsearch.NewBuilder("podtemplatevalidation").
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
