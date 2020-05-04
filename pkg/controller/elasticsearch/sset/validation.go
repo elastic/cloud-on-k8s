@@ -69,12 +69,7 @@ func toPodTemplateError(
 		return err
 	}
 
-	switch statusErr.ErrStatus.Reason {
-	case metav1.StatusReasonBadRequest:
-		// Dry run is beta and available since Kubernetes 1.13
-		// Openshift 3.11 and K8S 1.12 don't support dryRun but returns "400 - BadRequest" in that case
-		return nil
-	case metav1.StatusReasonInvalid:
+	if statusErr.ErrStatus.Reason == metav1.StatusReasonInvalid {
 		// If the Pod spec is invalid the expected error is 422.
 		// Since "details" is a pointer let's check that it's not nil before going further.
 		if statusErr.ErrStatus.Details == nil {
@@ -87,6 +82,9 @@ func toPodTemplateError(
 			Causes:      statusErr.ErrStatus.Details.Causes,
 		}
 	}
-	// The Kubernetes API returns an error which is not related to the spec. of the Pod, let's retry again later
-	return statusErr
+
+	// The Kubernetes API returns an error which is not related to the spec. of the Pod. In order to not block
+	// the reconciliation loop we skip the validation.
+	log.Info("Pod validation skipped", "namespace", parent.GetNamespace(), "es_name", parent.GetName(), "error", statusErr)
+	return nil
 }

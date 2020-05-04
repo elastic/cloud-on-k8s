@@ -6,6 +6,7 @@ package sset
 
 import (
 	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 
@@ -101,6 +102,33 @@ func Test_validatePodTemplate(t *testing.T) {
 				sset:   ssetSample,
 			},
 			wantErr: nil,
+		},
+		{
+			name: "Client returns a Kubernetes error which is not a validation error",
+			args: args{
+				c: newClientWithError(&errors.StatusError{
+					ErrStatus: metav1.Status{
+						Status:  metav1.StatusFailure,
+						Message: "Pod dummy is invalid",
+						Reason:  metav1.StatusReasonInternalError,
+						Code:    http.StatusInternalServerError,
+						Details: &metav1.StatusDetails{
+							Name: "es-sample-dummy-vd4kq",
+							Kind: "Pod",
+							Causes: []metav1.StatusCause{
+								{
+									Type:    metav1.CauseTypeFieldValueInvalid,
+									Message: "Internal error occurred: admission webhook \"pod-ready.common-webhooks.networking.gke.io\" does not support dry run",
+									Field:   "spec.containers[0].resources.requests",
+								},
+							},
+						},
+					},
+				}),
+				parent: &es,
+				sset:   ssetSample,
+			},
+			wantErr: nil, // Do not block reconciliation loop on unknown error
 		},
 		{
 			name: "Return non StatusError as is",
