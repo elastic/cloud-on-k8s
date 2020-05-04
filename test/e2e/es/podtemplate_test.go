@@ -29,12 +29,21 @@ import (
 // The invalid pod template should not prevent the update to be eventually applied.
 func TestPodTemplateValidation(t *testing.T) {
 
-	kubernetesVersion, err := semver.ParseTolerant(test.Ctx().KubernetesVersion)
-	if err != nil {
-		t.Fatalf(
-			"Failed to parse the Kubernetes version: %v, err is %v", test.Ctx().KubernetesVersion, err)
+	// Only execute this test on GKE > 1.15 because we know that latest versions of GKE have compatible admission webhooks.
+	if test.Ctx().Provider != "gke" {
+		t.SkipNow()
 	}
-	if kubernetesVersion.LT(semver.MustParse("1.15.0")) {
+
+	// Kubernetes version set in the context could be "default", use the version retrieved from the API server instead.
+	kubernetesVersion, err := test.ServerVersion()
+	if err != nil {
+		t.Fatalf("Failed to get the Kubernetes version, err is %v", err)
+	}
+	parsedVersion, err := semver.ParseTolerant(kubernetesVersion.String())
+	if err != nil {
+		t.Fatalf("Failed to parse the Kubernetes version %s, err is %v", kubernetesVersion.String(), err)
+	}
+	if parsedVersion.LT(semver.MustParse("1.15.0")) {
 		t.SkipNow()
 	}
 
