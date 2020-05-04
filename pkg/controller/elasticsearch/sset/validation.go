@@ -33,7 +33,10 @@ func (e *PodTemplateError) Error() string {
 	)
 }
 
-// validatePodTemplate validates a Pod Template by issuing a dry API request.
+// validatePodTemplate validates a Pod Template by issuing a dry-run API request.
+// This check is performed as "best-effort" for the following reasons:
+// * It is only supported by the API server starting 1.13
+// * There might be some admission webhooks on the validation path that are not compatible with dry-run requests.
 func validatePodTemplate(
 	c k8s.Client,
 	parent metav1.Object,
