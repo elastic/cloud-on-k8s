@@ -41,7 +41,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25 // indirect
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/tsenart/vegeta v12.7.0+incompatible
 	go.elastic.co/apm v1.7.2
 	go.elastic.co/apm/module/apmelasticsearch v1.7.3-0.20200421085619-eea0ff3c17de
