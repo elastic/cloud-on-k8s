@@ -7,19 +7,118 @@ package es
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
 
+	"github.com/blang/semver"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// TestPodTemplateValidation simulates a cluster update with a temporary invalid pod template.
+// The invalid pod template should not prevent the update to be eventually applied.
+func TestPodTemplateValidation(t *testing.T) {
+
+	// Only execute this test on GKE > 1.15 because we know that latest versions of GKE have compatible admission webhooks.
+	if test.Ctx().Provider != "gke" {
+		t.SkipNow()
+	}
+
+	// Kubernetes version set in the context could be "default", use the version retrieved from the API server instead.
+	kubernetesVersion, err := test.ServerVersion()
+	if err != nil {
+		t.Fatalf("Failed to get the Kubernetes version, err is %v", err)
+	}
+	parsedVersion, err := semver.ParseTolerant(kubernetesVersion.String())
+	if err != nil {
+		t.Fatalf("Failed to parse the Kubernetes version %s, err is %v", kubernetesVersion.String(), err)
+	}
+	if parsedVersion.LT(semver.MustParse("1.15.0")) {
+		t.SkipNow()
+	}
+
+	b := elasticsearch.NewBuilder("podtemplatevalidation").
+		WithESMasterDataNodes(1, corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("2Gi"),
+			},
+			Limits: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("2Gi"),
+			},
+		})
+
+	stepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{}.
+			WithStep(
+				test.Step{
+					Name: "Update Elasticsearch spec with an invalid podTemplate",
+					Test: func(t *testing.T) {
+						b.WithPodTemplate(elasticsearch.ESPodTemplate(
+							corev1.ResourceRequirements{
+								// We are requesting more memory than the limit, this is invalid and prevents the Pods creation.
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+								Limits: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceMemory: resource.MustParse("2Gi"),
+								},
+							}),
+						)
+					},
+				}).
+			WithSteps(
+				// Mutate Elasticsearch with an invalid PodTemplate
+				b.UpgradeTestSteps(k),
+			).WithStep(
+			test.Step{
+				Name: "Phase should eventually be \"invalid\"",
+				Test: test.Eventually(func() error {
+					var es esv1.Elasticsearch
+					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
+					if err != nil {
+						return err
+					}
+					if es.Status.Phase != esv1.ElasticsearchResourceInvalid {
+						return fmt.Errorf("phase is %s", es.Status.Phase)
+					}
+					return nil
+				}),
+			}).WithStep(
+			test.Step{
+				Name: "Fix the podTemplate",
+				Test: func(t *testing.T) {
+					b.WithPodTemplate(elasticsearch.ESPodTemplate(
+						corev1.ResourceRequirements{
+							Requests: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceMemory: resource.MustParse("4Gi"),
+							},
+							Limits: map[corev1.ResourceName]resource.Quantity{
+								corev1.ResourceMemory: resource.MustParse("4Gi"),
+							},
+						}),
+					)
+				},
+			}).WithSteps(
+			// Mutate Elasticsearch with the fixed PodTemplate
+			b.UpgradeTestSteps(k),
+		).
+			WithSteps(b.CheckK8sTestSteps(k)).
+			// CheckStackTestSteps checks that the memory resource of the current Pod does match the new spec
+			WithSteps(b.CheckStackTestSteps(k))
+	}
+
+	test.Sequence(nil, stepsFn, b).RunSequential(t)
+}
 
 func TestCustomConfiguration(t *testing.T) {
 	const synonyms = "synonyms"

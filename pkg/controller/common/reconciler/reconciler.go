@@ -44,9 +44,9 @@ type Params struct {
 	// UpdateReconciled modifies the resource pointed to by Reconciled to reflect the state of Expected
 	UpdateReconciled func()
 	// PreCreate is called just before the creation of the resource.
-	PreCreate func()
+	PreCreate func() error
 	// PreUpdate is called just before the update of the resource.
-	PreUpdate func()
+	PreUpdate func() error
 	// PostUpdate is called immediately after the resource is successfully updated.
 	PostUpdate func()
 }
@@ -96,7 +96,10 @@ func ReconcileResource(params Params) error {
 	create := func() error {
 		log.Info("Creating resource", "kind", kind, "namespace", namespace, "name", name)
 		if params.PreCreate != nil {
-			params.PreCreate()
+			if err := params.PreCreate(); err != nil {
+				return err
+			}
+
 		}
 
 		// Copy the content of params.Expected into params.Reconciled.
@@ -149,7 +152,9 @@ func ReconcileResource(params Params) error {
 	if params.NeedsUpdate() {
 		log.Info("Updating resource", "kind", kind, "namespace", namespace, "name", name)
 		if params.PreUpdate != nil {
-			params.PreUpdate()
+			if err := params.PreUpdate(); err != nil {
+				return err
+			}
 		}
 		params.UpdateReconciled()
 		err := params.Client.Update(params.Reconciled)
