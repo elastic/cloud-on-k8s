@@ -183,6 +183,8 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 				client.ElasticsearchLicenseTypePlatinum, // depends on ES version
 				client.ElasticsearchLicenseTypeEnterprise,
 			),
+			// cleanup license for the next tests
+			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
 		}
 	}
 

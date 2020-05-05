@@ -53,7 +53,10 @@ func TestRemoteCluster(t *testing.T) {
 
 	before := func(k *test.K8sClient) test.StepList {
 		// Deploy a Trial license
-		return test.StepList{es1LicenseTestContext.CreateEnterpriseLicenseSecret(trialSecretName, licenseBytes)}
+		return test.StepList{
+			es1LicenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
+			es1LicenseTestContext.CreateEnterpriseLicenseSecret(trialSecretName, licenseBytes),
+		}
 	}
 
 	followerIndex := "data-integrity-check-follower"
