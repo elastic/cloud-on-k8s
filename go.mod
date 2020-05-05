@@ -11,7 +11,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgryski/go-gk v0.0.0-20140819190930-201884a44051 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
-	github.com/elastic/go-ucfg v0.7.0
+	github.com/elastic/go-ucfg v0.8.3
 	github.com/elazarl/goproxy v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/elazarl/goproxy/ext v0.0.0-20190711103511-473e67f1d7d2 // indirect
 	github.com/ghodss/yaml v1.0.0
