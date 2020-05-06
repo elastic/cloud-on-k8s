@@ -264,13 +264,14 @@ CFG
 clusterName=$2
 stackVersion=$3
 isSnapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
+testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "/go/src/github.com/elastic/cloud-on-k8s/.ci/dev-private.key";; esac)
 operatorImage=${OPERATOR_IMAGE:-$JKS_PARAM_OPERATOR_IMAGE}
 
 write_env <<ENV
 IMG_SUFFIX = -ci
 IS_SNAPSHOT_BUILD = ${isSnapshotVersion}
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
-TEST_LICENSE_PKEY_PATH = /go/src/github.com/elastic/cloud-on-k8s/.ci/dev-private.key
+TEST_LICENSE_PKEY_PATH = $testLicensePKeyPath
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = ${operatorImage}

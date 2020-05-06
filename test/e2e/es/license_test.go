@@ -133,7 +133,6 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 // TestEnterpriseTrialExtension tests that trial extensions can be successfully applied and take effect.
 // Generates a development version of an Enterprise trial extension license with a development Elasticsearch license inside.
 // Then tests that ECK accepts this license and propagates the Elasticsearch license to the test Elasticsearch cluster.
-// Also tests that this trial extension license is preferred by ECK over any ECK-managed trial.
 // Finally tests that trial extensions can be applied repeatedly as opposed to ECK-managed trials which are one-offs.
 func TestEnterpriseTrialExtension(t *testing.T) {
 	if test.Ctx().TestLicensePKeyPath == "" {
@@ -168,8 +167,6 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			licenseTestContext.Init(),
-			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeTrial),
-			licenseTestContext.CheckEnterpriseTrialLicenseValid(trialSecretName),
 			// simulate a trial extension
 			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey)),
 			licenseTestContext.CheckElasticsearchLicense(
@@ -186,6 +183,8 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 				client.ElasticsearchLicenseTypePlatinum, // depends on ES version
 				client.ElasticsearchLicenseTypeEnterprise,
 			),
+			// cleanup license for the next tests
+			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
 		}
 	}
 

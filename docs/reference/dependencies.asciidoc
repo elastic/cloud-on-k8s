@@ -20,6 +20,7 @@ This page lists the third-party dependencies used to build {n}.
 | Name | Version | Licence
 
 | link:https://github.com/Masterminds/sprig[$$github.com/Masterminds/sprig$$] | v2.20.0+incompatible | MIT
+| link:https://github.com/blang/semver[$$github.com/blang/semver$$] | v3.5.0+incompatible | MIT
 | link:https://github.com/davecgh/go-spew[$$github.com/davecgh/go-spew$$] | v1.1.1 | ISC
 | link:https://github.com/elastic/go-ucfg[$$github.com/elastic/go-ucfg$$] | v0.7.0 | Apache-2.0
 | link:https://github.com/ghodss/yaml[$$github.com/ghodss/yaml$$] | v1.0.0 | MIT
@@ -90,7 +91,6 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/asaskevich/govalidator[$$github.com/asaskevich/govalidator$$] | v0.0.0-20190424111038-f61b66f89f4a | MIT
 | link:https://github.com/beorn7/perks[$$github.com/beorn7/perks$$] | v1.0.1 | MIT
 | link:https://github.com/bgentry/speakeasy[$$github.com/bgentry/speakeasy$$] | v0.1.0 | MIT
-| link:https://github.com/blang/semver[$$github.com/blang/semver$$] | v3.5.0+incompatible | MIT
 | link:https://github.com/bmizerany/perks[$$github.com/bmizerany/perks$$] | v0.0.0-20141205001514-d9a9656a3a4b | MIT
 | link:https://github.com/cespare/xxhash[$$github.com/cespare/xxhash$$] | v1.1.0 | MIT
 | link:https://github.com/client9/misspell[$$github.com/client9/misspell$$] | v0.3.4 | MIT
