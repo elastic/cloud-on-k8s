@@ -68,7 +68,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		// ca secret should be in Kibana namespace
 		assert.NoError(t, c.Get(types.NamespacedName{
 			Namespace: kibanaFixture.Namespace,
-			Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+			Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 		}, &corev1.Secret{}))
 	}
 
@@ -101,7 +101,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+						Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 						Namespace: kibanaFixture.Namespace,
 						Labels:    associationLabels,
 					},
@@ -140,7 +140,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+						Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 						Namespace: kibanaFixture.Namespace,
 						Labels:    associationLabels,
 					},
@@ -181,7 +181,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+						Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 						Namespace: kibanaFixture.Namespace,
 					},
 				},
@@ -220,7 +220,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+						Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 						Namespace: kibanaFixture.Namespace,
 						Labels:    associationLabels,
 					},
@@ -238,7 +238,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				}, &corev1.Secret{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
-					Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+					Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 				}, &corev1.Secret{}))
 			},
 			wantErr: false,
@@ -300,7 +300,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrappedFakeClient(tt.initialObjects...)
-			if err := deleteOrphanedResources(context.Background(), c, &tt.kibana, associationLabels); (err != nil) != tt.wantErr {
+			if err := deleteOrphanedResources(context.Background(), c, tt.kibana.AssociationRef().WithDefaultNamespace(tt.kibana.Namespace), &tt.kibana, associationLabels); (err != nil) != tt.wantErr {
 				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.postCondition != nil {

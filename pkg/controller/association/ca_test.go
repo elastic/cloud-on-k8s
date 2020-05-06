@@ -75,7 +75,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	kibanaEsCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+			Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
@@ -85,7 +85,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	updatedKibanaEsCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+			Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("updated-fake-cert"),
@@ -105,7 +105,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 	kibanaEmptyEsCA := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+			Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 		},
 		Data: map[string][]byte{
 			certificates.CertFileName: []byte("fake-cert"),
@@ -126,7 +126,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			client:             k8s.WrappedFakeClient(&es, &esCA),
 			kibana:             kibanaFixture,
 			es:                 esFixture,
-			want:               ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+			want:               ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 			wantCA:             &kibanaEsCA,
 			wantCACertProvided: true,
 		},
@@ -135,7 +135,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			client:             k8s.WrappedFakeClient(&es, &updatedEsCA, &kibanaEsCA),
 			kibana:             kibanaFixture,
 			es:                 esFixture,
-			want:               ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+			want:               ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 			wantCA:             &updatedKibanaEsCA,
 			wantCACertProvided: true,
 		},
@@ -154,7 +154,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			client:             k8s.WrappedFakeClient(&es, &esEmptyCA),
 			kibana:             kibanaFixture,
 			es:                 esFixture,
-			want:               ElasticsearchCACertSecretName(&kibanaFixture, kibanaESAssociationName),
+			want:               ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
 			wantCA:             &kibanaEmptyEsCA,
 			wantCACertProvided: false,
 		},
@@ -174,6 +174,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			}
 			got, err := r.ReconcileCASecret(
 				&tt.kibana,
+				esv1.ESNamer,
 				k8s.ExtractNamespacedName(&tt.es),
 			)
 			require.NoError(t, err)
@@ -185,7 +186,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 				var updatedKibanaCA corev1.Secret
 				err = tt.client.Get(types.NamespacedName{
 					Namespace: tt.kibana.Namespace,
-					Name:      ElasticsearchCACertSecretName(&kibanaFixture, "kibana-es"),
+					Name:      ServiceCaCertSecretName(&kibanaFixture, "kibana-es"),
 				}, &updatedKibanaCA)
 				require.NoError(t, err)
 				require.Equal(t, tt.wantCA.Data, updatedKibanaCA.Data)

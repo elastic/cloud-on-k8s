@@ -108,7 +108,22 @@ func (ent *EnterpriseSearch) ServiceAccountName() string {
 	return ent.Spec.ServiceAccountName
 }
 
-func (ent *EnterpriseSearch) ElasticsearchRef() commonv1.ObjectSelector {
+func (ent *EnterpriseSearch) Associated() commonv1.Associated {
+	if ent != nil {
+		return ent
+	}
+	return &EnterpriseSearch{}
+}
+
+func (ent *EnterpriseSearch) AnnotationName() string {
+	return "association.k8s.elastic.co/es-conf"
+}
+
+func (ent *EnterpriseSearch) AssociatedServiceType() string {
+	return "elasticsearch"
+}
+
+func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
 	return ent.Spec.ElasticsearchRef
 }
 
@@ -128,7 +143,16 @@ func (ent *EnterpriseSearch) SetAssociationStatus(status commonv1.AssociationSta
 	ent.Status.Association = status
 }
 
+func (ent *EnterpriseSearch) RequiresAssociation() bool {
+	return ent.Spec.ElasticsearchRef.Name != ""
+}
+
+func (ent *EnterpriseSearch) GetAssociations() []commonv1.Association {
+	return []commonv1.Association{ent}
+}
+
 var _ commonv1.Associated = &EnterpriseSearch{}
+var _ commonv1.Association = &EnterpriseSearch{}
 
 // +kubebuilder:object:root=true
 

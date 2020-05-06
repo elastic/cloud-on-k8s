@@ -9,10 +9,13 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,26 +23,46 @@ import (
 )
 
 const (
-	// ApmESAssociationLabelName marks resources created by this controller for easier retrieval.
-	ApmESAssociationLabelName = "apmassociation.k8s.elastic.co/name"
-	// ApmESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
-	ApmESAssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
+	// ApmAssociationLabelName marks resources created by this controller for easier retrieval.
+	ApmAssociationLabelName = "apmassociation.k8s.elastic.co/name"
+	// ApmAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	ApmAssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
+	// ApmAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	ApmAssociationTypeLabelNamespace = "apmassociation.k8s.elastic.co/type"
 )
 
 func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedShortName:   "apm",
-		AssociatedObjTemplate: func() commonv1.Associated { return &apmv1.ApmServer{} },
-		AssociationName:       "apm-es",
+		AssociatedShortName:    "apm",
+		AssociationObjTemplate: func() commonv1.Association { return &apmv1.ApmEsAssociation{} },
+		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			return true, association.AssociationRef().WithDefaultNamespace(association.GetNamespace()), nil
+		},
+		ExternalServiceURL: getElasticsearchExternalURL,
+		AssociatedNamer:    esv1.ESNamer,
+		AssociationName:    "apm-es",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				ApmESAssociationLabelName:      associated.Name,
-				ApmESAssociationLabelNamespace: associated.Namespace,
+				ApmAssociationLabelName:          associated.Name,
+				ApmAssociationLabelNamespace:     associated.Namespace,
+				ApmAssociationTypeLabelNamespace: "elasticsearch",
 			}
 		},
 		UserSecretSuffix: "apm-user",
 		ESUserRole:       getRoles,
 	})
+}
+
+func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association) (string, error) {
+	esRef := association.AssociationRef()
+	if !esRef.IsDefined() {
+		return "", nil
+	}
+	es := esv1.Elasticsearch{}
+	if err := c.Get(esRef.WithDefaultNamespace(association.GetNamespace()).NamespacedName(), &es); err != nil {
+		return "", err
+	}
+	return services.ExternalServiceURL(es), nil
 }
 
 // getRoles returns for a given version of the APM Server the set of required roles.

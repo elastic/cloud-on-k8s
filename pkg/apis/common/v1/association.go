@@ -27,10 +27,35 @@ const (
 type Associated interface {
 	metav1.Object
 	runtime.Object
-	ElasticsearchRef() ObjectSelector
-	AssociationConf() *AssociationConf
 	ServiceAccountName() string
+	GetAssociations() []Association
+}
+
+// Association interface helps to manage the Spec fields involved in a association.
+// +kubebuilder:object:generate=false
+type Association interface {
+	Associated
+
+	// Associated can be used to retrieve the associated object
+	Associated() Associated
+
+	// AssociatedServiceType returns a string describing the type of the target service (elasticsearch most of the time)
+	// It is mostly used to build some other strings depending on the type of the targeted service.
+	AssociatedServiceType() string
+
+	// AnnotationName is the name of the annotation used to define the config for the associated resource.
+	// It is used by the association controller to store the configuration and by the controller which is
+	// managing the associated resource to build the appropriate configuration.
+	AnnotationName() string
+
+	// Remote service reference
+	AssociationRef() ObjectSelector
+
+	// Configuration
+	AssociationConf() *AssociationConf
 	SetAssociationConf(*AssociationConf)
+
+	// Status
 	AssociationStatus() AssociationStatus
 	SetAssociationStatus(status AssociationStatus)
 }

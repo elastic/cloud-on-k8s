@@ -92,8 +92,12 @@ func TestNewConfigFromSpec(t *testing.T) {
 					Config: &commonv1.Config{Data: tc.configOverrides},
 				},
 			}
-			apmServer.SetAssociationConf(tc.assocConf)
-			gotConf, err := NewConfigFromSpec(client, apmServer)
+
+			(&apmv1.ApmEsAssociation{
+				ApmServer: apmServer,
+			}).SetAssociationConf(tc.assocConf)
+
+			gotConf, err := newConfigFromSpec(client, apmServer)
 			if tc.wantErr {
 				require.Error(t, err)
 				return

@@ -26,7 +26,8 @@ import (
 func deleteOrphanedResources(
 	ctx context.Context,
 	c k8s.Client,
-	associated commonv1.Associated,
+	esRef commonv1.ObjectSelector,
+	association commonv1.Association,
 	matchLabels client.MatchingLabels,
 ) error {
 	span, _ := apm.StartSpan(ctx, "delete_orphaned_resources", tracing.SpanTypeApp)
@@ -39,7 +40,7 @@ func deleteOrphanedResources(
 	}
 
 	for _, s := range secrets.Items {
-		if err := deleteIfOrphaned(c, &s, associated); err != nil {
+		if err := deleteIfOrphaned(c, &s, esRef, association); err != nil {
 			return err
 		}
 	}
@@ -51,20 +52,22 @@ func deleteOrphanedResources(
 func deleteIfOrphaned(
 	c k8s.Client,
 	secret *corev1.Secret,
-	associated commonv1.Associated,
+	esRef commonv1.ObjectSelector,
+	association commonv1.Association,
 ) error {
-	esRef := associated.ElasticsearchRef().WithDefaultNamespace(associated.GetNamespace())
-
-	// Secret should not exist if there is no ES referenced in the spec or if the resource is deleted
-	if !esRef.IsDefined() {
-		return deleteSecret(c, secret, associated)
+	// Secret should not exist if there is no service referenced in the spec or if the resource is deleted
+	serviceRef := association.AssociationRef().WithDefaultNamespace(association.GetNamespace())
+	if !serviceRef.IsDefined() {
+		return deleteSecret(c, secret, association)
 	}
 
 	// User secrets created in the Elasticsearch namespace are handled differently.
 	// We need to check if the referenced namespace has changed in the Spec.
 	// If a Secret is found in a namespace which is not the one referenced in the Spec then the secret should be deleted.
-	if value, ok := secret.Labels[common.TypeLabelName]; ok && value == esuser.AssociatedUserType && esRef.Namespace != secret.Namespace {
-		return deleteSecret(c, secret, associated)
+	if value, ok := secret.Labels[common.TypeLabelName]; ok &&
+		value == esuser.AssociatedUserType &&
+		(!esRef.IsDefined() || esRef.Namespace != secret.Namespace) {
+		return deleteSecret(c, secret, association)
 	}
 
 	return nil

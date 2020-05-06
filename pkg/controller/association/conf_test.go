@@ -17,7 +17,6 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -28,17 +27,18 @@ func TestFetchWithAssociation(t *testing.T) {
 
 func testFetchAPMServer(t *testing.T) {
 	testCases := []struct {
-		name          string
-		apmServer     *apmv1.ApmServer
-		request       reconcile.Request
-		wantErr       bool
-		wantAssocConf *commonv1.AssociationConf
+		name                string
+		apmServer           *apmv1.ApmServer
+		request             reconcile.Request
+		wantErr             bool
+		wantEsAssocConf     *commonv1.AssociationConf
+		wantKibanaAssocConf *commonv1.AssociationConf
 	}{
 		{
-			name:      "with association annotation",
-			apmServer: mkAPMServer(true),
+			name:      "with es association annotation",
+			apmServer: mkAPMServer(true, false),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "apm-server-test", Namespace: "apm-ns"}},
-			wantAssocConf: &commonv1.AssociationConf{
+			wantEsAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "auth-secret",
 				AuthSecretKey:  "apm-user",
 				CASecretName:   "ca-secret",
@@ -47,12 +47,12 @@ func testFetchAPMServer(t *testing.T) {
 		},
 		{
 			name:      "without association annotation",
-			apmServer: mkAPMServer(false),
+			apmServer: mkAPMServer(false, false),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "apm-server-test", Namespace: "apm-ns"}},
 		},
 		{
 			name:      "non existent",
-			apmServer: mkAPMServer(true),
+			apmServer: mkAPMServer(true, false),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "some-other-apm", Namespace: "apm-ns"}},
 			wantErr:   true,
 		},
@@ -63,7 +63,7 @@ func testFetchAPMServer(t *testing.T) {
 			client := k8s.WrappedFakeClient(tc.apmServer)
 
 			var got apmv1.ApmServer
-			err := FetchWithAssociation(context.Background(), client, tc.request, &got)
+			err := FetchWithAssociations(context.Background(), client, tc.request, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -74,12 +74,22 @@ func testFetchAPMServer(t *testing.T) {
 			require.Equal(t, "apm-ns", got.Namespace)
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
-			require.Equal(t, tc.wantAssocConf, got.AssociationConf())
+			for _, assoc := range got.GetAssociations() {
+				switch assoc.AssociatedServiceType() {
+				case "elasticsearch":
+					require.Equal(t, tc.wantEsAssocConf, assoc.AssociationConf())
+				case "kibana":
+					require.Equal(t, tc.wantKibanaAssocConf, assoc.AssociationConf())
+				default:
+					t.Fatalf("unknown association type: %s", assoc.AssociatedServiceType())
+				}
+			}
+
 		})
 	}
 }
 
-func mkAPMServer(withAnnotations bool) *apmv1.ApmServer {
+func mkAPMServer(withEsConfAnnotations, withKbConfAnnotations bool) *apmv1.ApmServer {
 	apmServer := &apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "apm-server-test",
@@ -91,9 +101,15 @@ func mkAPMServer(withAnnotations bool) *apmv1.ApmServer {
 		},
 	}
 
-	if withAnnotations {
+	if withEsConfAnnotations {
 		apmServer.ObjectMeta.Annotations = map[string]string{
-			annotation.AssociationConfAnnotation: `{"authSecretName":"auth-secret", "authSecretKey":"apm-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
+			"association.k8s.elastic.co/es-conf": `{"authSecretName":"auth-secret", "authSecretKey":"apm-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
+		}
+	}
+
+	if withKbConfAnnotations {
+		apmServer.ObjectMeta.Annotations = map[string]string{
+			"association.k8s.elastic.co/kb-conf": `{"authSecretName":"auth-secret", "authSecretKey":"apm-kb-user", "caSecretName": "ca-secret", "url":"https://kb.svc:5601"}`,
 		}
 	}
 
@@ -137,7 +153,7 @@ func testFetchKibana(t *testing.T) {
 			client := k8s.WrappedFakeClient(tc.kibana)
 
 			var got kbv1.Kibana
-			err := FetchWithAssociation(context.Background(), client, tc.request, &got)
+			err := FetchWithAssociations(context.Background(), client, tc.request, &got)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -167,7 +183,7 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 
 	if withAnnotations {
 		kb.ObjectMeta.Annotations = map[string]string{
-			annotation.AssociationConfAnnotation: `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
+			kb.AnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
 		}
 	}
 
@@ -175,15 +191,17 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 }
 
 func TestElasticsearchAuthSettings(t *testing.T) {
-	apmServer := &apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "apm-server-sample",
-			Namespace: "default",
+	apmEsAssociation := apmv1.ApmEsAssociation{
+		ApmServer: &apmv1.ApmServer{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "apm-server-sample",
+				Namespace: "default",
+			},
+			Spec: apmv1.ApmServerSpec{},
 		},
-		Spec: apmv1.ApmServerSpec{},
 	}
 
-	apmServer.SetAssociationConf(&commonv1.AssociationConf{
+	apmEsAssociation.SetAssociationConf(&commonv1.AssociationConf{
 		URL: "https://elasticsearch-sample-es-http.default.svc:9200",
 	})
 
@@ -248,8 +266,8 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			apmServer.SetAssociationConf(&tt.assocConf)
-			gotUsername, gotPassword, err := ElasticsearchAuthSettings(tt.client, apmServer)
+			apmEsAssociation.SetAssociationConf(&tt.assocConf)
+			gotUsername, gotPassword, err := ElasticsearchAuthSettings(tt.client, &apmEsAssociation)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -278,7 +296,7 @@ func TestUpdateAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	err := FetchWithAssociation(context.Background(), client, request, &got)
+	err := FetchWithAssociations(context.Background(), client, request, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -294,10 +312,10 @@ func TestUpdateAssociationConf(t *testing.T) {
 		URL:            "https://new-es.svc:9300",
 	}
 
-	err = UpdateAssociationConf(client, &got, newAssocConf)
+	err = UpdateAssociationConf(client, &got, newAssocConf, "association.k8s.elastic.co/es-conf")
 	require.NoError(t, err)
 
-	err = FetchWithAssociation(context.Background(), client, request, &got)
+	err = FetchWithAssociations(context.Background(), client, request, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -320,7 +338,7 @@ func TestRemoveAssociationConf(t *testing.T) {
 
 	// check the existing values
 	var got kbv1.Kibana
-	err := FetchWithAssociation(context.Background(), client, request, &got)
+	err := FetchWithAssociations(context.Background(), client, request, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)
@@ -329,10 +347,10 @@ func TestRemoveAssociationConf(t *testing.T) {
 	require.Equal(t, assocConf, got.AssociationConf())
 
 	// remove and check the new values
-	err = RemoveAssociationConf(client, &got)
+	err = RemoveAssociationConf(client, &got, "association.k8s.elastic.co/es-conf")
 	require.NoError(t, err)
 
-	err = FetchWithAssociation(context.Background(), client, request, &got)
+	err = FetchWithAssociations(context.Background(), client, request, &got)
 	require.NoError(t, err)
 	require.Equal(t, "kb-test", got.Name)
 	require.Equal(t, "kb-ns", got.Namespace)

@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -38,9 +39,9 @@ var (
 	// Throughout those tests we'll use Kibana association for testing purposes,
 	// but tests are the same for any resource type.
 	kbAssociationInfo = AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &kbv1.Kibana{} },
-		AssociationName:       "kb-es",
-		AssociatedShortName:   "kb",
+		AssociationObjTemplate: func() commonv1.Association { return &kbv1.Kibana{} },
+		AssociationName:        "kb-es",
+		AssociatedShortName:    "kb",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				"kibanaassociation.k8s.elastic.co/name":      associated.Name,
@@ -50,6 +51,17 @@ var (
 		UserSecretSuffix: "kibana-user",
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return "kibana_system", nil
+		},
+		AssociatedNamer: esv1.ESNamer,
+		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			return true, association.AssociationRef(), nil
+		},
+		ExternalServiceURL: func(c k8s.Client, association commonv1.Association) (string, error) {
+			esRef := association.AssociationRef()
+			es := esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: esRef.Namespace, Name: esRef.Name},
+			}
+			return services.ExternalServiceURL(es), nil
 		},
 	}
 
@@ -74,7 +86,7 @@ var (
 		sample := sampleKibanaWithESRef()
 		kb := (&sample).DeepCopy()
 		kb.Annotations = map[string]string{
-			annotation.AssociationConfAnnotation: "{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://esname-es-http.esns.svc:9200\"}",
+			kb.AnnotationName(): "{\"authSecretName\":\"kbname-kibana-user\",\"authSecretKey\":\"kbns-kbname-kibana-user\",\"caCertProvided\":true,\"caSecretName\":\"kbname-kb-es-ca\",\"url\":\"https://esname-es-http.esns.svc:9200\"}",
 		}
 		return *kb
 	}
@@ -169,7 +181,7 @@ var (
 		},
 	}
 	setDynamicWatches = func(t *testing.T, r Reconciler, kb kbv1.Kibana) {
-		err := r.setDynamicWatches(&kb, kb.Spec.ElasticsearchRef.NamespacedName())
+		err := r.setUserAndCaWatches(&kb, kb.Spec.ElasticsearchRef.NamespacedName(), kb.Spec.ElasticsearchRef.NamespacedName(), esv1.ESNamer)
 		require.NoError(t, err)
 	}
 )
@@ -284,7 +296,7 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	// but with a config annotation and secrets resources to clean
 	kb := sampleKibanaNoEsRef()
 	kb.Annotations = sampleAssociatedKibana().Annotations
-	require.NotEmpty(t, kb.Annotations[annotation.AssociationConfAnnotation])
+	require.NotEmpty(t, kb.Annotations[kb.AnnotationName()])
 	r := testReconciler(&kb, &kibanaUserInESNamespace, &kibanaUserInKibanaNamespace, &esCertsInKibanaNamespace)
 	// simulate watches being set
 	setDynamicWatches(t, r, sampleAssociatedKibana())
@@ -310,7 +322,7 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	require.NoError(t, err)
-	require.Empty(t, updatedKibana.Annotations[annotation.AssociationConfAnnotation])
+	require.Empty(t, updatedKibana.Annotations[kb.AnnotationName()])
 	// should remove dynamic watches
 	require.Empty(t, r.watches.Secrets.Registrations())
 	require.Empty(t, r.watches.ElasticsearchClusters.Registrations())
@@ -318,7 +330,7 @@ func TestReconciler_Reconcile_NoESRef_Cleanup(t *testing.T) {
 
 func TestReconciler_Reconcile_NoES(t *testing.T) {
 	kb := sampleAssociatedKibana()
-	require.NotEmpty(t, kb.Annotations[annotation.AssociationConfAnnotation])
+	require.NotEmpty(t, kb.Annotations[kb.AnnotationName()])
 	// es resource does not exist
 	r := testReconciler(&kb)
 	_, err := r.Reconcile(reconcile.Request{NamespacedName: k8s.ExtractNamespacedName(&kb)})
@@ -329,12 +341,12 @@ func TestReconciler_Reconcile_NoES(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationPending, updatedKibana.Status.AssociationStatus)
 	// association conf should have been removed
-	require.Empty(t, updatedKibana.Annotations[annotation.AssociationConfAnnotation])
+	require.Empty(t, updatedKibana.Annotations[kb.AnnotationName()])
 }
 
 func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 	kb := sampleAssociatedKibana()
-	require.NotEmpty(t, kb.Annotations[annotation.AssociationConfAnnotation])
+	require.NotEmpty(t, kb.Annotations[kb.AnnotationName()])
 	r := testReconciler(&kb, &sampleES, &kibanaUserInESNamespace)
 	// simulate rbac association disallowed
 	r.accessReviewer = denyAllAccessReviewer{}
@@ -346,7 +358,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationPending, updatedKibana.Status.AssociationStatus)
 	// association conf should be removed
-	require.Empty(t, updatedKibana.Annotations[annotation.AssociationConfAnnotation])
+	require.Empty(t, updatedKibana.Annotations[kb.AnnotationName()])
 	// user in es namespace should be deleted
 	var secret corev1.Secret
 	err = r.Get(k8s.ExtractNamespacedName(&kibanaUserInESNamespace), &secret)
@@ -357,7 +369,7 @@ func TestReconciler_Reconcile_RBACNotAllowed(t *testing.T) {
 func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	// Kibana references ES, but no secret nor association conf exist yet
 	kb := sampleKibanaWithESRef()
-	require.Empty(t, kb.Annotations[annotation.AssociationConfAnnotation])
+	require.Empty(t, kb.Annotations[kb.AnnotationName()])
 	r := testReconciler(&kb, &sampleES, &esHTTPPublicCertsSecret)
 	// no resources are watched yet
 	require.Empty(t, r.watches.Secrets.Registrations())
@@ -401,7 +413,7 @@ func TestReconciler_Reconcile_NewAssociation(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana().Annotations[annotation.AssociationConfAnnotation], updatedKibana.Annotations[annotation.AssociationConfAnnotation])
+	require.Equal(t, sampleAssociatedKibana().Annotations[kb.AnnotationName()], updatedKibana.Annotations[kb.AnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
@@ -438,7 +450,7 @@ func TestReconciler_Reconcile_ExistingAssociation_NoOp(t *testing.T) {
 	var updatedKibana kbv1.Kibana
 	err = r.Get(k8s.ExtractNamespacedName(&kb), &updatedKibana)
 	// association conf should be set
-	require.Equal(t, sampleAssociatedKibana().Annotations[annotation.AssociationConfAnnotation], updatedKibana.Annotations[annotation.AssociationConfAnnotation])
+	require.Equal(t, sampleAssociatedKibana().Annotations[kb.AnnotationName()], updatedKibana.Annotations[kb.AnnotationName()])
 	// association status should be established
 	require.NoError(t, err)
 	require.Equal(t, commonv1.AssociationEstablished, updatedKibana.Status.AssociationStatus)
@@ -451,7 +463,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 			Namespace: "ns",
 			Name:      "kb",
 			Annotations: map[string]string{
-				annotation.AssociationConfAnnotation: "association-conf-data", // we don't care about the data here
+				"association.k8s.elastic.co/es-conf": "association-conf-data", // we don't care about the data here
 			},
 		},
 		Spec: kbv1.KibanaSpec{ElasticsearchRef: commonv1.ObjectSelector{Name: "es", Namespace: "ns"}},
@@ -459,7 +471,7 @@ func TestReconciler_getElasticsearch(t *testing.T) {
 	tests := []struct {
 		name              string
 		runtimeObjects    []runtime.Object
-		associated        commonv1.Associated
+		associated        commonv1.Association
 		esRef             commonv1.ObjectSelector
 		wantES            esv1.Elasticsearch
 		wantStatus        commonv1.AssociationStatus

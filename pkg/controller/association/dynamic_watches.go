@@ -5,13 +5,12 @@
 package association
 
 import (
-	"k8s.io/apimachinery/pkg/types"
-
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // esWatchName returns the name of the watch setup on the referenced Elasticsearch resource.
@@ -24,15 +23,22 @@ func esUserWatchName(associated types.NamespacedName) string {
 	return associated.Namespace + "-" + associated.Name + "-es-user-watch"
 }
 
-// esCAWatchName returns the name of the watch setup on the secret that
+// associatedCAWatchName returns the name of the watch setup on the secret that
 // contains the HTTP certificate chain of Elasticsearch.
-func esCAWatchName(associated types.NamespacedName) string {
+func associatedCAWatchName(associated types.NamespacedName) string {
 	return associated.Namespace + "-" + associated.Name + "-ca-watch"
 }
 
-// setDynamicWatches sets up dynamic watches related to a referenced Elasticsearch resource.
-func (r *Reconciler) setDynamicWatches(associated commonv1.Associated, esRef types.NamespacedName) error {
-	associatedKey := k8s.ExtractNamespacedName(associated)
+// setUserAndCaWatches sets up dynamic watches related to:
+// * The referenced Elasticsearch resource
+// * The CA of the target service (can be Kibana or Elasticsearch in the case of the APM)
+func (r *Reconciler) setUserAndCaWatches(
+	association commonv1.Association,
+	serviceRef types.NamespacedName,
+	esRef types.NamespacedName,
+	remoteServiceNamer name.Namer,
+) error {
+	associatedKey := k8s.ExtractNamespacedName(association)
 
 	// watch the referenced ES cluster for future reconciliations
 	if err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
@@ -44,7 +50,7 @@ func (r *Reconciler) setDynamicWatches(associated commonv1.Associated, esRef typ
 	}
 
 	// watch the user secret in the ES namespace
-	userSecretKey := UserKey(associated, r.UserSecretSuffix)
+	userSecretKey := UserKey(association, esRef.Namespace, r.UserSecretSuffix)
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esUserWatchName(associatedKey),
 		Watched: []types.NamespacedName{userSecretKey},
@@ -53,10 +59,16 @@ func (r *Reconciler) setDynamicWatches(associated commonv1.Associated, esRef typ
 		return err
 	}
 
-	// watch ES CA secret in the ES namespace
+	// watch the CA secret in the targeted service namespace
+	// Most of the time it is Elasticsearch, but it could be Kibana in the case of the APMServer
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
-		Name:    esCAWatchName(associatedKey),
-		Watched: []types.NamespacedName{certificates.PublicCertsSecretRef(esv1.ESNamer, esRef)},
+		Name: associatedCAWatchName(associatedKey),
+		Watched: []types.NamespacedName{
+			{
+				Name:      certificates.PublicCertsSecretName(remoteServiceNamer, serviceRef.Name),
+				Namespace: serviceRef.Namespace,
+			},
+		},
 		Watcher: associatedKey,
 	}); err != nil {
 		return err
@@ -69,7 +81,7 @@ func (r *Reconciler) removeWatches(associated types.NamespacedName) {
 	// - ES resource
 	r.watches.ElasticsearchClusters.RemoveHandlerForKey(esWatchName(associated))
 	// - ES CA Secret in the ES namespace
-	r.watches.Secrets.RemoveHandlerForKey(esCAWatchName(associated))
+	r.watches.Secrets.RemoveHandlerForKey(associatedCAWatchName(associated))
 	// - user in the ES namespace
 	r.watches.Secrets.RemoveHandlerForKey(esUserWatchName(associated))
 }
