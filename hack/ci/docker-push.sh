@@ -1,15 +1,21 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
-# Helper to handle docker login and docker push.
+# Script to handle exoticisms related to 'docker login' and 'docker push'.
+#
+# Log in to push.docker.elastic.co if the namespace eck, eck-ci or eck-snapshots is used
+# Log in to gcloud if GCR is used
+# Add a 'push.' prefix when using docker.elastic.co
 
-set -eu
+set -euo pipefail
 
+# source variables if present
 if [[ -f .registry.env ]]; then
-    export $(cat .registry.env | sed "s|\s*=\s*|=|g" | xargs) > /dev/null
+    # shellcheck disable=SC2046
+    export $(sed "s|\s*=\s*|=|g" .registry.env)
 fi
 
 docker-login() {
@@ -21,15 +27,16 @@ docker-login() {
         return 0
     fi
 
-    echo "Authentication to ${registry}..."
-    case ${registry} in
+    case "$image" in
 
-        docker.elastic.co)
+        */eck/*|*/eck-ci/*|*/eck-snapshots/*)
+            echo "Authentication to ${registry}..."
             docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASSWORD}" push.docker.elastic.co 2> /dev/null
         ;;
 
-        *.gcr.io)
-            gcloud auth configure-docker --quiet
+        *.gcr.io/*)
+            echo "Authentication to ${registry}..."
+            gcloud auth configure-docker --quiet 2> /dev/null
         ;;
 
         *)
@@ -44,7 +51,7 @@ docker-login() {
 docker-push() {
     local image=$1
 
-    # Add the 'push.' prefix for docker.elastic.co
+    # add the 'push.' prefix for docker.elastic.co
     case ${image} in
 
         docker.elastic.co/*)
@@ -55,6 +62,7 @@ docker-push() {
     esac
 
     echo "Push $image..."
+    # silence the verbose output of the `docker push` command
     docker push "$image" | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
 }
 
