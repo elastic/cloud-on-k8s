@@ -7,8 +7,8 @@
 #################################
 
 # Read env files, ignores if they doesn't exist
--include .env
 -include .registry.env
+-include .env
 
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
