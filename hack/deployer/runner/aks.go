@@ -89,10 +89,8 @@ func (d *AksDriver) Execute() error {
 	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")
-		} else {
-			if err := d.create(); err != nil {
-				return err
-			}
+		} else if err := d.create(); err != nil {
+			return err
 		}
 
 		if err := d.GetCredentials(); err != nil {
