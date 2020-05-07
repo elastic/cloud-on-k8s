@@ -15,7 +15,7 @@ set -euo pipefail
 # source variables if present
 if [[ -f .registry.env ]]; then
     # shellcheck disable=SC2046
-    export $(sed "s|\s*=\s*|=|g" .registry.env)
+    export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" .registry.env)
 fi
 
 docker-login() {
@@ -23,7 +23,7 @@ docker-login() {
     local registry=${image%%"/"*}
 
     if grep -q "$registry" ~/.docker/config.json; then
-        # already log in
+        # already logged in
         return 0
     fi
 

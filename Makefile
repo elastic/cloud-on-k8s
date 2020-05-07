@@ -324,7 +324,7 @@ docker-build: go-generate
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-	@ hack/ci/docker-push.sh $(OPERATOR_IMAGE)
+	@ hack/docker-push.sh $(OPERATOR_IMAGE)
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
@@ -360,7 +360,7 @@ e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
-	@ hack/ci/docker-push.sh $(E2E_IMG)
+	@ hack/docker-push.sh $(E2E_IMG)
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
