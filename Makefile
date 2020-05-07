@@ -140,7 +140,7 @@ lint:
 	golangci-lint run
 
 shellcheck:
-	shellcheck $(shell find . -type f -name "*.sh")
+	shellcheck $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
 
 #############################
 ##  --       Run       --  ##
