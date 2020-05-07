@@ -36,7 +36,7 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
 REGISTRY    ?= docker.elastic.co
-NAMESPACE   ?= eck-snapshots
+NAMESPACE   ?= eck-dev
 NAME        ?= eck-operator
 SNAPSHOT    ?= true
 VERSION     ?= $(shell cat VERSION)
@@ -339,15 +339,14 @@ endif
 	@ echo "NAMESPACE = ${GCLOUD_PROJECT}"     >> .registry.env
 	@ echo "E2E_NAMESPACE = ${GCLOUD_PROJECT}" >> .registry.env
 
-switch-registry-dev:
-	@ echo "NAMESPACE = eck-dev"      > .registry.env
-	@ echo "E2E_NAMESPACE = eck-dev" >> .registry.env
+switch-registry-default:
+	@ rm -f .registry.env
 
 ###################################
 ##  --   End to end tests    --  ##
 ###################################
 
-E2E_NAMESPACE    ?= eck-ci
+E2E_NAMESPACE    ?= eck-dev
 E2E_IMG          ?= $(REGISTRY)/$(E2E_NAMESPACE)/eck-e2e-tests:$(TAG)
 TESTS_MATCH      ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 STACK_VERSION    ?= 7.6.0
