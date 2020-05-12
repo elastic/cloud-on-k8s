@@ -715,11 +715,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/hashicorp/go-multierror
-Version : v1.0.0
-Time    : 2018-08-24T00:40:42Z
+Version : v1.1.0
+Time    : 2020-03-31T18:10:32Z
 Licence : MPL-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-multierror@v1.0.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/hashicorp/go-multierror@v1.1.0/LICENSE:
 
 Mozilla Public License, version 2.0
 
