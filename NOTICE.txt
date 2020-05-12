@@ -40,11 +40,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/blang/semver
-Version : v3.5.0+incompatible
-Time    : 2017-01-30T17:05:46Z
+Version : v3.5.1+incompatible
+Time    : 2017-07-27T06:48:18Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/blang/semver@v3.5.0+incompatible/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/blang/semver@v3.5.1+incompatible/LICENSE:
 
 The MIT License
 
