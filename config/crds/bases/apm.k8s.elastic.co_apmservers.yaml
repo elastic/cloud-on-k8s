@@ -6338,7 +6338,7 @@ spec:
                 type: string
               kibanaAssociationStatus:
                 description: KibanaAssociationStatus is the status of any auto-linking
-                  to Elasticsearch clusters.
+                  to a Kibana instance.
                 type: string
               secretTokenSecret:
                 description: SecretTokenSecretName is the name of the Secret that
