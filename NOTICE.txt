@@ -10,11 +10,11 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 --------------------------------------------------------------------------------
 Module  : github.com/Masterminds/sprig
-Version : v2.20.0+incompatible
-Time    : 2019-06-18T15:54:40Z
+Version : v2.22.0+incompatible
+Time    : 2019-10-02T15:00:24Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig@v2.20.0+incompatible/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig@v2.22.0+incompatible/LICENSE.txt:
 
 Sprig
 Copyright (C) 2013 Masterminds
