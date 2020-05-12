@@ -33,12 +33,20 @@ Package v1 contains API schema definitions for managing APM Server resources.
 
 
 
+
+
+
+
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserver"]
 === ApmServer 
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
-
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmesassociation[$$ApmEsAssociation$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmkibanaassociation[$$ApmKibanaAssociation$$]
+****
 
 [cols="25a,75a", options="header"]
 |===
@@ -70,6 +78,7 @@ ApmServerSpec holds the specification of an APM Server.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the APM Server configuration. See: https://www.elastic.co/guide/en/apm/server/current/configuring-howto-apm-server.html
 | *`http`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-httpconfig[$$HTTPConfig$$]__ | HTTP holds the HTTP layer configuration for the APM Server resource.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
+| *`kibanaRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 | *`secureSettings`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-secretsource[$$SecretSource$$]__ | SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for APM Server.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to a resource (eg. Elasticsearch) in a different namespace. Can only be used if ECK is enforcing RBAC on references.
@@ -134,6 +143,8 @@ ApmServerSpec holds the specification of an APM Server.
 == common.k8s.elastic.co/v1
 
 Package v1 contains API schema definitions for common types used by all resources.
+
+
 
 
 
