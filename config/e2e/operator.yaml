@@ -25,6 +25,7 @@ rules:
   - secrets
   - services
   - configmaps
+  - serviceaccounts
   verbs:
   - get
   - list
@@ -38,6 +39,7 @@ rules:
   resources:
   - deployments
   - statefulsets
+  - daemonsets
   verbs:
   - get
   - list

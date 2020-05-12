@@ -168,6 +168,11 @@ func init() {
 		"",
 		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
 	)
+	Cmd.Flags().Bool(
+		operator.DisableAutodiscoveryRBACSetup,
+		false,
+		fmt.Sprintf("Determines whether the operator should set up role, binding and service account for Beats autodiscover feature"),
+	)
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))

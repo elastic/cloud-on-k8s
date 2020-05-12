@@ -19,6 +19,9 @@ rules:
   - apiGroups: ["enterprisesearch.k8s.elastic.co"]
     resources: ["enterprisesearches"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["beat.k8s.elastic.co"]
+    resources: ["beats"]
+    verbs: ["get", "list", "watch"]
 
 ---
 
@@ -39,6 +42,6 @@ rules:
   - apiGroups: ["kibana.k8s.elastic.co"]
     resources: ["kibanas"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
-  - apiGroups: ["enterprisesearch.k8s.elastic.co"]
-    resources: ["enterprisesearches"]
+  - apiGroups: ["beat.k8s.elastic.co"]
+    resources: ["beats"]
     verbs: ["create", "delete", "deletecollection", "patch", "update"]
