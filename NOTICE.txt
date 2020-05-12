@@ -1524,11 +1524,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/pkg/errors
-Version : v0.8.1
-Time    : 2019-01-03T06:52:24Z
+Version : v0.9.1
+Time    : 2020-01-14T19:47:44Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/pkg/errors@v0.8.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/pkg/errors@v0.9.1/LICENSE:
 
 Copyright (c) 2015, Dave Cheney <dave@cheney.net>
 All rights reserved.
