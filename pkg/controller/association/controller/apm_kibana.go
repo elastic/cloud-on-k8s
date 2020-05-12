@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -40,7 +39,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		},
 		UserSecretSuffix: "apm-kb-user",
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
-			return esuser.SuperUserBuiltinRole, nil
+			return "apm_user", nil
 		},
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
 			kibanaKey := association.AssociationRef().WithDefaultNamespace(association.GetNamespace()).NamespacedName()
