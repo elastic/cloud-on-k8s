@@ -641,11 +641,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/google/go-cmp
-Version : v0.3.1
-Time    : 2019-08-05T20:51:40Z
+Version : v0.4.0
+Time    : 2019-12-16T21:18:14Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.3.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/google/go-cmp@v0.4.0/LICENSE:
 
 Copyright (c) 2017 The Go Authors. All rights reserved.
 
@@ -26854,11 +26854,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/xerrors
-Version : v0.0.0-20191011141410-1b5146add898
-Time    : 2019-10-11T14:14:10Z
+Version : v0.0.0-20191204190536-9bdfabe68543
+Time    : 2019-12-04T19:05:36Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/xerrors@v0.0.0-20191011141410-1b5146add898/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/xerrors@v0.0.0-20191204190536-9bdfabe68543/LICENSE:
 
 Copyright (c) 2019 The Go Authors. All rights reserved.
 
