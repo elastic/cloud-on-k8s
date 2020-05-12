@@ -10,6 +10,7 @@ rules:
   - "authorization.k8s.io"
   resources:
   - subjectaccessreviews
+  - rbac
   verbs:
   - create
 - apiGroups:
@@ -22,6 +23,7 @@ rules:
   - secrets
   - services
   - configmaps
+  - serviceaccounts
   verbs:
   - get
   - list
@@ -105,6 +107,19 @@ rules:
   - enterprisesearches
   - enterprisesearches/status
   - enterprisesearches/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - beat.k8s.elastic.co
+  resources:
+  - beats
+  - beats/status
   verbs:
   - get
   - list

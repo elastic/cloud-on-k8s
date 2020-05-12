@@ -28,6 +28,10 @@ func TestSamples(t *testing.T) {
 
 	decoder := helper.NewYAMLDecoder()
 	for _, sample := range sampleFiles {
+		if sample == "../../config/samples/beat/filebeat_es_kibana.yaml" {
+			// ignore Beat sample for now
+			continue
+		}
 		testName := mkTestName(t, sample)
 		builders := createBuilders(t, decoder, sample, testName)
 		t.Run(testName, func(t *testing.T) {

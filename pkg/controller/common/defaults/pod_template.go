@@ -337,3 +337,34 @@ func (b *PodTemplateBuilder) WithPreStopHook(handler corev1.Handler) *PodTemplat
 
 	return b
 }
+
+func (b *PodTemplateBuilder) WithArgs(args ...string) *PodTemplateBuilder {
+	b.Container.Args = args
+	return b
+}
+
+func (b *PodTemplateBuilder) WithServiceAccount(serviceAccount string) *PodTemplateBuilder {
+	b.PodTemplate.Spec.ServiceAccountName = serviceAccount
+	return b
+}
+
+func (b *PodTemplateBuilder) WithHostNetwork() *PodTemplateBuilder {
+	b.PodTemplate.Spec.HostNetwork = true
+	return b
+}
+
+func (b *PodTemplateBuilder) WithDNSPolicy(dnsPolicy corev1.DNSPolicy) *PodTemplateBuilder {
+	b.PodTemplate.Spec.DNSPolicy = dnsPolicy
+	return b
+}
+
+func (b *PodTemplateBuilder) WithSecurityContext(securityContext corev1.SecurityContext) *PodTemplateBuilder {
+	b.Container.SecurityContext = &securityContext
+	return b
+}
+
+func (b *PodTemplateBuilder) WithAutomountServiceAccountToken() *PodTemplateBuilder {
+	t := true
+	b.PodTemplate.Spec.AutomountServiceAccountToken = &t
+	return b
+}

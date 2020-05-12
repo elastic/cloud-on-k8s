@@ -25,6 +25,7 @@ const (
 	KibanaImage        Image = "kibana/kibana"
 	// TODO
 	EnterpriseSearchImage Image = "TODO"
+	FilebeatImage         Image = "beats/filebeat"
 )
 
 // ImageRepository returns the full container image name by concatenating the current container registry and the image path with the given version.

@@ -24,6 +24,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
+	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -330,6 +332,10 @@ func execute() {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
 	}
 
+	if viper.GetBool(operator.DisableAutodiscoveryRBACSetup) {
+		commonbeat.DisableAutodiscoveryRBACSetup()
+	}
+
 	if err = apmserver.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ApmServer")
 		os.Exit(1)
@@ -346,6 +352,10 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "EnterpriseSearch")
 		os.Exit(1)
 	}
+	if err = beat.Add(mgr, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "Beat")
+		os.Exit(1)
+	}
 	if err = associationctl.AddApmES(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "apm-es-association")
 		os.Exit(1)
@@ -358,6 +368,11 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "ent-es-association")
 		os.Exit(1)
 	}
+	if err = associationctl.AddBeatES(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "beat-es-association")
+		os.Exit(1)
+	}
+
 	if err = remoteca.Add(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "RemoteClusterCertificateAuthorites")
 		os.Exit(1)
