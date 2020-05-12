@@ -1,0 +1,5 @@
+[[release-highlights-1.1.1]]
+== 1.1.1 release highlights
+
+This release addresses an issue with the name of the Secret containing the Elasticsearch transport certificates.
+It also increases the default memory requirements for the operator Pod.
