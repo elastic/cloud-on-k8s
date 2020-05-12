@@ -35,7 +35,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/magiconair/properties[$$github.com/magiconair/properties$$] | v1.8.1 | BSD-2-Clause
 | link:https://github.com/pkg/errors[$$github.com/pkg/errors$$] | v0.9.1 | BSD-2-Clause
 | link:https://github.com/sethvargo/go-password[$$github.com/sethvargo/go-password$$] | v0.1.3 | MIT
-| link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v0.0.5 | Apache-2.0
+| link:https://github.com/spf13/cobra[$$github.com/spf13/cobra$$] | v1.0.0 | Apache-2.0
 | link:https://github.com/spf13/pflag[$$github.com/spf13/pflag$$] | v1.0.5 | BSD-3-Clause
 | link:https://github.com/spf13/viper[$$github.com/spf13/viper$$] | v1.4.0 | MIT
 | link:https://github.com/stretchr/testify[$$github.com/stretchr/testify$$] | v1.4.0 | MIT
@@ -103,6 +103,7 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/coreos/go-systemd[$$github.com/coreos/go-systemd$$] | v0.0.0-20190321100706-95778dfbb74e | Apache-2.0
 | link:https://github.com/coreos/pkg[$$github.com/coreos/pkg$$] | v0.0.0-20180928190104-399ea9e2e55f | Apache-2.0
 | link:https://github.com/cpuguy83/go-md2man[$$github.com/cpuguy83/go-md2man$$] | v1.0.10 | MIT
+| link:https://github.com/cpuguy83/go-md2man[$$github.com/cpuguy83/go-md2man/v2$$] | v2.0.0 | MIT
 | link:https://github.com/creack/pty[$$github.com/creack/pty$$] | v1.1.7 | MIT
 | link:https://github.com/cucumber/godog[$$github.com/cucumber/godog$$] | v0.8.1 | MIT
 | link:https://github.com/dgrijalva/jwt-go[$$github.com/dgrijalva/jwt-go$$] | v3.2.0+incompatible | MIT
@@ -228,10 +229,12 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://github.com/rogpeppe/go-charset[$$github.com/rogpeppe/go-charset$$] | v0.0.0-20180617210344-2471d30d28b4 | BSD-2-Clause
 | link:https://github.com/rogpeppe/go-internal[$$github.com/rogpeppe/go-internal$$] | v1.3.0 | BSD-3-Clause
 | link:https://github.com/russross/blackfriday[$$github.com/russross/blackfriday$$] | v1.5.2 | BSD-2-Clause
+| link:https://github.com/russross/blackfriday[$$github.com/russross/blackfriday/v2$$] | v2.0.1 | BSD-2-Clause
 | link:https://github.com/ryanuber/columnize[$$github.com/ryanuber/columnize$$] | v2.1.0+incompatible | MIT
 | link:https://github.com/ryanuber/go-glob[$$github.com/ryanuber/go-glob$$] | v1.0.0 | MIT
 | link:https://github.com/santhosh-tekuri/jsonschema[$$github.com/santhosh-tekuri/jsonschema$$] | v1.2.4 | BSD-3-Clause
 | link:https://github.com/sergi/go-diff[$$github.com/sergi/go-diff$$] | v1.0.0 | MIT
+| link:https://github.com/shurcooL/sanitized_anchor_name[$$github.com/shurcooL/sanitized_anchor_name$$] | v1.0.0 | MIT
 | link:https://github.com/sirupsen/logrus[$$github.com/sirupsen/logrus$$] | v1.4.2 | MIT
 | link:https://github.com/soheilhy/cmux[$$github.com/soheilhy/cmux$$] | v0.1.4 | Apache-2.0
 | link:https://github.com/spaolacci/murmur3[$$github.com/spaolacci/murmur3$$] | v0.0.0-20180118202830-f09979ecbc72 | BSD-3-Clause

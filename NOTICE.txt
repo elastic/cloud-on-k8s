@@ -1587,11 +1587,11 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/cobra
-Version : v0.0.5
-Time    : 2019-06-07T14:48:23Z
+Version : v1.0.0
+Time    : 2020-04-10T19:56:28Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v0.0.5/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/cobra@v1.0.0/LICENSE.txt:
 
                                 Apache License
                            Version 2.0, January 2004
@@ -8269,6 +8269,37 @@ Time    : 2019-03-14T22:45:56Z
 Licence : MIT
 
 Contents of probable licence file $GOMODCACHE/github.com/cpuguy83/go-md2man@v1.0.10/LICENSE.md:
+
+The MIT License (MIT)
+
+Copyright (c) 2014 Brian Goff
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+Module  : github.com/cpuguy83/go-md2man/v2
+Version : v2.0.0
+Time    : 2019-03-14T23:30:15Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/cpuguy83/go-md2man/v2@v2.0.0/LICENSE.md:
 
 The MIT License (MIT)
 
@@ -24480,6 +24511,45 @@ Blackfriday is distributed under the Simplified BSD License:
 
 
 --------------------------------------------------------------------------------
+Module  : github.com/russross/blackfriday/v2
+Version : v2.0.1
+Time    : 2018-09-20T17:16:15Z
+Licence : BSD-2-Clause
+
+Contents of probable licence file $GOMODCACHE/github.com/russross/blackfriday/v2@v2.0.1/LICENSE.txt:
+
+Blackfriday is distributed under the Simplified BSD License:
+
+> Copyright © 2011 Russ Ross
+> All rights reserved.
+>
+> Redistribution and use in source and binary forms, with or without
+> modification, are permitted provided that the following conditions
+> are met:
+>
+> 1.  Redistributions of source code must retain the above copyright
+>     notice, this list of conditions and the following disclaimer.
+>
+> 2.  Redistributions in binary form must reproduce the above
+>     copyright notice, this list of conditions and the following
+>     disclaimer in the documentation and/or other materials provided with
+>     the distribution.
+>
+> THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+> "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+> LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+> FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+> COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+> INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+> BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+> LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+> CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+> LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+> ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+> POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
 Module  : github.com/ryanuber/columnize
 Version : v2.1.0+incompatible
 Time    : 2015-09-15T23:29:42Z
@@ -24604,6 +24674,37 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
+
+
+--------------------------------------------------------------------------------
+Module  : github.com/shurcooL/sanitized_anchor_name
+Version : v1.0.0
+Time    : 2018-12-26T21:49:07Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/shurcoo!l/sanitized_anchor_name@v1.0.0/LICENSE:
+
+MIT License
+
+Copyright (c) 2015 Dmitri Shuralyov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 
 --------------------------------------------------------------------------------
