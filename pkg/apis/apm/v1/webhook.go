@@ -6,6 +6,7 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -22,10 +23,14 @@ var (
 	groupKind     = schema.GroupKind{Group: GroupVersion.Group, Kind: "ApmServer"}
 	validationLog = logf.Log.WithName("apm-v1-validation")
 
+	// apmAgentConfigurationMinVersion is the minimum required version to establish an association with Kibana
+	apmAgentConfigurationMinVersion = version.MustParse("7.3.0")
+
 	defaultChecks = []func(*ApmServer) field.ErrorList{
 		checkNoUnknownFields,
 		checkNameLength,
 		checkSupportedVersion,
+		checkAgentConfigurationMinVersion,
 	}
 
 	updateChecks = []func(old, curr *ApmServer) field.ErrorList{
@@ -103,4 +108,24 @@ func checkSupportedVersion(as *ApmServer) field.ErrorList {
 
 func checkNoDowngrade(prev, curr *ApmServer) field.ErrorList {
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
+}
+
+func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
+	apmVersion, err := commonv1.ParseVersion(as.EffectiveVersion())
+	if err != nil {
+		return err
+	}
+	if !apmVersion.IsSameOrAfter(apmAgentConfigurationMinVersion) {
+		return field.ErrorList{field.Forbidden(
+			field.NewPath("spec").Child("kibanaRef"),
+			fmt.Sprintf(
+				"required version for Kibana association is %s but desired version is %s",
+				apmAgentConfigurationMinVersion,
+				apmVersion,
+			),
+		),
+		}
+
+	}
+	return nil
 }
