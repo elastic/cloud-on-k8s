@@ -138,7 +138,6 @@ Package v1beta1 contains API Schema definitions for the beat v1beta1 API group
 
 .Resource Types
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beat[$$Beat$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatlist[$$BeatList$$]
 
 
 
@@ -147,10 +146,7 @@ Package v1beta1 contains API Schema definitions for the beat v1beta1 API group
 
 Beat is the Schema for the beats API
 
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatlist[$$BeatList$$]
-****
+
 
 [cols="25a,75a", options="header"]
 |===
@@ -160,24 +156,6 @@ Beat is the Schema for the beats API
 | *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
 
 | *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]__ | 
-|===
-
-
-[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatlist"]
-=== BeatList 
-
-BeatList contains a list of Beat
-
-
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`apiVersion`* __string__ | `beat.k8s.elastic.co/v1beta1`
-| *`kind`* __string__ | `BeatList`
-| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta[$$ListMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
-
-| *`items`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beat[$$Beat$$]__ | 
 |===
 
 
@@ -203,8 +181,6 @@ BeatSpec defines the desired state of a Beat.
 | *`daemonSet`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-daemonsetspec[$$DaemonSetSpec$$]__ | DaemonSet field allows to: 1. indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the    Type is used 2. Provide spec for the DaemonSet At most one of DaemonSet and Deployment can be used.
 | *`deployment`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-deploymentspec[$$DeploymentSpec$$]__ | Deployment field allows to: 1. indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the    Type is used 2. Provide spec for the Deployment At most one of DaemonSet and Deployment can be used.
 |===
-
-
 
 
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-daemonsetspec"]
