@@ -1839,11 +1839,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/testify
-Version : v1.4.0
-Time    : 2019-07-12T00:01:36Z
+Version : v1.5.1
+Time    : 2020-02-19T20:56:11Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.4.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.5.1/LICENSE:
 
 MIT License
 
@@ -1900,11 +1900,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm
-Version : v1.7.2
-Time    : 2020-03-19T02:03:18Z
+Version : v1.8.0
+Time    : 2020-05-06T03:17:47Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.7.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.8.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2111,11 +2111,11 @@ Contents of probable licence file $GOMODCACHE/go.elastic.co/apm@v1.7.2/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmelasticsearch
-Version : v1.7.3-0.20200421085619-eea0ff3c17de
-Time    : 2020-04-21T08:56:19Z
+Version : v1.8.0
+Time    : 2020-05-06T03:17:47Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch@v1.7.3-0.20200421085619-eea0ff3c17de/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmelasticsearch@v1.8.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2350,11 +2350,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/zap
-Version : v1.12.0
-Time    : 2019-10-30T01:33:56Z
+Version : v1.15.0
+Time    : 2020-04-23T21:40:26Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.12.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/zap@v1.15.0/LICENSE.txt:
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
@@ -2379,11 +2379,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/crypto
-Version : v0.0.0-20191011191535-87dc89f01550
-Time    : 2019-10-11T19:15:35Z
+Version : v0.0.0-20200510223506-06a226fb4e37
+Time    : 2020-05-10T22:35:06Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.0.0-20191011191535-87dc89f01550/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/crypto@v0.0.0-20200510223506-06a226fb4e37/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -2416,11 +2416,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : gopkg.in/yaml.v2
-Version : v2.2.5
-Time    : 2019-11-04T18:03:43Z
+Version : v2.2.8
+Time    : 2020-01-21T17:19:40Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v2@v2.2.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v2@v2.2.8/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2627,11 +2627,11 @@ Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v2@v2.2.5/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : gopkg.in/yaml.v3
-Version : v3.0.0-20191120175047-4206685974f2
-Time    : 2019-11-20T17:50:47Z
+Version : v3.0.0-20200506231410-2ff61e1afc86
+Time    : 2020-05-06T23:14:10Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v3@v3.0.0-20191120175047-4206685974f2/LICENSE:
+Contents of probable licence file $GOMODCACHE/gopkg.in/yaml.v3@v3.0.0-20200506231410-2ff61e1afc86/LICENSE:
 
 
 This project is covered by two different licenses: MIT and Apache.
@@ -29329,11 +29329,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 --------------------------------------------------------------------------------
 Module  : go.elastic.co/apm/module/apmhttp
-Version : v1.7.2
-Time    : 2020-03-19T02:03:18Z
+Version : v1.8.0
+Time    : 2020-05-06T03:17:47Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v1.7.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/go.elastic.co/apm/module/apmhttp@v1.8.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -30237,11 +30237,11 @@ Contents of probable licence file $GOMODCACHE/go.opencensus.io@v0.22.0/LICENSE:
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/atomic
-Version : v1.5.0
-Time    : 2019-10-29T22:13:04Z
+Version : v1.6.0
+Time    : 2020-02-24T21:57:07Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/atomic@v1.5.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/atomic@v1.6.0/LICENSE.txt:
 
 Copyright (c) 2016 Uber Technologies, Inc.
 
@@ -30266,11 +30266,11 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : go.uber.org/multierr
-Version : v1.3.0
-Time    : 2019-10-29T22:18:44Z
+Version : v1.5.0
+Time    : 2020-02-24T22:08:21Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/go.uber.org/multierr@v1.3.0/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/go.uber.org/multierr@v1.5.0/LICENSE.txt:
 
 Copyright (c) 2017 Uber Technologies, Inc.
 
