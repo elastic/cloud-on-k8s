@@ -5,12 +5,12 @@
 package apmserver
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
@@ -54,10 +54,10 @@ func readinessProbe(tls bool) corev1.Probe {
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
-			Exec: &corev1.ExecAction{
-				Command: []string{"bash", "-c",
-					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/ -k -s`, scheme, HTTPPort),
-				},
+			HTTPGet: &corev1.HTTPGetAction{
+				Port:   intstr.FromInt(HTTPPort),
+				Path:   "/",
+				Scheme: scheme,
 			},
 		},
 	}
