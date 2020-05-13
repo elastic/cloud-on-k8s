@@ -22,6 +22,8 @@
           github-hooks: true
           status-context: devops-ci
           cancel-builds-on-update: false
+          white-list:
+            - renovate[bot]
     properties:
       - github:
           url: https://github.com/elastic/cloud-on-k8s/
