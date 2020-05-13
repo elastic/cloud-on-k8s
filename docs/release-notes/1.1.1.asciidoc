@@ -4,6 +4,14 @@
 [[release-notes-1.1.1]]
 == {n} version 1.1.1
 
+[[breaking-1.1.1]]
+[float]
+=== Breaking changes
+
+* Revert readiness probes independent of the host/container... (#2528) {pull}3060[#3060]
+
+
+
 [[enhancement-1.1.1]]
 [float]
 === Enhancements
