@@ -16,7 +16,7 @@ const (
 	// Minimum version for 6.8.x tested with the operator
 	MinVersion68x = "6.8.5"
 	// Current latest version for 7.x
-	LatestVersion7x = "7.6.0" // version to synchronize with the latest release of the Elastic Stack
+	LatestVersion7x = "7.7.0" // version to synchronize with the latest release of the Elastic Stack
 )
 
 // SkipInvalidUpgrade skips a test that would do an invalid upgrade.
