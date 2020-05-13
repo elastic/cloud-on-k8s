@@ -86,7 +86,10 @@ dependencies:
 
 # Generate code, CRDs and documentation
 ALL_CRDS=config/crds/all-crds.yaml
-generate: generate-crds generate-api-docs generate-notice-file
+generate: tidy generate-crds generate-api-docs generate-notice-file
+
+tidy:
+	go mod tidy
 
 go-generate:
 	# we use this in pkg/controller/common/license
