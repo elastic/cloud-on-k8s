@@ -23,9 +23,9 @@ type CASecret struct {
 	CACertProvided bool
 }
 
-// ServiceCaCertSecretName returns the name of the secret holding the certificate chain used
+// ServiceCACertSecretName returns the name of the secret holding the certificate chain used
 // by the associated resource to establish and validate a secured HTTP connection to the target service.
-func ServiceCaCertSecretName(associated commonv1.Associated, associationName string) string {
+func ServiceCACertSecretName(associated commonv1.Associated, associationName string) string {
 	return associated.GetName() + "-" + associationName + "-ca"
 }
 
@@ -51,7 +51,7 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: association.GetNamespace(),
-			Name:      ServiceCaCertSecretName(association, r.AssociationName),
+			Name:      ServiceCACertSecretName(association, r.AssociationName),
 			Labels:    labels,
 		},
 		Data: servicePublicHTTPCertificatesSecret.Data,

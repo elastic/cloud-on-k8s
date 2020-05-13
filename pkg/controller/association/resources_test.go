@@ -68,7 +68,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		// ca secret should be in Kibana namespace
 		assert.NoError(t, c.Get(types.NamespacedName{
 			Namespace: kibanaFixture.Namespace,
-			Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
+			Name:      ServiceCACertSecretName(&kibanaFixture, kibanaESAssociationName),
 		}, &corev1.Secret{}))
 	}
 
@@ -101,7 +101,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
+						Name:      ServiceCACertSecretName(&kibanaFixture, kibanaESAssociationName),
 						Namespace: kibanaFixture.Namespace,
 						Labels:    associationLabels,
 					},
@@ -140,7 +140,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
+						Name:      ServiceCACertSecretName(&kibanaFixture, kibanaESAssociationName),
 						Namespace: kibanaFixture.Namespace,
 						Labels:    associationLabels,
 					},
@@ -181,7 +181,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
+						Name:      ServiceCACertSecretName(&kibanaFixture, kibanaESAssociationName),
 						Namespace: kibanaFixture.Namespace,
 					},
 				},
@@ -220,7 +220,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
+						Name:      ServiceCACertSecretName(&kibanaFixture, kibanaESAssociationName),
 						Namespace: kibanaFixture.Namespace,
 						Labels:    associationLabels,
 					},
@@ -238,7 +238,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				}, &corev1.Secret{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
-					Name:      ServiceCaCertSecretName(&kibanaFixture, kibanaESAssociationName),
+					Name:      ServiceCACertSecretName(&kibanaFixture, kibanaESAssociationName),
 				}, &corev1.Secret{}))
 			},
 			wantErr: false,
