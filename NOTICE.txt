@@ -9,15 +9,14 @@ Third party libraries used by the Elastic Cloud on Kubernetes project
 
 
 --------------------------------------------------------------------------------
-Module  : github.com/Masterminds/sprig
-Version : v2.22.0+incompatible
-Time    : 2019-10-02T15:00:24Z
+Module  : github.com/Masterminds/sprig/v3
+Version : v3.1.0
+Time    : 2020-04-16T17:44:58Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig@v2.22.0+incompatible/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/sprig/v3@v3.1.0/LICENSE.txt:
 
-Sprig
-Copyright (C) 2013 Masterminds
+Copyright (C) 2013-2020 Masterminds
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -6815,15 +6814,14 @@ Contents of probable licence file $GOMODCACHE/github.com/!masterminds/goutils@v1
 
 
 --------------------------------------------------------------------------------
-Module  : github.com/Masterminds/semver
-Version : v1.4.2
-Time    : 2018-04-10T20:43:47Z
+Module  : github.com/Masterminds/semver/v3
+Version : v3.1.0
+Time    : 2020-04-16T14:13:10Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver@v1.4.2/LICENSE.txt:
+Contents of probable licence file $GOMODCACHE/github.com/!masterminds/semver/v3@v3.1.0/LICENSE.txt:
 
-The Masterminds
-Copyright (C) 2014-2015, Matt Butcher and Matt Farina
+Copyright (C) 2014-2019, Matt Butcher and Matt Farina
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23090,11 +23088,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/huandu/xstrings
-Version : v1.2.0
-Time    : 2018-09-06T14:50:35Z
+Version : v1.3.1
+Time    : 2020-04-11T12:02:05Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/huandu/xstrings@v1.2.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/huandu/xstrings@v1.3.1/LICENSE:
 
 The MIT License (MIT)
 
@@ -28952,11 +28950,11 @@ Contents of probable licence file $GOMODCACHE/github.com/spf13/afero@v1.2.2/LICE
 
 --------------------------------------------------------------------------------
 Module  : github.com/spf13/cast
-Version : v1.3.0
-Time    : 2018-10-24T22:59:28Z
+Version : v1.3.1
+Time    : 2019-12-18T07:28:14Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/spf13/cast@v1.3.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/spf13/cast@v1.3.1/LICENSE:
 
 The MIT License (MIT)
 
