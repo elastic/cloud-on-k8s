@@ -17,14 +17,12 @@ const (
 	AksDriverID                    = "aks"
 	AksVaultPath                   = "secret/devops-ci/cloud-on-k8s/ci-azr-k8s-operator"
 	AksResourceGroupVaultFieldName = "resource-group"
-	AksAcrNameVaultFieldName       = "acr-name"
 	AksConfigFileName              = "deployer-config-aks.yml"
 	DefaultAksRunConfigTemplate    = `id: aks-dev
 overrides:
   clusterName: %s-dev-cluster
   aks:
     resourceGroup: %s
-    acrName: %s
 `
 )
 
@@ -53,14 +51,6 @@ func (gdf *AksDriverFactory) Create(plan Plan) (Driver, error) {
 			}
 			plan.Aks.ResourceGroup = resourceGroup
 		}
-
-		if plan.Aks.AcrName == "" {
-			acrName, err := vaultClient.Get(AksVaultPath, AksAcrNameVaultFieldName)
-			if err != nil {
-				return nil, err
-			}
-			plan.Aks.AcrName = acrName
-		}
 	}
 
 	return &AksDriver{
@@ -71,7 +61,6 @@ func (gdf *AksDriverFactory) Create(plan Plan) (Driver, error) {
 			"NodeCount":         plan.Aks.NodeCount,
 			"MachineType":       plan.MachineType,
 			"KubernetesVersion": plan.KubernetesVersion,
-			"AcrName":           plan.Aks.AcrName,
 			"Location":          plan.Aks.Location,
 		},
 		vaultClient: vaultClient,
@@ -100,14 +89,8 @@ func (d *AksDriver) Execute() error {
 	case CreateAction:
 		if exists {
 			log.Printf("not creating as cluster exists")
-		} else {
-			if err := d.create(); err != nil {
-				return err
-			}
-
-			if err := d.configureDocker(); err != nil {
-				return err
-			}
+		} else if err := d.create(); err != nil {
+			return err
 		}
 
 		if err := d.GetCredentials(); err != nil {
@@ -184,37 +167,6 @@ func (d *AksDriver) create() error {
 	}
 
 	return nil
-}
-
-func (d *AksDriver) configureDocker() error {
-	log.Print("Configuring Docker...")
-	if err := NewCommand("az acr login --name {{.AcrName}}").AsTemplate(d.ctx).Run(); err != nil {
-		return err
-	}
-
-	if d.plan.ServiceAccount {
-		// it's already set for the ServiceAccount
-		return nil
-	}
-
-	cmd := `az aks show --resource-group {{.ResourceGroup}} --name {{.ClusterName}} --query "servicePrincipalProfile.clientId" --output tsv`
-	clientIds, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
-	if err != nil {
-		return err
-	}
-
-	cmd = `az acr show --resource-group {{.ResourceGroup}} --name {{.AcrName}} --query "id" --output tsv`
-	acrIds, err := NewCommand(cmd).AsTemplate(d.ctx).StdoutOnly().OutputList()
-	if err != nil {
-		return err
-	}
-
-	return NewCommand(`az role assignment create --assignee {{.ClientId}} --role acrpull --scope {{.AcrId}}`).
-		AsTemplate(map[string]interface{}{
-			"ClientId": clientIds[0],
-			"AcrId":    acrIds[0],
-		}).
-		Run()
 }
 
 func (d *AksDriver) GetCredentials() error {

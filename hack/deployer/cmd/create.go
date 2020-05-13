@@ -49,12 +49,7 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				acrName, err := GetEnvVar("ACR_NAME")
-				if err != nil {
-					return err
-				}
-
-				data := fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup, acrName)
+				data := fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup)
 				fullPath := path.Join(filePath, runner.AksConfigFileName)
 				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
 					return err

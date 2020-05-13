@@ -4,10 +4,11 @@
 
 # This Makefile is mostly used for continuous integration.
 
-ROOT_DIR := $(CURDIR)/..
-GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
+ROOT_DIR               := $(CURDIR)/..
+GO_MOUNT_PATH          ?= /go/src/github.com/elastic/cloud-on-k8s
 ALL_IN_ONE_OUTPUT_FILE ?= config/all-in-one.yaml
 S3_ECK_DIR             ?= s3://download.elasticsearch.org/downloads/eck
+DOCKER_LOGIN           ?= eckadmin
 
 -include $(ROOT_DIR)/.env
 
@@ -27,7 +28,8 @@ NOT_USED := $(shell test -e $(ROOT_DIR)/deployer-config.yml && sed "s;roleId:.*;
 endif
 endif
 
-CI_IMAGE ?= docker.elastic.co/eck/eck-ci:$(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}')
+CI_SHA1  := $(shell md5sum $(ROOT_DIR)/go.mod $(ROOT_DIR)/.ci/Dockerfile | awk '{print $$1}' | md5sum | awk '{print $$1}' | cut -c-8)
+CI_IMAGE ?= docker.elastic.co/eck-ci/eck-ci-tools:$(CI_SHA1)
 
 print-ci-image:
 	@ echo $(CI_IMAGE)
@@ -50,13 +52,18 @@ ci-internal: ci-build-image
 
 # build and push the CI image only if it does not yet exist
 ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)
-ci-build-image:
-	@ docker pull -q $(CI_IMAGE) || \
+ci-build-image: write-ci-docker-creds
+	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
 		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
-		docker login -u eckadmin -p $(DOCKER_PASSWORD) push.docker.elastic.co && \
-		docker push push.$(CI_IMAGE) \
+		docker login -u $(DOCKER_LOGIN) -p $(DOCKER_PASSWORD) push.docker.elastic.co 2> /dev/null && \
+		docker push push.$(CI_IMAGE) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed' \
 	)
+
+# make Docker creds available from inside the CI container through the .registry.env file
+write-ci-docker-creds:
+	@ echo "DOCKER_LOGIN = $(DOCKER_LOGIN)"        > ${ROOT_DIR}/.registry.env
+	@ echo "DOCKER_PASSWORD = $(DOCKER_PASSWORD)" >> ${ROOT_DIR}/.registry.env
 
 ##  Test
 
@@ -89,10 +96,6 @@ license.key:
 
 ##  Release
 
-# read docker password from Vault to push Docker images in the Elastic registry
-get-docker-creds:
-	@ echo "ELASTIC_DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=value secret/devops-ci/cloud-on-k8s/eckadmin)" >> ${ROOT_DIR}/.env
-
 # read AWS creds from Vault for YAML upload to S3
 yaml-upload: VAULT_AWS_CREDS = secret/cloud-team/cloud-ci/eck-release
 yaml-upload: AWS_ACCESS_KEY_ID = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS))
@@ -107,4 +110,3 @@ endif
 		DOCKER_OPTS="-e AWS_ACCESS_KEY_ID=$(AWS_ACCESS_KEY_ID) -e AWS_SECRET_ACCESS_KEY=$(AWS_SECRET_ACCESS_KEY)" \
 		DOCKER_CMD="aws s3 ls $(YAML_DST) && echo OK: $(YAML_DST) already uploaded || aws s3 cp $(YAML_SRC) $(YAML_DST)" \
 		ci-internal
-
