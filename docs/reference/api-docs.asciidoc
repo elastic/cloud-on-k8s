@@ -33,20 +33,12 @@ Package v1 contains API schema definitions for managing APM Server resources.
 
 
 
-
-
-
-
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserver"]
 === ApmServer 
 
 ApmServer represents an APM Server resource in a Kubernetes cluster.
 
-.Appears In:
-****
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmesassociation[$$ApmEsAssociation$$]
-- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmkibanaassociation[$$ApmKibanaAssociation$$]
-****
+
 
 [cols="25a,75a", options="header"]
 |===
@@ -143,8 +135,6 @@ ApmServerSpec holds the specification of an APM Server.
 == common.k8s.elastic.co/v1
 
 Package v1 contains API schema definitions for common types used by all resources.
-
-
 
 
 
@@ -362,6 +352,8 @@ TLSOptions holds TLS configuration options.
 == common.k8s.elastic.co/v1beta1
 
 Package v1beta1 contains API schema definitions for common types used by all resources.
+
+
 
 
 
