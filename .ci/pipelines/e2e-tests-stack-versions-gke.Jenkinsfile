@@ -32,11 +32,11 @@ pipeline {
         }
         stage('Run tests for different ELK stack versions in GKE') {
             parallel {
-                stage("6.8.5") {
+                stage("6.8.9") {
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.5")
+                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.9")
                         }
                     }
                 }
