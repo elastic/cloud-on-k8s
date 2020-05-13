@@ -35,16 +35,16 @@ endif
 # for dev, suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
-REGISTRY    ?= docker.elastic.co
-NAMESPACE   ?= eck-dev
-NAME        ?= eck-operator
-SNAPSHOT    ?= true
-VERSION     ?= $(shell cat VERSION)
-TAG         ?= $(shell git rev-parse --short=8 --verify HEAD)
-IMG_NAME    ?= $(NAME)$(IMG_SUFFIX)
-IMG_VERSION ?= $(VERSION)-$(TAG)
+REGISTRY           ?= docker.elastic.co
+REGISTRY_NAMESPACE ?= eck-dev
+NAME               ?= eck-operator
+SNAPSHOT           ?= true
+VERSION            ?= $(shell cat VERSION)
+TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
+IMG_NAME           ?= $(NAME)$(IMG_SUFFIX)
+IMG_VERSION        ?= $(VERSION)-$(TAG)
 
-BASE_IMG       := $(REGISTRY)/$(NAMESPACE)/$(IMG_NAME)
+BASE_IMG       := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
 OPERATOR_IMAGE ?= $(BASE_IMG):$(IMG_VERSION)
 
 print-operator-image:
@@ -336,8 +336,8 @@ ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set to use GCR)
 endif	
 	@ echo "REGISTRY = eu.gcr.io"               > .registry.env
-	@ echo "NAMESPACE = ${GCLOUD_PROJECT}"     >> .registry.env
-	@ echo "E2E_NAMESPACE = ${GCLOUD_PROJECT}" >> .registry.env
+	@ echo "REGISTRY_NAMESPACE = ${GCLOUD_PROJECT}"     >> .registry.env
+	@ echo "E2E_REGISTRY_NAMESPACE = ${GCLOUD_PROJECT}" >> .registry.env
 
 switch-registry-dev: # just use the default values of variables
 	@ rm -f .registry.env
@@ -346,13 +346,13 @@ switch-registry-dev: # just use the default values of variables
 ##  --   End to end tests    --  ##
 ###################################
 
-E2E_NAMESPACE    ?= eck-dev
-E2E_IMG          ?= $(REGISTRY)/$(E2E_NAMESPACE)/eck-e2e-tests:$(TAG)
-TESTS_MATCH      ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-STACK_VERSION    ?= 7.6.0
-E2E_JSON         ?= false
-TEST_TIMEOUT     ?= 5m
-E2E_SKIP_CLEANUP ?= false
+E2E_REGISTRY_NAMESPACE ?= eck-dev
+E2E_IMG                ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
+TESTS_MATCH            ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
+STACK_VERSION          ?= 7.6.0
+E2E_JSON               ?= false
+TEST_TIMEOUT           ?= 5m
+E2E_SKIP_CLEANUP       ?= false
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean

@@ -60,8 +60,8 @@ A file `.registry.env` can be created to use another Docker registry.
 
 ```sh
 REGISTRY = eu.gcr.io
-NAMESPACE = my-gcloud-project
-E2E_NAMESPACE = my-gcloud-project
+REGISTRY_NAMESPACE = my-gcloud-project
+E2E_REGISTRY_NAMESPACE = my-gcloud-project
 ```
 
 4. Deploy the operator
