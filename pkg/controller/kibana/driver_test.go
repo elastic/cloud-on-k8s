@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -246,7 +247,7 @@ func TestDriverDeploymentParams(t *testing.T) {
 				params := expectedDeploymentParams()
 				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:3]
 				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:3]
-				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.Exec.Command[2] = `curl -o /dev/null -w "%{http_code}" HTTP://127.0.0.1:5601/login -k -s`
+				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.HTTPGet.Scheme = corev1.URISchemeHTTP
 				params.PodTemplateSpec.Spec.Containers[0].Ports[0].Name = "http"
 				return params
 			}(),
@@ -513,10 +514,10 @@ func expectedDeploymentParams() deployment.Params {
 						SuccessThreshold:    1,
 						TimeoutSeconds:      5,
 						Handler: corev1.Handler{
-							Exec: &corev1.ExecAction{
-								Command: []string{"bash", "-c",
-									`curl -o /dev/null -w "%{http_code}" HTTPS://127.0.0.1:5601/login -k -s`,
-								},
+							HTTPGet: &corev1.HTTPGetAction{
+								Port:   intstr.FromInt(5601),
+								Path:   "/login",
+								Scheme: corev1.URISchemeHTTPS,
 							},
 						},
 					},
