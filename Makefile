@@ -339,7 +339,7 @@ endif
 	@ echo "NAMESPACE = ${GCLOUD_PROJECT}"     >> .registry.env
 	@ echo "E2E_NAMESPACE = ${GCLOUD_PROJECT}" >> .registry.env
 
-switch-registry-default:
+switch-registry-dev: # just use the default values of variables
 	@ rm -f .registry.env
 
 ###################################
