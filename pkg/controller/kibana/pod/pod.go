@@ -5,20 +5,18 @@
 package pod
 
 import (
-	"fmt"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"k8s.io/apimachinery/pkg/api/resource"
-
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/volume"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -56,10 +54,10 @@ func readinessProbe(useTLS bool) corev1.Probe {
 		SuccessThreshold:    1,
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
-			Exec: &corev1.ExecAction{
-				Command: []string{"bash", "-c",
-					fmt.Sprintf(`curl -o /dev/null -w "%%{http_code}" %s://127.0.0.1:%d/login -k -s`, scheme, HTTPPort),
-				},
+			HTTPGet: &corev1.HTTPGetAction{
+				Port:   intstr.FromInt(HTTPPort),
+				Path:   "/login",
+				Scheme: scheme,
 			},
 		},
 	}
