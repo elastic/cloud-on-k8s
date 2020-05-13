@@ -116,3 +116,5 @@ const (
 	LicenseStatusExpired LicenseStatus = "Expired"
 	LicenseStatusInvalid LicenseStatus = "Invalid"
 )
+
+var _ Signable = &EnterpriseLicense{}

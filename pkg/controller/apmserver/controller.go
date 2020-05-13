@@ -6,8 +6,6 @@ package apmserver
 
 import (
 	"context"
-	"crypto/sha256"
-	"fmt"
 	"path/filepath"
 	"reflect"
 	"sync/atomic"
@@ -15,26 +13,20 @@ import (
 	"go.elastic.co/apm"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/config"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
-	apmname "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -51,7 +43,7 @@ import (
 )
 
 const (
-	name                    = "apmserver-controller"
+	controllerName          = "apmserver-controller"
 	esCAChecksumLabelName   = "apm.k8s.elastic.co/es-ca-file-checksum"
 	configChecksumLabelName = "apm.k8s.elastic.co/config-file-checksum"
 
@@ -60,7 +52,7 @@ const (
 )
 
 var (
-	log = logf.Log.WithName(name)
+	log = logf.Log.WithName(controllerName)
 
 	// ApmServerBin is the apm server binary file
 	ApmServerBin = filepath.Join(ApmBaseDir, "apm-server")
@@ -77,7 +69,7 @@ var (
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
 	reconciler := newReconciler(mgr, params)
-	c, err := common.NewController(mgr, name, reconciler, params)
+	c, err := common.NewController(mgr, controllerName, reconciler, params)
 	if err != nil {
 		return err
 	}
@@ -89,7 +81,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileAp
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
 		Client:         client,
-		recorder:       mgr.GetEventRecorderFor(name),
+		recorder:       mgr.GetEventRecorderFor(controllerName),
 		dynamicWatches: watches.NewDynamicWatches(),
 		Parameters:     params,
 	}
@@ -142,7 +134,7 @@ type ReconcileApmServer struct {
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	operator.Parameters
-	// iteration is the number of times this controller has run its Reconcile method
+	// iteration is the number of times this controller has run its reconcile method
 	iteration uint64
 }
 
@@ -211,7 +203,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 }
 
 func (r *ReconcileApmServer) isCompatible(ctx context.Context, as *apmv1.ApmServer) (bool, error) {
-	selector := map[string]string{labels.ApmServerNameLabelName: as.Name}
+	selector := map[string]string{ApmServerNameLabelName: as.Name}
 	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, as, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, as, events.EventCompatCheckError, "Error during compatibility check: %v", err)
@@ -236,8 +228,8 @@ func (r *ReconcileApmServer) doReconcile(ctx context.Context, request reconcile.
 		DynamicWatches:        r.DynamicWatches(),
 		Object:                as,
 		TLSOptions:            as.Spec.HTTP.TLS,
-		Namer:                 apmname.APMNamer,
-		Labels:                labels.NewLabels(as.Name),
+		Namer:                 Namer,
+		Labels:                NewLabels(as.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        r.CACertRotation,
 		CertRotation:          r.CertRotation,
@@ -289,7 +281,7 @@ func (r *ReconcileApmServer) onDelete(obj types.NamespacedName) {
 	// Clean up watches set on secure settings
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
 	// Clean up watches set on custom http tls certificates
-	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(apmname.APMNamer, obj.Name))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(certificates.CertificateWatchKey(Namer, obj.Name))
 }
 
 // reconcileApmServerToken reconciles a Secret containing the APM Server token.
@@ -298,8 +290,8 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	expectedApmServerSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
-			Name:      apmname.SecretToken(as.Name),
-			Labels:    common.AddCredentialsLabel(labels.NewLabels(as.Name)),
+			Name:      SecretToken(as.Name),
+			Labels:    common.AddCredentialsLabel(NewLabels(as.Name)),
 		},
 		Data: make(map[string][]byte),
 	}
@@ -316,147 +308,6 @@ func reconcileApmServerToken(c k8s.Client, as *apmv1.ApmServer) (corev1.Secret, 
 	}
 
 	return reconciler.ReconcileSecret(c, expectedApmServerSecret, as)
-}
-
-func (r *ReconcileApmServer) deploymentParams(
-	as *apmv1.ApmServer,
-	params PodSpecParams,
-) (deployment.Params, error) {
-
-	podSpec := newPodSpec(as, params)
-	podLabels := labels.NewLabels(as.Name)
-
-	// Build a checksum of the configuration, add it to the pod labels so a change triggers a rolling update
-	configChecksum := sha256.New224()
-	_, _ = configChecksum.Write(params.ConfigSecret.Data[config.ApmCfgSecretKey])
-	if params.keystoreResources != nil {
-		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
-	}
-
-	if as.AssociationConf().CAIsConfigured() {
-		esCASecretName := as.AssociationConf().GetCASecretName()
-		// TODO: use apmServerCa to generate cert for deployment
-
-		// TODO: this is a little ugly as it reaches into the ES controller bits
-		esCAVolume := volume.NewSecretVolumeWithMountPath(
-			esCASecretName,
-			"elasticsearch-certs",
-			filepath.Join(ApmBaseDir, config.CertificatesDir),
-		)
-
-		// build a checksum of the cert file used by ES, which we can use to cause the Deployment to roll the Apm Server
-		// instances in the deployment when the ca file contents change. this is done because Apm Server do not support
-		// updating the CA file contents without restarting the process.
-		certsChecksum := ""
-		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: as.Namespace, Name: esCASecretName}
-		if err := r.Get(key, &esPublicCASecret); err != nil {
-			return deployment.Params{}, err
-		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
-			certsChecksum = fmt.Sprintf("%x", sha256.Sum224(certPem))
-		}
-		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
-		// changes, which will trigger a rolling update)
-		podLabels[esCAChecksumLabelName] = certsChecksum
-
-		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, esCAVolume.Volume())
-
-		for i := range podSpec.Spec.InitContainers {
-			podSpec.Spec.InitContainers[i].VolumeMounts = append(podSpec.Spec.InitContainers[i].VolumeMounts, esCAVolume.VolumeMount())
-		}
-
-		for i := range podSpec.Spec.Containers {
-			podSpec.Spec.Containers[i].VolumeMounts = append(podSpec.Spec.Containers[i].VolumeMounts, esCAVolume.VolumeMount())
-		}
-	}
-
-	if as.Spec.HTTP.TLS.Enabled() {
-		// fetch the secret to calculate the checksum
-		var httpCerts corev1.Secret
-		err := r.Get(types.NamespacedName{
-			Namespace: as.Namespace,
-			Name:      certificates.InternalCertsSecretName(apmname.APMNamer, as.Name),
-		}, &httpCerts)
-		if err != nil {
-			return deployment.Params{}, err
-		}
-		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
-			_, _ = configChecksum.Write(httpCert)
-		}
-		httpCertsVolume := certificates.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
-		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
-		apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1.ApmServerContainerName)
-		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())
-	}
-
-	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
-	// TODO: also need to hash secret token?
-
-	podSpec.Labels = maps.MergePreservingExistingKeys(podSpec.Labels, podLabels)
-
-	return deployment.Params{
-		Name:            apmname.Deployment(as.Name),
-		Namespace:       as.Namespace,
-		Replicas:        as.Spec.Count,
-		Selector:        labels.NewLabels(as.Name),
-		Labels:          labels.NewLabels(as.Name),
-		PodTemplateSpec: podSpec,
-		Strategy:        appsv1.RollingUpdateDeploymentStrategyType,
-	}, nil
-}
-
-func (r *ReconcileApmServer) reconcileApmServerDeployment(
-	ctx context.Context,
-	state State,
-	as *apmv1.ApmServer,
-) (State, error) {
-	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
-	defer span.End()
-
-	tokenSecret, err := reconcileApmServerToken(r.Client, as)
-	if err != nil {
-		return state, err
-	}
-	reconciledConfigSecret, err := config.Reconcile(r.Client, as)
-	if err != nil {
-		return state, err
-	}
-
-	keystoreResources, err := keystore.NewResources(
-		r,
-		as,
-		apmname.APMNamer,
-		labels.NewLabels(as.Name),
-		initContainerParameters,
-	)
-	if err != nil {
-		return state, err
-	}
-
-	apmServerPodSpecParams := PodSpecParams{
-		Version:         as.Spec.Version,
-		CustomImageName: as.Spec.Image,
-
-		PodTemplate: as.Spec.PodTemplate,
-
-		TokenSecret:  tokenSecret,
-		ConfigSecret: reconciledConfigSecret,
-
-		keystoreResources: keystoreResources,
-	}
-	params, err := r.deploymentParams(as, apmServerPodSpecParams)
-	if err != nil {
-		return state, err
-	}
-
-	deploy := deployment.New(params)
-	result, err := deployment.Reconcile(r.K8sClient(), deploy, as)
-	if err != nil {
-		return state, err
-	}
-	state.UpdateApmServerState(result, tokenSecret)
-	return state, nil
 }
 
 func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) error {
@@ -477,4 +328,24 @@ func (r *ReconcileApmServer) updateStatus(ctx context.Context, state State) erro
 		"status", state.ApmServer.Status,
 	)
 	return common.UpdateStatus(r.Client, state.ApmServer)
+}
+
+func NewService(as apmv1.ApmServer) *corev1.Service {
+	svc := corev1.Service{
+		ObjectMeta: as.Spec.HTTP.Service.ObjectMeta,
+		Spec:       as.Spec.HTTP.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = as.Namespace
+	svc.ObjectMeta.Name = HTTPService(as.Name)
+
+	labels := NewLabels(as.Name)
+	ports := []corev1.ServicePort{
+		{
+			Name:     as.Spec.HTTP.Protocol(),
+			Protocol: corev1.ProtocolTCP,
+			Port:     HTTPPort,
+		},
+	}
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }

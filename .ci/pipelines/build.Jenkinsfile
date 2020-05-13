@@ -37,7 +37,7 @@ pipeline {
                 stage('Build and push Docker image') {
                     steps {
                         sh '.ci/setenvconfig build'
-                        sh 'make -C .ci get-docker-creds get-elastic-public-key TARGET=ci-release ci'
+                        sh 'make -C .ci get-docker-creds license.key TARGET=ci-release ci'
                     }
                 }
                 stage('Upload YAML manifest to S3') {

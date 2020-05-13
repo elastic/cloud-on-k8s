@@ -27,7 +27,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -338,8 +338,8 @@ func KibanaPodListOptions(kbNamespace, kbName string) []k8sclient.ListOption {
 func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(apmNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName:             apmlabels.Type,
-		apmlabels.ApmServerNameLabelName: apmName,
+		common.TypeLabelName:             apmserver.Type,
+		apmserver.ApmServerNameLabelName: apmName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 

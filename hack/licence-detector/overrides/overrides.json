@@ -5,3 +5,4 @@
 {"name": "gonum.org/v1/gonum", "url": "https://github.com/gonum/gonum"}
 {"name": "gonum.org/v1/netlib", "url": "https://github.com/gonum/netlib"}
 {"name": "howett.net/plist", "url": "https://gitlab.howett.net/go/plist"}
+{"name": "github.com/miekg/dns", "licenceTextOverrideFile": "licences/github.com/miekg/dns/LICENSE"}

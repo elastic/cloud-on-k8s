@@ -37,6 +37,8 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 			}
 		},
 		UserSecretSuffix: "kibana-user",
-		ESUserRole:       KibanaSystemUserBuiltinRole,
+		ESUserRole: func(associated commonv1.Associated) (string, error) {
+			return KibanaSystemUserBuiltinRole, nil
+		},
 	})
 }

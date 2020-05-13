@@ -36,10 +36,10 @@ spec:
         resources:
           limits:
             cpu: 1
-            memory: 150Mi
+            memory: 512Mi
           requests:
             cpu: 100m
-            memory: 50Mi
+            memory: 150Mi
         ports:
         - containerPort: 9443
           name: webhook-server

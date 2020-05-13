@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package config
+package apmserver
 
 import (
 	"testing"
@@ -84,7 +84,15 @@ func TestNewConfigFromSpec(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(mkAuthSecret())
-			apmServer := mkAPMServer(tc.configOverrides, tc.assocConf)
+			apmServer := &apmv1.ApmServer{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "apm-server",
+				},
+				Spec: apmv1.ApmServerSpec{
+					Config: &commonv1.Config{Data: tc.configOverrides},
+				},
+			}
+			apmServer.SetAssociationConf(tc.assocConf)
 			gotConf, err := NewConfigFromSpec(client, apmServer)
 			if tc.wantErr {
 				require.Error(t, err)
@@ -98,20 +106,6 @@ func TestNewConfigFromSpec(t *testing.T) {
 			require.Len(t, diff, 0)
 		})
 	}
-}
-
-func mkAPMServer(config map[string]interface{}, assocConf *commonv1.AssociationConf) *apmv1.ApmServer {
-	apmServer := &apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "apm-server",
-		},
-		Spec: apmv1.ApmServerSpec{
-			Config: &commonv1.Config{Data: config},
-		},
-	}
-
-	apmServer.SetAssociationConf(assocConf)
-	return apmServer
 }
 
 func mkAuthSecret() *v1.Secret {

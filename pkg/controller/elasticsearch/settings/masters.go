@@ -93,8 +93,9 @@ func UpdateSeedHostsConfigMap(
 			UpdateReconciled: func() {
 				reconciled.Data = expected.Data
 			},
-			PreCreate: func() {
+			PreCreate: func() error {
 				log.Info("Creating seed hosts", "namespace", es.Namespace, "es_name", es.Name, "hosts", seedHosts)
+				return nil
 			},
 			PostUpdate: func() {
 				log.Info("Seed hosts updated", "namespace", es.Namespace, "es_name", es.Name, "hosts", seedHosts)
