@@ -8,6 +8,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/go-logr/logr"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -42,8 +43,21 @@ func ShouldSetupAutodiscoverRBAC() bool {
 	return shouldSetupRBAC
 }
 
-// SetupAutodiscoverRBAC reconciles all resources needed for default RBAC setup
-func SetupAutodiscoverRBAC(ctx context.Context, client k8s.Client, owner metav1.Object, labels map[string]string) error {
+// SetupAutodiscoveryRBAC reconciles all resources needed for default RBAC setup
+func SetupAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Client, owner metav1.Object, labels map[string]string) error {
+	if ShouldSetupAutodiscoverRBAC() {
+		if err := setupAutodiscoverRBAC(ctx, client, owner, labels); err != nil {
+			log.V(1).Info(
+				"autodiscovery rbac setup failed",
+				"namespace", owner.GetNamespace(),
+				"beat_name", owner.GetName())
+			return err
+		}
+	}
+	return nil
+}
+
+func setupAutodiscoverRBAC(ctx context.Context, client k8s.Client, owner metav1.Object, labels map[string]string) error {
 	// this is the source of truth and should be respected at all times
 	if !ShouldSetupAutodiscoverRBAC() {
 		return nil

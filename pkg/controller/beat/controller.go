@@ -7,6 +7,7 @@ package beat
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/metricbeat"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -232,6 +233,8 @@ func newDriver(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) co
 	switch dp.Type {
 	case string(filebeat.Type):
 		return filebeat.NewDriver(dp)
+	case string(metricbeat.Type):
+		return metricbeat.NewDriver(dp)
 	default:
 		return otherbeat.NewDriver(dp)
 	}

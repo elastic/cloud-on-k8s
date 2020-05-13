@@ -79,20 +79,16 @@ func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
 func (fd *Driver) Reconcile() commonbeat.DriverResults {
 	results := commonbeat.NewDriverResults(fd.Context)
 
-	// setup sa, role, rolebinding for autodiscover if required
-	if commonbeat.ShouldSetupAutodiscoverRBAC() {
-		if err := commonbeat.SetupAutodiscoverRBAC(fd.Context, fd.Client, fd.Owner, fd.Labels); err != nil {
-			results.WithError(err)
-			fd.Logger.V(1).Info(
-				"autodiscover rbac setup failed",
-				"namespace", fd.Owner.GetNamespace(),
-				"beat_name", fd.Owner.GetName())
-		}
+	if err := commonbeat.SetupAutodiscoverRBAC(fd.Context, fd.Logger, fd.Client, fd.Owner, fd.Labels); err != nil {
+		results.WithError(err)
 	}
 
 	checksum := sha256.New224()
-	// reconcile config
-	err := ReconcileConfig(fd.Context, fd.Client, fd.Associated, fd.Config, fd.Owner, fd.Labels, fd.Namer, checksum)
+	err := commonbeat.ReconcileConfig(
+		fd.DriverParams,
+		ConfigFileName,
+		defaultConfig,
+		checksum)
 	if err != nil {
 		results.WithError(err)
 		return results
