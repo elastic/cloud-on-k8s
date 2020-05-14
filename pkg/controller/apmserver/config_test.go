@@ -7,8 +7,11 @@ package apmserver
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -21,7 +24,8 @@ func TestNewConfigFromSpec(t *testing.T) {
 	testCases := []struct {
 		name            string
 		configOverrides map[string]interface{}
-		assocConf       *commonv1.AssociationConf
+		esAssocConf     *commonv1.AssociationConf
+		kbAssocConf     *commonv1.AssociationConf
 		wantConf        map[string]interface{}
 		wantErr         bool
 	}{
@@ -39,7 +43,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 		},
 		{
 			name: "without Elasticsearch CA cert",
-			assocConf: &commonv1.AssociationConf{
+			esAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "test-es-elastic-user",
 				AuthSecretKey:  "elastic",
 				CASecretName:   "test-es-http-ca-public",
@@ -54,7 +58,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 		},
 		{
 			name: "with Elasticsearch CA cert",
-			assocConf: &commonv1.AssociationConf{
+			esAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "test-es-elastic-user",
 				AuthSecretKey:  "elastic",
 				CASecretName:   "test-es-http-ca-public",
@@ -70,7 +74,7 @@ func TestNewConfigFromSpec(t *testing.T) {
 		},
 		{
 			name: "missing auth secret",
-			assocConf: &commonv1.AssociationConf{
+			esAssocConf: &commonv1.AssociationConf{
 				AuthSecretName: "wrong-secret",
 				AuthSecretKey:  "elastic",
 				CASecretName:   "test-es-http-ca-public",
@@ -79,11 +83,41 @@ func TestNewConfigFromSpec(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "Kibana and Elasticsearch configuration",
+			esAssocConf: &commonv1.AssociationConf{
+				AuthSecretName: "test-es-elastic-user",
+				AuthSecretKey:  "elastic",
+				CASecretName:   "test-es-http-ca-public",
+				CACertProvided: true,
+				URL:            "https://test-es-http.default.svc:9200",
+			},
+			kbAssocConf: &commonv1.AssociationConf{
+				AuthSecretName: "test-kb-elastic-user",
+				AuthSecretKey:  "apm-kb-user",
+				CASecretName:   "test-kb-http-ca-public",
+				CACertProvided: true,
+				URL:            "https://test-kb-http.default.svc:9200",
+			},
+			wantConf: map[string]interface{}{
+				// Elasticsearch configuration
+				"output.elasticsearch.hosts":                       []string{"https://test-es-http.default.svc:9200"},
+				"output.elasticsearch.username":                    "elastic",
+				"output.elasticsearch.password":                    "password",
+				"output.elasticsearch.ssl.certificate_authorities": []string{"config/elasticsearch-certs/ca.crt"},
+				// Kibana configuration
+				"apm-server.kibana.enabled":                     true,
+				"apm-server.kibana.host":                        "https://test-kb-http.default.svc:9200",
+				"apm-server.kibana.username":                    "apm-kb-user",
+				"apm-server.kibana.password":                    "password-kb-user",
+				"apm-server.kibana.ssl.certificate_authorities": []string{"config/kibana-certs/ca.crt"},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := k8s.WrappedFakeClient(mkAuthSecret())
+			client := k8s.WrappedFakeClient(mkAuthSecrets()...)
 			apmServer := &apmv1.ApmServer{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "apm-server",
@@ -95,7 +129,11 @@ func TestNewConfigFromSpec(t *testing.T) {
 
 			(&apmv1.ApmEsAssociation{
 				ApmServer: apmServer,
-			}).SetAssociationConf(tc.assocConf)
+			}).SetAssociationConf(tc.esAssocConf)
+
+			(&apmv1.ApmKibanaAssociation{
+				ApmServer: apmServer,
+			}).SetAssociationConf(tc.kbAssocConf)
 
 			gotConf, err := newConfigFromSpec(client, apmServer)
 			if tc.wantErr {
@@ -112,13 +150,23 @@ func TestNewConfigFromSpec(t *testing.T) {
 	}
 }
 
-func mkAuthSecret() *v1.Secret {
-	return &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-es-elastic-user",
+func mkAuthSecrets() []runtime.Object {
+	return []runtime.Object{
+		&v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-es-elastic-user",
+			},
+			Data: map[string][]byte{
+				"elastic": []byte("password"),
+			},
 		},
-		Data: map[string][]byte{
-			"elastic": []byte("password"),
+		&v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-kb-elastic-user",
+			},
+			Data: map[string][]byte{
+				"apm-kb-user": []byte("password-kb-user"),
+			},
 		},
 	}
 }
