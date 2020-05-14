@@ -43,8 +43,8 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
-	awsAccessKeyID      = "aws_access_key_id"     // nolint
-	awsSecretAccessKey  = "aws_secret_access_key" // nolint
+	awsAccessKeyID      = "aws_access_key_id"
+	awsSecretAccessKey  = "aws_secret_access_key"
 	credentialsTemplate = `[default]
 %s = %s
 %s = %s`

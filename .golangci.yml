@@ -13,11 +13,16 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - gocognit # added in 1.20
+    - godot # added in 1.25
     - godox # added in 1.19
+    - goerr113 # do we want to omit this?
     - gomnd # added in 1.23
+    # - gosec # do we want to omit this?
     - interfacer
     - lll
+    - nestif # added in 1.25
     - scopelint
+    - testpackage # added in 1.25
     - whitespace # added in 1.19
     - wsl # added in 1.20
 linters-settings:

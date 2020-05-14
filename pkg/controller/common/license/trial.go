@@ -27,8 +27,8 @@ const (
 	TrialPubkeyKey       = "pubkey"
 	TrialActivationKey   = "in-trial-activation"
 
-	TrialLicenseSecretName      = "trial.k8s.elastic.co/secret-name"      // nolint
-	TrialLicenseSecretNamespace = "trial.k8s.elastic.co/secret-namespace" // nolint
+	TrialLicenseSecretName      = "trial.k8s.elastic.co/secret-name"
+	TrialLicenseSecretNamespace = "trial.k8s.elastic.co/secret-namespace"
 )
 
 // TrialState captures the in-memory representation of the trial status.
