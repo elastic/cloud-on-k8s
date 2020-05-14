@@ -64,5 +64,5 @@ spec:
               command:
               - bash
               - -c
-              - curl -o /dev/null -w "%{http_code}" https://127.0.0.1:8200/login -k -s
+              - curl -o /dev/null -w "%{http_code}" https://127.0.0.1:8200/ -k -s
 ----
