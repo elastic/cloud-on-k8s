@@ -118,7 +118,7 @@ func reconcileClusterRoleBinding(client k8s.Client, owner metav1.Object) error {
 }
 
 func reconcile(client k8s.Client, obj runtime.Object, owner metav1.Object) error {
-	// labels set here must have be exact the same for all callers in particular namespace
+	// labels set here must be exactly the same for all callers in particular namespace
 	// otherwise they'll just keep trying to override each other
 	objMeta, err := meta.Accessor(obj)
 	if err != nil {
