@@ -72,13 +72,14 @@ func (fd *Driver) Reconcile() commonbeat.DriverResults {
 		results.WithError(err)
 	}
 
-	userCfg, err := settings.NewCanonicalConfigFrom(fd.Config.Data)
-	if err != nil {
-		results.WithError(err)
-	}
-
-	if err = cfg.MergeWith(userCfg); err != nil {
-		results.WithError(err)
+	if fd.Config != nil {
+		userCfg, err := settings.NewCanonicalConfigFrom(fd.Config.Data)
+		if err != nil {
+			results.WithError(err)
+		}
+		if err = cfg.MergeWith(userCfg); err != nil {
+			results.WithError(err)
+		}
 	}
 
 	cfgBytes, err := cfg.Render()

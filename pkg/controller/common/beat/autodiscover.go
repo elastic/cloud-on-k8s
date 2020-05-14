@@ -6,6 +6,7 @@ package beat
 
 import (
 	"context"
+	"reflect"
 
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
@@ -127,19 +128,20 @@ func reconcile(client k8s.Client, obj runtime.Object, owner metav1.Object) error
 
 	objMeta.SetLabels(maps.Merge(objMeta.GetLabels(), hash.SetTemplateHashLabel(nil, obj)))
 
-	obj2 := obj.DeepCopyObject()
+	reconciled := obj.DeepCopyObject()
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     client,
 		Owner:      owner,
 		Expected:   obj,
-		Reconciled: obj2,
+		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			objMeta2, err := meta.Accessor(obj2)
+			objMeta2, err := meta.Accessor(reconciled)
 
 			// compare hash of the deployment at the time it was built
 			return err != nil || hash.GetTemplateHashLabel(objMeta.GetLabels()) != hash.GetTemplateHashLabel(objMeta2.GetLabels())
 		},
 		UpdateReconciled: func() {
+			reflect.ValueOf(reconciled).Elem().Set(reflect.ValueOf(obj).Elem())
 		},
 	})
 }
