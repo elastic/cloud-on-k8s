@@ -124,7 +124,7 @@ func (r *Reconciler) Reconcile(request reconcile.Request) (reconcile.Result, err
 		return reconcile.Result{}, nil
 	}
 
-	if compatible, err := r.isCompatible(ctx, association); err != nil || !compatible {
+	if compatible, err := r.isCompatible(ctx, association.Associated()); err != nil || !compatible {
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
