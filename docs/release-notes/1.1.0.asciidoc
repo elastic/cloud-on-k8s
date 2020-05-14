@@ -9,6 +9,7 @@
 === Breaking changes
 
 * Remove operator roles {pull}2530[#2530]
+* Make readiness probes independent of the host/container network {pull}2528[#2528]
 * Name container ports according to protocol {pull}2498[#2498] (issue: {issue}2483[#2483])
 
 
@@ -40,7 +41,6 @@
 * ECK dump: export controller revisions {pull}2538[#2538]
 * Add operator flag to define default container registry {pull}2537[#2537]
 * Rename log.logger to event.dataset as recommended in ECS {pull}2534[#2534]
-* Make readiness probes independent of the host/container network {pull}2528[#2528]
 * Bump controller-tools {pull}2497[#2497] (issue: {issue}2490[#2490])
 * Extend cluster-wide rbac roles for elastic crds {pull}2495[#2495]
 * Control associations across namespaces with ServiceAccount and RBAC {pull}2482[#2482]
