@@ -113,7 +113,7 @@ pipeline {
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-76-${BUILD_NUMBER}-e2e", "7.6.2")
+                            runWith(lib, failedTests, "eck-77-${BUILD_NUMBER}-e2e", "7.7.0")
                         }
                     }
                 }
