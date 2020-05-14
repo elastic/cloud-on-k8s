@@ -147,8 +147,6 @@ func doReconcile(ctx context.Context,
 
 	podTemplate := deploymentSpec.PodTemplate
 
-	//image has to be there
-
 	builder := defaults.NewPodTemplateBuilder(podTemplate, string(Type)).
 		WithTerminationGracePeriod(30).
 		WithDockerImage(image, "").

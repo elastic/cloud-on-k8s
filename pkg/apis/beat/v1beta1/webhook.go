@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -29,6 +30,7 @@ var (
 		checkNameLength,
 		checkSupportedVersion,
 		checkAtMostOneDeploymentOption,
+		checkImageIfTypeUnknown,
 	}
 
 	updateChecks = []func(old, curr *Beat) field.ErrorList{
@@ -113,6 +115,19 @@ func checkAtMostOneDeploymentOption(b *Beat) field.ErrorList {
 		}
 	}
 
+	return nil
+}
+
+func checkImageIfTypeUnknown(b *Beat) field.ErrorList {
+	knownTypes := []string{"filebeat"}
+	if !stringsutil.StringInSlice(b.Spec.Type, knownTypes) &&
+		b.Spec.Image == "" {
+		return field.ErrorList{
+			field.Required(
+				field.NewPath("spec").Child("image"),
+				"Image is required if Beat type is not well known."),
+		}
+	}
 	return nil
 }
 
