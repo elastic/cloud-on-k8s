@@ -63,7 +63,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 	}
 }
 
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
+// addWatches registers the required watches
 func addWatches(c controller.Controller, r *ReconcileBeat) error {
 	// Watch for changes to Beat
 	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}); err != nil {

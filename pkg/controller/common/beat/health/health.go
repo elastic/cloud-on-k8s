@@ -16,7 +16,7 @@ const (
 
 	// BeatYellowHealth means that:
 	// 1) at least one Pod is Ready, and
-	// 1) association is not configured or configured and established
+	// 2) association is not configured or configured and established
 	BeatYellowHealth BeatHealth = "yellow"
 
 	// BeatGreenHealth means that:
