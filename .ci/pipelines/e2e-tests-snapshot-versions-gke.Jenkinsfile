@@ -55,14 +55,14 @@ pipeline {
                 )}"""
             }
             parallel {
-                stage("7.7.0-SNAPSHOT") {
+                stage("7.8.0-SNAPSHOT") {
                      agent {
                         label 'linux'
                     }
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-77-snapshot-${BUILD_NUMBER}-e2e", "7.7.0-SNAPSHOT")
+                            runWith(lib, failedTests, "eck-78-snapshot-${BUILD_NUMBER}-e2e", "7.8.0-SNAPSHOT")
                         }
                     }
                 }
