@@ -5,10 +5,10 @@
 [id="{p}-111-new-and-notable"]
 === New and notable
 This release contains three changes:
-- correcting the name of the Secret containing the Elasticsearch transport certificates
-- increasing the default memory available to the operator Pod to allow it to function in a wider variety of environments
-- switching the Kibana and APM Readiness probes to use HTTP probes
 
+* correcting the name of the Secret containing the Elasticsearch transport certificates
+* increasing the default memory available to the operator Pod to allow it to function in a wider variety of environments
+* switching the Kibana and APM Readiness probes to use HTTP probes
 
 [float]
 [id="{p}-111-breaking-changes"]
