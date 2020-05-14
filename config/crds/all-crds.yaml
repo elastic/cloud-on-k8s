@@ -504,16 +504,16 @@ spec:
                 override the default configuration.
               type: object
             daemonSet:
-              description: 'DaemonSet field allows to: 1. indicate whether the Beat
+              description: 'DaemonSet field allows to: 1. Indicate whether the Beat
                 should be deployed as DaemonSet or Deployment, if both are absent,
                 a default for the    Type is used 2. Provide spec for the DaemonSet
                 At most one of DaemonSet and Deployment can be used.'
               properties: {}
               type: object
             deployment:
-              description: 'Deployment field allows to: 1. indicate whether the Beat
+              description: 'Deployment field allows to: 1. Indicate whether the Beat
                 should be deployed as DaemonSet or Deployment, if both are absent,
-                a default for the    Type is used 2. Provide spec for the Deployment
+                a default for the    Type is used 2. provide spec for the Deployment
                 At most one of DaemonSet and Deployment can be used.'
               properties:
                 replicas:
