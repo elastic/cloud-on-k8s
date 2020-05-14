@@ -79,12 +79,12 @@ func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
 func (fd *Driver) Reconcile() commonbeat.DriverResults {
 	results := commonbeat.NewDriverResults(fd.Context)
 
-	// setup sa, role, rolebinding for autodiscovery if required
-	if commonbeat.ShouldSetupAutodiscoveryRBAC() {
-		if err := commonbeat.SetupAutodiscoveryRBAC(fd.Context, fd.Client, fd.Owner, fd.Labels); err != nil {
+	// setup sa, role, rolebinding for autodiscover if required
+	if commonbeat.ShouldSetupAutodiscoverRBAC() {
+		if err := commonbeat.SetupAutodiscoverRBAC(fd.Context, fd.Client, fd.Owner, fd.Labels); err != nil {
 			results.WithError(err)
 			fd.Logger.V(1).Info(
-				"autodiscovery rbac setup failed",
+				"autodiscover rbac setup failed",
 				"namespace", fd.Owner.GetNamespace(),
 				"beat_name", fd.Owner.GetName())
 		}
@@ -142,8 +142,8 @@ func doReconcile(dp commonbeat.DriverParams, checksum hash.Hash) (commonbeat.Dri
 
 	// If SA is already provided, assume that for this resource (despite operator configuration) the user took the
 	// responsibility of configuring RBAC. Otherwise, use the default.
-	if commonbeat.ShouldSetupAutodiscoveryRBAC() && builder.PodTemplate.Spec.ServiceAccountName == "" {
-		builder.WithServiceAccount(commonbeat.AutodiscoveryServiceAccountName)
+	if commonbeat.ShouldSetupAutodiscoverRBAC() && builder.PodTemplate.Spec.ServiceAccountName == "" {
+		builder.WithServiceAccount(commonbeat.AutodiscoverServiceAccountName)
 	}
 
 	containersVolume := volume.NewReadOnlyHostVolume(HostContainersVolumeName, HostContainersPath, HostContainersMountPath)

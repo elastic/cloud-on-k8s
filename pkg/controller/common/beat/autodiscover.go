@@ -22,33 +22,33 @@ import (
 )
 
 const (
-	AutodiscoveryServiceAccountName     = "elastic-operator-autodiscovery"
-	autodiscoveryClusterRoleBindingName = "elastic-operator-autodiscovery"
-	autodiscoveryClusterRoleName        = "elastic-operator-autodiscovery"
+	AutodiscoverServiceAccountName     = "elastic-operator-autodiscover"
+	autodiscoverClusterRoleBindingName = "elastic-operator-autodiscover"
+	autodiscoverClusterRoleName        = "elastic-operator-autodiscover"
 )
 
 var (
-	shouldSetupRBAC = true
+	shouldSetupRBAC = false
 )
 
-// DisableAutodiscoveryRBACSetup disables setting up autodiscovery RBAC
-func DisableAutodiscoveryRBACSetup() {
-	shouldSetupRBAC = false
+// EnableAutodiscoverRBACSetup enables setting up autodiscover RBAC
+func EnableAutodiscoverRBACSetup() {
+	shouldSetupRBAC = true
 }
 
-// ShouldSetupAutodiscoveryRBAC returns true if autodiscovery RBAC is expected to be set up by the operator
-func ShouldSetupAutodiscoveryRBAC() bool {
+// ShouldSetupAutodiscoverRBAC returns true if autodiscover RBAC is expected to be set up by the operator
+func ShouldSetupAutodiscoverRBAC() bool {
 	return shouldSetupRBAC
 }
 
-// SetupAutodiscoveryRBAC reconciles all resources needed for default RBAC setup
-func SetupAutodiscoveryRBAC(ctx context.Context, client k8s.Client, owner metav1.Object, labels map[string]string) error {
+// SetupAutodiscoverRBAC reconciles all resources needed for default RBAC setup
+func SetupAutodiscoverRBAC(ctx context.Context, client k8s.Client, owner metav1.Object, labels map[string]string) error {
 	// this is the source of truth and should be respected at all times
-	if !ShouldSetupAutodiscoveryRBAC() {
+	if !ShouldSetupAutodiscoverRBAC() {
 		return nil
 	}
 
-	span, _ := apm.StartSpan(ctx, "reconcile_autodiscovery_rbac", tracing.SpanTypeApp)
+	span, _ := apm.StartSpan(ctx, "reconcile_autodiscover_rbac", tracing.SpanTypeApp)
 	defer span.End()
 
 	if err := reconcileServiceAccount(client, owner, labels); err != nil {
@@ -69,7 +69,7 @@ func SetupAutodiscoveryRBAC(ctx context.Context, client k8s.Client, owner metav1
 func reconcileServiceAccount(client k8s.Client, owner metav1.Object, labels map[string]string) error {
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      AutodiscoveryServiceAccountName,
+			Name:      AutodiscoverServiceAccountName,
 			Namespace: owner.GetNamespace(),
 			Labels:    labels,
 		},
@@ -81,7 +81,7 @@ func reconcileServiceAccount(client k8s.Client, owner metav1.Object, labels map[
 func reconcileClusterRole(client k8s.Client) error {
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: autodiscoveryClusterRoleName,
+			Name: autodiscoverClusterRoleName,
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -98,19 +98,19 @@ func reconcileClusterRole(client k8s.Client) error {
 func reconcileClusterRoleBinding(client k8s.Client, owner metav1.Object) error {
 	binding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: autodiscoveryClusterRoleBindingName,
+			Name: autodiscoverClusterRoleBindingName,
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      AutodiscoveryServiceAccountName,
+				Name:      AutodiscoverServiceAccountName,
 				Namespace: owner.GetNamespace(),
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     "ClusterRole",
-			Name:     autodiscoveryClusterRoleName,
+			Name:     autodiscoverClusterRoleName,
 		},
 	}
 

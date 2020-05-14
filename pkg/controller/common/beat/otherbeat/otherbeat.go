@@ -172,8 +172,8 @@ func doReconcile(ctx context.Context,
 
 	// If SA is already provided, assume that for this resource (despite operator configuration) the user took the
 	// responsibility of configuring RBAC. Otherwise, use the default.
-	if commonbeat.ShouldSetupAutodiscoveryRBAC() && builder.PodTemplate.Spec.ServiceAccountName == "" {
-		builder.WithServiceAccount(commonbeat.AutodiscoveryServiceAccountName)
+	if commonbeat.ShouldSetupAutodiscoverRBAC() && builder.PodTemplate.Spec.ServiceAccountName == "" {
+		builder.WithServiceAccount(commonbeat.AutodiscoverServiceAccountName)
 	}
 
 	configVolume := volume.NewSecretVolume(

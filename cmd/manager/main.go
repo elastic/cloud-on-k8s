@@ -169,8 +169,8 @@ func init() {
 		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
 	)
 	Cmd.Flags().Bool(
-		operator.DisableAutodiscoveryRBACSetup,
-		false,
+		operator.EnableAutodiscoverRBACSetup,
+		true,
 		fmt.Sprintf("Determines whether the operator should set up role, binding and service account for Beats autodiscover feature"),
 	)
 
@@ -337,8 +337,8 @@ func execute() {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
 	}
 
-	if viper.GetBool(operator.DisableAutodiscoveryRBACSetup) {
-		commonbeat.DisableAutodiscoveryRBACSetup()
+	if viper.GetBool(operator.EnableAutodiscoverRBACSetup) {
+		commonbeat.EnableAutodiscoverRBACSetup()
 	}
 
 	if err = apmserver.Add(mgr, params); err != nil {

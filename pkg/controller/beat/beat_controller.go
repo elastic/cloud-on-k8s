@@ -97,7 +97,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 		return err
 	}
 
-	if commonbeat.ShouldSetupAutodiscoveryRBAC() {
+	if commonbeat.ShouldSetupAutodiscoverRBAC() {
 		if err := c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &beatv1beta1.Beat{},
