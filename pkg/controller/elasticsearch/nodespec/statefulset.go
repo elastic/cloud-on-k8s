@@ -8,7 +8,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
@@ -34,17 +34,26 @@ func HeadlessServiceName(ssetName string) string {
 }
 
 // HeadlessService returns a headless service for the given StatefulSet
-func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
+func HeadlessService(es *esv1.Elasticsearch, ssetName string) corev1.Service {
+	nsn := k8s.ExtractNamespacedName(es)
+
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
+			Namespace: nsn.Namespace,
 			Name:      HeadlessServiceName(ssetName),
-			Labels:    label.NewStatefulSetLabels(es, ssetName),
+			Labels:    label.NewStatefulSetLabels(nsn, ssetName),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:      corev1.ServiceTypeClusterIP,
 			ClusterIP: corev1.ClusterIPNone,
-			Selector:  label.NewStatefulSetLabels(es, ssetName),
+			Selector:  label.NewStatefulSetLabels(nsn, ssetName),
+			Ports: []corev1.ServicePort{
+				{
+					Name:     es.Spec.HTTP.Protocol(),
+					Protocol: corev1.ProtocolTCP,
+					Port:     network.HTTPPort,
+				},
+			},
 		},
 	}
 }

@@ -86,7 +86,10 @@ dependencies:
 
 # Generate code, CRDs and documentation
 ALL_CRDS=config/crds/all-crds.yaml
-generate: generate-crds generate-api-docs generate-notice-file
+generate: tidy generate-crds generate-api-docs generate-notice-file
+
+tidy:
+	go mod tidy
 
 go-generate:
 	# we use this in pkg/controller/common/license
@@ -349,7 +352,7 @@ switch-registry-dev: # just use the default values of variables
 E2E_REGISTRY_NAMESPACE ?= eck-dev
 E2E_IMG                ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
 TESTS_MATCH            ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-STACK_VERSION          ?= 7.6.0
+STACK_VERSION          ?= 7.7.0
 E2E_JSON               ?= false
 TEST_TIMEOUT           ?= 5m
 E2E_SKIP_CLEANUP       ?= false

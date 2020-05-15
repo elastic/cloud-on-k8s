@@ -6,7 +6,7 @@ metadata:
   name: monitor
   namespace: beats
 spec:
-  version: 7.6.0
+  version: 7.7.0
   nodeSets:
   - name: mdi
     count: 3
@@ -28,7 +28,7 @@ metadata:
   name: monitor
   namespace: beats
 spec:
-  version: 7.6.0
+  version: 7.7.0
   count: 1
   elasticsearchRef:
     name: "monitor"
