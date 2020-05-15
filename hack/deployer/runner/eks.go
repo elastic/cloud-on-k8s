@@ -44,7 +44,7 @@ iam:
   serviceRoleARN: {{.ServiceRoleARN}}
 `
 	awsAccessKeyID      = "aws_access_key_id"
-	awsSecretAccessKey  = "aws_secret_access_key"
+	awsSecretAccessKey  = "aws_secret_access_key" // nolint:gosec
 	credentialsTemplate = `[default]
 %s = %s
 %s = %s`

@@ -29,13 +29,13 @@ const (
 	CertificatesDir = "config/elasticsearch-certs"
 
 	APMServerHost        = "apm-server.host"
-	APMServerSecretToken = "apm-server.secret_token"
+	APMServerSecretToken = "apm-server.secret_token" // nolint:gosec
 
 	APMServerSSLEnabled     = "apm-server.ssl.enabled"
 	APMServerSSLKey         = "apm-server.ssl.key"
 	APMServerSSLCertificate = "apm-server.ssl.certificate"
 
-	ApmCfgSecretKey = "apm-server.yml"
+	ApmCfgSecretKey = "apm-server.yml" // nolint:gosec
 )
 
 // reconcileApmServerConfig reconciles the configuration of the APM server: it first creates the configuration from the APM

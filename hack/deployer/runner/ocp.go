@@ -18,7 +18,7 @@ const (
 	OcpDriverID                     = "ocp"
 	OcpVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-ocp-k8s-operator"
 	OcpServiceAccountVaultFieldName = "service-account"
-	OcpPullSecretFieldName          = "ocp-pull-secret"
+	OcpPullSecretFieldName          = "ocp-pull-secret" // nolint:gosec
 	OcpStateBucket                  = "eck-deployer-ocp-clusters-state"
 	OcpConfigFileName               = "deployer-config-ocp.yml"
 	DefaultOcpRunConfigTemplate     = `id: ocp-dev

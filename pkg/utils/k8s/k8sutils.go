@@ -98,7 +98,7 @@ func DeleteSecretMatching(c Client, opts ...client.ListOption) error {
 		return err
 	}
 	for _, s := range secrets.Items {
-		if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) { //nolint:gosec
+		if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
