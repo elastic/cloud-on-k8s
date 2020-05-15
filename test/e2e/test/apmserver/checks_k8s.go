@@ -21,6 +21,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckApmServerPodsRunning(b, k),
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
+		CheckSecrets(b, k),
 	}
 }
 
@@ -116,4 +117,26 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
+}
+
+// CheckSecrets checks that expected secrets have been created.
+func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
+	return test.CheckSecretsContent(k, b.ApmServer.Namespace, func() map[string][]string {
+		apmName := b.ApmServer.Name
+		// hardcode all secret names and keys to catch any breaking change
+		expectedSecrets := map[string][]string{
+			apmName + "-apm-config": {"apm-server.yml"},
+			apmName + "-apm-token":  {"secret-token"},
+		}
+		if b.ApmServer.Spec.ElasticsearchRef.Name != "" {
+			expectedSecrets[apmName+"-apm-es-ca"] = []string{"ca.crt", "tls.crt"}
+			expectedSecrets[apmName+"-apm-user"] = []string{b.ApmServer.Namespace + "-" + apmName + "-apm-user"}
+		}
+		if b.ApmServer.Spec.HTTP.TLS.Enabled() {
+			expectedSecrets[apmName+"-apm-http-ca-internal"] = []string{"tls.crt", "tls.key"}
+			expectedSecrets[apmName+"-apm-http-certs-internal"] = []string{"tls.crt", "tls.key", "ca.crt"}
+			expectedSecrets[apmName+"-apm-http-certs-public"] = []string{"ca.crt", "tls.crt"}
+		}
+		return expectedSecrets
+	})
 }

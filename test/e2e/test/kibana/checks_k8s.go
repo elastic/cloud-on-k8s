@@ -23,6 +23,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckKibanaPods(b, k),
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
+		CheckSecrets(b, k),
 	}
 }
 
@@ -86,7 +87,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 		Name: "Kibana services should be created",
 		Test: test.Eventually(func() error {
 			for _, s := range []string{
-				kibana.HTTPService(b.Kibana.Name),
+				b.Kibana.Name + "-kb-http",
 			} {
 				if _, err := k.GetService(b.Kibana.Namespace, s); err != nil {
 					return err
@@ -103,7 +104,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 		Name: "Kibana services should have endpoints",
 		Test: test.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				kibana.HTTPService(b.Kibana.Name): int(b.Kibana.Spec.Count),
+				b.Kibana.Name + "-kb-http": int(b.Kibana.Spec.Count),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana in this b
@@ -122,4 +123,25 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
+}
+
+// CheckSecrets checks that expected secrets have been created.
+func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
+	return test.CheckSecretsContent(k, b.Kibana.Namespace, func() map[string][]string {
+		kbName := b.Kibana.Name
+		// hardcode all secret names and keys to catch any breaking change
+		expectedSecrets := map[string][]string{
+			kbName + "-kb-config": {"kibana.yml", "telemetry.yml"},
+		}
+		if b.Kibana.Spec.ElasticsearchRef.Name != "" {
+			expectedSecrets[kbName+"-kb-es-ca"] = []string{"ca.crt", "tls.crt"}
+			expectedSecrets[kbName+"-kibana-user"] = []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"}
+		}
+		if b.Kibana.Spec.HTTP.TLS.Enabled() {
+			expectedSecrets[kbName+"-kb-http-ca-internal"] = []string{"tls.crt", "tls.key"}
+			expectedSecrets[kbName+"-kb-http-certs-internal"] = []string{"tls.crt", "tls.key", "ca.crt"}
+			expectedSecrets[kbName+"-kb-http-certs-public"] = []string{"ca.crt", "tls.crt"}
+		}
+		return expectedSecrets
+	})
 }

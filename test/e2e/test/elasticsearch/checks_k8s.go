@@ -5,6 +5,7 @@
 package elasticsearch
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/bootstrap"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -41,8 +43,9 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckExpectedPodsEventuallyReady(b, k),
 		CheckESVersion(b, k),
 		CheckServices(b, k),
-		CheckPodCertificates(b, k),
 		CheckServicesEndpoints(b, k),
+		CheckSecrets(b, k),
+		CheckPodCertificates(b, k),
 		CheckClusterHealth(b, k),
 		CheckESPassword(b, k),
 		CheckESDataVolumeType(b.Elasticsearch, k),
@@ -72,6 +75,30 @@ func CheckCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 	}
 }
 
+// CheckSecrets checks that expected secrets have been created.
+func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
+	return test.CheckSecretsContent(k, b.Elasticsearch.Namespace, func() map[string][]string {
+		esName := b.Elasticsearch.Name
+		// hardcode all secret names and keys to catch any breaking change
+		expectedSecrets := map[string][]string{
+			esName + "-es-elastic-user":          {"elastic"},
+			esName + "-es-http-ca-internal":      {"tls.crt", "tls.key"},
+			esName + "-es-http-certs-internal":   {"tls.crt", "tls.key", "ca.crt"},
+			esName + "-es-http-certs-public":     {"tls.crt", "ca.crt"},
+			esName + "-es-internal-users":        {"elastic-internal", "elastic-internal-probe"},
+			esName + "-es-remote-ca":             {"ca.crt"},
+			esName + "-es-transport-ca-internal": {"tls.crt", "tls.key"},
+			// esName + "-es-transport-certificates" is handled in CheckPodCertificates
+			esName + "-es-transport-certs-public": {"ca.crt"},
+			esName + "-es-xpack-file-realm":       {"users", "users_roles", "roles.yml"},
+		}
+		for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
+			expectedSecrets[esName+"-es-"+nodeSet.Name+"-es-config"] = []string{"elasticsearch.yml"}
+		}
+		return expectedSecrets
+	})
+}
+
 // CheckPodCertificates checks that all pods have a private key and signed certificate
 func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
@@ -82,7 +109,7 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 				return err
 			}
 			for _, pod := range pods {
-				_, _, err := k.GetTransportCert(b.Elasticsearch.Namespace, b.Elasticsearch.Name, pod.Name)
+				_, _, err := getTransportCert(k, b.Elasticsearch.Namespace, b.Elasticsearch.Name, pod.Name)
 				if err != nil {
 					return err
 				}
@@ -90,6 +117,35 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
+}
+
+// getTransportCert retrieves the certificate of the CA and the transport certificate
+func getTransportCert(k *test.K8sClient, esNamespace, esName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
+	var secret corev1.Secret
+	key := types.NamespacedName{
+		Namespace: esNamespace,
+		Name:      esName + "-es-transport-certificates",
+	}
+	if err = k.Client.Get(key, &secret); err != nil {
+		return nil, nil, err
+	}
+	caCertBytes, exists := secret.Data[certificates.CAFileName]
+	if !exists || len(caCertBytes) == 0 {
+		return nil, nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
+	}
+	caCert, err = certificates.ParsePEMCerts(caCertBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	transportCertBytes, exists := secret.Data[transport.PodCertFileName(podName)]
+	if !exists || len(transportCertBytes) == 0 {
+		return nil, nil, fmt.Errorf("no value found for secret %s", transport.PodCertFileName(podName))
+	}
+	transportCert, err = certificates.ParsePEMCerts(transportCertBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	return
 }
 
 // CheckESPodsRunning checks that all ES pods for the given ES are running
@@ -179,7 +235,9 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 		Name: "ES services should be created",
 		Test: test.Eventually(func() error {
 			for _, s := range []string{
-				esv1.HTTPService(b.Elasticsearch.Name),
+				// we intentionally hardcode the names here to catch any accidental breaking change
+				b.Elasticsearch.Name + "-es-http",
+				b.Elasticsearch.Name + "-es-transport",
 			} {
 				svc, err := k.GetService(b.Elasticsearch.Namespace, s)
 				if err != nil {
@@ -202,7 +260,9 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 		Name: "ES services should have endpoints",
 		Test: test.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				esv1.HTTPService(b.Elasticsearch.Name): int(b.Elasticsearch.Spec.NodeCount()),
+				// we intentionally hardcode the names here to catch any accidental breaking change
+				b.Elasticsearch.Name + "-es-http":      int(b.Elasticsearch.Spec.NodeCount()),
+				b.Elasticsearch.Name + "-es-transport": int(b.Elasticsearch.Spec.NodeCount()),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana
