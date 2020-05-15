@@ -44,25 +44,25 @@ pipeline {
                         }
                     }
                 }
-                stage("1.16.4") {
+                stage("1.16.9") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         checkout scm
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.16.4", "1.16")
+                            runTests(lib, failedTests, "kindest/node:v1.16.9", "1.16")
                         }
                     }
                 }
-                stage("1.17.0") {
+                stage("1.17.5") {
                     agent {
                         label 'eck'
                     }
                     steps {
                         checkout scm
                         script {
-                            runTests(lib, failedTests, "kindest/node:v1.17.0", "1.17")
+                            runTests(lib, failedTests, "kindest/node:v1.17.5", "1.17")
                         }
                     }
                 }
