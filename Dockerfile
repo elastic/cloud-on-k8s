@@ -1,5 +1,5 @@
 # Build the operator binary
-FROM golang:1.14.2 as builder
+FROM golang:1.14.3 as builder
 
 ARG GO_LDFLAGS
 ARG GO_TAGS
