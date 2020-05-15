@@ -251,7 +251,7 @@ func (d *OcpDriver) create() error {
 	}
 
 	installConfig := filepath.Join(d.ctx["ClusterStateDir"].(string), "install-config.yaml")
-	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0644)
+	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0600)
 
 	if err != nil {
 		return err

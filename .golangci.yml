@@ -40,10 +40,6 @@ issues:
         - gosec
       # this was added in https://github.com/securego/gosec/issues/438 but for our use case is more or less entirely false positives
       text: 'G601: Implicit memory aliasing in for loop.'
-    - linters:
-        - gosec
-      # TODO: we set some files to 0644, but I think we read them in the same process so 0600 might work?
-      text: 'G306: Expect WriteFile permissions to be 0600 or less'
     - path: cmd/manager/main\.go
       text: 'cyclomatic complexity \d+ of func `execute` is high'
     - path: pkg/controller/apmserver/config/reconcile\.go
