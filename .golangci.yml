@@ -15,9 +15,8 @@ linters:
     - gocognit # added in 1.20
     - godot # added in 1.25
     - godox # added in 1.19
-    - goerr113 # do we want to omit this?
+    - goerr113
     - gomnd # added in 1.23
-    # - gosec # do we want to omit this?
     - interfacer
     - lll
     - nestif # added in 1.25
