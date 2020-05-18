@@ -77,25 +77,27 @@ func CheckCertificateAuthority(b Builder, k *test.K8sClient) test.Step {
 
 // CheckSecrets checks that expected secrets have been created.
 func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
-	return test.CheckSecretsContent(k, b.Elasticsearch.Namespace, func() map[string][]string {
+	return test.CheckSecretsContent(k, b.Elasticsearch.Namespace, func() []test.ExpectedSecret {
 		esName := b.Elasticsearch.Name
 		// hardcode all secret names and keys to catch any breaking change
-		expectedSecrets := map[string][]string{
-			esName + "-es-elastic-user":          {"elastic"},
-			esName + "-es-http-ca-internal":      {"tls.crt", "tls.key"},
-			esName + "-es-http-certs-internal":   {"tls.crt", "tls.key", "ca.crt"},
-			esName + "-es-http-certs-public":     {"tls.crt", "ca.crt"},
-			esName + "-es-internal-users":        {"elastic-internal", "elastic-internal-probe"},
-			esName + "-es-remote-ca":             {"ca.crt"},
-			esName + "-es-transport-ca-internal": {"tls.crt", "tls.key"},
+		expected := []test.ExpectedSecret{
+			{Name: esName + "-es-elastic-user", Keys: []string{"elastic"}},
+			{Name: esName + "-es-http-ca-internal", Keys: []string{"tls.crt", "tls.key"}},
+			{Name: esName + "-es-http-certs-internal", Keys: []string{"tls.crt", "tls.key", "ca.crt"}},
+			{Name: esName + "-es-http-certs-public", Keys: []string{"tls.crt", "ca.crt"}},
+			{Name: esName + "-es-internal-users", Keys: []string{"elastic-internal", "elastic-internal-probe"}},
+			{Name: esName + "-es-remote-ca", Keys: []string{"ca.crt"}},
+			{Name: esName + "-es-transport-ca-internal", Keys: []string{"tls.crt", "tls.key"}},
+			{Name: esName + "-es-transport-certs-public", Keys: []string{"ca.crt"}},
+			{Name: esName + "-es-xpack-file-realm", Keys: []string{"users", "users_roles", "roles.yml"}},
 			// esName + "-es-transport-certificates" is handled in CheckPodCertificates
-			esName + "-es-transport-certs-public": {"ca.crt"},
-			esName + "-es-xpack-file-realm":       {"users", "users_roles", "roles.yml"},
 		}
 		for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
-			expectedSecrets[esName+"-es-"+nodeSet.Name+"-es-config"] = []string{"elasticsearch.yml"}
+			expected = append(expected, test.ExpectedSecret{
+				Name: esName + "-es-" + nodeSet.Name + "-es-config", Keys: []string{"elasticsearch.yml"},
+			})
 		}
-		return expectedSecrets
+		return expected
 	})
 }
 

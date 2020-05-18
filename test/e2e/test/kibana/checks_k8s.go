@@ -127,21 +127,27 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 
 // CheckSecrets checks that expected secrets have been created.
 func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
-	return test.CheckSecretsContent(k, b.Kibana.Namespace, func() map[string][]string {
+	return test.CheckSecretsContent(k, b.Kibana.Namespace, func() []test.ExpectedSecret {
 		kbName := b.Kibana.Name
 		// hardcode all secret names and keys to catch any breaking change
-		expectedSecrets := map[string][]string{
-			kbName + "-kb-config": {"kibana.yml", "telemetry.yml"},
+		expected := []test.ExpectedSecret{
+			{Name: kbName + "-kb-config", Keys: []string{"kibana.yml", "telemetry.yml"}},
 		}
 		if b.Kibana.Spec.ElasticsearchRef.Name != "" {
-			expectedSecrets[kbName+"-kb-es-ca"] = []string{"ca.crt", "tls.crt"}
-			expectedSecrets[kbName+"-kibana-user"] = []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"}
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: kbName + "-kb-es-ca", Keys: []string{"ca.crt", "tls.crt"}},
+				test.ExpectedSecret{
+					Name: kbName + "-kibana-user", Keys: []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"}},
+			)
 		}
 		if b.Kibana.Spec.HTTP.TLS.Enabled() {
-			expectedSecrets[kbName+"-kb-http-ca-internal"] = []string{"tls.crt", "tls.key"}
-			expectedSecrets[kbName+"-kb-http-certs-internal"] = []string{"tls.crt", "tls.key", "ca.crt"}
-			expectedSecrets[kbName+"-kb-http-certs-public"] = []string{"ca.crt", "tls.crt"}
+			expected = append(expected,
+				test.ExpectedSecret{Name: kbName + "-kb-http-ca-internal", Keys: []string{"tls.crt", "tls.key"}},
+				test.ExpectedSecret{Name: kbName + "-kb-http-certs-internal", Keys: []string{"tls.crt", "tls.key", "ca.crt"}},
+				test.ExpectedSecret{Name: kbName + "-kb-http-certs-public", Keys: []string{"ca.crt", "tls.crt"}},
+			)
 		}
-		return expectedSecrets
+		return expected
 	})
 }
