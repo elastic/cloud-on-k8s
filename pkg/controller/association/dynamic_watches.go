@@ -23,7 +23,7 @@ func esUserWatchName(associated types.NamespacedName) string {
 	return associated.Namespace + "-" + associated.Name + "-es-user-watch"
 }
 
-// associatedCAWatchName returns the name of the watch setup on the secret that
+// associatedCAWatchName returns the name of the watch setup on the secret of the associated resource that
 // contains the HTTP certificate chain of Elasticsearch.
 func associatedCAWatchName(associated types.NamespacedName) string {
 	return associated.Namespace + "-" + associated.Name + "-ca-watch"
@@ -31,6 +31,7 @@ func associatedCAWatchName(associated types.NamespacedName) string {
 
 // setUserAndCaWatches sets up dynamic watches related to:
 // * The referenced Elasticsearch resource
+// * The user created in the Elasticsearch namespace
 // * The CA of the target service (can be Kibana or Elasticsearch in the case of the APM)
 func (r *Reconciler) setUserAndCaWatches(
 	association commonv1.Association,

@@ -93,8 +93,8 @@ func (r *ReconcileApmServer) deploymentParams(
 		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
 	}
 
-	// build a checksum of the cert files used by ES and Kibana, which we can use to cause the Deployment to roll the Apm Server
-	// instances in the deployment when the ca file contents change. this is done because Apm Server do not support
+	// Build a checksum of the cert files used by ES and Kibana, which we can use to cause the Deployment to roll the Apm Server
+	// instances in the deployment when the ca file contents change. This is done because Apm Server does not support
 	// updating the CA file contents without restarting the process.
 	certChecksum := sha256.New224()
 	caIsConfigured := false
@@ -104,8 +104,8 @@ func (r *ReconcileApmServer) deploymentParams(
 			caSecretName := association.AssociationConf().GetCASecretName()
 			caVolume := volume.NewSecretVolumeWithMountPath(
 				caSecretName,
-				association.AssociatedServiceType()+"-certs",
-				filepath.Join(ApmBaseDir, certificatesDir(association.AssociatedServiceType())),
+				association.AssociatedType()+"-certs",
+				filepath.Join(ApmBaseDir, certificatesDir(association.AssociatedType())),
 			)
 
 			var publicCASecret corev1.Secret

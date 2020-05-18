@@ -93,13 +93,13 @@ func testFetchAPMServer(t *testing.T) {
 			require.Equal(t, "test-image", got.Spec.Image)
 			require.EqualValues(t, 1, got.Spec.Count)
 			for _, assoc := range got.GetAssociations() {
-				switch assoc.AssociatedServiceType() {
+				switch assoc.AssociatedType() {
 				case "elasticsearch":
 					require.Equal(t, tc.wantEsAssocConf, assoc.AssociationConf())
 				case "kibana":
 					require.Equal(t, tc.wantKibanaAssocConf, assoc.AssociationConf())
 				default:
-					t.Fatalf("unknown association type: %s", assoc.AssociatedServiceType())
+					t.Fatalf("unknown association type: %s", assoc.AssociatedType())
 				}
 			}
 
@@ -263,7 +263,7 @@ func mkKibana(withAnnotations bool) *kbv1.Kibana {
 
 	if withAnnotations {
 		kb.ObjectMeta.Annotations = map[string]string{
-			kb.AnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
+			kb.AssociationConfAnnotationName(): `{"authSecretName":"auth-secret", "authSecretKey":"kb-user", "caSecretName": "ca-secret", "url":"https://es.svc:9300"}`,
 		}
 	}
 

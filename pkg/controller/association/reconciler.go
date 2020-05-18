@@ -44,11 +44,12 @@ var (
 type AssociationInfo struct {
 	// AssociatedObjTemplate builds an empty typed associated object (eg. &Kibana{}).
 	AssociationObjTemplate func() commonv1.Association
-	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference
+	// ElasticsearchRef is a function which returns the maybe transitive Elasticsearch reference (eg. APMServer -> Kibana -> Elasticsearch).
+	// In the case of a transitive reference this is used to create the Elasticsearch user.
 	ElasticsearchRef func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error)
-	// AssociatedNamer is used to build the name of the Secret which contains the CA of the targeted service
+	// AssociatedNamer is used to build the name of the Secret which contains the CA of the target.
 	AssociatedNamer name.Namer
-	// ExternalServiceURL is used to build the external service url as it will be set in the resource configuration
+	// ExternalServiceURL is used to build the external service url as it will be set in the resource configuration.
 	ExternalServiceURL func(c k8s.Client, association commonv1.Association) (string, error)
 	// AssociationName is the name of the association (eg. "kb-es").
 	AssociationName string
@@ -170,7 +171,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 			return commonv1.AssociationFailed, err
 		}
 		// remove the configuration in the annotation, other leftover resources are already garbage-collected
-		return commonv1.AssociationUnknown, RemoveAssociationConf(r.Client, association.Associated(), association.AnnotationName())
+		return commonv1.AssociationUnknown, RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
 	}
 	if associationRef.Namespace == "" {
 		// no namespace provided: default to the association resource namespace
@@ -186,7 +187,7 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 
 	// the associated resource does not exist yet, set status to Pending
 	if !associatedResourceFound {
-		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association.Associated(), association.AnnotationName())
+		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
 	}
 
 	if esRef.Namespace == "" {
@@ -282,7 +283,7 @@ func (r *Reconciler) getElasticsearch(
 			"Failed to find referenced backend %s: %v", elasticsearchRef.NamespacedName(), err)
 		if apierrors.IsNotFound(err) {
 			// ES is not found, remove any existing backend configuration and retry in a bit.
-			if err := RemoveAssociationConf(r.Client, association.Associated(), association.AnnotationName()); err != nil && !apierrors.IsConflict(err) {
+			if err := RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName()); err != nil && !apierrors.IsConflict(err) {
 				r.log(association).Error(err, "Failed to remove Elasticsearch output from EnterpriseSearch object")
 				return esv1.Elasticsearch{}, commonv1.AssociationPending, err
 			}
@@ -300,7 +301,7 @@ func (r *Reconciler) Unbind(association commonv1.Association) error {
 		return err
 	}
 	// Also remove the association configuration
-	return RemoveAssociationConf(r.Client, association.Associated(), association.AnnotationName())
+	return RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
 }
 
 // updateAssocConf updates associated with the expected association conf.
@@ -314,7 +315,7 @@ func (r *Reconciler) updateAssocConf(
 
 	if !reflect.DeepEqual(expectedAssocConf, association.AssociationConf()) {
 		r.log(association).Info("Updating spec with Elasticsearch association configuration")
-		if err := UpdateAssociationConf(r.Client, association.Associated(), expectedAssocConf, association.AnnotationName()); err != nil {
+		if err := UpdateAssociationConf(r.Client, association.Associated(), expectedAssocConf, association.AssociationConfAnnotationName()); err != nil {
 			if apierrors.IsConflict(err) {
 				return commonv1.AssociationPending, nil
 			}

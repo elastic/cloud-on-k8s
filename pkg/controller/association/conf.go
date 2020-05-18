@@ -62,10 +62,15 @@ func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecor
 // IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
 // This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
 func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder) bool {
-	esRef := association.AssociationRef()
-	if (&esRef).IsDefined() && !association.AssociationConf().IsConfigured() {
-		r.Event(association, v1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
-		log.Info("Elasticsearch association not established: skipping association resource deployment reconciliation",
+	ref := association.AssociationRef()
+	if (&ref).IsDefined() && !association.AssociationConf().IsConfigured() {
+		r.Event(
+			association,
+			v1.EventTypeWarning,
+			events.EventAssociationError,
+			"Association backend for "+association.AssociatedType()+" is not configured",
+		)
+		log.Info("Association not established: skipping association resource deployment reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),
@@ -77,6 +82,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 
 // ElasticsearchAuthSettings returns the user and the password to be used by an associated object to authenticate
 // against an Elasticsearch cluster.
+// This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana)
 func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (username, password string, err error) {
 	assocConf := association.AssociationConf()
 	if !assocConf.AuthIsConfigured() {
@@ -99,7 +105,7 @@ func GetAssociationConf(association commonv1.Association) (*commonv1.Association
 		return nil, err
 	}
 
-	return extractAssociationConf(annotations, association.AnnotationName())
+	return extractAssociationConf(annotations, association.AssociationConfAnnotationName())
 }
 
 func extractAssociationConf(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {

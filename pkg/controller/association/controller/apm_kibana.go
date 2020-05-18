@@ -72,6 +72,7 @@ func getKibanaExternalURL(c k8s.Client, association commonv1.Association) (strin
 	return stringsutil.Concat(kb.Spec.HTTP.Protocol(), "://", kibana.HTTPService(kb.Name), ".", kb.Namespace, ".svc:", strconv.Itoa(kibana.HTTPPort)), nil
 }
 
+// getElasticsearchFromKibana returns the Elasticsearch reference in which the user must be created for this association.
 func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 	kibanaRef := association.AssociationRef()
 	if !kibanaRef.IsDefined() {

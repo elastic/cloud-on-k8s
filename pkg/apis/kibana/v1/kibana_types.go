@@ -76,11 +76,11 @@ func (k *Kibana) Associated() commonv1.Associated {
 	return k
 }
 
-func (k *Kibana) AnnotationName() string {
-	return "association.k8s.elastic.co/es-conf"
+func (k *Kibana) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName
 }
 
-func (k *Kibana) AssociatedServiceType() string {
+func (k *Kibana) AssociatedType() string {
 	return "elasticsearch"
 }
 

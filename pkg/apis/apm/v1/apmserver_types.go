@@ -36,6 +36,7 @@ type ApmServerSpec struct {
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
+	// It allows APM agent central configuration management in Kibana.
 	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
 
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
@@ -155,11 +156,11 @@ func (aes *ApmEsAssociation) Associated() commonv1.Associated {
 	return aes.ApmServer
 }
 
-func (aes *ApmEsAssociation) AnnotationName() string {
-	return "association.k8s.elastic.co/es-conf"
+func (aes *ApmEsAssociation) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName
 }
 
-func (aes *ApmEsAssociation) AssociatedServiceType() string {
+func (aes *ApmEsAssociation) AssociatedType() string {
 	return "elasticsearch"
 }
 
@@ -200,11 +201,11 @@ func (akb *ApmKibanaAssociation) Associated() commonv1.Associated {
 	return akb.ApmServer
 }
 
-func (akb *ApmKibanaAssociation) AnnotationName() string {
+func (akb *ApmKibanaAssociation) AssociationConfAnnotationName() string {
 	return "association.k8s.elastic.co/kb-conf"
 }
 
-func (akb *ApmKibanaAssociation) AssociatedServiceType() string {
+func (akb *ApmKibanaAssociation) AssociatedType() string {
 	return "kibana"
 }
 

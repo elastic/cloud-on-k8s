@@ -362,7 +362,8 @@ spec:
                 type: string
               kibanaRef:
                 description: KibanaRef is a reference to a Kibana instance running
-                  in the same Kubernetes cluster.
+                  in the same Kubernetes cluster. It allows APM agent central configuration
+                  management in Kibana.
                 properties:
                   name:
                     description: Name of the Kubernetes object.

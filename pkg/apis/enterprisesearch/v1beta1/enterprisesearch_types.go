@@ -115,11 +115,11 @@ func (ent *EnterpriseSearch) Associated() commonv1.Associated {
 	return &EnterpriseSearch{}
 }
 
-func (ent *EnterpriseSearch) AnnotationName() string {
-	return "association.k8s.elastic.co/es-conf"
+func (ent *EnterpriseSearch) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName
 }
 
-func (ent *EnterpriseSearch) AssociatedServiceType() string {
+func (ent *EnterpriseSearch) AssociatedType() string {
 	return "elasticsearch"
 }
 
