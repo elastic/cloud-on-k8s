@@ -44,6 +44,8 @@ func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remo
 			delete(es.Annotations, ManagedRemoteClustersAnnotationName)
 			return c.Update(&es)
 		}
+
+		return nil
 	}
 
 	if es.Annotations == nil {
