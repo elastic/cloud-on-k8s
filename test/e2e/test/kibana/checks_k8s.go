@@ -131,21 +131,64 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		kbName := b.Kibana.Name
 		// hardcode all secret names and keys to catch any breaking change
 		expected := []test.ExpectedSecret{
-			{Name: kbName + "-kb-config", Keys: []string{"kibana.yml", "telemetry.yml"}},
+			{
+				Name: kbName + "-kb-config",
+				Keys: []string{"kibana.yml", "telemetry.yml"},
+				Labels: map[string]string{
+					"eck.k8s.elastic.co/credentials": "true",
+					"kibana.k8s.elastic.co/name":     kbName,
+				},
+			},
 		}
 		if b.Kibana.Spec.ElasticsearchRef.Name != "" {
 			expected = append(expected,
 				test.ExpectedSecret{
-					Name: kbName + "-kb-es-ca", Keys: []string{"ca.crt", "tls.crt"}},
+					Name: kbName + "-kb-es-ca",
+					Keys: []string{"ca.crt", "tls.crt"},
+					Labels: map[string]string{
+						"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
+						"kibanaassociation.k8s.elastic.co/name":      kbName,
+						"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
+					},
+				},
 				test.ExpectedSecret{
-					Name: kbName + "-kibana-user", Keys: []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"}},
+					Name: kbName + "-kibana-user",
+					Keys: []string{b.Kibana.Namespace + "-" + kbName + "-kibana-user"},
+					Labels: map[string]string{
+						"eck.k8s.elastic.co/credentials":             "true",
+						"elasticsearch.k8s.elastic.co/cluster-name":  b.Kibana.Spec.ElasticsearchRef.Name,
+						"kibanaassociation.k8s.elastic.co/name":      kbName,
+						"kibanaassociation.k8s.elastic.co/namespace": b.Kibana.Namespace,
+					},
+				},
 			)
 		}
 		if b.Kibana.Spec.HTTP.TLS.Enabled() {
 			expected = append(expected,
-				test.ExpectedSecret{Name: kbName + "-kb-http-ca-internal", Keys: []string{"tls.crt", "tls.key"}},
-				test.ExpectedSecret{Name: kbName + "-kb-http-certs-internal", Keys: []string{"tls.crt", "tls.key", "ca.crt"}},
-				test.ExpectedSecret{Name: kbName + "-kb-http-certs-public", Keys: []string{"ca.crt", "tls.crt"}},
+				test.ExpectedSecret{
+					Name: kbName + "-kb-http-ca-internal",
+					Keys: []string{"tls.crt", "tls.key"},
+					Labels: map[string]string{
+						"kibana.k8s.elastic.co/name": kbName,
+						"common.k8s.elastic.co/type": "kibana",
+					},
+				},
+				test.ExpectedSecret{
+					Name: kbName + "-kb-http-certs-internal",
+					Keys: []string{"tls.crt", "tls.key", "ca.crt"},
+					Labels: map[string]string{
+						"kibana.k8s.elastic.co/name": kbName,
+						"common.k8s.elastic.co/type": "kibana",
+					},
+				},
+				test.ExpectedSecret{
+					Name: kbName + "-kb-http-certs-public",
+					Keys: []string{"ca.crt", "tls.crt"},
+					Labels: map[string]string{
+						"kibana.k8s.elastic.co/name": kbName,
+						"common.k8s.elastic.co/type": "kibana",
+					},
+				},
 			)
 		}
 		return expected

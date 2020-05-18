@@ -81,20 +81,90 @@ func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
 		esName := b.Elasticsearch.Name
 		// hardcode all secret names and keys to catch any breaking change
 		expected := []test.ExpectedSecret{
-			{Name: esName + "-es-elastic-user", Keys: []string{"elastic"}},
-			{Name: esName + "-es-http-ca-internal", Keys: []string{"tls.crt", "tls.key"}},
-			{Name: esName + "-es-http-certs-internal", Keys: []string{"tls.crt", "tls.key", "ca.crt"}},
-			{Name: esName + "-es-http-certs-public", Keys: []string{"tls.crt", "ca.crt"}},
-			{Name: esName + "-es-internal-users", Keys: []string{"elastic-internal", "elastic-internal-probe"}},
-			{Name: esName + "-es-remote-ca", Keys: []string{"ca.crt"}},
-			{Name: esName + "-es-transport-ca-internal", Keys: []string{"tls.crt", "tls.key"}},
-			{Name: esName + "-es-transport-certs-public", Keys: []string{"ca.crt"}},
-			{Name: esName + "-es-xpack-file-realm", Keys: []string{"users", "users_roles", "roles.yml"}},
+			{
+				Name: esName + "-es-elastic-user",
+				Keys: []string{"elastic"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"eck.k8s.elastic.co/credentials":            "true",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
+			{
+				Name: esName + "-es-http-ca-internal",
+				Keys: []string{"tls.crt", "tls.key"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
+			{
+				Name: esName + "-es-http-certs-internal",
+				Keys: []string{"tls.crt", "tls.key", "ca.crt"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
+			{
+				Name: esName + "-es-http-certs-public",
+				Keys: []string{"tls.crt", "ca.crt"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
+			{
+				Name: esName + "-es-internal-users",
+				Keys: []string{"elastic-internal", "elastic-internal-probe"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"eck.k8s.elastic.co/credentials":            "true",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
+			{
+				Name: esName + "-es-remote-ca",
+				Keys: []string{"ca.crt"},
+				Labels: map[string]string{
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
+			{
+				Name: esName + "-es-transport-ca-internal",
+				Keys: []string{"tls.crt", "tls.key"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
+			{
+				Name: esName + "-es-transport-certs-public",
+				Keys: []string{"ca.crt"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
+			{
+				Name: esName + "-es-xpack-file-realm",
+				Keys: []string{"users", "users_roles", "roles.yml"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": esName,
+				},
+			},
 			// esName + "-es-transport-certificates" is handled in CheckPodCertificates
 		}
 		for _, nodeSet := range b.Elasticsearch.Spec.NodeSets {
 			expected = append(expected, test.ExpectedSecret{
-				Name: esName + "-es-" + nodeSet.Name + "-es-config", Keys: []string{"elasticsearch.yml"},
+				Name: esName + "-es-" + nodeSet.Name + "-es-config",
+				Keys: []string{"elasticsearch.yml"},
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":                    "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name":     esName,
+					"elasticsearch.k8s.elastic.co/statefulset-name": esName + "-es-" + nodeSet.Name,
+				},
 			})
 		}
 		return expected
