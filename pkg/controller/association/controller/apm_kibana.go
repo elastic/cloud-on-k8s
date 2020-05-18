@@ -39,7 +39,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 		},
 		UserSecretSuffix: "apm-kb-user",
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
-			return "apm_user", nil
+			return "kibana_user", nil
 		},
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
 			kibanaKey := association.AssociationRef().WithDefaultNamespace(association.GetNamespace()).NamespacedName()
