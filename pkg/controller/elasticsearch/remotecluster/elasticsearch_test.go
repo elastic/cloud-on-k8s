@@ -41,6 +41,17 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 			want: map[string]struct{}{},
 		},
 		{
+			name: "Read from an empty annotation",
+			args: args{es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "ns1",
+					Namespace:   "es1",
+					Annotations: map[string]string{ManagedRemoteClustersAnnotationName: ""},
+				},
+			}},
+			want: map[string]struct{}{},
+		},
+		{
 			name: "Decode annotation into a list of remote cluster",
 			args: args{es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -138,6 +149,20 @@ func TestUpdateSettings(t *testing.T) {
 					"ns1",
 					"es1",
 					nil,
+				),
+			},
+			wantRequeue:  false,
+			wantEsCalled: false,
+		},
+		{
+			name: "Empty annotation",
+			args: args{
+				esClient:       &fakeESClient{existingSettings: emptySettings},
+				licenseChecker: &fakeLicenseChecker{true},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{"foo": "bar", ManagedRemoteClustersAnnotationName: ""},
 				),
 			},
 			wantRequeue:  false,

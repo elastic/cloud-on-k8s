@@ -23,7 +23,7 @@ const (
 func getRemoteClustersInAnnotation(es esv1.Elasticsearch) map[string]struct{} {
 	remoteClusters := make(map[string]struct{})
 	serializedRemoteClusters, ok := es.Annotations[ManagedRemoteClustersAnnotationName]
-	if !ok {
+	if !ok || strings.TrimSpace(serializedRemoteClusters) == "" {
 		return remoteClusters
 	}
 	for _, remoteClusterInAnnotation := range strings.Split(serializedRemoteClusters, ",") {
@@ -33,14 +33,30 @@ func getRemoteClustersInAnnotation(es esv1.Elasticsearch) map[string]struct{} {
 }
 
 func annotateWithCreatedRemoteClusters(c k8s.Client, es esv1.Elasticsearch, remoteClusters map[string]struct{}) error {
+	if len(remoteClusters) == 0 {
+		// if there are no annotations, there's nothing to do
+		if len(es.Annotations) == 0 {
+			return nil
+		}
+
+		// if the annotation exists, delete it
+		if _, ok := es.Annotations[ManagedRemoteClustersAnnotationName]; ok {
+			delete(es.Annotations, ManagedRemoteClustersAnnotationName)
+			return c.Update(&es)
+		}
+	}
+
 	if es.Annotations == nil {
 		es.Annotations = make(map[string]string)
 	}
+
 	annotation := make([]string, 0, len(remoteClusters))
 	for remoteCluster := range remoteClusters {
 		annotation = append(annotation, remoteCluster)
 	}
+
 	sort.Strings(annotation)
 	es.Annotations[ManagedRemoteClustersAnnotationName] = strings.Join(annotation, ",")
+
 	return c.Update(&es)
 }
