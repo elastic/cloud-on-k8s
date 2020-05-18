@@ -7,7 +7,7 @@ package container
 import (
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestImageRepository(t *testing.T) {
