@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"strconv"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	netutils "k8s.io/utils/net"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -94,7 +94,7 @@ func (f *ServiceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	servicePort, err := strconv.Atoi(servicePortStr)
+	servicePort, err := netutils.ParsePort(servicePortStr, false)
 	if err != nil {
 		return nil, err
 	}

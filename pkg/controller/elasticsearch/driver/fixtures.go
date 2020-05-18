@@ -45,7 +45,7 @@ func (t testPod) isHealthy(v bool) testPod              { t.healthy = v; return 
 func (t testPod) needsUpgrade(v bool) testPod           { t.toUpgrade = v; return t }
 func (t testPod) isTerminating(v bool) testPod          { t.terminating = v; return t }
 func (t testPod) withVersion(v string) testPod          { t.version = v; return t }
-func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t } //nolint:unparam
+func (t testPod) inStatefulset(ssetName string) testPod { t.ssetName = ssetName; return t }
 
 // filter to simulate a Pod that has been removed while upgrading
 // unfortunately fake client does not support predicate

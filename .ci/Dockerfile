@@ -1,17 +1,16 @@
 # Docker image used for continuous integration
 FROM golang:1.14.2
 
-# TODO: update to >1.24.0 once https://github.com/golangci/golangci-lint/issues/994 is fixed, as jenkins OOMs when running 1.24.0
-ENV GOLANGCILINT_VERSION=1.23.8
-ENV SHELLCHECK_VERSION=0.7.0
-ENV KUBEBUILDER_VERSION=2.0.0
-ENV GCLOUD_VERSION=277.0.0
+ENV GOLANGCILINT_VERSION=1.27.0
+ENV SHELLCHECK_VERSION=0.7.1
+ENV KUBEBUILDER_VERSION=2.3.1
+ENV GCLOUD_VERSION=292.0.0
 ENV KUBECTL_VERSION=1.14.7
-ENV DOCKER_VERSION=18.03.1-ce
-ENV GOTESTSUM_VERSION=0.3.5
+ENV DOCKER_VERSION=19.03.8
+ENV GOTESTSUM_VERSION=0.4.2
 ENV KIND_VERSION=0.8.1
-ENV OPENSHIFT_TOOLS_VERSION=4.3.0
-ENV EKSCTL_VERSION=0.16.0
+ENV OPENSHIFT_TOOLS_VERSION=4.3.19
+ENV EKSCTL_VERSION=0.19.0
 
 # golangci-lint
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
@@ -52,7 +51,7 @@ RUN apt-get update && apt-get --no-install-recommends -y install \
 
 # AWS CLI v2 to upload YAML on S3 and run eksctl
 RUN curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && \
+    unzip -q awscliv2.zip && \
     ./aws/install && \
     rm awscliv2.zip
 

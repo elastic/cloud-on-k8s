@@ -73,6 +73,7 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 }
 
 // Save updates or creates licensing information in a config map
+// This relies on UnconditionalUpdates being supported configmaps and may change in k8s v2: https://github.com/kubernetes/kubernetes/issues/21330
 func (r LicensingResolver) Save(info LicensingInfo) error {
 	data, err := info.toMap()
 	if err != nil {

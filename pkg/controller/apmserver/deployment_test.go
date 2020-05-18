@@ -24,7 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint
+var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint:gosec
 
 type testParams struct {
 	deployment.Params
