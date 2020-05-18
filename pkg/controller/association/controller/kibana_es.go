@@ -10,6 +10,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,7 +43,8 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 				KibanaESAssociationLabelNamespace: associated.Namespace,
 			}
 		},
-		UserSecretSuffix: "kibana-user",
+		UserSecretSuffix:         "kibana-user",
+		CASecretServiceLabelName: eslabel.ClusterNameLabelName,
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return KibanaSystemUserBuiltinRole, nil
 		},

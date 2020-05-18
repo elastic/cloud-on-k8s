@@ -10,6 +10,7 @@ import (
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
@@ -40,7 +41,8 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 				EntESAssociationLabelNamespace: associated.Namespace,
 			}
 		},
-		UserSecretSuffix: "ent-user",
+		UserSecretSuffix:         "ent-user",
+		CASecretServiceLabelName: eslabel.ClusterNameLabelName,
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
 			return esuser.SuperUserBuiltinRole, nil
 		},

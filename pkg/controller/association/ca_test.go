@@ -172,10 +172,15 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 				watches:    watches.DynamicWatches{},
 				Parameters: operator.Parameters{},
 			}
+
+			// re-use the one used for ES association, but it could be anything else
+			caSecretServiceLabelName := "elasticsearch.k8s.elastic.co/cluster-name"
+
 			got, err := r.ReconcileCASecret(
 				&tt.kibana,
 				esv1.ESNamer,
 				k8s.ExtractNamespacedName(&tt.es),
+				caSecretServiceLabelName,
 			)
 			require.NoError(t, err)
 
@@ -190,6 +195,10 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 				}, &updatedKibanaCA)
 				require.NoError(t, err)
 				require.Equal(t, tt.wantCA.Data, updatedKibanaCA.Data)
+				require.True(t, len(updatedKibanaCA.Labels) > 0)
+				serviceLabelValue, ok := updatedKibanaCA.Labels[caSecretServiceLabelName]
+				require.True(t, ok)
+				require.Equal(t, tt.es.Name, serviceLabelValue)
 			}
 		})
 	}

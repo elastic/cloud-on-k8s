@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -48,8 +49,9 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 				ApmAssociationTypeLabelNamespace: "elasticsearch",
 			}
 		},
-		UserSecretSuffix: "apm-user",
-		ESUserRole:       getRoles,
+		UserSecretSuffix:         "apm-user",
+		CASecretServiceLabelName: eslabel.ClusterNameLabelName,
+		ESUserRole:               getRoles,
 	})
 }
 

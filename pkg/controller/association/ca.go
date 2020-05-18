@@ -9,7 +9,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,7 +30,7 @@ func CACertSecretName(associated commonv1.Associated, associationName string) st
 
 // ReconcileCASecret keeps in sync a copy of the target service CA.
 // It is the responsibility of the association controller to set a watch on this CA.
-func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer name.Namer, service types.NamespacedName) (CASecret, error) {
+func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer name.Namer, service types.NamespacedName, caSecretServiceName string) (CASecret, error) {
 	servicePublicHTTPCertificatesNSN := certificates.PublicCertsSecretRef(namer, service)
 
 	// retrieve the HTTP certificates from the service namespace
@@ -45,7 +44,7 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 
 	labels := r.AssociationLabels(k8s.ExtractNamespacedName(association))
 	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
-	labels[eslabel.ClusterNameLabelName] = service.Name
+	labels[caSecretServiceName] = service.Name
 
 	// Certificate data should be copied over a secret in the association namespace
 	expectedSecret := corev1.Secret{
