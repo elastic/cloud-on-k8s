@@ -52,7 +52,7 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 The `docker.elastic.co` registry and the `eck-dev` namespace are setup by default.
 
-It is up to you to manage the authentication (`docker login -u $username push.docker.elastic.co`) to be able to push images into it.
+It is up to you to manage the authentication (`docker login -u $username docker.elastic.co`) to be able to push images into it.
 
 A file `.registry.env` can be created to use another Docker registry.
 
