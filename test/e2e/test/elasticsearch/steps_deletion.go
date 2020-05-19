@@ -53,7 +53,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			}),
 		},
 		{
-			Name: "Elasticsearch pods should be eventually be removed",
+			Name: "Elasticsearch pods should eventually be removed",
 			Test: test.Eventually(func() error {
 				return k.CheckPodCount(0, test.ESPodListOptions(b.Elasticsearch.Namespace, b.Elasticsearch.Name)...)
 			}),
