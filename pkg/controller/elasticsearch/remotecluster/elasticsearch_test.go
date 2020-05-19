@@ -169,6 +169,20 @@ func TestUpdateSettings(t *testing.T) {
 			wantEsCalled: false,
 		},
 		{
+			name: "Outdated annotation should be removed",
+			args: args{
+				esClient:       &fakeESClient{existingSettings: emptySettings},
+				licenseChecker: &fakeLicenseChecker{true},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{ManagedRemoteClustersAnnotationName: "ns2-es2"},
+				),
+			},
+			wantRequeue:  false,
+			wantEsCalled: false,
+		},
+		{
 			name: "Create a new remote cluster",
 			args: args{
 				esClient:       &fakeESClient{existingSettings: emptySettings},
@@ -467,7 +481,14 @@ func TestUpdateSettings(t *testing.T) {
 			// Check the annotation set on Elasticsearch
 			es := &esv1.Elasticsearch{}
 			assert.NoError(t, client.Get(k8s.ExtractNamespacedName(tt.args.es), es))
-			assert.Equal(t, tt.wantAnnotation, es.Annotations["elasticsearch.k8s.elastic.co/managed-remote-clusters"])
+
+			gotAnnotation, annotationExists := es.Annotations["elasticsearch.k8s.elastic.co/managed-remote-clusters"]
+			if tt.wantAnnotation != "" {
+				assert.Equal(t, tt.wantAnnotation, gotAnnotation)
+			} else {
+				assert.False(t, annotationExists)
+			}
+
 			// Check the requeue result
 			assert.Equal(t, tt.wantRequeue, shouldRequeue)
 			// Check the updatedSettings
