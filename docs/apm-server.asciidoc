@@ -43,8 +43,6 @@ spec:
     name: quickstart
 EOF
 ----
-+
-NOTE: Deploying the APM Server and Elasticsearch in two different namespaces is currently not supported.
 
 . Monitor APM Server deployment.
 +
