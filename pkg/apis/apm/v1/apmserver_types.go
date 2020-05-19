@@ -72,7 +72,7 @@ type ApmServerStatus struct {
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
 	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
 	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
-	// KibanaAssociationStatus is the status of any auto-linking to a Kibana instance.
+	// KibanaAssociationStatus is the status of any auto-linking to Kibana.
 	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
 }
 

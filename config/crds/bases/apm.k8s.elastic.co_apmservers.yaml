@@ -6339,7 +6339,7 @@ spec:
                 type: string
               kibanaAssociationStatus:
                 description: KibanaAssociationStatus is the status of any auto-linking
-                  to a Kibana instance.
+                  to Kibana.
                 type: string
               secretTokenSecret:
                 description: SecretTokenSecretName is the name of the Secret that
