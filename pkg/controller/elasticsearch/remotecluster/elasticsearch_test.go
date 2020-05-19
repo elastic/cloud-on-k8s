@@ -41,6 +41,17 @@ func Test_getCurrentRemoteClusters(t *testing.T) {
 			want: map[string]struct{}{},
 		},
 		{
+			name: "Read from an empty annotation",
+			args: args{es: esv1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "ns1",
+					Namespace:   "es1",
+					Annotations: map[string]string{ManagedRemoteClustersAnnotationName: ""},
+				},
+			}},
+			want: map[string]struct{}{},
+		},
+		{
 			name: "Decode annotation into a list of remote cluster",
 			args: args{es: esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
@@ -138,6 +149,34 @@ func TestUpdateSettings(t *testing.T) {
 					"ns1",
 					"es1",
 					nil,
+				),
+			},
+			wantRequeue:  false,
+			wantEsCalled: false,
+		},
+		{
+			name: "Empty annotation",
+			args: args{
+				esClient:       &fakeESClient{existingSettings: emptySettings},
+				licenseChecker: &fakeLicenseChecker{true},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{"foo": "bar", ManagedRemoteClustersAnnotationName: ""},
+				),
+			},
+			wantRequeue:  false,
+			wantEsCalled: false,
+		},
+		{
+			name: "Outdated annotation should be removed",
+			args: args{
+				esClient:       &fakeESClient{existingSettings: emptySettings},
+				licenseChecker: &fakeLicenseChecker{true},
+				es: newEsWithRemoteClusters(
+					"ns1",
+					"es1",
+					map[string]string{ManagedRemoteClustersAnnotationName: "ns2-es2"},
 				),
 			},
 			wantRequeue:  false,
@@ -442,7 +481,14 @@ func TestUpdateSettings(t *testing.T) {
 			// Check the annotation set on Elasticsearch
 			es := &esv1.Elasticsearch{}
 			assert.NoError(t, client.Get(k8s.ExtractNamespacedName(tt.args.es), es))
-			assert.Equal(t, tt.wantAnnotation, es.Annotations["elasticsearch.k8s.elastic.co/managed-remote-clusters"])
+
+			gotAnnotation, annotationExists := es.Annotations["elasticsearch.k8s.elastic.co/managed-remote-clusters"]
+			if tt.wantAnnotation != "" {
+				assert.Equal(t, tt.wantAnnotation, gotAnnotation)
+			} else {
+				assert.False(t, annotationExists)
+			}
+
 			// Check the requeue result
 			assert.Equal(t, tt.wantRequeue, shouldRequeue)
 			// Check the updatedSettings
