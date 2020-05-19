@@ -26,7 +26,7 @@ import (
 
 func Test_deleteOrphanedResources(t *testing.T) {
 	userInEsNamespace := "default-kibana-foo-kibana-user" // in the es namespace
-	userInKibanaNamespace := "kibana-foo-kibana-es-user"  // nolint
+	userInKibanaNamespace := "kibana-foo-kibana-es-user"
 
 	kibanaESAssociationName := "kibana-es"
 	esFixture := esv1.Elasticsearch{

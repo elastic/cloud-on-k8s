@@ -29,19 +29,19 @@ const (
 
 	// http certs volume
 	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
-	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs" // nolint
+	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs" //nolint:gosec
 )
 
 func InternalCertsSecretName(namer name.Namer, ownerName string) string {
-	return namer.Suffix(ownerName, "http", certsInternalSecretName)
+	return namer.Suffix(ownerName, string(HTTPCAType), certsInternalSecretName)
 }
 
 func PublicCertsSecretName(namer name.Namer, ownerName string) string {
-	return namer.Suffix(ownerName, "http", certsPublicSecretName)
+	return namer.Suffix(ownerName, string(HTTPCAType), certsPublicSecretName)
 }
 
-func PublicCASecretName(namer name.Namer, ownerName string) string {
-	return namer.Suffix(ownerName, "ca", certsPublicSecretName)
+func PublicTransportCertsSecretName(namer name.Namer, ownerName string) string {
+	return namer.Suffix(ownerName, string(TransportCAType), certsPublicSecretName)
 }
 
 // PublicCertsSecretRef returns the NamespacedName for the Secret containing the publicly available HTTP CA.

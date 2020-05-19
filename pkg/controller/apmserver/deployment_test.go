@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
@@ -23,7 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint
+var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint:gosec
 
 type testParams struct {
 	deployment.Params
@@ -168,10 +169,10 @@ func expectedDeploymentParams() testParams {
 							SuccessThreshold:    1,
 							TimeoutSeconds:      5,
 							Handler: corev1.Handler{
-								Exec: &corev1.ExecAction{
-									Command: []string{"bash", "-c",
-										`curl -o /dev/null -w "%{http_code}" HTTPS://127.0.0.1:8200/ -k -s`,
-									},
+								HTTPGet: &corev1.HTTPGetAction{
+									Port:   intstr.FromInt(8200),
+									Path:   "/",
+									Scheme: corev1.URISchemeHTTPS,
 								},
 							},
 						},

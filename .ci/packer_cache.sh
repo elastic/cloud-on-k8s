@@ -13,10 +13,10 @@ docker pull "$(make -C .ci --no-print-directory print-ci-image)"
 
 # Kind images (https://hub.docker.com/r/kindest/node/tags)
 docker pull kindest/node:v1.12.10
-docker pull kindest/node:v1.16.4
-docker pull kindest/node:v1.17.0
+docker pull kindest/node:v1.16.9
+docker pull kindest/node:v1.17.5
 
 # Elastic Stack images
-docker pull docker.elastic.co/elasticsearch/elasticsearch:7.6.0
-docker pull docker.elastic.co/kibana/kibana:7.6.0
-docker pull docker.elastic.co/apm/apm-server:7.6.0
+docker pull docker.elastic.co/elasticsearch/elasticsearch:7.7.0
+docker pull docker.elastic.co/kibana/kibana:7.7.0
+docker pull docker.elastic.co/apm/apm-server:7.7.0

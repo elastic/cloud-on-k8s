@@ -18,7 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
@@ -117,7 +116,7 @@ func (d *driver) Reconcile(
 		Object:                kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
 		Namer:                 Namer,
-		Labels:                apmserver.NewLabels(kb.Name),
+		Labels:                NewLabels(kb.Name),
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        params.CACertRotation,
 		CertRotation:          params.CertRotation,

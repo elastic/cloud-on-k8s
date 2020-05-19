@@ -40,7 +40,7 @@ func CreateCommand() *cobra.Command {
 
 				data := fmt.Sprintf(runner.DefaultGkeRunConfigTemplate, user, gCloudProject)
 				fullPath := path.Join(filePath, runner.GkeConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
 					return err
 				}
 			case runner.AksDriverID:
@@ -49,14 +49,9 @@ func CreateCommand() *cobra.Command {
 					return err
 				}
 
-				acrName, err := GetEnvVar("ACR_NAME")
-				if err != nil {
-					return err
-				}
-
-				data := fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup, acrName)
+				data := fmt.Sprintf(runner.DefaultAksRunConfigTemplate, user, resourceGroup)
 				fullPath := path.Join(filePath, runner.AksConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
 					return err
 				}
 			case runner.OcpDriverID:
@@ -72,7 +67,7 @@ func CreateCommand() *cobra.Command {
 
 				data := fmt.Sprintf(runner.DefaultOcpRunConfigTemplate, user, gCloudProject, pullSecret)
 				fullPath := path.Join(filePath, runner.OcpConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
 					return err
 				}
 			case runner.EKSDriverID:
@@ -86,7 +81,7 @@ func CreateCommand() *cobra.Command {
 
 				data := fmt.Sprintf(runner.DefaultEKSRunConfigTemplate, user, vaultAddr, token)
 				fullPath := path.Join(filePath, runner.EKSConfigFileName)
-				if err := ioutil.WriteFile(fullPath, []byte(data), 0644); err != nil {
+				if err := ioutil.WriteFile(fullPath, []byte(data), 0600); err != nil {
 					return err
 				}
 			default:

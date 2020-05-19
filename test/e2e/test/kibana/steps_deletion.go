@@ -49,7 +49,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 			}),
 		},
 		{
-			Name: "Kibana pods should be eventually be removed",
+			Name: "Kibana pods should eventually be removed",
 			Test: test.Eventually(func() error {
 				return k.CheckPodCount(0, test.KibanaPodListOptions(b.Kibana.Namespace, b.Kibana.Name)...)
 			}),

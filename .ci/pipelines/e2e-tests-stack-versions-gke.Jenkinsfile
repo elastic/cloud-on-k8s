@@ -32,11 +32,11 @@ pipeline {
         }
         stage('Run tests for different ELK stack versions in GKE') {
             parallel {
-                stage("6.8.5") {
+                stage("6.8.9") {
                     steps {
                         checkout scm
                         script {
-                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.5")
+                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.9")
                         }
                     }
                 }
@@ -106,6 +106,17 @@ pipeline {
                         }
                     }
                 }
+                stage("7.7.0") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+                        script {
+                            runWith(lib, failedTests, "eck-77-${BUILD_NUMBER}-e2e", "7.7.0")
+                        }
+                    }
+                }
             }
         }
     }
@@ -142,7 +153,8 @@ pipeline {
                     "eck-73-${BUILD_NUMBER}-e2e",
                     "eck-74-${BUILD_NUMBER}-e2e",
                     "eck-75-${BUILD_NUMBER}-e2e",
-                    "eck-76-${BUILD_NUMBER}-e2e"
+                    "eck-76-${BUILD_NUMBER}-e2e",
+                    "eck-77-${BUILD_NUMBER}-e2e"
                 ]
                 for (int i = 0; i < clusters.size(); i++) {
                     build job: 'cloud-on-k8s-e2e-cleanup',

@@ -47,6 +47,7 @@ hack/deployer/config/provider
 # ignore CI config files
 deployer-config.yml
 .env
+.registry.env
 
 # ignore test output
 integration-tests.json

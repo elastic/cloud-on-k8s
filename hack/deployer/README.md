@@ -22,7 +22,6 @@ Deployer is the provisioning tool that aims to be the interface to multiple Kube
 
   * Install [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
   * Set `RESOURCE_GROUP` to the name of the Resource Group you wish to deploy in
-  * Set `ACR_NAME` to the name of Azure Container Registry you wish to use
   * Run from the [project root](/):
 
     ```bash

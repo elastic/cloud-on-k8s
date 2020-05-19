@@ -56,8 +56,20 @@ func ReconcileService(
 
 func needsRecreate(expected, reconciled *corev1.Service) bool {
 	applyServerSideValues(expected, reconciled)
-	// ClusterIP is an immutable field
-	return expected.Spec.ClusterIP != reconciled.Spec.ClusterIP
+
+	shouldRecreate := false
+
+	// IPFamily is immutable
+	if expected.Spec.IPFamily != nil && expected.Spec.IPFamily != reconciled.Spec.IPFamily {
+		shouldRecreate = true
+	}
+
+	// ClusterIP is immutable
+	if expected.Spec.ClusterIP != reconciled.Spec.ClusterIP {
+		shouldRecreate = true
+	}
+
+	return shouldRecreate
 }
 
 func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
@@ -105,6 +117,11 @@ func applyServerSideValues(expected, reconciled *corev1.Service) {
 
 	expected.Annotations = maps.MergePreservingExistingKeys(expected.Annotations, reconciled.Annotations)
 	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, reconciled.Labels)
+
+	// IPFamily is immutable and cannot be modified so we should retain the existing value from the server if there's no explicit override.
+	if expected.Spec.IPFamily == nil {
+		expected.Spec.IPFamily = reconciled.Spec.IPFamily
+	}
 }
 
 // hasNodePort returns for a given service type, if the service ports have a NodePort or not.
