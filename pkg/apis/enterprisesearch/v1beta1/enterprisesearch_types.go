@@ -124,7 +124,7 @@ func (ent *EnterpriseSearch) AssociatedType() string {
 }
 
 func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {
-	return ent.Spec.ElasticsearchRef
+	return ent.Spec.ElasticsearchRef.WithDefaultNamespace(ent.Namespace)
 }
 
 func (ent *EnterpriseSearch) AssociationConf() *commonv1.AssociationConf {

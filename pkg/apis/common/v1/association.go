@@ -45,7 +45,7 @@ type Association interface {
 	// It is mostly used to build some other strings depending on the type of the targeted service.
 	AssociatedType() string
 
-	// Reference to the associated resource
+	// Reference to the associated resource. If defined with a Name then the Namespace is expected to be set in the returned object.
 	AssociationRef() ObjectSelector
 
 	// AssociationConfAnnotationName is the name of the annotation used to define the config for the associated resource.

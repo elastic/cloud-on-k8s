@@ -165,7 +165,7 @@ func (aes *ApmEsAssociation) AssociatedType() string {
 }
 
 func (aes *ApmEsAssociation) AssociationRef() commonv1.ObjectSelector {
-	return aes.Spec.ElasticsearchRef
+	return aes.Spec.ElasticsearchRef.WithDefaultNamespace(aes.Namespace)
 }
 
 func (aes *ApmEsAssociation) AssociationConf() *commonv1.AssociationConf {
@@ -210,7 +210,7 @@ func (akb *ApmKibanaAssociation) AssociatedType() string {
 }
 
 func (akb *ApmKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
-	return akb.Spec.KibanaRef
+	return akb.Spec.KibanaRef.WithDefaultNamespace(akb.Namespace)
 }
 
 func (akb *ApmKibanaAssociation) RequiresAssociation() bool {

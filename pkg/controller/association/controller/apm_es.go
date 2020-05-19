@@ -37,7 +37,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociatedShortName:    "apm",
 		AssociationObjTemplate: func() commonv1.Association { return &apmv1.ApmEsAssociation{} },
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-			return true, association.AssociationRef().WithDefaultNamespace(association.GetNamespace()), nil
+			return true, association.AssociationRef(), nil
 		},
 		ExternalServiceURL: getElasticsearchExternalURL,
 		AssociatedNamer:    esv1.ESNamer,
@@ -61,7 +61,7 @@ func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association)
 		return "", nil
 	}
 	es := esv1.Elasticsearch{}
-	if err := c.Get(esRef.WithDefaultNamespace(association.GetNamespace()).NamespacedName(), &es); err != nil {
+	if err := c.Get(esRef.NamespacedName(), &es); err != nil {
 		return "", err
 	}
 	return services.ExternalServiceURL(es), nil

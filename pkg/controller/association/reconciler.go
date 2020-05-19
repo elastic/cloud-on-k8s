@@ -175,10 +175,6 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		// remove the configuration in the annotation, other leftover resources are already garbage-collected
 		return commonv1.AssociationUnknown, RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
 	}
-	if associationRef.Namespace == "" {
-		// no namespace provided: default to the association resource namespace
-		associationRef.Namespace = association.GetNamespace()
-	}
 
 	// set additional watches, in the case of a transitive Elasticsearch reference we must watch the intermediate resource
 	if r.SetDynamicWatches != nil {
@@ -192,10 +188,6 @@ func (r *Reconciler) doReconcile(ctx context.Context, association commonv1.Assoc
 		return commonv1.AssociationPending, RemoveAssociationConf(r.Client, association.Associated(), association.AssociationConfAnnotationName())
 	}
 
-	if esRef.Namespace == "" {
-		// no namespace provided: default to the association resource namespace
-		esRef.Namespace = association.GetNamespace()
-	}
 	es, associationStatus, err := r.getElasticsearch(ctx, association, esRef)
 	if associationStatus != "" || err != nil {
 		return associationStatus, err

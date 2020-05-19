@@ -85,7 +85,7 @@ func (k *Kibana) AssociatedType() string {
 }
 
 func (k *Kibana) AssociationRef() commonv1.ObjectSelector {
-	return k.Spec.ElasticsearchRef
+	return k.Spec.ElasticsearchRef.WithDefaultNamespace(k.Namespace)
 }
 
 func (k *Kibana) SecureSettings() []commonv1.SecretSource {

@@ -43,7 +43,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			return "kibana_user", nil
 		},
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
-			kibanaKey := association.AssociationRef().WithDefaultNamespace(association.GetNamespace()).NamespacedName()
+			kibanaKey := association.AssociationRef().NamespacedName()
 			watchName := association.GetNamespace() + "-" + association.GetName() + "-kibana-watch"
 			if err := w.Kibanas.AddHandler(watches.NamedWatch{
 				Name:    watchName,
@@ -67,7 +67,7 @@ func getKibanaExternalURL(c k8s.Client, association commonv1.Association) (strin
 		return "", nil
 	}
 	kb := kbv1.Kibana{}
-	if err := c.Get(kibanaRef.WithDefaultNamespace(association.GetNamespace()).NamespacedName(), &kb); err != nil {
+	if err := c.Get(kibanaRef.NamespacedName(), &kb); err != nil {
 		return "", err
 	}
 	return stringsutil.Concat(kb.Spec.HTTP.Protocol(), "://", kibana.HTTPService(kb.Name), ".", kb.Namespace, ".svc:", strconv.Itoa(kibana.HTTPPort)), nil
@@ -81,7 +81,7 @@ func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) 
 	}
 
 	kb := kbv1.Kibana{}
-	err := c.Get(kibanaRef.WithDefaultNamespace(association.GetNamespace()).NamespacedName(), &kb)
+	err := c.Get(kibanaRef.NamespacedName(), &kb)
 	if errors.IsNotFound(err) {
 		return false, commonv1.ObjectSelector{}, nil
 	}
@@ -89,5 +89,5 @@ func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) 
 		return false, commonv1.ObjectSelector{}, err
 	}
 
-	return true, kb.AssociationRef().WithDefaultNamespace(association.GetNamespace()), nil
+	return true, kb.AssociationRef(), nil
 }

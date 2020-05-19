@@ -162,5 +162,5 @@ func (b Builder) ElasticsearchRef() commonv1.ObjectSelector {
 		return b.ExternalElasticsearchRef
 	}
 	// if no external Elasticsearch cluster is defined, use the ElasticsearchRef
-	return b.Kibana.AssociationRef().WithDefaultNamespace(b.Kibana.Namespace)
+	return b.Kibana.AssociationRef()
 }
