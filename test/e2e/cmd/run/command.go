@@ -67,7 +67,11 @@ func Command() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			flags.logVerbosity, _ = cmd.PersistentFlags().GetInt("log-verbosity")
-			return doRun(flags)
+			err := doRun(flags)
+			if err != nil {
+				log.Error(err, "Failed to run e2e tests")
+			}
+			return err
 		},
 	}
 
