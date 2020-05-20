@@ -179,10 +179,10 @@ func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) 
 		return results.WithError(err)
 	}
 
-	result := newDriver(ctx, r.Client, beat).Reconcile()
-	results.WithResults(result.Results)
+	driverResults := newDriver(ctx, r.Client, beat).Reconcile()
+	results.WithResults(driverResults.Results)
 
-	err := r.updateStatus(result.Status, beat)
+	err := r.updateStatus(driverResults.Status, beat)
 	results.WithError(err)
 	if err != nil && apierrors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status", "namespace", beat.Namespace, "beat_name", beat.Name)
@@ -243,13 +243,13 @@ func newDriver(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) co
 func newDriverParams(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) commonbeat.DriverParams {
 	spec := beat.Spec
 
-	var ds commonbeat.DaemonSetSpec
+	var ds *commonbeat.DaemonSetSpec
 	if spec.DaemonSet != nil {
-		ds = commonbeat.DaemonSetSpec{PodTemplate: spec.DaemonSet.PodTemplate}
+		ds = &commonbeat.DaemonSetSpec{PodTemplate: spec.DaemonSet.PodTemplate}
 	}
-	var d commonbeat.DeploymentSpec
+	var d *commonbeat.DeploymentSpec
 	if spec.Deployment != nil {
-		d = commonbeat.DeploymentSpec{Replicas: spec.Deployment.Replicas, PodTemplate: spec.Deployment.PodTemplate}
+		d = &commonbeat.DeploymentSpec{Replicas: spec.Deployment.Replicas, PodTemplate: spec.Deployment.PodTemplate}
 	}
 
 	return commonbeat.DriverParams{

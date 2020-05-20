@@ -339,12 +339,16 @@ func (b *PodTemplateBuilder) WithPreStopHook(handler corev1.Handler) *PodTemplat
 }
 
 func (b *PodTemplateBuilder) WithArgs(args ...string) *PodTemplateBuilder {
-	b.Container.Args = args
+	if b.Container.Args == nil {
+		b.Container.Args = args
+	}
 	return b
 }
 
 func (b *PodTemplateBuilder) WithServiceAccount(serviceAccount string) *PodTemplateBuilder {
-	b.PodTemplate.Spec.ServiceAccountName = serviceAccount
+	if b.PodTemplate.Spec.ServiceAccountName == "" {
+		b.PodTemplate.Spec.ServiceAccountName = serviceAccount
+	}
 	return b
 }
 
@@ -354,17 +358,23 @@ func (b *PodTemplateBuilder) WithHostNetwork() *PodTemplateBuilder {
 }
 
 func (b *PodTemplateBuilder) WithDNSPolicy(dnsPolicy corev1.DNSPolicy) *PodTemplateBuilder {
-	b.PodTemplate.Spec.DNSPolicy = dnsPolicy
+	if b.PodTemplate.Spec.DNSPolicy == "" {
+		b.PodTemplate.Spec.DNSPolicy = dnsPolicy
+	}
 	return b
 }
 
 func (b *PodTemplateBuilder) WithSecurityContext(securityContext corev1.SecurityContext) *PodTemplateBuilder {
-	b.Container.SecurityContext = &securityContext
+	if b.Container.SecurityContext == nil {
+		b.Container.SecurityContext = &securityContext
+	}
 	return b
 }
 
 func (b *PodTemplateBuilder) WithAutomountServiceAccountToken() *PodTemplateBuilder {
-	t := true
-	b.PodTemplate.Spec.AutomountServiceAccountToken = &t
+	if b.PodTemplate.Spec.AutomountServiceAccountToken == nil {
+		t := true
+		b.PodTemplate.Spec.AutomountServiceAccountToken = &t
+	}
 	return b
 }

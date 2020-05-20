@@ -89,6 +89,16 @@ func ParseConfig(yml []byte) (*CanonicalConfig, error) {
 	return fromConfig(config), nil
 }
 
+// MustParseConfig parses the given configuration content into a CanonicalConfig.
+// Expects content to be in YAML format. Panis on error.
+func MustParseConfig(yml []byte) *CanonicalConfig {
+	config, err := uyaml.NewConfig(yml, Options...)
+	if err != nil {
+		panic(err)
+	}
+	return fromConfig(config)
+}
+
 // SetStrings sets key to string vals in c.  An error is returned if key is invalid.
 func (c *CanonicalConfig) SetStrings(key string, vals ...string) error {
 	if c == nil {

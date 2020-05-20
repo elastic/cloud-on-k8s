@@ -50,8 +50,8 @@ type DriverParams struct {
 
 	Labels map[string]string
 
-	DaemonSet  DaemonSetSpec
-	Deployment DeploymentSpec
+	DaemonSet  *DaemonSetSpec
+	Deployment *DeploymentSpec
 	Selectors  map[string]string
 }
 

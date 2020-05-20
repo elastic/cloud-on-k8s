@@ -6,6 +6,7 @@ package beat
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -24,9 +25,9 @@ import (
 )
 
 const (
-	AutodiscoverServiceAccountName     = "elastic-operator-autodiscover"
-	autodiscoverClusterRoleBindingName = "elastic-operator-autodiscover"
-	autodiscoverClusterRoleName        = "elastic-operator-autodiscover"
+	serviceAccountNameTemplate     = "elastic-operator-autodiscover-%s"
+	clusterRoleBindingNameTemplate = "elastic-operator-autodiscover-%s-%s"
+	clusterRoleName                = "elastic-operator-autodiscover"
 )
 
 var (
@@ -84,19 +85,19 @@ func setupAutodiscoverRBAC(ctx context.Context, client k8s.Client, owner metav1.
 func reconcileServiceAccount(client k8s.Client, owner metav1.Object, labels map[string]string) error {
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      AutodiscoverServiceAccountName,
+			Name:      ServiceAccountName(owner.GetName()),
 			Namespace: owner.GetNamespace(),
 			Labels:    labels,
 		},
 	}
 
-	return reconcile(client, sa, owner)
+	return doReconcile(client, sa, owner)
 }
 
 func reconcileClusterRole(client k8s.Client) error {
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: autodiscoverClusterRoleName,
+			Name: clusterRoleName,
 		},
 		Rules: []rbacv1.PolicyRule{
 			{
@@ -107,32 +108,32 @@ func reconcileClusterRole(client k8s.Client) error {
 		},
 	}
 
-	return reconcile(client, role, nil)
+	return doReconcile(client, role, nil)
 }
 
 func reconcileClusterRoleBinding(client k8s.Client, owner metav1.Object) error {
 	binding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: autodiscoverClusterRoleBindingName,
+			Name: ClusterRoleBindingName(owner.GetNamespace(), owner.GetName()),
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      AutodiscoverServiceAccountName,
+				Name:      ServiceAccountName(owner.GetName()),
 				Namespace: owner.GetNamespace(),
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     "ClusterRole",
-			Name:     autodiscoverClusterRoleName,
+			Name:     clusterRoleName,
 		},
 	}
 
-	return reconcile(client, binding, nil)
+	return doReconcile(client, binding, nil)
 }
 
-func reconcile(client k8s.Client, obj runtime.Object, owner metav1.Object) error {
+func doReconcile(client k8s.Client, obj runtime.Object, owner metav1.Object) error {
 	// labels set here must be exactly the same for all callers in particular namespace
 	// otherwise they'll just keep trying to override each other
 	objMeta, err := meta.Accessor(obj)
@@ -158,4 +159,12 @@ func reconcile(client k8s.Client, obj runtime.Object, owner metav1.Object) error
 			reflect.ValueOf(reconciled).Elem().Set(reflect.ValueOf(obj).Elem())
 		},
 	})
+}
+
+func ClusterRoleBindingName(namespace, name string) string {
+	return fmt.Sprintf(clusterRoleBindingNameTemplate, namespace, name)
+}
+
+func ServiceAccountName(name string) string {
+	return fmt.Sprintf(serviceAccountNameTemplate, name)
 }

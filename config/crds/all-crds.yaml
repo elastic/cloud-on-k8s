@@ -547,6 +547,7 @@ spec:
               description: Type is the type of the Beat to deploy. Any string can
                 be used, but well-known types will be recognized and will allow to
                 provide sane default configurations.
+              maxLength: 20
               type: string
             version:
               description: Version of the Beat.
