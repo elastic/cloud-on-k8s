@@ -12,7 +12,7 @@ DOCKER_LOGIN           ?= eckadmin
 
 -include $(ROOT_DIR)/.env
 
-vault := common/retry.sh 5 vault
+vault := ../hack/retry.sh 5 vault
 
 # This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
 VAULT_CLIENT_TIMEOUT = 120
