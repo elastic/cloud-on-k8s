@@ -19,16 +19,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout from GitHub') {
-            steps {
-                checkout scm
-            }
-        }
-        stage('Run Checks') {
-            steps {
-                sh 'make -C .ci TARGET=ci-check ci'
-            }
-        }
         stage("Run E2E tests") {
             steps {
                 sh '.ci/setenvconfig e2e/eks'
