@@ -35,7 +35,7 @@ func associatedCAWatchName(associated types.NamespacedName) string {
 // * The CA of the target service (can be Kibana or Elasticsearch in the case of the APM)
 func (r *Reconciler) setUserAndCaWatches(
 	association commonv1.Association,
-	serviceRef types.NamespacedName,
+	associationRef types.NamespacedName,
 	esRef types.NamespacedName,
 	remoteServiceNamer name.Namer,
 ) error {
@@ -66,8 +66,8 @@ func (r *Reconciler) setUserAndCaWatches(
 		Name: associatedCAWatchName(associatedKey),
 		Watched: []types.NamespacedName{
 			{
-				Name:      certificates.PublicCertsSecretName(remoteServiceNamer, serviceRef.Name),
-				Namespace: serviceRef.Namespace,
+				Name:      certificates.PublicCertsSecretName(remoteServiceNamer, associationRef.Name),
+				Namespace: associationRef.Namespace,
 			},
 		},
 		Watcher: associatedKey,
