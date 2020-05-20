@@ -56,7 +56,7 @@ ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
 		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t $(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
-		../hack/docker-push.sh $(CI_IMAGE)
+		../hack/docker-push.sh $(CI_IMAGE) \
 	)
 
 # make Docker creds available from inside the CI container through the .registry.env file
