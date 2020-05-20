@@ -6,12 +6,12 @@ metadata:
 spec:
   version: 7.6.0
   nodeSets:
-    - name: default
-      count: 1
-      config:
-        # This setting could have performance implications for production clusters.
-        # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
-        node.store.allow_mmap: false
+  - name: default
+    count: 1
+    config:
+      # This setting could have performance implications for production clusters.
+      # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+      node.store.allow_mmap: false
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
@@ -43,9 +43,50 @@ spec:
 apiVersion: beat.k8s.elastic.co/v1beta1
 kind: Beat
 metadata:
-  name: beat-sample
+  name: filebeat-sample
 spec:
   type: filebeat
   version: 7.6.0
   elasticsearchRef:
     name: elasticsearch-sample
+  # to target only a specific namespace for logging, use:
+  #config:
+  #  filebeat.autodiscover.providers:
+  #  - node: ${NODE_NAME}
+  #    type: kubernetes
+  #    templates:
+  #    - condition.equals.kubernetes.namespace: log-this
+  #      config:
+  #      - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
+  #        type: container
+  #  processors:
+  #    - add_cloud_metadata: null
+  #    - add_host_metadata: null
+---
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: metricbeat-sample
+spec:
+  type: metricbeat
+  version: 7.6.0
+  elasticsearchRef:
+    name: elasticsearch-sample
+
+  # to provide your own image, use:
+  #image: docker.mycompany.com/metricbeat:7.6.0
+
+  # to use deployment instead of default daemonset, use:
+  #deployment:
+  #  podTemplate:
+  #    metadata:
+  #      labels:
+  #        foo: bar
+  #    spec:
+  #      containers:
+  #      - name: metricbeat
+  #        resources:
+  #          limits:
+  #            memory: 1Gi
+  #            cpu: 1
+
