@@ -1,14 +1,15 @@
+{{- if .Values.config.webhook.enabled -}}
+---
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: ValidatingWebhookConfiguration
 metadata:
-  creationTimestamp: null
-  name: elastic-webhook.k8s.elastic.co
+  name: {{ .Values.config.webhook.name }}
 webhooks:
 - clientConfig:
     caBundle: Cg==
     service:
-      name: elastic-webhook-server
-      namespace: <NAMESPACE>
+      name: {{ .Values.config.webhook.serviceName }}
+      namespace: {{ .Values.operator.namespace }}
       path: /validate-apm-k8s-elastic-co-v1-apmserver
   failurePolicy: Ignore
   name: elastic-apm-validation-v1.k8s.elastic.co
@@ -25,8 +26,8 @@ webhooks:
 - clientConfig:
     caBundle: Cg==
     service:
-      name: elastic-webhook-server
-      namespace: <NAMESPACE>
+      name: {{ .Values.config.webhook.serviceName }}
+      namespace: {{ .Values.operator.namespace }}
       path: /validate-apm-k8s-elastic-co-v1beta1-apmserver
   failurePolicy: Ignore
   name: elastic-apm-validation-v1beta1.k8s.elastic.co
@@ -43,8 +44,26 @@ webhooks:
 - clientConfig:
     caBundle: Cg==
     service:
-      name: elastic-webhook-server
-      namespace: <NAMESPACE>
+      name: {{ .Values.config.webhook.serviceName }}
+      namespace: {{ .Values.operator.namespace }}
+      path: /validate-beat-k8s-elastic-co-v1beta1-beat
+  failurePolicy: Ignore
+  name: elastic-beat-validation-v1beta1.k8s.elastic.co
+  rules:
+  - apiGroups:
+    - beat.k8s.elastic.co
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - beats
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: {{ .Values.config.webhook.serviceName }}
+      namespace: {{ .Values.operator.namespace }}
       path: /validate-elasticsearch-k8s-elastic-co-v1-elasticsearch
   failurePolicy: Ignore
   name: elastic-es-validation-v1.k8s.elastic.co
@@ -61,8 +80,8 @@ webhooks:
 - clientConfig:
     caBundle: Cg==
     service:
-      name: elastic-webhook-server
-      namespace: <NAMESPACE>
+      name: {{ .Values.config.webhook.serviceName }}
+      namespace: {{ .Values.operator.namespace }}
       path: /validate-elasticsearch-k8s-elastic-co-v1beta1-elasticsearch
   failurePolicy: Ignore
   name: elastic-es-validation-v1beta1.k8s.elastic.co
@@ -79,26 +98,8 @@ webhooks:
 - clientConfig:
     caBundle: Cg==
     service:
-      name: elastic-webhook-server
-      namespace: <NAMESPACE>
-      path: /validate-enterprisesearch-k8s-elastic-co-v1beta1-enterprisesearch
-  failurePolicy: Ignore
-  name: elastic-ent-validation-v1beta1.k8s.elastic.co
-  rules:
-  - apiGroups:
-    - enterprisesearch.k8s.elastic.co
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - enterprisesearches
-- clientConfig:
-    caBundle: Cg==
-    service:
-      name: elastic-webhook-server
-      namespace: <NAMESPACE>
+      name: {{ .Values.config.webhook.serviceName }}
+      namespace: {{ .Values.operator.namespace }}
       path: /validate-kibana-k8s-elastic-co-v1-kibana
   failurePolicy: Ignore
   name: elastic-kb-validation-v1.k8s.elastic.co
@@ -115,8 +116,8 @@ webhooks:
 - clientConfig:
     caBundle: Cg==
     service:
-      name: elastic-webhook-server
-      namespace: <NAMESPACE>
+      name: {{ .Values.config.webhook.serviceName }}
+      namespace: {{ .Values.operator.namespace }}
       path: /validate-kibana-k8s-elastic-co-v1beta1-kibana
   failurePolicy: Ignore
   name: elastic-kb-validation-v1beta1.k8s.elastic.co
@@ -134,18 +135,21 @@ webhooks:
 apiVersion: v1
 kind: Service
 metadata:
-  name: elastic-webhook-server
-  namespace: <NAMESPACE>
+  name: {{ .Values.config.webhook.serviceName }}
+  namespace: {{ .Values.operator.namespace }}
 spec:
   ports:
-    - port: 443
+    - name: https
+      port: 443
       targetPort: 9443
-      name: https-webhook
   selector:
-    control-plane: elastic-operator
+    {{- toYaml .Values.operator.selectorLabels | nindent 4 }}
+{{- if .Values.config.webhook.manageCerts }}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: elastic-webhook-server-cert
-  namespace: <NAMESPACE>
+  name: "{{ .Values.config.webhook.secret }}"
+  namespace: {{ .Values.operator.namespace }}
+{{- end }}
+{{- end -}}

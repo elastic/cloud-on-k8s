@@ -1,0 +1,5 @@
+config:
+  managedNamespaces: []
+
+  webhook:
+    enabled: true
