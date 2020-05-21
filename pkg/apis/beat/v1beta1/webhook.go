@@ -6,7 +6,6 @@ package v1beta1
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -108,7 +107,7 @@ func checkSupportedVersion(b *Beat) field.ErrorList {
 
 func checkAtMostOneDeploymentOption(b *Beat) field.ErrorList {
 	if b.Spec.DaemonSet != nil && b.Spec.Deployment != nil {
-		msg := fmt.Sprintf("Specify either daemonSet or deployment, not both")
+		msg := "Specify either daemonSet or deployment, not both"
 		return field.ErrorList{
 			field.Forbidden(field.NewPath("spec").Child("daemonSet"), msg),
 			field.Forbidden(field.NewPath("spec").Child("deployment"), msg),
