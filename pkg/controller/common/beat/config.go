@@ -208,6 +208,14 @@ func reconcilePodVehicle(dp DriverParams, defaultImage container.Image, f func(b
 	} else if dp.Deployment != nil {
 		podTemplate = dp.Deployment.PodTemplate
 	}
+
+	// Token mounting gets defaulted to false, which prevents from detecting whether user set it.
+	// Instead, checking that here, before the default is applied.
+	if podTemplate.Spec.AutomountServiceAccountToken == nil {
+		t := true
+		podTemplate.Spec.AutomountServiceAccountToken = &t
+	}
+
 	builder := defaults.NewPodTemplateBuilder(podTemplate, dp.Type).
 		WithTerminationGracePeriod(30).
 		WithEnv(corev1.EnvVar{
@@ -227,8 +235,7 @@ func reconcilePodVehicle(dp DriverParams, defaultImage container.Image, f func(b
 		WithDNSPolicy(corev1.DNSClusterFirstWithHostNet).
 		WithSecurityContext(corev1.SecurityContext{
 			RunAsUser: pointer.Int64(0),
-		}).
-		WithAutomountServiceAccountToken()
+		})
 
 	if ShouldSetupAutodiscoverRBAC() {
 		autodiscoverServiceAccountName := ServiceAccountName(dp.Owner.GetName())
@@ -259,21 +266,26 @@ func reconcilePodVehicle(dp DriverParams, defaultImage container.Image, f func(b
 		builder = builder.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
 	}
 
-	builder = builder.WithLabels(commonhash.SetTemplateHashLabel(dp.Labels, builder.PodTemplate))
-
 	if f != nil {
 		f(builder)
 	}
 
+	builder = builder.WithLabels(commonhash.SetTemplateHashLabel(dp.Labels, builder.PodTemplate))
+
 	name := dp.Namer.Name(dp.Type, dp.Owner.GetName())
 	ds := daemonset.New(builder.PodTemplate, name, dp.Owner, dp.Selectors)
+
+	replicas := int32(1)
+	if dp.Deployment != nil && dp.Deployment.Replicas != nil {
+		replicas = *dp.Deployment.Replicas
+	}
 	d := deployment.New(deployment.Params{
 		Name:            name,
 		Namespace:       dp.Owner.GetNamespace(),
 		Selector:        dp.Selectors,
 		Labels:          dp.Labels,
 		PodTemplateSpec: builder.PodTemplate,
-		Replicas:        pointer.Int32OrDefault(dp.Deployment.Replicas, 1),
+		Replicas:        replicas,
 	})
 
 	var ready, desired int32

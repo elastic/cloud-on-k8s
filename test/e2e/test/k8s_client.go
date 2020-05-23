@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -71,6 +73,9 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	if err := apmv1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := beatv1beta1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := k8sclient.New(cfg, k8sclient.Options{Scheme: scheme.Scheme})
@@ -313,6 +318,15 @@ func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOptio
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 
+}
+
+func BeatPodListOptions(beatNamespace, beatName string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(beatNamespace)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		common.TypeLabelName: beat.Type,
+		beat.NameLabelName:   beatName,
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
 }
 
 func EventListOptions(namespace, name string) []k8sclient.ListOption {

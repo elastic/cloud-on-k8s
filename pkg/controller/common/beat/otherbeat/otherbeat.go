@@ -22,6 +22,11 @@ func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
 }
 
 func (d *Driver) Reconcile() commonbeat.DriverResults {
+
+	if d.DaemonSet == nil && d.Deployment == nil {
+		d.Deployment = &commonbeat.DeploymentSpec{}
+	}
+
 	return commonbeat.Reconcile(
 		d.DriverParams,
 		nil,

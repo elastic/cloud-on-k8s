@@ -13,14 +13,14 @@ var (
 		`filebeat:
   autodiscover:
     providers:
-    - hints:
+    - type: kubernetes
+      node: ${NODE_NAME}
+      hints:
+        enabled: true
         default_config:
+          type: container
           paths:
           - /var/log/containers/*${data.kubernetes.container.id}.log
-          type: container
-        enabled: "true"
-      node: ${NODE_NAME}
-      type: kubernetes
 processors:
 - add_cloud_metadata: null
 - add_host_metadata: null
