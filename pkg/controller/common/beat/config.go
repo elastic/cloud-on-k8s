@@ -10,6 +10,7 @@ import (
 	"hash"
 	"path"
 
+	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/health"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
@@ -23,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -178,14 +178,8 @@ func reconcileConfig(
 	}
 
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Beat will not be rolled on contents changes
-	assocConf := params.Associated.AssociationConf()
-	if assocConf.AuthIsConfigured() {
-		esAuthKey := types.NamespacedName{Name: assocConf.GetAuthSecretName(), Namespace: params.Owner.GetNamespace()}
-		esAuthSecret := corev1.Secret{}
-		if err := params.Client.Get(esAuthKey, &esAuthSecret); err != nil {
-			return err
-		}
-		_, _ = checksum.Write(esAuthSecret.Data[assocConf.GetAuthSecretKey()])
+	if err := commonassociation.WriteAssocSecretToHash(params.Client, params.Associated, checksum); err != nil {
+		return err
 	}
 
 	_, _ = checksum.Write(cfgBytes)
