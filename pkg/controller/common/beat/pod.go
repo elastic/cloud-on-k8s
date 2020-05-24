@@ -82,7 +82,7 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(
 		builder.WithServiceAccount(autodiscoverServiceAccountName)
 	}
 
-	dataVolume, _ := createDataVolume(params)
+	dataVolume := createDataVolume(params)
 	volumes := []volume.VolumeLike{
 		volume.NewSecretVolume(
 			params.Namer.ConfigSecretName(params.Type, params.Owner.GetName()),
@@ -109,33 +109,14 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(
 	return builder.PodTemplate
 }
 
-func createDataVolume(dp DriverParams) (volume.VolumeLike, error) {
+func createDataVolume(dp DriverParams) volume.VolumeLike {
 	dataMountPath := fmt.Sprintf(DataPathTemplate, dp.Type)
-	var v volume.VolumeLike
-	switch {
-	case dp.DaemonSet != nil:
-		{
-			hostDataPath := fmt.Sprintf(
-				DataMountPathTemplate,
-				dp.Owner.GetNamespace(),
-				dp.Owner.GetName(),
-				dp.Type)
-			v = volume.NewHostVolume(
-				DataVolumeName,
-				hostDataPath,
-				dataMountPath,
-				false,
-				corev1.HostPathDirectoryOrCreate)
-		}
-	case dp.Deployment != nil:
-		{
-			v = volume.NewPersistentVolumeClaim(
-				DataVolumeName,
-				dataMountPath)
-		}
-	default:
-		return nil, fmt.Errorf("both daemonset and deployment are nil")
-	}
+	hostDataPath := fmt.Sprintf(DataMountPathTemplate, dp.Owner.GetNamespace(), dp.Owner.GetName(), dp.Type)
 
-	return v, nil
+	return volume.NewHostVolume(
+		DataVolumeName,
+		hostDataPath,
+		dataMountPath,
+		false,
+		corev1.HostPathDirectoryOrCreate)
 }
