@@ -14,11 +14,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func New(podTemplate corev1.PodTemplateSpec, name string, owner metav1.Object, selectors map[string]string) appsv1.DaemonSet {
+func New(podTemplate corev1.PodTemplateSpec, name string, labels map[string]string, owner metav1.Object, selectors map[string]string) appsv1.DaemonSet {
 	return appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: owner.GetNamespace(),
+			Labels:    labels,
 		},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
