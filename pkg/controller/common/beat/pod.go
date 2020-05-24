@@ -26,6 +26,10 @@ const (
 	ConfigMountPath  = "/etc/beat.yml"
 	ConfigFileName   = "beat.yml"
 
+	DataVolumeName        = "data"
+	DataMountPathTemplate = "/var/lib/%s/%s/%s-data"
+	DataPathTemplate      = "/usr/share/%s/data"
+
 	// ConfigChecksumLabel is a label used to store beats config checksum.
 	ConfigChecksumLabel = "beat.k8s.elastic.co/config-checksum"
 
@@ -106,18 +110,18 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(
 }
 
 func createDataVolume(dp DriverParams) (volume.VolumeLike, error) {
+	dataMountPath := fmt.Sprintf(DataPathTemplate, dp.Type)
 	var v volume.VolumeLike
-	dataMountPath := fmt.Sprintf("/usr/share/%s/data", dp.Type)
 	switch {
 	case dp.DaemonSet != nil:
 		{
 			hostDataPath := fmt.Sprintf(
-				"/var/lib/%s/%s/%s-data",
+				DataMountPathTemplate,
 				dp.Owner.GetNamespace(),
 				dp.Owner.GetName(),
 				dp.Type)
 			v = volume.NewHostVolume(
-				"data",
+				DataVolumeName,
 				hostDataPath,
 				dataMountPath,
 				false,
@@ -126,7 +130,7 @@ func createDataVolume(dp DriverParams) (volume.VolumeLike, error) {
 	case dp.Deployment != nil:
 		{
 			v = volume.NewPersistentVolumeClaim(
-				"data",
+				DataVolumeName,
 				dataMountPath)
 		}
 	default:

@@ -119,7 +119,7 @@ func reconcileConfig(
 			Labels:    common.AddCredentialsLabel(params.Labels),
 		},
 		Data: map[string][]byte{
-			ConfigMountPath: cfgBytes,
+			ConfigFileName: cfgBytes,
 		},
 	}
 

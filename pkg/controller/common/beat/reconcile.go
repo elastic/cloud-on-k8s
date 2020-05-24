@@ -58,7 +58,7 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		replicas:    params.GetReplicas(),
 	})
 	if err != nil {
-		return DriverStatus{}, nil
+		return DriverStatus{}, err
 	}
 
 	// clean up the other one
