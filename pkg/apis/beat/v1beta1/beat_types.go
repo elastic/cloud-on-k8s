@@ -42,7 +42,7 @@ type BeatSpec struct {
 	// DaemonSet field allows to:
 	// 1. Indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the
 	//    Type is used
-	// 2. Provide spec for the DaemonSet
+	// 2. Provide a spec for the DaemonSet
 	// At most one of DaemonSet and Deployment can be used.
 	// +kubebuilder:validation:Optional
 	DaemonSet *DaemonSetSpec `json:"daemonSet,omitempty"`
@@ -82,7 +82,7 @@ type BeatStatus struct {
 
 // +kubebuilder:object:root=true
 
-// Beat is the Schema for the beats API
+// Beat is the Schema for the Beats API
 // +kubebuilder:resource:categories=elastic,shortName=beat
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
@@ -132,7 +132,7 @@ func (b *Beat) SetAssociationStatus(status commonv1.AssociationStatus) {
 
 // +kubebuilder:object:root=true
 
-// BeatList contains a list of Beat
+// BeatList contains a list of Beats
 type BeatList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

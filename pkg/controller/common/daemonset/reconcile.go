@@ -46,7 +46,7 @@ func Reconcile(
 		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// compare hash of the daemon set at the time it was built
+			// compare hash of the DaemonSet at the time it was built
 			return hash.GetTemplateHashLabel(reconciled.Labels) != hash.GetTemplateHashLabel(expected.Labels)
 		},
 		UpdateReconciled: func() {

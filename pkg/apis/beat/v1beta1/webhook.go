@@ -124,7 +124,7 @@ func checkImageIfTypeUnknown(b *Beat) field.ErrorList {
 		return field.ErrorList{
 			field.Required(
 				field.NewPath("spec").Child("image"),
-				"Image is required if Beat type is not well known."),
+				"Image is required if Beat type is not one of [filebeat, metricbeat]"),
 		}
 	}
 	return nil

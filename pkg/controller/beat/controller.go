@@ -53,7 +53,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	return addWatches(c, r)
 }
 
-// newReconciler returns a new reconcile.Reconciler
+// newReconciler returns a new reconcile.Reconciler.
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBeat {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileBeat{
@@ -64,7 +64,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 	}
 }
 
-// addWatches registers the required watches
+// addWatches registers the required watches.
 func addWatches(c controller.Controller, r *ReconcileBeat) error {
 	// Watch for changes to Beat
 	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}); err != nil {
@@ -120,7 +120,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 
 var _ reconcile.Reconciler = &ReconcileBeat{}
 
-// ReconcileBeat reconciles a Beat object
+// ReconcileBeat reconciles a Beat object.
 type ReconcileBeat struct {
 	k8s.Client
 	recorder       record.EventRecorder
@@ -131,7 +131,7 @@ type ReconcileBeat struct {
 }
 
 // Reconcile reads that state of the cluster for a Beat object and makes changes based on the state read
-// and what is in the Beat.Spec
+// and what is in the Beat.Spec.
 func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	defer common.LogReconciliationRun(log, request, "beat_name", &r.iteration)()
 	tx, ctx := tracing.NewTransaction(r.Tracer, request.NamespacedName, "beat")

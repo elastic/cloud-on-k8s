@@ -30,7 +30,7 @@ const (
 	DataMountPathTemplate = "/var/lib/%s/%s/%s-data"
 	DataPathTemplate      = "/usr/share/%s/data"
 
-	// ConfigChecksumLabel is a label used to store beats config checksum.
+	// ConfigChecksumLabel is a label used to store a Beats config checksum.
 	ConfigChecksumLabel = "beat.k8s.elastic.co/config-checksum"
 
 	// VersionLabelName is a label used to track the version of a Beat Pod.

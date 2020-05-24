@@ -171,7 +171,7 @@ func init() {
 	Cmd.Flags().Bool(
 		operator.EnableAutodiscoverRBACSetup,
 		true,
-		"Determines whether the operator should set up role, binding and service account for Beats autodiscover feature",
+		"Determines whether the operator should set up role, binding and service account for the Beats autodiscover feature",
 	)
 
 	// enable using dashed notation in flags and underscores in env

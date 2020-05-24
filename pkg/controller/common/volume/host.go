@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// NewReadOnlyHostVolume creates a new HostVolume struct
+// NewReadOnlyHostVolume creates a new HostVolume struct.
 func NewReadOnlyHostVolume(name, hostPath, mountPath string) HostVolume {
 	return NewHostVolume(name, hostPath, mountPath, false, corev1.HostPathUnset)
 }

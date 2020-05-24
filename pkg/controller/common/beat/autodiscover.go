@@ -34,17 +34,17 @@ var (
 	shouldSetupRBAC = false
 )
 
-// EnableAutodiscoverRBACSetup enables setting up autodiscover RBAC
+// EnableAutodiscoverRBACSetup enables setting up autodiscover RBAC.
 func EnableAutodiscoverRBACSetup() {
 	shouldSetupRBAC = true
 }
 
-// ShouldSetupAutodiscoverRBAC returns true if autodiscover RBAC is expected to be set up by the operator
+// ShouldSetupAutodiscoverRBAC returns true if autodiscover RBAC is expected to be set up by the operator.
 func ShouldSetupAutodiscoverRBAC() bool {
 	return shouldSetupRBAC
 }
 
-// SetupAutodiscoveryRBAC reconciles all resources needed for default RBAC setup
+// SetupAutodiscoveryRBAC reconciles all resources needed for the default RBAC setup.
 func SetupAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Client, owner metav1.Object, labels map[string]string) error {
 	if ShouldSetupAutodiscoverRBAC() {
 		if err := setupAutodiscoverRBAC(ctx, client, owner, labels); err != nil {
@@ -134,7 +134,7 @@ func reconcileClusterRoleBinding(client k8s.Client, owner metav1.Object) error {
 }
 
 func doReconcile(client k8s.Client, obj runtime.Object, owner metav1.Object) error {
-	// labels set here must be exactly the same for all callers in particular namespace
+	// labels set here must be exactly the same for all callers in a particular namespace
 	// otherwise they'll just keep trying to override each other
 	objMeta, err := meta.Accessor(obj)
 	if err != nil {

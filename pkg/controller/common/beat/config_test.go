@@ -32,7 +32,8 @@ func Test_buildBeatConfig(t *testing.T) {
 				Namespace: "ns",
 			},
 			Data: map[string][]byte{"elastic": []byte("123")},
-		})
+		},
+	)
 
 	defaultConfig := settings.MustParseConfig([]byte("default: true"))
 	userConfig := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}

@@ -11,7 +11,7 @@ import (
 type BeatHealth string
 
 const (
-	// BeatRedHealth means that the health is neither yellow nor green
+	// BeatRedHealth means that the health is neither yellow nor green.
 	BeatRedHealth BeatHealth = "red"
 
 	// BeatYellowHealth means that:
@@ -25,7 +25,7 @@ const (
 	BeatGreenHealth BeatHealth = "green"
 )
 
-// CalculateHealth returns health of the Beat calculated based on association status, desired count and ready count.
+// CalculateHealth returns health of the Beat based on association status, desired count and ready count.
 func CalculateHealth(associated v1.Associated, ready, desired int32) BeatHealth {
 	if associated.AssociationConf().IsConfigured() && associated.AssociationStatus() != v1.AssociationEstablished {
 		return BeatRedHealth

@@ -35,7 +35,7 @@ var (
 	}
 )
 
-// setOutput will set output section in Beat config according to association configuration.
+// setOutput will set the output section in Beat config according to the association configuration.
 func setOutput(cfg *settings.CanonicalConfig, client k8s.Client, associated commonv1.Associated) error {
 	if associated.AssociationConf().IsConfigured() {
 		username, password, err := association.ElasticsearchAuthSettings(client, associated)
@@ -71,7 +71,8 @@ func buildBeatConfig(
 	client k8s.Client,
 	associated commonv1.Associated,
 	defaultConfig *settings.CanonicalConfig,
-	userConfig *commonv1.Config) ([]byte, error) {
+	userConfig *commonv1.Config
+) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
 	if defaultConfig == nil && userConfig == nil {
@@ -104,7 +105,8 @@ func buildBeatConfig(
 func reconcileConfig(
 	params DriverParams,
 	defaultConfig *settings.CanonicalConfig,
-	checksum hash.Hash) error {
+	checksum hash.Hash
+) error {
 
 	cfgBytes, err := buildBeatConfig(params.Client, params.Associated, defaultConfig, params.Config)
 	if err != nil {

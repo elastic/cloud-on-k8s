@@ -15,7 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// WriteAssocSecretToHash dereferences auth secret (if any) to include it in the checksum
+// WriteAssocSecretToHash dereferences auth secret (if any) to include it in the checksum.
 func WriteAssocSecretToHash(client k8s.Client, assoc commonv1.Associated, hash hash.Hash) error {
 	assocConf := assoc.AssociationConf()
 

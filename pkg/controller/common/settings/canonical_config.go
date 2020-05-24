@@ -90,7 +90,7 @@ func ParseConfig(yml []byte) (*CanonicalConfig, error) {
 }
 
 // MustParseConfig parses the given configuration content into a CanonicalConfig.
-// Expects content to be in YAML format. Panis on error.
+// Expects content to be in YAML format. Panics on error.
 func MustParseConfig(yml []byte) *CanonicalConfig {
 	config, err := uyaml.NewConfig(yml, Options...)
 	if err != nil {
