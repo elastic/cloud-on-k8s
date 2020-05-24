@@ -23,7 +23,7 @@ spec:
       containers:
       - image: <OPERATOR_IMAGE>
         name: manager
-        args: ["manager", "--namespaces", "<MANAGED_NAMESPACE_LIST>"]
+        args: ["manager", "--namespaces", "<MANAGED_NAMESPACE_LIST>", "--disable-autodiscover-rbac-setup", "true"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
