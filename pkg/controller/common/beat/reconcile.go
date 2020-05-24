@@ -96,7 +96,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	if err := controllerutil.SetControllerReference(rp.owner, &d, scheme.Scheme); err != nil {
 		return 0, 0, err
 	}
-	// sync
+
 	reconciled, err := deployment.Reconcile(rp.client, d, rp.owner)
 	if err != nil {
 		return 0, 0, err

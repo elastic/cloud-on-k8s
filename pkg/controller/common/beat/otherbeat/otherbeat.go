@@ -29,9 +29,5 @@ func (d *Driver) Reconcile() commonbeat.DriverResults {
 		}
 	}
 
-	return commonbeat.Reconcile(
-		d.DriverParams,
-		nil,
-		"",
-		nil)
+	return commonbeat.Reconcile(d.DriverParams, nil, "", nil)
 }

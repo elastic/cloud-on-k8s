@@ -17,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
-// Builder to create Beats
+// Builder to create a Beat
 type Builder struct {
 	Beat        beatv1beta1.Beat
 	Validations []ValidationFunc
@@ -83,7 +83,6 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 	if b.Beat.Spec.Deployment != nil {
 		b.Beat.Spec.DaemonSet.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
 	}
-	// todo what if both are nil?
 
 	return b
 }
@@ -114,7 +113,6 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 		podSpec.Labels[key] = value
 	}
 
-	// todo what if both are nil?
 	return b
 }
 
