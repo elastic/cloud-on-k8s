@@ -5,8 +5,6 @@
 package metricbeat
 
 import (
-	"fmt"
-
 	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
@@ -28,10 +26,6 @@ const (
 	CGroupVolumeName = "cgroup"
 	CGroupPath       = "/sys/fs/cgroup"
 	CGroupMountPath  = "/hostfs/sys/fs/cgroup"
-
-	HostMetricbeatDataVolumeName   = "data"
-	HostMetricbeatDataPathTemplate = "/var/lib/%s/%s/metricbeat-data"
-	HostMetricbeatDataMountPath    = "/usr/share/metricbeat/data"
 )
 
 type Driver struct {
@@ -49,24 +43,10 @@ func (d *Driver) Reconcile() commonbeat.DriverResults {
 		procVolume := volume.NewReadOnlyHostVolume(ProcVolumeName, ProcPath, ProcMountPath)
 		cgroupVolume := volume.NewReadOnlyHostVolume(CGroupVolumeName, CGroupPath, CGroupMountPath)
 
-		var metricbeatDataVolume volume.VolumeLike
-		if d.Deployment != nil {
-			metricbeatDataVolume = volume.NewPersistentVolumeClaim(HostMetricbeatDataVolumeName, HostMetricbeatDataMountPath)
-		} else {
-			hostMetricbeatDataPath := fmt.Sprintf(HostMetricbeatDataPathTemplate, d.Owner.GetNamespace(), d.Owner.GetName())
-			metricbeatDataVolume = volume.NewHostVolume(
-				HostMetricbeatDataVolumeName,
-				hostMetricbeatDataPath,
-				HostMetricbeatDataMountPath,
-				false,
-				corev1.HostPathDirectoryOrCreate)
-		}
-
 		for _, volume := range []volume.VolumeLike{
 			dockerSockVolume,
 			procVolume,
 			cgroupVolume,
-			metricbeatDataVolume,
 		} {
 			builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 		}
