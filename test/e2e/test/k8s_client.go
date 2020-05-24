@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"os"
 
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,9 +25,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
