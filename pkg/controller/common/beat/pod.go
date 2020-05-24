@@ -8,12 +8,29 @@ import (
 	"fmt"
 	"hash"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	commonhash "github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
-	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	CAVolumeName = "es-certs"
+	CAMountPath  = "/mnt/elastic-internal/es-certs/"
+	CAFileName   = "ca.crt"
+
+	ConfigVolumeName = "config"
+	ConfigMountPath  = "/etc/beat.yml"
+	ConfigFileName   = "beat.yml"
+
+	// ConfigChecksumLabel is a label used to store beats config checksum.
+	ConfigChecksumLabel = "beat.k8s.elastic.co/config-checksum"
+
+	// VersionLabelName is a label used to track the version of a Beat Pod.
+	VersionLabelName = "beat.k8s.elastic.co/version"
 )
 
 func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(builder *defaults.PodTemplateBuilder), checksum hash.Hash) corev1.PodTemplateSpec {
@@ -26,7 +43,13 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(
 		podTemplate.Spec.AutomountServiceAccountToken = &t
 	}
 
-	builder := defaults.NewPodTemplateBuilder(podTemplate, params.Type).
+	builder := defaults.NewPodTemplateBuilder(podTemplate, params.Type)
+
+	if f != nil {
+		f(builder)
+	}
+
+	builder = builder.
 		WithTerminationGracePeriod(30).
 		WithEnv(corev1.EnvVar{
 			Name: "NODE_NAME",
@@ -41,7 +64,7 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(
 			ConfigChecksumLabel: fmt.Sprintf("%x", checksum.Sum(nil)),
 			VersionLabelName:    params.Version}).
 		WithDockerImage(params.Image, container.ImageRepository(defaultImage, params.Version)).
-		WithArgs("-e", "-c", ConfigMountPath(params.Type)).
+		WithArgs("-e", "-c", ConfigMountPath).
 		WithDNSPolicy(corev1.DNSClusterFirstWithHostNet).
 		WithSecurityContext(corev1.SecurityContext{
 			RunAsUser: pointer.Int64(0),
@@ -55,13 +78,13 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(
 		builder.WithServiceAccount(autodiscoverServiceAccountName)
 	}
 
-	dataVolume, _ := createDataVolume(params) //todo
+	dataVolume, _ := createDataVolume(params)
 	volumes := []volume.VolumeLike{
 		volume.NewSecretVolume(
 			params.Namer.ConfigSecretName(params.Type, params.Owner.GetName()),
 			ConfigVolumeName,
-			ConfigMountPath(params.Type),
-			configFileName(params.Type),
+			ConfigMountPath,
+			ConfigFileName,
 			0600),
 		dataVolume,
 	}
@@ -75,10 +98,6 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(
 
 	for _, v := range volumes {
 		builder = builder.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
-	}
-
-	if f != nil {
-		f(builder)
 	}
 
 	builder = builder.WithLabels(commonhash.SetTemplateHashLabel(params.Labels, builder.PodTemplate))

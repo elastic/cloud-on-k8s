@@ -51,7 +51,7 @@ func (d *Driver) Reconcile() commonbeat.DriverResults {
 			builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 		}
 
-		builder.WithArgs("-e", "-c", commonbeat.ConfigMountPath(d.Type), "-system.hostfs=/hostfs")
+		builder.WithArgs("-e", "-c", commonbeat.ConfigMountPath, "-system.hostfs=/hostfs")
 	}
 
 	if d.DaemonSet == nil && d.Deployment == nil {

@@ -9,6 +9,10 @@ import (
 	"hash"
 	"path"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -16,24 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-const (
-	CAVolumeName = "es-certs"
-	CAMountPath  = "/mnt/elastic-internal/es-certs/"
-	CAFileName   = "ca.crt"
-
-	ConfigVolumeName   = "config"
-	ConfigMountDirPath = "/etc"
-
-	// ConfigChecksumLabel is a label used to store beats config checksum.
-	ConfigChecksumLabel = "beat.k8s.elastic.co/config-checksum"
-
-	// VersionLabelName is a label used to track the version of a Beat Pod.
-	VersionLabelName = "beat.k8s.elastic.co/version"
 )
 
 var (
@@ -133,7 +119,7 @@ func reconcileConfig(
 			Labels:    common.AddCredentialsLabel(params.Labels),
 		},
 		Data: map[string][]byte{
-			configFileName(params.Type): cfgBytes,
+			ConfigMountPath: cfgBytes,
 		},
 	}
 
@@ -150,12 +136,4 @@ func reconcileConfig(
 	_, _ = checksum.Write(cfgBytes)
 
 	return nil
-}
-
-func configFileName(typ string) string {
-	return fmt.Sprintf("%s.yml", typ)
-}
-
-func ConfigMountPath(typ string) string {
-	return path.Join(ConfigMountDirPath, configFileName(typ))
 }
