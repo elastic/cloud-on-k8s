@@ -19,15 +19,15 @@ type Driver struct {
 }
 
 func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
+	// use the default for otherbeat type if not provided
+	if params.DaemonSet == nil && params.Deployment == nil {
+		params.Deployment = &commonbeat.DeploymentSpec{
+			Replicas: pointer.Int32(1),
+		}
+	}
 	return &Driver{DriverParams: params}
 }
 
 func (d *Driver) Reconcile() commonbeat.DriverResults {
-	if d.DaemonSet == nil && d.Deployment == nil {
-		d.Deployment = &commonbeat.DeploymentSpec{
-			Replicas: pointer.Int32(1),
-		}
-	}
-
 	return commonbeat.Reconcile(d.DriverParams, nil, "", nil)
 }

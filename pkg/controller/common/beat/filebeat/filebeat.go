@@ -33,6 +33,11 @@ type Driver struct {
 }
 
 func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
+	// use the default for filebeat type if not provided
+	if params.DaemonSet == nil && params.Deployment == nil {
+		params.DaemonSet = &commonbeat.DaemonSetSpec{}
+	}
+
 	return &Driver{DriverParams: params}
 }
 
@@ -49,10 +54,6 @@ func (d *Driver) Reconcile() commonbeat.DriverResults {
 		} {
 			builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 		}
-	}
-
-	if d.DaemonSet == nil && d.Deployment == nil {
-		d.DaemonSet = &commonbeat.DaemonSetSpec{}
 	}
 
 	return commonbeat.Reconcile(
