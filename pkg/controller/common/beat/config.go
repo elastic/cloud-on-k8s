@@ -71,7 +71,7 @@ func buildBeatConfig(
 	client k8s.Client,
 	associated commonv1.Associated,
 	defaultConfig *settings.CanonicalConfig,
-	userConfig *commonv1.Config
+	userConfig *commonv1.Config,
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
@@ -105,7 +105,7 @@ func buildBeatConfig(
 func reconcileConfig(
 	params DriverParams,
 	defaultConfig *settings.CanonicalConfig,
-	checksum hash.Hash
+	checksum hash.Hash,
 ) error {
 
 	cfgBytes, err := buildBeatConfig(params.Client, params.Associated, defaultConfig, params.Config)
