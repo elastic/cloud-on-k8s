@@ -79,8 +79,6 @@ spec:
   nodeSets:
   - name: default
     count: 3
-    config:
-      node.store.allow_mmap: false
     podTemplate:
       metadata:
         annotations:
@@ -120,6 +118,47 @@ spec:
 ----
 
 Refer to the link:https://istio.io/docs/tasks/security/authentication/mtls-migration/[Istio documentation] for more information about other configuration options affecting authentication between services.
+
+
+[id="{p}-service-mesh-istio-cni"]
+===== Using init containers with Istio CNI
+
+There are link:https://istio.io/docs/setup/additional-setup/cni/#compatibility-with-application-init-containers[known issues with init containers] when Istio CNI is configured. If you use init containers to <<{p}-init-containers-plugin-downloads,install Elasticsearch plugins>> or perform other initialization tasks that require network access, they may fail due to outbound traffic being blocked by the CNI plugin. To work around this issue, explicitly whitelist the external ports used by the init containers.
+
+.Installing plugins using an init container
+[source,yaml,subs="attributes,callouts"]
+----
+apiVersion: elasticsearch.k8s.elastic.co/{eck_crd_version}
+kind: Elasticsearch
+metadata:
+  name: elastic-istio
+spec:
+  version: {version}
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  nodeSets:
+  - name: default
+    count: 3
+    podTemplate:
+      metadata:
+        annotations:
+          traffic.sidecar.istio.io/includeInboundPorts: "*"
+          traffic.sidecar.istio.io/excludeOutboundPorts: "9300,443" <1>
+          traffic.sidecar.istio.io/excludeInboundPorts: "9300"
+      spec:
+        automountServiceAccountToken: true
+        initContainers:
+          - name: install-plugins
+            command:
+              - sh
+              - -c
+              - |
+                bin/elasticsearch-plugin install --batch repository-gcs
+----
+
+<1> Plugins are downloaded over the HTTPS port (443) and needs to be whitelisted when Istio CNI is installed.
 
 
 [id="{p}-service-mesh-istio-kibana"]

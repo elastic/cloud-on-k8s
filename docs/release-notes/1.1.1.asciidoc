@@ -1,0 +1,25 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.1.1]]
+== {n} version 1.1.1
+
+[[breaking-1.1.1]]
+[float]
+=== Breaking changes
+
+* Revert readiness probes independent of the host/container... (#2528) {pull}3060[#3060]
+
+
+
+[[enhancement-1.1.1]]
+[float]
+=== Enhancements
+
+* Increase the operator default memory requirements {pull}3046[#3046] (issue: {issue}3025[#3025])
+
+[[bug-1.1.1]]
+[float]
+=== Bug fixes
+
+* Restore transport certs public secret naming scheme from 1.0 {pull}3035[#3035] (issue: {issue}3034[#3034])

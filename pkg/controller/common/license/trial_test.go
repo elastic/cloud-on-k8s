@@ -5,120 +5,83 @@
 package license
 
 import (
-	"crypto/rsa"
+	"crypto/x509"
+	"reflect"
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-type failingClient struct {
-	k8s.Client
-}
-
-func (failingClient) Create(o runtime.Object, opts ...client.CreateOption) error {
-	return errors.New("boom")
-}
-
-func TestInitTrial(t *testing.T) {
+func TestInitTrialLicense(t *testing.T) {
 	licenseFixture := EnterpriseLicense{
 		License: LicenseSpec{
 			Type: LicenseTypeEnterpriseTrial,
 		},
 	}
 	type args struct {
-		c k8s.Client
 		l *EnterpriseLicense
 	}
 	tests := []struct {
 		name    string
+		state   TrialState
 		args    args
-		want    func(*EnterpriseLicense, *rsa.PublicKey)
+		want    func(*EnterpriseLicense)
 		wantErr bool
 	}{
 		{
 			name: "nil license",
 			args: args{
-				c: k8s.WrappedFakeClient(),
 				l: nil,
-			},
-			wantErr: true,
-		},
-		{
-			name: "failing client",
-			args: args{
-				c: failingClient{},
-				l: &EnterpriseLicense{
-					License: LicenseSpec{
-						Type: LicenseTypeEnterpriseTrial,
-					},
-				},
-			},
-			want: func(_ *EnterpriseLicense, key *rsa.PublicKey) {
-				require.Nil(t, key)
 			},
 			wantErr: true,
 		},
 		{
 			name: "not a trial license",
 			args: args{
-				c: k8s.WrappedFakeClient(),
 				l: &EnterpriseLicense{},
 			},
-			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {
+			want: func(l *EnterpriseLicense) {
 				require.Equal(t, *l, EnterpriseLicense{})
-				require.Nil(t, k)
 			},
 			wantErr: true,
 		},
 		{
 			name: "successful trial start",
+			state: func() TrialState {
+				state, err := NewTrialState()
+				require.NoError(t, err)
+				return state
+			}(),
 			args: args{
-				c: k8s.WrappedFakeClient(&corev1.Secret{
-					ObjectMeta: v1.ObjectMeta{
-						Namespace: "elastic-system",
-						Name:      string(LicenseTypeEnterpriseTrial),
-					},
-				}),
 				l: &licenseFixture,
 			},
-			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {
-				require.NotNil(t, k)
+			want: func(l *EnterpriseLicense) {
 				require.NoError(t, l.IsMissingFields())
 			},
 			wantErr: false,
 		},
+		{
+			name: "not in activation state",
+			args: args{
+				l: &licenseFixture,
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitTrial(
-				tt.args.c,
-				"elastic-system",
-				corev1.Secret{
-					ObjectMeta: v1.ObjectMeta{
-						Namespace: "elastic-system",
-						Name:      string(LicenseTypeEnterpriseTrial),
-						Labels: map[string]string{
-							common.TypeLabelName: Type,
-						},
-					},
-				},
-				tt.args.l,
-			)
+			err := tt.state.InitTrialLicense(tt.args.l)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitTrial() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if tt.want != nil {
-				tt.want(tt.args.l, got)
+				tt.want(tt.args.l)
 			}
 		})
 	}
@@ -151,6 +114,22 @@ func TestPopulateTrialLicense(t *testing.T) {
 				l: &EnterpriseLicense{
 					License: LicenseSpec{
 						Type: LicenseTypeEnterpriseTrial,
+					},
+				},
+			},
+			assertions: func(l EnterpriseLicense) {
+				require.NoError(t, l.IsMissingFields())
+			},
+			wantErr: false,
+		},
+		{
+			// technically this code path should not be possible: we use the new type when creating a new trial
+			// and we don't repopulate existing licenses
+			name: "legacy trial still supported",
+			args: args{
+				l: &EnterpriseLicense{
+					License: LicenseSpec{
+						Type: LicenseTypeLegacyTrial,
 					},
 				},
 			},
@@ -202,5 +181,153 @@ func TestStartTrial(t *testing.T) {
 		if tt.assertions != nil {
 			tt.assertions(*tt.args.l)
 		}
+	}
+}
+
+func TestNewTrialStateFromStatus(t *testing.T) {
+	key, err := newTrialKey()
+	require.NoError(t, err)
+
+	keySerialized, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	require.NoError(t, err)
+
+	type args struct {
+		trialStatus v1.Secret
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    func(TrialState)
+		wantErr bool
+	}{
+		{
+			name: "reconstructs state",
+			args: args{
+				trialStatus: v1.Secret{
+					Data: map[string][]byte{
+						TrialPubkeyKey: keySerialized,
+					},
+				},
+			},
+			want: func(s TrialState) {
+				require.True(t, s.IsTrialStarted())
+				require.True(t, reflect.DeepEqual(s, TrialState{
+					publicKey: &key.PublicKey,
+				}))
+			},
+			wantErr: false,
+		},
+		{
+			name: "error on garbage status",
+			args: args{
+				trialStatus: v1.Secret{
+					Data: map[string][]byte{
+						TrialPubkeyKey: []byte("foo"),
+					},
+				},
+			},
+			wantErr: true,
+			want: func(state TrialState) {
+				require.False(t, state.IsTrialStarted())
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewTrialStateFromStatus(tt.args.trialStatus)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewTrialStateFromStatus() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if tt.want != nil {
+				tt.want(got)
+			}
+		})
+	}
+}
+
+func TestExpectedTrialStatus(t *testing.T) {
+	sampleKey, err := newTrialKey()
+	require.NoError(t, err)
+	pubKey, err := x509.MarshalPKIXPublicKey(&sampleKey.PublicKey)
+	require.NoError(t, err)
+
+	type args struct {
+		state TrialState
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    v1.Secret
+		wantErr bool
+	}{
+		{
+			name: "status during activation",
+			args: args{
+				state: TrialState{
+					publicKey:  &sampleKey.PublicKey,
+					privateKey: sampleKey,
+				},
+			},
+			want: v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      TrialStatusSecretKey,
+					Annotations: map[string]string{
+						TrialLicenseSecretName:      "name",
+						TrialLicenseSecretNamespace: "ns",
+					},
+				},
+				Data: map[string][]byte{
+					TrialPubkeyKey:     pubKey,
+					TrialActivationKey: []byte("true"),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "status after activation",
+			args: args{
+				state: TrialState{
+					publicKey: &sampleKey.PublicKey,
+				},
+			},
+			want: v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "ns",
+					Name:      TrialStatusSecretKey,
+					Annotations: map[string]string{
+						TrialLicenseSecretName:      "name",
+						TrialLicenseSecretNamespace: "ns",
+					},
+				},
+				Data: map[string][]byte{
+					TrialPubkeyKey: pubKey,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "with empty trial state",
+			args: args{
+				state: TrialState{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ExpectedTrialStatus("ns", types.NamespacedName{
+				Namespace: "ns",
+				Name:      "name",
+			}, tt.args.state)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ExpectedTrialStatus() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ExpectedTrialStatus() got = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

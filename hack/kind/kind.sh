@@ -86,7 +86,6 @@ function setup_kind_cluster() {
     config_opts+=("--config" "${MANIFEST}")
   fi
   # Create Kind cluster
-  # TODO: see if this lint rule can be re-enabled
   if ! (kind "${log_lvl[@]}" create cluster --name="${CLUSTER_NAME}" "${config_opts[@]}" --retain --image "${NODE_IMAGE}"); then
     echo "Could not setup Kind environment. Something wrong with Kind setup."
     exit 1

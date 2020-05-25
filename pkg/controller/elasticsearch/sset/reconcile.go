@@ -16,6 +16,7 @@ import (
 
 // ReconcileStatefulSet creates or updates the expected StatefulSet.
 func ReconcileStatefulSet(c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet, expectations *expectations.Expectations) (appsv1.StatefulSet, error) {
+	podTemplateValidator := newPodTemplateValidator(c, es, expected)
 	var reconciled appsv1.StatefulSet
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
@@ -31,6 +32,8 @@ func ReconcileStatefulSet(c k8s.Client, es esv1.Elasticsearch, expected appsv1.S
 		UpdateReconciled: func() {
 			expected.DeepCopyInto(&reconciled)
 		},
+		PreCreate: podTemplateValidator,
+		PreUpdate: podTemplateValidator,
 		PostUpdate: func() {
 			if expectations != nil {
 				// expect the reconciled StatefulSet to be there in the cache for next reconciliations,
@@ -40,6 +43,13 @@ func ReconcileStatefulSet(c k8s.Client, es esv1.Elasticsearch, expected appsv1.S
 		},
 	})
 	return reconciled, err
+}
+
+// newPodTemplateValidator returns a function which can be used to validate the PodTemplateSpec in a StatefulSet
+func newPodTemplateValidator(c k8s.Client, es esv1.Elasticsearch, expected appsv1.StatefulSet) func() error {
+	return func() error {
+		return validatePodTemplate(c, &es, expected)
+	}
 }
 
 // EqualTemplateHashLabels reports whether actual and expected StatefulSets have the same template hash label value.

@@ -21,6 +21,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 		CheckApmServerPodsRunning(b, k),
 		CheckServices(b, k),
 		CheckServicesEndpoints(b, k),
+		CheckSecrets(b, k),
 	}
 }
 
@@ -116,4 +117,84 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 			return nil
 		}),
 	}
+}
+
+// CheckSecrets checks that expected secrets have been created.
+func CheckSecrets(b Builder, k *test.K8sClient) test.Step {
+	return test.CheckSecretsContent(k, b.ApmServer.Namespace, func() []test.ExpectedSecret {
+		apmName := b.ApmServer.Name
+		apmNamespace := b.ApmServer.Namespace
+		// hardcode all secret names and keys to catch any breaking change
+		expected := []test.ExpectedSecret{
+			{
+				Name: apmName + "-apm-config",
+				Keys: []string{"apm-server.yml"},
+				Labels: map[string]string{
+					"apm.k8s.elastic.co/name":    apmName,
+					"common.k8s.elastic.co/type": "apm-server",
+				},
+			},
+			{
+				Name: apmName + "-apm-token",
+				Keys: []string{"secret-token"},
+				Labels: map[string]string{
+					"apm.k8s.elastic.co/name":        apmName,
+					"common.k8s.elastic.co/type":     "apm-server",
+					"eck.k8s.elastic.co/credentials": "true",
+				},
+			},
+		}
+		if b.ApmServer.Spec.ElasticsearchRef.Name != "" {
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: apmName + "-apm-es-ca",
+					Keys: []string{"ca.crt", "tls.crt"},
+					Labels: map[string]string{
+						"apmassociation.k8s.elastic.co/name":        apmName,
+						"apmassociation.k8s.elastic.co/namespace":   apmNamespace,
+						"elasticsearch.k8s.elastic.co/cluster-name": b.ApmServer.Spec.ElasticsearchRef.Name,
+					},
+				},
+				test.ExpectedSecret{
+					Name: apmName + "-apm-user",
+					Keys: []string{b.ApmServer.Namespace + "-" + apmName + "-apm-user"},
+					Labels: map[string]string{
+						"apmassociation.k8s.elastic.co/name":        apmName,
+						"apmassociation.k8s.elastic.co/namespace":   apmNamespace,
+						"eck.k8s.elastic.co/credentials":            "true",
+						"elasticsearch.k8s.elastic.co/cluster-name": b.ApmServer.Spec.ElasticsearchRef.Name,
+					},
+				},
+			)
+		}
+		if b.ApmServer.Spec.HTTP.TLS.Enabled() {
+			expected = append(expected,
+				test.ExpectedSecret{
+					Name: apmName + "-apm-http-ca-internal",
+					Keys: []string{"tls.crt", "tls.key"},
+					Labels: map[string]string{
+						"apm.k8s.elastic.co/name":    apmName,
+						"common.k8s.elastic.co/type": "apm-server",
+					},
+				},
+				test.ExpectedSecret{
+					Name: apmName + "-apm-http-certs-internal",
+					Keys: []string{"tls.crt", "tls.key", "ca.crt"},
+					Labels: map[string]string{
+						"apm.k8s.elastic.co/name":    apmName,
+						"common.k8s.elastic.co/type": "apm-server",
+					},
+				},
+				test.ExpectedSecret{
+					Name: apmName + "-apm-http-certs-public",
+					Keys: []string{"ca.crt", "tls.crt"},
+					Labels: map[string]string{
+						"apm.k8s.elastic.co/name":    apmName,
+						"common.k8s.elastic.co/type": "apm-server",
+					},
+				},
+			)
+		}
+		return expected
+	})
 }

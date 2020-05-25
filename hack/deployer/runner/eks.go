@@ -43,8 +43,8 @@ iam:
   withOIDC: false
   serviceRoleARN: {{.ServiceRoleARN}}
 `
-	awsAccessKeyID      = "aws_access_key_id"     // nolint
-	awsSecretAccessKey  = "aws_secret_access_key" // nolint
+	awsAccessKeyID      = "aws_access_key_id"
+	awsSecretAccessKey  = "aws_secret_access_key" // nolint:gosec
 	credentialsTemplate = `[default]
 %s = %s
 %s = %s`
@@ -113,18 +113,19 @@ func (e *EKSDriver) Execute() error {
 			}
 			createCfgFile := filepath.Join(e.ctx["WorkDir"].(string), "cluster.yaml")
 			e.ctx["CreateCfgFile"] = createCfgFile
-			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0644); err != nil {
+			if err := ioutil.WriteFile(createCfgFile, createCfg.Bytes(), 0600); err != nil {
 				return fmt.Errorf("while writing create cfg %w", err)
 			}
 			if err := e.newCmd(`eksctl create cluster -v 0 -f {{.CreateCfgFile}}`).Run(); err != nil {
 				return err
 			}
-			if err := createStorageClass(NoProvisioner); err != nil {
-				return err
-			}
-			return NewCommand(e.plan.EKS.DiskSetup).Run()
+		} else {
+			log.Printf("Not creating cluster as it already exists")
 		}
-		log.Printf("Not creating cluster as it already exists")
+		if err := createStorageClass(NoProvisioner); err != nil {
+			return err
+		}
+		return NewCommand(e.plan.EKS.DiskSetup).Run()
 	}
 	return nil
 }

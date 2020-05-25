@@ -1,0 +1,68 @@
+[[release-highlights-1.1.1]]
+== 1.1.1 release highlights
+
+[float]
+[id="{p}-111-new-and-notable"]
+=== New and notable
+This release contains three changes:
+
+* correcting the name of the Secret containing the Elasticsearch transport certificates
+* increasing the default memory available to the operator Pod to allow it to function in a wider variety of environments
+* switching the Kibana and APM Readiness probes to use HTTP probes
+
+[float]
+[id="{p}-111-breaking-changes"]
+=== Upgrade notes
+
+ECK 1.1.0 changed the name of the Secret containing the Elasticsearch transport certificates. This release corrects the name to its pre-1.1.0 name: `<elasticsearch_name>-es-transport-certs-public`. In 1.1.0 it was named `<elasticsearch_name>-es-ca-certs-public`. Upgrading to 1.1.1 will leave the original Secret intact but also add the correct Secret.
+
+ECK 1.1.0 changed the Readiness probes for Kibana and APM resources to use `Exec` probes. This allows the Readiness probe to function in environments where the Kubernetes nodes cannot communicate with the Pods, but causes issues with Ingress resources that re-use the Readiness probe for its own health checks. ECK 1.1.1 reverts this behavior such that Kibana and APM resources now use HTTP probes. Users in restricted environments can modify the Readiness probe to use an Exec probe as described below:
+
+.Kibana
+[source,yaml,subs="attributes"]
+----
+apiVersion: kibana.k8s.elastic.co/{eck_crd_version}
+kind: Kibana
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+  podTemplate:
+    spec:
+      containers:
+        - name: kibana
+          readinessProbe:
+            exec:
+              command:
+              - bash
+              - -c
+              - curl -o /dev/null -w "%{http_code}" https://127.0.0.1:5601/login -k -s
+----
+
+
+.APM Server
+[source,yaml,subs="attributes"]
+----
+apiVersion: apm.k8s.elastic.co/{eck_crd_version}
+kind: ApmServer
+metadata:
+  name: quickstart
+spec:
+  version: {version}
+  count: 1
+  elasticsearchRef:
+    name: quickstart
+  podTemplate:
+    spec:
+      containers:
+        - name: apm-server
+          readinessProbe:
+            exec:
+              command:
+              - bash
+              - -c
+              - curl -o /dev/null -w "%{http_code}" https://127.0.0.1:8200/ -k -s
+----

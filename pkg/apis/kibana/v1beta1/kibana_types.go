@@ -38,7 +38,6 @@ type KibanaSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// SecureSettings is a list of references to Kubernetes secrets containing sensitive configuration options for Kibana.
-	// See: https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-kibana.html#k8s-kibana-secure-settings
 	SecureSettings []commonv1beta1.SecretSource `json:"secureSettings,omitempty"`
 }
 

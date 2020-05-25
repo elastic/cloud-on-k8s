@@ -84,7 +84,7 @@ You can populate the content of both `users` and `users_roles` using the link:ht
 
 For example, invoking the tool in a Docker container:
 
-[source,sh]
+[source,sh,subs="attributes"]
 ----
 # create a folder with the 2 files
 mkdir filerealm

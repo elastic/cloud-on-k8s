@@ -27,7 +27,7 @@ Run `make check-requisites` to check that all dependencies are installed.
 ## Development
 
 1. Run `make dependencies` to download the Go libraries needed to compile the project.
-1. Get a working development Kubernetes cluster. You can use:
+2. Get a working development Kubernetes cluster. You can use:
 
 * [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube)
 
@@ -48,15 +48,38 @@ Run `make check-requisites` to check that all dependencies are installed.
   * [GKE](https://cloud.google.com/kubernetes-engine/): `make switch-gke bootstrap-cloud`
   * [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/): `make switch-aks bootstrap-cloud`
 
-3. Deploy the operator.
+3. Docker registry
+
+The `docker.elastic.co` registry and the `eck-dev` namespace are setup by default.
+
+It is up to you to manage the authentication (`docker login -u $username docker.elastic.co`) to be able to push images into it.
+
+A file `.registry.env` can be created to use another Docker registry.
+
+`make switch-registry-gcr` configures this file to use Google Container Registry with:
+
+```sh
+REGISTRY = eu.gcr.io
+REGISTRY_NAMESPACE = my-gcloud-project
+E2E_REGISTRY_NAMESPACE = my-gcloud-project
+```
+
+4. Deploy the operator
 
 * `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
 * `make samples` to apply a sample stack resource.
 
+### Running unit and integration tests
+
+```
+make unit integration
+```
+
 ### Running E2E tests
 
 E2E tests will run in the `e2e-mercury` and `e2e-venus` namespaces.
-Run `make run` to start the operator and then run `make e2e-local` in a separate shell to run the tests.
+
+Run `make run` to start the operator and then run `make e2e-local` in a separate shell to run the E2E tests.
 
 ## Recommended reading
 

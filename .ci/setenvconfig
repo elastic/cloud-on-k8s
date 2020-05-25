@@ -35,9 +35,8 @@ case $environment in
 ######################################
 
 write_env <<ENV
-REGISTRY = cloudonk8s.azurecr.io
-REPOSITORY = operators
 IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -70,9 +69,8 @@ CFG
 ######################################
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -109,9 +107,8 @@ clusterVersion=$2
 clusterName=$3
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -147,11 +144,11 @@ CFG
 ######################################
 
 kindNodeImage=$2
+clusterVersion=$3
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -165,7 +162,7 @@ PIPELINE=e2e/kind-k8s-versions
 BUILD_NUMBER=$BUILD_NUMBER
 E2E_PROVIDER=kind
 CLUSTER_NAME=kind-$BUILD_NUMBER
-KUBERNETES_VERSION=default
+KUBERNETES_VERSION=${clusterVersion}
 TEST_OPTS=-race
 ENV
 ;;
@@ -175,9 +172,9 @@ ENV
 ######################################
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
+REGISTRY_NAMESPACE = eck-snapshots
+E2E_REGISTRY_NAMESPACE = eck-ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -209,9 +206,8 @@ CFG
 ######################################
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -246,10 +242,8 @@ CFG
 ######################################
 
 write_env <<ENV
-REGISTRY = docker.elastic.co
-REPOSITORY = eck-snapshots
 IMG_SUFFIX = -ci
-ELASTIC_DOCKER_LOGIN = eckadmin
+E2E_REGISTRY_NAMESPACE = eck-ci
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
@@ -278,14 +272,16 @@ CFG
 clusterName=$2
 stackVersion=$3
 isSnapshotVersion=$(case $stackVersion in (*-SNAPSHOT)  echo Yes;; esac)
+testLicensePKeyPath=$(case $isSnapshotVersion in (Yes) echo "/go/src/github.com/elastic/cloud-on-k8s/.ci/dev-private.key";; esac)
 operatorImage=${OPERATOR_IMAGE:-$JKS_PARAM_OPERATOR_IMAGE}
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
+E2E_REGISTRY_NAMESPACE = eck-ci
 IS_SNAPSHOT_BUILD = ${isSnapshotVersion}
+
 TEST_LICENSE = /go/src/github.com/elastic/cloud-on-k8s/.ci/test-license.json
+TEST_LICENSE_PKEY_PATH = $testLicensePKeyPath
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
 
 OPERATOR_IMAGE = ${operatorImage}
@@ -317,9 +313,9 @@ CFG
 ######################################
 
 write_env <<ENV
-REGISTRY = eu.gcr.io
-REPOSITORY = $GCLOUD_PROJECT
 IMG_SUFFIX = -ci
+REGISTRY_NAMESPACE = eck-snapshots
+E2E_REGISTRY_NAMESPACE = eck-ci
 
 TESTS_MATCH = TestSmoke
 MONITORING_SECRETS = /go/src/github.com/elastic/cloud-on-k8s/.ci/monitoring-secrets.json
@@ -366,14 +362,11 @@ CFG
 # IMG_VERSION is generated
 
 write_env <<ENV
-REGISTRY = docker.elastic.co
-REPOSITORY = eck-snapshots
-IMG_NAME = eck-operator
+REGISTRY_NAMESPACE = eck-snapshots
+IMG_SUFFIX =
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-
-ELASTIC_DOCKER_LOGIN = eckadmin
 
 SNAPSHOT = true
 IMG_VERSION = $(cat $WORKSPACE/VERSION)-$(date +%F)-$(git rev-parse --short --verify HEAD)
@@ -386,14 +379,11 @@ ENV
 ###############
 
 write_env <<ENV
-REGISTRY = docker.elastic.co
-REPOSITORY = eck
-IMG_NAME = eck-operator
+REGISTRY_NAMESPACE = eck
+IMG_SUFFIX =
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key
-
-ELASTIC_DOCKER_LOGIN = eckadmin
 
 SNAPSHOT = false
 IMG_VERSION = $TAG_NAME
@@ -407,11 +397,10 @@ ENV
 ######################################
 
 write_env <<ENV
-REGISTRY = docker.elastic.co
-REPOSITORY = eck-snapshots
 IMG_SUFFIX = -dev-ci
+REGISTRY_NAMESPACE = eck-snapshots
+E2E_REGISTRY_NAMESPACE = eck-ci
 IS_SNAPSHOT_BUILD = yes
-ELASTIC_DOCKER_LOGIN = eckadmin
 
 GO_TAGS = release
 export LICENSE_PUBKEY = /go/src/github.com/elastic/cloud-on-k8s/.ci/license.key

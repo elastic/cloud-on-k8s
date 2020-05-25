@@ -86,6 +86,7 @@ type Context struct {
 	LogVerbosity          int               `json:"log_verbosity"`
 	OperatorImage         string            `json:"operator_image"`
 	TestLicense           string            `json:"test_license"`
+	TestLicensePKeyPath   string            `json:"test_license_pkey_path"`
 	TestRegex             string            `json:"test_regex"`
 	TestRun               string            `json:"test_run"`
 	MonitoringSecrets     string            `json:"monitoring_secrets"`

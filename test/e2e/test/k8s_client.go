@@ -27,13 +27,12 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	apmlabels "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver/labels"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
-	kblabel "github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -247,35 +246,6 @@ func (k *K8sClient) GetCA(ownerNamespace, ownerName string, caType certificates.
 	return certificates.NewCA(pKey, caCerts[0]), nil
 }
 
-// GetTransportCert retrieves the certificate of the CA and the transport certificate
-func (k *K8sClient) GetTransportCert(esNamespace, esName, podName string) (caCert, transportCert []*x509.Certificate, err error) {
-	var secret corev1.Secret
-	key := types.NamespacedName{
-		Namespace: esNamespace,
-		Name:      esv1.TransportCertificatesSecret(esName),
-	}
-	if err = k.Client.Get(key, &secret); err != nil {
-		return nil, nil, err
-	}
-	caCertBytes, exists := secret.Data[certificates.CAFileName]
-	if !exists || len(caCertBytes) == 0 {
-		return nil, nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
-	}
-	caCert, err = certificates.ParsePEMCerts(caCertBytes)
-	if err != nil {
-		return nil, nil, err
-	}
-	transportCertBytes, exists := secret.Data[transport.PodCertFileName(podName)]
-	if !exists || len(transportCertBytes) == 0 {
-		return nil, nil, fmt.Errorf("no value found for secret %s", transport.PodCertFileName(podName))
-	}
-	transportCert, err = certificates.ParsePEMCerts(transportCertBytes)
-	if err != nil {
-		return nil, nil, err
-	}
-	return
-}
-
 // Exec runs the given cmd into the given pod.
 func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string, error) {
 	// create the exec client
@@ -330,7 +300,7 @@ func ESPodListOptions(esNamespace, esName string) []k8sclient.ListOption {
 func KibanaPodListOptions(kbNamespace, kbName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(kbNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		kblabel.KibanaNameLabelName: kbName,
+		kibana.KibanaNameLabelName: kbName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }
@@ -338,8 +308,8 @@ func KibanaPodListOptions(kbNamespace, kbName string) []k8sclient.ListOption {
 func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(apmNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName:             apmlabels.Type,
-		apmlabels.ApmServerNameLabelName: apmName,
+		common.TypeLabelName:             apmserver.Type,
+		apmserver.ApmServerNameLabelName: apmName,
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 

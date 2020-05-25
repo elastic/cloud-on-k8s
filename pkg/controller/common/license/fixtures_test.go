@@ -49,7 +49,7 @@ var (
 	}
 )
 
-var trialLicenseFixture = EnterpriseLicense{
+var emptyTrialLicenseFixture = EnterpriseLicense{
 	License: LicenseSpec{
 		Type: LicenseTypeEnterpriseTrial,
 	},
@@ -60,27 +60,31 @@ func withSignature(l EnterpriseLicense, sig []byte) EnterpriseLicense {
 	return l
 }
 
-func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
-	bytes, err := json.Marshal(withSignature(l, sig))
+func asRuntimeObject(l EnterpriseLicense) runtime.Object {
+	bytes, err := json.Marshal(l)
 	if err != nil {
 		panic(err)
 	}
 
-	return []runtime.Object{
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "test-system",
-				Name:      fmt.Sprintf("test-%s-license", string(l.License.Type)),
-				Labels: map[string]string{
-					common.TypeLabelName: Type,
-					LicenseLabelScope:    string(LicenseScopeOperator),
-					LicenseLabelType:     string(l.License.Type),
-				},
-			},
-			Data: map[string][]byte{
-				FileName: bytes,
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test-system",
+			Name:      fmt.Sprintf("test-%s-license", string(l.License.Type)),
+			Labels: map[string]string{
+				common.TypeLabelName: Type,
+				LicenseLabelScope:    string(LicenseScopeOperator),
+				LicenseLabelType:     string(l.License.Type),
 			},
 		},
+		Data: map[string][]byte{
+			FileName: bytes,
+		},
+	}
+}
+
+func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
+	return []runtime.Object{
+		asRuntimeObject(withSignature(l, sig)),
 	}
 }
 

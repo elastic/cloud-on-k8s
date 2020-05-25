@@ -20,10 +20,10 @@ check() {
     local exec_name=$*
     printf "Checking for %s..." "$exec_name"
     if ! command -v "$exec_name" >/dev/null 2>&1; then
-        printf "%snot found%s" "${red}" "${reset}"
+        printf "%bnot found%b" "${red}" "${reset}"
         all_found=false
     else
-        printf "%sfound%s" "${green}" "${reset}"
+        printf "%bfound%b" "${green}" "${reset}"
     fi
     printf "\n"
 }
@@ -35,9 +35,9 @@ check_oneof() {
     do
         printf "Checking for (optional) %s..." "$exec_name"
         if ! command -v "$exec_name" >/dev/null 2>&1; then
-            printf "%snot found%s" "${red}" "${reset}"
+            printf "%bnot found%b" "${red}" "${reset}"
         else
-            printf "%sfound%s" "${green}" "${reset}"
+            printf "%bfound%b" "${green}" "${reset}"
             found_one=true
         fi
         printf "\n"
@@ -57,9 +57,9 @@ check_go_version() {
 
     printf "Checking for go >= 1.%s..." "$MIN_GO_VERSION"
     if [[ "$major" -gt 1 ]] || [[ "$minor" -ge $MIN_GO_VERSION ]]; then
-        printf "%sok%s (%s.%s)" "${green}" "${reset}" "$major" "$minor"
+        printf "%bok%b (%s.%s)" "${green}" "${reset}" "$major" "$minor"
     else
-        printf "%sko$%s (%s.%s)" "${red}" "${reset}" "$major" "$minor"
+        printf "%bko$%b (%s.%s)" "${red}" "${reset}" "$major" "$minor"
         all_found=false
     fi
     printf "\n"
@@ -73,9 +73,9 @@ check_kubectl_version() {
 
     printf "Checking for kubectl >= 1.%s... " "$MIN_KUBECTL_VERSION"
     if [[ "$major" -gt 1 ]] || [[ "$minor" -ge $MIN_KUBECTL_VERSION ]]; then
-        printf "%sok%s (%s.%s)" "${green}" "${reset}" "$major" "$minor"
+        printf "%bok%b (%s.%s)" "${green}" "${reset}" "$major" "$minor"
     else
-        printf "%sko$%s (%s.%s)" "${red}" "${reset}" "$major" "$minor"
+        printf "%bko$%b (%s.%s)" "${red}" "${reset}" "$major" "$minor"
         all_found=false
     fi
     printf "\n"
@@ -91,8 +91,8 @@ check_kubectl_version
 
 echo
 if [[ "$all_found" != "true" ]]; then
-    printf "%sError%s: some requirements not satified.\n" "${red}" "${reset}" >&2
+    printf "%bError%b: some requirements not satified.\n" "${red}" "${reset}" >&2
     exit 1
 else
-    printf "%sOK%s: all requirements met.\n" "${green}" "${reset}"
+    printf "%bOK%b: all requirements met.\n" "${green}" "${reset}"
 fi

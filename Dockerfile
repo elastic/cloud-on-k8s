@@ -1,5 +1,5 @@
-# Build the manager binary
-FROM golang:1.13 as builder
+# Build the operator binary
+FROM golang:1.14.3 as builder
 
 ARG GO_LDFLAGS
 ARG GO_TAGS
@@ -21,8 +21,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 			-ldflags "$GO_LDFLAGS" -tags="$GO_TAGS" -a \
 			-o elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
-# Copy the controller-manager into a thin image
-FROM centos:7
+# Copy the operator binary into a lighter image
+FROM centos:8
+
+RUN yum update --setopt=tsflags=nodocs -y && yum clean all
 
 RUN set -x \
     && groupadd --system --gid 101 elastic \

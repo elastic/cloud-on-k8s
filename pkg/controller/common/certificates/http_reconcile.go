@@ -100,6 +100,8 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		secret.Data = make(map[string][]byte)
 	}
 
+	// by default let's assume that the CA is provided, either by the ECK internal certificate authority or by the user
+	caCertProvided := true
 	if customCertificates != nil {
 		if err := customCertificates.Validate(); err != nil {
 			return nil, err
@@ -114,6 +116,9 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 			// Default to our self-signed (useless) CA if none is provided by the user.
 			// See https://github.com/elastic/cloud-on-k8s/issues/2243
 			expectedSecretData[CAFileName] = EncodePEMCert(ca.Cert.Raw)
+			// The CA has been set in the internal HTTP secret but it's only for convenience, in order to circumvent the
+			// aforementioned issue. We need to remove it later from the result.
+			caCertProvided = false
 		}
 
 		if !reflect.DeepEqual(secret.Data, expectedSecretData) {
@@ -142,6 +147,11 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 				return nil, err
 			}
 		}
+	}
+
+	// The CA cert has been set in this Secret for convenience, remove it from the result in order to not propagate it.
+	if !caCertProvided {
+		delete(secret.Data, CAFileName)
 	}
 
 	internalCerts := CertificatesSecret(secret)

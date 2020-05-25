@@ -5,6 +5,8 @@
 package es
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -31,7 +33,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
 	licenseSecretName := "eck-e2e-test-license"         // nolint
-	updatedLicenseSecretName := "eck-e2e-test-license2" //nolint
+	updatedLicenseSecretName := "eck-e2e-test-license2" // nolint
 
 	licenseLevelWatch := test.NewWatcher(
 		"watch license level never drops to basic",
@@ -122,6 +124,67 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 			// repeatedly creating a trial is not allowed
 			licenseTestContext.CreateEnterpriseTrialLicenseSecret(trialSecretName),
 			licenseTestContext.CheckEnterpriseTrialLicenseInvalid(trialSecretName),
+		}
+	}
+
+	test.Sequence(initStepsFn, stepsFn, esBuilder).RunSequential(t)
+}
+
+// TestEnterpriseTrialExtension tests that trial extensions can be successfully applied and take effect.
+// Generates a development version of an Enterprise trial extension license with a development Elasticsearch license inside.
+// Then tests that ECK accepts this license and propagates the Elasticsearch license to the test Elasticsearch cluster.
+// Finally tests that trial extensions can be applied repeatedly as opposed to ECK-managed trials which are one-offs.
+func TestEnterpriseTrialExtension(t *testing.T) {
+	if test.Ctx().TestLicensePKeyPath == "" {
+		// skip this test if the dev private key is not configured e.g. because we are testing a production build
+		t.SkipNow()
+	}
+	privateKeyBytes, err := ioutil.ReadFile(test.Ctx().TestLicensePKeyPath)
+	require.NoError(t, err)
+	privateKey, err := x509.ParsePKCS8PrivateKey(privateKeyBytes)
+	require.NoError(t, err)
+
+	esBuilder := elasticsearch.NewBuilder("test-es-trial-extension").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+
+	var licenseTestContext elasticsearch.LicenseTestContext
+
+	trialSecretName := "eck-trial"
+	licenseSecretName := "eck-license"
+	initStepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			{
+				Name: "Create license test context",
+				Test: func(t *testing.T) {
+					licenseTestContext = elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
+				},
+			},
+			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
+			licenseTestContext.CreateEnterpriseTrialLicenseSecret(trialSecretName),
+		}
+	}
+
+	stepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			licenseTestContext.Init(),
+			// simulate a trial extension
+			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey)),
+			licenseTestContext.CheckElasticsearchLicense(
+				client.ElasticsearchLicenseTypePlatinum, // depends on ES version
+				client.ElasticsearchLicenseTypeEnterprise,
+			),
+			// revert to basic again
+			licenseTestContext.DeleteEnterpriseLicenseSecret(trialSecretName),
+			licenseTestContext.DeleteEnterpriseLicenseSecret(licenseSecretName),
+			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeBasic),
+			// repeatedly extending a trial is possible
+			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey)),
+			licenseTestContext.CheckElasticsearchLicense(
+				client.ElasticsearchLicenseTypePlatinum, // depends on ES version
+				client.ElasticsearchLicenseTypeEnterprise,
+			),
+			// cleanup license for the next tests
+			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
 		}
 	}
 

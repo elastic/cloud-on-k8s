@@ -6,7 +6,8 @@
 ##  --      Variables      --  ##
 #################################
 
-# reads file '.env', ignores if it doesn't exist
+# Read env files, ignores if they doesn't exist
+-include .registry.env
 -include .env
 
 # make sure sub-commands don't use eg. fish shell
@@ -31,26 +32,19 @@ endif
 
 ## -- Docker image
 
-# for dev, on GKE, use GCR and GCLOUD_PROJECT
-ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
-	REGISTRY ?= eu.gcr.io
-else
-	# default to local registry
-	REGISTRY ?= localhost:5000
-endif
-
 # for dev, suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(shell whoami))
 
-REPOSITORY  ?= eck
-NAME        ?= eck-operator
-SNAPSHOT    ?= true
-VERSION     ?= $(shell cat VERSION)
-TAG         ?= $(shell git rev-parse --short=8 --verify HEAD)
-IMG_NAME    ?= $(NAME)$(IMG_SUFFIX)
-IMG_VERSION ?= $(VERSION)-$(TAG)
+REGISTRY           ?= docker.elastic.co
+REGISTRY_NAMESPACE ?= eck-dev
+NAME               ?= eck-operator
+SNAPSHOT           ?= true
+VERSION            ?= $(shell cat VERSION)
+TAG                ?= $(shell git rev-parse --short=8 --verify HEAD)
+IMG_NAME           ?= $(NAME)$(IMG_SUFFIX)
+IMG_VERSION        ?= $(VERSION)-$(TAG)
 
-BASE_IMG       := $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)
+BASE_IMG       := $(REGISTRY)/$(REGISTRY_NAMESPACE)/$(IMG_NAME)
 OPERATOR_IMAGE ?= $(BASE_IMG):$(IMG_VERSION)
 
 print-operator-image:
@@ -92,7 +86,10 @@ dependencies:
 
 # Generate code, CRDs and documentation
 ALL_CRDS=config/crds/all-crds.yaml
-generate: generate-crds generate-api-docs generate-notice-file
+generate: tidy generate-crds generate-api-docs generate-notice-file
+
+tidy:
+	go mod tidy
 
 go-generate:
 	# we use this in pkg/controller/common/license
@@ -146,7 +143,7 @@ lint:
 	golangci-lint run
 
 shellcheck:
-	shellcheck $(shell find . -type f -name "*.sh")
+	shellcheck $(shell find . -type f -name "*.sh" -not -path "./vendor/*")
 
 #############################
 ##  --       Run       --  ##
@@ -171,7 +168,8 @@ go-run:
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default \
 				--namespaces=$(MANAGED_NAMESPACES) \
-				--manage-webhook-certs=false
+				--manage-webhook-certs=false \
+				2>&1 | grep -v "dev-portforward" # remove dev-portforward logs from the output
 
 go-debug:
 	@(cd cmd &&	AUTO_PORT_FORWARD=true dlv debug \
@@ -329,61 +327,42 @@ docker-build: go-generate
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-ifeq ($(REGISTRY), docker.elastic.co)
-	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
-endif
-# this is used by the cloud-on-k8s-e2e-tests-ocp job
-ifeq ($(REGISTRY), eu.gcr.io)
-	@ gcloud auth configure-docker --quiet
-endif
-ifeq ($(KUBECTL_CLUSTER), minikube)
-	# use the minikube registry
-	@ hack/dev/registry.sh port-forward start
-	docker push $(OPERATOR_IMAGE)
-	@ hack/dev/registry.sh port-forward stop
-else
-ifeq ($(REGISTRY), docker.elastic.co)
-	@ docker tag $(OPERATOR_IMAGE) push.$(OPERATOR_IMAGE)
-	@ docker push push.$(OPERATOR_IMAGE)
-else
-	@ docker push $(OPERATOR_IMAGE)
-endif
-endif
+	@ hack/docker-push.sh $(OPERATOR_IMAGE)
 
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(BASE_IMG) | tail +3 | awk '{print $$2}'); \
 		do gcloud container images untag $(BASE_IMG):$$i; \
 	done
 
+switch-registry-gcr:
+ifndef GCLOUD_PROJECT
+	$(error GCLOUD_PROJECT not set to use GCR)
+endif	
+	@ echo "REGISTRY = eu.gcr.io"               > .registry.env
+	@ echo "REGISTRY_NAMESPACE = ${GCLOUD_PROJECT}"     >> .registry.env
+	@ echo "E2E_REGISTRY_NAMESPACE = ${GCLOUD_PROJECT}" >> .registry.env
+
+switch-registry-dev: # just use the default values of variables
+	@ rm -f .registry.env
 
 ###################################
 ##  --   End to end tests    --  ##
 ###################################
 
-# can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
-TESTS_MATCH ?= "^Test"
-E2E_IMG ?= $(BASE_IMG)-e2e-tests:$(TAG)
-STACK_VERSION ?= 7.6.0
-E2E_JSON ?= false
-TEST_TIMEOUT ?= 5m
-E2E_SKIP_CLEANUP ?= false
+E2E_REGISTRY_NAMESPACE ?= eck-dev
+E2E_IMG                ?= $(REGISTRY)/$(E2E_REGISTRY_NAMESPACE)/eck-e2e-tests:$(TAG)
+TESTS_MATCH            ?= "^Test" # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
+STACK_VERSION          ?= 7.7.0
+E2E_JSON               ?= false
+TEST_TIMEOUT           ?= 5m
+E2E_SKIP_CLEANUP       ?= false
 
 # clean to remove irrelevant/build-breaking generated public keys
 e2e-docker-build: clean
 	docker build --build-arg E2E_JSON=$(E2E_JSON) -t $(E2E_IMG) -f test/e2e/Dockerfile .
 
 e2e-docker-push:
-ifeq ($(REGISTRY), eu.gcr.io)
-	# this is used by the cloud-on-k8s-e2e-tests-ocp job
-	@ gcloud auth configure-docker --quiet
-endif
-ifeq ($(REGISTRY), docker.elastic.co)
-	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
-	@ docker tag $(E2E_IMG) push.$(E2E_IMG)
-	@ docker push push.$(E2E_IMG)
-else
-	docker push $(E2E_IMG)
-endif
+	@ hack/docker-push.sh $(E2E_IMG)
 
 e2e-run:
 	@go run test/e2e/cmd/main.go run \
@@ -391,6 +370,7 @@ e2e-run:
 		--e2e-image=$(E2E_IMG) \
 		--test-regex=$(TESTS_MATCH) \
 		--test-license=$(TEST_LICENSE) \
+		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--log-verbosity=$(LOG_VERBOSITY) \
 		--log-to-file=$(E2E_JSON) \
@@ -418,6 +398,7 @@ e2e-local:
 		--test-run-name=e2e \
 		--test-context-out=$(LOCAL_E2E_CTX) \
 		--test-license=$(TEST_LICENSE) \
+		--test-license-pkey-path=$(TEST_LICENSE_PKEY_PATH) \
 		--elastic-stack-version=$(STACK_VERSION) \
 		--auto-port-forwarding \
 		--local \
@@ -434,7 +415,6 @@ ci-check: check-license-header lint shellcheck generate check-local-changes
 
 ci: unit-xml integration-xml docker-build reattach-pv
 
-# Note: e2e-docker-push gets access to the gcr docker registry through run-deployer
 setup-e2e: e2e-compile run-deployer install-crds apply-psp e2e-docker-build e2e-docker-push
 
 ci-e2e: E2E_JSON := true

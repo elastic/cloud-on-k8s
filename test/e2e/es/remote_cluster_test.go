@@ -49,11 +49,14 @@ func TestRemoteCluster(t *testing.T) {
 	es2LicenseTestContext := elasticsearch.NewLicenseTestContext(test.NewK8sClientOrFatal(), es2Builder.Elasticsearch)
 	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicense)
 	require.NoError(t, err)
-	trialSecretName := "eck-license" // nolint
+	trialSecretName := "eck-license"
 
 	before := func(k *test.K8sClient) test.StepList {
 		// Deploy a Trial license
-		return test.StepList{es1LicenseTestContext.CreateEnterpriseLicenseSecret(trialSecretName, licenseBytes)}
+		return test.StepList{
+			es1LicenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
+			es1LicenseTestContext.CreateEnterpriseLicenseSecret(trialSecretName, licenseBytes),
+		}
 	}
 
 	followerIndex := "data-integrity-check-follower"

@@ -7,13 +7,14 @@ package es
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestKillOneDataNode(t *testing.T) {
@@ -63,7 +64,7 @@ func TestDeleteServices(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-failure-delete-services").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	test.RunRecoverableFailureScenario(t, func(k *test.K8sClient) test.StepList {
+	test.Sequence(nil, func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			{
 				Name: "Delete external service",
@@ -74,8 +75,19 @@ func TestDeleteServices(t *testing.T) {
 					require.NoError(t, err)
 				},
 			},
+			{
+				Name: "Service should be recreated",
+				Test: test.Eventually(func() error {
+					_, err := k.GetService(b.Elasticsearch.Namespace, esv1.HTTPService(b.Elasticsearch.Name))
+					return err
+				}),
+			},
+			// We do not do more checks here, and, particularly, we don't check that the Endpoints resource
+			// gets (re)created. There seems to be a bug/race condition in K8s/GKE that occasionally delays Endpoints
+			// resource creation when services are quickly created/deleted/created, leading to a flaky test.
+			// More details in https://github.com/elastic/cloud-on-k8s/issues/2602.
 		}
-	}, b)
+	}, b).RunSequential(t)
 }
 
 func TestDeleteElasticUserSecret(t *testing.T) {

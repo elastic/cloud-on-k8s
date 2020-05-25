@@ -112,9 +112,6 @@ func (d *GkeDriver) Execute() error {
 			return err
 		}
 
-		if err := d.configureDocker(); err != nil {
-			return err
-		}
 		if err := createStorageClass(NoProvisioner); err != nil {
 			return err
 		}
@@ -204,11 +201,6 @@ func (d *GkeDriver) bindRoles() error {
 	}
 	cmd := "kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=" + user
 	return NewCommand(cmd).Run()
-}
-
-func (d *GkeDriver) configureDocker() error {
-	log.Println("Configuring Docker...")
-	return NewCommand("gcloud auth configure-docker --quiet").Run()
 }
 
 func (d *GkeDriver) GetCredentials() error {

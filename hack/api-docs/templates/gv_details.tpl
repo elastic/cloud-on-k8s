@@ -7,7 +7,7 @@
 
 {{- if $gv.Kinds  }}
 .Resource Types
-{{- range $gv.Kinds }}
+{{- range $gv.SortedKinds }}
 - {{ $gv.TypeForKind . | asciidocRenderTypeLink }}
 {{- end }}
 {{ end }}

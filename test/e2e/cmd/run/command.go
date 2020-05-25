@@ -26,6 +26,7 @@ type runFlags struct {
 	elasticStackVersion   string
 	kubeConfig            string
 	operatorImage         string
+	testLicensePKeyPath   string
 	testContextOutPath    string
 	testLicense           string
 	scratchDirRoot        string
@@ -66,7 +67,11 @@ func Command() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			flags.logVerbosity, _ = cmd.PersistentFlags().GetInt("log-verbosity")
-			return doRun(flags)
+			err := doRun(flags)
+			if err != nil {
+				log.Error(err, "Failed to run e2e tests")
+			}
+			return err
 		},
 	}
 
@@ -81,6 +86,7 @@ func Command() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.skipCleanup, "skip-cleanup", false, "Do not run cleanup actions after test run")
 	cmd.Flags().StringVar(&flags.testContextOutPath, "test-context-out", "", "Write the test context to the given path")
 	cmd.Flags().StringVar(&flags.testLicense, "test-license", "", "Test license to apply")
+	cmd.Flags().StringVar(&flags.testLicensePKeyPath, "test-license-pkey-path", "", "Path to private key to generate test licenses")
 	cmd.Flags().StringVar(&flags.monitoringSecrets, "monitoring-secrets", "", "Monitoring secrets to use")
 	cmd.Flags().StringVar(&flags.scratchDirRoot, "scratch-dir", "/tmp/eck-e2e", "Path under which temporary files should be created")
 	cmd.Flags().StringVar(&flags.testRegex, "test-regex", "", "Regex to pass to the test runner")

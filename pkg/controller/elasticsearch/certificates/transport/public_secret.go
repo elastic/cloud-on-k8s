@@ -39,7 +39,7 @@ func ReconcileTransportCertsPublicSecret(
 // PublicCertsSecretRef returns the NamespacedName for the Secret containing the publicly available transport CA.
 func PublicCertsSecretRef(es types.NamespacedName) types.NamespacedName {
 	return types.NamespacedName{
-		Name:      certificates.PublicCASecretName(esv1.ESNamer, es.Name),
+		Name:      certificates.PublicTransportCertsSecretName(esv1.ESNamer, es.Name),
 		Namespace: es.Namespace,
 	}
 }

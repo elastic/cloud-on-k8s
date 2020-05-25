@@ -16,7 +16,9 @@ type OperatorLicenseType string
 
 const (
 	LicenseTypeEnterprise      OperatorLicenseType = "enterprise"
-	LicenseTypeEnterpriseTrial OperatorLicenseType = "enterprise-trial"
+	LicenseTypeEnterpriseTrial OperatorLicenseType = "enterprise_trial"
+	// LicenseTypeLegacyTrial earlier versions of ECK used this as the trial identifier
+	LicenseTypeLegacyTrial OperatorLicenseType = "enterprise-trial"
 )
 
 type ElasticsearchLicense struct {
@@ -47,8 +49,9 @@ type LicenseSpec struct {
 
 // EnterpriseLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
 var EnterpriseLicenseTypeOrder = map[OperatorLicenseType]int{
-	LicenseTypeEnterpriseTrial: 0,
-	LicenseTypeEnterprise:      1,
+	LicenseTypeLegacyTrial:     0,
+	LicenseTypeEnterpriseTrial: 1,
+	LicenseTypeEnterprise:      2,
 }
 
 // StartTime is the date as of which this license is valid.
@@ -69,7 +72,12 @@ func (l EnterpriseLicense) IsValid(instant time.Time) bool {
 
 // IsTrial returns true if this is a self-generated trial license.
 func (l EnterpriseLicense) IsTrial() bool {
-	return l.License.Type == LicenseTypeEnterpriseTrial
+	return l.License.Type == LicenseTypeEnterpriseTrial || l.License.Type == LicenseTypeLegacyTrial
+}
+
+// IsECKManagedTrial returns true if this license has been issued by ECK or if this is an empty license that ECK can fill in.
+func (l EnterpriseLicense) IsECKManagedTrial() bool {
+	return l.IsTrial() && (l.License.Issuer == ECKLicenseIssuer || l.License.Issuer == "")
 }
 
 // IsMissingFields returns an error if any of the required fields are missing. Expected state on trial licenses.
@@ -108,3 +116,5 @@ const (
 	LicenseStatusExpired LicenseStatus = "Expired"
 	LicenseStatusInvalid LicenseStatus = "Invalid"
 )
+
+var _ Signable = &EnterpriseLicense{}

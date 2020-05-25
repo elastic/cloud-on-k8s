@@ -17,7 +17,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Masterminds/sprig"
+	sprig "github.com/Masterminds/sprig/v3"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/retry"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/command"
 	"github.com/pkg/errors"
@@ -31,11 +33,12 @@ import (
 )
 
 const (
-	jobTimeout       = 300 * time.Minute // time to wait for the test job to finish
-	kubePollInterval = 10 * time.Second  // Kube API polling interval
-	logBufferSize    = 1024              // Size of the log buffer (1KiB)
-	testRunLabel     = "test-run"        // name of the label applied to resources
-	testsLogFile     = "e2e-tests.json"  // name of file to keep all test logs in JSON format
+	jobTimeout           = 300 * time.Minute // time to wait for the test job to finish
+	kubePollInterval     = 10 * time.Second  // Kube API polling interval
+	logBufferSize        = 1024              // Size of the log buffer (1KiB)
+	testRunLabel         = "test-run"        // name of the label applied to resources
+	testsLogFile         = "e2e-tests.json"  // name of file to keep all test logs in JSON format
+	operatorReadyTimeout = 3 * time.Minute   // time to wait for the operator pod to be ready
 
 	TestNameLabel = "test-name" // name of the label applied to resources during each test
 )
@@ -68,6 +71,7 @@ func doRun(flags runFlags) error {
 			helper.createOperatorNamespaces,
 			helper.createManagedNamespaces,
 			helper.deployOperator,
+			helper.waitForOperatorToBeReady,
 			helper.deployFilebeat,
 			helper.deployTestJob,
 			helper.runTestJob,
@@ -141,6 +145,7 @@ func (h *helper) initTestContext() error {
 		},
 		OperatorImage:         h.operatorImage,
 		TestLicense:           h.testLicense,
+		TestLicensePKeyPath:   h.testLicensePKeyPath,
 		MonitoringSecrets:     h.monitoringSecrets,
 		TestRegex:             h.testRegex,
 		TestRun:               h.testRunName,
@@ -185,6 +190,15 @@ func (h *helper) initTestSecrets() error {
 		}
 		h.testSecrets["test-license.json"] = string(bytes)
 		h.testContext.TestLicense = "/var/run/secrets/e2e/test-license.json"
+	}
+
+	if h.testLicensePKeyPath != "" {
+		bytes, err := ioutil.ReadFile(h.testLicensePKeyPath)
+		if err != nil {
+			return err
+		}
+		h.testSecrets["dev-private.key"] = string(bytes)
+		h.testContext.TestLicensePKeyPath = "/var/run/secrets/e2e/dev-private.key"
 	}
 
 	if h.monitoringSecrets != "" {
@@ -242,6 +256,28 @@ func (h *helper) createManagedNamespaces() error {
 func (h *helper) deployOperator() error {
 	log.Info("Deploying operator")
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/operator.yaml", h.testContext)
+}
+
+func (h *helper) waitForOperatorToBeReady() error {
+	log.Info("Waiting for the operator pod to be ready")
+	client, err := h.createKubeClient()
+	if err != nil {
+		return errors.Wrap(err, "failed to create kubernetes client")
+	}
+
+	// operator pod name takes the form <statefulset name>-<ordinal>
+	podName := fmt.Sprintf("%s-0", h.testContext.Operator.Name)
+
+	return retry.UntilSuccess(func() error {
+		pod, err := client.CoreV1().Pods(h.testContext.Operator.Namespace).Get(podName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if !k8s.IsPodReady(*pod) {
+			return fmt.Errorf("operator pod `%s` not ready", podName)
+		}
+		return nil
+	}, operatorReadyTimeout, 10*time.Second)
 }
 
 func (h *helper) deployFilebeat() error {

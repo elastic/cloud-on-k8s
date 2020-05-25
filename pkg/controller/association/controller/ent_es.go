@@ -35,6 +35,8 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 			}
 		},
 		UserSecretSuffix: "ent-user",
-		ESUserRole:       esuser.SuperUserBuiltinRole,
+		ESUserRole: func(_ commonv1.Associated) (string, error) {
+			return esuser.SuperUserBuiltinRole, nil
+		},
 	})
 }

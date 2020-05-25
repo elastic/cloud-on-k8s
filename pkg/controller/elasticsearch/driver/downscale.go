@@ -150,7 +150,7 @@ func attemptDownscale(
 // deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
 // headless service and configuration secret.
 func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
-	headlessSvc := nodespec.HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
+	headlessSvc := nodespec.HeadlessService(&es, statefulSet.Name)
 	err := k8sClient.Delete(&headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err

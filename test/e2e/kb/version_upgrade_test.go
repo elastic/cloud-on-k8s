@@ -8,15 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
+	kibana2 "github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 )
 
 func TestVersionUpgradeToLatest7x(t *testing.T) {
@@ -38,8 +39,8 @@ func TestVersionUpgradeToLatest7x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:      label.Type,
-			label.KibanaNameLabelName: kbBuilder.Kibana.Name,
+			common.TypeLabelName:        kibana2.Type,
+			kibana2.KibanaNameLabelName: kbBuilder.Kibana.Name,
 		}),
 	}
 
@@ -80,8 +81,8 @@ func TestVersionUpgradeAndRespecToLatest7x(t *testing.T) {
 	opts := []client.ListOption{
 		client.InNamespace(kbBuilder1.Kibana.Namespace),
 		client.MatchingLabels(map[string]string{
-			common.TypeLabelName:      label.Type,
-			label.KibanaNameLabelName: kbBuilder1.Kibana.Name,
+			common.TypeLabelName:        kibana2.Type,
+			kibana2.KibanaNameLabelName: kbBuilder1.Kibana.Name,
 		}),
 	}
 
@@ -156,7 +157,7 @@ func NewVersionWatcher(opts ...client.ListOption) test.Watcher {
 		func(k *test.K8sClient, t *testing.T) {
 			for _, pods := range podObservations {
 				for i := 1; i < len(pods); i++ {
-					assert.Equal(t, pods[i-1].Labels[label.KibanaVersionLabelName], pods[i].Labels[label.KibanaVersionLabelName])
+					assert.Equal(t, pods[i-1].Labels[kibana2.KibanaVersionLabelName], pods[i].Labels[kibana2.KibanaVersionLabelName])
 				}
 			}
 		})
