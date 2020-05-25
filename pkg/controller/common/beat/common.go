@@ -81,6 +81,13 @@ func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{}
 }
 
+func (dp *DriverParams) Validate() error {
+	if (dp.DaemonSet == nil && dp.Deployment == nil) || (dp.DaemonSet != nil && dp.Deployment != nil) {
+		return fmt.Errorf("either daemonset or deployment has to be specified")
+	}
+	return nil
+}
+
 type DriverResults struct {
 	*reconciler.Results
 	Status *DriverStatus
@@ -103,8 +110,8 @@ type DriverStatus struct {
 func Reconcile(params DriverParams, defaultConfig *settings.CanonicalConfig, defaultImage container.Image, modifyPodFunc func(builder *defaults.PodTemplateBuilder)) DriverResults {
 	results := NewDriverResults(params.Context)
 
-	if (params.DaemonSet == nil && params.Deployment == nil) || (params.DaemonSet != nil && params.Deployment != nil) {
-		results.WithError(fmt.Errorf("either daemonset or deployment has to be specified"))
+	if err := params.Validate(); err != nil {
+		results.WithError(err)
 		return results
 	}
 

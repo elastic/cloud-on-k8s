@@ -10,15 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Reconcile(t *testing.T) {
+func Test_DriverParamsValidate(t *testing.T) {
 	params := DriverParams{
 		DaemonSet:  &DaemonSetSpec{},
 		Deployment: &DeploymentSpec{},
 	}
 
-	result := Reconcile(params, nil, "", nil)
-	require.True(t, result.Results.HasError())
-
-	result = Reconcile(DriverParams{}, nil, "", nil)
-	require.True(t, result.Results.HasError())
+	require.Error(t, params.Validate())
+	require.Error(t, (&DriverParams{}).Validate())
 }
