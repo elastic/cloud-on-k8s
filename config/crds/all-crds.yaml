@@ -482,7 +482,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: Beat is the Schema for the beats API
+      description: Beat is the Schema for the Beats API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -504,17 +504,17 @@ spec:
                 override the default configuration.
               type: object
             daemonSet:
-              description: 'DaemonSet field allows to: 1. Indicate whether the Beat
-                should be deployed as DaemonSet or Deployment, if both are absent,
-                a default for the    Type is used 2. Provide spec for the DaemonSet
-                At most one of DaemonSet and Deployment can be used.'
+              description: 'DaemonSet allows to: 1. Indicate whether the Beat should
+                be deployed as DaemonSet or Deployment, if both are absent, a default
+                for the    Type is used 2. Provide a spec for the DaemonSet At most
+                one of DaemonSet and Deployment can be used.'
               properties: {}
               type: object
             deployment:
-              description: 'Deployment field allows to: 1. Indicate whether the Beat
-                should be deployed as DaemonSet or Deployment, if both are absent,
-                a default for the    Type is used 2. provide spec for the Deployment
-                At most one of DaemonSet and Deployment can be used.'
+              description: 'Deployment allows to: 1. Indicate whether the Beat should
+                be deployed as DaemonSet or Deployment, if both are absent, a default
+                for the    Type is used 2. Provide a spec for the Deployment At most
+                one of DaemonSet and Deployment can be used.'
               properties:
                 replicas:
                   format: int32
