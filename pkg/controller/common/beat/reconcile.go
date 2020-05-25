@@ -27,24 +27,20 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	var toDelete runtime.Object
 	switch {
 	case params.DaemonSet != nil:
-		{
-			reconciliationFunc = reconcileDaemonSet
-			toDelete = &v1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: params.Owner.GetNamespace(),
-				},
-			}
+		reconciliationFunc = reconcileDaemonSet
+		toDelete = &v1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: params.Owner.GetNamespace(),
+			},
 		}
 	case params.Deployment != nil:
-		{
-			reconciliationFunc = reconcileDeployment
-			toDelete = &v1.DaemonSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: params.Owner.GetNamespace(),
-				},
-			}
+		reconciliationFunc = reconcileDeployment
+		toDelete = &v1.DaemonSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: params.Owner.GetNamespace(),
+			},
 		}
 	}
 

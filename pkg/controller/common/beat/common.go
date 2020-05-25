@@ -73,14 +73,9 @@ func (dp *DriverParams) GetReplicas() *int32 {
 func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
 	switch {
 	case dp.DaemonSet != nil:
-		{
-			return dp.DaemonSet.PodTemplate
-		}
-
+		return dp.DaemonSet.PodTemplate
 	case dp.Deployment != nil:
-		{
-			return dp.Deployment.PodTemplate
-		}
+		return dp.Deployment.PodTemplate
 	}
 
 	return corev1.PodTemplateSpec{}
