@@ -106,10 +106,6 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 			return err
 		}
 
-		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRole{}}, &handler.EnqueueRequestForObject{}); err != nil {
-			return err
-		}
-
 		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestForObject{}); err != nil {
 			return err
 		}

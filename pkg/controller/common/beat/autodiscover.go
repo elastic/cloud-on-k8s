@@ -27,7 +27,7 @@ import (
 const (
 	serviceAccountNameTemplate     = "elastic-operator-autodiscover-%s"
 	clusterRoleBindingNameTemplate = "elastic-operator-autodiscover-%s-%s"
-	clusterRoleName                = "elastic-operator-autodiscover"
+	clusterRoleName                = "elastic-operator-beat"
 )
 
 var (
@@ -71,10 +71,6 @@ func setupAutodiscoverRBAC(ctx context.Context, client k8s.Client, owner metav1.
 		return err
 	}
 
-	if err := reconcileClusterRole(client); err != nil {
-		return err
-	}
-
 	if err := reconcileClusterRoleBinding(client, owner); err != nil {
 		return err
 	}
@@ -92,23 +88,6 @@ func reconcileServiceAccount(client k8s.Client, owner metav1.Object, labels map[
 	}
 
 	return doReconcile(client, sa, owner)
-}
-
-func reconcileClusterRole(client k8s.Client) error {
-	role := &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: clusterRoleName,
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Verbs:     []string{"get", "watch", "list"},
-				Resources: []string{"namespaces", "pods"},
-			},
-		},
-	}
-
-	return doReconcile(client, role, nil)
 }
 
 func reconcileClusterRoleBinding(client k8s.Client, owner metav1.Object) error {

@@ -51,7 +51,7 @@
   apiVersion: policy/v1beta1
   kind: PodSecurityPolicy
   metadata:
-    name: elastic.filebeat.restricted
+    name: elastic.beat.restricted
     annotations:
       seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'docker/default,runtime/default'
       apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
