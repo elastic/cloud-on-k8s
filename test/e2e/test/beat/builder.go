@@ -81,7 +81,7 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 		b.Beat.Spec.DaemonSet.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
 	}
 	if b.Beat.Spec.Deployment != nil {
-		b.Beat.Spec.DaemonSet.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
+		b.Beat.Spec.Deployment.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
 	}
 
 	return b
