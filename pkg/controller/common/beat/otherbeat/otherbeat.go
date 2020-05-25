@@ -9,10 +9,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-const (
-	Type commonbeat.Type = "otherbeat"
-)
-
 type Driver struct {
 	commonbeat.DriverParams
 	commonbeat.Driver
