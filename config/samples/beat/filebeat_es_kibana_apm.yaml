@@ -22,12 +22,6 @@ spec:
   count: 1
   elasticsearchRef:
     name: elasticsearch-sample
-  #http:
-  #  service:
-  #    spec:
-  #      type: LoadBalancer
-  # this shows how to customize the Kibana pod
-  # with labels and resource limits
   podTemplate:
     metadata:
       labels:
