@@ -37,11 +37,12 @@ const (
 	VersionLabelName = "beat.k8s.elastic.co/version"
 )
 
-func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(builder *defaults.PodTemplateBuilder), checksum hash.Hash) corev1.PodTemplateSpec {
+func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyPodFunc func(builder *defaults.PodTemplateBuilder), checksum hash.Hash) corev1.PodTemplateSpec {
 	podTemplate := params.GetPodTemplate()
 
-	// Token mounting gets defaulted to false, which prevents from detecting whether user set it.
+	// Token mounting gets defaulted to false, which prevents from detecting whether user had set it.
 	// Instead, checking that here, before the default is applied.
+	// This is required for autodiscover which is enabled by default.
 	if podTemplate.Spec.AutomountServiceAccountToken == nil {
 		t := true
 		podTemplate.Spec.AutomountServiceAccountToken = &t
@@ -49,8 +50,9 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, f func(
 
 	builder := defaults.NewPodTemplateBuilder(podTemplate, params.Type)
 
-	if f != nil {
-		f(builder)
+	// might be nil if caller wants to use the default builder without any modifications
+	if modifyPodFunc != nil {
+		modifyPodFunc(builder)
 	}
 
 	builder = builder.
