@@ -38,7 +38,7 @@ spec:
       node.master: true
       node.data: false
       node.ingest: false
-      cluster.remote.connect: false
+      node.remote_cluster_client: false
   # 3 ingest-data nodes
   - name: ingest-data
     count: 3
