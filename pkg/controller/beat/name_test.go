@@ -8,50 +8,72 @@ import "testing"
 
 func TestNamer_ConfigSecretName(t *testing.T) {
 	namer := Namer{}
-	for _, typeName := range []struct {
-		name string
-		typ  string
-		want string
+	for _, tt := range []struct {
+		name         string
+		resourceName string
+		typ          string
+		want         string
 	}{
 		{
-			name: "my",
-			typ:  "filebeat",
-			want: "my-beat-filebeat-config",
+			name:         "filebeat type",
+			resourceName: "my",
+			typ:          "filebeat",
+			want:         "my-beat-filebeat-config",
 		},
 		{
-			name: "sample-metricbeat",
-			typ:  "metricbeat",
-			want: "sample-metricbeat-beat-metricbeat-config",
+			name:         "metricbeat type",
+			resourceName: "sample-metricbeat",
+			typ:          "metricbeat",
+			want:         "sample-metricbeat-beat-metricbeat-config",
+		},
+		{
+			name:         "other type",
+			resourceName: "x",
+			typ:          "mybeat",
+			want:         "x-beat-mybeat-config",
 		},
 	} {
-		got := namer.ConfigSecretName(typeName.typ, typeName.name)
-		if got != typeName.want {
-			t.Errorf("config secret name is %s while %s was expected", got, typeName.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			got := namer.ConfigSecretName(tt.typ, tt.resourceName)
+			if got != tt.want {
+				t.Errorf("config secret name is %s while %s was expected", got, tt.want)
+			}
+		})
 	}
 }
 
 func TestNamer_Name(t *testing.T) {
 	namer := Namer{}
-	for _, typeName := range []struct {
-		name string
-		typ  string
-		want string
+	for _, tt := range []struct {
+		name         string
+		resourceName string
+		typ          string
+		want         string
 	}{
 		{
-			name: "my",
-			typ:  "filebeat",
-			want: "my-beat-filebeat",
+			name:         "filebeat type",
+			resourceName: "my",
+			typ:          "filebeat",
+			want:         "my-beat-filebeat",
 		},
 		{
-			name: "sample-metricbeat",
-			typ:  "metricbeat",
-			want: "sample-metricbeat-beat-metricbeat",
+			name:         "metricbeat type",
+			resourceName: "sample-metricbeat",
+			typ:          "metricbeat",
+			want:         "sample-metricbeat-beat-metricbeat",
+		},
+		{
+			name:         "other type",
+			resourceName: "x",
+			typ:          "mybeat",
+			want:         "x-beat-mybeat",
 		},
 	} {
-		got := namer.Name(typeName.typ, typeName.name)
-		if got != typeName.want {
-			t.Errorf("config secret name is %s while %s was expected", got, typeName.want)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			got := namer.Name(tt.typ, tt.resourceName)
+			if got != tt.want {
+				t.Errorf("config secret name is %s while %s was expected", got, tt.want)
+			}
+		})
 	}
 }
