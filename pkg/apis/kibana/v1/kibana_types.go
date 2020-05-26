@@ -68,7 +68,7 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
-func (k Kibana) IsMarkedForDeletion() bool {
+func (k *Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
 }
 
