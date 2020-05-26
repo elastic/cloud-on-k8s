@@ -86,21 +86,17 @@ func (r *ReconcileApmServer) deploymentParams(
 	podSpec := newPodSpec(as, params)
 	podLabels := NewLabels(as.Name)
 
-	// Build a checksum of the configuration, add it to the pod labels so a change triggers a rolling update
+	// Build a checksum of the configuration and of the cert files used by ES and Kibana, add it to the pod labels so a
+	// change triggers a rolling update. This is done because Apm Server does not support updating its configuration file
+	// or the CA file contents without restarting the process.
 	configChecksum := sha256.New224()
 	_, _ = configChecksum.Write(params.ConfigSecret.Data[ApmCfgSecretKey])
 	if params.keystoreResources != nil {
 		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
 	}
 
-	// Build a checksum of the cert files used by ES and Kibana, which we can use to cause the Deployment to roll the Apm Server
-	// instances in the deployment when the ca file contents change. This is done because Apm Server does not support
-	// updating the CA file contents without restarting the process.
-	certChecksum := sha256.New224()
-	caIsConfigured := false
 	for _, association := range as.GetAssociations() {
 		if association.AssociationConf().CAIsConfigured() {
-			caIsConfigured = true
 			caSecretName := association.AssociationConf().GetCASecretName()
 			caVolume := volume.NewSecretVolumeWithMountPath(
 				caSecretName,
@@ -114,7 +110,7 @@ func (r *ReconcileApmServer) deploymentParams(
 				return deployment.Params{}, err
 			}
 			if certPem, ok := publicCASecret.Data[certificates.CertFileName]; ok {
-				_, _ = certChecksum.Write(certPem)
+				_, _ = configChecksum.Write(certPem)
 			}
 
 			podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, caVolume.Volume())
@@ -127,15 +123,6 @@ func (r *ReconcileApmServer) deploymentParams(
 				podSpec.Spec.Containers[i].VolumeMounts = append(podSpec.Spec.Containers[i].VolumeMounts, caVolume.VolumeMount())
 			}
 		}
-	}
-
-	// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
-	// changes, which will trigger a rolling update)
-	if caIsConfigured {
-		podLabels[caChecksumLabelName] = fmt.Sprintf("%x", certChecksum.Sum(nil))
-	} else {
-		// make it clear that no CA checksum has been computed
-		podLabels[caChecksumLabelName] = ""
 	}
 
 	if as.Spec.HTTP.TLS.Enabled() {

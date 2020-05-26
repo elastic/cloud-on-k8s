@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
@@ -31,7 +32,7 @@ type testParams struct {
 }
 
 func (tp testParams) withConfigChecksum(checksum string) testParams {
-	tp.PodTemplateSpec.Labels["apm.k8s.elastic.co/config-file-checksum"] = checksum
+	tp.PodTemplateSpec.Labels["apm.k8s.elastic.co/config-files-checksum"] = checksum
 	return tp
 }
 
@@ -44,7 +45,7 @@ func (tp testParams) withVolumeMount(i int, mnt corev1.VolumeMount) testParams {
 	for j := range tp.PodTemplateSpec.Spec.Containers {
 		mounts := tp.PodTemplateSpec.Spec.Containers[j].VolumeMounts
 		mounts = append(mounts[:i], append([]corev1.VolumeMount{mnt}, mounts[i:]...)...)
-		tp.PodTemplateSpec.Spec.Containers[i].VolumeMounts = mounts
+		tp.PodTemplateSpec.Spec.Containers[j].VolumeMounts = mounts
 	}
 	return tp
 }
@@ -76,8 +77,12 @@ func (tp testParams) withInitContainer() testParams {
 	return tp
 }
 
+func ptrFalse() *bool {
+	b := false
+	return &b
+}
+
 func expectedDeploymentParams() testParams {
-	false := false
 	return testParams{
 		deployment.Params{
 			Name:      "test-apm-server-apm-server",
@@ -88,10 +93,9 @@ func expectedDeploymentParams() testParams {
 			PodTemplateSpec: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"common.k8s.elastic.co/type":              "apm-server",
-						"apm.k8s.elastic.co/name":                 "test-apm-server",
-						"apm.k8s.elastic.co/config-file-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
-						"apm.k8s.elastic.co/ca-files-checksum":    "",
+						"common.k8s.elastic.co/type":               "apm-server",
+						"apm.k8s.elastic.co/name":                  "test-apm-server",
+						"apm.k8s.elastic.co/config-files-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
 					},
 				},
 				Spec: corev1.PodSpec{
@@ -101,7 +105,7 @@ func expectedDeploymentParams() testParams {
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: "test-apm-config",
-									Optional:   &false,
+									Optional:   ptrFalse(),
 								},
 							},
 						},
@@ -116,7 +120,7 @@ func expectedDeploymentParams() testParams {
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName: certSecretName,
-									Optional:   &false,
+									Optional:   ptrFalse(),
 								},
 							},
 						},
@@ -178,12 +182,29 @@ func expectedDeploymentParams() testParams {
 						},
 						Resources: DefaultResources,
 					}},
-					AutomountServiceAccountToken: &false,
+					AutomountServiceAccountToken: ptrFalse(),
 				},
 			},
 			Replicas: 0,
 		},
 	}
+}
+
+func withAssociations(as *apmv1.ApmServer, esAssocConf, kbAssocConf *commonv1.AssociationConf) *apmv1.ApmServer {
+	(&apmv1.ApmEsAssociation{
+		ApmServer: as,
+	}).SetAssociationConf(esAssocConf)
+	(&apmv1.ApmKibanaAssociation{
+		ApmServer: as,
+	}).SetAssociationConf(kbAssocConf)
+	return as
+}
+
+func withKibanaAssociation(as *apmv1.ApmServer, assocConf *commonv1.AssociationConf) *apmv1.ApmServer {
+	(&apmv1.ApmEsAssociation{
+		ApmServer: as,
+	}).SetAssociationConf(assocConf)
+	return as
 }
 
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
@@ -235,6 +256,115 @@ func TestReconcileApmServer_deploymentParams(t *testing.T) {
 				},
 			},
 			want:    expectedDeploymentParams(),
+			wantErr: false,
+		},
+		{
+			name: "associated Elasticsearch CA influences checksum and volumes",
+			args: args{
+				as: withAssociations(apmFixture.DeepCopy(), &commonv1.AssociationConf{
+					CASecretName: "es-ca",
+				}, nil),
+				podSpecParams: defaultPodSpecParams,
+				initialObjects: []runtime.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: certSecretName,
+						},
+					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "es-ca",
+						},
+						Data: map[string][]byte{
+							certificates.CertFileName: []byte("es-ca-cert"),
+						},
+					},
+				},
+			},
+			want: expectedDeploymentParams().
+				withConfigChecksum("ba0db80e8112c865d428099a90c91cca143857b6464c1e5317bdb45d").
+				withVolume(2, corev1.Volume{
+					Name: "elasticsearch-certs",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "es-ca",
+							Optional:   ptrFalse(),
+						},
+					},
+				}).
+				withVolumeMount(2, corev1.VolumeMount{
+					Name:      "elasticsearch-certs",
+					MountPath: "/usr/share/apm-server/config/elasticsearch-certs",
+					ReadOnly:  true,
+				}),
+			wantErr: false,
+		},
+		{
+			name: "associated Elasticsearch and Kibana CA influences checksum and volumes",
+			args: args{
+				as: withAssociations(apmFixture.DeepCopy(),
+					&commonv1.AssociationConf{
+						CASecretName: "es-ca",
+					},
+					&commonv1.AssociationConf{
+						CASecretName: "kb-ca",
+					}),
+				podSpecParams: defaultPodSpecParams,
+				initialObjects: []runtime.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: certSecretName,
+						},
+					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "es-ca",
+						},
+						Data: map[string][]byte{
+							certificates.CertFileName: []byte("es-ca-cert"),
+						},
+					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "kb-ca",
+						},
+						Data: map[string][]byte{
+							certificates.CertFileName: []byte("kb-ca-cert"),
+						},
+					},
+				},
+			},
+			want: expectedDeploymentParams().
+				withConfigChecksum("c7c40eaa3a93400c069ec19195c19fbeff3976d67f818b9f1b2c1006").
+				withVolume(2, corev1.Volume{
+					Name: "elasticsearch-certs",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "es-ca",
+							Optional:   ptrFalse(),
+						},
+					},
+				}).
+				withVolume(3, corev1.Volume{
+					Name: "kibana-certs",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "kb-ca",
+							Optional:   ptrFalse(),
+						},
+					},
+				}).
+				withVolumeMount(2, corev1.VolumeMount{
+					Name:      "elasticsearch-certs",
+					MountPath: "/usr/share/apm-server/config/elasticsearch-certs",
+					ReadOnly:  true,
+				}).
+				withVolumeMount(3, corev1.VolumeMount{
+					Name:      "kibana-certs",
+					MountPath: "/usr/share/apm-server/config/kibana-certs",
+					ReadOnly:  true,
+				}),
+
 			wantErr: false,
 		},
 		{
