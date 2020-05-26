@@ -14,6 +14,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -57,16 +59,21 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 	licenseLevel := r.getOperatorLicenseLevel(operatorLicense)
 	maxERUs := r.getMaxEnterpriseResourceUnits(operatorLicense)
 
+	labels := prometheus.Labels{metrics.LicenseLevelLabel: licenseLevel}
+	metrics.LicensingTotalMemoryGauge.With(labels).Set(memoryInGB)
+	metrics.LicensingTotalERUGauge.With(labels).Set(float64(ERUs))
+
 	licensingInfo := LicensingInfo{
 		Timestamp:               time.Now().Format(time.RFC3339),
 		EckLicenseLevel:         licenseLevel,
-		TotalManagedMemory:      memoryInGB,
-		EnterpriseResourceUnits: ERUs,
+		TotalManagedMemory:      fmt.Sprintf("%0.2fGB", memoryInGB),
+		EnterpriseResourceUnits: strconv.FormatInt(ERUs, 10),
 	}
 
 	// include the max ERUs only for a non trial/basic license
 	if maxERUs > 0 {
 		licensingInfo.MaxEnterpriseResourceUnits = strconv.Itoa(maxERUs)
+		metrics.LicensingMaxERUGauge.With(labels).Set(float64(maxERUs))
 	}
 
 	return licensingInfo, nil
@@ -128,17 +135,17 @@ func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.Enterprise
 }
 
 // inGB converts a resource.Quantity in gigabytes
-func inGB(q resource.Quantity) string {
+func inGB(q resource.Quantity) float64 {
 	// divide the value (in bytes) per 1 billion (1GB)
-	return fmt.Sprintf("%0.2fGB", float32(q.Value())/1000000000)
+	return float64(q.Value()) / 1000000000
 }
 
 // inEnterpriseResourceUnits converts a resource.Quantity to Elastic Enterprise resource units
-func inEnterpriseResourceUnits(q resource.Quantity) string {
+func inEnterpriseResourceUnits(q resource.Quantity) int64 {
 	// divide by the value (in bytes) per 64 billion (64 GB)
 	eru := float64(q.Value()) / 64000000000
 	// round to the nearest superior integer
-	return fmt.Sprintf("%d", int64(math.Ceil(eru)))
+	return int64(math.Ceil(eru))
 }
 
 // toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
