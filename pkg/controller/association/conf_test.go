@@ -70,7 +70,7 @@ func testFetchAPMServer(t *testing.T) {
 		},
 		{
 			name:      "non existent",
-			apmServer: newTestAPMServer().withEsConfAnnotations().build(),
+			apmServer: newTestAPMServer().build(),
 			request:   reconcile.Request{NamespacedName: types.NamespacedName{Name: "some-other-apm", Namespace: "apm-ns"}},
 			wantErr:   true,
 		},

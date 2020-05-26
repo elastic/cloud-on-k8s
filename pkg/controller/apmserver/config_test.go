@@ -113,6 +113,35 @@ func TestNewConfigFromSpec(t *testing.T) {
 				"apm-server.kibana.ssl.certificate_authorities": []string{"config/kibana-certs/ca.crt"},
 			},
 		},
+		{
+			name: "Elasticsearch fully configured and Kibana configuration without CA",
+			esAssocConf: &commonv1.AssociationConf{
+				AuthSecretName: "test-es-elastic-user",
+				AuthSecretKey:  "elastic",
+				CASecretName:   "test-es-http-ca-public",
+				CACertProvided: true,
+				URL:            "https://test-es-http.default.svc:9200",
+			},
+			kbAssocConf: &commonv1.AssociationConf{
+				AuthSecretName: "test-kb-elastic-user",
+				AuthSecretKey:  "apm-kb-user",
+				CASecretName:   "test-kb-http-ca-public",
+				CACertProvided: false,
+				URL:            "https://test-kb-http.default.svc:9200",
+			},
+			wantConf: map[string]interface{}{
+				// Elasticsearch configuration
+				"output.elasticsearch.hosts":                       []string{"https://test-es-http.default.svc:9200"},
+				"output.elasticsearch.username":                    "elastic",
+				"output.elasticsearch.password":                    "password",
+				"output.elasticsearch.ssl.certificate_authorities": []string{"config/elasticsearch-certs/ca.crt"},
+				// Kibana configuration
+				"apm-server.kibana.enabled":  true,
+				"apm-server.kibana.host":     "https://test-kb-http.default.svc:9200",
+				"apm-server.kibana.username": "apm-kb-user",
+				"apm-server.kibana.password": "password-kb-user",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
