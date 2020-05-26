@@ -200,13 +200,6 @@ func withAssociations(as *apmv1.ApmServer, esAssocConf, kbAssocConf *commonv1.As
 	return as
 }
 
-func withKibanaAssociation(as *apmv1.ApmServer, assocConf *commonv1.AssociationConf) *apmv1.ApmServer {
-	(&apmv1.ApmEsAssociation{
-		ApmServer: as,
-	}).SetAssociationConf(assocConf)
-	return as
-}
-
 func TestReconcileApmServer_deploymentParams(t *testing.T) {
 	apmFixture := &apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
