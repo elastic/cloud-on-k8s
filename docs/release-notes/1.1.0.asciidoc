@@ -65,6 +65,7 @@
 * Watch only trial license secret (not trial status) {pull}2879[#2879]
 * Do not reject PVC update when a different unit is used {pull}2857[#2857] (issue: {issue}2856[#2856])
 * Revert transport TLS certs verification from full to certificate {pull}2831[#2831] (issue: {issue}2823[#2823])
+* Compatibility check: add Service ownership test {pull}2803[#2803]
 * Fix labels on ES CA secret for Kibana association {pull}2773[#2773] (issue: {issue}2698[#2698])
 * Ensure that HTTP CA cert is always set {pull}2772[#2772]
 * License check: update remote cluster logs and events {pull}2746[#2746]

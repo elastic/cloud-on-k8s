@@ -1,0 +1,18 @@
+:issue: https://github.com/elastic/cloud-on-k8s/issues/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
+
+[[release-notes-1.1.2]]
+== {n} version 1.1.2
+
+
+
+
+
+[[bug-1.1.2]]
+[float]
+=== Bug fixes
+
+* Fix remote cluster annotation handling {pull}3101[#3101]
+* Fix Kibana certs secret labels {pull}3098[#3098]
+* Avoid overwriting default IPFamily of services {pull}3084[#3084]
+* Do not propagate Elasticsearch CA if none is provided {pull}3083[#3083] (issues: {issue}2243[#2243], {issue}3082[#3082])
