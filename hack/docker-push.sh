@@ -11,6 +11,10 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
+
 # source variables if present
 if [[ -f .registry.env ]]; then
     # shellcheck disable=SC2046
@@ -51,7 +55,8 @@ docker-push() {
     local image=$1
     echo "Push $image..."
     # silence the verbose output of the `docker push` command
-    docker push "$image" | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
+    retry \
+        docker push "$image" | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
 }
 
 docker-login "$@"

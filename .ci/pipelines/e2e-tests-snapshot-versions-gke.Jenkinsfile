@@ -74,17 +74,19 @@ pipeline {
         unsuccessful {
             script {
                 if (params.SEND_NOTIFICATIONS) {
-                    Set<String> filter = new HashSet<>()
-                    filter.addAll(failedTests)
-
-                    slackSend(
-                        channel: '#cloud-k8s',
-                        color: 'danger',
-                        message: lib.generateSlackMessage("E2E tests for Elastic stack snapshot versions failed!", env.BUILD_URL, filter),
-                        tokenCredentialId: 'cloud-ci-slack-integration-token',
-                        botUser: true,
-                        failOnError: true
-                    )
+// Temporarily disable Slack notifications since we know this job is failing.
+// TODO: enable again once https://github.com/elastic/kibana/issues/66968 is fixed in Kibana.
+//                     Set<String> filter = new HashSet<>()
+//                     filter.addAll(failedTests)
+//
+//                     slackSend(
+//                        channel: '#cloud-k8s',
+//                        color: 'danger',
+//                        message: lib.generateSlackMessage("E2E tests for Elastic stack snapshot versions failed!", env.BUILD_URL, filter),
+//                        tokenCredentialId: 'cloud-ci-slack-integration-token',
+//                        botUser: true,
+//                        failOnError: true
+//                     )
                 }
                 googleStorageUpload bucket: "gs://devops-ci-artifacts/jobs/$JOB_NAME/$BUILD_NUMBER",
                     credentialsId: "devops-ci-gcs-plugin",

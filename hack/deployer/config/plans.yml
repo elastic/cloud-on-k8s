@@ -73,11 +73,12 @@ plans:
   clusterName: dev
   provider: ocp
   machineType: n1-standard-8
-  serviceAccount: false
+  serviceAccount: true
   ocp:
     region: europe-west1
     nodeCount: 3
-    overwriteDefaultKubeconfig: false
+    overwriteDefaultKubeconfig: true
+    useNonDefaultCloudSdkPath: true
 - id: eks-ci
   operation: create
   clusterName: ci
