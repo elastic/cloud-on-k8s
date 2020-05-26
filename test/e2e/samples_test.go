@@ -12,9 +12,11 @@ import (
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/helper"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
@@ -81,6 +83,14 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, fullTestName).
 				WithPodLabel(run.TestNameLabel, fullTestName)
+		case beat.Builder:
+			return b.WithNamespace(namespace).
+				WithSuffix(suffix).
+				WithElasticsearchRef(tweakElasticsearchRef(b.Beat.Spec.ElasticsearchRef, suffix)).
+				WithRestrictedSecurityContext().
+				WithLabel(run.TestNameLabel, testName).
+				WithPodLabel(run.TestNameLabel, testName).
+				WithESValidations(beat.HasEventFromBeat(commonbeat.Type(b.Beat.Spec.Type)))
 		default:
 			return b
 		}
