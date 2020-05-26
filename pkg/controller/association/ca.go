@@ -30,12 +30,12 @@ func CACertSecretName(associated commonv1.Associated, associationName string) st
 
 // ReconcileCASecret keeps in sync a copy of the target service CA.
 // It is the responsibility of the association controller to set a watch on this CA.
-func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer name.Namer, service types.NamespacedName, caSecretServiceName string) (CASecret, error) {
-	servicePublicHTTPCertificatesNSN := certificates.PublicCertsSecretRef(namer, service)
+func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer name.Namer, associatedResource types.NamespacedName, caSecretServiceName string) (CASecret, error) {
+	associatedPublicHTTPCertificatesNSN := certificates.PublicCertsSecretRef(namer, associatedResource)
 
-	// retrieve the HTTP certificates from the service namespace
-	var servicePublicHTTPCertificatesSecret corev1.Secret
-	if err := r.Get(servicePublicHTTPCertificatesNSN, &servicePublicHTTPCertificatesSecret); err != nil {
+	// retrieve the HTTP certificates from the associatedResource namespace
+	var associatedPublicHTTPCertificatesSecret corev1.Secret
+	if err := r.Get(associatedPublicHTTPCertificatesNSN, &associatedPublicHTTPCertificatesSecret); err != nil {
 		if errors.IsNotFound(err) {
 			return CASecret{}, nil // probably not created yet, we'll be notified to reconcile later
 		}
@@ -43,8 +43,8 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 	}
 
 	labels := r.AssociationLabels(k8s.ExtractNamespacedName(association))
-	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
-	labels[caSecretServiceName] = service.Name
+	// Add the associated resource name, this is only intended to help the user to filter on these resources
+	labels[caSecretServiceName] = associatedResource.Name
 
 	// Certificate data should be copied over a secret in the association namespace
 	expectedSecret := corev1.Secret{
@@ -53,7 +53,7 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 			Name:      CACertSecretName(association, r.AssociationName),
 			Labels:    labels,
 		},
-		Data: servicePublicHTTPCertificatesSecret.Data,
+		Data: associatedPublicHTTPCertificatesSecret.Data,
 	}
 	if _, err := reconciler.ReconcileSecret(r, expectedSecret, association.Associated()); err != nil {
 		return CASecret{}, err
