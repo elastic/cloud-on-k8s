@@ -1,0 +1,20 @@
+[[release-highlights-1.1.2]]
+== 1.1.2 release highlights
+
+[float]
+[id="{p}-112-new-and-notable"]
+=== New and notable
+This release contains bug fixes especially relevant for
+
+* users with custom certificates configured
+* users deploying ECK into dual-stack Kubernetes clusters
+
+as well as some minor bug fixes.
+
+[float]
+[id="{p}-112-breaking-changes"]
+=== Upgrade notes
+
+In ECK 1.1.0, users using custom certificates would be required to specify a certificate authority (CA), even if the CA was present in the system certificates. This was a regression in 1.1.0 and has been fixed in 1.1.2. Users with custom certificates that are signed by a well-known CA will now function without the user specifying the CA explicitly.
+
+In dual-stack (IPv4 and IPv6) clusters, the `ipFamily` field of any `Service` is defaulted and immutable. Previous versions of ECK would try to reset this field and fail. ECK 1.1.2 resolves this behavior and will leave the `ipFamily` field intact. Note that at this time ECK does not support running on IPv6, this simply allows it to run in Kubernetes clusters with the `IPv6DualStack` feature flag enabled.
