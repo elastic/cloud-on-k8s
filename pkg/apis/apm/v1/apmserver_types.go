@@ -146,6 +146,10 @@ type ApmEsAssociation struct {
 
 var _ commonv1.Association = &ApmEsAssociation{}
 
+func NewApmEsAssociation(as *ApmServer) *ApmEsAssociation {
+	return &ApmEsAssociation{ApmServer: as}
+}
+
 func (aes *ApmEsAssociation) Associated() commonv1.Associated {
 	if aes == nil {
 		return nil
@@ -189,6 +193,10 @@ var _ commonv1.Association = &ApmKibanaAssociation{}
 // ApmServer / Kibana association helper
 type ApmKibanaAssociation struct {
 	*ApmServer
+}
+
+func NewApmKibanaAssociation(as *ApmServer) *ApmKibanaAssociation {
+	return &ApmKibanaAssociation{ApmServer: as}
 }
 
 func (akb *ApmKibanaAssociation) Associated() commonv1.Associated {

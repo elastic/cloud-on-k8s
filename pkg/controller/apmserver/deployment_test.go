@@ -191,12 +191,8 @@ func expectedDeploymentParams() testParams {
 }
 
 func withAssociations(as *apmv1.ApmServer, esAssocConf, kbAssocConf *commonv1.AssociationConf) *apmv1.ApmServer {
-	(&apmv1.ApmEsAssociation{
-		ApmServer: as,
-	}).SetAssociationConf(esAssocConf)
-	(&apmv1.ApmKibanaAssociation{
-		ApmServer: as,
-	}).SetAssociationConf(kbAssocConf)
+	apmv1.NewApmEsAssociation(as).SetAssociationConf(esAssocConf)
+	apmv1.NewApmKibanaAssociation(as).SetAssociationConf(kbAssocConf)
 	return as
 }
 

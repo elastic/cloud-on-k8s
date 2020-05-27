@@ -156,13 +156,8 @@ func TestNewConfigFromSpec(t *testing.T) {
 				},
 			}
 
-			(&apmv1.ApmEsAssociation{
-				ApmServer: apmServer,
-			}).SetAssociationConf(tc.esAssocConf)
-
-			(&apmv1.ApmKibanaAssociation{
-				ApmServer: apmServer,
-			}).SetAssociationConf(tc.kbAssocConf)
+			apmv1.NewApmEsAssociation(apmServer).SetAssociationConf(tc.esAssocConf)
+			apmv1.NewApmKibanaAssociation(apmServer).SetAssociationConf(tc.kbAssocConf)
 
 			gotConf, err := newConfigFromSpec(client, apmServer)
 			if tc.wantErr {

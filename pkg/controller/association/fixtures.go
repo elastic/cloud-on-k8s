@@ -32,15 +32,11 @@ func (t testAPMServer) build() *apmv1.ApmServer {
 	}
 
 	if t.esAssociation != nil {
-		(&apmv1.ApmEsAssociation{
-			ApmServer: apmServer,
-		}).SetAssociationConf(t.esAssociation)
+		apmv1.NewApmEsAssociation(apmServer).SetAssociationConf(t.esAssociation)
 	}
 
 	if t.kbAssociation != nil {
-		(&apmv1.ApmKibanaAssociation{
-			ApmServer: apmServer,
-		}).SetAssociationConf(t.kbAssociation)
+		apmv1.NewApmKibanaAssociation(apmServer).SetAssociationConf(t.kbAssociation)
 	}
 
 	if t.esConfAnnotations {
