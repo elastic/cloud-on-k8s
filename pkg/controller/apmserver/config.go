@@ -67,7 +67,6 @@ func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Se
 }
 
 func newConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {
-	// Create a base configuration.
 	cfg := settings.MustCanonicalConfig(map[string]interface{}{
 		APMServerHost:        fmt.Sprintf(":%d", DefaultHTTPPort),
 		APMServerSecretToken: "${SECRET_TOKEN}",

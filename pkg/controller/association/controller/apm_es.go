@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	// ApmAssociationLabelName marks resources created by this controller for easier retrieval.
+	// ApmAssociationLabelName marks resources created for an association originating from APM.
 	ApmAssociationLabelName = "apmassociation.k8s.elastic.co/name"
-	// ApmAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// ApmAssociationLabelNamespace marks resources created for an association originating from APM.
 	ApmAssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
-	// ApmAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	// ApmAssociationLabelNamespace marks resources created for an association originating from APM.
 	ApmAssociationTypeLabelNamespace = "apmassociation.k8s.elastic.co/type"
 )
 

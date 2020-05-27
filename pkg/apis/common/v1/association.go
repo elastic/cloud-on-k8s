@@ -22,10 +22,11 @@ const (
 	AssociationFailed      AssociationStatus = "Failed"
 )
 
-// Associated interface represents a Elastic stack application that is associated with an Elasticsearch cluster.
-// An associated object needs some credentials to establish a connection to the Elasticsearch cluster and usually it
-// offers a keystore which in ECK is represented with an underlying Secret.
-// Kibana and the APM server are two examples of associated objects.
+// Associated interface represents an Elastic stack resource that is associated with some other ones.
+// Examples:
+// - Kibana can be associated to Elasticsearch
+// - APMServer can be associated to Elasticsearch and Kibana
+// - EnterpriseSearch can be associated to Elasticsearch
 // +kubebuilder:object:generate=false
 type Associated interface {
 	metav1.Object
@@ -42,8 +43,8 @@ type Association interface {
 	// Associated can be used to retrieve the associated object
 	Associated() Associated
 
-	// AssociatedType returns a string describing the type of the target service (elasticsearch most of the time)
-	// It is mostly used to build some other strings depending on the type of the targeted service.
+	// AssociatedType returns a string describing the type of the target resource (elasticsearch most of the time)
+	// It is mostly used to build some other strings depending on the type of the targeted resource.
 	AssociatedType() string
 
 	// Reference to the associated resource. If defined with a Name then the Namespace is expected to be set in the returned object.

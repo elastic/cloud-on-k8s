@@ -55,7 +55,7 @@ func deleteIfOrphaned(
 	esRef commonv1.ObjectSelector,
 	association commonv1.Association,
 ) error {
-	// Secret should not exist if there is no service referenced in the spec or if the resource is deleted
+	// Secret should not exist if there is no association referenced in the spec or if the resource is deleted
 	associationRef := association.AssociationRef()
 	if !associationRef.IsDefined() {
 		return deleteSecret(c, secret, association)

@@ -86,9 +86,9 @@ func (r *ReconcileApmServer) deploymentParams(
 	podSpec := newPodSpec(as, params)
 	podLabels := NewLabels(as.Name)
 
-	// Build a checksum of the configuration and of the cert files used by ES and Kibana, add it to the pod labels so a
-	// change triggers a rolling update. This is done because Apm Server does not support updating its configuration file
-	// or the CA file contents without restarting the process.
+	// Build a checksum of the configuration, the keystore, and the cert files used by ES and Kibana.
+	// The checksum is added to the pod labels so a change triggers a rolling update. This is done because Apm Server
+	// does not support updating its configuration file or the CA file contents without restarting the process.
 	configChecksum := sha256.New224()
 	_, _ = configChecksum.Write(params.ConfigSecret.Data[ApmCfgSecretKey])
 	if params.keystoreResources != nil {
