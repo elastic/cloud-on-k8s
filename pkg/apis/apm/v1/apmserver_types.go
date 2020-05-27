@@ -161,7 +161,7 @@ func (aes *ApmEsAssociation) AssociationConfAnnotationName() string {
 }
 
 func (aes *ApmEsAssociation) AssociatedType() string {
-	return "elasticsearch"
+	return commonv1.ElasticsearchAssociationType
 }
 
 func (aes *ApmEsAssociation) AssociationRef() commonv1.ObjectSelector {

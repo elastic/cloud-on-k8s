@@ -81,7 +81,7 @@ func (k *Kibana) AssociationConfAnnotationName() string {
 }
 
 func (k *Kibana) AssociatedType() string {
-	return "elasticsearch"
+	return commonv1.ElasticsearchAssociationType
 }
 
 func (k *Kibana) AssociationRef() commonv1.ObjectSelector {

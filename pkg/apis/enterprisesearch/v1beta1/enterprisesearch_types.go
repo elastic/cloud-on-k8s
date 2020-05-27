@@ -120,7 +120,7 @@ func (ent *EnterpriseSearch) AssociationConfAnnotationName() string {
 }
 
 func (ent *EnterpriseSearch) AssociatedType() string {
-	return "elasticsearch"
+	return commonv1.ElasticsearchAssociationType
 }
 
 func (ent *EnterpriseSearch) AssociationRef() commonv1.ObjectSelector {

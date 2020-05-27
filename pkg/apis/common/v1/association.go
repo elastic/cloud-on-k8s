@@ -14,6 +14,7 @@ type AssociationStatus string
 
 const (
 	ElasticsearchConfigAnnotationName = "association.k8s.elastic.co/es-conf"
+	ElasticsearchAssociationType      = "elasticsearch"
 
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"

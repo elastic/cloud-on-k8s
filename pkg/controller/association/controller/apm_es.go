@@ -46,7 +46,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 			return map[string]string{
 				ApmAssociationLabelName:          associated.Name,
 				ApmAssociationLabelNamespace:     associated.Namespace,
-				ApmAssociationTypeLabelNamespace: "elasticsearch",
+				ApmAssociationTypeLabelNamespace: commonv1.ElasticsearchAssociationType,
 			}
 		},
 		UserSecretSuffix:  "apm-user",
