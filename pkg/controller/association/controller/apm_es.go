@@ -49,9 +49,9 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 				ApmAssociationTypeLabelNamespace: "elasticsearch",
 			}
 		},
-		UserSecretSuffix:         "apm-user",
-		CASecretServiceLabelName: eslabel.ClusterNameLabelName,
-		ESUserRole:               getRoles,
+		UserSecretSuffix:  "apm-user",
+		CASecretLabelName: eslabel.ClusterNameLabelName,
+		ESUserRole:        getRoles,
 	})
 }
 

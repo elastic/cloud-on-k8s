@@ -43,8 +43,8 @@ func AddKibanaES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params
 				KibanaESAssociationLabelNamespace: associated.Namespace,
 			}
 		},
-		UserSecretSuffix:         "kibana-user",
-		CASecretServiceLabelName: eslabel.ClusterNameLabelName,
+		UserSecretSuffix:  "kibana-user",
+		CASecretLabelName: eslabel.ClusterNameLabelName,
 		ESUserRole: func(associated commonv1.Associated) (string, error) {
 			return KibanaSystemUserBuiltinRole, nil
 		},

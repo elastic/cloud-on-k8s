@@ -63,7 +63,7 @@ var (
 			}
 			return services.ExternalServiceURL(es), nil
 		},
-		CASecretServiceLabelName: "elasticsearch.k8s.elastic.co/cluster-name",
+		CASecretLabelName: "elasticsearch.k8s.elastic.co/cluster-name",
 	}
 
 	kibanaNamespace     = "kbns"

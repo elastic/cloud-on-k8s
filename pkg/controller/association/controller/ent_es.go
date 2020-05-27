@@ -41,8 +41,8 @@ func AddEntES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 				EntESAssociationLabelNamespace: associated.Namespace,
 			}
 		},
-		UserSecretSuffix:         "ent-user",
-		CASecretServiceLabelName: eslabel.ClusterNameLabelName,
+		UserSecretSuffix:  "ent-user",
+		CASecretLabelName: eslabel.ClusterNameLabelName,
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
 			return esuser.SuperUserBuiltinRole, nil
 		},

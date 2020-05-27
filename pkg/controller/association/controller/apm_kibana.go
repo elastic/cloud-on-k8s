@@ -37,8 +37,8 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 				ApmAssociationTypeLabelNamespace: "kibana",
 			}
 		},
-		UserSecretSuffix:         "apm-kb-user",
-		CASecretServiceLabelName: kibana.KibanaNameLabelName,
+		UserSecretSuffix:  "apm-kb-user",
+		CASecretLabelName: kibana.KibanaNameLabelName,
 		ESUserRole: func(_ commonv1.Associated) (string, error) {
 			return "kibana_user", nil
 		},
