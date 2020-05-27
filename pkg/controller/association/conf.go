@@ -70,7 +70,7 @@ func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder)
 			events.EventAssociationError,
 			"Association backend for "+association.AssociatedType()+" is not configured",
 		)
-		log.Info("Association not established: skipping association resource deployment reconciliation",
+		log.Info("Association not established: skipping association resource reconciliation",
 			"kind", association.GetObjectKind().GroupVersionKind().Kind,
 			"namespace", association.GetNamespace(),
 			"name", association.GetName(),

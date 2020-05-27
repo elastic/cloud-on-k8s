@@ -34,8 +34,8 @@ const (
 	ApmCfgSecretKey = "apm-server.yml" // nolint:gosec
 )
 
-func certificatesDir(serviceType string) string {
-	return fmt.Sprintf("config/%s-certs", serviceType)
+func certificatesDir(associatedType string) string {
+	return fmt.Sprintf("config/%s-certs", associatedType)
 }
 
 // reconcileApmServerConfig reconciles the configuration of the APM server: it first creates the configuration from the APM

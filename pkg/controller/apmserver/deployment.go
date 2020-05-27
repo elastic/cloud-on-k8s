@@ -98,11 +98,6 @@ func (r *ReconcileApmServer) deploymentParams(
 	for _, association := range as.GetAssociations() {
 		if association.AssociationConf().CAIsConfigured() {
 			caSecretName := association.AssociationConf().GetCASecretName()
-			caVolume := volume.NewSecretVolumeWithMountPath(
-				caSecretName,
-				association.AssociatedType()+"-certs",
-				filepath.Join(ApmBaseDir, certificatesDir(association.AssociatedType())),
-			)
 
 			var publicCASecret corev1.Secret
 			key := types.NamespacedName{Namespace: as.Namespace, Name: caSecretName}
@@ -113,6 +108,11 @@ func (r *ReconcileApmServer) deploymentParams(
 				_, _ = configChecksum.Write(certPem)
 			}
 
+			caVolume := volume.NewSecretVolumeWithMountPath(
+				caSecretName,
+				association.AssociatedType()+"-certs",
+				filepath.Join(ApmBaseDir, certificatesDir(association.AssociatedType())),
+			)
 			podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, caVolume.Volume())
 
 			for i := range podSpec.Spec.InitContainers {
