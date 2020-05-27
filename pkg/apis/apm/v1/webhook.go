@@ -111,6 +111,9 @@ func checkNoDowngrade(prev, curr *ApmServer) field.ErrorList {
 }
 
 func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
+	if !as.Spec.KibanaRef.IsDefined() {
+		return nil
+	}
 	apmVersion, err := commonv1.ParseVersion(as.EffectiveVersion())
 	if err != nil {
 		return err
