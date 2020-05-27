@@ -30,7 +30,7 @@ func CACertSecretName(associated commonv1.Associated, associationName string) st
 
 // ReconcileCASecret keeps in sync a copy of the target service CA.
 // It is the responsibility of the association controller to set a watch on this CA.
-func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer name.Namer, associatedResource types.NamespacedName, caSecretServiceName string) (CASecret, error) {
+func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer name.Namer, associatedResource types.NamespacedName, associatedResourceLabel string) (CASecret, error) {
 	associatedPublicHTTPCertificatesNSN := certificates.PublicCertsSecretRef(namer, associatedResource)
 
 	// retrieve the HTTP certificates from the associatedResource namespace
@@ -44,7 +44,7 @@ func (r *Reconciler) ReconcileCASecret(association commonv1.Association, namer n
 
 	labels := r.AssociationLabels(k8s.ExtractNamespacedName(association))
 	// Add the associated resource name, this is only intended to help the user to filter on these resources
-	labels[caSecretServiceName] = associatedResource.Name
+	labels[associatedResourceLabel] = associatedResource.Name
 
 	// Certificate data should be copied over a secret in the association namespace
 	expectedSecret := corev1.Secret{

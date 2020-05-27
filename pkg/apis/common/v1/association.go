@@ -22,11 +22,11 @@ const (
 	AssociationFailed      AssociationStatus = "Failed"
 )
 
-// Associated interface represents an Elastic stack resource that is associated with some other ones.
+// Associated represents an Elastic stack resource that is associated with other stack resources.
 // Examples:
-// - Kibana can be associated to Elasticsearch
-// - APMServer can be associated to Elasticsearch and Kibana
-// - EnterpriseSearch can be associated to Elasticsearch
+// - Kibana can be associated with Elasticsearch
+// - APMServer can be associated with Elasticsearch and Kibana
+// - EnterpriseSearch can be associated with Elasticsearch
 // +kubebuilder:object:generate=false
 type Associated interface {
 	metav1.Object
