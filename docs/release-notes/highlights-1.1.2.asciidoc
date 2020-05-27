@@ -12,7 +12,7 @@ This release contains bug fixes especially relevant for
 as well as some minor bug fixes.
 
 [float]
-[id="{p}-112-breaking-changes"]
+[id="breaking-1.1.2"]
 === Upgrade notes
 
 In ECK 1.1.0, users using custom certificates would be required to specify a certificate authority (CA), even if the CA was present in the system certificates. This was a regression in 1.1.0 and has been fixed in 1.1.2. Users with custom certificates that are signed by a well-known CA will now function without the user specifying the CA explicitly.
