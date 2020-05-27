@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 // ReconcileStatefulSet creates or updates the expected StatefulSet.
@@ -24,13 +25,19 @@ func ReconcileStatefulSet(c k8s.Client, es esv1.Elasticsearch, expected appsv1.S
 		Expected:   &expected,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
-			if len(reconciled.Labels) == 0 {
-				return true
-			}
-			return !EqualTemplateHashLabels(expected, reconciled)
+			// expected labels or annotations not there
+			return !maps.IsSubset(expected.Labels, reconciled.Labels) ||
+				!maps.IsSubset(expected.Annotations, reconciled.Annotations) ||
+				// different spec
+				!EqualTemplateHashLabels(expected, reconciled)
 		},
 		UpdateReconciled: func() {
-			expected.DeepCopyInto(&reconciled)
+			// override annotations and labels with expected ones
+			// don't remove additional values in reconciled that may have been defaulted or
+			// manually set by the user on the existing resource
+			reconciled.Labels = maps.Merge(reconciled.Labels, expected.Labels)
+			reconciled.Annotations = maps.Merge(reconciled.Annotations, expected.Annotations)
+			reconciled.Spec = expected.Spec
 		},
 		PreCreate: podTemplateValidator,
 		PreUpdate: podTemplateValidator,
