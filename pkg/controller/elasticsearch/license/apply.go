@@ -48,6 +48,13 @@ func applyLinkedLicense(
 	)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			if isTrial(current) {
+				// this is the case if the user has started a trial on the ES cluster level
+				// e.g. from Kibana when trying to access a commercial feature.
+				// While this is not a supported use case we tolerate it to avoid a bad user
+				// experience because trials can only be started once on the ES cluster level
+				return nil
+			}
 			// no license linked to this cluster. Revert to basic.
 			return startBasic(ctx, updater)
 		}

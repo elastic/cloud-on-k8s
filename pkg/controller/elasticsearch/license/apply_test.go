@@ -109,6 +109,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 	tests := []struct {
 		name             string
 		initialObjs      []runtime.Object
+		currentLicense   *esclient.License
 		errors           map[client.ObjectKey]error
 		wantErr          bool
 		clientAssertions func(updater fakeLicenseUpdater)
@@ -133,6 +134,14 @@ func Test_applyLinkedLicense(t *testing.T) {
 			wantErr: false,
 			clientAssertions: func(updater fakeLicenseUpdater) {
 				require.True(t, updater.startBasicCalled, "should call start_basic")
+			},
+		},
+		{
+			name:           "no error: no license found but tolerate a cluster level trial",
+			wantErr:        false,
+			currentLicense: &esclient.License{Type: "trial"},
+			clientAssertions: func(updater fakeLicenseUpdater) {
+				require.False(t, updater.startBasicCalled, "should not call start_basic")
 			},
 		},
 		{
@@ -184,7 +193,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 				context.Background(),
 				c,
 				clusterName,
-				nil,
+				tt.currentLicense,
 				&updater,
 			); (err != nil) != tt.wantErr {
 				t.Errorf("applyLinkedLicense() error = %v, wantErr %v", err, tt.wantErr)
