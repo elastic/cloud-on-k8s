@@ -81,7 +81,7 @@ func Test_updateLicense(t *testing.T) {
 			args: args{
 				current: nil,
 				desired: esclient.License{
-					Type: "trial",
+					Type: string(esclient.ElasticsearchLicenseTypeTrial),
 				},
 			},
 			reqFn: func(req *http.Request) *http.Response {
@@ -159,7 +159,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 		{
 			name:           "no error: no license found but tolerate a cluster level trial",
 			wantErr:        false,
-			currentLicense: &esclient.License{Type: "trial"},
+			currentLicense: &esclient.License{Type: string(esclient.ElasticsearchLicenseTypeTrial)},
 			clientAssertions: func(updater fakeLicenseUpdater) {
 				require.False(t, updater.startBasicCalled, "should not call start_basic")
 			},
