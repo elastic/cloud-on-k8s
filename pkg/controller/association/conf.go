@@ -23,38 +23,57 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// FetchWithAssociation retrieves an object and extracts its association configuration.
-func FetchWithAssociation(ctx context.Context, client k8s.Client, request reconcile.Request, obj commonv1.Associated) error {
-	span, _ := apm.StartSpan(ctx, "fetch_association", tracing.SpanTypeApp)
+// FetchWithAssociations retrieves an object and extracts its association configurations.
+func FetchWithAssociations(
+	ctx context.Context,
+	client k8s.Client,
+	request reconcile.Request,
+	associated commonv1.Associated,
+) error {
+	span, _ := apm.StartSpan(ctx, "fetch_associations", tracing.SpanTypeApp)
 	defer span.End()
 
-	if err := client.Get(request.NamespacedName, obj); err != nil {
+	if err := client.Get(request.NamespacedName, associated); err != nil {
 		return err
 	}
 
-	assocConf, err := GetAssociationConf(obj)
-	if err != nil {
-		return err
+	for _, association := range associated.GetAssociations() {
+		assocConf, err := GetAssociationConf(association)
+		if err != nil {
+			return err
+		}
+		association.SetAssociationConf(assocConf)
 	}
 
-	obj.SetAssociationConf(assocConf)
 	return nil
+}
+
+func AreConfiguredIfSet(associations []commonv1.Association, r record.EventRecorder) bool {
+	allAssociationsConfigured := true
+	for _, association := range associations {
+		allAssociationsConfigured = allAssociationsConfigured && IsConfiguredIfSet(association, r)
+	}
+	return allAssociationsConfigured
 }
 
 // IsConfiguredIfSet checks if an association is set in the spec and if it has been configured by an association controller.
 // This is used to prevent the deployment of an associated resource while the association is not yet fully configured.
-func IsConfiguredIfSet(associated commonv1.Associated, r record.EventRecorder) bool {
-	esRef := associated.ElasticsearchRef()
-	if (&esRef).IsDefined() && !associated.AssociationConf().IsConfigured() {
-		r.Event(associated, v1.EventTypeWarning, events.EventAssociationError, "Elasticsearch backend is not configured")
-		log.Info("Elasticsearch association not established: skipping associated resource deployment reconciliation",
-			"kind", associated.GetObjectKind().GroupVersionKind().Kind,
-			"namespace", associated.GetNamespace(),
-			"name", associated.GetName(),
+func IsConfiguredIfSet(association commonv1.Association, r record.EventRecorder) bool {
+	ref := association.AssociationRef()
+	if (&ref).IsDefined() && !association.AssociationConf().IsConfigured() {
+		r.Event(
+			association,
+			v1.EventTypeWarning,
+			events.EventAssociationError,
+			"Association backend for "+association.AssociatedType()+" is not configured",
+		)
+		log.Info("Association not established: skipping association resource reconciliation",
+			"kind", association.GetObjectKind().GroupVersionKind().Kind,
+			"namespace", association.GetNamespace(),
+			"name", association.GetName(),
 		)
 		return false
 	}
@@ -63,13 +82,14 @@ func IsConfiguredIfSet(associated commonv1.Associated, r record.EventRecorder) b
 
 // ElasticsearchAuthSettings returns the user and the password to be used by an associated object to authenticate
 // against an Elasticsearch cluster.
-func ElasticsearchAuthSettings(c k8s.Client, associated commonv1.Associated) (username, password string, err error) {
-	assocConf := associated.AssociationConf()
+// This is also used for transitive authentication that relies on Elasticsearch native realm (eg. APMServer -> Kibana)
+func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (username, password string, err error) {
+	assocConf := association.AssociationConf()
 	if !assocConf.AuthIsConfigured() {
 		return "", "", nil
 	}
 
-	secretObjKey := types.NamespacedName{Namespace: associated.GetNamespace(), Name: assocConf.AuthSecretName}
+	secretObjKey := types.NamespacedName{Namespace: association.GetNamespace(), Name: assocConf.AuthSecretName}
 	var secret v1.Secret
 	if err := c.Get(secretObjKey, &secret); err != nil {
 		return "", "", err
@@ -78,23 +98,23 @@ func ElasticsearchAuthSettings(c k8s.Client, associated commonv1.Associated) (us
 }
 
 // GetAssociationConf extracts the association configuration from the given object by reading the annotations.
-func GetAssociationConf(obj runtime.Object) (*commonv1.AssociationConf, error) {
+func GetAssociationConf(association commonv1.Association) (*commonv1.AssociationConf, error) {
 	accessor := meta.NewAccessor()
-	annotations, err := accessor.Annotations(obj)
+	annotations, err := accessor.Annotations(association)
 	if err != nil {
 		return nil, err
 	}
 
-	return extractAssociationConf(annotations)
+	return extractAssociationConf(annotations, association.AssociationConfAnnotationName())
 }
 
-func extractAssociationConf(annotations map[string]string) (*commonv1.AssociationConf, error) {
+func extractAssociationConf(annotations map[string]string, annotationName string) (*commonv1.AssociationConf, error) {
 	if len(annotations) == 0 {
 		return nil, nil
 	}
 
 	var assocConf commonv1.AssociationConf
-	serializedConf, exists := annotations[annotation.AssociationConfAnnotation]
+	serializedConf, exists := annotations[annotationName]
 	if !exists || serializedConf == "" {
 		return nil, nil
 	}
@@ -107,7 +127,7 @@ func extractAssociationConf(annotations map[string]string) (*commonv1.Associatio
 }
 
 // RemoveAssociationConf removes the association configuration annotation.
-func RemoveAssociationConf(client k8s.Client, obj runtime.Object) error {
+func RemoveAssociationConf(client k8s.Client, obj runtime.Object, annotationName string) error {
 	accessor := meta.NewAccessor()
 	annotations, err := accessor.Annotations(obj)
 	if err != nil {
@@ -118,11 +138,11 @@ func RemoveAssociationConf(client k8s.Client, obj runtime.Object) error {
 		return nil
 	}
 
-	if _, exists := annotations[annotation.AssociationConfAnnotation]; !exists {
+	if _, exists := annotations[annotationName]; !exists {
 		return nil
 	}
 
-	delete(annotations, annotation.AssociationConfAnnotation)
+	delete(annotations, annotationName)
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {
 		return err
 	}
@@ -131,7 +151,12 @@ func RemoveAssociationConf(client k8s.Client, obj runtime.Object) error {
 }
 
 // UpdateAssociationConf updates the association configuration annotation.
-func UpdateAssociationConf(client k8s.Client, obj runtime.Object, wantConf *commonv1.AssociationConf) error {
+func UpdateAssociationConf(
+	client k8s.Client,
+	obj runtime.Object,
+	wantConf *commonv1.AssociationConf,
+	annotationName string,
+) error {
 	accessor := meta.NewAccessor()
 	annotations, err := accessor.Annotations(obj)
 	if err != nil {
@@ -148,7 +173,7 @@ func UpdateAssociationConf(client k8s.Client, obj runtime.Object, wantConf *comm
 		annotations = make(map[string]string)
 	}
 
-	annotations[annotation.AssociationConfAnnotation] = unsafeBytesToString(serializedConf)
+	annotations[annotationName] = unsafeBytesToString(serializedConf)
 	if err := accessor.SetAnnotations(obj, annotations); err != nil {
 		return err
 	}

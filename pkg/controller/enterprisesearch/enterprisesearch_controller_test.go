@@ -155,7 +155,7 @@ func TestReconcileEnterpriseSearch_Reconcile_AssociationNotConfigured(t *testing
 	require.Equal(t, reconcile.Result{}, res)
 	// an event should be emitted
 	e := <-fakeRecorder.Events
-	require.Equal(t, "Warning AssociationError Elasticsearch backend is not configured", e)
+	require.Equal(t, "Warning AssociationError Association backend for elasticsearch is not configured", e)
 }
 
 func TestReconcileEnterpriseSearch_Reconcile_InvalidResource(t *testing.T) {

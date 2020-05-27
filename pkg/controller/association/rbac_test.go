@@ -32,7 +32,7 @@ type fakeUnbinder struct {
 	called bool
 }
 
-func (f *fakeUnbinder) Unbind(associated commonv1.Associated) error {
+func (f *fakeUnbinder) Unbind(_ commonv1.Association) error {
 	f.called = true
 	return nil
 }
@@ -49,13 +49,16 @@ var (
 )
 
 func TestCheckAndUnbind(t *testing.T) {
-	apmServer := &apmv1.ApmServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "apm-server-sample",
-			Namespace: "apmserver-ns",
+	apmServer := &apmv1.ApmEsAssociation{
+		ApmServer: &apmv1.ApmServer{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "apm-server-sample",
+				Namespace: "apmserver-ns",
+			},
+			Spec: apmv1.ApmServerSpec{},
 		},
-		Spec: apmv1.ApmServerSpec{},
 	}
+
 	es := &esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "es-sample",
@@ -65,7 +68,7 @@ func TestCheckAndUnbind(t *testing.T) {
 
 	type args struct {
 		accessReviewer rbac.AccessReviewer
-		associated     commonv1.Associated
+		associated     commonv1.Association
 		object         runtime.Object
 		unbinder       fakeUnbinder
 		recorder       *record.FakeRecorder

@@ -86,48 +86,42 @@ func (r *ReconcileApmServer) deploymentParams(
 	podSpec := newPodSpec(as, params)
 	podLabels := NewLabels(as.Name)
 
-	// Build a checksum of the configuration, add it to the pod labels so a change triggers a rolling update
+	// Build a checksum of the configuration, the keystore, and the cert files used by ES and Kibana.
+	// The checksum is added to the pod labels so a change triggers a rolling update. This is done because Apm Server
+	// does not support updating its configuration file or the CA file contents without restarting the process.
 	configChecksum := sha256.New224()
 	_, _ = configChecksum.Write(params.ConfigSecret.Data[ApmCfgSecretKey])
 	if params.keystoreResources != nil {
 		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
 	}
 
-	if as.AssociationConf().CAIsConfigured() {
-		esCASecretName := as.AssociationConf().GetCASecretName()
-		// TODO: use apmServerCa to generate cert for deployment
+	for _, association := range as.GetAssociations() {
+		if association.AssociationConf().CAIsConfigured() {
+			caSecretName := association.AssociationConf().GetCASecretName()
 
-		// TODO: this is a little ugly as it reaches into the ES controller bits
-		esCAVolume := volume.NewSecretVolumeWithMountPath(
-			esCASecretName,
-			"elasticsearch-certs",
-			filepath.Join(ApmBaseDir, CertificatesDir),
-		)
+			var publicCASecret corev1.Secret
+			key := types.NamespacedName{Namespace: as.Namespace, Name: caSecretName}
+			if err := r.Get(key, &publicCASecret); err != nil {
+				return deployment.Params{}, err
+			}
+			if certPem, ok := publicCASecret.Data[certificates.CertFileName]; ok {
+				_, _ = configChecksum.Write(certPem)
+			}
 
-		// build a checksum of the cert file used by ES, which we can use to cause the Deployment to roll the Apm Server
-		// instances in the deployment when the ca file contents change. this is done because Apm Server do not support
-		// updating the CA file contents without restarting the process.
-		certsChecksum := ""
-		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: as.Namespace, Name: esCASecretName}
-		if err := r.Get(key, &esPublicCASecret); err != nil {
-			return deployment.Params{}, err
-		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
-			certsChecksum = fmt.Sprintf("%x", sha256.Sum224(certPem))
-		}
-		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
-		// changes, which will trigger a rolling update)
-		podLabels[esCAChecksumLabelName] = certsChecksum
+			caVolume := volume.NewSecretVolumeWithMountPath(
+				caSecretName,
+				association.AssociatedType()+"-certs",
+				filepath.Join(ApmBaseDir, certificatesDir(association.AssociatedType())),
+			)
+			podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, caVolume.Volume())
 
-		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, esCAVolume.Volume())
+			for i := range podSpec.Spec.InitContainers {
+				podSpec.Spec.InitContainers[i].VolumeMounts = append(podSpec.Spec.InitContainers[i].VolumeMounts, caVolume.VolumeMount())
+			}
 
-		for i := range podSpec.Spec.InitContainers {
-			podSpec.Spec.InitContainers[i].VolumeMounts = append(podSpec.Spec.InitContainers[i].VolumeMounts, esCAVolume.VolumeMount())
-		}
-
-		for i := range podSpec.Spec.Containers {
-			podSpec.Spec.Containers[i].VolumeMounts = append(podSpec.Spec.Containers[i].VolumeMounts, esCAVolume.VolumeMount())
+			for i := range podSpec.Spec.Containers {
+				podSpec.Spec.Containers[i].VolumeMounts = append(podSpec.Spec.Containers[i].VolumeMounts, caVolume.VolumeMount())
+			}
 		}
 	}
 

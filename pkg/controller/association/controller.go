@@ -50,8 +50,8 @@ func AddAssociationController(
 }
 
 func addWatches(c controller.Controller, r *Reconciler) error {
-	// Watch the associated resource
-	if err := c.Watch(&source.Kind{Type: r.AssociatedObjTemplate()}, &handler.EnqueueRequestForObject{}); err != nil {
+	// Watch the associated resources
+	if err := c.Watch(&source.Kind{Type: r.AssociationObjTemplate().Associated()}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
@@ -67,7 +67,7 @@ func addWatches(c controller.Controller, r *Reconciler) error {
 
 	// Watch Secrets owned by the associated resource
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		OwnerType:    r.AssociatedObjTemplate(),
+		OwnerType:    r.AssociationObjTemplate().Associated(),
 		IsController: true,
 	}); err != nil {
 		return err
