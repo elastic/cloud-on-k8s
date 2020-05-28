@@ -350,6 +350,10 @@ func execute() {
 		log.Error(err, "unable to create controller", "controller", "apm-es-association")
 		os.Exit(1)
 	}
+	if err = associationctl.AddApmKibana(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "apm-kibana-association")
+		os.Exit(1)
+	}
 	if err = associationctl.AddKibanaES(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "kibana-es-association")
 		os.Exit(1)
@@ -409,7 +413,7 @@ func garbageCollectUsers(cfg *rest.Config, managedNamespaces []string) {
 		os.Exit(1)
 	}
 	err = ugc.
-		For(&apmv1.ApmServerList{}, associationctl.ApmESAssociationLabelNamespace, associationctl.ApmESAssociationLabelName).
+		For(&apmv1.ApmServerList{}, associationctl.ApmAssociationLabelNamespace, associationctl.ApmAssociationLabelName).
 		For(&kbv1.KibanaList{}, associationctl.KibanaESAssociationLabelNamespace, associationctl.KibanaESAssociationLabelName).
 		For(&entv1beta1.EnterpriseSearchList{}, associationctl.EntESAssociationLabelNamespace, associationctl.EntESAssociationLabelName).
 		DoGarbageCollection()

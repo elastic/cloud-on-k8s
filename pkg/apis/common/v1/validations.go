@@ -62,7 +62,7 @@ func CheckNameLength(obj runtime.Object) field.ErrorList {
 
 // CheckSupportedStackVersion checks that the given version is a valid Stack version supported by ECK.
 func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) field.ErrorList {
-	v, err := parseVersion(ver)
+	v, err := ParseVersion(ver)
 	if err != nil {
 		return err
 	}
@@ -76,12 +76,12 @@ func CheckSupportedStackVersion(ver string, supported version.MinMaxVersion) fie
 
 // CheckNoDowngrade checks current and previous versions to ensure no downgrades are happening.
 func CheckNoDowngrade(prev, curr string) field.ErrorList {
-	prevVer, err := parseVersion(prev)
+	prevVer, err := ParseVersion(prev)
 	if err != nil {
 		return err
 	}
 
-	currVer, err := parseVersion(curr)
+	currVer, err := ParseVersion(curr)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func CheckNoDowngrade(prev, curr string) field.ErrorList {
 	return nil
 }
 
-func parseVersion(ver string) (*version.Version, field.ErrorList) {
+func ParseVersion(ver string) (*version.Version, field.ErrorList) {
 	v, err := version.Parse(ver)
 	if err != nil {
 		return nil, field.ErrorList{field.Invalid(field.NewPath("spec").Child("version"), ver, fmt.Sprintf("Invalid version: %v", err))}

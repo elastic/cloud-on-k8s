@@ -56,6 +56,7 @@ func TestSmoke(t *testing.T) {
 		WithSuffix(randSuffix).
 		WithNamespace(ns).
 		WithElasticsearchRef(esBuilder.Ref()).
+		WithKibanaRef(kbBuilder.Ref()).
 		WithConfig(map[string]interface{}{
 			"apm-server.ilm.enabled": false,
 		}).

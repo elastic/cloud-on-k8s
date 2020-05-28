@@ -44,8 +44,7 @@ import (
 
 const (
 	controllerName          = "apmserver-controller"
-	esCAChecksumLabelName   = "apm.k8s.elastic.co/es-ca-file-checksum"
-	configChecksumLabelName = "apm.k8s.elastic.co/config-file-checksum"
+	configChecksumLabelName = "apm.k8s.elastic.co/config-files-checksum"
 
 	// ApmBaseDir is the base directory of the APM server
 	ApmBaseDir = "/usr/share/apm-server"
@@ -160,7 +159,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	defer tracing.EndTransaction(tx)
 
 	var as apmv1.ApmServer
-	if err := association.FetchWithAssociation(ctx, r.Client, request, &as); err != nil {
+	if err := association.FetchWithAssociations(ctx, r.Client, request, &as); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
@@ -195,7 +194,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
 	}
 
-	if !association.IsConfiguredIfSet(&as, r.recorder) {
+	if !association.AreConfiguredIfSet(as.GetAssociations(), r.recorder) {
 		return reconcile.Result{}, nil
 	}
 
