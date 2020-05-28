@@ -62,6 +62,7 @@ func (r ResourceReporter) Report() error {
 		return err
 	}
 
+	licensingInfo.ReportAsMetrics()
 	return r.licensingResolver.Save(licensingInfo)
 }
 

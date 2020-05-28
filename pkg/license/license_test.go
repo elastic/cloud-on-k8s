@@ -12,36 +12,56 @@ import (
 )
 
 func TestToMap(t *testing.T) {
-	i := LicensingInfo{}
-	data, err := i.toMap()
-	assert.NoError(t, err)
-	assert.Equal(t, 4, len(data))
-	assert.Equal(t, "", data["eck_license_level"])
+	t.Run("empty_object", func(t *testing.T) {
+		i := LicensingInfo{}
+		have := i.toMap()
+		want := map[string]string{
+			"timestamp":                 "",
+			"eck_license_level":         "",
+			"total_managed_memory":      "0.00GB",
+			"enterprise_resource_units": "0",
+		}
+		assert.Equal(t, want, have)
+	})
 
-	i = LicensingInfo{EckLicenseLevel: "basic", MaxEnterpriseResourceUnits: "10"}
-	data, err = i.toMap()
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(data))
-	assert.Equal(t, "basic", data["eck_license_level"])
+	t.Run("complete_object", func(t *testing.T) {
+		i := LicensingInfo{
+			Timestamp:                  "2020-05-28T11:15:31Z",
+			EckLicenseLevel:            "enterprise",
+			TotalManagedMemory:         72.54578,
+			EnterpriseResourceUnits:    5,
+			MaxEnterpriseResourceUnits: 10,
+		}
+
+		have := i.toMap()
+		want := map[string]string{
+			"timestamp":                     "2020-05-28T11:15:31Z",
+			"eck_license_level":             "enterprise",
+			"total_managed_memory":          "72.55GB",
+			"enterprise_resource_units":     "5",
+			"max_enterprise_resource_units": "10",
+		}
+		assert.Equal(t, want, have)
+	})
 }
 
 func TestMaxEnterpriseResourceUnits(t *testing.T) {
 	r := LicensingResolver{}
 
 	maxERUs := r.getMaxEnterpriseResourceUnits(nil)
-	assert.Equal(t, 0, maxERUs)
+	assert.EqualValues(t, 0, maxERUs)
 
 	maxERUs = r.getMaxEnterpriseResourceUnits(&commonlicense.EnterpriseLicense{
 		License: commonlicense.LicenseSpec{
 			MaxResourceUnits: 42,
 		},
 	})
-	assert.Equal(t, 42, maxERUs)
+	assert.EqualValues(t, 42, maxERUs)
 
 	maxERUs = r.getMaxEnterpriseResourceUnits(&commonlicense.EnterpriseLicense{
 		License: commonlicense.LicenseSpec{
 			MaxInstances: 10,
 		},
 	})
-	assert.Equal(t, 5, maxERUs)
+	assert.EqualValues(t, 5, maxERUs)
 }

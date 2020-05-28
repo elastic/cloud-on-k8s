@@ -5,7 +5,6 @@
 package license
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
@@ -34,11 +33,37 @@ const (
 // LicensingInfo represents information about the operator license including the total memory of all Elastic managed
 // components
 type LicensingInfo struct {
-	Timestamp                  string `json:"timestamp"`
-	EckLicenseLevel            string `json:"eck_license_level"`
-	TotalManagedMemory         string `json:"total_managed_memory"`
-	MaxEnterpriseResourceUnits string `json:"max_enterprise_resource_units,omitempty"`
-	EnterpriseResourceUnits    string `json:"enterprise_resource_units"`
+	Timestamp                  string
+	EckLicenseLevel            string
+	TotalManagedMemory         float64
+	MaxEnterpriseResourceUnits int64
+	EnterpriseResourceUnits    int64
+}
+
+// toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
+func (li LicensingInfo) toMap() map[string]string {
+	m := map[string]string{
+		"timestamp":                 li.Timestamp,
+		"eck_license_level":         li.EckLicenseLevel,
+		"total_managed_memory":      fmt.Sprintf("%0.2fGB", li.TotalManagedMemory),
+		"enterprise_resource_units": strconv.FormatInt(li.EnterpriseResourceUnits, 10),
+	}
+
+	if li.MaxEnterpriseResourceUnits > 0 {
+		m["max_enterprise_resource_units"] = strconv.FormatInt(li.MaxEnterpriseResourceUnits, 10)
+	}
+
+	return m
+}
+
+func (li LicensingInfo) ReportAsMetrics() {
+	labels := prometheus.Labels{metrics.LicenseLevelLabel: li.EckLicenseLevel}
+	metrics.LicensingTotalMemoryGauge.With(labels).Set(li.TotalManagedMemory)
+	metrics.LicensingTotalERUGauge.With(labels).Set(float64(li.EnterpriseResourceUnits))
+
+	if li.MaxEnterpriseResourceUnits > 0 {
+		metrics.LicensingMaxERUGauge.With(labels).Set(float64(li.MaxEnterpriseResourceUnits))
+	}
 }
 
 // LicensingResolver resolves the licensing information of the operator
@@ -49,31 +74,21 @@ type LicensingResolver struct {
 
 // ToInfo returns licensing information given the total memory of all Elastic managed components
 func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo, error) {
-	ERUs := inEnterpriseResourceUnits(totalMemory)
-	memoryInGB := inGB(totalMemory)
 	operatorLicense, err := r.getOperatorLicense()
 	if err != nil {
 		return LicensingInfo{}, err
 	}
 
-	licenseLevel := r.getOperatorLicenseLevel(operatorLicense)
-	maxERUs := r.getMaxEnterpriseResourceUnits(operatorLicense)
-
-	labels := prometheus.Labels{metrics.LicenseLevelLabel: licenseLevel}
-	metrics.LicensingTotalMemoryGauge.With(labels).Set(memoryInGB)
-	metrics.LicensingTotalERUGauge.With(labels).Set(float64(ERUs))
-
 	licensingInfo := LicensingInfo{
 		Timestamp:               time.Now().Format(time.RFC3339),
-		EckLicenseLevel:         licenseLevel,
-		TotalManagedMemory:      fmt.Sprintf("%0.2fGB", memoryInGB),
-		EnterpriseResourceUnits: strconv.FormatInt(ERUs, 10),
+		EckLicenseLevel:         r.getOperatorLicenseLevel(operatorLicense),
+		TotalManagedMemory:      inGB(totalMemory),
+		EnterpriseResourceUnits: inEnterpriseResourceUnits(totalMemory),
 	}
 
 	// include the max ERUs only for a non trial/basic license
-	if maxERUs > 0 {
-		licensingInfo.MaxEnterpriseResourceUnits = strconv.Itoa(maxERUs)
-		metrics.LicensingMaxERUGauge.With(labels).Set(float64(maxERUs))
+	if maxERUs := r.getMaxEnterpriseResourceUnits(operatorLicense); maxERUs > 0 {
+		licensingInfo.MaxEnterpriseResourceUnits = maxERUs
 	}
 
 	return licensingInfo, nil
@@ -82,11 +97,6 @@ func (r LicensingResolver) ToInfo(totalMemory resource.Quantity) (LicensingInfo,
 // Save updates or creates licensing information in a config map
 // This relies on UnconditionalUpdates being supported configmaps and may change in k8s v2: https://github.com/kubernetes/kubernetes/issues/21330
 func (r LicensingResolver) Save(info LicensingInfo) error {
-	data, err := info.toMap()
-	if err != nil {
-		return err
-	}
-
 	log.V(1).Info("Saving", "namespace", r.operatorNs, "configmap_name", licensingCfgMapName, "license_info", info)
 	cm := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
@@ -96,12 +106,14 @@ func (r LicensingResolver) Save(info LicensingInfo) error {
 				common.TypeLabelName: Type,
 			},
 		},
-		Data: data,
+		Data: info.toMap(),
 	}
-	err = r.client.Update(&cm)
+
+	err := r.client.Update(&cm)
 	if apierrors.IsNotFound(err) {
 		return r.client.Create(&cm)
 	}
+
 	return err
 }
 
@@ -123,15 +135,17 @@ func (r LicensingResolver) getOperatorLicenseLevel(lic *license.EnterpriseLicens
 // getMaxEnterpriseResourceUnits returns the maximum of enterprise resources units that is allowed for a given license.
 // For old style enterprise orchestration licenses which only have max_instances, the maximum of enterprise resources
 // units is derived by dividing max_instances by 2.
-func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.EnterpriseLicense) int {
+func (r LicensingResolver) getMaxEnterpriseResourceUnits(lic *license.EnterpriseLicense) int64 {
 	if lic == nil {
 		return 0
 	}
+
 	maxERUs := lic.License.MaxResourceUnits
 	if maxERUs == 0 {
 		maxERUs = lic.License.MaxInstances / 2
 	}
-	return maxERUs
+
+	return int64(maxERUs)
 }
 
 // inGB converts a resource.Quantity in gigabytes
@@ -146,18 +160,4 @@ func inEnterpriseResourceUnits(q resource.Quantity) int64 {
 	eru := float64(q.Value()) / 64000000000
 	// round to the nearest superior integer
 	return int64(math.Ceil(eru))
-}
-
-// toMap transforms a LicensingInfo to a map of string, in order to fill in the data of a config map
-func (i LicensingInfo) toMap() (map[string]string, error) {
-	bytes, err := json.Marshal(&i)
-	if err != nil {
-		return nil, err
-	}
-	var m map[string]string
-	err = json.Unmarshal(bytes, &m)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
 }
