@@ -12,13 +12,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
+REGISTRY_ENV="$SCRIPT_DIR/../.registry.env"
 retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
 
 # source variables if present
-if [[ -f .registry.env ]]; then
+if [[ -f ${REGISTRY_ENV} ]]; then
     # shellcheck disable=SC2046
-    export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" .registry.env)
+    export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" "${REGISTRY_ENV}")
 fi
 
 docker-login() {
