@@ -22,17 +22,17 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 			-o elastic-operator github.com/elastic/cloud-on-k8s/cmd
 
 # Copy the operator binary into a lighter image
-FROM centos:8
+FROM gcr.io/distroless/static:nonroot
 
-RUN yum update --setopt=tsflags=nodocs -y && yum clean all
+# RUN yum update --setopt=tsflags=nodocs -y && yum clean all
 
-RUN set -x \
-    && groupadd --system --gid 101 elastic \
-    && useradd --system -g elastic -m --home /eck -c "eck user" --shell /bin/false --uid 101 elastic \
-    && chmod 755 /eck
+# RUN set -x \
+#     && groupadd --system --gid 101 elastic \
+#     && useradd --system -g elastic -m --home /eck -c "eck user" --shell /bin/false --uid 101 elastic \
+#     && chmod 755 /eck
 
-WORKDIR /eck
-USER 101
+# WORKDIR /eck
+# USER 101
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/elastic-operator .
 ENTRYPOINT ["./elastic-operator"]
