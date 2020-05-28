@@ -13,6 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REGISTRY_ENV="$SCRIPT_DIR/../.registry.env"
+
 retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
 
 # source variables if present
