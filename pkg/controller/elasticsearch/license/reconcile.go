@@ -18,8 +18,7 @@ func Reconcile(
 	c k8s.Client,
 	esCluster esv1.Elasticsearch,
 	clusterClient esclient.Client,
-	current *esclient.License,
 ) error {
 	clusterName := k8s.ExtractNamespacedName(&esCluster)
-	return applyLinkedLicense(ctx, c, clusterName, current, clusterClient)
+	return applyLinkedLicense(ctx, c, clusterName, clusterClient)
 }

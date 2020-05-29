@@ -31,15 +31,23 @@ func applyLinkedLicense(
 	ctx context.Context,
 	c k8s.Client,
 	esCluster types.NamespacedName,
-	current *esclient.License,
 	updater esclient.LicenseClient,
 ) error {
-	var license corev1.Secret
+	// get the current license
+	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
+	defer cancel()
+	current, err := updater.GetLicense(ctx)
+	if err != nil {
+		return err
+	}
+
+	// get the expected license
 	// the underlying assumption here is that either a user or a
 	// license controller has created a cluster license in the
 	// namespace of this cluster following the cluster-license naming
 	// convention
-	err := c.Get(
+	var license corev1.Secret
+	err = c.Get(
 		types.NamespacedName{
 			Namespace: esCluster.Namespace,
 			Name:      esv1.LicenseSecretName(esCluster.Name),
@@ -48,7 +56,7 @@ func applyLinkedLicense(
 	)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			if isTrial(current) {
+			if isTrial(&current) {
 				// this is the case if the user has started a trial on the ES cluster level
 				// e.g. from Kibana when trying to access a commercial feature.
 				// While this is not a supported use case we tolerate it to avoid a bad user
@@ -71,7 +79,7 @@ func applyLinkedLicense(
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updateLicense(ctx, esCluster, updater, current, desired)
+	return updateLicense(ctx, esCluster, updater, &current, desired)
 }
 
 func startBasic(ctx context.Context, updater esclient.LicenseClient) error {
