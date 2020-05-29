@@ -54,23 +54,26 @@ func applyLinkedLicense(
 		},
 		&license,
 	)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			if isTrial(current) {
-				// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
-				// This can be the case if:
-				// - an ECK trial was started previously, then stopped (secret removed)
-				// - the user manually started a trial at the stack level (eg. by clicking a button in Kibana when
-				// trying to access a commercial feature). While this is not a supported use case,
-				// we tolerate it to avoid a bad user experience because trials can only be started once.
-				log.V(1).Info("Preserving existing stack-level trial license",
-					"namespace", esCluster.Namespace, "es_name", esCluster.Name)
-				return nil
-			}
-			// no license linked to this cluster. Revert to basic.
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err != nil && apierrors.IsNotFound(err) {
+		// no license expected
+		if isTrial(current) {
+			// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
+			// This can be the case if:
+			// - an ECK trial was started previously, then stopped (secret removed)
+			// - the user manually started a trial at the stack level (eg. by clicking a button in Kibana when
+			// trying to access a commercial feature). While this is not a supported use case,
+			// we tolerate it to avoid a bad user experience because trials can only be started once.
+			log.V(1).Info("Preserving existing stack-level trial license",
+				"namespace", esCluster.Namespace, "es_name", esCluster.Name)
+			return nil
+		}
+		// no license linked to this cluster. Revert to basic if not already the case.
+		if current.Type != string(esclient.ElasticsearchLicenseTypeBasic) {
 			return startBasic(ctx, updater)
 		}
-		return err
 	}
 
 	bytes, err := commonlicense.FetchLicenseData(license.Data)
