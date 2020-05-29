@@ -1838,15 +1838,15 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/testify
-Version : v1.5.1
-Time    : 2020-02-19T20:56:11Z
+Version : v1.6.0
+Time    : 2020-05-26T22:39:56Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.5.1/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.6.0/LICENSE:
 
 MIT License
 
-Copyright (c) 2012-2018 Mat Ryer and Tyler Bunnell
+Copyright (c) 2012-2020 Mat Ryer, Tyler Bunnell and contributors.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
