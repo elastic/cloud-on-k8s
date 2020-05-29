@@ -61,6 +61,8 @@ func applyLinkedLicense(
 				// e.g. from Kibana when trying to access a commercial feature.
 				// While this is not a supported use case we tolerate it to avoid a bad user
 				// experience because trials can only be started once on the ES cluster level
+				log.V(1).Info("Preserving existing stack-level trial license",
+					"namespace", esCluster.Namespace, "es_name", esCluster.Name)
 				return nil
 			}
 			// no license linked to this cluster. Revert to basic.
