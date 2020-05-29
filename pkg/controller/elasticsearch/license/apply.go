@@ -23,8 +23,8 @@ import (
 var log = logf.Log.WithName("elasticsearch-controller")
 
 // isTrial returns true if an Elasticsearch license is of the trial type
-func isTrial(l *esclient.License) bool {
-	return l != nil && l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
+func isTrial(l esclient.License) bool {
+	return l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
 }
 
 func applyLinkedLicense(
@@ -56,7 +56,7 @@ func applyLinkedLicense(
 	)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			if isTrial(&current) {
+			if isTrial(current) {
 				// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
 				// This can be the case if:
 				// - an ECK trial was started previously, then stopped (secret removed)
@@ -83,7 +83,7 @@ func applyLinkedLicense(
 	if err != nil {
 		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return updateLicense(ctx, esCluster, updater, &current, desired)
+	return updateLicense(ctx, esCluster, updater, current, desired)
 }
 
 func startBasic(ctx context.Context, updater esclient.LicenseClient) error {
@@ -102,10 +102,10 @@ func updateLicense(
 	ctx context.Context,
 	esCluster types.NamespacedName,
 	updater esclient.LicenseClient,
-	current *esclient.License,
+	current esclient.License,
 	desired esclient.License,
 ) error {
-	if current != nil && (current.UID == desired.UID || (isTrial(current) && current.Type == desired.Type)) {
+	if current.UID == desired.UID || (isTrial(current) && current.Type == desired.Type) {
 		return nil // we are done already applied
 	}
 	request := esclient.LicenseUpdateRequest{
@@ -116,7 +116,7 @@ func updateLicense(
 	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 
-	if isTrial(&desired) {
+	if isTrial(desired) {
 		return pkgerrors.Wrap(startTrial(ctx, updater, esCluster), "failed to start trial")
 	}
 
