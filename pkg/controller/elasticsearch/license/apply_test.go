@@ -26,8 +26,12 @@ import (
 )
 
 func Test_updateLicense(t *testing.T) {
+	enterpriseLicense := esclient.License{
+		UID:  "enterpise-license",
+		Type: string(esclient.ElasticsearchLicenseTypeEnterprise),
+	}
 	type args struct {
-		current *esclient.License
+		current esclient.License
 		desired esclient.License
 	}
 	tests := []struct {
@@ -40,8 +44,7 @@ func Test_updateLicense(t *testing.T) {
 			name:    "error: HTTP error",
 			wantErr: true,
 			args: args{
-				current: nil,
-				desired: esclient.License{},
+				desired: enterpriseLicense,
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(400, req, "")
@@ -51,8 +54,7 @@ func Test_updateLicense(t *testing.T) {
 			name:    "error: ES error",
 			wantErr: true,
 			args: args{
-				current: nil,
-				desired: esclient.License{},
+				desired: enterpriseLicense,
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(
@@ -65,8 +67,7 @@ func Test_updateLicense(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				current: nil,
-				desired: esclient.License{},
+				desired: enterpriseLicense,
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(
@@ -79,7 +80,6 @@ func Test_updateLicense(t *testing.T) {
 		{
 			name: "start a trial",
 			args: args{
-				current: nil,
 				desired: esclient.License{
 					Type: string(esclient.ElasticsearchLicenseTypeTrial),
 				},
@@ -95,7 +95,7 @@ func Test_updateLicense(t *testing.T) {
 		{
 			name: "short-circuit: already up to date",
 			args: args{
-				current: &esclient.License{
+				current: esclient.License{
 					UID: "this-is-a-uid",
 				},
 				desired: esclient.License{
@@ -109,7 +109,6 @@ func Test_updateLicense(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			c := esclient.NewMockClient(version.MustParse("6.8.0"), tt.reqFn)
 			if err := updateLicense(context.Background(), types.NamespacedName{}, c, tt.args.current, tt.args.desired); (err != nil) != tt.wantErr {
 				t.Errorf("updateLicense() error = %v, wantErr %v", err, tt.wantErr)
@@ -126,7 +125,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 	tests := []struct {
 		name             string
 		initialObjs      []runtime.Object
-		currentLicense   *esclient.License
+		currentLicense   esclient.License
 		errors           map[client.ObjectKey]error
 		wantErr          bool
 		clientAssertions func(updater fakeLicenseUpdater)
@@ -150,16 +149,25 @@ func Test_applyLinkedLicense(t *testing.T) {
 			},
 		},
 		{
-			name:    "no error: no license found",
-			wantErr: false,
+			name:           "no error: no license found but stack has an enterprise license",
+			wantErr:        false,
+			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeEnterprise)},
 			clientAssertions: func(updater fakeLicenseUpdater) {
-				require.True(t, updater.startBasicCalled, "should call start_basic")
+				require.True(t, updater.startBasicCalled, "should call start_basic to remove the license")
+			},
+		},
+		{
+			name:           "no error: no license found, stack already in basic license",
+			wantErr:        false,
+			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeBasic)},
+			clientAssertions: func(updater fakeLicenseUpdater) {
+				require.False(t, updater.startBasicCalled, "should not call start_basic if already basic")
 			},
 		},
 		{
 			name:           "no error: no license found but tolerate a cluster level trial",
 			wantErr:        false,
-			currentLicense: &esclient.License{Type: string(esclient.ElasticsearchLicenseTypeTrial)},
+			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeTrial)},
 			clientAssertions: func(updater fakeLicenseUpdater) {
 				require.False(t, updater.startBasicCalled, "should not call start_basic")
 			},
@@ -208,12 +216,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 				Client: k8s.WrappedFakeClient(tt.initialObjs...),
 				errors: tt.errors,
 			}
-			updater := fakeLicenseUpdater{}
+			updater := fakeLicenseUpdater{license: tt.currentLicense}
 			if err := applyLinkedLicense(
 				context.Background(),
 				c,
 				clusterName,
-				tt.currentLicense,
 				&updater,
 			); (err != nil) != tt.wantErr {
 				t.Errorf("applyLinkedLicense() error = %v, wantErr %v", err, tt.wantErr)
