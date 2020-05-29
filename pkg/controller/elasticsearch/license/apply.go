@@ -57,10 +57,12 @@ func applyLinkedLicense(
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			if isTrial(&current) {
-				// this is the case if the user has started a trial on the ES cluster level
-				// e.g. from Kibana when trying to access a commercial feature.
-				// While this is not a supported use case we tolerate it to avoid a bad user
-				// experience because trials can only be started once on the ES cluster level
+				// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
+				// This can be the case if:
+				// - an ECK trial was started previously, then stopped (secret removed)
+				// - the user manually started a trial at the stack level (eg. by clicking a button in Kibana when
+				// trying to access a commercial feature). While this is not a supported use case,
+				// we tolerate it to avoid a bad user experience because trials can only be started once.
 				log.V(1).Info("Preserving existing stack-level trial license",
 					"namespace", esCluster.Namespace, "es_name", esCluster.Name)
 				return nil
