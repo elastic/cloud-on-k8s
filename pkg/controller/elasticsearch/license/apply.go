@@ -27,6 +27,11 @@ func isTrial(l esclient.License) bool {
 	return l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
 }
 
+// isBasic returns true if an Elasticsearch license is of the basic type
+func isBasic(l esclient.License) bool {
+	return l.Type == string(esclient.ElasticsearchLicenseTypeBasic)
+}
+
 func applyLinkedLicense(
 	ctx context.Context,
 	c k8s.Client,
@@ -58,8 +63,12 @@ func applyLinkedLicense(
 		return err
 	}
 	if err != nil && apierrors.IsNotFound(err) {
-		// no license expected
-		if isTrial(current) {
+		// no license expected, let's look at the current cluster license
+		switch {
+		case isBasic(current):
+			// nothing to do
+			return nil
+		case isTrial(current):
 			// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
 			// This can be the case if:
 			// - an ECK trial was started previously, then stopped (secret removed)
@@ -69,9 +78,8 @@ func applyLinkedLicense(
 			log.V(1).Info("Preserving existing stack-level trial license",
 				"namespace", esCluster.Namespace, "es_name", esCluster.Name)
 			return nil
-		}
-		// no license linked to this cluster. Revert to basic if not already the case.
-		if current.Type != string(esclient.ElasticsearchLicenseTypeBasic) {
+		default:
+			// revert the current license to basic
 			return startBasic(ctx, updater)
 		}
 	}

@@ -149,10 +149,19 @@ func Test_applyLinkedLicense(t *testing.T) {
 			},
 		},
 		{
-			name:    "no error: no license found",
-			wantErr: false,
+			name:           "no error: no license found but stack has an enterprise license",
+			wantErr:        false,
+			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeEnterprise)},
 			clientAssertions: func(updater fakeLicenseUpdater) {
-				require.True(t, updater.startBasicCalled, "should call start_basic")
+				require.True(t, updater.startBasicCalled, "should call start_basic to remove the license")
+			},
+		},
+		{
+			name:           "no error: no license found, stack already in basic license",
+			wantErr:        false,
+			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeBasic)},
+			clientAssertions: func(updater fakeLicenseUpdater) {
+				require.False(t, updater.startBasicCalled, "should not call start_basic if already basic")
 			},
 		},
 		{
