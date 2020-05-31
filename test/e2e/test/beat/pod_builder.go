@@ -49,6 +49,7 @@ func NewPodBuilder(name string) PodBuilder {
 						},
 					},
 				},
+				SecurityContext: test.DefaultSecurityContext(),
 			},
 		},
 	}
