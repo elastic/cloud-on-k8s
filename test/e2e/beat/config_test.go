@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/metricbeat"
 	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -41,7 +42,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 
 	testPodBuilder := beat.NewPodBuilder(name)
 
-	mbBuilder := beat.NewBuilder(name, filebeat.Type).
+	mbBuilder := beat.NewBuilder(name, metricbeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(beat.HasEventFromPod(testPodBuilder.Pod.Name))
 
