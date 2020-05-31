@@ -67,7 +67,7 @@ rules:
   verbs:
   - bind
   resourceNames:
-  - elastic-operator-beat
+  - elastic-operator-beat-autodiscover
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
@@ -309,11 +309,11 @@ spec:
   selector:
     control-plane: {{ .Operator.Name }}
 ---
-# autodiscover + psp permissions
+# permissions needed for Beat cluster-wide autodiscover feature
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: elastic-operator-beat
+  name: elastic-operator-beat-autodiscover
 rules:
 - apiGroups: [""] # "" indicates the core API group
   resources:
@@ -323,6 +323,13 @@ rules:
   - get
   - watch
   - list
+---
+# permission to use PSP for Beat
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-operator-beat-psp
+rules:
 - apiGroups:
   - policy
   resources:

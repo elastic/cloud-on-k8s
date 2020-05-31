@@ -27,6 +27,7 @@ rules:
       - podsecuritypolicies
     resourceNames:
       - elastic.restricted
+      - elastic.beat.restricted
     verbs:
       - use
   - apiGroups:

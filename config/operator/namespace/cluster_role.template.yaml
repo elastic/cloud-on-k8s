@@ -33,6 +33,7 @@ rules:
   - secrets
   - services
   - configmaps
+  - serviceaccounts
   verbs:
   - get
   - list
@@ -41,6 +42,26 @@ rules:
   - update
   - patch
   - delete
+- apiGroups:
+  - "rbac.authorization.k8s.io"
+  resources:
+  - clusterrolebindings
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  verbs:
+  - bind
+  resourceNames:
+  - elastic-operator-beat-autodiscover
 - apiGroups:
   - apps
   resources:
@@ -143,3 +164,18 @@ rules:
   - update
   - patch
   - delete
+---
+# permissions needed for Beat cluster-wide autodiscover feature
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-operator-beat-autodiscover
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  verbs:
+  - get
+  - watch
+  - list
