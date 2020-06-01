@@ -175,10 +175,10 @@ func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) 
 		return results.WithError(err)
 	}
 
-	driverResults := newDriver(ctx, r.Client, beat).Reconcile()
-	results.WithResults(driverResults.Results)
+	driverStatus, results := newDriver(ctx, r.Client, beat).Reconcile()
+	results.WithResults(results)
 
-	err := r.updateStatus(driverResults.Status, beat)
+	err := r.updateStatus(driverStatus, beat)
 	results.WithError(err)
 	if err != nil && apierrors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status", "namespace", beat.Namespace, "beat_name", beat.Name)

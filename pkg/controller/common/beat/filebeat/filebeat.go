@@ -8,6 +8,7 @@ import (
 	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 )
 
@@ -41,7 +42,7 @@ func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
 	return &Driver{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() commonbeat.DriverResults {
+func (d *Driver) Reconcile() (*commonbeat.DriverStatus, *reconciler.Results) {
 	f := func(builder *defaults.PodTemplateBuilder) {
 		containersVolume := volume.NewReadOnlyHostVolume(HostContainersVolumeName, HostContainersPath, HostContainersMountPath)
 		containersLogsVolume := volume.NewReadOnlyHostVolume(HostContainersLogsVolumeName, HostContainersLogsPath, HostContainersLogsMountPath)

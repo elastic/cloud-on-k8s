@@ -44,7 +44,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 
 	mbBuilder := beat.NewBuilder(name, metricbeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithESValidations(beat.HasEventFromPod(testPodBuilder.Pod.Name))
+		WithESValidations(beat.HasEventFromBeat(metricbeat.Type))
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
 }

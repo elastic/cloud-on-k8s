@@ -5,62 +5,51 @@
 package beat
 
 import (
-	"fmt"
 	"hash"
 	"path"
 
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
-	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-var (
-	defaultResources = corev1.ResourceRequirements{
-		Limits: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("200Mi"),
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-		},
-		Requests: map[corev1.ResourceName]resource.Quantity{
-			corev1.ResourceMemory: resource.MustParse("200Mi"),
-			corev1.ResourceCPU:    resource.MustParse("100m"),
-		},
-	}
-)
-
 // setOutput will set the output section in Beat config according to the association configuration.
 func setOutput(cfg *settings.CanonicalConfig, client k8s.Client, associated commonv1.Associated) error {
-	if associated.AssociationConf().IsConfigured() {
-		username, password, err := association.ElasticsearchAuthSettings(client, associated)
-		if err != nil {
-			return err
-		}
+	if !associated.AssociationConf().IsConfigured() {
+		return nil
+	}
 
+	username, password, err := association.ElasticsearchAuthSettings(client, associated)
+	if err != nil {
+		return err
+	}
+
+	esOutput := settings.MustCanonicalConfig(
+		map[string]interface{}{
+			"output.elasticsearch": map[string]interface{}{
+				"hosts":    []string{associated.AssociationConf().GetURL()},
+				"username": username,
+				"password": password,
+			},
+		})
+
+	if err := cfg.MergeWith(esOutput); err != nil {
+		return err
+	}
+
+	if associated.AssociationConf().GetCACertProvided() {
 		if err := cfg.MergeWith(settings.MustCanonicalConfig(
 			map[string]interface{}{
-				"output.elasticsearch": map[string]interface{}{
-					"hosts":    []string{associated.AssociationConf().GetURL()},
-					"username": username,
-					"password": password,
-				},
+				"output.elasticsearch.ssl.certificate_authorities": path.Join(CAMountPath, CAFileName),
 			})); err != nil {
 			return err
-		}
-
-		if associated.AssociationConf().GetCACertProvided() {
-			if err := cfg.MergeWith(settings.MustCanonicalConfig(
-				map[string]interface{}{
-					"output.elasticsearch.ssl.certificate_authorities": path.Join(CAMountPath, CAFileName),
-				})); err != nil {
-				return err
-			}
 		}
 	}
 
@@ -68,16 +57,13 @@ func setOutput(cfg *settings.CanonicalConfig, client k8s.Client, associated comm
 }
 
 func buildBeatConfig(
+	log logr.Logger,
 	client k8s.Client,
 	associated commonv1.Associated,
 	defaultConfig *settings.CanonicalConfig,
 	userConfig *commonv1.Config,
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
-
-	if defaultConfig == nil && userConfig == nil {
-		return nil, fmt.Errorf("both default and user configs are nil")
-	}
 
 	if err := setOutput(cfg, client, associated); err != nil {
 		return nil, err
@@ -97,6 +83,7 @@ func buildBeatConfig(
 		if err = cfg.MergeWith(userCfg); err != nil {
 			return nil, err
 		}
+		log.V(1).Info("Replacing ECK-managed configuration by user-provided configuration")
 	}
 
 	return cfg.Render()
@@ -105,15 +92,13 @@ func buildBeatConfig(
 func reconcileConfig(
 	params DriverParams,
 	defaultConfig *settings.CanonicalConfig,
-	checksum hash.Hash,
+	configHash hash.Hash,
 ) error {
-
-	cfgBytes, err := buildBeatConfig(params.Client, params.Associated, defaultConfig, params.Config)
+	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Associated, defaultConfig, params.Config)
 	if err != nil {
 		return err
 	}
 
-	// create resource
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.Owner.GetNamespace(),
@@ -125,17 +110,11 @@ func reconcileConfig(
 		},
 	}
 
-	// reconcile
 	if _, err = reconciler.ReconcileSecret(params.Client, expected, params.Owner); err != nil {
 		return err
 	}
 
-	// we need to deref the secret here (if any) to include it in the checksum otherwise Beat will not be rolled on content changes
-	if err := commonassociation.WriteAssocSecretToHash(params.Client, params.Associated, checksum); err != nil {
-		return err
-	}
-
-	_, _ = checksum.Write(cfgBytes)
+	_, _ = configHash.Write(cfgBytes)
 
 	return nil
 }

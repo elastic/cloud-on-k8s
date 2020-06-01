@@ -7,6 +7,7 @@ package beat
 import (
 	"testing"
 
+	logrtesting "github.com/go-logr/logr/testing"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,8 +79,8 @@ func Test_buildBeatConfig(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name:    "neither default nor user config",
-			wantErr: true,
+			name:       "neither default nor user config",
+			associated: &beatv1beta1.Beat{},
 		},
 		{
 			name:          "no association, only default config",
@@ -146,7 +147,7 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotYaml, gotErr := buildBeatConfig(tt.client, tt.associated, tt.defaultConfig, tt.userConfig)
+			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.associated, tt.defaultConfig, tt.userConfig)
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
 

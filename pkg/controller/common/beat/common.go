@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,7 +28,7 @@ import (
 type Type string
 
 type Driver interface {
-	Reconcile() DriverResults
+	Reconcile() (*DriverStatus, *reconciler.Results)
 }
 
 type DaemonSetSpec struct {
@@ -88,18 +89,6 @@ func (dp *DriverParams) Validate() error {
 	return nil
 }
 
-type DriverResults struct {
-	*reconciler.Results
-	Status *DriverStatus
-}
-
-func NewDriverResults(ctx context.Context) DriverResults {
-	return DriverResults{
-		Status:  nil,
-		Results: reconciler.NewResult(ctx),
-	}
-}
-
 type DriverStatus struct {
 	ExpectedNodes  int32
 	AvailableNodes int32
@@ -107,34 +96,40 @@ type DriverStatus struct {
 	Association    commonv1.AssociationStatus
 }
 
-func Reconcile(params DriverParams, defaultConfig *settings.CanonicalConfig, defaultImage container.Image, modifyPodFunc func(builder *defaults.PodTemplateBuilder)) DriverResults {
-	results := NewDriverResults(params.Context)
+func Reconcile(
+	params DriverParams,
+	defaultConfig *settings.CanonicalConfig,
+	defaultImage container.Image,
+	modifyPodFunc func(builder *defaults.PodTemplateBuilder)) (*DriverStatus, *reconciler.Results) {
+	results := reconciler.NewResult(params.Context)
 
 	if err := params.Validate(); err != nil {
-		results.WithError(err)
-		return results
+		return nil, results.WithError(err)
 	}
 
 	if err := SetupAutodiscoverRBAC(params.Context, params.Logger, params.Client, params.Owner, params.Labels); err != nil {
 		results.WithError(err)
 	}
 
-	checksum := sha256.New224()
-	if err := reconcileConfig(params, defaultConfig, checksum); err != nil {
-		results.WithError(err)
-		return results
+	configHash := sha256.New224()
+	if err := reconcileConfig(params, defaultConfig, configHash); err != nil {
+		return nil, results.WithError(err)
 	}
 
-	podTemplate := buildPodTemplate(params, defaultImage, modifyPodFunc, checksum)
-	if driverStatus, err := reconcilePodVehicle(podTemplate, params); err != nil {
+	// we need to deref the secret here (if any) to include it in the configHash otherwise Beat will not be rolled on content changes
+	if err := commonassociation.WriteAssocSecretToConfigHash(params.Client, params.Associated, configHash); err != nil {
+		return nil, results.WithError(err)
+	}
+
+	podTemplate := buildPodTemplate(params, defaultImage, modifyPodFunc, configHash)
+	driverStatus, err := reconcilePodVehicle(podTemplate, params)
+	if err != nil {
 		if apierrors.IsConflict(err) {
 			params.Logger.V(1).Info("Conflict while updating")
-			results.WithResult(reconcile.Result{Requeue: true})
+			return nil, results.WithResult(reconcile.Result{Requeue: true})
 		}
-		results.WithError(err)
-	} else {
-		results.Status = &driverStatus
+		return nil, results.WithError(err)
 	}
 
-	return results
+	return &driverStatus, results
 }

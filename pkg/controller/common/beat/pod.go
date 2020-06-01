@@ -8,13 +8,14 @@ import (
 	"fmt"
 	"hash"
 
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	commonhash "github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 const (
@@ -30,14 +31,27 @@ const (
 	DataMountPathTemplate = "/var/lib/%s/%s/%s-data"
 	DataPathTemplate      = "/usr/share/%s/data"
 
-	// ConfigChecksumLabel is a label used to store a Beats config checksum.
+	// ConfigChecksumLabel is a label used to store a Beat config checksum.
 	ConfigChecksumLabel = "beat.k8s.elastic.co/config-checksum"
 
 	// VersionLabelName is a label used to track the version of a Beat Pod.
 	VersionLabelName = "beat.k8s.elastic.co/version"
 )
 
-func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyPodFunc func(builder *defaults.PodTemplateBuilder), checksum hash.Hash) corev1.PodTemplateSpec {
+var (
+	defaultResources = corev1.ResourceRequirements{
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("200Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("200Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+	}
+)
+
+func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyPodFunc func(builder *defaults.PodTemplateBuilder), configHash hash.Hash) corev1.PodTemplateSpec {
 	podTemplate := params.GetPodTemplate()
 
 	// Token mounting gets defaulted to false, which prevents from detecting whether user had set it.
@@ -67,7 +81,7 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 		WithResources(defaultResources).
 		WithHostNetwork().
 		WithLabels(map[string]string{
-			ConfigChecksumLabel: fmt.Sprintf("%x", checksum.Sum(nil)),
+			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
 			VersionLabelName:    params.Version}).
 		WithDockerImage(params.Image, container.ImageRepository(defaultImage, params.Version)).
 		WithArgs("-e", "-c", ConfigMountPath).

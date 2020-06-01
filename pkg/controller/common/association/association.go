@@ -15,31 +15,31 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// WriteAssocSecretToHash dereferences auth secret (if any) to include it in the checksum.
-func WriteAssocSecretToHash(client k8s.Client, assoc commonv1.Associated, hash hash.Hash) error {
+// WriteAssocSecretToConfigHash dereferences auth secret (if any) to include it in the configHash.
+func WriteAssocSecretToConfigHash(client k8s.Client, assoc commonv1.Associated, configHash hash.Hash) error {
 	assocConf := assoc.AssociationConf()
 
 	if assocConf.AuthIsConfigured() {
-		esAuthKey := types.NamespacedName{
+		authSecretNsName := types.NamespacedName{
 			Name:      assocConf.GetAuthSecretName(),
 			Namespace: assoc.GetNamespace()}
-		var esAuthSecret corev1.Secret
-		if err := client.Get(esAuthKey, &esAuthSecret); err != nil {
+		var authSecret corev1.Secret
+		if err := client.Get(authSecretNsName, &authSecret); err != nil {
 			return err
 		}
-		_, _ = hash.Write(esAuthSecret.Data[assocConf.GetAuthSecretKey()])
+		_, _ = configHash.Write(authSecret.Data[assocConf.GetAuthSecretKey()])
 	}
 
 	if assocConf.CAIsConfigured() {
-		esPublicCAKey := types.NamespacedName{
+		publicCASecretNsName := types.NamespacedName{
 			Namespace: assoc.GetNamespace(),
 			Name:      assocConf.GetCASecretName()}
-		var esPublicCASecret corev1.Secret
-		if err := client.Get(esPublicCAKey, &esPublicCASecret); err != nil {
+		var publicCASecret corev1.Secret
+		if err := client.Get(publicCASecretNsName, &publicCASecret); err != nil {
 			return err
 		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
-			_, _ = hash.Write(certPem)
+		if certPem, ok := publicCASecret.Data[certificates.CertFileName]; ok {
+			_, _ = configHash.Write(certPem)
 		}
 	}
 

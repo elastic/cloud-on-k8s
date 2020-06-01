@@ -14,8 +14,8 @@ import (
 
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
-	// Type is the type of the Beat to deploy. Any string can be used, but well-known types will be recognized and
-	// will allow to provide sane default configurations.
+	// Type is the type of the Beat to deploy (filebeat, metricbeat, etc.). Any string can be used,
+	// but well-known types will be recognized and will allow to provide sane default configurations.
 	// +kubebuilder:validation:MaxLength=20
 	Type string `json:"type"`
 
@@ -39,11 +39,14 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows overriding its default spec.
+	// Cannot be used along with `deployment`.
+
 	// DaemonSet allows to:
 	// 1. Indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the
 	//    Type is used
 	// 2. Provide a spec for the DaemonSet
-	// At most one of DaemonSet and Deployment can be used.
+	// Cannot be used along with `deployment`.
 	// +kubebuilder:validation:Optional
 	DaemonSet *DaemonSetSpec `json:"daemonSet,omitempty"`
 
@@ -51,7 +54,7 @@ type BeatSpec struct {
 	// 1. Indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the
 	//    Type is used
 	// 2. Provide a spec for the Deployment
-	// At most one of DaemonSet and Deployment can be used.
+	// Cannot be used along with `daemonSet`.
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 }

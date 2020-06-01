@@ -6,6 +6,7 @@ package otherbeat
 
 import (
 	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
@@ -24,6 +25,6 @@ func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
 	return &Driver{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() commonbeat.DriverResults {
+func (d *Driver) Reconcile() (*commonbeat.DriverStatus, *reconciler.Results) {
 	return commonbeat.Reconcile(d.DriverParams, nil, "", nil)
 }

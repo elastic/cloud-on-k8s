@@ -506,15 +506,15 @@ spec:
             daemonSet:
               description: 'DaemonSet allows to: 1. Indicate whether the Beat should
                 be deployed as DaemonSet or Deployment, if both are absent, a default
-                for the    Type is used 2. Provide a spec for the DaemonSet At most
-                one of DaemonSet and Deployment can be used.'
+                for the    Type is used 2. Provide a spec for the DaemonSet Cannot
+                be used along with `deployment`.'
               properties: {}
               type: object
             deployment:
               description: 'Deployment allows to: 1. Indicate whether the Beat should
                 be deployed as DaemonSet or Deployment, if both are absent, a default
-                for the    Type is used 2. Provide a spec for the Deployment At most
-                one of DaemonSet and Deployment can be used.'
+                for the    Type is used 2. Provide a spec for the Deployment Cannot
+                be used along with `daemonSet`.'
               properties:
                 replicas:
                   format: int32
@@ -544,9 +544,9 @@ spec:
                 be used if ECK is enforcing RBAC on references.
               type: string
             type:
-              description: Type is the type of the Beat to deploy. Any string can
-                be used, but well-known types will be recognized and will allow to
-                provide sane default configurations.
+              description: Type is the type of the Beat to deploy (filebeat, metricbeat,
+                etc.). Any string can be used, but well-known types will be recognized
+                and will allow to provide sane default configurations.
               maxLength: 20
               type: string
             version:

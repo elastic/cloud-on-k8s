@@ -18,4 +18,5 @@ func Test_DriverParamsValidate(t *testing.T) {
 
 	require.Error(t, params.Validate())
 	require.Error(t, (&DriverParams{}).Validate())
+	require.NoError(t, (&DriverParams{DaemonSet: &DaemonSetSpec{}}).Validate())
 }

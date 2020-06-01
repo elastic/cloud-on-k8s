@@ -201,7 +201,7 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	}
 
 	// we need to deref the secret here to include it in the checksum otherwise Kibana will not be rolled on contents changes
-	if err := commonassociation.WriteAssocSecretToHash(d.client, kb, configChecksum); err != nil {
+	if err := commonassociation.WriteAssocSecretToConfigHash(d.client, kb, configChecksum); err != nil {
 		return deployment.Params{}, err
 	}
 
