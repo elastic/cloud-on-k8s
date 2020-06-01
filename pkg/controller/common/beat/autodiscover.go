@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	serviceAccountNameTemplate     = "elastic-operator-autodiscover-%s"
-	clusterRoleBindingNameTemplate = "elastic-operator-autodiscover-%s-%s"
-	clusterRoleName                = "elastic-operator-beat"
+	serviceAccountNameTemplate     = "elastic-operator-beat-autodiscover-%s"
+	clusterRoleBindingNameTemplate = "elastic-operator-beat-autodiscover-%s-%s"
+	clusterRoleName                = "elastic-operator-beat-autodiscover"
 )
 
 var (
