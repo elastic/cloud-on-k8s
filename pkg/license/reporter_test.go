@@ -21,155 +21,191 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
-	essettings "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
 const operatorNs = "test-system"
 
-func Test_Get(t *testing.T) {
-	es := esv1.Elasticsearch{
-		Spec: esv1.ElasticsearchSpec{
-			NodeSets: []esv1.NodeSet{{
-				Count: 10,
-			}},
-		},
-	}
-	licensingInfo, err := NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
-	assert.NoError(t, err)
-	assert.Equal(t, "21.47GB", licensingInfo.TotalManagedMemory)
-	assert.Equal(t, "1", licensingInfo.EnterpriseResourceUnits)
+func TestGet(t *testing.T) {
+	t.Run("elasticsearch_defaults", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				NodeSets: []esv1.NodeSet{{
+					Count: 10,
+				}},
+			},
+		}
+		have, err := NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
+		require.NoError(t, err)
 
-	es = esv1.Elasticsearch{
-		Spec: esv1.ElasticsearchSpec{
-			NodeSets: []esv1.NodeSet{{
+		want := LicensingInfo{
+			TotalManagedMemory:      21.47,
+			EnterpriseResourceUnits: 1,
+			EckLicenseLevel:         "basic",
+		}
+
+		assertEqual(t, want, have)
+	})
+
+	t.Run("elasticsearch_with_resource_limits", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				NodeSets: []esv1.NodeSet{{
+					Count: 100,
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									Resources: corev1.ResourceRequirements{
+										Limits: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceMemory: resource.MustParse("6Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				}},
+			},
+		}
+		have, err := NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
+		require.NoError(t, err)
+
+		want := LicensingInfo{
+			TotalManagedMemory:      644.245,
+			EnterpriseResourceUnits: 11,
+			EckLicenseLevel:         "basic",
+		}
+
+		assertEqual(t, want, have)
+	})
+
+	t.Run("elasticsearch_with_heap_settings", func(t *testing.T) {
+		es := esv1.Elasticsearch{
+			Spec: esv1.ElasticsearchSpec{
+				NodeSets: []esv1.NodeSet{{
+					Count: 10,
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: esv1.ElasticsearchContainerName,
+									Env: []corev1.EnvVar{{
+										Name: "ES_JAVA_OPTS", Value: "-Xms8G -Xmx8G",
+									}},
+								},
+							},
+						},
+					},
+				}},
+			},
+		}
+
+		have, err := NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
+		require.NoError(t, err)
+
+		want := LicensingInfo{
+			TotalManagedMemory:      171.801,
+			EnterpriseResourceUnits: 3,
+			EckLicenseLevel:         "basic",
+		}
+
+		assertEqual(t, want, have)
+	})
+
+	t.Run("kibana_defaults", func(t *testing.T) {
+		kb := kbv1.Kibana{
+			Spec: kbv1.KibanaSpec{
+				Count: 100,
+			},
+		}
+
+		have, err := NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
+		require.NoError(t, err)
+
+		want := LicensingInfo{
+			TotalManagedMemory:      107.374,
+			EnterpriseResourceUnits: 2,
+			EckLicenseLevel:         "basic",
+		}
+
+		assertEqual(t, want, have)
+	})
+
+	t.Run("kibana_with_resource_limits", func(t *testing.T) {
+		kb := kbv1.Kibana{
+			Spec: kbv1.KibanaSpec{
 				Count: 100,
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Name: esv1.ElasticsearchContainerName,
+								Name: kbv1.KibanaContainerName,
 								Resources: corev1.ResourceRequirements{
 									Limits: map[corev1.ResourceName]resource.Quantity{
-										corev1.ResourceMemory: resource.MustParse("6Gi"),
+										corev1.ResourceMemory: resource.MustParse("2Gi"),
 									},
 								},
 							},
 						},
 					},
 				},
-			}},
-		},
-	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
-	assert.NoError(t, err)
-	assert.Equal(t, "644.25GB", licensingInfo.TotalManagedMemory)
-	assert.Equal(t, "11", licensingInfo.EnterpriseResourceUnits)
+			},
+		}
 
-	es = esv1.Elasticsearch{
-		Spec: esv1.ElasticsearchSpec{
-			NodeSets: []esv1.NodeSet{{
-				Count: 10,
+		have, err := NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
+		require.NoError(t, err)
+		want := LicensingInfo{
+			TotalManagedMemory:      214.754,
+			EnterpriseResourceUnits: 4,
+			EckLicenseLevel:         "basic",
+		}
+
+		assertEqual(t, want, have)
+	})
+
+	t.Run("kibana_with_node_opts", func(t *testing.T) {
+		kb := kbv1.Kibana{
+			Spec: kbv1.KibanaSpec{
+				Count: 100,
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
-								Name: esv1.ElasticsearchContainerName,
+								Name: kbv1.KibanaContainerName,
 								Env: []corev1.EnvVar{{
-									Name: "ES_JAVA_OPTS", Value: "-Xms8G -Xmx8G",
+									Name: kibana.EnvNodeOpts, Value: "--max-old-space-size=2048",
 								}},
 							},
 						},
 					},
 				},
-			}},
-		},
-	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
-	assert.NoError(t, err)
-	assert.Equal(t, "171.80GB", licensingInfo.TotalManagedMemory)
-	assert.Equal(t, "3", licensingInfo.EnterpriseResourceUnits)
-
-	es = esv1.Elasticsearch{
-		Spec: esv1.ElasticsearchSpec{
-			NodeSets: []esv1.NodeSet{{
-				Count: 10,
-				PodTemplate: corev1.PodTemplateSpec{
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name: esv1.ElasticsearchContainerName,
-								Env: []corev1.EnvVar{{
-									Name: essettings.EnvEsJavaOpts, Value: "-Xms8G -Xmx8G",
-								}},
-							},
-						},
-					},
-				},
-			}},
-		},
-	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&es), operatorNs).Get()
-	assert.NoError(t, err)
-	assert.Equal(t, "171.80GB", licensingInfo.TotalManagedMemory)
-	assert.Equal(t, "3", licensingInfo.EnterpriseResourceUnits)
-
-	kb := kbv1.Kibana{
-		Spec: kbv1.KibanaSpec{
-			Count: 100,
-		},
-	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
-	assert.NoError(t, err)
-	assert.Equal(t, "107.37GB", licensingInfo.TotalManagedMemory)
-	assert.Equal(t, "2", licensingInfo.EnterpriseResourceUnits)
-
-	kb = kbv1.Kibana{
-		Spec: kbv1.KibanaSpec{
-			Count: 100,
-			PodTemplate: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name: kbv1.KibanaContainerName,
-							Resources: corev1.ResourceRequirements{
-								Limits: map[corev1.ResourceName]resource.Quantity{
-									corev1.ResourceMemory: resource.MustParse("2Gi"),
-								},
-							},
-						},
-					},
-				},
 			},
-		},
-	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
-	assert.NoError(t, err)
-	assert.Equal(t, "214.75GB", licensingInfo.TotalManagedMemory)
-	assert.Equal(t, "4", licensingInfo.EnterpriseResourceUnits)
+		}
+		have, err := NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
+		require.NoError(t, err)
+		want := LicensingInfo{
+			TotalManagedMemory:      204.804,
+			EnterpriseResourceUnits: 4,
+			EckLicenseLevel:         "basic",
+		}
 
-	kb = kbv1.Kibana{
-		Spec: kbv1.KibanaSpec{
-			Count: 100,
-			PodTemplate: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name: kbv1.KibanaContainerName,
-							Env: []corev1.EnvVar{{
-								Name: kibana.EnvNodeOpts, Value: "--max-old-space-size=2048",
-							}},
-						},
-					},
-				},
-			},
-		},
-	}
-	licensingInfo, err = NewResourceReporter(k8s.FakeClient(&kb), operatorNs).Get()
-	assert.NoError(t, err)
-	assert.Equal(t, "204.80GB", licensingInfo.TotalManagedMemory)
-	assert.Equal(t, "4", licensingInfo.EnterpriseResourceUnits)
+		assertEqual(t, want, have)
+	})
+}
+
+func assertEqual(t *testing.T, want, have LicensingInfo) {
+	t.Helper()
+
+	wantMap := want.toMap()
+	delete(wantMap, "timestamp")
+
+	haveMap := have.toMap()
+	delete(haveMap, "timestamp")
+
+	require.Equal(t, wantMap, haveMap)
 }
 
 func Test_Start(t *testing.T) {
