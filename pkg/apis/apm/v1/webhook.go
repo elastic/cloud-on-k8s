@@ -24,7 +24,7 @@ var (
 	validationLog = logf.Log.WithName("apm-v1-validation")
 
 	// apmAgentConfigurationMinVersion is the minimum required version to establish an association with Kibana
-	apmAgentConfigurationMinVersion = version.MustParse("7.5.0")
+	apmAgentConfigurationMinVersion = version.MustParse("7.5.1")
 
 	defaultChecks = []func(*ApmServer) field.ErrorList{
 		checkNoUnknownFields,
