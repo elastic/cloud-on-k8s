@@ -23,6 +23,7 @@ func reconcileRequestsForAllClusters(c k8s.Client) ([]reconcile.Request, error) 
 	// create a reconcile request for each cluster
 	requests := make([]reconcile.Request, len(clusters.Items))
 	for i, cl := range clusters.Items {
+		log.V(1).Info("Generating license reconcile event for ES cluster", "name", cl.Name, "namespace", cl.Namespace)
 		requests[i] = reconcile.Request{NamespacedName: types.NamespacedName{
 			Namespace: cl.Namespace,
 			Name:      cl.Name,
