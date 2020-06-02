@@ -97,20 +97,20 @@ func TestWebhook(t *testing.T) {
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.2.0"
+				apm.Spec.Version = "7.4.0"
 				apm.Spec.KibanaRef = commonv1.ObjectSelector{Name: "kbname", Namespace: "kbns"}
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.kibanaRef: Forbidden: required version for Kibana association is 7.3.0 but desired version is 7.2.0`,
+				`spec.kibanaRef: Forbidden: required version for Kibana association is 7.5.1 but desired version is 7.4.0`,
 			),
 		},
 		{
-			Name:      "support-72-if-kibana-ref-not-set",
+			Name:      "support-74-if-kibana-ref-not-set",
 			Operation: admissionv1beta1.Create,
 			Object: func(t *testing.T, uid string) []byte {
 				apm := mkApmServer(uid)
-				apm.Spec.Version = "7.2.0"
+				apm.Spec.Version = "7.4.0"
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookSucceeded,

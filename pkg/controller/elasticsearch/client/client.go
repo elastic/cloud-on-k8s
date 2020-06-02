@@ -35,10 +35,17 @@ type IndexRole struct {
 	Privileges []string `json:",omitempty"`
 }
 
+type ApplicationRole struct {
+	Application string   `json:"application,omitempty"`
+	Privileges  []string `json:"privileges,omitempty"`
+	Resources   []string `json:"resources,omitempty"`
+}
+
 // Role represents an Elasticsearch role.
 type Role struct {
-	Cluster []string    `json:"cluster,omitempty"`
-	Indices []IndexRole `json:"indices,omitempty"`
+	Cluster      []string          `json:"cluster,omitempty"`
+	Indices      []IndexRole       `json:"indices,omitempty"`
+	Applications []ApplicationRole `json:"applications,omitempty"`
 }
 
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
