@@ -16,18 +16,26 @@
         "digest"
       ],
       "enabled": false
-    }
+    },
     {
       "packageNames": [
         "k8s.io/apimachinery",
         "k8s.io/client-go",
-        "k8s.io/api",
-        "k8s.io/utils"
+        "k8s.io/api"
       ],
       "updateTypes": [
         "patch"
       ],
       "groupName": "k8s"
+    },
+    {
+      "packageNames": [
+        "k8s.io/utils"
+      ],
+      "updateTypes": [
+        "digest"
+      ],
+      "enabled": false
     }
   ]
 }
