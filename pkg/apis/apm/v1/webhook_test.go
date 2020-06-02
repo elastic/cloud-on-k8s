@@ -102,7 +102,7 @@ func TestWebhook(t *testing.T) {
 				return serialize(t, apm)
 			},
 			Check: test.ValidationWebhookFailed(
-				`spec.kibanaRef: Forbidden: required version for Kibana association is 7.5.0 but desired version is 7.4.0`,
+				`spec.kibanaRef: Forbidden: required version for Kibana association is 7.5.1 but desired version is 7.4.0`,
 			),
 		},
 		{
