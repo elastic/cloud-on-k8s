@@ -17,6 +17,7 @@ import (
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -59,6 +60,24 @@ func SetupAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Clie
 	}
 
 	return err
+}
+
+func CleanUp(client k8s.Client, nsName types.NamespacedName) error {
+	if ShouldSetupAutodiscoverRBAC() {
+		clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ClusterRoleBindingName(nsName.Namespace, nsName.Name),
+			},
+		}
+
+		if err := client.Delete(clusterRoleBinding); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func IsAutodiscoverResource(meta metav1.Object) (bool, types.NamespacedName) {

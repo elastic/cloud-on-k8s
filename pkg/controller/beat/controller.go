@@ -13,6 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -139,6 +140,12 @@ func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, 
 	var beat beatv1beta1.Beat
 	if err := association.FetchWithAssociation(ctx, r.Client, request, &beat); err != nil {
 		if apierrors.IsNotFound(err) {
+			if err := r.onDelete(types.NamespacedName{
+				Namespace: request.Namespace,
+				Name:      request.Name,
+			}); err != nil {
+				return reconcile.Result{Requeue: true}, nil
+			}
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, tracing.CaptureError(ctx, err)
@@ -224,6 +231,14 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 		k8s.EmitErrorEvent(r.recorder, err, beat, events.EventCompatCheckError, "Error during compatibility check: %v", err)
 	}
 	return compat, err
+}
+
+func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
+	if commonbeat.ShouldSetupAutodiscoverRBAC() {
+		return commonbeat.CleanUp(r.Client, obj)
+	}
+
+	return nil
 }
 
 func newDriver(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) commonbeat.Driver {
