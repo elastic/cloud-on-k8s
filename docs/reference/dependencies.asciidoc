@@ -340,15 +340,3 @@ This page lists the third-party dependencies used to build {n}.
 | link:https://sigs.k8s.io/yaml[$$sigs.k8s.io/yaml$$] | v1.1.0 | MIT
 |===
 
-
-[float]
-[id="{p}-dependencies-image"]
-== Container image dependencies
-
-Dependencies included in the {n} container image.
-
-[options="header",format="csv"]
-|===
-Name, Version, Licence, URL
-include::container-image-dependencies.csv[]
-|===
