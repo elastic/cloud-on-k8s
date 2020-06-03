@@ -113,7 +113,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 				initialObjects: asRuntimeObjects(validLicenseFixture, signatureBytes),
 			},
 			want:    false,
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
