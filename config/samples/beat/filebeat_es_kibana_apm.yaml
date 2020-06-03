@@ -53,15 +53,3 @@ spec:
   version: 7.7.0
   elasticsearchRef:
     name: elasticsearch-sample
-  # to target only a specific namespace for logging, use:
-  config:
-    filebeat.autodiscover.providers:
-    - node: ${NODE_NAME}
-      type: kubernetes
-      templates:
-      - config:
-        - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
-          type: container
-    processors:
-    - add_cloud_metadata: {}
-    - add_host_metadata: {}
