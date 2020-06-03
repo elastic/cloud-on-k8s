@@ -86,14 +86,9 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 	}
 
 	// Watch secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
-		return err
-	}
-	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
-		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &beatv1beta1.Beat{},
-		},
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &beatv1beta1.Beat{},
 	}); err != nil {
 		return err
 	}
