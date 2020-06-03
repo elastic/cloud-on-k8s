@@ -1556,11 +1556,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_golang
-Version : v1.1.0
-Time    : 2019-08-01T13:37:03Z
+Version : v1.6.0
+Time    : 2020-04-28T11:07:46Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.1.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_golang@v1.6.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -8273,6 +8273,38 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 --------------------------------------------------------------------------------
+Module  : github.com/cespare/xxhash/v2
+Version : v2.1.1
+Time    : 2019-11-14T17:47:13Z
+Licence : MIT
+
+Contents of probable licence file $GOMODCACHE/github.com/cespare/xxhash/v2@v2.1.1/LICENSE.txt:
+
+Copyright (c) 2016 Caleb Spare
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+--------------------------------------------------------------------------------
 Module  : github.com/client9/misspell
 Version : v0.3.4
 Time    : 2018-03-09T01:55:12Z
@@ -14530,11 +14562,11 @@ Contents of probable licence file $GOMODCACHE/github.com/golang/mock@v1.3.1/LICE
 
 --------------------------------------------------------------------------------
 Module  : github.com/golang/protobuf
-Version : v1.3.2
-Time    : 2019-07-01T18:22:01Z
+Version : v1.4.0
+Time    : 2020-04-13T19:43:07Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/github.com/golang/protobuf@v1.3.2/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/golang/protobuf@v1.4.0/LICENSE:
 
 Copyright 2010 The Go Authors.  All rights reserved.
 
@@ -24033,11 +24065,11 @@ Apache License
 
 --------------------------------------------------------------------------------
 Module  : github.com/json-iterator/go
-Version : v1.1.8
-Time    : 2019-10-12T13:07:04Z
+Version : v1.1.9
+Time    : 2019-12-21T03:10:28Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/json-iterator/go@v1.1.8/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/json-iterator/go@v1.1.9/LICENSE:
 
 MIT License
 
@@ -27324,11 +27356,11 @@ Contents of probable licence file $GOMODCACHE/github.com/pquerna/cachecontrol@v0
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/client_model
-Version : v0.0.0-20190812154241-14fe0d1b01d4
-Time    : 2019-08-12T15:42:41Z
+Version : v0.2.0
+Time    : 2020-01-18T22:30:34Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.0.0-20190812154241-14fe0d1b01d4/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model@v0.2.0/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -27535,11 +27567,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/client_model
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/common
-Version : v0.7.0
-Time    : 2019-09-13T08:39:40Z
+Version : v0.9.1
+Time    : 2020-01-20T13:02:25Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.7.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.9.1/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -27746,11 +27778,11 @@ Contents of probable licence file $GOMODCACHE/github.com/prometheus/common@v0.7.
 
 --------------------------------------------------------------------------------
 Module  : github.com/prometheus/procfs
-Version : v0.0.5
-Time    : 2019-09-15T21:36:37Z
+Version : v0.0.11
+Time    : 2020-03-17T00:43:16Z
 Licence : Apache-2.0
 
-Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.0.5/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/prometheus/procfs@v0.0.11/LICENSE:
 
                                  Apache License
                            Version 2.0, January 2004
@@ -30770,11 +30802,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sync
-Version : v0.0.0-20190423024810-112230192c58
-Time    : 2019-04-23T02:48:10Z
+Version : v0.0.0-20190911185100-cd5d95a43a6e
+Time    : 2019-09-11T18:51:00Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.0.0-20190423024810-112230192c58/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sync@v0.0.0-20190911185100-cd5d95a43a6e/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -30807,11 +30839,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 --------------------------------------------------------------------------------
 Module  : golang.org/x/sys
-Version : v0.0.0-20191204072324-ce4227a45e2e
-Time    : 2019-12-04T07:23:24Z
+Version : v0.0.0-20200420163511-1957bb5e6d1f
+Time    : 2020-04-20T16:35:11Z
 Licence : BSD-3-Clause
 
-Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20191204072324-ce4227a45e2e/LICENSE:
+Contents of probable licence file $GOMODCACHE/golang.org/x/sys@v0.0.0-20200420163511-1957bb5e6d1f/LICENSE:
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -31940,6 +31972,43 @@ Contents of probable licence file $GOMODCACHE/google.golang.org/grpc@v1.23.1/LIC
 
 
 --------------------------------------------------------------------------------
+Module  : google.golang.org/protobuf
+Version : v1.21.0
+Time    : 2020-04-13T18:57:02Z
+Licence : BSD-3-Clause
+
+Contents of probable licence file $GOMODCACHE/google.golang.org/protobuf@v1.21.0/LICENSE:
+
+Copyright (c) 2018 The Go Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+--------------------------------------------------------------------------------
 Module  : gopkg.in/alecthomas/kingpin.v2
 Version : v2.2.6
 Time    : 2017-12-17T18:08:38Z
@@ -32002,11 +32071,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : gopkg.in/check.v1
-Version : v1.0.0-20180628173108-788fd7840127
-Time    : 2018-06-28T17:31:08Z
+Version : v1.0.0-20190902080502-41f04d3bba15
+Time    : 2019-09-02T08:05:02Z
 Licence : BSD-2-Clause
 
-Contents of probable licence file $GOMODCACHE/gopkg.in/check.v1@v1.0.0-20180628173108-788fd7840127/LICENSE:
+Contents of probable licence file $GOMODCACHE/gopkg.in/check.v1@v1.0.0-20190902080502-41f04d3bba15/LICENSE:
 
 Gocheck - A rich testing framework for Go
  
