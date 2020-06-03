@@ -68,6 +68,6 @@ var (
     metricsets:
     - proxy
 processors:
-- add_cloud_metadata: null
+- add_cloud_metadata: {}
 `))
 )

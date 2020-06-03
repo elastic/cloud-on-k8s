@@ -22,7 +22,7 @@ var (
           paths:
           - /var/log/containers/*${data.kubernetes.container.id}.log
 processors:
-- add_cloud_metadata: null
-- add_host_metadata: null
+- add_cloud_metadata: {}
+- add_host_metadata: {}
 `))
 )
