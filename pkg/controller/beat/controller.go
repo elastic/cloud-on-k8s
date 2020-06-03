@@ -106,7 +106,15 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 			return err
 		}
 
-		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestForObject{}); err != nil {
+		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
+				requests := []reconcile.Request{}
+				if result, nsName := commonbeat.IsAutodiscoverResource(object.Meta); result {
+					requests = append(requests, reconcile.Request{NamespacedName: nsName})
+				}
+				return requests
+			}),
+		}); err != nil {
 			return err
 		}
 	}
