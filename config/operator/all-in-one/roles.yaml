@@ -4,7 +4,7 @@ kind: ClusterRole
 metadata:
   name: elastic-operator-beat-autodiscover
 rules:
-- apiGroups: [""] # "" indicates the core API group
+- apiGroups: [""]
   resources:
   - namespaces
   - pods

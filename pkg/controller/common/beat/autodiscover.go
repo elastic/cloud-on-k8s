@@ -41,7 +41,6 @@ func ShouldSetupAutodiscoverRBAC() bool {
 
 // SetupAutodiscoveryRBAC reconciles all resources needed for the default RBAC setup.
 func SetupAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Client, owner metav1.Object, labels map[string]string) error {
-	// this is the source of truth and should be respected at all times
 	if !ShouldSetupAutodiscoverRBAC() {
 		return nil
 	}
@@ -89,7 +88,7 @@ func reconcileServiceAccount(client k8s.Client, owner metav1.Object, labels map[
 		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// compare hash of the deployment at the time it was built
+			// compare hash of the service account at the time it was built
 			return hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
 		},
 		UpdateReconciled: func() {
@@ -123,7 +122,7 @@ func reconcileClusterRoleBinding(client k8s.Client, owner metav1.Object) error {
 		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
-			// compare hash of the deployment at the time it was built
+			// compare hash of the cluster role binding at the time it was built
 			return hash.GetTemplateHashLabel(expected.Labels) != hash.GetTemplateHashLabel(reconciled.Labels)
 		},
 		UpdateReconciled: func() {
