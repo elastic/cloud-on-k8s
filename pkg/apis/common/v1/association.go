@@ -13,24 +13,53 @@ import (
 type AssociationStatus string
 
 const (
+	ElasticsearchConfigAnnotationName = "association.k8s.elastic.co/es-conf"
+	ElasticsearchAssociationType      = "elasticsearch"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"
 	AssociationFailed      AssociationStatus = "Failed"
 )
 
-// Associated interface represents a Elastic stack application that is associated with an Elasticsearch cluster.
-// An associated object needs some credentials to establish a connection to the Elasticsearch cluster and usually it
-// offers a keystore which in ECK is represented with an underlying Secret.
-// Kibana and the APM server are two examples of associated objects.
+// Associated represents an Elastic stack resource that is associated with other stack resources.
+// Examples:
+// - Kibana can be associated with Elasticsearch
+// - APMServer can be associated with Elasticsearch and Kibana
+// - EnterpriseSearch can be associated with Elasticsearch
 // +kubebuilder:object:generate=false
 type Associated interface {
 	metav1.Object
 	runtime.Object
-	ElasticsearchRef() ObjectSelector
-	AssociationConf() *AssociationConf
 	ServiceAccountName() string
+	GetAssociations() []Association
+}
+
+// Association interface helps to manage the Spec fields involved in an association.
+// +kubebuilder:object:generate=false
+type Association interface {
+	Associated
+
+	// Associated can be used to retrieve the associated object
+	Associated() Associated
+
+	// AssociatedType returns a string describing the type of the target resource (elasticsearch most of the time)
+	// It is mostly used to build some other strings depending on the type of the targeted resource.
+	AssociatedType() string
+
+	// Reference to the associated resource. If defined with a Name then the Namespace is expected to be set in the returned object.
+	AssociationRef() ObjectSelector
+
+	// AssociationConfAnnotationName is the name of the annotation used to define the config for the associated resource.
+	// It is used by the association controller to store the configuration and by the controller which is
+	// managing the associated resource to build the appropriate configuration.
+	AssociationConfAnnotationName() string
+
+	// Configuration
+	AssociationConf() *AssociationConf
 	SetAssociationConf(*AssociationConf)
+
+	// Status
 	AssociationStatus() AssociationStatus
 	SetAssociationStatus(status AssociationStatus)
 }

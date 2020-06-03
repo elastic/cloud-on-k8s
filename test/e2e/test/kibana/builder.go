@@ -33,6 +33,13 @@ func NewBuilderWithoutSuffix(name string) Builder {
 	return newBuilder(name, "")
 }
 
+func (b Builder) Ref() commonv1.ObjectSelector {
+	return commonv1.ObjectSelector{
+		Name:      b.Kibana.Name,
+		Namespace: b.Kibana.Namespace,
+	}
+}
+
 func newBuilder(name, randSuffix string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
@@ -155,5 +162,5 @@ func (b Builder) ElasticsearchRef() commonv1.ObjectSelector {
 		return b.ExternalElasticsearchRef
 	}
 	// if no external Elasticsearch cluster is defined, use the ElasticsearchRef
-	return b.Kibana.ElasticsearchRef().WithDefaultNamespace(b.Kibana.Namespace)
+	return b.Kibana.AssociationRef()
 }

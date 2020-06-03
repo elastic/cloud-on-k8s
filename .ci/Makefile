@@ -12,7 +12,7 @@ DOCKER_LOGIN           ?= eckadmin
 
 -include $(ROOT_DIR)/.env
 
-vault := common/retry.sh 5 vault
+vault := ../hack/retry.sh 5 vault
 
 # This is set to avoid the issue described in https://github.com/hashicorp/vault/issues/6710
 VAULT_CLIENT_TIMEOUT = 120
@@ -55,9 +55,8 @@ ci-build-image: DOCKER_PASSWORD = $(shell VAULT_TOKEN=$(VAULT_TOKEN) $(vault) re
 ci-build-image: write-ci-docker-creds
 	@ docker pull -q $(CI_IMAGE) | grep -v -E 'Downloading|Extracting|Verifying|complete' || \
 	( \
-		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t push.$(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
-		docker login -u $(DOCKER_LOGIN) -p $(DOCKER_PASSWORD) push.docker.elastic.co 2> /dev/null && \
-		docker push push.$(CI_IMAGE) | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed' \
+		docker build -f $(ROOT_DIR)/.ci/Dockerfile -t $(CI_IMAGE) --label "commit.hash=$(shell git rev-parse --short --verify HEAD)" $(ROOT_DIR) && \
+		../hack/docker-push.sh $(CI_IMAGE) \
 	)
 
 # make Docker creds available from inside the CI container through the .registry.env file

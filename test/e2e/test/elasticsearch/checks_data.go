@@ -108,7 +108,7 @@ func (dc *DataIntegrityCheck) Init() error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close() // nolint
+	defer resp.Body.Close()
 
 	// index a number of sample documents
 	payload, err := json.Marshal(dc.sampleData)
@@ -124,7 +124,7 @@ func (dc *DataIntegrityCheck) Init() error {
 		if err != nil {
 			return err
 		}
-		defer resp.Body.Close() // nolint
+		defer resp.Body.Close()
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ func (dc *DataIntegrityCheck) Verify() error {
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close() // nolint
+	defer response.Body.Close()
 	var results client.SearchResults
 	resultBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {

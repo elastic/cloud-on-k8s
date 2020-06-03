@@ -29,7 +29,7 @@ const (
 
 	// http certs volume
 	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
-	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs" // nolint
+	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs" //nolint:gosec
 )
 
 func InternalCertsSecretName(namer name.Namer, ownerName string) string {

@@ -106,6 +106,11 @@ func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) WithKibanaRef(ref commonv1.ObjectSelector) Builder {
+	b.ApmServer.Spec.KibanaRef = ref
+	return b
+}
+
 func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	if b.ApmServer.Spec.Config == nil || b.ApmServer.Spec.Config.Data == nil {
 		b.ApmServer.Spec.Config = &commonv1.Config{

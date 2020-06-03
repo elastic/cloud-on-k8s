@@ -6,16 +6,20 @@
 
 # Script to handle exoticisms related to 'docker login' and 'docker push'.
 #
-# Log in to push.docker.elastic.co if the namespace eck, eck-ci or eck-snapshots is used
+# Log in to docker.elastic.co if the namespace eck, eck-ci or eck-snapshots is used
 # Log in to gcloud if GCR is used
-# Add a 'push.' prefix when using docker.elastic.co
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REGISTRY_ENV="$SCRIPT_DIR/../.registry.env"
+
+retry() { "$SCRIPT_DIR/retry.sh" 5 "$@"; }
+
 # source variables if present
-if [[ -f .registry.env ]]; then
+if [[ -f ${REGISTRY_ENV} ]]; then
     # shellcheck disable=SC2046
-    export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" .registry.env)
+    export $(sed "s|[[:space:]]*=[[:space:]]*|=|g" "${REGISTRY_ENV}")
 fi
 
 docker-login() {
@@ -31,7 +35,7 @@ docker-login() {
 
         */eck/*|*/eck-ci/*|*/eck-snapshots/*)
             echo "Authentication to ${registry}..."
-            docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASSWORD}" push.docker.elastic.co 2> /dev/null
+            docker login -u "${DOCKER_LOGIN}" -p "${DOCKER_PASSWORD}" docker.elastic.co 2> /dev/null
         ;;
 
         *.gcr.io/*)
@@ -50,20 +54,10 @@ docker-login() {
 
 docker-push() {
     local image=$1
-
-    # add the 'push.' prefix for docker.elastic.co
-    case ${image} in
-
-        docker.elastic.co/*)
-            docker tag "$image" "push.$image"
-            image="push.$image"
-        ;;
-
-    esac
-
     echo "Push $image..."
     # silence the verbose output of the `docker push` command
-    docker push "$image" | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
+    retry \
+        docker push "$image" | grep -v -E 'Waiting|Layer already|Preparing|Pushing|Pushed'
 }
 
 docker-login "$@"

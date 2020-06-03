@@ -13,11 +13,15 @@ linters:
     - gochecknoglobals
     - gochecknoinits
     - gocognit # added in 1.20
+    - godot # added in 1.25
     - godox # added in 1.19
+    - goerr113
     - gomnd # added in 1.23
     - interfacer
     - lll
+    - nestif # added in 1.25
     - scopelint
+    - testpackage # added in 1.25
     - whitespace # added in 1.19
     - wsl # added in 1.20
 linters-settings:
@@ -32,11 +36,10 @@ issues:
       linters:
         - goconst
         - unparam
-    # TODO: remove this when upgrading to golangci-lint >1.24.0.
-    # currently it checks the receiver names of even generated files, but is fixed in a later version
     - linters:
-        - stylecheck
-      text: 'ST1016: methods on the same type should have the same receiver name .*'
+        - gosec
+      # this was added in https://github.com/securego/gosec/issues/438 but for our use case is more or less entirely false positives
+      text: 'G601: Implicit memory aliasing in for loop.'
     - path: cmd/manager/main\.go
       text: 'cyclomatic complexity \d+ of func `execute` is high'
     - path: pkg/controller/apmserver/config/reconcile\.go

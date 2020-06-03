@@ -106,6 +106,6 @@ func PodReconciliationDoneForSset(c k8s.Client, statefulSet appsv1.StatefulSet) 
 func StatefulSetName(podName string) (ssetName string, ordinal int32, err error) {
 	ordinalPos := strings.LastIndex(podName, "-")
 	ordinalAsString := podName[ordinalPos+1:]
-	ordinalAsInt, err := strconv.Atoi(ordinalAsString)
+	ordinalAsInt, err := strconv.ParseInt(ordinalAsString, 10, 32)
 	return podName[:ordinalPos], int32(ordinalAsInt), err
 }

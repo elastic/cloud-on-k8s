@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -25,24 +24,25 @@ const (
 	// DefaultHTTPPort is the (default) port used by ApmServer
 	DefaultHTTPPort = 8200
 
-	// Certificates
-	CertificatesDir = "config/elasticsearch-certs"
-
 	APMServerHost        = "apm-server.host"
-	APMServerSecretToken = "apm-server.secret_token" // nolint
+	APMServerSecretToken = "apm-server.secret_token" // nolint:gosec
 
 	APMServerSSLEnabled     = "apm-server.ssl.enabled"
 	APMServerSSLKey         = "apm-server.ssl.key"
 	APMServerSSLCertificate = "apm-server.ssl.certificate"
 
-	ApmCfgSecretKey = "apm-server.yml" // nolint
+	ApmCfgSecretKey = "apm-server.yml" // nolint:gosec
 )
+
+func certificatesDir(associatedType string) string {
+	return fmt.Sprintf("config/%s-certs", associatedType)
+}
 
 // reconcileApmServerConfig reconciles the configuration of the APM server: it first creates the configuration from the APM
 // specification and then reconcile the underlying secret.
 func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
 	// Create a new configuration from the APM object spec.
-	cfg, err := NewConfigFromSpec(client, as)
+	cfg, err := newConfigFromSpec(client, as)
 	if err != nil {
 		return corev1.Secret{}, err
 	}
@@ -66,47 +66,33 @@ func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Se
 	return reconciler.ReconcileSecret(client, expectedConfigSecret, as)
 }
 
-func NewConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {
-	specConfig := as.Spec.Config
-	if specConfig == nil {
-		specConfig = &commonv1.Config{}
-	}
-
-	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	outputCfg := settings.NewCanonicalConfig()
-	if as.AssociationConf().IsConfigured() {
-		// Get username and password
-		username, password, err := association.ElasticsearchAuthSettings(c, as)
-		if err != nil {
-			return nil, err
-		}
-
-		tmpOutputCfg := map[string]interface{}{
-			"output.elasticsearch.hosts":    []string{as.AssociationConf().GetURL()},
-			"output.elasticsearch.username": username,
-			"output.elasticsearch.password": password,
-		}
-		if as.AssociationConf().GetCACertProvided() {
-			tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(CertificatesDir, certificates.CAFileName)}
-		}
-
-		outputCfg = settings.MustCanonicalConfig(tmpOutputCfg)
-	}
-
-	// Create a base configuration.
-
+func newConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalConfig, error) {
 	cfg := settings.MustCanonicalConfig(map[string]interface{}{
 		APMServerHost:        fmt.Sprintf(":%d", DefaultHTTPPort),
 		APMServerSecretToken: "${SECRET_TOKEN}",
 	})
 
+	esConfig, err := newElasticsearchConfigFromSpec(c, apmv1.ApmEsAssociation{ApmServer: as})
+	if err != nil {
+		return nil, err
+	}
+
+	kibanaConfig, err := newKibanaConfigFromSpec(c, apmv1.ApmKibanaAssociation{ApmServer: as})
+	if err != nil {
+		return nil, err
+	}
+
+	var userSettings *settings.CanonicalConfig
+	if as.Spec.Config != nil {
+		if userSettings, err = settings.NewCanonicalConfigFrom(as.Spec.Config.Data); err != nil {
+			return nil, err
+		}
+	}
+
 	// Merge the configuration with userSettings last so they take precedence.
 	err = cfg.MergeWith(
-		outputCfg,
+		esConfig,
+		kibanaConfig,
 		settings.MustCanonicalConfig(tlsSettings(as)),
 		userSettings,
 	)
@@ -115,6 +101,53 @@ func NewConfigFromSpec(c k8s.Client, as *apmv1.ApmServer) (*settings.CanonicalCo
 	}
 
 	return cfg, nil
+}
+
+func newElasticsearchConfigFromSpec(c k8s.Client, esAssociation apmv1.ApmEsAssociation) (*settings.CanonicalConfig, error) {
+	if !esAssociation.AssociationConf().IsConfigured() {
+		return settings.NewCanonicalConfig(), nil
+	}
+
+	// Get username and password
+	username, password, err := association.ElasticsearchAuthSettings(c, &esAssociation)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpOutputCfg := map[string]interface{}{
+		"output.elasticsearch.hosts":    []string{esAssociation.AssociationConf().GetURL()},
+		"output.elasticsearch.username": username,
+		"output.elasticsearch.password": password,
+	}
+	if esAssociation.AssociationConf().GetCACertProvided() {
+		tmpOutputCfg["output.elasticsearch.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(esAssociation.AssociatedType()), certificates.CAFileName)}
+	}
+
+	return settings.MustCanonicalConfig(tmpOutputCfg), nil
+}
+
+func newKibanaConfigFromSpec(c k8s.Client, kibanaAssociation apmv1.ApmKibanaAssociation) (*settings.CanonicalConfig, error) {
+	if !kibanaAssociation.AssociationConf().IsConfigured() {
+		return settings.NewCanonicalConfig(), nil
+	}
+
+	// Get username and password
+	username, password, err := association.ElasticsearchAuthSettings(c, &kibanaAssociation)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpOutputCfg := map[string]interface{}{
+		"apm-server.kibana.enabled":  true,
+		"apm-server.kibana.host":     kibanaAssociation.AssociationConf().GetURL(),
+		"apm-server.kibana.username": username,
+		"apm-server.kibana.password": password,
+	}
+	if kibanaAssociation.AssociationConf().GetCACertProvided() {
+		tmpOutputCfg["apm-server.kibana.ssl.certificate_authorities"] = []string{filepath.Join(certificatesDir(kibanaAssociation.AssociatedType()), certificates.CAFileName)}
+	}
+
+	return settings.MustCanonicalConfig(tmpOutputCfg), nil
 }
 
 func tlsSettings(as *apmv1.ApmServer) map[string]interface{} {

@@ -5,10 +5,9 @@
 package v1
 
 import (
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 )
 
 const KibanaContainerName = "kibana"
@@ -69,12 +68,24 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
-func (k Kibana) IsMarkedForDeletion() bool {
+func (k *Kibana) IsMarkedForDeletion() bool {
 	return !k.DeletionTimestamp.IsZero()
 }
 
-func (k *Kibana) ElasticsearchRef() commonv1.ObjectSelector {
-	return k.Spec.ElasticsearchRef
+func (k *Kibana) Associated() commonv1.Associated {
+	return k
+}
+
+func (k *Kibana) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName
+}
+
+func (k *Kibana) AssociatedType() string {
+	return commonv1.ElasticsearchAssociationType
+}
+
+func (k *Kibana) AssociationRef() commonv1.ObjectSelector {
+	return k.Spec.ElasticsearchRef.WithDefaultNamespace(k.Namespace)
 }
 
 func (k *Kibana) SecureSettings() []commonv1.SecretSource {
@@ -106,7 +117,12 @@ func (k *Kibana) SetAssociationStatus(status commonv1.AssociationStatus) {
 	k.Status.AssociationStatus = status
 }
 
+func (k *Kibana) GetAssociations() []commonv1.Association {
+	return []commonv1.Association{k}
+}
+
 var _ commonv1.Associated = &Kibana{}
+var _ commonv1.Association = &Kibana{}
 
 // +kubebuilder:object:root=true
 

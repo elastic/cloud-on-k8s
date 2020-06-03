@@ -193,34 +193,20 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	results.Apply(
-		"reconcile-cluster-license",
-		func(ctx context.Context) (controller.Result, error) {
-			if !esReachable {
-				return defaultRequeue, nil
-			}
-
-			err := license.Reconcile(
-				ctx,
-				d.Client,
-				d.ES,
-				esClient,
-				observedState.ClusterLicense,
-			)
-
-			if err != nil {
-				d.ReconcileState.AddEvent(
-					corev1.EventTypeWarning,
-					events.EventReasonUnexpected,
-					fmt.Sprintf("Could not update cluster license: %s", err.Error()),
-				)
-				return defaultRequeue, err
-			}
-			return controller.Result{}, err
-		},
-	)
-
 	if esReachable {
+		// reconcile the license
+		if err := license.Reconcile(ctx, d.Client, d.ES, esClient); err != nil {
+			d.ReconcileState.AddEvent(
+				corev1.EventTypeWarning,
+				events.EventReasonUnexpected,
+				fmt.Sprintf("Could not update cluster license: %s", err.Error()),
+			)
+			log.Error(err, "Could not update cluster license", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
+			// don't error out the entire reconciliation, move on with next steps and retry later
+			results.WithResult(defaultRequeue)
+		}
+
+		// reconcile remote clusters
 		requeue, err := remotecluster.UpdateSettings(ctx, d.Client, esClient, d.Recorder(), d.LicenseChecker, d.ES)
 		if err != nil {
 			msg := "Could not update remote clusters in Elasticsearch settings"
@@ -229,7 +215,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 			results.WithResult(defaultRequeue)
 		}
 		if requeue {
-			results = results.WithResult(defaultRequeue)
+			results.WithResult(defaultRequeue)
 		}
 	}
 

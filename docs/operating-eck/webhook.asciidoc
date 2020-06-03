@@ -17,12 +17,6 @@ Like the ValidatingWebhookConfiguration, it must be created before starting the 
 The content of this Secret and the lifecycle of the certificates are automatically managed for you. ECK generates a dedicated and separate certificate authority and ensures that all components are rotated before the expiration date. The certificate authority is also used to configure the `caBundle` field of the `ValidatingWebhookConfiguration`. You can disable this feature if you want to manage the certificates yourself or with https://github.com/jetstack/cert-manager[cert-manager]. See an example of the latter below.
 
 
-[float]
-== Troubleshooting
-
-See the <<{p}-webhook-troubleshooting,Webhook troubleshooting>> section of the <<{p}-troubleshooting,Troubleshooting guide>>.
-
-
 == Manage the webhook certificate with cert-manager
 
 If ECK is currently running you first must ensure that the automatic certificate management feature is disabled. This can be done by updating the operator deployment manifest and adding the `--manage-webhook-certs=false` flag.
@@ -110,6 +104,25 @@ EOF
 ----
 
 NOTE: This example assumes that you have installed the operator in the `elastic-system` namespace.
+
+[id="{p}-webhook-troubleshooting"]
+== Troubleshooting
+
+On startup, the operator deploys an https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/[admission webhook] that points to the operator's service. If this is inaccessible, you may see errors in your Kubernetes API server logs indicating that it cannot reach the service. A common cause may be that the operator pods are failing to start for some reason, or that the control plane is isolated from the operator pod by some mechanism (for instance via network policies or running the control plane externally as in https://github.com/elastic/cloud-on-k8s/issues/896#issuecomment-507224945[issue #869] and https://github.com/elastic/cloud-on-k8s/issues/1369[issue #1369]).
+
+For troubleshooting, you can change the https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#failure-policy[`failurePolicy`] of the webhook configuration to `Fail`, which will cause creations and updates to error out if there is an error contacting the webhook.
+
+On link:https://cloud.google.com/kubernetes-engine/docs/concepts/private-cluster-concept[GKE private clusters], you may see requests creating or updating Elastic resources take a long time to complete or timeout. If so, you will need to add a firewall rule allowing port 9443 from the API server so that it can contact the webhook. See the link:https://cloud.google.com/kubernetes-engine/docs/how-to/private-clusters#add_firewall_rules[GKE documentation on adding rules] and the link:https://github.com/kubernetes/kubernetes/issues/79739[Kubernetes issue] for more detail.
+
+Refer to <<{p}-webhook-network-policies>> for more information about network policies that might be preventing communication between the Kubernetes API server and the webhook server.
+
+[float]
+=== Validation failures
+If the validation webhook is preventing you from making changes due to the unknown fields validation like below, you can force the webhook to ignore it by removing the`kubectl.kubernetes.io/last-applied-configuration` annotation from your resource.
+
+```
+admission webhook "elastic-es-validation-v1.k8s.elastic.co" denied the request: Elasticsearch.elasticsearch.k8s.elastic.co "quickstart" is invalid: some-misspelled-field: Invalid value: "some-misspelled-field": some-misspelled-field field found in the kubectl.kubernetes.io/last-applied-configuration annotation is unknown
+```
 
 [id="{p}-webhook-network-policies"]
 == Network policies

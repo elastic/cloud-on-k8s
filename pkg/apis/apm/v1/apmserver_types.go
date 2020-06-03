@@ -35,6 +35,10 @@ type ApmServerSpec struct {
 	// ElasticsearchRef is a reference to the output Elasticsearch cluster running in the same Kubernetes cluster.
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
+	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
+	// It allows APM agent central configuration management in Kibana.
+	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
+
 	// PodTemplate provides customisation options (labels, annotations, affinity rules, resource requests, and so on) for the APM Server pods.
 	// +kubebuilder:validation:Optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
@@ -66,8 +70,10 @@ type ApmServerStatus struct {
 	ExternalService string `json:"service,omitempty"`
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
-	// Association is the status of any auto-linking to Elasticsearch clusters.
-	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+	// ElasticsearchAssociationStatus is the status of any auto-linking to Elasticsearch clusters.
+	ElasticsearchAssociationStatus commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+	// KibanaAssociationStatus is the status of any auto-linking to Kibana.
+	KibanaAssociationStatus commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -89,9 +95,10 @@ type ApmServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec      ApmServerSpec             `json:"spec,omitempty"`
-	Status    ApmServerStatus           `json:"status,omitempty"`
-	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
+	Spec            ApmServerSpec             `json:"spec,omitempty"`
+	Status          ApmServerStatus           `json:"status,omitempty"`
+	esAssocConf     *commonv1.AssociationConf `json:"-"` //nolint:govet
+	kibanaAssocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
 }
 
 // +kubebuilder:object:root=true
@@ -112,24 +119,12 @@ func (as *ApmServer) IsMarkedForDeletion() bool {
 	return !as.DeletionTimestamp.IsZero()
 }
 
-func (as *ApmServer) ElasticsearchRef() commonv1.ObjectSelector {
-	return as.Spec.ElasticsearchRef
-}
-
 func (as *ApmServer) SecureSettings() []commonv1.SecretSource {
 	return as.Spec.SecureSettings
 }
 
-func (as *ApmServer) AssociationConf() *commonv1.AssociationConf {
-	return as.assocConf
-}
-
 func (as *ApmServer) ServiceAccountName() string {
 	return as.Spec.ServiceAccountName
-}
-
-func (as *ApmServer) SetAssociationConf(assocConf *commonv1.AssociationConf) {
-	as.assocConf = assocConf
 }
 
 // EffectiveVersion returns the version reported by APM server. For development builds APM server does not use the SNAPSHOT suffix.
@@ -137,12 +132,113 @@ func (as *ApmServer) EffectiveVersion() string {
 	return strings.TrimSuffix(as.Spec.Version, "-SNAPSHOT")
 }
 
-func (as *ApmServer) AssociationStatus() commonv1.AssociationStatus {
-	return as.Status.Association
+func (as *ApmServer) GetAssociations() []commonv1.Association {
+	return []commonv1.Association{
+		&ApmEsAssociation{ApmServer: as},
+		&ApmKibanaAssociation{ApmServer: as},
+	}
 }
 
-func (as *ApmServer) SetAssociationStatus(status commonv1.AssociationStatus) {
-	as.Status.Association = status
+// ApmEsAssociation helps to manage the APMServer / Elasticsearch association
+type ApmEsAssociation struct {
+	*ApmServer
+}
+
+var _ commonv1.Association = &ApmEsAssociation{}
+
+func NewApmEsAssociation(as *ApmServer) *ApmEsAssociation {
+	return &ApmEsAssociation{ApmServer: as}
+}
+
+func (aes *ApmEsAssociation) Associated() commonv1.Associated {
+	if aes == nil {
+		return nil
+	}
+	if aes.ApmServer == nil {
+		aes.ApmServer = &ApmServer{}
+	}
+	return aes.ApmServer
+}
+
+func (aes *ApmEsAssociation) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName
+}
+
+func (aes *ApmEsAssociation) AssociatedType() string {
+	return commonv1.ElasticsearchAssociationType
+}
+
+func (aes *ApmEsAssociation) AssociationRef() commonv1.ObjectSelector {
+	return aes.Spec.ElasticsearchRef.WithDefaultNamespace(aes.Namespace)
+}
+
+func (aes *ApmEsAssociation) AssociationConf() *commonv1.AssociationConf {
+	return aes.esAssocConf
+}
+
+func (aes *ApmEsAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	aes.esAssocConf = assocConf
+}
+
+func (aes *ApmEsAssociation) AssociationStatus() commonv1.AssociationStatus {
+	return aes.Status.ElasticsearchAssociationStatus
+}
+
+func (aes *ApmEsAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
+	aes.Status.ElasticsearchAssociationStatus = status
+}
+
+var _ commonv1.Association = &ApmKibanaAssociation{}
+
+// ApmServer / Kibana association helper
+type ApmKibanaAssociation struct {
+	*ApmServer
+}
+
+func NewApmKibanaAssociation(as *ApmServer) *ApmKibanaAssociation {
+	return &ApmKibanaAssociation{ApmServer: as}
+}
+
+func (akb *ApmKibanaAssociation) Associated() commonv1.Associated {
+	if akb == nil {
+		return nil
+	}
+	if akb.ApmServer == nil {
+		akb.ApmServer = &ApmServer{}
+	}
+	return akb.ApmServer
+}
+
+func (akb *ApmKibanaAssociation) AssociationConfAnnotationName() string {
+	return "association.k8s.elastic.co/kb-conf"
+}
+
+func (akb *ApmKibanaAssociation) AssociatedType() string {
+	return "kibana"
+}
+
+func (akb *ApmKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+	return akb.Spec.KibanaRef.WithDefaultNamespace(akb.Namespace)
+}
+
+func (akb *ApmKibanaAssociation) RequiresAssociation() bool {
+	return akb.Spec.KibanaRef.Name != ""
+}
+
+func (akb *ApmKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
+	return akb.kibanaAssocConf
+}
+
+func (akb *ApmKibanaAssociation) SetAssociationConf(assocConf *commonv1.AssociationConf) {
+	akb.kibanaAssocConf = assocConf
+}
+
+func (akb *ApmKibanaAssociation) AssociationStatus() commonv1.AssociationStatus {
+	return akb.Status.KibanaAssociationStatus
+}
+
+func (akb *ApmKibanaAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
+	akb.Status.KibanaAssociationStatus = status
 }
 
 var _ commonv1.Associated = &ApmServer{}

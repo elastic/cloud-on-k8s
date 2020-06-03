@@ -18,7 +18,7 @@ const (
 	OcpDriverID                     = "ocp"
 	OcpVaultPath                    = "secret/devops-ci/cloud-on-k8s/ci-ocp-k8s-operator"
 	OcpServiceAccountVaultFieldName = "service-account"
-	OcpPullSecretFieldName          = "ocp-pull-secret" //nolint
+	OcpPullSecretFieldName          = "ocp-pull-secret" // nolint:gosec
 	OcpStateBucket                  = "eck-deployer-ocp-clusters-state"
 	OcpConfigFileName               = "deployer-config-ocp.yml"
 	DefaultOcpRunConfigTemplate     = `id: ocp-dev
@@ -198,8 +198,20 @@ func (d *OcpDriver) auth() error {
 		if err := client.ReadIntoFile(keyFileName, OcpVaultPath, OcpServiceAccountVaultFieldName); err != nil {
 			return err
 		}
-		log.Println("Setting $GCLOUD_KEYFILE_JSON...")
-		return os.Setenv("GCLOUD_KEYFILE_JSON", keyFileName)
+
+		if d.plan.Ocp.UseNonDefaultCloudSDKPath {
+			// ensure gcloud & gsutil rely on credentials stored in gcpDir instead of using the default
+			// directory (~/.config/gcloud), to not tamper any default gcloud auth already set on the system
+			log.Printf("Setting $CLOUDSDK_CONFIG=%s", gcpDir)
+			if err := os.Setenv("CLOUDSDK_CONFIG", gcpDir); err != nil {
+				return err
+			}
+		}
+		// now that we're set on the cloud sdk directory, we can run any gcloud command that will rely on it
+		if err := NewCommand(fmt.Sprintf("gcloud config set project %s", d.ctx["GCloudProject"])).Run(); err != nil {
+			return err
+		}
+		return NewCommand("gcloud auth activate-service-account --key-file=" + keyFileName).Run()
 	}
 
 	log.Println("Authenticating as user...")
@@ -251,7 +263,7 @@ func (d *OcpDriver) create() error {
 	}
 
 	installConfig := filepath.Join(d.ctx["ClusterStateDir"].(string), "install-config.yaml")
-	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0644)
+	err := ioutil.WriteFile(installConfig, tpl.Bytes(), 0600)
 
 	if err != nil {
 		return err

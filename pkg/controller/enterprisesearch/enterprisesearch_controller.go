@@ -168,7 +168,7 @@ func (r *ReconcileEnterpriseSearch) Reconcile(request reconcile.Request) (reconc
 	defer tracing.EndTransaction(tx)
 
 	var ent entv1beta1.EnterpriseSearch
-	if err := association.FetchWithAssociation(ctx, r.Client, request, &ent); err != nil {
+	if err := association.FetchWithAssociations(ctx, r.Client, request, &ent); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,
