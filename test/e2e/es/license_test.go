@@ -132,7 +132,7 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 }
 
 // TestEnterpriseTrialExtension tests that trial extensions can be successfully applied and take effect.
-// Starts and verifies an ECK-managed trial. Tests that license if applied and test cluster running in trial mode.
+// Starts and verifies an ECK-managed trial. Tests that license is applied and test cluster is running in trial mode.
 // Then generates a development version of an Enterprise trial extension license with a development Elasticsearch license inside.
 // Then tests that ECK accepts this license and propagates the Elasticsearch license to the test Elasticsearch cluster.
 // Finally tests that trial extensions can be applied repeatedly as opposed to ECK-managed trials which are one-offs.
