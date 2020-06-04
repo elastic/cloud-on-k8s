@@ -149,7 +149,6 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 
 	var licenseTestContext elasticsearch.LicenseTestContext
 
-	trialSecretName := "eck-trial"
 	licenseSecretName := "eck-license"
 	initStepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
@@ -160,7 +159,6 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 				},
 			},
 			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
-			licenseTestContext.CreateEnterpriseTrialLicenseSecret(trialSecretName),
 		}
 	}
 
@@ -174,7 +172,6 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 				client.ElasticsearchLicenseTypeEnterprise,
 			),
 			// revert to basic again
-			licenseTestContext.DeleteEnterpriseLicenseSecret(trialSecretName),
 			licenseTestContext.DeleteEnterpriseLicenseSecret(licenseSecretName),
 			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeBasic),
 			// repeatedly extending a trial is possible
