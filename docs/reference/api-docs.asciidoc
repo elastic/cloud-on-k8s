@@ -145,7 +145,7 @@ Package v1beta1 contains API Schema definitions for the beat v1beta1 API group
 [id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beat"]
 === Beat 
 
-Beat is the Schema for the Beats API
+Beat is the Schema for the Beats API.
 
 
 
@@ -176,7 +176,7 @@ BeatSpec defines the desired state of a Beat.
 | *`type`* __string__ | Type is the type of the Beat to deploy (filebeat, metricbeat, etc.). Any string can be used, but well-known types will be recognized and will allow to provide sane default configurations.
 | *`version`* __string__ | Version of the Beat.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
-| *`image`* __string__ | Image is the Beat Docker image to deploy. Version has to match the Beat in the image.
+| *`image`* __string__ | Image is the Beat Docker image to deploy. Version and Type have to match the Beat in the image.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Beat configuration. If provided, it will override the default configuration.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace. Can only be used if ECK is enforcing RBAC on references.
 | *`daemonSet`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-daemonsetspec[$$DaemonSetSpec$$]__ | DaemonSet allows to: 1. Indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the    Type is used 2. Provide a spec for the DaemonSet Cannot be used along with `deployment`.

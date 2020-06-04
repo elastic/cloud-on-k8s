@@ -46,7 +46,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: Beat is the Schema for the Beats API
+      description: Beat is the Schema for the Beats API.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -12159,8 +12159,8 @@ spec:
               - name
               type: object
             image:
-              description: Image is the Beat Docker image to deploy. Version has to
-                match the Beat in the image.
+              description: Image is the Beat Docker image to deploy. Version and Type
+                have to match the Beat in the image.
               type: string
             serviceAccountName:
               description: ServiceAccountName is used to check access from the current
@@ -12181,7 +12181,7 @@ spec:
           - version
           type: object
         status:
-          description: BeatStatus defines the observed state of Beat
+          description: BeatStatus defines the observed state of a Beat.
           properties:
             associationStatus:
               description: AssociationStatus is the status of an association resource.
