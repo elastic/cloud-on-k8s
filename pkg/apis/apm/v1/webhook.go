@@ -122,7 +122,7 @@ func checkAgentConfigurationMinVersion(as *ApmServer) field.ErrorList {
 		return field.ErrorList{field.Forbidden(
 			field.NewPath("spec").Child("kibanaRef"),
 			fmt.Sprintf(
-				"required version for Kibana association is %s but desired version is %s",
+				"minimum required version for Kibana association is %s but desired version is %s",
 				ApmAgentConfigurationMinVersion,
 				apmVersion,
 			),
