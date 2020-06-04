@@ -25,7 +25,7 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
-	// Image is the Beat Docker image to deploy. Version has to match the Beat in the image.
+	// Image is the Beat Docker image to deploy. Version and Type have to match the Beat in the image.
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
 
@@ -37,9 +37,6 @@ type BeatSpec struct {
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-
-	// DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows overriding its default spec.
-	// Cannot be used along with `deployment`.
 
 	// DaemonSet allows to:
 	// 1. Indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the
@@ -67,7 +64,7 @@ type DeploymentSpec struct {
 	Replicas    *int32                 `json:"replicas,omitempty"`
 }
 
-// BeatStatus defines the observed state of Beat
+// BeatStatus defines the observed state of a Beat.
 type BeatStatus struct {
 	// +kubebuilder:validation:Optional
 	commonv1.ReconcilerStatus `json:",inline"`
@@ -101,7 +98,7 @@ const (
 
 // +kubebuilder:object:root=true
 
-// Beat is the Schema for the Beats API
+// Beat is the Schema for the Beats API.
 // +kubebuilder:resource:categories=elastic,shortName=beat
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
@@ -177,7 +174,7 @@ var _ commonv1.Association = &Beat{}
 
 // +kubebuilder:object:root=true
 
-// BeatList contains a list of Beats
+// BeatList contains a list of Beats.
 type BeatList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
