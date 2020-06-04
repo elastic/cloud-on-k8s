@@ -278,3 +278,47 @@ func TestContainsKeys(t *testing.T) {
 		})
 	}
 }
+
+func TestEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		m1   map[string]string
+		m2   map[string]string
+		want bool
+	}{
+		{
+			name: "when both maps are nil",
+			want: true,
+		},
+		{
+			name: "when one map is nil",
+			m1:   map[string]string{"a": "b"},
+			want: false,
+		},
+		{
+			name: "when both maps are empty",
+			m1:   map[string]string{},
+			m2:   map[string]string{},
+			want: true,
+		},
+		{
+			name: "when both maps are equal",
+			m1:   map[string]string{"a": "b", "c": "d"},
+			m2:   map[string]string{"c": "d", "a": "b"},
+			want: true,
+		},
+		{
+			name: "when maps are not equal",
+			m1:   map[string]string{"a": "b"},
+			m2:   map[string]string{"c": "d", "a": "b"},
+			want: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			have := Equal(tc.m1, tc.m2)
+			require.Equal(t, tc.want, have)
+		})
+	}
+}

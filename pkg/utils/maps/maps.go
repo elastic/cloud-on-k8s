@@ -62,3 +62,32 @@ func ContainsKeys(m map[string]string, labels ...string) bool {
 	}
 	return true
 }
+
+// Clone creates a new map containing copies of the elements of the given map.
+func Clone(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+
+	clone := make(map[string]string, len(m))
+	for k, v := range m {
+		clone[k] = v
+	}
+
+	return clone
+}
+
+// Equal compares two maps and returns true if both contain the same keys and values.
+func Equal(m1, m2 map[string]string) bool {
+	if len(m1) != len(m2) {
+		return false
+	}
+
+	for k1, v1 := range m1 {
+		if v2, ok := m2[k1]; !ok || v1 != v2 {
+			return false
+		}
+	}
+
+	return true
+}
