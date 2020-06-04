@@ -25,6 +25,13 @@ type Info struct {
 	} `json:"version"`
 }
 
+// Query params for _cluster/health see https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html
+const (
+	WaitForNoInitializingShards string = "wait_for_no_initializing_shards"
+	WaitForEvents               string = "wait_for_events"
+	Timeout                     string = "timeout"
+)
+
 // Health represents the response from _cluster/health
 type Health struct {
 	ClusterName                 string                   `json:"cluster_name"`
@@ -42,6 +49,19 @@ type Health struct {
 	NumberOfInFlightFetch       int                      `json:"number_of_in_flight_fetch"`
 	TaskMaxWaitingInQueueMillis int                      `json:"task_max_waiting_in_queue_millis"`
 	ActiveShardsPercentAsNumber float32                  `json:"active_shards_percent_as_number"`
+}
+
+// SafeToRoll indicates that a rolling update can continue with the next node if
+// - no relocating or initializing shards or shards being fetched
+// - all primaries allocated
+// only reliable if Health result was created with wait_for_events=languid
+// so that there are no pending initialisations in the task queue
+func (h Health) SafeToRoll() bool {
+	return h.TimedOut == false && // make sure request did not time out (i.e. no pending events)
+		h.Status != esv1.ElasticsearchRedHealth && // all primaries allocated
+		h.NumberOfInFlightFetch == 0 && // no shards being fetched
+		h.InitializingShards == 0 && // no shards initializing
+		h.RelocatingShards == 0 // no shards relocating
 }
 
 type ShardState string

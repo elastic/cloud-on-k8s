@@ -59,9 +59,15 @@ func (c *clientV6) Flush(ctx context.Context) error {
 	return c.post(ctx, "/_flush", nil, nil)
 }
 
-func (c *clientV6) GetClusterHealth(ctx context.Context) (Health, error) {
+func (c *clientV6) GetClusterHealth(ctx context.Context, params url.Values) (Health, error) {
 	var result Health
-	return result, c.get(ctx, "/_cluster/health", &result)
+	err := c.get(ctx, "/_cluster/health?"+params.Encode(), &result)
+	if IsTimeout(err) {
+		// ignore timeout errors as they are communicated in the returned payload so we can reserve error handling
+		// for unexpected events
+		err = nil
+	}
+	return result, err
 }
 
 func (c *clientV6) SetMinimumMasterNodes(ctx context.Context, n int) error {

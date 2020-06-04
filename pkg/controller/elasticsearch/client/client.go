@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -64,7 +65,7 @@ type Client interface {
 	// Flush requests a flush on the cluster.
 	Flush(ctx context.Context) error
 	// GetClusterHealth calls the _cluster/health api.
-	GetClusterHealth(ctx context.Context) (Health, error)
+	GetClusterHealth(ctx context.Context, params url.Values) (Health, error)
 	// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
 	SetMinimumMasterNodes(ctx context.Context, n int) error
 	// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
@@ -133,6 +134,16 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("%s: %s", e.response.Status, reason)
 }
 
+// IsForbidden checks whether the error was an HTTP 403 error.
+func IsForbidden(err error) bool {
+	switch err := err.(type) {
+	case *APIError:
+		return err.response.StatusCode == http.StatusForbidden
+	default:
+		return false
+	}
+}
+
 // IsNotFound checks whether the error was an HTTP 404 error.
 func IsNotFound(err error) bool {
 	switch err := err.(type) {
@@ -143,21 +154,21 @@ func IsNotFound(err error) bool {
 	}
 }
 
-// IsConflict checks whether the error was an HTTP 409 error.
-func IsConflict(err error) bool {
+// IsTimeout checks whether the error was an HTTP 408 error
+func IsTimeout(err error) bool {
 	switch err := err.(type) {
 	case *APIError:
-		return err.response.StatusCode == http.StatusConflict
+		return err.response.StatusCode == http.StatusRequestTimeout
 	default:
 		return false
 	}
 }
 
-// IsForbidden checks whether the error was an HTTP 403 error.
-func IsForbidden(err error) bool {
+// IsConflict checks whether the error was an HTTP 409 error.
+func IsConflict(err error) bool {
 	switch err := err.(type) {
 	case *APIError:
-		return err.response.StatusCode == http.StatusForbidden
+		return err.response.StatusCode == http.StatusConflict
 	default:
 		return false
 	}

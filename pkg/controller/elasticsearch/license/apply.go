@@ -43,7 +43,7 @@ func applyLinkedLicense(
 	defer cancel()
 	current, err := updater.GetLicense(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("while getting current license level %w", err)
 	}
 
 	// get the expected license

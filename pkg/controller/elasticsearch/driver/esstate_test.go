@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -95,7 +96,7 @@ func (f *fakeESClient) GetClusterRoutingAllocation(_ context.Context) (esclient.
 	return f.clusterRoutingAllocation, nil
 }
 
-func (f *fakeESClient) GetClusterHealth(_ context.Context) (esclient.Health, error) {
+func (f *fakeESClient) GetClusterHealth(_ context.Context, _ url.Values) (esclient.Health, error) {
 	f.GetClusterHealthCalledCount++
 	return f.health, nil
 }

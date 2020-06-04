@@ -21,6 +21,8 @@ type ESState interface {
 	ShardAllocationsEnabled() (bool, error)
 	// Health returns the health of the Elasticsearch cluster.
 	Health() (esv1.ElasticsearchHealth, error)
+	// SafeToRoll returns true if shards a not moving and primaries are allocated
+	SafeToRoll() (bool, error)
 }
 
 // MemoizingESState requests Elasticsearch for the requested information only once, at first call.
@@ -115,21 +117,31 @@ func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, erro
 
 // memoizingHealth provides cluster health information.
 type memoizingHealth struct {
-	health   esv1.ElasticsearchHealth
-	once     sync.Once
-	esClient esclient.Client
-	ctx      context.Context
+	health     esv1.ElasticsearchHealth
+	safeToRoll bool
+	once       sync.Once
+	esClient   esclient.Client
+	ctx        context.Context
 }
 
 // initialize requests Elasticsearch for cluster health, only once.
 func (h *memoizingHealth) initialize() error {
 	ctx, cancel := context.WithTimeout(h.ctx, esclient.DefaultReqTimeout)
 	defer cancel()
-	health, err := h.esClient.GetClusterHealth(ctx)
+
+	// get cluster health but make sure we have no pending shard initializations
+	// by requiring the event queue to be empty (wait for lowest prio == languid events)
+	// use a 0s timeout so that we can immediately requeue if conditions not met instead of waiting
+	params := map[string][]string{
+		esclient.WaitForEvents: {"languid"},
+		esclient.Timeout:       {"0s"},
+	}
+	health, err := h.esClient.GetClusterHealth(ctx, params)
 	if err != nil {
 		return err
 	}
 	h.health = health.Status
+	h.safeToRoll = health.SafeToRoll()
 	return nil
 }
 
@@ -139,4 +151,12 @@ func (h *memoizingHealth) Health() (esv1.ElasticsearchHealth, error) {
 		return "", err
 	}
 	return h.health, nil
+}
+
+// SafeToRoll returns true if shards a not moving and primaries are allocated
+func (h *memoizingHealth) SafeToRoll() (bool, error) {
+	if err := initOnce(&h.once, h.initialize); err != nil {
+		return false, err
+	}
+	return h.safeToRoll, nil
 }

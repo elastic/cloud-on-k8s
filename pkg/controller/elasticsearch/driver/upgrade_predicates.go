@@ -203,22 +203,9 @@ var predicates = [...]Predicate{
 				// Restart in yellow state is only allowed during version upgrade
 				return false, nil
 			}
-			// This candidate needs a version upgrade, check if the Shards are in a compatible state.
-			shards, err := context.shardLister.GetShards(context.ctx)
-			if err != nil {
-				return false, err
-			}
-			for _, shard := range shards {
-				switch shard.State {
-				case client.INITIALIZING, client.RELOCATING:
-					return false, nil
-				case client.UNASSIGNED:
-					if !shard.IsReplica() {
-						return false, nil
-					}
-				}
-			}
-			return true, nil
+			// This candidate needs a version upgrade, check if the primaries are assigned and shards are not moving or
+			// initializing
+			return context.esState.SafeToRoll()
 		},
 	},
 	{

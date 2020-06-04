@@ -70,7 +70,7 @@ func (e *esClusterChecks) CheckESHealthGreen() test.Step {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
-			health, err := esClient.GetClusterHealth(ctx)
+			health, err := esClient.GetClusterHealth(ctx, nil)
 			if err != nil {
 				return err
 			}

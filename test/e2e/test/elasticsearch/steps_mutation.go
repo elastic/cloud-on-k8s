@@ -198,7 +198,7 @@ func (hc *ContinuousHealthCheck) Start() {
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), continuousHealthCheckTimeout)
 				defer cancel()
-				health, err := client.GetClusterHealth(ctx)
+				health, err := client.GetClusterHealth(ctx, nil)
 				if err != nil {
 					// Could not retrieve cluster health, can happen when the master node is killed
 					// during a rolling upgrade. We allow it, unless it lasts for too long.
