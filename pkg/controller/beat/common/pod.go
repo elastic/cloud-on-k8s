@@ -91,7 +91,7 @@ func buildPodTemplate(
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
 		WithArgs("-e", "-c", ConfigMountPath).
 		WithDNSPolicy(corev1.DNSClusterFirstWithHostNet).
-		WithSecurityContext(corev1.SecurityContext{
+		WithPodSecurityContext(corev1.PodSecurityContext{
 			RunAsUser: pointer.Int64(0),
 		})
 

@@ -364,9 +364,9 @@ func (b *PodTemplateBuilder) WithDNSPolicy(dnsPolicy corev1.DNSPolicy) *PodTempl
 	return b
 }
 
-func (b *PodTemplateBuilder) WithSecurityContext(securityContext corev1.SecurityContext) *PodTemplateBuilder {
-	if b.Container.SecurityContext == nil {
-		b.Container.SecurityContext = &securityContext
+func (b *PodTemplateBuilder) WithPodSecurityContext(securityContext corev1.PodSecurityContext) *PodTemplateBuilder {
+	if b.PodTemplate.Spec.SecurityContext == nil {
+		b.PodTemplate.Spec.SecurityContext = &securityContext
 	}
 	return b
 }
