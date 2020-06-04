@@ -15,10 +15,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/about"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 // Constants to use for the config files in a Kibana pod.
@@ -55,6 +57,7 @@ func ReconcileConfigSecret(
 	kb kbv1.Kibana,
 	kbSettings CanonicalConfig,
 	operatorInfo about.OperatorInfo,
+	meta metadata.Metadata,
 ) error {
 	span, _ := apm.StartSpan(ctx, "reconcile_config_secret", tracing.SpanTypeApp)
 	defer span.End()
@@ -69,11 +72,10 @@ func ReconcileConfigSecret(
 	}
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: kb.Namespace,
-			Name:      SecretName(kb),
-			Labels: common.AddCredentialsLabel(map[string]string{
-				KibanaNameLabelName: kb.Name,
-			}),
+			Namespace:   kb.Namespace,
+			Name:        SecretName(kb),
+			Labels:      common.AddCredentialsLabel(maps.Clone(meta.Labels)),
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			SettingsFilename:  settingsYamlBytes,

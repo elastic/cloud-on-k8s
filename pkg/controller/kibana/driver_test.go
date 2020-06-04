@@ -24,11 +24,14 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 var customResourceLimits = corev1.ResourceRequirements{
@@ -369,7 +372,12 @@ func TestDriverDeploymentParams(t *testing.T) {
 			d, err := newDriver(client, w, record.NewFakeRecorder(100), kb)
 			require.NoError(t, err)
 
-			got, err := d.deploymentParams(kb)
+			meta := metadata.Metadata{
+				Labels:      maps.Merge(NewLabels(kb.Name), map[string]string{"foo": "bar"}),
+				Annotations: map[string]string{"baz": "quux"},
+			}
+
+			got, err := d.deploymentParams(kb, meta)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -428,9 +436,12 @@ func expectedDeploymentParams() deployment.Params {
 		Name:      "test-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
-		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
-		Replicas:  1,
-		Strategy:  appsv1.RollingUpdateDeploymentStrategyType,
+		Meta: metadata.Metadata{
+			Labels:      map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test", "foo": "bar"},
+			Annotations: map[string]string{"baz": "quux"},
+		},
+		Replicas: 1,
+		Strategy: appsv1.RollingUpdateDeploymentStrategyType,
 		PodTemplateSpec: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
@@ -532,8 +543,10 @@ func expectedDeploymentParams() deployment.Params {
 func kibanaFixture() *kbv1.Kibana {
 	kbFixture := &kbv1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:        "test",
+			Namespace:   "default",
+			Labels:      map[string]string{"foo": "bar"},
+			Annotations: map[string]string{"baz": "quux"},
 		},
 		Spec: kbv1.KibanaSpec{
 			Version: "7.0.0",
@@ -678,7 +691,7 @@ func TestNewService(t *testing.T) {
 			wantSvc: func() corev1.Service {
 				svc := mkService()
 				svc.Labels["foo"] = "bar"
-				svc.Annotations = map[string]string{"bar": "baz"}
+				svc.Annotations["bar"] = "baz"
 				svc.Spec.Ports[0].Name = "https"
 				return svc
 			},
@@ -691,12 +704,19 @@ func TestNewService(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "kibana-test",
 					Namespace: "test",
+					Labels:    map[string]string{"wibble": "wobble"},
+					Annotations: map[string]string{
+						annotation.PropagateAnnotationsAnnotation: "wubble",
+						annotation.PropagateLabelsAnnotation:      "wibble",
+						"wubble":                                  "flub",
+					},
 				},
 				Spec: kbv1.KibanaSpec{
 					HTTP: tc.httpConf,
 				},
 			}
-			haveSvc := NewService(kb)
+			meta := metadata.Propagate(&kb, metadata.Metadata{Labels: NewLabels(kb.Name)})
+			haveSvc := NewService(kb, meta)
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
@@ -710,6 +730,10 @@ func mkService() corev1.Service {
 			Labels: map[string]string{
 				KibanaNameLabelName:  "kibana-test",
 				common.TypeLabelName: Type,
+				"wibble":             "wobble",
+			},
+			Annotations: map[string]string{
+				"wubble": "flub",
 			},
 		},
 		Spec: corev1.ServiceSpec{

@@ -28,6 +28,7 @@ import (
 	driver2 "github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -116,7 +117,10 @@ func (d *driver) Reconcile(
 		return results
 	}
 
-	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb), kb)
+	// metadata to propagate to children
+	meta := metadata.Propagate(kb, metadata.Metadata{Labels: NewLabels(kb.Name)})
+
+	svc, err := common.ReconcileService(ctx, d.client, NewService(*kb, meta), kb)
 	if err != nil {
 		// TODO: consider updating some status here?
 		return results.WithError(err)
@@ -128,7 +132,7 @@ func (d *driver) Reconcile(
 		Object:                kb,
 		TLSOptions:            kb.Spec.HTTP.TLS,
 		Namer:                 Namer,
-		Labels:                NewLabels(kb.Name),
+		Metadata:              meta,
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        params.CACertRotation,
 		CertRotation:          params.CertRotation,
@@ -143,7 +147,7 @@ func (d *driver) Reconcile(
 		return results.WithError(err)
 	}
 
-	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo)
+	err = ReconcileConfigSecret(ctx, d.client, *kb, kbSettings, params.OperatorInfo, meta)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -151,7 +155,7 @@ func (d *driver) Reconcile(
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploymentParams, err := d.deploymentParams(kb)
+	deploymentParams, err := d.deploymentParams(kb, meta)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -188,13 +192,13 @@ func (d *driver) getStrategyType(kb *kbv1.Kibana) (appsv1.DeploymentStrategyType
 	return appsv1.RollingUpdateDeploymentStrategyType, nil
 }
 
-func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
+func (d *driver) deploymentParams(kb *kbv1.Kibana, meta metadata.Metadata) (deployment.Params, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
 	keystoreResources, err := keystore.NewResources(
 		d,
 		kb,
 		Namer,
-		NewLabels(kb.Name),
+		meta,
 		initContainersParameters,
 	)
 	if err != nil {
@@ -275,13 +279,13 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 		Namespace:       kb.Namespace,
 		Replicas:        kb.Spec.Count,
 		Selector:        NewLabels(kb.Name),
-		Labels:          NewLabels(kb.Name),
+		Meta:            meta,
 		PodTemplateSpec: kibanaPodSpec,
 		Strategy:        strategyType,
 	}, nil
 }
 
-func NewService(kb kbv1.Kibana) *corev1.Service {
+func NewService(kb kbv1.Kibana, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: kb.Spec.HTTP.Service.ObjectMeta,
 		Spec:       kb.Spec.HTTP.Service.Spec,
@@ -290,7 +294,6 @@ func NewService(kb kbv1.Kibana) *corev1.Service {
 	svc.ObjectMeta.Namespace = kb.Namespace
 	svc.ObjectMeta.Name = HTTPService(kb.Name)
 
-	labels := NewLabels(kb.Name)
 	ports := []corev1.ServicePort{
 		{
 			Name:     kb.Spec.HTTP.Protocol(),
@@ -298,5 +301,7 @@ func NewService(kb kbv1.Kibana) *corev1.Service {
 			Port:     HTTPPort,
 		},
 	}
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+
+	selector := NewLabels(kb.Name)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
