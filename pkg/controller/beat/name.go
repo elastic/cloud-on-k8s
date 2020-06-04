@@ -24,3 +24,11 @@ func (bn *Namer) Name(typeName, name string) string {
 }
 
 var _ commonbeat.Namer = &Namer{}
+
+type Namer interface {
+	// ConfigSecretName returns name of the Secret that hold configuration for a Beat.
+	ConfigSecretName(typeName, name string) string
+
+	// Name returns name of the Beat resource.
+	Name(typeName, name string) string
+}
