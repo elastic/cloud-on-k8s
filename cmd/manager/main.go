@@ -171,7 +171,7 @@ func init() {
 	Cmd.Flags().Bool(
 		operator.ManageBeatAutodiscoverRBACFlag,
 		true,
-		"Determines whether the operator should set up binding and service account for the Beats autodiscover feature",
+		"Determines whether the operator should set up bindings and service accounts for the Beats autodiscover feature",
 	)
 
 	// enable using dashed notation in flags and underscores in env
@@ -267,9 +267,9 @@ func execute() {
 		opts.Namespace = managedNamespaces[0]
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
-		// always include:
-		// 1. the operator namespace into the manager cache so that we can work with operator-internal resources in there
-		// 2. empty namespace for non-namespaced resources
+		// the manager cache should always include:
+		// 1. the operator namespace so that we can work with operator-internal resources
+		// 2. empty namespace so that we can work with cluster-wide (non-namespaced) resources
 		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace, ""))
 	}
 
