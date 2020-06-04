@@ -79,7 +79,8 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 // TestEnterpriseTrialLicense this test can be run exactly once per installation!
 func TestEnterpriseTrialLicense(t *testing.T) {
 	// only execute this test if we have a test license to work with
-	if test.Ctx().TestLicense == "" {
+	// but do not execute if we have a private key to generate trial extensions (see TestEnterpriseTrialExtension)
+	if test.Ctx().TestLicense == "" || test.Ctx().TestLicensePKeyPath != "" {
 		t.SkipNow()
 	}
 
@@ -131,7 +132,8 @@ func TestEnterpriseTrialLicense(t *testing.T) {
 }
 
 // TestEnterpriseTrialExtension tests that trial extensions can be successfully applied and take effect.
-// Generates a development version of an Enterprise trial extension license with a development Elasticsearch license inside.
+// Starts and verifies an ECK-managed trial. Tests that license if applied and test cluster running in trial mode.
+// Then generates a development version of an Enterprise trial extension license with a development Elasticsearch license inside.
 // Then tests that ECK accepts this license and propagates the Elasticsearch license to the test Elasticsearch cluster.
 // Finally tests that trial extensions can be applied repeatedly as opposed to ECK-managed trials which are one-offs.
 func TestEnterpriseTrialExtension(t *testing.T) {
@@ -149,6 +151,7 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 
 	var licenseTestContext elasticsearch.LicenseTestContext
 
+	trialSecretName := "eck-trial"
 	licenseSecretName := "eck-license"
 	initStepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
@@ -159,12 +162,15 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 				},
 			},
 			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
+			licenseTestContext.CreateEnterpriseTrialLicenseSecret(trialSecretName),
 		}
 	}
 
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
 			licenseTestContext.Init(),
+			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeTrial),
+			licenseTestContext.CheckEnterpriseTrialLicenseValid(trialSecretName),
 			// simulate a trial extension
 			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey)),
 			licenseTestContext.CheckElasticsearchLicense(
@@ -172,7 +178,7 @@ func TestEnterpriseTrialExtension(t *testing.T) {
 				client.ElasticsearchLicenseTypeEnterprise,
 			),
 			// revert to basic again
-			licenseTestContext.DeleteEnterpriseLicenseSecret(licenseSecretName),
+			licenseTestContext.DeleteAllEnterpriseLicenseSecrets(),
 			licenseTestContext.CheckElasticsearchLicense(client.ElasticsearchLicenseTypeBasic),
 			// repeatedly extending a trial is possible
 			licenseTestContext.CreateTrialExtension(licenseSecretName, privateKey.(*rsa.PrivateKey)),
