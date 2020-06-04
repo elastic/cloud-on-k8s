@@ -12,10 +12,12 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -41,6 +43,41 @@ func TestCrossNSAssociation(t *testing.T) {
 		})
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, apmBuilder).RunSequential(t)
+}
+
+// TestAPMKibanaAssociation tests associating an APM Server with Kibana.
+func TestAPMKibanaAssociation(t *testing.T) {
+	stackVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	if !stackVersion.IsSameOrAfter(apmv1.ApmAgentConfigurationMinVersion) {
+		t.SkipNow()
+	}
+
+	ns := test.Ctx().ManagedNamespace(0)
+	name := "test-apm-kb-assoc"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithNamespace(ns).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources).
+		WithRestrictedSecurityContext()
+
+	kbBuilder := kibana.NewBuilder(name).
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext()
+
+	apmBuilder := apmserver.NewBuilder(name).
+		WithNamespace(ns).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithKibanaRef(kbBuilder.Ref()).
+		WithNodeCount(1).
+		WithRestrictedSecurityContext().
+		WithConfig(map[string]interface{}{
+			"apm-server.ilm.enabled":                           false,
+			"setup.template.settings.index.number_of_replicas": 0, // avoid ES yellow state on a 1 node ES cluster
+		})
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).RunSequential(t)
 }
 
 func TestAPMAssociationWithNonExistentES(t *testing.T) {
