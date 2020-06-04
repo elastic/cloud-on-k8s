@@ -185,15 +185,8 @@ func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) 
 		return results.WithError(err)
 	}
 
-	driverStatus, results := newDriver(ctx, r.Client, beat).Reconcile()
-	results.WithResults(results)
-
-	err := r.updateStatus(driverStatus, beat)
-	results.WithError(err)
-	if err != nil && apierrors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", beat.Namespace, "beat_name", beat.Name)
-		results.WithResult(reconcile.Result{Requeue: true})
-	}
+	driverResults := newDriver(ctx, r.Client, beat).Reconcile()
+	results.WithResults(driverResults)
 
 	return results
 }
@@ -209,19 +202,6 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	}
 
 	return nil
-}
-
-func (r *ReconcileBeat) updateStatus(driverStatus *beatcommon.DriverStatus, beat beatv1beta1.Beat) error {
-	if driverStatus == nil {
-		return nil
-	}
-
-	beat.Status.AvailableNodes = driverStatus.AvailableNodes
-	beat.Status.ExpectedNodes = driverStatus.ExpectedNodes
-	beat.Status.Health = driverStatus.Health
-	beat.Status.Association = driverStatus.Association
-
-	return r.Client.Status().Update(&beat)
 }
 
 func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat) (bool, error) {

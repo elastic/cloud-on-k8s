@@ -45,7 +45,7 @@ func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
 	return &Driver{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() (*beatcommon.DriverStatus, *reconciler.Results) {
+func (d *Driver) Reconcile() *reconciler.Results {
 	f := func(builder *defaults.PodTemplateBuilder) {
 		dockerSockVolume := volume.NewHostVolume(DockerSockVolumeName, DockerSockPath, DockerSockMountPath, false, corev1.HostPathUnset)
 		procVolume := volume.NewReadOnlyHostVolume(ProcVolumeName, ProcPath, ProcMountPath)

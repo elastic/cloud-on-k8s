@@ -51,7 +51,11 @@ var (
 	}
 )
 
-func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyPodFunc func(builder *defaults.PodTemplateBuilder), configHash hash.Hash) corev1.PodTemplateSpec {
+func buildPodTemplate(
+	params DriverParams,
+	defaultImage container.Image,
+	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
+	configHash hash.Hash) corev1.PodTemplateSpec {
 	podTemplate := params.GetPodTemplate()
 
 	// Token mounting gets defaulted to false, which prevents from detecting whether user had set it.

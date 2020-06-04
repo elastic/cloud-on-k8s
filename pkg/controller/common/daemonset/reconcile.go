@@ -14,18 +14,26 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-func New(podTemplate corev1.PodTemplateSpec, name string, labels map[string]string, owner metav1.Object, selectors map[string]string) appsv1.DaemonSet {
+type Params struct {
+	PodTemplate corev1.PodTemplateSpec
+	Name        string
+	Owner       metav1.Object
+	Labels      map[string]string
+	Selectors   map[string]string
+}
+
+func New(params Params) appsv1.DaemonSet {
 	return appsv1.DaemonSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: owner.GetNamespace(),
-			Labels:    labels,
+			Name:      params.Name,
+			Namespace: params.Owner.GetNamespace(),
+			Labels:    params.Labels,
 		},
 		Spec: appsv1.DaemonSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: selectors,
+				MatchLabels: params.Selectors,
 			},
-			Template: podTemplate,
+			Template: params.PodTemplate,
 		},
 	}
 }

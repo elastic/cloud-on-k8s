@@ -7,7 +7,6 @@ package v1beta1
 import (
 	"errors"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -18,6 +17,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
 
 var (

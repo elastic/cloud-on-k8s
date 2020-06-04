@@ -5,7 +5,6 @@
 package common
 
 import (
-	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,19 +12,27 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
-func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) (DriverStatus, error) {
-	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
+func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) *reconciler.Results {
+	results := reconciler.NewResult(params.Context)
+	if err := params.Validate(); err != nil {
+		return results.WithError(err)
+	}
 
 	spec := params.Beat.Spec
 	name := Name(params.Beat.Name, spec.Type)
+
 	var toDelete runtime.Object
+	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
 	switch {
 	case spec.DaemonSet != nil:
 		reconciliationFunc = reconcileDaemonSet
@@ -51,20 +58,24 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 		podTemplate: podTemplate,
 	})
 	if err != nil {
-		return DriverStatus{}, err
+		return results.WithError(err)
 	}
 
 	// clean up the other one
 	if err := params.Client.Delete(toDelete); err != nil && !apierrors.IsNotFound(err) {
-		return DriverStatus{}, err
+		return results.WithError(err)
 	}
 
-	return DriverStatus{
-		ExpectedNodes:  desired,
-		AvailableNodes: ready,
-		Health:         CalculateHealth(&params.Beat, ready, desired),
-		Association:    params.Beat.AssociationStatus(),
-	}, nil
+	err = updateStatus(params, ready, desired)
+	if err != nil && apierrors.IsConflict(err) {
+		params.Logger.V(1).Info(
+			"Conflict while updating status",
+			"namespace", params.Beat.Namespace,
+			"beat_name", params.Beat.Name)
+		return results.WithResult(reconcile.Result{Requeue: true})
+	}
+
+	return results.WithError(err)
 }
 
 type ReconciliationParams struct {
@@ -75,7 +86,7 @@ type ReconciliationParams struct {
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	d := deployment.New(deployment.Params{
-		Name:            rp.beat.Name,
+		Name:            Name(rp.beat.Name, rp.beat.Spec.Type),
 		Namespace:       rp.beat.Namespace,
 		Selector:        NewLabels(rp.beat),
 		Labels:          NewLabels(rp.beat),
@@ -95,7 +106,13 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 }
 
 func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
-	ds := daemonset.New(rp.podTemplate, rp.beat.Name, NewLabels(rp.beat), &rp.beat, NewLabels(rp.beat))
+	ds := daemonset.New(daemonset.Params{
+		PodTemplate: rp.podTemplate,
+		Name:        Name(rp.beat.Name, rp.beat.Spec.Type),
+		Owner:       &rp.beat,
+		Labels:      NewLabels(rp.beat),
+		Selectors:   NewLabels(rp.beat),
+	})
 
 	if err := controllerutil.SetControllerReference(&rp.beat, &ds, scheme.Scheme); err != nil {
 		return 0, 0, err
@@ -107,4 +124,15 @@ func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
 	}
 
 	return reconciled.Status.NumberReady, reconciled.Status.DesiredNumberScheduled, nil
+}
+
+func updateStatus(params DriverParams, ready, desired int32) error {
+	beat := params.Beat
+
+	beat.Status.AvailableNodes = ready
+	beat.Status.ExpectedNodes = desired
+	beat.Status.Health = CalculateHealth(&beat, ready, desired)
+	beat.Status.Association = beat.AssociationStatus()
+
+	return params.Client.Status().Update(&beat)
 }

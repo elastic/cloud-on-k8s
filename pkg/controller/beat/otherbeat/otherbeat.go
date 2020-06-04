@@ -27,6 +27,6 @@ func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
 	return &Driver{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() (*beatcommon.DriverStatus, *reconciler.Results) {
+func (d *Driver) Reconcile() *reconciler.Results {
 	return beatcommon.Reconcile(d.DriverParams, nil, "", nil)
 }

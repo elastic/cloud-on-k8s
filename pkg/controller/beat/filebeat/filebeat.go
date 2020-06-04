@@ -29,7 +29,7 @@ const (
 	HostPodsLogsMountPath  = "/var/log/pods"
 )
 
-type FilebeatDriver struct {
+type Driver struct {
 	beatcommon.DriverParams
 	beatcommon.Driver
 }
@@ -41,10 +41,10 @@ func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
 		spec.DaemonSet = &beatv1beta1.DaemonSetSpec{}
 	}
 
-	return &FilebeatDriver{DriverParams: params}
+	return &Driver{DriverParams: params}
 }
 
-func (d *FilebeatDriver) Reconcile() (*beatcommon.DriverStatus, *reconciler.Results) {
+func (d *Driver) Reconcile() *reconciler.Results {
 	f := func(builder *defaults.PodTemplateBuilder) {
 		containersVolume := volume.NewReadOnlyHostVolume(HostContainersVolumeName, HostContainersPath, HostContainersMountPath)
 		containersLogsVolume := volume.NewReadOnlyHostVolume(HostContainersLogsVolumeName, HostContainersLogsPath, HostContainersLogsMountPath)
