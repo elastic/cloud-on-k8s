@@ -90,5 +90,9 @@ func SetupV1beta1Scheme() {
 		if err != nil {
 			panic(err)
 		}
+		err = beatv1beta1.AddToScheme(clientgoscheme.Scheme)
+		if err != nil {
+			panic(err)
+		}
 	})
 }
