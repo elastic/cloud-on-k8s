@@ -91,6 +91,10 @@ func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 	if err != nil {
 		return false, errors.Wrap(err, "while loading signature secret")
 	}
+	if len(pk) == 0 {
+		log.Info("This is an unlicensed development build of ECK. License management and Enterprise features are disabled")
+		return false, nil
+	}
 	verifier, err := NewVerifier(pk)
 	if err != nil {
 		return false, err
