@@ -23,7 +23,7 @@ generate-all-in-one:
 		printf "\n---\n" && cat $$yaml ; \
 	done | \
 	sed \
-		-e "/# /d" \
+		-e "s|#.*||" \
 		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
 		-e "s|<OPERATOR_NAME>|$$OPERATOR_NAME|g" \
 		-e "s|<NAMESPACE>|$$NAMESPACE|g"
@@ -36,7 +36,7 @@ endif
 		printf "\n---\n" && cat $$yaml ; \
 	done | \
 	sed \
-		-e "/# /d" \
+		-e "s|#.*||" \
 		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
 		-e "s|<OPERATOR_NAME>|$$OPERATOR_NAME|g" \
 		-e "s|<NAMESPACE>|$$NAMESPACE|g" \
@@ -45,7 +45,7 @@ endif
 	@ (MANAGED_NS_LIST=$${MANAGED_NAMESPACES//,/ }; \
 	  for managed_ns in $$MANAGED_NS_LIST; do \
 		printf "\n---\n" && sed \
-		-e "/# /d" \
+		-e "s|#.*||" \
 		-e "s|<NAMESPACE>|$$NAMESPACE|g" \
 		-e "s|<OPERATOR_NAME>|$$OPERATOR_NAME|g" \
 		-e "s|<MANAGED_NAMESPACE>|$$managed_ns|g" \
