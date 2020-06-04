@@ -7,6 +7,7 @@ package license
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -25,8 +26,12 @@ import (
 )
 
 func Test_updateLicense(t *testing.T) {
+	enterpriseLicense := esclient.License{
+		UID:  "enterpise-license",
+		Type: string(esclient.ElasticsearchLicenseTypeEnterprise),
+	}
 	type args struct {
-		current *esclient.License
+		current esclient.License
 		desired esclient.License
 	}
 	tests := []struct {
@@ -39,8 +44,7 @@ func Test_updateLicense(t *testing.T) {
 			name:    "error: HTTP error",
 			wantErr: true,
 			args: args{
-				current: nil,
-				desired: esclient.License{},
+				desired: enterpriseLicense,
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(400, req, "")
@@ -50,8 +54,7 @@ func Test_updateLicense(t *testing.T) {
 			name:    "error: ES error",
 			wantErr: true,
 			args: args{
-				current: nil,
-				desired: esclient.License{},
+				desired: enterpriseLicense,
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(
@@ -64,8 +67,7 @@ func Test_updateLicense(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				current: nil,
-				desired: esclient.License{},
+				desired: enterpriseLicense,
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(
@@ -76,9 +78,24 @@ func Test_updateLicense(t *testing.T) {
 			},
 		},
 		{
+			name: "start a trial",
+			args: args{
+				desired: esclient.License{
+					Type: string(esclient.ElasticsearchLicenseTypeTrial),
+				},
+			},
+			reqFn: func(req *http.Request) *http.Response {
+				if strings.Contains(req.URL.Path, "start_trial") {
+					return esclient.NewMockResponse(200, req, `{"acknowledged": true, "trial_started": true}`)
+				}
+				panic("should only call start_trial")
+			},
+			wantErr: false,
+		},
+		{
 			name: "short-circuit: already up to date",
 			args: args{
-				current: &esclient.License{
+				current: esclient.License{
 					UID: "this-is-a-uid",
 				},
 				desired: esclient.License{
@@ -92,7 +109,6 @@ func Test_updateLicense(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			c := esclient.NewMockClient(version.MustParse("6.8.0"), tt.reqFn)
 			if err := updateLicense(context.Background(), types.NamespacedName{}, c, tt.args.current, tt.args.desired); (err != nil) != tt.wantErr {
 				t.Errorf("updateLicense() error = %v, wantErr %v", err, tt.wantErr)
@@ -109,6 +125,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 	tests := []struct {
 		name             string
 		initialObjs      []runtime.Object
+		currentLicense   esclient.License
 		errors           map[client.ObjectKey]error
 		wantErr          bool
 		clientAssertions func(updater fakeLicenseUpdater)
@@ -127,12 +144,32 @@ func Test_applyLinkedLicense(t *testing.T) {
 					},
 				},
 			},
+			clientAssertions: func(updater fakeLicenseUpdater) {
+				require.True(t, updater.updateLicenseCalled, "should update license")
+			},
 		},
 		{
-			name:    "no error: no license found",
-			wantErr: false,
+			name:           "no error: no license found but stack has an enterprise license",
+			wantErr:        false,
+			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeEnterprise)},
 			clientAssertions: func(updater fakeLicenseUpdater) {
-				require.True(t, updater.startBasicCalled, "should call start_basic")
+				require.True(t, updater.startBasicCalled, "should call start_basic to remove the license")
+			},
+		},
+		{
+			name:           "no error: no license found, stack already in basic license",
+			wantErr:        false,
+			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeBasic)},
+			clientAssertions: func(updater fakeLicenseUpdater) {
+				require.False(t, updater.startBasicCalled, "should not call start_basic if already basic")
+			},
+		},
+		{
+			name:           "no error: no license found but tolerate a cluster level trial",
+			wantErr:        false,
+			currentLicense: esclient.License{Type: string(esclient.ElasticsearchLicenseTypeTrial)},
+			clientAssertions: func(updater fakeLicenseUpdater) {
+				require.False(t, updater.startBasicCalled, "should not call start_basic")
 			},
 		},
 		{
@@ -179,12 +216,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 				Client: k8s.WrappedFakeClient(tt.initialObjs...),
 				errors: tt.errors,
 			}
-			updater := fakeLicenseUpdater{}
+			updater := fakeLicenseUpdater{license: tt.currentLicense}
 			if err := applyLinkedLicense(
 				context.Background(),
 				c,
 				clusterName,
-				nil,
 				&updater,
 			); (err != nil) != tt.wantErr {
 				t.Errorf("applyLinkedLicense() error = %v, wantErr %v", err, tt.wantErr)
@@ -197,8 +233,9 @@ func Test_applyLinkedLicense(t *testing.T) {
 }
 
 type fakeLicenseUpdater struct {
-	license          esclient.License
-	startBasicCalled bool
+	license             esclient.License
+	startBasicCalled    bool
+	updateLicenseCalled bool
 }
 
 func (f *fakeLicenseUpdater) StartTrial(ctx context.Context) (esclient.StartTrialResponse, error) {
@@ -213,6 +250,7 @@ func (f *fakeLicenseUpdater) GetLicense(ctx context.Context) (esclient.License, 
 }
 
 func (f *fakeLicenseUpdater) UpdateLicense(ctx context.Context, licenses esclient.LicenseUpdateRequest) (esclient.LicenseUpdateResponse, error) {
+	f.updateLicenseCalled = true
 	return esclient.LicenseUpdateResponse{
 		Acknowledged:  true,
 		LicenseStatus: "valid",

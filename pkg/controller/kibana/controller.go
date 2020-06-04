@@ -127,7 +127,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// retrieve the kibana object
 	var kb kbv1.Kibana
-	if err := association.FetchWithAssociation(ctx, r.Client, request, &kb); err != nil {
+	if err := association.FetchWithAssociations(ctx, r.Client, request, &kb); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,

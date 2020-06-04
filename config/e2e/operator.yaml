@@ -227,8 +227,6 @@ spec:
                 fieldPath: metadata.namespace
           - name: WEBHOOK_SECRET
             value: webhook-server-secret
-          - name: OPERATOR_IMAGE
-            value: {{ .OperatorImage }}
         resources:
           limits:
             cpu: 1

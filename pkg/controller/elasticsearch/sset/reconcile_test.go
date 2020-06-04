@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -41,61 +42,99 @@ func TestReconcileStatefulSet(t *testing.T) {
 				hash.TemplateHashLabelName: "hash-value",
 			},
 		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: pointer.Int32Ptr(3),
+		},
 	}
 	metaObj, err := meta.Accessor(&ssetSample)
 	require.NoError(t, err)
 	err = controllerutil.SetControllerReference(&es, metaObj, scheme.Scheme)
 	require.NoError(t, err)
+
+	// simulate updated replicas & template hash label
 	updatedSset := *ssetSample.DeepCopy()
+	updatedSset.Spec.Replicas = pointer.Int32Ptr(4)
 	updatedSset.Labels[hash.TemplateHashLabelName] = "updated"
 
 	tests := []struct {
 		name                    string
-		c                       k8s.Client
-		expected                appsv1.StatefulSet
+		client                  func() k8s.Client
+		expected                func() appsv1.StatefulSet
+		want                    func() appsv1.StatefulSet
 		wantExpectationsUpdated bool
 	}{
 		{
 			name:                    "create new sset",
-			c:                       k8s.WrappedFakeClient(),
-			expected:                ssetSample,
+			client:                  func() k8s.Client { return k8s.WrappedFakeClient() },
+			expected:                func() appsv1.StatefulSet { return ssetSample },
+			want:                    func() appsv1.StatefulSet { return ssetSample },
 			wantExpectationsUpdated: false,
 		},
 		{
-			name:                    "no update on existing sset",
-			c:                       k8s.WrappedFakeClient(&ssetSample),
-			expected:                ssetSample,
+			name:                    "no update when expected == actual",
+			client:                  func() k8s.Client { return k8s.WrappedFakeClient(&ssetSample) },
+			expected:                func() appsv1.StatefulSet { return ssetSample },
+			want:                    func() appsv1.StatefulSet { return ssetSample },
 			wantExpectationsUpdated: false,
 		},
 		{
-			name:                    "update on sset with different template hash",
-			c:                       k8s.WrappedFakeClient(&ssetSample),
-			expected:                updatedSset,
+			name:                    "update sset with different template hash",
+			client:                  func() k8s.Client { return k8s.WrappedFakeClient(&ssetSample) },
+			expected:                func() appsv1.StatefulSet { return updatedSset },
+			want:                    func() appsv1.StatefulSet { return updatedSset },
+			wantExpectationsUpdated: true,
+		},
+		{
+			name: "update sset with missing template hash label",
+			client: func() k8s.Client {
+				ssetSampleWithMissingLabel := ssetSample.DeepCopy()
+				ssetSampleWithMissingLabel.Labels = map[string]string{}
+				return k8s.WrappedFakeClient(ssetSampleWithMissingLabel)
+			},
+			expected:                func() appsv1.StatefulSet { return ssetSample },
+			want:                    func() appsv1.StatefulSet { return ssetSample },
+			wantExpectationsUpdated: true,
+		},
+		{
+			name: "sset update should preserve existing annotations and labels",
+			client: func() k8s.Client {
+				ssetSampleWithExtraMetadata := ssetSample.DeepCopy()
+				// simulate annotations and labels manually set by the user
+				ssetSampleWithExtraMetadata.Annotations = map[string]string{"a": "b"}
+				ssetSampleWithExtraMetadata.Labels["a"] = "b"
+				return k8s.WrappedFakeClient(ssetSampleWithExtraMetadata)
+			},
+			expected: func() appsv1.StatefulSet { return updatedSset },
+			want: func() appsv1.StatefulSet {
+				// we want the expected sset + extra metadata from the existing one
+				expectedWithExtraMetadata := *updatedSset.DeepCopy()
+				expectedWithExtraMetadata.Annotations = map[string]string{"a": "b"}
+				expectedWithExtraMetadata.Labels["a"] = "b"
+				return expectedWithExtraMetadata
+			},
 			wantExpectationsUpdated: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			exp := expectations.NewExpectations(tt.c)
-			returned, err := ReconcileStatefulSet(tt.c, es, tt.expected, exp)
+			client := tt.client()
+			expected := tt.expected()
+			want := tt.want()
+			exp := expectations.NewExpectations(client)
+
+			returned, err := ReconcileStatefulSet(client, es, expected, exp)
 			require.NoError(t, err)
 
-			// expect owner ref to be set to the es resource
-			metaObj, err := meta.Accessor(&tt.expected)
+			// returned sset should be the one we want
+			comparison.AssertEqual(t, &want, &returned)
+			// and be stored in the apiserver
+			var retrieved appsv1.StatefulSet
+			err = client.Get(k8s.ExtractNamespacedName(&want), &retrieved)
 			require.NoError(t, err)
-			err = controllerutil.SetControllerReference(&es, metaObj, scheme.Scheme)
-			require.NoError(t, err)
+			comparison.AssertEqual(t, &want, &retrieved)
 
 			// check expectations were updated
 			require.Equal(t, tt.wantExpectationsUpdated, len(exp.GetGenerations()) != 0)
-
-			// returned sset should match the expected one
-			comparison.AssertEqual(t, &tt.expected, &returned)
-			// and be stored in the apiserver
-			var retrieved appsv1.StatefulSet
-			err = tt.c.Get(k8s.ExtractNamespacedName(&tt.expected), &retrieved)
-			require.NoError(t, err)
-			comparison.AssertEqual(t, &tt.expected, &retrieved)
 		})
 	}
 }

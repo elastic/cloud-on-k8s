@@ -25,6 +25,9 @@ const (
 	ApmUserRoleV7 = "eck_apm_user_role_v7"
 	// ApmUserRoleV75 is the name of the role used by APMServer instances to connect to Elasticsearch from version 7.5
 	ApmUserRoleV75 = "eck_apm_user_role_v75"
+
+	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana
+	ApmAgentUserRole = "eck_apm_agent_user_role"
 )
 
 var (
@@ -55,6 +58,17 @@ var (
 				{
 					Names:      []string{"apm-*"},
 					Privileges: []string{"manage", "create_doc", "create_index"},
+				},
+			},
+		},
+		ApmAgentUserRole: esclient.Role{
+			Cluster: []string{},
+			Indices: []esclient.IndexRole{},
+			Applications: []esclient.ApplicationRole{
+				{
+					Application: "kibana-.kibana",
+					Resources:   []string{"space:default"},
+					Privileges:  []string{"feature_apm.read"},
 				},
 			},
 		},

@@ -20,11 +20,10 @@ func SetContainerRegistry(registry string) {
 type Image string
 
 const (
-	APMServerImage     Image = "apm/apm-server"
-	ElasticsearchImage Image = "elasticsearch/elasticsearch"
-	KibanaImage        Image = "kibana/kibana"
-	// TODO
-	EnterpriseSearchImage Image = "TODO"
+	APMServerImage        Image = "apm/apm-server"
+	ElasticsearchImage    Image = "elasticsearch/elasticsearch"
+	KibanaImage           Image = "kibana/kibana"
+	EnterpriseSearchImage Image = "enterprise-search/enterprise-search"
 	FilebeatImage         Image = "beats/filebeat"
 	MetricbeatImage       Image = "beats/metricbeat"
 )

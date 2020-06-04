@@ -19,18 +19,18 @@ import (
 )
 
 type Unbinder interface {
-	Unbind(associated commonv1.Associated) error
+	Unbind(association commonv1.Association) error
 }
 
 // CheckAndUnbind checks if a reference is allowed and unbinds the association if it is not the case
 func CheckAndUnbind(
 	accessReviewer rbac.AccessReviewer,
-	associated commonv1.Associated,
+	association commonv1.Association,
 	referencedObject runtime.Object,
 	unbinder Unbinder,
 	eventRecorder record.EventRecorder,
 ) (bool, error) {
-	allowed, err := accessReviewer.AccessAllowed(associated.ServiceAccountName(), associated.GetNamespace(), referencedObject)
+	allowed, err := accessReviewer.AccessAllowed(association.ServiceAccountName(), association.GetNamespace(), referencedObject)
 	if err != nil {
 		return false, err
 	}
@@ -40,22 +40,22 @@ func CheckAndUnbind(
 			return false, nil
 		}
 		log.Info("Association not allowed",
-			"associated_kind", associated.GetObjectKind().GroupVersionKind().Kind,
-			"associated_name", associated.GetName(),
-			"associated_namespace", associated.GetNamespace(),
-			"service_account", associated.ServiceAccountName(),
+			"associated_kind", association.GetObjectKind().GroupVersionKind().Kind,
+			"associated_name", association.GetName(),
+			"associated_namespace", association.GetNamespace(),
+			"service_account", association.ServiceAccountName(),
 			"remote_type", referencedObject.GetObjectKind().GroupVersionKind().Kind,
 			"remote_namespace", metaObject.GetNamespace(),
 			"remote_name", metaObject.GetName(),
 		)
 		eventRecorder.Eventf(
-			associated,
+			association,
 			corev1.EventTypeWarning,
 			events.EventAssociationError,
 			"Association not allowed: %s/%s to %s/%s",
-			associated.GetNamespace(), associated.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
+			association.GetNamespace(), association.GetName(), metaObject.GetNamespace(), metaObject.GetName(),
 		)
-		return false, unbinder.Unbind(associated)
+		return false, unbinder.Unbind(association)
 	}
 	return true, nil
 }

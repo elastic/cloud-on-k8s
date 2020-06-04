@@ -55,13 +55,14 @@ func (r ResourceReporter) Start(refreshPeriod time.Duration) {
 	}
 }
 
-// Report reports the licensing information in a config map
+// Report licensing information by publishing metrics and updating the config map.
 func (r ResourceReporter) Report() error {
 	licensingInfo, err := r.Get()
 	if err != nil {
 		return err
 	}
 
+	licensingInfo.ReportAsMetrics()
 	return r.licensingResolver.Save(licensingInfo)
 }
 

@@ -81,6 +81,14 @@ E2E tests will run in the `e2e-mercury` and `e2e-venus` namespaces.
 
 Run `make run` to start the operator and then run `make e2e-local` in a separate shell to run the E2E tests.
 
+### Enabling APM tracing
+
+ECK is instrumented with Elastic APM tracing. To run ECK locally with tracing enabled, run:
+
+```
+ENABLE_TRACING=true ELASTIC_APM_SERVER_URL=https://<apm-server-url> ELASTIC_APM_SECRET_TOKEN=<token> ELASTIC_APM_VERIFY_SERVER_CERT=false make run
+```
+
 ## Recommended reading
 
 * [Resources](https://book.kubebuilder.io/basics/what_is_a_resource.html)

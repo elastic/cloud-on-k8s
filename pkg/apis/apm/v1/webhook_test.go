@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/test"
 	"github.com/stretchr/testify/require"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
@@ -90,6 +91,29 @@ func TestWebhook(t *testing.T) {
 			Check: test.ValidationWebhookFailed(
 				`spec.version: Invalid value: "300.1.2": Unsupported version: version 300.1.2 is higher than the highest supported version`,
 			),
+		},
+		{
+			Name:      "unsupported-version-for-kibana-ref",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				apm := mkApmServer(uid)
+				apm.Spec.Version = "7.4.0"
+				apm.Spec.KibanaRef = commonv1.ObjectSelector{Name: "kbname", Namespace: "kbns"}
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookFailed(
+				`spec.kibanaRef: Forbidden: required version for Kibana association is 7.5.1 but desired version is 7.4.0`,
+			),
+		},
+		{
+			Name:      "support-74-if-kibana-ref-not-set",
+			Operation: admissionv1beta1.Create,
+			Object: func(t *testing.T, uid string) []byte {
+				apm := mkApmServer(uid)
+				apm.Spec.Version = "7.4.0"
+				return serialize(t, apm)
+			},
+			Check: test.ValidationWebhookSucceeded,
 		},
 		{
 			Name:      "update-valid",

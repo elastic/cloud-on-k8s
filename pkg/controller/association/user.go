@@ -38,16 +38,15 @@ func userSecretObjectName(associated commonv1.Associated, userSuffix string) str
 }
 
 // UserKey is the namespaced name to identify the user resource created by the controller.
-func UserKey(associated commonv1.Associated, userSuffix string) types.NamespacedName {
-	esNamespace := associated.ElasticsearchRef().Namespace
+func UserKey(association commonv1.Association, esNamespace, userSuffix string) types.NamespacedName {
 	if esNamespace == "" {
-		// no namespace given, default to the associated object's one
-		esNamespace = associated.GetNamespace()
+		// no namespace given, default to the association object's one
+		esNamespace = association.GetNamespace()
 	}
 	return types.NamespacedName{
 		// user lives in the ES namespace
 		Namespace: esNamespace,
-		Name:      elasticsearchUserName(associated, userSuffix),
+		Name:      elasticsearchUserName(association, userSuffix),
 	}
 }
 
@@ -74,7 +73,7 @@ func UserSecretKeySelector(associated commonv1.Associated, userSuffix string) *c
 func ReconcileEsUser(
 	ctx context.Context,
 	c k8s.Client,
-	associated commonv1.Associated,
+	association commonv1.Association,
 	labels map[string]string,
 	userRoles string,
 	userObjectSuffix string,
@@ -86,8 +85,8 @@ func ReconcileEsUser(
 	// Add the Elasticsearch name, this is only intended to help the user to filter on these resources
 	labels[eslabel.ClusterNameLabelName] = es.Name
 
-	secKey := secretKey(associated, userObjectSuffix)
-	usrKey := UserKey(associated, userObjectSuffix)
+	secKey := secretKey(association, userObjectSuffix)
+	usrKey := UserKey(association, es.Namespace, userObjectSuffix)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
@@ -111,13 +110,13 @@ func ReconcileEsUser(
 	}
 	expectedSecret.Data[usrKey.Name] = password
 
-	if _, err := reconciler.ReconcileSecret(c, expectedSecret, associated); err != nil {
+	if _, err := reconciler.ReconcileSecret(c, expectedSecret, association.Associated()); err != nil {
 		return err
 	}
 
-	// analogous to the associated secret: a user Secret goes on the Elasticsearch side of the association
+	// analogous to the association secret: a user Secret goes on the Elasticsearch side of the association
 	// we apply the ES cluster labels ("user belongs to that ES cluster")
-	// and the association label ("for that associated object")
+	// and the association label ("for that association object")
 
 	// merge the association labels provided by the controller with the one needed for a user
 	userLabels := esuser.AssociatedUserLabels(es)

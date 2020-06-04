@@ -23,35 +23,65 @@ import (
 var log = logf.Log.WithName("elasticsearch-controller")
 
 // isTrial returns true if an Elasticsearch license is of the trial type
-func isTrial(l *esclient.License) bool {
-	return l != nil && l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
+func isTrial(l esclient.License) bool {
+	return l.Type == string(esclient.ElasticsearchLicenseTypeTrial)
+}
+
+// isBasic returns true if an Elasticsearch license is of the basic type
+func isBasic(l esclient.License) bool {
+	return l.Type == string(esclient.ElasticsearchLicenseTypeBasic)
 }
 
 func applyLinkedLicense(
 	ctx context.Context,
 	c k8s.Client,
 	esCluster types.NamespacedName,
-	current *esclient.License,
 	updater esclient.LicenseClient,
 ) error {
-	var license corev1.Secret
+	// get the current license
+	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
+	defer cancel()
+	current, err := updater.GetLicense(ctx)
+	if err != nil {
+		return err
+	}
+
+	// get the expected license
 	// the underlying assumption here is that either a user or a
 	// license controller has created a cluster license in the
 	// namespace of this cluster following the cluster-license naming
 	// convention
-	err := c.Get(
+	var license corev1.Secret
+	err = c.Get(
 		types.NamespacedName{
 			Namespace: esCluster.Namespace,
 			Name:      esv1.LicenseSecretName(esCluster.Name),
 		},
 		&license,
 	)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			// no license linked to this cluster. Revert to basic.
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err != nil && apierrors.IsNotFound(err) {
+		// no license expected, let's look at the current cluster license
+		switch {
+		case isBasic(current):
+			// nothing to do
+			return nil
+		case isTrial(current):
+			// Elasticsearch reports a trial license, but there's no ECK enterprise trial requested.
+			// This can be the case if:
+			// - an ECK trial was started previously, then stopped (secret removed)
+			// - the user manually started a trial at the stack level (eg. by clicking a button in Kibana when
+			// trying to access a commercial feature). While this is not a supported use case,
+			// we tolerate it to avoid a bad user experience because trials can only be started once.
+			log.V(1).Info("Preserving existing stack-level trial license",
+				"namespace", esCluster.Namespace, "es_name", esCluster.Name)
+			return nil
+		default:
+			// revert the current license to basic
 			return startBasic(ctx, updater)
 		}
-		return err
 	}
 
 	bytes, err := commonlicense.FetchLicenseData(license.Data)
@@ -83,10 +113,10 @@ func updateLicense(
 	ctx context.Context,
 	esCluster types.NamespacedName,
 	updater esclient.LicenseClient,
-	current *esclient.License,
+	current esclient.License,
 	desired esclient.License,
 ) error {
-	if current != nil && (current.UID == desired.UID || (isTrial(current) && current.Type == desired.Type)) {
+	if current.UID == desired.UID || (isTrial(current) && current.Type == desired.Type) {
 		return nil // we are done already applied
 	}
 	request := esclient.LicenseUpdateRequest{
@@ -97,7 +127,7 @@ func updateLicense(
 	ctx, cancel := context.WithTimeout(ctx, esclient.DefaultReqTimeout)
 	defer cancel()
 
-	if isTrial(&desired) {
+	if isTrial(desired) {
 		return pkgerrors.Wrap(startTrial(ctx, updater, esCluster), "failed to start trial")
 	}
 
