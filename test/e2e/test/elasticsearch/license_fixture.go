@@ -58,12 +58,12 @@ func GenerateTestLicense(signer *license.Signer) (client.License, error) {
 	licenseSpec := client.License{
 		UID:                uuid.String(),
 		Type:               "enterprise",
-		IssueDateInMillis:  chrono.ToMillis(time.Now().Add(-1 * time.Hour)),
+		IssueDateInMillis:  chrono.ToMillis(time.Now().Add(-3 * 24 * time.Hour)),
 		ExpiryDateInMillis: chrono.ToMillis(time.Now().Add(30 * 24 * time.Hour)),
 		MaxResourceUnits:   100,
 		IssuedTo:           "ECK CI",
 		Issuer:             "ECK e2e job",
-		StartDateInMillis:  chrono.ToMillis(time.Now().Add(-1 * time.Hour)),
+		StartDateInMillis:  chrono.ToMillis(time.Now().Add(-3 * 24 * time.Hour)),
 	}
 	sign, err := signer.Sign(ESLicense{License: licenseSpec})
 	if err != nil {
