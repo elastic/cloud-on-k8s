@@ -51,7 +51,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, r)
+	return addWatches(c)
 }
 
 // newReconciler returns a new reconcile.Reconciler.
@@ -66,7 +66,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 }
 
 // addWatches registers the required watches.
-func addWatches(c controller.Controller, r *ReconcileBeat) error {
+func addWatches(c controller.Controller) error {
 	// Watch for changes to Beat
 	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -138,7 +138,7 @@ func (r *ReconcileBeat) Reconcile(request reconcile.Request) (reconcile.Result, 
 	defer tracing.EndTransaction(tx)
 
 	var beat beatv1beta1.Beat
-	if err := association.FetchWithAssociation(ctx, r.Client, request, &beat); err != nil {
+	if err := association.FetchWithAssociations(ctx, r.Client, request, &beat); err != nil {
 		if apierrors.IsNotFound(err) {
 			if err := r.onDelete(types.NamespacedName{
 				Namespace: request.Namespace,

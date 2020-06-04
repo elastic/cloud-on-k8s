@@ -68,7 +68,7 @@ func TestNamer_Name(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Name(tt.typ, tt.resourceName)
+			got := Name(tt.resourceName, tt.typ)
 			if got != tt.want {
 				t.Errorf("config secret name is %s while %s was expected", got, tt.want)
 			}

@@ -16,7 +16,7 @@ import (
 )
 
 // WriteAssocSecretToConfigHash dereferences auth secret (if any) to include it in the configHash.
-func WriteAssocSecretToConfigHash(client k8s.Client, assoc commonv1.Associated, configHash hash.Hash) error {
+func WriteAssocSecretToConfigHash(client k8s.Client, assoc commonv1.Association, configHash hash.Hash) error {
 	assocConf := assoc.AssociationConf()
 
 	if assocConf.AuthIsConfigured() {

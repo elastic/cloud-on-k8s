@@ -11,11 +11,11 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 )
 
-func HasEventFromBeat(name commonbeat.Type) ValidationFunc {
+func HasEventFromBeat(name beatcommon.Type) ValidationFunc {
 	return HasEvent(fmt.Sprintf("/*beat*/_search?q=agent.type:%s", name))
 }
 

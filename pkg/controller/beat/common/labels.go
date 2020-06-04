@@ -11,7 +11,7 @@ import (
 
 const (
 	// Type represents the Beat type.
-	TypeLabelName = "beat"
+	TypeLabelValue = "beat"
 
 	// NameLabelName is used to represent a Beat in k8s resources.
 	NameLabelName = "beat.k8s.elastic.co/name"
@@ -19,7 +19,7 @@ const (
 
 func NewLabels(beat beatv1beta1.Beat) map[string]string {
 	return map[string]string{
-		common.TypeLabelName: TypeLabelName,
-		NameLabelName:        Name(beat.Spec.Type, beat.Name),
+		common.TypeLabelName: TypeLabelValue,
+		NameLabelName:        Name(beat.Name, beat.Spec.Type),
 	}
 }

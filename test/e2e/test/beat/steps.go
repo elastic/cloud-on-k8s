@@ -17,7 +17,6 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/health"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -70,7 +69,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					}
 				}
 				// wait for Beat pods to disappear
-				if err := k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name)...); err != nil {
+				if err := k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name, b.Beat.Spec.Type)...); err != nil {
 					return err
 				}
 
@@ -129,7 +128,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 					return err
 				}
 
-				if beat.Status.Health != health.BeatGreenHealth {
+				if beat.Status.Health != beatv1beta1.BeatGreenHealth {
 					return fmt.Errorf("beat %s health is %s", beat.Name, beat.Status.Health)
 				}
 
@@ -209,7 +208,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 		{
 			Name: "Beat pods should be eventually be removed",
 			Test: test.Eventually(func() error {
-				return k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name)...)
+				return k.CheckPodCount(0, test.BeatPodListOptions(b.Beat.Namespace, b.Beat.Name, b.Beat.Spec.Type)...)
 			}),
 		},
 	}

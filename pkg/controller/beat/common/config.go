@@ -22,7 +22,7 @@ import (
 )
 
 // setOutput will set the output section in Beat config according to the association configuration.
-func setOutput(cfg *settings.CanonicalConfig, client k8s.Client, associated commonv1.Associated) error {
+func setOutput(cfg *settings.CanonicalConfig, client k8s.Client, associated commonv1.Association) error {
 	if !associated.AssociationConf().IsConfigured() {
 		return nil
 	}

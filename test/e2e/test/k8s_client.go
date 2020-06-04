@@ -29,7 +29,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -320,11 +320,11 @@ func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOptio
 
 }
 
-func BeatPodListOptions(beatNamespace, beatName string) []k8sclient.ListOption {
+func BeatPodListOptions(beatNamespace, beatName, beatType string) []k8sclient.ListOption {
 	ns := k8sclient.InNamespace(beatNamespace)
 	matchLabels := k8sclient.MatchingLabels(map[string]string{
-		common.TypeLabelName: beat.Type,
-		beat.NameLabelName:   beatName,
+		common.TypeLabelName:     beatcommon.TypeLabelValue,
+		beatcommon.NameLabelName: beatcommon.Name(beatName, beatType),
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 }

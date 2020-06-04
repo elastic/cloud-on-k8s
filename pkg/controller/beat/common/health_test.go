@@ -16,7 +16,7 @@ import (
 
 func Test_CalculateHealth(t *testing.T) {
 	noAssociation := &beatv1beta1.Beat{}
-	createAssociated := func(associationEstablished bool) commonv1.Associated {
+	createAssociation := func(associationEstablished bool) commonv1.Association {
 		result := &beatv1beta1.Beat{}
 		result.SetAssociationConf(&commonv1.AssociationConf{
 			AuthSecretName: "name",
@@ -35,74 +35,74 @@ func Test_CalculateHealth(t *testing.T) {
 
 	for _, tt := range []struct {
 		name           string
-		associated     commonv1.Associated
+		association    commonv1.Association
 		ready, desired int32
 		want           beatv1beta1.BeatHealth
 	}{
 		{
-			name:       "no association, 0 desired",
-			associated: noAssociation,
-			ready:      0,
-			desired:    0,
-			want:       beatv1beta1.BeatGreenHealth,
+			name:        "no association, 0 desired",
+			association: noAssociation,
+			ready:       0,
+			desired:     0,
+			want:        beatv1beta1.BeatGreenHealth,
 		},
 		{
-			name:       "no association, all ready",
-			associated: noAssociation,
-			ready:      3,
-			desired:    3,
-			want:       beatv1beta1.BeatGreenHealth,
+			name:        "no association, all ready",
+			association: noAssociation,
+			ready:       3,
+			desired:     3,
+			want:        beatv1beta1.BeatGreenHealth,
 		},
 		{
-			name:       "no association, some ready",
-			associated: noAssociation,
-			ready:      1,
-			desired:    5,
-			want:       beatv1beta1.BeatYellowHealth,
+			name:        "no association, some ready",
+			association: noAssociation,
+			ready:       1,
+			desired:     5,
+			want:        beatv1beta1.BeatYellowHealth,
 		},
 		{
-			name:       "no association, none ready",
-			associated: noAssociation,
-			ready:      0,
-			desired:    4,
-			want:       beatv1beta1.BeatRedHealth,
+			name:        "no association, none ready",
+			association: noAssociation,
+			ready:       0,
+			desired:     4,
+			want:        beatv1beta1.BeatRedHealth,
 		},
 		{
-			name:       "association not established, all ready",
-			associated: createAssociated(false),
-			ready:      2,
-			desired:    2,
-			want:       beatv1beta1.BeatRedHealth,
+			name:        "association not established, all ready",
+			association: createAssociation(false),
+			ready:       2,
+			desired:     2,
+			want:        beatv1beta1.BeatRedHealth,
 		},
 		{
-			name:       "association established, 0 desired",
-			associated: createAssociated(true),
-			want:       beatv1beta1.BeatGreenHealth,
+			name:        "association established, 0 desired",
+			association: createAssociation(true),
+			want:        beatv1beta1.BeatGreenHealth,
 		},
 		{
-			name:       "association established, all ready",
-			associated: createAssociated(true),
-			ready:      2,
-			desired:    2,
-			want:       beatv1beta1.BeatGreenHealth,
+			name:        "association established, all ready",
+			association: createAssociation(true),
+			ready:       2,
+			desired:     2,
+			want:        beatv1beta1.BeatGreenHealth,
 		},
 		{
-			name:       "association established, some ready",
-			associated: createAssociated(true),
-			ready:      1,
-			desired:    5,
-			want:       beatv1beta1.BeatYellowHealth,
+			name:        "association established, some ready",
+			association: createAssociation(true),
+			ready:       1,
+			desired:     5,
+			want:        beatv1beta1.BeatYellowHealth,
 		},
 		{
-			name:       "association established, none ready",
-			associated: createAssociated(true),
-			ready:      0,
-			desired:    4,
-			want:       beatv1beta1.BeatRedHealth,
+			name:        "association established, none ready",
+			association: createAssociation(true),
+			ready:       0,
+			desired:     4,
+			want:        beatv1beta1.BeatRedHealth,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := beatcommon.CalculateHealth(tt.associated, tt.ready, tt.desired)
+			got := beatcommon.CalculateHealth(tt.association, tt.ready, tt.desired)
 			require.Equal(t, tt.want, got)
 		})
 	}

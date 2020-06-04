@@ -35,7 +35,7 @@ type FilebeatDriver struct {
 }
 
 func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
-	spec := params.Beat.Spec
+	spec := &params.Beat.Spec
 	// use the default for filebeat type if not provided
 	if spec.DaemonSet == nil && spec.Deployment == nil {
 		spec.DaemonSet = &beatv1beta1.DaemonSetSpec{}

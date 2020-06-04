@@ -5,6 +5,10 @@
 package controller
 
 import (
+	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	eslabel "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
+	esuser "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -25,18 +29,24 @@ const (
 
 func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedObjTemplate: func() commonv1.Associated { return &beatv1beta1.Beat{} },
-		AssociationName:       "beat-es",
-		AssociatedShortName:   "beat",
+		AssociationObjTemplate: func() commonv1.Association { return &beatv1beta1.Beat{} },
+		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
+			return true, association.AssociationRef(), nil
+		},
+		ExternalServiceURL:  getElasticsearchExternalURL,
+		AssociatedNamer:     esv1.ESNamer,
+		AssociationName:     "beat-es",
+		AssociatedShortName: "beat",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
 				BeatESAssociationLabelName:      associated.Name,
 				BeatESAssociationLabelNamespace: associated.Namespace,
 			}
 		},
-		UserSecretSuffix: "beat-user",
-		ESUserRole: func(commonv1.Associated) (s string, e error) {
-			return "superuser", nil
+		UserSecretSuffix:  "beat-user",
+		CASecretLabelName: eslabel.ClusterNameLabelName,
+		ESUserRole: func(commonv1.Associated) (string, error) {
+			return esuser.SuperUserBuiltinRole, nil
 		},
 	})
 }

@@ -63,6 +63,12 @@ func Test_buildBeatConfig(t *testing.T) {
 	withAssociationWithCA := *withAssociation.DeepCopy()
 	withAssociationWithCA.AssociationConf().CACertProvided = true
 
+	withAssociationWithCAAndConfig := *withAssociationWithCA.DeepCopy()
+	withAssociationWithCAAndConfig.Spec.Config = userConfig
+
+	withAssociationWithConfig := *withAssociation.DeepCopy()
+	withAssociationWithConfig.Spec.Config = userConfig
+
 	merge := func(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
 		result := settings.NewCanonicalConfig()
 		_ = result.MergeWith(cs...)
@@ -72,82 +78,79 @@ func Test_buildBeatConfig(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
 		client        k8s.Client
-		associated    beatv1beta1.Beat
+		beat          beatv1beta1.Beat
 		defaultConfig *settings.CanonicalConfig
-		userConfig    *commonv1.Config
 		want          *settings.CanonicalConfig
 		wantErr       bool
 	}{
 		{
-			name:       "neither default nor user config",
-			associated: beatv1beta1.Beat{},
+			name: "neither default nor user config",
+			beat: beatv1beta1.Beat{},
 		},
 		{
 			name:          "no association, only default config",
-			associated:    beatv1beta1.Beat{},
+			beat:          beatv1beta1.Beat{},
 			defaultConfig: defaultConfig,
 			want:          defaultConfig,
 		},
 		{
-			name:       "no association, only user config",
-			associated: beatv1beta1.Beat{},
-			userConfig: userConfig,
-			want:       userCanonicalConfig,
+			name: "no association, only user config",
+			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+				Config: userConfig,
+			}},
+			want: userCanonicalConfig,
 		},
 		{
-			name:          "no association, default and user config",
-			associated:    beatv1beta1.Beat{},
+			name: "no association, default and user config",
+			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+				Config: userConfig,
+			}},
 			defaultConfig: defaultConfig,
-			userConfig:    userConfig,
 			want:          userCanonicalConfig,
 		},
 		{
 			name:          "association without ca, only default config",
 			client:        clientWithSecret,
-			associated:    withAssociation,
+			beat:          withAssociation,
 			defaultConfig: defaultConfig,
 			want:          merge(defaultConfig, outputYaml),
 		},
 		{
-			name:       "association without ca, only user config",
-			client:     clientWithSecret,
-			associated: withAssociation,
-			userConfig: userConfig,
-			want:       merge(userCanonicalConfig, outputYaml),
+			name:   "association without ca, only user config",
+			client: clientWithSecret,
+			beat:   withAssociationWithConfig,
+			want:   merge(userCanonicalConfig, outputYaml),
 		},
 		{
 			name:          "association without ca, default and user config",
 			client:        clientWithSecret,
-			associated:    withAssociation,
+			beat:          withAssociationWithConfig,
 			defaultConfig: defaultConfig,
-			userConfig:    userConfig,
 			want:          merge(userCanonicalConfig, outputYaml),
 		},
 		{
 			name:          "association with ca, only default config",
 			client:        clientWithSecret,
-			associated:    withAssociationWithCA,
+			beat:          withAssociationWithCA,
 			defaultConfig: defaultConfig,
 			want:          merge(defaultConfig, outputYaml, outputCAYaml),
 		},
 		{
-			name:       "association with ca, only user config",
-			client:     clientWithSecret,
-			associated: withAssociationWithCA,
-			userConfig: userConfig,
-			want:       merge(userCanonicalConfig, outputYaml, outputCAYaml),
+			name:   "association with ca, only user config",
+			client: clientWithSecret,
+			beat:   withAssociationWithCAAndConfig,
+			want:   merge(userCanonicalConfig, outputYaml, outputCAYaml),
 		},
 		{
 			name:          "association with ca, default and user config",
 			client:        clientWithSecret,
-			associated:    withAssociationWithCA,
+			beat:          withAssociationWithCAAndConfig,
 			defaultConfig: defaultConfig,
-			userConfig:    userConfig,
 			want:          merge(userCanonicalConfig, outputYaml, outputCAYaml),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.associated, tt.defaultConfig)
+			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.beat, tt.defaultConfig)
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
 

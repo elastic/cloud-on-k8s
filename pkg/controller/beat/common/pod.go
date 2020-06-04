@@ -62,7 +62,7 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 		podTemplate.Spec.AutomountServiceAccountToken = &t
 	}
 
-	spec := params.Beat.Spec
+	spec := &params.Beat.Spec
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type)
 
 	// might be nil if caller wants to use the default builder without any modifications

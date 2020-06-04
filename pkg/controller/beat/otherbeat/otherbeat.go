@@ -17,7 +17,7 @@ type Driver struct {
 }
 
 func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
-	spec := params.Beat.Spec
+	spec := &params.Beat.Spec
 	// use the default for otherbeat type if not provided
 	if spec.DaemonSet == nil && spec.Deployment == nil {
 		spec.Deployment = &beatv1beta1.DeploymentSpec{

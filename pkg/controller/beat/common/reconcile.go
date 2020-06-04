@@ -24,7 +24,7 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
 
 	spec := params.Beat.Spec
-	name := Name(spec.Type, params.Beat.Name)
+	name := Name(params.Beat.Name, spec.Type)
 	var toDelete runtime.Object
 	switch {
 	case spec.DaemonSet != nil:
@@ -46,8 +46,9 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	}
 
 	ready, desired, err := reconciliationFunc(ReconciliationParams{
-		client: params.Client,
-		beat:   params.Beat,
+		client:      params.Client,
+		beat:        params.Beat,
+		podTemplate: podTemplate,
 	})
 	if err != nil {
 		return DriverStatus{}, err
@@ -67,8 +68,9 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 }
 
 type ReconciliationParams struct {
-	client k8s.Client
-	beat   beatv1beta1.Beat
+	client      k8s.Client
+	beat        beatv1beta1.Beat
+	podTemplate corev1.PodTemplateSpec
 }
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
@@ -77,7 +79,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Namespace:       rp.beat.Namespace,
 		Selector:        NewLabels(rp.beat),
 		Labels:          NewLabels(rp.beat),
-		PodTemplateSpec: rp.beat.Spec.Deployment.PodTemplate,
+		PodTemplateSpec: rp.podTemplate,
 		Replicas:        pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
 	})
 	if err := controllerutil.SetControllerReference(&rp.beat, &d, scheme.Scheme); err != nil {
@@ -93,7 +95,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 }
 
 func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
-	ds := daemonset.New(rp.beat.Spec.DaemonSet.PodTemplate, rp.beat.Name, NewLabels(rp.beat), &rp.beat, NewLabels(rp.beat))
+	ds := daemonset.New(rp.podTemplate, rp.beat.Name, NewLabels(rp.beat), &rp.beat, NewLabels(rp.beat))
 
 	if err := controllerutil.SetControllerReference(&rp.beat, &ds, scheme.Scheme); err != nil {
 		return 0, 0, err

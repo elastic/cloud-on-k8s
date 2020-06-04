@@ -13,7 +13,7 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
@@ -75,7 +75,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 			b.ApmServer = *decodedObj
 			builder = transform(b)
 		case *beatv1beta1.Beat:
-			b := beat.NewBuilder(decodedObj.Name, commonbeat.Type(decodedObj.Spec.Type))
+			b := beat.NewBuilder(decodedObj.Name, beatcommon.Type(decodedObj.Spec.Type))
 			b.Beat = *decodedObj
 			builder = transform(b)
 		default:

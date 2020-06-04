@@ -120,6 +120,29 @@ type Beat struct {
 	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
 }
 
+func (b *Beat) Associated() commonv1.Associated {
+	if b != nil {
+		return b
+	}
+	return &Beat{}
+}
+
+func (b *Beat) AssociatedType() string {
+	return commonv1.ElasticsearchAssociationType
+}
+
+func (b *Beat) AssociationRef() commonv1.ObjectSelector {
+	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
+}
+
+func (b *Beat) AssociationConfAnnotationName() string {
+	return commonv1.ElasticsearchConfigAnnotationName
+}
+
+func (b *Beat) GetAssociations() []commonv1.Association {
+	return []commonv1.Association{b}
+}
+
 // IsMarkedForDeletion returns true if the Beat is going to be deleted
 func (b *Beat) IsMarkedForDeletion() bool {
 	return !b.DeletionTimestamp.IsZero()
@@ -148,6 +171,9 @@ func (b *Beat) AssociationStatus() commonv1.AssociationStatus {
 func (b *Beat) SetAssociationStatus(status commonv1.AssociationStatus) {
 	b.Status.Association = status
 }
+
+var _ commonv1.Associated = &Beat{}
+var _ commonv1.Association = &Beat{}
 
 // +kubebuilder:object:root=true
 

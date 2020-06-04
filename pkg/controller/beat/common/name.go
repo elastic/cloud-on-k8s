@@ -15,6 +15,6 @@ func ConfigSecretName(typeName, name string) string {
 	return namer.Suffix(name, typeName, "config")
 }
 
-func Name(typeName, name string) string {
+func Name(name, typeName string) string {
 	return namer.Suffix(name, typeName)
 }

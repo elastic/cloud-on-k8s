@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/filebeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
