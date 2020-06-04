@@ -25,35 +25,48 @@ import (
 )
 
 const (
-	serviceAccountNameTemplate     = "elastic-operator-beat-%s"
-	clusterRoleBindingNameTemplate = "elastic-operator-beat-autodiscover-%s-%s"
-	clusterRoleName                = "elastic-operator-beat-autodiscover"
+	// serviceAccountNameTemplate is the template to be used with Beat name to obtain the name of a ServiceAccount.
+	// Note that users might depend on it.
+	serviceAccountNameTemplate = "elastic-operator-beat-%s"
 
-	autodiscoverBeatNameLabelName      = "autodiscover.beat.k8s.elastic.co/name"
+	// clusterRoleBindingNameTemplate is the template to be used with Beat namespace and name to obtain the name of
+	// a ClusterRoleBinding.
+	clusterRoleBindingNameTemplate = "elastic-operator-beat-autodiscover-%s-%s"
+
+	// clusterRoleName is the name of the ClusterRole. If autodiscover RBAC management is enabled, operator assumes
+	// that this role already exists in the cluster.
+	clusterRoleName = "elastic-operator-beat-autodiscover"
+
+	// autodiscoverBeatNameLabelName is a label name that is applied to ClusterRoleBinding for autodiscover
+	// permissions. Label value is the name of the Beat resource that the binding is for.
+	autodiscoverBeatNameLabelName = "autodiscover.beat.k8s.elastic.co/name"
+
+	// autodiscoverBeatNamespaceLabelName is a label name that is applied to ClusterRoleBinding for autodiscover
+	// permissions. Label value is the namespace of the Beat resource that the binding is for.
 	autodiscoverBeatNamespaceLabelName = "autodiscover.beat.k8s.elastic.co/namespace"
 )
 
 var (
-	shouldSetupRBAC = false
+	shouldManageRBAC = false
 )
 
-// EnableAutodiscoverRBACSetup enables setting up autodiscover RBAC.
-func EnableAutodiscoverRBACSetup() {
-	shouldSetupRBAC = true
+// EnableAutodiscoverRBACManagement enables setting up autodiscover RBAC.
+func EnableAutodiscoverRBACManagement() {
+	shouldManageRBAC = true
 }
 
-// ShouldSetupAutodiscoverRBAC returns true if autodiscover RBAC is expected to be set up by the operator.
-func ShouldSetupAutodiscoverRBAC() bool {
-	return shouldSetupRBAC
+// ShouldManageAutodiscoverRBAC returns true if autodiscover RBAC is expected to be set up by the operator.
+func ShouldManageAutodiscoverRBAC() bool {
+	return shouldManageRBAC
 }
 
 // SetupAutodiscoveryRBAC reconciles all resources needed for the default RBAC setup.
-func SetupAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Client, beat beatv1beta1.Beat) error {
-	if !ShouldSetupAutodiscoverRBAC() {
+func ReconcileAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Client, beat beatv1beta1.Beat) error {
+	if !ShouldManageAutodiscoverRBAC() {
 		return nil
 	}
 
-	err := setupAutodiscoverRBAC(ctx, client, beat)
+	err := reconcileAutodiscoverRBAC(ctx, client, beat)
 	if err != nil {
 		log.V(1).Info(
 			"autodiscovery rbac setup failed",
@@ -65,7 +78,7 @@ func SetupAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Clie
 }
 
 func CleanUp(client k8s.Client, nsName types.NamespacedName) error {
-	if ShouldSetupAutodiscoverRBAC() {
+	if ShouldManageAutodiscoverRBAC() {
 		clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: ClusterRoleBindingName(nsName.Namespace, nsName.Name),
@@ -83,9 +96,13 @@ func CleanUp(client k8s.Client, nsName types.NamespacedName) error {
 }
 
 func IsAutodiscoverResource(meta metav1.Object) (bool, types.NamespacedName) {
-	name, okName := meta.GetLabels()[autodiscoverBeatNameLabelName]
-	ns, okNs := meta.GetLabels()[autodiscoverBeatNamespaceLabelName]
+	labels := meta.GetLabels()
+	if labels == nil {
+		return false, types.NamespacedName{}
+	}
 
+	name, okName := labels[autodiscoverBeatNameLabelName]
+	ns, okNs := labels[autodiscoverBeatNamespaceLabelName]
 	if okName && okNs {
 		return true, types.NamespacedName{
 			Name:      name,
@@ -96,7 +113,7 @@ func IsAutodiscoverResource(meta metav1.Object) (bool, types.NamespacedName) {
 	return false, types.NamespacedName{}
 }
 
-func setupAutodiscoverRBAC(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) error {
+func reconcileAutodiscoverRBAC(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) error {
 	span, _ := apm.StartSpan(ctx, "reconcile_autodiscover_rbac", tracing.SpanTypeApp)
 	defer span.End()
 

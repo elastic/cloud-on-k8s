@@ -94,7 +94,7 @@ func addWatches(c controller.Controller) error {
 		return err
 	}
 
-	if beatcommon.ShouldSetupAutodiscoverRBAC() {
+	if beatcommon.ShouldManageAutodiscoverRBAC() {
 		if err := c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &beatv1beta1.Beat{},
@@ -234,7 +234,7 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 }
 
 func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
-	if beatcommon.ShouldSetupAutodiscoverRBAC() {
+	if beatcommon.ShouldManageAutodiscoverRBAC() {
 		return beatcommon.CleanUp(r.Client, obj)
 	}
 

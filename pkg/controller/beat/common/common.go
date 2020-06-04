@@ -84,7 +84,7 @@ func Reconcile(
 		return nil, results.WithError(err)
 	}
 
-	if err := SetupAutodiscoverRBAC(params.Context, params.Logger, params.Client, params.Beat); err != nil {
+	if err := ReconcileAutodiscoverRBAC(params.Context, params.Logger, params.Client, params.Beat); err != nil {
 		results.WithError(err)
 	}
 

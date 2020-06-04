@@ -91,7 +91,7 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 			RunAsUser: pointer.Int64(0),
 		})
 
-	if ShouldSetupAutodiscoverRBAC() {
+	if ShouldManageAutodiscoverRBAC() {
 		autodiscoverServiceAccountName := ServiceAccountName(params.Beat.Name)
 		// If SA is already provided, the call will be no-op. This is fine as we then assume
 		// that for this resource (despite operator configuration) the user took the responsibility

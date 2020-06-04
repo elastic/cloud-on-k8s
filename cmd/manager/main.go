@@ -340,7 +340,7 @@ func execute() {
 	}
 
 	if viper.GetBool(operator.ManageBeatAutodiscoverRBACFlag) {
-		beatcommon.EnableAutodiscoverRBACSetup()
+		beatcommon.EnableAutodiscoverRBACManagement()
 	}
 
 	if err = apmserver.Add(mgr, params); err != nil {
