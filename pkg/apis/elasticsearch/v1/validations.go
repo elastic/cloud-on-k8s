@@ -30,7 +30,7 @@ const (
 	duplicateNodeSets        = "NodeSet names must be unique"
 	noDowngradesMsg          = "Downgrades are not supported"
 	unsupportedVersionMsg    = "Unsupported version"
-	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation."
+	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 )
 
 type validation func(*Elasticsearch) field.ErrorList
