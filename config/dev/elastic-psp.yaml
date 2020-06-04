@@ -58,13 +58,8 @@
       seccomp.security.alpha.kubernetes.io/defaultProfileName:  'runtime/default'
       apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
   spec:
-    privileged: false
-    # Required to prevent escalations to root.
-    allowPrivilegeEscalation: false
-    # This is redundant with non-root + disallow privilege escalation,
-    # but we can provide it for defense in depth.
-    requiredDropCapabilities:
-      - ALL
+    privileged: true
+    allowPrivilegeEscalation: true
     # Allow core volume types.
     volumes:
       - 'configMap'

@@ -87,6 +87,21 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 	return b
 }
 
+func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityContext) Builder {
+	if b.Beat.Spec.DaemonSet != nil {
+		for i := range b.Beat.Spec.DaemonSet.PodTemplate.Spec.Containers {
+			b.Beat.Spec.DaemonSet.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
+		}
+	}
+	if b.Beat.Spec.Deployment != nil {
+		for i := range b.Beat.Spec.Deployment.PodTemplate.Spec.Containers {
+			b.Beat.Spec.Deployment.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
+		}
+	}
+
+	return b
+}
+
 func (b Builder) WithLabel(key, value string) Builder {
 	if b.Beat.Labels == nil {
 		b.Beat.Labels = make(map[string]string)
