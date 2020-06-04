@@ -274,7 +274,7 @@ const sampleDefaultAgentConfiguration = `{"service":{},"settings":{"transaction_
 func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.K8sClient) test.StepList {
 	apmVersion := version.MustParse(apm.Spec.Version)
 
-	if !(apmVersion.IsSameOrAfter(apmv1.ApmAgentConfigurationMinVersion) && apm.Spec.KibanaRef.IsDefined()) {
+	if !apm.Spec.KibanaRef.IsDefined() {
 		return []test.Step{}
 	}
 
