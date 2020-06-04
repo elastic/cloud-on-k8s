@@ -7,6 +7,7 @@ package defaults
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +17,7 @@ func TestSetServiceDefaults(t *testing.T) {
 	testCases := []struct {
 		name            string
 		inSvc           func() *corev1.Service
-		defaultLabels   map[string]string
+		defaultMetadata metadata.Metadata
 		defaultSelector map[string]string
 		defaultPorts    []corev1.ServicePort
 		wantSvc         func() *corev1.Service
@@ -25,12 +26,10 @@ func TestSetServiceDefaults(t *testing.T) {
 			name: "defaults are applied to empty service",
 			inSvc: func() *corev1.Service {
 				return &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{"bar": "baz"},
-					},
+					ObjectMeta: metav1.ObjectMeta{},
 				}
 			},
-			defaultLabels:   map[string]string{"foo": "bar"},
+			defaultMetadata: metadata.Metadata{Labels: map[string]string{"foo": "bar"}, Annotations: map[string]string{"bar": "baz"}},
 			defaultSelector: map[string]string{"foo": "bar"},
 			defaultPorts:    []corev1.ServicePort{{Name: "https", Port: 443}},
 			wantSvc:         mkService,
@@ -38,15 +37,22 @@ func TestSetServiceDefaults(t *testing.T) {
 		{
 			name:  "existing values take precedence over defaults",
 			inSvc: mkService,
-			defaultLabels: map[string]string{
-				"foo": "foo", // should be ignored
-				"bar": "baz", // should be added
+			defaultMetadata: metadata.Metadata{
+				Labels: map[string]string{
+					"foo": "foo", // should be ignored
+					"bar": "baz", // should be added
+				},
+				Annotations: map[string]string{
+					"bar": "bar",  // should be ignored
+					"baz": "quux", // should be added
+				},
 			},
 			defaultSelector: map[string]string{"foo": "foo", "bar": "bar"},     // should be completely ignored
 			defaultPorts:    []corev1.ServicePort{{Name: "https", Port: 8443}}, // should be completely ignored
 			wantSvc: func() *corev1.Service {
 				svc := mkService()
 				svc.Labels["bar"] = "baz"
+				svc.Annotations["baz"] = "quux"
 				return svc
 			},
 		},
@@ -54,7 +60,7 @@ func TestSetServiceDefaults(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			haveSvc := SetServiceDefaults(tc.inSvc(), tc.defaultLabels, tc.defaultSelector, tc.defaultPorts)
+			haveSvc := SetServiceDefaults(tc.inSvc(), tc.defaultMetadata, tc.defaultSelector, tc.defaultPorts)
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}

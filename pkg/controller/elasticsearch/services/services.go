@@ -11,6 +11,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -30,7 +31,7 @@ func TransportServiceName(esName string) string {
 
 // NewTransportService returns the transport service associated with the given cluster.
 // It is used by Elasticsearch nodes to talk to remote cluster nodes.
-func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
+func NewTransportService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 	svc := corev1.Service{
 		ObjectMeta: es.Spec.Transport.Service.ObjectMeta,
@@ -47,7 +48,7 @@ func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
 		// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
 		svc.Spec.ClusterIP = "None"
 	}
-	labels := label.NewLabels(nsn)
+
 	ports := []corev1.ServicePort{
 		{
 			Protocol: corev1.ProtocolTCP,
@@ -55,7 +56,9 @@ func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
 		},
 	}
 
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	selector := label.NewLabels(nsn)
+
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
 // ExternalServiceName returns the name for the external service
@@ -76,7 +79,7 @@ func ExternalServiceURL(es esv1.Elasticsearch) string {
 
 // NewExternalService returns the external service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
-func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
+func NewExternalService(es esv1.Elasticsearch, meta metadata.Metadata) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 
 	svc := corev1.Service{
@@ -87,7 +90,6 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 	svc.ObjectMeta.Namespace = es.Namespace
 	svc.ObjectMeta.Name = ExternalServiceName(es.Name)
 
-	labels := label.NewLabels(nsn)
 	ports := []corev1.ServicePort{
 		{
 			Name:     es.Spec.HTTP.Protocol(),
@@ -96,7 +98,9 @@ func NewExternalService(es esv1.Elasticsearch) *corev1.Service {
 		},
 	}
 
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	selector := label.NewLabels(nsn)
+
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
 // IsServiceReady checks if a service has one or more ready endpoints.

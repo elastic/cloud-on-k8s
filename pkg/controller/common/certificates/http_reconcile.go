@@ -25,6 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	netutil "github.com/elastic/cloud-on-k8s/pkg/utils/net"
 )
 
@@ -34,9 +35,10 @@ func (r Reconciler) ReconcilePublicHTTPCerts(internalCerts *CertificatesSecret) 
 	nsn := PublicCertsSecretRef(r.Namer, k8s.ExtractNamespacedName(r.Object))
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: nsn.Namespace,
-			Name:      nsn.Name,
-			Labels:    r.Labels,
+			Namespace:   nsn.Namespace,
+			Name:        nsn.Name,
+			Labels:      r.Metadata.Labels,
+			Annotations: r.Metadata.Annotations,
 		},
 		Data: map[string][]byte{
 			CertFileName: internalCerts.CertPem(),
@@ -76,19 +78,16 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 		shouldCreateSecret = true
 	}
 
-	if secret.Labels == nil {
-		secret.Labels = make(map[string]string)
-	}
-
-	// TODO: reconcile annotations?
 	needsUpdate := false
 
-	// ensure our labels are set on the secret.
-	for k, v := range r.Labels {
-		if current, ok := secret.Labels[k]; !ok || current != v {
-			secret.Labels[k] = v
-			needsUpdate = true
-		}
+	// check whether labels and annotations need to be updated
+	labelsToAdd := maps.MergePreservingExistingKeys(maps.Clone(secret.Labels), r.Metadata.Labels)
+	annotationsToAdd := maps.MergePreservingExistingKeys(maps.Clone(secret.Annotations), r.Metadata.Annotations)
+
+	if !maps.Equal(labelsToAdd, secret.Labels) || !maps.Equal(annotationsToAdd, secret.Annotations) {
+		secret.Labels = labelsToAdd
+		secret.Annotations = annotationsToAdd
+		needsUpdate = true
 	}
 
 	if err := controllerutil.SetControllerReference(r.Object, &secret, scheme.Scheme); err != nil {

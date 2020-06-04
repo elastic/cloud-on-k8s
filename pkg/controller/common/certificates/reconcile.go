@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	commonname "github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
@@ -36,7 +37,7 @@ type Reconciler struct {
 	TLSOptions commonv1.TLSOptions // TLS options of the object
 
 	Namer    commonname.Namer  // helps naming the reconciled secrets
-	Labels   map[string]string // to set on the reconciled cert secrets
+	Metadata metadata.Metadata // labels and annotations to set on reconcile cert secrets
 	Services []corev1.Service  // to be used for TLS SANs
 
 	CACertRotation RotationParams // to requeue a reconciliation before CA cert expiration
@@ -65,7 +66,7 @@ func (r Reconciler) ReconcileCAAndHTTPCerts(ctx context.Context) (*CertificatesS
 		r.K8sClient,
 		r.Namer,
 		r.Object,
-		r.Labels,
+		r.Metadata,
 		HTTPCAType,
 		r.CACertRotation,
 	)

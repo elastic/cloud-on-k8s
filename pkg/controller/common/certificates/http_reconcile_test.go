@@ -25,6 +25,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -122,15 +123,19 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 		return k8s.WrappedFakeClient(objs...)
 	}
 
-	labels := map[string]string{"expected": "default-labels"}
+	meta := metadata.Metadata{
+		Labels:      map[string]string{"foo": "bar"},
+		Annotations: map[string]string{"baz": "quux"},
+	}
 
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
 		t.Helper()
 		wantSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: namespacedSecretName.Namespace,
-				Name:      namespacedSecretName.Name,
-				Labels:    labels,
+				Namespace:   namespacedSecretName.Namespace,
+				Name:        namespacedSecretName.Name,
+				Labels:      meta.Labels,
+				Annotations: meta.Annotations,
 			},
 			Data: map[string][]byte{
 				CertFileName: tls,
@@ -209,7 +214,7 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 				K8sClient: client,
 				Object:    owner,
 				Namer:     esv1.ESNamer,
-				Labels:    labels,
+				Metadata:  meta,
 			}.ReconcilePublicHTTPCerts(certificate)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
@@ -229,6 +234,11 @@ func TestReconcilePublicHTTPCerts(t *testing.T) {
 func TestReconcileInternalHTTPCerts(t *testing.T) {
 	tls := loadFileBytes("tls.crt")
 	key := loadFileBytes("tls.key")
+
+	meta := metadata.Metadata{
+		Labels:      map[string]string{"foo": "bar"},
+		Annotations: map[string]string{"baz": "quux"},
+	}
 
 	type args struct {
 		c        k8s.Client
@@ -252,6 +262,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
 				assert.Contains(t, cs.Data, KeyFileName)
 				assert.Contains(t, cs.Data, CertFileName)
+				assert.Equal(t, meta.Labels, cs.Labels)
+				assert.Equal(t, meta.Annotations, cs.Annotations)
 			},
 		},
 		{
@@ -281,6 +293,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 			want: func(t *testing.T, c k8s.Client, cs *CertificatesSecret) {
 				assert.Equal(t, cs.Data[KeyFileName], key)
 				assert.Equal(t, cs.Data[CertFileName], tls)
+				assert.Equal(t, meta.Labels, cs.Labels)
+				assert.Equal(t, meta.Annotations, cs.Annotations)
 
 				// We do not expect the CA to be present in the result since none has been provided by the user
 				_, hasCaCert := cs.Data[CAFileName]
@@ -292,6 +306,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				// We are still expecting a CA cert to exist in this Secret
 				assert.True(t, len(internalSecret.Data[CAFileName]) > 0)
 				assert.Equal(t, internalSecret.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
+				assert.Equal(t, meta.Labels, internalSecret.Labels)
+				assert.Equal(t, meta.Annotations, internalSecret.Annotations)
 			},
 		},
 		{
@@ -323,6 +339,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				assert.Equal(t, cs.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
 				assert.Equal(t, cs.Data[KeyFileName], key)
 				assert.Equal(t, cs.Data[CertFileName], tls)
+				assert.Equal(t, meta.Labels, cs.Labels)
+				assert.Equal(t, meta.Annotations, cs.Annotations)
 
 				// Retrieve the Secret that contains the data for the internal HTTP certificate
 				internalSecret := &corev1.Secret{}
@@ -330,6 +348,8 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				assert.True(t, len(internalSecret.Data[CAFileName]) > 0)
 				// We expect the private, unknown, CA to be in the result
 				assert.Equal(t, internalSecret.Data[CAFileName], EncodePEMCert(testCA.Cert.Raw))
+				assert.Equal(t, meta.Labels, internalSecret.Labels)
+				assert.Equal(t, meta.Annotations, internalSecret.Annotations)
 			},
 		},
 	}
@@ -342,7 +362,7 @@ func TestReconcileInternalHTTPCerts(t *testing.T) {
 				Object:         &tt.args.es,
 				TLSOptions:     tt.args.es.Spec.HTTP.TLS,
 				Namer:          esv1.ESNamer,
-				Labels:         map[string]string{},
+				Metadata:       meta,
 				Services:       tt.args.services,
 				CertRotation: RotationParams{
 					Validity:     DefaultCertValidity,

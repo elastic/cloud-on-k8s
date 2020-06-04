@@ -17,11 +17,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
@@ -45,6 +45,7 @@ func ReconcileUsersAndRoles(
 	es esv1.Elasticsearch,
 	watched watches.DynamicWatches,
 	recorder record.EventRecorder,
+	meta metadata.Metadata,
 ) (esclient.BasicAuth, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_users", tracing.SpanTypeApp)
 	defer span.End()
@@ -60,7 +61,7 @@ func ReconcileUsersAndRoles(
 	}
 
 	// reconcile the aggregate secret
-	if err := reconcileRolesFileRealmSecret(c, es, roles, fileRealm); err != nil {
+	if err := reconcileRolesFileRealmSecret(c, es, roles, fileRealm, meta); err != nil {
 		return esclient.BasicAuth{}, err
 	}
 
@@ -150,7 +151,7 @@ func RolesFileRealmSecretKey(es esv1.Elasticsearch) types.NamespacedName {
 }
 
 // reconcileRolesFileRealmSecret creates or updates the single secret holding the file realm and the file-based roles.
-func reconcileRolesFileRealmSecret(c k8s.Client, es esv1.Elasticsearch, roles RolesFileContent, fileRealm filerealm.Realm) error {
+func reconcileRolesFileRealmSecret(c k8s.Client, es esv1.Elasticsearch, roles RolesFileContent, fileRealm filerealm.Realm, meta metadata.Metadata) error {
 	secretData := fileRealm.FileBytes()
 	rolesBytes, err := roles.FileBytes()
 	if err != nil {
@@ -160,12 +161,14 @@ func reconcileRolesFileRealmSecret(c k8s.Client, es esv1.Elasticsearch, roles Ro
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: RolesFileRealmSecretKey(es).Namespace,
-			Name:      RolesFileRealmSecretKey(es).Name,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Namespace:   RolesFileRealmSecretKey(es).Namespace,
+			Name:        RolesFileRealmSecretKey(es).Name,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: secretData,
 	}
+
 	// TODO: factorize with https://github.com/elastic/cloud-on-k8s/issues/2626
 	var reconciled corev1.Secret
 	return reconciler.ReconcileResource(reconciler.Params{

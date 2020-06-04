@@ -14,6 +14,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 )
 
@@ -53,11 +54,11 @@ func NewResources(
 	r driver.Interface,
 	hasKeystore HasKeystore,
 	namer name.Namer,
-	labels map[string]string,
+	meta metadata.Metadata,
 	initContainerParams InitContainerParameters,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, version, err := secureSettingsVolume(r, hasKeystore, labels, namer)
+	secretVolume, version, err := secureSettingsVolume(r, hasKeystore, meta, namer)
 	if err != nil {
 		return nil, err
 	}

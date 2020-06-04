@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -179,6 +180,7 @@ func checkCASecrets(
 	require.NoError(t, err)
 	require.NotEmpty(t, internalCASecret.Data[CertFileName])
 	require.NotEmpty(t, internalCASecret.Data[KeyFileName])
+	require.Equal(t, map[string]string{"foo": "bar"}, internalCASecret.Labels)
 
 	// secret should be ok to parse as a CA
 	parsedCa := BuildCAFromSecret(internalCASecret)
@@ -192,7 +194,9 @@ func checkCASecrets(
 func Test_renewCA(t *testing.T) {
 	testCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
-	internalCASecret := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
+
+	meta := metadata.Metadata{Labels: map[string]string{"foo": "bar"}}
+	internalCASecret := internalSecretForCA(testCa, testNamer, &testCluster, meta, TransportCAType)
 
 	tests := []struct {
 		name        string
@@ -213,8 +217,9 @@ func Test_renewCA(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		meta := metadata.Metadata{Labels: map[string]string{"foo": "bar"}}
 		t.Run(tt.name, func(t *testing.T) {
-			ca, err := renewCA(tt.client, testNamer, &testCluster, nil, tt.expireIn, TransportCAType)
+			ca, err := renewCA(tt.client, testNamer, &testCluster, meta, tt.expireIn, TransportCAType)
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			assert.Equal(t, ca.Cert.Issuer.CommonName, testName+"-"+string(TransportCAType))
@@ -226,7 +231,9 @@ func Test_renewCA(t *testing.T) {
 func TestReconcileCAForCluster(t *testing.T) {
 	validCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
-	internalCASecret := internalSecretForCA(validCa, testNamer, &testCluster, nil, TransportCAType)
+
+	meta := metadata.Metadata{Labels: map[string]string{"foo": "bar"}}
+	internalCASecret := internalSecretForCA(validCa, testNamer, &testCluster, meta, TransportCAType)
 
 	internalCASecretWithoutPrivateKey := internalCASecret.DeepCopy()
 	delete(internalCASecretWithoutPrivateKey.Data, KeyFileName)
@@ -240,7 +247,7 @@ func TestReconcileCAForCluster(t *testing.T) {
 	})
 	require.NoError(t, err)
 	soonToExpireInternalCASecret := internalSecretForCA(
-		soonToExpireCa, testNamer, &testCluster, nil, TransportCAType,
+		soonToExpireCa, testNamer, &testCluster, meta, TransportCAType,
 	)
 
 	tests := []struct {
@@ -285,7 +292,7 @@ func TestReconcileCAForCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ca, err := ReconcileCAForOwner(
-				tt.cl, testNamer, &testCluster, nil, TransportCAType, RotationParams{
+				tt.cl, testNamer, &testCluster, meta, TransportCAType, RotationParams{
 					Validity:     tt.caCertValidity,
 					RotateBefore: DefaultRotateBefore,
 				},
@@ -305,7 +312,8 @@ func Test_internalSecretForCA(t *testing.T) {
 
 	labels := map[string]string{"foo": "bar"}
 
-	internalSecret := internalSecretForCA(testCa, testNamer, &testCluster, labels, TransportCAType)
+	meta := metadata.Metadata{Labels: map[string]string{"foo": "bar"}}
+	internalSecret := internalSecretForCA(testCa, testNamer, &testCluster, meta, TransportCAType)
 
 	assert.Equal(t, testNamespace, internalSecret.Namespace)
 	assert.Equal(t, testName+"-test-transport-ca-internal", internalSecret.Name)
@@ -321,7 +329,8 @@ func Test_buildCAFromSecret(t *testing.T) {
 	testCa, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
 
-	internalSecret := internalSecretForCA(testCa, testNamer, &testCluster, nil, TransportCAType)
+	meta := metadata.Metadata{Labels: map[string]string{"foo": "bar"}}
+	internalSecret := internalSecretForCA(testCa, testNamer, &testCluster, meta, TransportCAType)
 
 	internalSecretMissingCert := internalSecret.DeepCopy()
 	delete(internalSecretMissingCert.Data, CertFileName)

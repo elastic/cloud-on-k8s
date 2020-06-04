@@ -16,6 +16,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -25,8 +26,8 @@ var (
 		Validity:     DefaultCertValidity,
 		RotateBefore: DefaultRotateBefore,
 	}
-	labels = map[string]string{
-		"foo": "bar",
+	meta = metadata.Metadata{
+		Labels: map[string]string{"foo": "bar"},
 	}
 	// tested on Elasticsearch but could be any resource
 	obj = esv1.Elasticsearch{
@@ -48,7 +49,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		Object:                &obj,
 		TLSOptions:            commonv1.TLSOptions{},
 		Namer:                 esv1.ESNamer,
-		Labels:                labels,
+		Metadata:              meta,
 		Services:              nil,
 		CACertRotation:        rotation,
 		CertRotation:          rotation,
@@ -75,7 +76,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.Len(t, caCerts.Data, 2)
 		require.NotEmpty(t, caCerts.Data[CertFileName])
 		require.NotEmpty(t, caCerts.Data[KeyFileName])
-		require.Equal(t, labels, caCerts.Labels)
+		require.Equal(t, meta.Labels, caCerts.Labels)
 
 		var internalCerts corev1.Secret
 		err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: InternalCertsSecretName(esv1.ESNamer, obj.Name)}, &internalCerts)
@@ -84,7 +85,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.NotEmpty(t, internalCerts.Data[CAFileName])
 		require.NotEmpty(t, internalCerts.Data[CertFileName])
 		require.NotEmpty(t, internalCerts.Data[KeyFileName])
-		require.Equal(t, labels, internalCerts.Labels)
+		require.Equal(t, meta.Labels, internalCerts.Labels)
 
 		var publicCerts corev1.Secret
 		err = c.Get(types.NamespacedName{Namespace: obj.Namespace, Name: PublicCertsSecretName(esv1.ESNamer, obj.Name)}, &publicCerts)
@@ -92,7 +93,7 @@ func TestReconcileCAAndHTTPCerts(t *testing.T) {
 		require.Len(t, publicCerts.Data, 2)
 		require.NotEmpty(t, publicCerts.Data[CAFileName])
 		require.NotEmpty(t, publicCerts.Data[CertFileName])
-		require.Equal(t, labels, publicCerts.Labels)
+		require.Equal(t, meta.Labels, publicCerts.Labels)
 
 	}
 	checkCertsSecrets()

@@ -9,6 +9,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/reconcile"
@@ -30,7 +31,8 @@ type downscaleContext struct {
 	reconcileState *reconcile.State
 	expectations   *expectations.Expectations
 	// ES cluster
-	es esv1.Elasticsearch
+	es   esv1.Elasticsearch
+	meta metadata.Metadata
 
 	parentCtx context.Context
 }
@@ -45,6 +47,7 @@ func newDownscaleContext(
 	expectations *expectations.Expectations,
 	// ES cluster
 	es esv1.Elasticsearch,
+	meta metadata.Metadata,
 ) downscaleContext {
 	return downscaleContext{
 		k8sClient:      k8sClient,
@@ -56,6 +59,7 @@ func newDownscaleContext(
 		es:             es,
 		expectations:   expectations,
 		parentCtx:      ctx,
+		meta:           meta,
 	}
 }
 

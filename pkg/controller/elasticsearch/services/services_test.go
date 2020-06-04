@@ -10,9 +10,12 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -215,7 +218,8 @@ func TestNewExternalService(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			es := mkElasticsearch(tc.httpConf)
-			haveSvc := NewExternalService(es)
+			meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
+			haveSvc := NewExternalService(es, meta)
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
@@ -229,6 +233,7 @@ func mkHTTPService() corev1.Service {
 			Labels: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
 				common.TypeLabelName:       label.Type,
+				"foo":                      "bar",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -255,6 +260,7 @@ func mkTransportService() corev1.Service {
 			Labels: map[string]string{
 				label.ClusterNameLabelName: "elasticsearch-test",
 				common.TypeLabelName:       label.Type,
+				"foo":                      "bar",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -278,8 +284,10 @@ func mkTransportService() corev1.Service {
 func mkElasticsearch(httpConf commonv1.HTTPConfig) esv1.Elasticsearch {
 	return esv1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "elasticsearch-test",
-			Namespace: "test",
+			Name:        "elasticsearch-test",
+			Namespace:   "test",
+			Annotations: map[string]string{annotation.PropagateLabelsAnnotation: "*"},
+			Labels:      map[string]string{"foo": "bar"},
 		},
 		Spec: esv1.ElasticsearchSpec{
 			HTTP: httpConf,
@@ -326,15 +334,19 @@ func TestNewTransportService(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			es := esv1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "elasticsearch-test",
-					Namespace: "test",
+					Name:        "elasticsearch-test",
+					Namespace:   "test",
+					Annotations: map[string]string{annotation.PropagateLabelsAnnotation: "*"},
+					Labels:      map[string]string{"foo": "bar"},
 				},
 				Spec: esv1.ElasticsearchSpec{
 					Transport: tt.transportCfg,
 				},
 			}
 			want := tt.want()
-			got := NewTransportService(es)
+			meta := metadata.Propagate(&es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&es))})
+			got := NewTransportService(es, meta)
+			require.Equal(t, want, *got)
 			require.Nil(t, deep.Equal(*got, want))
 		})
 	}

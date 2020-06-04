@@ -5,14 +5,15 @@
 package pdb
 
 import (
-	"reflect"
 	"testing"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -32,7 +33,7 @@ func TestReconcile(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 				Namespace: "ns",
-				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
+				Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type, "foo": "bar"},
 			},
 			Spec: v1beta1.PodDisruptionBudgetSpec{
 				MinAvailable: intStrPtr(intstr.FromInt(3)),
@@ -45,12 +46,24 @@ func TestReconcile(t *testing.T) {
 			},
 		}
 	}
-	defaultEs := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "cluster", Namespace: "ns"}}
+
+	defaultEs := esv1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "cluster",
+			Namespace:   "ns",
+			Annotations: map[string]string{annotation.PropagateLabelsAnnotation: "*"},
+			Labels:      map[string]string{"foo": "bar"},
+		},
+	}
+
 	type args struct {
 		k8sClient    k8s.Client
 		es           esv1.Elasticsearch
 		statefulSets sset.StatefulSetList
 	}
+
+	meta := metadata.Propagate(&defaultEs, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&defaultEs))})
+
 	tests := []struct {
 		name    string
 		args    args
@@ -85,7 +98,7 @@ func TestReconcile(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      esv1.DefaultPodDisruptionBudget("cluster"),
 					Namespace: "ns",
-					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type},
+					Labels:    map[string]string{label.ClusterNameLabelName: "cluster", common.TypeLabelName: label.Type, "foo": "bar"},
 				},
 				Spec: v1beta1.PodDisruptionBudgetSpec{
 					MinAvailable: intStrPtr(intstr.FromInt(5)),
@@ -113,7 +126,7 @@ func TestReconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Reconcile(tt.args.k8sClient, tt.args.es, tt.args.statefulSets)
+			err := Reconcile(tt.args.k8sClient, tt.args.es, tt.args.statefulSets, meta)
 			require.NoError(t, err)
 			pdbNsn := types.NamespacedName{Namespace: tt.args.es.Namespace, Name: esv1.DefaultPodDisruptionBudget(tt.args.es.Name)}
 			var retrieved v1beta1.PodDisruptionBudget
@@ -248,11 +261,10 @@ func Test_expectedPDB(t *testing.T) {
 				// set owner ref
 				tt.want = withOwnerRef(tt.want, tt.args.es)
 			}
-			got, err := expectedPDB(tt.args.es, tt.args.statefulSets)
+			meta := metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&tt.args.es))})
+			got, err := expectedPDB(tt.args.es, tt.args.statefulSets, meta)
 			require.NoError(t, err)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("expectedPDB() got = %v, want %v", got, tt.want)
-			}
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

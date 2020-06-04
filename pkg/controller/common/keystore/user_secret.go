@@ -17,6 +17,7 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -37,7 +38,7 @@ const secureSettingsSecretSuffix = "secure-settings"
 func secureSettingsVolume(
 	r driver.Interface,
 	hasKeystore HasKeystore,
-	labels map[string]string,
+	meta metadata.Metadata,
 	namer name.Namer,
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
@@ -55,7 +56,7 @@ func secureSettingsVolume(
 	if err != nil {
 		return nil, "", err
 	}
-	secret, err := reconcileSecureSettings(r.K8sClient(), hasKeystore, secrets, namer, labels)
+	secret, err := reconcileSecureSettings(r.K8sClient(), hasKeystore, secrets, namer, meta)
 	if err != nil {
 		return nil, "", err
 	}
@@ -82,7 +83,7 @@ func reconcileSecureSettings(
 	hasKeystore HasKeystore,
 	userSecrets []corev1.Secret,
 	namer name.Namer,
-	labels map[string]string) (*corev1.Secret, error) {
+	meta metadata.Metadata) (*corev1.Secret, error) {
 	aggregatedData := map[string][]byte{}
 
 	for _, s := range userSecrets {
@@ -94,9 +95,10 @@ func reconcileSecureSettings(
 	// reconcile our managed secret with the user-provided secret content
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secureSettingsSecretName(namer, hasKeystore),
-			Namespace: hasKeystore.GetNamespace(),
-			Labels:    labels,
+			Name:        secureSettingsSecretName(namer, hasKeystore),
+			Namespace:   hasKeystore.GetNamespace(),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: aggregatedData,
 	}

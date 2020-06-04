@@ -14,6 +14,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -48,7 +49,7 @@ func ReconcileCAForOwner(
 	cl k8s.Client,
 	namer name.Namer,
 	owner v1.Object,
-	labels map[string]string,
+	meta metadata.Metadata,
 	caType CAType,
 	rotationParams RotationParams,
 ) (*CA, error) {
@@ -65,20 +66,20 @@ func ReconcileCAForOwner(
 	}
 	if apierrors.IsNotFound(err) {
 		log.Info("No internal CA certificate Secret found, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
+		return renewCA(cl, namer, owner, meta, rotationParams.Validity, caType)
 	}
 
 	// build CA
 	ca := BuildCAFromSecret(caInternalSecret)
 	if ca == nil {
 		log.Info("Cannot build CA from secret, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
+		return renewCA(cl, namer, owner, meta, rotationParams.Validity, caType)
 	}
 
 	// renew if cannot reuse
 	if !CanReuseCA(ca, rotationParams.RotateBefore) {
 		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, rotationParams.Validity, caType)
+		return renewCA(cl, namer, owner, meta, rotationParams.Validity, caType)
 	}
 
 	// reuse existing CA
@@ -90,7 +91,7 @@ func renewCA(
 	client k8s.Client,
 	namer name.Namer,
 	owner v1.Object,
-	labels map[string]string,
+	meta metadata.Metadata,
 	expireIn time.Duration,
 	caType CAType,
 ) (*CA, error) {
@@ -104,7 +105,7 @@ func renewCA(
 	if err != nil {
 		return nil, err
 	}
-	caInternalSecret := internalSecretForCA(ca, namer, owner, labels, caType)
+	caInternalSecret := internalSecretForCA(ca, namer, owner, meta, caType)
 
 	// create or update internal secret
 	if _, err := reconciler.ReconcileSecret(client, caInternalSecret, owner); err != nil {
@@ -139,14 +140,15 @@ func internalSecretForCA(
 	ca *CA,
 	namer name.Namer,
 	owner v1.Object,
-	labels map[string]string,
+	meta metadata.Metadata,
 	caType CAType,
 ) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
-			Namespace: owner.GetNamespace(),
-			Name:      CAInternalSecretName(namer, owner.GetName(), caType),
-			Labels:    labels,
+			Namespace:   owner.GetNamespace(),
+			Name:        CAInternalSecretName(namer, owner.GetName(), caType),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			CertFileName: EncodePEMCert(ca.Cert.Raw),

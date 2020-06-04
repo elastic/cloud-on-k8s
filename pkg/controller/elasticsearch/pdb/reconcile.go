@@ -15,17 +15,17 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 // Reconcile ensures that a PodDisruptionBudget exists for this cluster, inheriting the spec content.
 // The default PDB we setup dynamically adapts MinAvailable to the number of nodes in the cluster.
 // If the spec has disabled the default PDB, it will ensure none exist.
-func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList) error {
-	expected, err := expectedPDB(es, statefulSets)
+func Reconcile(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta metadata.Metadata) error {
+	expected, err := expectedPDB(es, statefulSets, meta)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func deleteDefaultPDB(k8sClient k8s.Client, es esv1.Elasticsearch) error {
 
 // expectedPDB returns a PDB according to the given ES spec.
 // It may return nil if the PDB has been explicitly disabled in the ES spec.
-func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1beta1.PodDisruptionBudget, error) {
+func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList, meta metadata.Metadata) (*v1beta1.PodDisruptionBudget, error) {
 	template := es.Spec.PodDisruptionBudget.DeepCopy()
 	if template.IsDisabled() {
 		return nil, nil
@@ -97,8 +97,15 @@ func expectedPDB(es esv1.Elasticsearch, statefulSets sset.StatefulSetList) (*v1b
 	// inherit user-provided ObjectMeta, but set our own name & namespace
 	expected.Name = esv1.DefaultPodDisruptionBudget(es.Name)
 	expected.Namespace = es.Namespace
-	// and append our labels
-	expected.Labels = maps.MergePreservingExistingKeys(expected.Labels, label.NewLabels(k8s.ExtractNamespacedName(&es)))
+
+	// Add labels and annotations
+	mergedMeta := meta.Merge(metadata.Metadata{
+		Labels:      expected.Labels,
+		Annotations: expected.Annotations,
+	})
+	expected.Labels = mergedMeta.Labels
+	expected.Annotations = mergedMeta.Annotations
+
 	// set owner reference for deletion upon ES resource deletion
 	if err := controllerutil.SetControllerReference(&es, &expected, scheme.Scheme); err != nil {
 		return nil, err

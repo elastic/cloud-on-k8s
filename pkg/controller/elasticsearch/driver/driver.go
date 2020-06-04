@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	commonlicense "github.com/elastic/cloud-on-k8s/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
@@ -117,16 +118,19 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES); err != nil {
+	// extract the metadata that should be propagated to children
+	meta := metadata.Propagate(&d.ES, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&d.ES))})
+
+	if err := configmap.ReconcileScriptsConfigMap(ctx, d.Client, d.ES, meta); err != nil {
 		return results.WithError(err)
 	}
 
-	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES), &d.ES)
+	_, err := common.ReconcileService(ctx, d.Client, services.NewTransportService(d.ES, meta), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES), &d.ES)
+	externalService, err := common.ReconcileService(ctx, d.Client, services.NewExternalService(d.ES, meta), &d.ES)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -138,12 +142,13 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		[]corev1.Service{*externalService},
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
+		meta,
 	)
 	if results.WithResults(res).HasError() {
 		return results
 	}
 
-	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder())
+	controllerUser, err := user.ReconcileUsersAndRoles(ctx, d.Client, d.ES, d.DynamicWatches(), d.Recorder(), meta)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -220,7 +225,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods); err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(ctx, d.Client, d.ES, resourcesState.AllPods, meta); err != nil {
 		return results.WithError(err)
 	}
 
@@ -229,7 +234,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 		d,
 		&d.ES,
 		esv1.ESNamer,
-		label.NewLabels(k8s.ExtractNamespacedName(&d.ES)),
+		meta,
 		initcontainer.KeystoreParams,
 	)
 	if err != nil {
@@ -246,7 +251,7 @@ func (d *defaultDriver) Reconcile(ctx context.Context) *reconciler.Results {
 	}
 
 	// reconcile StatefulSets and nodes configuration
-	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources)
+	res = d.reconcileNodeSpecs(ctx, esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources, meta)
 	results = results.WithResults(res)
 
 	if res.HasError() {

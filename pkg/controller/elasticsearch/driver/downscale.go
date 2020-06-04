@@ -9,6 +9,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -44,7 +45,7 @@ func HandleDownscale(
 
 	// remove actual StatefulSets that should not exist anymore (already downscaled to 0 in the past)
 	// this is safe thanks to expectations: we're sure 0 actual replicas means 0 corresponding pods exist
-	if err := deleteStatefulSets(deletions, downscaleCtx.k8sClient, downscaleCtx.es); err != nil {
+	if err := deleteStatefulSets(deletions, downscaleCtx.k8sClient, downscaleCtx.es, downscaleCtx.meta); err != nil {
 		return results.WithError(err)
 	}
 
@@ -71,9 +72,9 @@ func HandleDownscale(
 }
 
 // deleteStatefulSets deletes the given StatefulSets along with their associated resources.
-func deleteStatefulSets(toDelete sset.StatefulSetList, k8sClient k8s.Client, es esv1.Elasticsearch) error {
+func deleteStatefulSets(toDelete sset.StatefulSetList, k8sClient k8s.Client, es esv1.Elasticsearch, meta metadata.Metadata) error {
 	for _, toDelete := range toDelete {
-		if err := deleteStatefulSetResources(k8sClient, es, toDelete); err != nil {
+		if err := deleteStatefulSetResources(k8sClient, es, toDelete, meta); err != nil {
 			return err
 		}
 	}
@@ -149,8 +150,8 @@ func attemptDownscale(
 
 // deleteStatefulSetResources deletes the given StatefulSet along with the corresponding
 // headless service and configuration secret.
-func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet) error {
-	headlessSvc := nodespec.HeadlessService(&es, statefulSet.Name)
+func deleteStatefulSetResources(k8sClient k8s.Client, es esv1.Elasticsearch, statefulSet appsv1.StatefulSet, meta metadata.Metadata) error {
+	headlessSvc := nodespec.HeadlessService(&es, statefulSet.Name, meta)
 	err := k8sClient.Delete(&headlessSvc)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return err

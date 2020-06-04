@@ -12,6 +12,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/expectations"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	controllerscheme "github.com/elastic/cloud-on-k8s/pkg/controller/common/scheme"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
@@ -915,7 +916,8 @@ func Test_deleteStatefulSetResources(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
 	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
 	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
-	svc := nodespec.HeadlessService(&es, sset.Name)
+	meta := metadata.Metadata{}
+	svc := nodespec.HeadlessService(&es, sset.Name, meta)
 
 	tests := []struct {
 		name      string
@@ -933,7 +935,7 @@ func Test_deleteStatefulSetResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.WrappedFakeClient(tt.resources...)
-			err := deleteStatefulSetResources(k8sClient, es, sset)
+			err := deleteStatefulSetResources(k8sClient, es, sset, meta)
 			require.NoError(t, err)
 			// sset, cfg and headless services should not be there anymore
 			require.True(t, apierrors.IsNotFound(k8sClient.Get(k8s.ExtractNamespacedName(&sset), &sset)))
@@ -992,7 +994,7 @@ func Test_deleteStatefulSets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrappedFakeClient(tt.objs...)
-			err := deleteStatefulSets(tt.toDelete, client, es)
+			err := deleteStatefulSets(tt.toDelete, client, es, metadata.Metadata{})
 			if tt.wantErr != nil {
 				require.True(t, tt.wantErr(err))
 			} else {

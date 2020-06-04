@@ -23,6 +23,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -41,10 +42,13 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		return k8s.WrappedFakeClient(objs...)
 	}
 
+	md := metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(owner)), Annotations: map[string]string{"baz": "quux"}}
+
 	mkWantedSecret := func(t *testing.T) *corev1.Secret {
 		t.Helper()
 		meta := k8s.ToObjectMeta(namespacedSecretName)
-		meta.SetLabels(label.NewLabels(k8s.ExtractNamespacedName(owner)))
+		meta.SetLabels(md.Labels)
+		meta.SetAnnotations(md.Annotations)
 
 		wantSecret := &corev1.Secret{
 			ObjectMeta: meta,
@@ -126,7 +130,7 @@ func TestReconcileTransportCertsPublicSecret(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			client := tt.client(t)
-			err := ReconcileTransportCertsPublicSecret(client, *owner, ca)
+			err := ReconcileTransportCertsPublicSecret(client, *owner, ca, k8s.ExtractNamespacedName(owner), md)
 			if tt.wantErr {
 				require.Error(t, err, "Failed to reconcile")
 				return

@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
@@ -24,7 +25,7 @@ type Params struct {
 	Name            string
 	Namespace       string
 	Selector        map[string]string
-	Labels          map[string]string
+	Meta            metadata.Metadata
 	PodTemplateSpec corev1.PodTemplateSpec
 	Replicas        int32
 	Strategy        appsv1.DeploymentStrategyType
@@ -34,9 +35,10 @@ type Params struct {
 func New(params Params) appsv1.Deployment {
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      params.Name,
-			Namespace: params.Namespace,
-			Labels:    params.Labels,
+			Name:        params.Name,
+			Namespace:   params.Namespace,
+			Labels:      params.Meta.Labels,
+			Annotations: params.Meta.Annotations,
 		},
 		Spec: appsv1.DeploymentSpec{
 			RevisionHistoryLimit: pointer.Int32(defaultRevisionHistoryLimit),

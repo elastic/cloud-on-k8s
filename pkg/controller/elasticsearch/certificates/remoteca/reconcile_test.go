@@ -16,6 +16,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -108,7 +109,8 @@ func TestReconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			k8sClient := k8s.WrappedFakeClient(tt.args.secrets...)
-			if err := Reconcile(k8sClient, tt.args.es); (err != nil) != tt.wantErr {
+			meta := metadata.Propagate(&tt.args.es, metadata.Metadata{Labels: label.NewLabels(k8s.ExtractNamespacedName(&tt.args.es))})
+			if err := Reconcile(k8sClient, tt.args.es, meta); (err != nil) != tt.wantErr {
 				t.Errorf("Reconcile() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			remoteCaList := v1.Secret{}

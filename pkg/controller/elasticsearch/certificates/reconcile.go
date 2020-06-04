@@ -16,11 +16,11 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/remoteca"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/certificates/transport"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -40,6 +40,7 @@ func Reconcile(
 	services []corev1.Service,
 	caRotation certificates.RotationParams,
 	certRotation certificates.RotationParams,
+	meta metadata.Metadata,
 ) (*CertificateResources, *reconciler.Results) {
 	span, _ := apm.StartSpan(ctx, "reconcile_certs", tracing.SpanTypeApp)
 	defer span.End()
@@ -47,12 +48,9 @@ func Reconcile(
 	results := &reconciler.Results{}
 
 	// reconcile remote clusters certificate authorities
-	if err := remoteca.Reconcile(driver.K8sClient(), es); err != nil {
+	if err := remoteca.Reconcile(driver.K8sClient(), es, meta); err != nil {
 		results.WithError(err)
 	}
-
-	// label certificates secrets with the cluster name
-	certsLabels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 
 	// reconcile HTTP CA and cert
 	var httpCerts *certificates.CertificatesSecret
@@ -62,7 +60,7 @@ func Reconcile(
 		Object:         &es,
 		TLSOptions:     es.Spec.HTTP.TLS,
 		Namer:          esv1.ESNamer,
-		Labels:         certsLabels,
+		Metadata:       meta,
 		Services:       services,
 		CACertRotation: caRotation,
 		CertRotation:   certRotation,
@@ -79,7 +77,7 @@ func Reconcile(
 		driver.K8sClient(),
 		esv1.ESNamer,
 		&es,
-		certsLabels,
+		meta,
 		certificates.TransportCAType,
 		caRotation,
 	)
@@ -91,8 +89,9 @@ func Reconcile(
 		RequeueAfter: certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
+	nsn := k8s.ExtractNamespacedName(&es)
 	// reconcile transport public certs secret
-	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), es, transportCA); err != nil {
+	if err := transport.ReconcileTransportCertsPublicSecret(driver.K8sClient(), es, transportCA, nsn, meta); err != nil {
 		return nil, results.WithError(err)
 	}
 
@@ -102,6 +101,7 @@ func Reconcile(
 		transportCA,
 		es,
 		certRotation,
+		meta,
 	)
 
 	if results.WithResults(transportResults).HasError() {

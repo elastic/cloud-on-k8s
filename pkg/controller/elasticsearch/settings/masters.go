@@ -13,6 +13,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
@@ -40,6 +41,7 @@ func UpdateSeedHostsConfigMap(
 	c k8s.Client,
 	es esv1.Elasticsearch,
 	pods []corev1.Pod,
+	meta metadata.Metadata,
 ) error {
 	span, _ := apm.StartSpan(ctx, "update_seed_hosts", tracing.SpanTypeApp)
 	defer span.End()
@@ -69,11 +71,13 @@ func UpdateSeedHostsConfigMap(
 		sort.Strings(seedHosts)
 		hosts = strings.Join(seedHosts, "\n")
 	}
+
 	expected := corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.UnicastHostsConfigMap(es.Name),
-			Namespace: es.Namespace,
-			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
+			Name:        esv1.UnicastHostsConfigMap(es.Name),
+			Namespace:   es.Namespace,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string]string{
 			volume.UnicastHostsFile: hosts,

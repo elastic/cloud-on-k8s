@@ -9,6 +9,7 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/comparison"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -111,7 +112,8 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ensureTransportCertificatesSecretExists(tt.args.c, tt.args.owner)
+			meta := metadata.Propagate(&tt.args.owner, metadata.Metadata{Labels: map[string]string{label.ClusterNameLabelName: testES.Name}})
+			got, err := ensureTransportCertificatesSecretExists(tt.args.c, tt.args.owner, meta)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EnsureTransportCertificateSecretExists() error = %v, wantErr %v", err, tt.wantErr)
 				return

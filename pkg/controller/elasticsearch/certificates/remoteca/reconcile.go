@@ -15,6 +15,7 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -36,6 +37,7 @@ func Labels(esName string) client.MatchingLabels {
 func Reconcile(
 	c k8s.Client,
 	es esv1.Elasticsearch,
+	meta metadata.Metadata,
 ) error {
 	// Get all the remote certificate authorities
 	var remoteCAList v1.SecretList
@@ -59,11 +61,10 @@ func Reconcile(
 
 	expected := v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      esv1.RemoteCaSecretName(es.Name),
-			Namespace: es.Namespace,
-			Labels: map[string]string{
-				label.ClusterNameLabelName: es.Name,
-			},
+			Name:        esv1.RemoteCaSecretName(es.Name),
+			Namespace:   es.Namespace,
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			certificates.CAFileName: bytes.Join(remoteCertificateAuthorities, nil),
