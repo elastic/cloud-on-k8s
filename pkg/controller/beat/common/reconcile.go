@@ -2,9 +2,10 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package beat
+package common
 
 import (
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/health"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -23,35 +23,31 @@ import (
 func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) (DriverStatus, error) {
 	var reconciliationFunc func(params ReconciliationParams) (int32, int32, error)
 
-	name := params.Namer.Name(params.Type, params.Owner.GetName())
+	spec := params.Beat.Spec
+	name := Name(spec.Type, params.Beat.Name)
 	var toDelete runtime.Object
 	switch {
-	case params.DaemonSet != nil:
+	case spec.DaemonSet != nil:
 		reconciliationFunc = reconcileDaemonSet
 		toDelete = &v1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: params.Owner.GetNamespace(),
+				Namespace: params.Beat.Namespace,
 			},
 		}
-	case params.Deployment != nil:
+	case spec.Deployment != nil:
 		reconciliationFunc = reconcileDeployment
 		toDelete = &v1.DaemonSet{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
-				Namespace: params.Owner.GetNamespace(),
+				Namespace: params.Beat.Namespace,
 			},
 		}
 	}
 
 	ready, desired, err := reconciliationFunc(ReconciliationParams{
-		client:      params.Client,
-		name:        name,
-		podTemplate: podTemplate,
-		owner:       params.Owner,
-		labels:      params.Labels,
-		selectors:   params.Selectors,
-		replicas:    params.GetReplicas(),
+		client: params.Client,
+		beat:   params.Beat,
 	})
 	if err != nil {
 		return DriverStatus{}, err
@@ -65,35 +61,30 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	return DriverStatus{
 		ExpectedNodes:  desired,
 		AvailableNodes: ready,
-		Health:         health.CalculateHealth(params.Associated, ready, desired),
-		Association:    params.Associated.AssociationStatus(),
+		Health:         CalculateHealth(&params.Beat, ready, desired),
+		Association:    params.Beat.AssociationStatus(),
 	}, nil
 }
 
 type ReconciliationParams struct {
-	client      k8s.Client
-	name        string
-	podTemplate corev1.PodTemplateSpec
-	owner       metav1.Object
-	labels      map[string]string
-	selectors   map[string]string
-	replicas    *int32
+	client k8s.Client
+	beat   beatv1beta1.Beat
 }
 
 func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 	d := deployment.New(deployment.Params{
-		Name:            rp.name,
-		Namespace:       rp.owner.GetNamespace(),
-		Selector:        rp.selectors,
-		Labels:          rp.labels,
-		PodTemplateSpec: rp.podTemplate,
-		Replicas:        pointer.Int32OrDefault(rp.replicas, int32(1)),
+		Name:            rp.beat.Name,
+		Namespace:       rp.beat.Namespace,
+		Selector:        NewLabels(rp.beat),
+		Labels:          NewLabels(rp.beat),
+		PodTemplateSpec: rp.beat.Spec.Deployment.PodTemplate,
+		Replicas:        pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
 	})
-	if err := controllerutil.SetControllerReference(rp.owner, &d, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&rp.beat, &d, scheme.Scheme); err != nil {
 		return 0, 0, err
 	}
 
-	reconciled, err := deployment.Reconcile(rp.client, d, rp.owner)
+	reconciled, err := deployment.Reconcile(rp.client, d, &rp.beat)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -102,13 +93,13 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 }
 
 func reconcileDaemonSet(rp ReconciliationParams) (int32, int32, error) {
-	ds := daemonset.New(rp.podTemplate, rp.name, rp.labels, rp.owner, rp.selectors)
+	ds := daemonset.New(rp.beat.Spec.DaemonSet.PodTemplate, rp.beat.Name, NewLabels(rp.beat), &rp.beat, NewLabels(rp.beat))
 
-	if err := controllerutil.SetControllerReference(rp.owner, &ds, scheme.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&rp.beat, &ds, scheme.Scheme); err != nil {
 		return 0, 0, err
 	}
 
-	reconciled, err := daemonset.Reconcile(rp.client, ds, rp.owner)
+	reconciled, err := daemonset.Reconcile(rp.client, ds, &rp.beat)
 	if err != nil {
 		return 0, 0, err
 	}

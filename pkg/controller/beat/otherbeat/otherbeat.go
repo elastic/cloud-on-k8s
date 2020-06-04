@@ -5,26 +5,28 @@
 package otherbeat
 
 import (
-	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 type Driver struct {
-	commonbeat.DriverParams
-	commonbeat.Driver
+	beatcommon.DriverParams
+	beatcommon.Driver
 }
 
-func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
+func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
+	spec := params.Beat.Spec
 	// use the default for otherbeat type if not provided
-	if params.DaemonSet == nil && params.Deployment == nil {
-		params.Deployment = &commonbeat.DeploymentSpec{
+	if spec.DaemonSet == nil && spec.Deployment == nil {
+		spec.Deployment = &beatv1beta1.DeploymentSpec{
 			Replicas: pointer.Int32(1),
 		}
 	}
 	return &Driver{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() (*commonbeat.DriverStatus, *reconciler.Results) {
-	return commonbeat.Reconcile(d.DriverParams, nil, "", nil)
+func (d *Driver) Reconcile() (*beatcommon.DriverStatus, *reconciler.Results) {
+	return beatcommon.Reconcile(d.DriverParams, nil, "", nil)
 }

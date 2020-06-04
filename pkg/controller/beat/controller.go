@@ -7,7 +7,8 @@ package beat
 import (
 	"context"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/metricbeat"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,11 +25,10 @@ import (
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/otherbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
-	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/filebeat"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/otherbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -94,7 +94,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 		return err
 	}
 
-	if commonbeat.ShouldSetupAutodiscoverRBAC() {
+	if beatcommon.ShouldSetupAutodiscoverRBAC() {
 		if err := c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &beatv1beta1.Beat{},
@@ -105,7 +105,7 @@ func addWatches(c controller.Controller, r *ReconcileBeat) error {
 		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
 				requests := []reconcile.Request{}
-				if result, nsName := commonbeat.IsAutodiscoverResource(object.Meta); result {
+				if result, nsName := beatcommon.IsAutodiscoverResource(object.Meta); result {
 					requests = append(requests, reconcile.Request{NamespacedName: nsName})
 				}
 				return requests
@@ -211,7 +211,7 @@ func (r *ReconcileBeat) validate(ctx context.Context, beat *beatv1beta1.Beat) er
 	return nil
 }
 
-func (r *ReconcileBeat) updateStatus(driverStatus *commonbeat.DriverStatus, beat beatv1beta1.Beat) error {
+func (r *ReconcileBeat) updateStatus(driverStatus *beatcommon.DriverStatus, beat beatv1beta1.Beat) error {
 	if driverStatus == nil {
 		return nil
 	}
@@ -225,7 +225,7 @@ func (r *ReconcileBeat) updateStatus(driverStatus *commonbeat.DriverStatus, beat
 }
 
 func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat) (bool, error) {
-	selector := map[string]string{NameLabelName: beat.Name}
+	selector := map[string]string{beatcommon.NameLabelName: beat.Name}
 	compat, err := annotation.ReconcileCompatibility(ctx, r.Client, beat, selector, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		k8s.EmitErrorEvent(r.recorder, err, beat, events.EventCompatCheckError, "Error during compatibility check: %v", err)
@@ -234,63 +234,27 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 }
 
 func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
-	if commonbeat.ShouldSetupAutodiscoverRBAC() {
-		return commonbeat.CleanUp(r.Client, obj)
+	if beatcommon.ShouldSetupAutodiscoverRBAC() {
+		return beatcommon.CleanUp(r.Client, obj)
 	}
 
 	return nil
 }
 
-func newDriver(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) commonbeat.Driver {
-	dp := newDriverParams(ctx, client, beat)
+func newDriver(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) beatcommon.Driver {
+	dp := beatcommon.DriverParams{
+		Client:  client,
+		Context: ctx,
+		Logger:  log,
+		Beat:    beat,
+	}
 
-	switch dp.Type {
+	switch beat.Spec.Type {
 	case string(filebeat.Type):
 		return filebeat.NewDriver(dp)
 	case string(metricbeat.Type):
 		return metricbeat.NewDriver(dp)
 	default:
 		return otherbeat.NewDriver(dp)
-	}
-}
-
-func newDriverParams(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) commonbeat.DriverParams {
-	spec := beat.Spec
-
-	var ds *commonbeat.DaemonSetSpec
-	if spec.DaemonSet != nil {
-		ds = &commonbeat.DaemonSetSpec{PodTemplate: spec.DaemonSet.PodTemplate}
-	}
-	var d *commonbeat.DeploymentSpec
-	if spec.Deployment != nil {
-		d = &commonbeat.DeploymentSpec{Replicas: spec.Deployment.Replicas, PodTemplate: spec.Deployment.PodTemplate}
-	}
-
-	return commonbeat.DriverParams{
-		Client:  client,
-		Context: ctx,
-		Logger:  log,
-
-		Namer:      &Namer{},
-		Owner:      &beat,
-		Associated: &beat,
-
-		Type:               spec.Type,
-		Version:            spec.Version,
-		ElasticsearchRef:   spec.ElasticsearchRef,
-		Image:              spec.Image,
-		Config:             spec.Config,
-		ServiceAccountName: spec.ServiceAccountName,
-
-		DaemonSet:  ds,
-		Deployment: d,
-		Labels: map[string]string{
-			common.TypeLabelName: Type,
-			NameLabelName:        beat.Name,
-		},
-		Selectors: map[string]string{
-			common.TypeLabelName: Type,
-			NameLabelName:        beat.Name,
-		},
 	}
 }

@@ -2,17 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package beat
+package common
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/go-logr/logr"
 	"go.elastic.co/apm"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +15,13 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
 
 const (
@@ -46,17 +48,17 @@ func ShouldSetupAutodiscoverRBAC() bool {
 }
 
 // SetupAutodiscoveryRBAC reconciles all resources needed for the default RBAC setup.
-func SetupAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Client, owner metav1.Object, labels map[string]string) error {
+func SetupAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.Client, beat beatv1beta1.Beat) error {
 	if !ShouldSetupAutodiscoverRBAC() {
 		return nil
 	}
 
-	err := setupAutodiscoverRBAC(ctx, client, owner, labels)
+	err := setupAutodiscoverRBAC(ctx, client, beat)
 	if err != nil {
 		log.V(1).Info(
 			"autodiscovery rbac setup failed",
-			"namespace", owner.GetNamespace(),
-			"beat_name", owner.GetName())
+			"namespace", beat.Namespace,
+			"beat_name", beat.Name)
 	}
 
 	return err
@@ -94,27 +96,27 @@ func IsAutodiscoverResource(meta metav1.Object) (bool, types.NamespacedName) {
 	return false, types.NamespacedName{}
 }
 
-func setupAutodiscoverRBAC(ctx context.Context, client k8s.Client, owner metav1.Object, labels map[string]string) error {
+func setupAutodiscoverRBAC(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) error {
 	span, _ := apm.StartSpan(ctx, "reconcile_autodiscover_rbac", tracing.SpanTypeApp)
 	defer span.End()
 
-	if err := reconcileServiceAccount(client, owner, labels); err != nil {
+	if err := reconcileServiceAccount(client, beat); err != nil {
 		return err
 	}
 
-	if err := reconcileClusterRoleBinding(client, owner); err != nil {
+	if err := reconcileClusterRoleBinding(client, beat); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func reconcileServiceAccount(client k8s.Client, owner metav1.Object, labels map[string]string) error {
+func reconcileServiceAccount(client k8s.Client, beat beatv1beta1.Beat) error {
 	expected := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ServiceAccountName(owner.GetName()),
-			Namespace: owner.GetNamespace(),
-			Labels:    addLabels(labels, owner),
+			Name:      ServiceAccountName(beat.Name),
+			Namespace: beat.Namespace,
+			Labels:    addLabels(NewLabels(beat), beat),
 		},
 	}
 	expected.Labels = hash.SetTemplateHashLabel(nil, expected)
@@ -122,7 +124,7 @@ func reconcileServiceAccount(client k8s.Client, owner metav1.Object, labels map[
 	reconciled := &corev1.ServiceAccount{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     client,
-		Owner:      owner,
+		Owner:      &beat,
 		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
@@ -135,17 +137,17 @@ func reconcileServiceAccount(client k8s.Client, owner metav1.Object, labels map[
 	})
 }
 
-func reconcileClusterRoleBinding(client k8s.Client, owner metav1.Object) error {
+func reconcileClusterRoleBinding(client k8s.Client, beat beatv1beta1.Beat) error {
 	expected := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   ClusterRoleBindingName(owner.GetNamespace(), owner.GetName()),
-			Labels: addLabels(nil, owner),
+			Name:   ClusterRoleBindingName(beat.Namespace, beat.Name),
+			Labels: addLabels(nil, beat),
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      ServiceAccountName(owner.GetName()),
-				Namespace: owner.GetNamespace(),
+				Name:      ServiceAccountName(beat.Name),
+				Namespace: beat.Namespace,
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
@@ -170,10 +172,10 @@ func reconcileClusterRoleBinding(client k8s.Client, owner metav1.Object) error {
 	})
 }
 
-func addLabels(labels map[string]string, owner metav1.Object) map[string]string {
+func addLabels(labels map[string]string, beat beatv1beta1.Beat) map[string]string {
 	return maps.Merge(labels, map[string]string{
-		autodiscoverBeatNameLabelName:      owner.GetName(),
-		autodiscoverBeatNamespaceLabelName: owner.GetNamespace(),
+		autodiscoverBeatNameLabelName:      beat.Name,
+		autodiscoverBeatNamespaceLabelName: beat.Namespace,
 	})
 }
 

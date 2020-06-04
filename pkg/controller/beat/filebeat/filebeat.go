@@ -5,7 +5,8 @@
 package filebeat
 
 import (
-	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	Type commonbeat.Type = "filebeat"
+	Type beatcommon.Type = "filebeat"
 
 	HostContainersVolumeName = "varlibdockercontainers"
 	HostContainersPath       = "/var/lib/docker/containers"
@@ -28,21 +29,22 @@ const (
 	HostPodsLogsMountPath  = "/var/log/pods"
 )
 
-type Driver struct {
-	commonbeat.DriverParams
-	commonbeat.Driver
+type FilebeatDriver struct {
+	beatcommon.DriverParams
+	beatcommon.Driver
 }
 
-func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
+func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
+	spec := params.Beat.Spec
 	// use the default for filebeat type if not provided
-	if params.DaemonSet == nil && params.Deployment == nil {
-		params.DaemonSet = &commonbeat.DaemonSetSpec{}
+	if spec.DaemonSet == nil && spec.Deployment == nil {
+		spec.DaemonSet = &beatv1beta1.DaemonSetSpec{}
 	}
 
-	return &Driver{DriverParams: params}
+	return &FilebeatDriver{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() (*commonbeat.DriverStatus, *reconciler.Results) {
+func (d *FilebeatDriver) Reconcile() (*beatcommon.DriverStatus, *reconciler.Results) {
 	f := func(builder *defaults.PodTemplateBuilder) {
 		containersVolume := volume.NewReadOnlyHostVolume(HostContainersVolumeName, HostContainersPath, HostContainersMountPath)
 		containersLogsVolume := volume.NewReadOnlyHostVolume(HostContainersLogsVolumeName, HostContainersLogsPath, HostContainersLogsMountPath)
@@ -57,7 +59,7 @@ func (d *Driver) Reconcile() (*commonbeat.DriverStatus, *reconciler.Results) {
 		}
 	}
 
-	return commonbeat.Reconcile(
+	return beatcommon.Reconcile(
 		d.DriverParams,
 		defaultConfig,
 		container.FilebeatImage,

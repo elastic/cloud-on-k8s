@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package beat
+package common
 
 import (
 	"testing"
@@ -48,7 +48,7 @@ func Test_buildBeatConfig(t *testing.T) {
     username: elastic
 `))
 
-	withAssociation := &beatv1beta1.Beat{
+	withAssociation := beatv1beta1.Beat{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 		},
@@ -60,7 +60,7 @@ func Test_buildBeatConfig(t *testing.T) {
 		CASecretName:   "secret2",
 		URL:            "url",
 	})
-	withAssociationWithCA := withAssociation.DeepCopy()
+	withAssociationWithCA := *withAssociation.DeepCopy()
 	withAssociationWithCA.AssociationConf().CACertProvided = true
 
 	merge := func(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
@@ -72,7 +72,7 @@ func Test_buildBeatConfig(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
 		client        k8s.Client
-		associated    commonv1.Associated
+		associated    beatv1beta1.Beat
 		defaultConfig *settings.CanonicalConfig
 		userConfig    *commonv1.Config
 		want          *settings.CanonicalConfig
@@ -80,23 +80,23 @@ func Test_buildBeatConfig(t *testing.T) {
 	}{
 		{
 			name:       "neither default nor user config",
-			associated: &beatv1beta1.Beat{},
+			associated: beatv1beta1.Beat{},
 		},
 		{
 			name:          "no association, only default config",
-			associated:    &beatv1beta1.Beat{},
+			associated:    beatv1beta1.Beat{},
 			defaultConfig: defaultConfig,
 			want:          defaultConfig,
 		},
 		{
 			name:       "no association, only user config",
-			associated: &beatv1beta1.Beat{},
+			associated: beatv1beta1.Beat{},
 			userConfig: userConfig,
 			want:       userCanonicalConfig,
 		},
 		{
 			name:          "no association, default and user config",
-			associated:    &beatv1beta1.Beat{},
+			associated:    beatv1beta1.Beat{},
 			defaultConfig: defaultConfig,
 			userConfig:    userConfig,
 			want:          userCanonicalConfig,
@@ -147,7 +147,7 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.associated, tt.defaultConfig, tt.userConfig)
+			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.associated, tt.defaultConfig)
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
 

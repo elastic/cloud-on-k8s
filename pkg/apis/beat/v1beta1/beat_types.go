@@ -9,7 +9,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/health"
 )
 
 // BeatSpec defines the desired state of a Beat.
@@ -77,11 +76,28 @@ type BeatStatus struct {
 	ExpectedNodes int32 `json:"expectedNodes,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	Health health.BeatHealth `json:"health,omitempty"`
+	Health BeatHealth `json:"health,omitempty"`
 
 	// +kubebuilder:validation:Optional
 	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
 }
+
+type BeatHealth string
+
+const (
+	// BeatRedHealth means that the health is neither yellow nor green.
+	BeatRedHealth BeatHealth = "red"
+
+	// BeatYellowHealth means that:
+	// 1) at least one Pod is Ready, and
+	// 2) association is not configured, or configured and established
+	BeatYellowHealth BeatHealth = "yellow"
+
+	// BeatGreenHealth means that:
+	// 1) all Pods are Ready, and
+	// 2) association is not configured, or configured and established
+	BeatGreenHealth BeatHealth = "green"
+)
 
 // +kubebuilder:object:root=true
 

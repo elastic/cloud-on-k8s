@@ -2,22 +2,21 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package beat
+package common
 
 import (
 	"context"
 	"crypto/sha256"
 	"fmt"
 
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/health"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -31,59 +30,37 @@ type Driver interface {
 	Reconcile() (*DriverStatus, *reconciler.Results)
 }
 
-type DaemonSetSpec struct {
-	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
-}
-
-type DeploymentSpec struct {
-	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
-	Replicas    *int32                 `json:"replicas,omitempty"`
-}
-
 type DriverParams struct {
 	Client  k8s.Client
 	Context context.Context
 	Logger  logr.Logger
 
-	Owner      metav1.Object
-	Associated commonv1.Associated
-	Namer      Namer
-
-	Type               string
-	Version            string
-	ElasticsearchRef   commonv1.ObjectSelector
-	Image              string
-	Config             *commonv1.Config
-	ServiceAccountName string
-
-	Labels map[string]string
-
-	DaemonSet  *DaemonSetSpec
-	Deployment *DeploymentSpec
-	Selectors  map[string]string
+	Beat beatv1beta1.Beat
 }
 
 func (dp *DriverParams) GetReplicas() *int32 {
-	if dp.Deployment == nil {
+	if dp.Beat.Spec.Deployment == nil {
 		return nil
 	}
 
-	return dp.Deployment.Replicas
+	return dp.Beat.Spec.Deployment.Replicas
 }
 
 func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
+	spec := dp.Beat.Spec
 	switch {
-	case dp.DaemonSet != nil:
-		return dp.DaemonSet.PodTemplate
-	case dp.Deployment != nil:
-		return dp.Deployment.PodTemplate
+	case spec.DaemonSet != nil:
+		return spec.DaemonSet.PodTemplate
+	case spec.Deployment != nil:
+		return spec.Deployment.PodTemplate
 	}
 
 	return corev1.PodTemplateSpec{}
 }
 
 func (dp *DriverParams) Validate() error {
-	if (dp.DaemonSet == nil && dp.Deployment == nil) || (dp.DaemonSet != nil && dp.Deployment != nil) {
+	spec := dp.Beat.Spec
+	if (spec.DaemonSet == nil && spec.Deployment == nil) || (spec.DaemonSet != nil && spec.Deployment != nil) {
 		return fmt.Errorf("either daemonset or deployment has to be specified")
 	}
 	return nil
@@ -92,7 +69,7 @@ func (dp *DriverParams) Validate() error {
 type DriverStatus struct {
 	ExpectedNodes  int32
 	AvailableNodes int32
-	Health         health.BeatHealth
+	Health         beatv1beta1.BeatHealth
 	Association    commonv1.AssociationStatus
 }
 
@@ -107,7 +84,7 @@ func Reconcile(
 		return nil, results.WithError(err)
 	}
 
-	if err := SetupAutodiscoverRBAC(params.Context, params.Logger, params.Client, params.Owner, params.Labels); err != nil {
+	if err := SetupAutodiscoverRBAC(params.Context, params.Logger, params.Client, params.Beat); err != nil {
 		results.WithError(err)
 	}
 
@@ -117,7 +94,7 @@ func Reconcile(
 	}
 
 	// we need to deref the secret here (if any) to include it in the configHash otherwise Beat will not be rolled on content changes
-	if err := commonassociation.WriteAssocSecretToConfigHash(params.Client, params.Associated, configHash); err != nil {
+	if err := commonassociation.WriteAssocSecretToConfigHash(params.Client, &params.Beat, configHash); err != nil {
 		return nil, results.WithError(err)
 	}
 

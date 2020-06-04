@@ -2,12 +2,11 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package beat
+package common
 
 import "testing"
 
 func TestNamer_ConfigSecretName(t *testing.T) {
-	namer := Namer{}
 	for _, tt := range []struct {
 		name         string
 		resourceName string
@@ -34,7 +33,7 @@ func TestNamer_ConfigSecretName(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := namer.ConfigSecretName(tt.typ, tt.resourceName)
+			got := ConfigSecretName(tt.typ, tt.resourceName)
 			if got != tt.want {
 				t.Errorf("config secret name is %s while %s was expected", got, tt.want)
 			}
@@ -43,7 +42,6 @@ func TestNamer_ConfigSecretName(t *testing.T) {
 }
 
 func TestNamer_Name(t *testing.T) {
-	namer := Namer{}
 	for _, tt := range []struct {
 		name         string
 		resourceName string
@@ -70,7 +68,7 @@ func TestNamer_Name(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := namer.Name(tt.typ, tt.resourceName)
+			got := Name(tt.typ, tt.resourceName)
 			if got != tt.want {
 				t.Errorf("config secret name is %s while %s was expected", got, tt.want)
 			}

@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package beat
+package common
 
 import (
 	"fmt"
@@ -62,7 +62,8 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 		podTemplate.Spec.AutomountServiceAccountToken = &t
 	}
 
-	builder := defaults.NewPodTemplateBuilder(podTemplate, params.Type)
+	spec := params.Beat.Spec
+	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type)
 
 	// might be nil if caller wants to use the default builder without any modifications
 	if modifyPodFunc != nil {
@@ -82,8 +83,8 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 		WithHostNetwork().
 		WithLabels(map[string]string{
 			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-			VersionLabelName:    params.Version}).
-		WithDockerImage(params.Image, container.ImageRepository(defaultImage, params.Version)).
+			VersionLabelName:    spec.Version}).
+		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
 		WithArgs("-e", "-c", ConfigMountPath).
 		WithDNSPolicy(corev1.DNSClusterFirstWithHostNet).
 		WithSecurityContext(corev1.SecurityContext{
@@ -91,7 +92,7 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 		})
 
 	if ShouldSetupAutodiscoverRBAC() {
-		autodiscoverServiceAccountName := ServiceAccountName(params.Owner.GetName())
+		autodiscoverServiceAccountName := ServiceAccountName(params.Beat.Name)
 		// If SA is already provided, the call will be no-op. This is fine as we then assume
 		// that for this resource (despite operator configuration) the user took the responsibility
 		// of configuring RBAC.
@@ -101,7 +102,7 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 	dataVolume := createDataVolume(params)
 	volumes := []volume.VolumeLike{
 		volume.NewSecretVolume(
-			params.Namer.ConfigSecretName(params.Type, params.Owner.GetName()),
+			ConfigSecretName(spec.Type, params.Beat.Name),
 			ConfigVolumeName,
 			ConfigMountPath,
 			ConfigFileName,
@@ -109,9 +110,9 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 		dataVolume,
 	}
 
-	if params.Associated.AssociationConf().CAIsConfigured() {
+	if params.Beat.AssociationConf().CAIsConfigured() {
 		volumes = append(volumes, volume.NewSecretVolumeWithMountPath(
-			params.Associated.AssociationConf().GetCASecretName(),
+			params.Beat.AssociationConf().GetCASecretName(),
 			CAVolumeName,
 			CAMountPath))
 	}
@@ -120,14 +121,14 @@ func buildPodTemplate(params DriverParams, defaultImage container.Image, modifyP
 		builder = builder.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
 	}
 
-	builder = builder.WithLabels(commonhash.SetTemplateHashLabel(params.Labels, builder.PodTemplate))
+	builder = builder.WithLabels(commonhash.SetTemplateHashLabel(NewLabels(params.Beat), builder.PodTemplate))
 
 	return builder.PodTemplate
 }
 
 func createDataVolume(dp DriverParams) volume.VolumeLike {
-	dataMountPath := fmt.Sprintf(DataPathTemplate, dp.Type)
-	hostDataPath := fmt.Sprintf(DataMountPathTemplate, dp.Owner.GetNamespace(), dp.Owner.GetName(), dp.Type)
+	dataMountPath := fmt.Sprintf(DataPathTemplate, dp.Beat.Spec.Type)
+	hostDataPath := fmt.Sprintf(DataMountPathTemplate, dp.Beat.Namespace, dp.Beat.Name, dp.Beat.Spec.Type)
 
 	return volume.NewHostVolume(
 		DataVolumeName,

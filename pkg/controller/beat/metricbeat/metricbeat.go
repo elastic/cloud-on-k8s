@@ -5,7 +5,8 @@
 package metricbeat
 
 import (
-	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	Type commonbeat.Type = "metricbeat"
+	Type beatcommon.Type = "metricbeat"
 
 	DockerSockVolumeName = "dockersock"
 	DockerSockPath       = "/var/run/docker.sock"
@@ -30,20 +31,21 @@ const (
 )
 
 type Driver struct {
-	commonbeat.DriverParams
-	commonbeat.Driver
+	beatcommon.DriverParams
+	beatcommon.Driver
 }
 
-func NewDriver(params commonbeat.DriverParams) commonbeat.Driver {
+func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
+	spec := params.Beat.Spec
 	// use the default for metricbeat type if not provided
-	if params.DaemonSet == nil && params.Deployment == nil {
-		params.DaemonSet = &commonbeat.DaemonSetSpec{}
+	if spec.DaemonSet == nil && spec.Deployment == nil {
+		spec.DaemonSet = &beatv1beta1.DaemonSetSpec{}
 	}
 
 	return &Driver{DriverParams: params}
 }
 
-func (d *Driver) Reconcile() (*commonbeat.DriverStatus, *reconciler.Results) {
+func (d *Driver) Reconcile() (*beatcommon.DriverStatus, *reconciler.Results) {
 	f := func(builder *defaults.PodTemplateBuilder) {
 		dockerSockVolume := volume.NewHostVolume(DockerSockVolumeName, DockerSockPath, DockerSockMountPath, false, corev1.HostPathUnset)
 		procVolume := volume.NewReadOnlyHostVolume(ProcVolumeName, ProcPath, ProcMountPath)
@@ -57,10 +59,10 @@ func (d *Driver) Reconcile() (*commonbeat.DriverStatus, *reconciler.Results) {
 			builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
 		}
 
-		builder.WithArgs("-e", "-c", commonbeat.ConfigMountPath, "-system.hostfs=/hostfs")
+		builder.WithArgs("-e", "-c", beatcommon.ConfigMountPath, "-system.hostfs=/hostfs")
 	}
 
-	return commonbeat.Reconcile(
+	return beatcommon.Reconcile(
 		d.DriverParams,
 		defaultConfig,
 		container.MetricbeatImage,

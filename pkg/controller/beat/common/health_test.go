@@ -2,16 +2,16 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package health_test
+package common_test
 
 import (
 	"testing"
 
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/stretchr/testify/require"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/beat/health"
 )
 
 func Test_CalculateHealth(t *testing.T) {
@@ -37,72 +37,72 @@ func Test_CalculateHealth(t *testing.T) {
 		name           string
 		associated     commonv1.Associated
 		ready, desired int32
-		want           health.BeatHealth
+		want           beatv1beta1.BeatHealth
 	}{
 		{
 			name:       "no association, 0 desired",
 			associated: noAssociation,
 			ready:      0,
 			desired:    0,
-			want:       health.BeatGreenHealth,
+			want:       beatv1beta1.BeatGreenHealth,
 		},
 		{
 			name:       "no association, all ready",
 			associated: noAssociation,
 			ready:      3,
 			desired:    3,
-			want:       health.BeatGreenHealth,
+			want:       beatv1beta1.BeatGreenHealth,
 		},
 		{
 			name:       "no association, some ready",
 			associated: noAssociation,
 			ready:      1,
 			desired:    5,
-			want:       health.BeatYellowHealth,
+			want:       beatv1beta1.BeatYellowHealth,
 		},
 		{
 			name:       "no association, none ready",
 			associated: noAssociation,
 			ready:      0,
 			desired:    4,
-			want:       health.BeatRedHealth,
+			want:       beatv1beta1.BeatRedHealth,
 		},
 		{
 			name:       "association not established, all ready",
 			associated: createAssociated(false),
 			ready:      2,
 			desired:    2,
-			want:       health.BeatRedHealth,
+			want:       beatv1beta1.BeatRedHealth,
 		},
 		{
 			name:       "association established, 0 desired",
 			associated: createAssociated(true),
-			want:       health.BeatGreenHealth,
+			want:       beatv1beta1.BeatGreenHealth,
 		},
 		{
 			name:       "association established, all ready",
 			associated: createAssociated(true),
 			ready:      2,
 			desired:    2,
-			want:       health.BeatGreenHealth,
+			want:       beatv1beta1.BeatGreenHealth,
 		},
 		{
 			name:       "association established, some ready",
 			associated: createAssociated(true),
 			ready:      1,
 			desired:    5,
-			want:       health.BeatYellowHealth,
+			want:       beatv1beta1.BeatYellowHealth,
 		},
 		{
 			name:       "association established, none ready",
 			associated: createAssociated(true),
 			ready:      0,
 			desired:    4,
-			want:       health.BeatRedHealth,
+			want:       beatv1beta1.BeatRedHealth,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := health.CalculateHealth(tt.associated, tt.ready, tt.desired)
+			got := beatcommon.CalculateHealth(tt.associated, tt.ready, tt.desired)
 			require.Equal(t, tt.want, got)
 		})
 	}

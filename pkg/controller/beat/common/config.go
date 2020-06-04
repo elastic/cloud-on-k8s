@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package beat
+package common
 
 import (
 	"hash"
@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -59,17 +60,17 @@ func setOutput(cfg *settings.CanonicalConfig, client k8s.Client, associated comm
 func buildBeatConfig(
 	log logr.Logger,
 	client k8s.Client,
-	associated commonv1.Associated,
+	beat beatv1beta1.Beat,
 	defaultConfig *settings.CanonicalConfig,
-	userConfig *commonv1.Config,
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
-	if err := setOutput(cfg, client, associated); err != nil {
+	if err := setOutput(cfg, client, &beat); err != nil {
 		return nil, err
 	}
 
 	// use only the default config or only the provided config - no overriding, no merging
+	userConfig := beat.Spec.Config
 	if userConfig == nil {
 		if err := cfg.MergeWith(defaultConfig); err != nil {
 			return nil, err
@@ -94,23 +95,23 @@ func reconcileConfig(
 	defaultConfig *settings.CanonicalConfig,
 	configHash hash.Hash,
 ) error {
-	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Associated, defaultConfig, params.Config)
+	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, defaultConfig)
 	if err != nil {
 		return err
 	}
 
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: params.Owner.GetNamespace(),
-			Name:      params.Namer.ConfigSecretName(params.Type, params.Owner.GetName()),
-			Labels:    common.AddCredentialsLabel(params.Labels),
+			Namespace: params.Beat.Namespace,
+			Name:      ConfigSecretName(params.Beat.Spec.Type, params.Beat.Name),
+			Labels:    common.AddCredentialsLabel(NewLabels(params.Beat)),
 		},
 		Data: map[string][]byte{
 			ConfigFileName: cfgBytes,
 		},
 	}
 
-	if _, err = reconciler.ReconcileSecret(params.Client, expected, params.Owner); err != nil {
+	if _, err = reconciler.ReconcileSecret(params.Client, expected, &params.Beat); err != nil {
 		return err
 	}
 

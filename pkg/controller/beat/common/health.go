@@ -1,0 +1,26 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
+package common
+
+import (
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+)
+
+// CalculateHealth returns health of the Beat based on association status, desired count and ready count.
+func CalculateHealth(associated v1.Associated, ready, desired int32) beatv1beta1.BeatHealth {
+	if associated.AssociationConf().IsConfigured() && associated.AssociationStatus() != v1.AssociationEstablished {
+		return beatv1beta1.BeatRedHealth
+	}
+
+	switch {
+	case ready == desired:
+		return beatv1beta1.BeatGreenHealth
+	case ready > 0:
+		return beatv1beta1.BeatYellowHealth
+	default:
+		return beatv1beta1.BeatRedHealth
+	}
+}

@@ -25,7 +25,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
-	commonbeat "github.com/elastic/cloud-on-k8s/pkg/controller/common/beat"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -340,7 +340,7 @@ func execute() {
 	}
 
 	if viper.GetBool(operator.ManageBeatAutodiscoverRBACFlag) {
-		commonbeat.EnableAutodiscoverRBACSetup()
+		beatcommon.EnableAutodiscoverRBACSetup()
 	}
 
 	if err = apmserver.Add(mgr, params); err != nil {
