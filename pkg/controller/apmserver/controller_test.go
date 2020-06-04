@@ -18,7 +18,9 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/compare"
@@ -122,6 +124,7 @@ func Test_reconcileApmServerToken(t *testing.T) {
 			Name:      "apm",
 		},
 	}
+
 	tests := []struct {
 		name       string
 		c          k8s.Client
@@ -146,12 +149,18 @@ func Test_reconcileApmServerToken(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := reconcileApmServerToken(tt.c, apm)
+			got, err := reconcileApmServerToken(tt.c, apm, metadata.Metadata{
+				Labels:      map[string]string{"foo": "bar"},
+				Annotations: map[string]string{"baz": "quux"},
+			})
 			require.NoError(t, err)
 			require.NotEmpty(t, got.Data[SecretTokenKey])
 			if tt.reuseToken != nil {
 				require.Equal(t, tt.reuseToken, got.Data[SecretTokenKey])
 			}
+
+			require.Equal(t, common.AddCredentialsLabel(map[string]string{"foo": "bar"}), got.Labels)
+			require.Equal(t, map[string]string{"baz": "quux"}, got.Annotations)
 		})
 	}
 }
@@ -212,7 +221,8 @@ func TestNewService(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			apm := mkAPMServer(tc.httpConf)
-			haveSvc := NewService(apm)
+			md := metadata.Propagate(&apm, metadata.Metadata{Labels: NewLabels(apm.Name)})
+			haveSvc := NewService(apm, md)
 			compare.JSONEqual(t, tc.wantSvc(), haveSvc)
 		})
 	}
@@ -226,6 +236,10 @@ func mkService() corev1.Service {
 			Labels: map[string]string{
 				ApmServerNameLabelName: "apm-test",
 				common.TypeLabelName:   Type,
+				"foo":                  "bar",
+			},
+			Annotations: map[string]string{
+				"baz": "quux",
 			},
 		},
 		Spec: corev1.ServiceSpec{
@@ -247,8 +261,10 @@ func mkService() corev1.Service {
 func mkAPMServer(httpConf commonv1.HTTPConfig) apmv1.ApmServer {
 	return apmv1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "apm-test",
-			Namespace: "test",
+			Name:        "apm-test",
+			Namespace:   "test",
+			Labels:      map[string]string{"foo": "bar"},
+			Annotations: map[string]string{annotation.PropagateAnnotationsAnnotation: "baz", annotation.PropagateLabelsAnnotation: "foo", "baz": "quux"},
 		},
 		Spec: apmv1.ApmServerSpec{
 			HTTP: httpConf,

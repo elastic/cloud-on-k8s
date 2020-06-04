@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
@@ -29,15 +30,16 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	ctx context.Context,
 	state State,
 	as *apmv1.ApmServer,
+	meta metadata.Metadata,
 ) (State, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	tokenSecret, err := reconcileApmServerToken(r.Client, as)
+	tokenSecret, err := reconcileApmServerToken(r.Client, as, meta)
 	if err != nil {
 		return state, err
 	}
-	reconciledConfigSecret, err := reconcileApmServerConfig(r.Client, as)
+	reconciledConfigSecret, err := reconcileApmServerConfig(r.Client, as, meta)
 	if err != nil {
 		return state, err
 	}
@@ -46,7 +48,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		r,
 		as,
 		Namer,
-		NewLabels(as.Name),
+		meta,
 		initContainerParameters,
 	)
 	if err != nil {
@@ -64,7 +66,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 		keystoreResources: keystoreResources,
 	}
-	params, err := r.deploymentParams(as, apmServerPodSpecParams)
+	params, err := r.deploymentParams(as, apmServerPodSpecParams, meta)
 	if err != nil {
 		return state, err
 	}
@@ -81,6 +83,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 func (r *ReconcileApmServer) deploymentParams(
 	as *apmv1.ApmServer,
 	params PodSpecParams,
+	meta metadata.Metadata,
 ) (deployment.Params, error) {
 
 	podSpec := newPodSpec(as, params)
@@ -154,7 +157,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		Namespace:       as.Namespace,
 		Replicas:        as.Spec.Count,
 		Selector:        NewLabels(as.Name),
-		Labels:          NewLabels(as.Name),
+		Meta:            meta,
 		PodTemplateSpec: podSpec,
 		Strategy:        appsv1.RollingUpdateDeploymentStrategyType,
 	}, nil

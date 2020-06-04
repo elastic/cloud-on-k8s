@@ -15,6 +15,7 @@ import (
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -40,7 +41,7 @@ func certificatesDir(associatedType string) string {
 
 // reconcileApmServerConfig reconciles the configuration of the APM server: it first creates the configuration from the APM
 // specification and then reconcile the underlying secret.
-func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Secret, error) {
+func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer, meta metadata.Metadata) (corev1.Secret, error) {
 	// Create a new configuration from the APM object spec.
 	cfg, err := newConfigFromSpec(client, as)
 	if err != nil {
@@ -55,9 +56,10 @@ func reconcileApmServerConfig(client k8s.Client, as *apmv1.ApmServer) (corev1.Se
 	// reconcile the configuration in a secret
 	expectedConfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: as.Namespace,
-			Name:      Config(as.Name),
-			Labels:    NewLabels(as.Name),
+			Namespace:   as.Namespace,
+			Name:        Config(as.Name),
+			Labels:      meta.Labels,
+			Annotations: meta.Annotations,
 		},
 		Data: map[string][]byte{
 			ApmCfgSecretKey: cfgBytes,
