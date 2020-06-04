@@ -17,6 +17,7 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -453,8 +454,10 @@ func TestReconcileConfig(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
+			meta := metadata.Metadata{Labels: Labels("sample")}
+
 			// secret metadata should be correct
-			got, err := ReconcileConfig(driver, tt.ent)
+			got, err := ReconcileConfig(driver, tt.ent, meta)
 			require.NoError(t, err)
 			assert.Equal(t, "sample-ent-config", got.Name)
 			assert.Equal(t, "ns", got.Namespace)
@@ -576,7 +579,8 @@ func TestReconcileConfig_ReadinessProbe(t *testing.T) {
 				dynamicWatches: watches.NewDynamicWatches(),
 			}
 
-			got, err := ReconcileConfig(driver, tt.ent)
+			meta := metadata.Metadata{Labels: Labels(tt.ent.Name)}
+			got, err := ReconcileConfig(driver, tt.ent, meta)
 			require.NoError(t, err)
 
 			require.Contains(t, string(got.Data[ReadinessProbeFilename]), tt.wantCmd)

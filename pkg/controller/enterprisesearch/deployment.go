@@ -12,6 +12,7 @@ import (
 
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	entName "github.com/elastic/cloud-on-k8s/pkg/controller/enterprisesearch/name"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
@@ -21,15 +22,16 @@ func (r *ReconcileEnterpriseSearch) reconcileDeployment(
 	ctx context.Context,
 	ent entv1beta1.EnterpriseSearch,
 	configHash string,
+	meta metadata.Metadata,
 ) (appsv1.Deployment, error) {
 	span, _ := apm.StartSpan(ctx, "reconcile_deployment", tracing.SpanTypeApp)
 	defer span.End()
 
-	deploy := deployment.New(r.deploymentParams(ent, configHash))
+	deploy := deployment.New(r.deploymentParams(ent, configHash, meta))
 	return deployment.Reconcile(r.K8sClient(), deploy, &ent)
 }
 
-func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1beta1.EnterpriseSearch, configHash string) deployment.Params {
+func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1beta1.EnterpriseSearch, configHash string, meta metadata.Metadata) deployment.Params {
 	podSpec := newPodSpec(ent, configHash)
 
 	deploymentLabels := Labels(ent.Name)
@@ -43,7 +45,7 @@ func (r *ReconcileEnterpriseSearch) deploymentParams(ent entv1beta1.EnterpriseSe
 		Namespace:       ent.Namespace,
 		Replicas:        ent.Spec.Count,
 		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
+		Meta:            meta,
 		PodTemplateSpec: podSpec,
 		Strategy:        appsv1.RollingUpdateDeploymentStrategyType,
 	}

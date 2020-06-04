@@ -33,6 +33,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/tracing"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -221,7 +222,10 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 		return reconcile.Result{}, err
 	}
 
-	svc, err := common.ReconcileService(ctx, r.Client, NewService(ent), &ent)
+	// metadata to propagate to child objects
+	meta := metadata.Propagate(&ent, metadata.Metadata{Labels: Labels(ent.Name)})
+
+	svc, err := common.ReconcileService(ctx, r.Client, NewService(ent, meta), &ent)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -232,7 +236,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 		Object:                &ent,
 		TLSOptions:            ent.Spec.HTTP.TLS,
 		Namer:                 entName.EntNamer,
-		Labels:                Labels(ent.Name),
+		Metadata:              meta,
 		Services:              []corev1.Service{*svc},
 		CACertRotation:        r.CACertRotation,
 		CertRotation:          r.CertRotation,
@@ -244,7 +248,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 		return res, err
 	}
 
-	configSecret, err := ReconcileConfig(r, ent)
+	configSecret, err := ReconcileConfig(r, ent, meta)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -261,7 +265,7 @@ func (r *ReconcileEnterpriseSearch) doReconcile(ctx context.Context, ent entv1be
 		return reconcile.Result{}, err
 	}
 
-	deploy, err := r.reconcileDeployment(ctx, ent, configHash)
+	deploy, err := r.reconcileDeployment(ctx, ent, configHash, meta)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -318,7 +322,7 @@ func (r *ReconcileEnterpriseSearch) updateStatus(ent entv1beta1.EnterpriseSearch
 	return common.UpdateStatus(r.Client, &ent)
 }
 
-func NewService(ent entv1beta1.EnterpriseSearch) *corev1.Service {
+func NewService(ent entv1beta1.EnterpriseSearch, meta metadata.Metadata) *corev1.Service {
 	svc := corev1.Service{
 		ObjectMeta: ent.Spec.HTTP.Service.ObjectMeta,
 		Spec:       ent.Spec.HTTP.Service.Spec,
@@ -327,7 +331,6 @@ func NewService(ent entv1beta1.EnterpriseSearch) *corev1.Service {
 	svc.ObjectMeta.Namespace = ent.Namespace
 	svc.ObjectMeta.Name = entName.HTTPService(ent.Name)
 
-	labels := Labels(ent.Name)
 	ports := []corev1.ServicePort{
 		{
 			Name:     ent.Spec.HTTP.Protocol(),
@@ -336,7 +339,8 @@ func NewService(ent entv1beta1.EnterpriseSearch) *corev1.Service {
 		},
 	}
 
-	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
+	selector := Labels(ent.Name)
+	return defaults.SetServiceDefaults(&svc, meta, selector, ports)
 }
 
 func buildConfigHash(c k8s.Client, ent entv1beta1.EnterpriseSearch, configSecret corev1.Secret) (string, error) {
