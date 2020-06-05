@@ -47,8 +47,7 @@ func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{}
 }
 
-func (dp *DriverParams) Validate() error {
-	spec := dp.Beat.Spec
+func ValidateBeatSpec(spec beatv1beta1.BeatSpec) error {
 	if (spec.DaemonSet == nil && spec.Deployment == nil) || (spec.DaemonSet != nil && spec.Deployment != nil) {
 		return fmt.Errorf("either daemonset or deployment has to be specified")
 	}
@@ -63,7 +62,7 @@ func Reconcile(
 ) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
 
-	if err := params.Validate(); err != nil {
+	if err := ValidateBeatSpec(params.Beat.Spec); err != nil {
 		return results.WithError(err)
 	}
 
