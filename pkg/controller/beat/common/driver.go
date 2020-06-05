@@ -59,7 +59,8 @@ func Reconcile(
 	params DriverParams,
 	defaultConfig *settings.CanonicalConfig,
 	defaultImage container.Image,
-	modifyPodFunc func(builder *defaults.PodTemplateBuilder)) *reconciler.Results {
+	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
+) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
 
 	if err := params.Validate(); err != nil {
