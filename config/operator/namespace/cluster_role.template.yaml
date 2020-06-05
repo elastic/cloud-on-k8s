@@ -158,6 +158,7 @@ rules:
   resources:
   - beats
   - beats/status
+  - beats/finalizers
   verbs:
   - get
   - list
