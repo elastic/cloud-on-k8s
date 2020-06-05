@@ -65,13 +65,14 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileBe
 	}
 }
 
-// addWatches registers the required watches.
+// Watch DaemonSets and Deployments
 func addWatches(c controller.Controller) error {
 	// Watch for changes to Beat
 	if err := c.Watch(&source.Kind{Type: &beatv1beta1.Beat{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
+	// Watch DaemonSets
 	if err := c.Watch(&source.Kind{Type: &appsv1.DaemonSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
@@ -79,6 +80,7 @@ func addWatches(c controller.Controller) error {
 		return err
 	}
 
+	// Watch Deployments
 	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
@@ -86,7 +88,7 @@ func addWatches(c controller.Controller) error {
 		return err
 	}
 
-	// Watch secrets
+	// Watch Secrets
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &beatv1beta1.Beat{},
@@ -95,6 +97,7 @@ func addWatches(c controller.Controller) error {
 	}
 
 	if beatcommon.ShouldManageAutodiscoverRBAC() {
+		// Watch ServiceAccounts
 		if err := c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &beatv1beta1.Beat{},
@@ -102,6 +105,7 @@ func addWatches(c controller.Controller) error {
 			return err
 		}
 
+		// Watch relevant ClusterRoleBindings
 		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
 				requests := []reconcile.Request{}

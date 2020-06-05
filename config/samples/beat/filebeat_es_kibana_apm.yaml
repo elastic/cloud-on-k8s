@@ -1,4 +1,4 @@
-# This sample sets up an Elasticsearch cluster and a Kibana instance preconfigured for that cluster
+# This sample sets up an Elasticsearch cluster with Kibana instance, APM instance and Filebeat preconfigured for it.
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:

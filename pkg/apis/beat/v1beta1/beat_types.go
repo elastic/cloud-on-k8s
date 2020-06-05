@@ -38,19 +38,13 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// DaemonSet allows to:
-	// 1. Indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the
-	//    Type is used
-	// 2. Provide a spec for the DaemonSet
-	// Cannot be used along with `deployment`.
+	// DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows providing its spec.
+	// Cannot be used along with `deployment`. If both are absent a default for the Type is used.
 	// +kubebuilder:validation:Optional
 	DaemonSet *DaemonSetSpec `json:"daemonSet,omitempty"`
 
-	// Deployment allows to:
-	// 1. Indicate whether the Beat should be deployed as DaemonSet or Deployment, if both are absent, a default for the
-	//    Type is used
-	// 2. Provide a spec for the Deployment
-	// Cannot be used along with `daemonSet`.
+	// Deployment specifies the Beat should be deployed as a Deployment, and allows providing its spec.
+	// Cannot be used along with `daemonSet`. If both are absent a default for the Type is used.
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 }

@@ -69,7 +69,7 @@ func ReconcileAutodiscoverRBAC(ctx context.Context, log logr.Logger, client k8s.
 	err := reconcileAutodiscoverRBAC(ctx, client, beat)
 	if err != nil {
 		log.V(1).Info(
-			"autodiscovery rbac setup failed",
+			"autodiscover rbac setup failed",
 			"namespace", beat.Namespace,
 			"beat_name", beat.Name)
 	}
