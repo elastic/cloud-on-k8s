@@ -2049,11 +2049,11 @@ SOFTWARE.
 
 --------------------------------------------------------------------------------
 Module  : github.com/stretchr/testify
-Version : v1.6.0
-Time    : 2020-05-26T22:39:56Z
+Version : v1.6.1
+Time    : 2020-06-05T10:48:45Z
 Licence : MIT
 
-Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.6.0/LICENSE:
+Contents of probable licence file $GOMODCACHE/github.com/stretchr/testify@v1.6.1/LICENSE:
 
 MIT License
 
