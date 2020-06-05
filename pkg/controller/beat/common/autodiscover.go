@@ -173,6 +173,7 @@ func reconcileClusterRoleBinding(client k8s.Client, beat beatv1beta1.Beat) error
 			Name:     clusterRoleName,
 		},
 	}
+	expected.Labels = hash.SetTemplateHashLabel(expected.Labels, expected)
 
 	reconciled := &rbacv1.ClusterRoleBinding{}
 	return reconciler.ReconcileResource(reconciler.Params{
