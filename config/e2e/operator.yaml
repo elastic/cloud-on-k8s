@@ -69,7 +69,7 @@ rules:
   verbs:
   - bind
   resourceNames:
-  - elastic-operator-beat-autodiscover
+  - elastic-beat-autodiscover
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
@@ -314,7 +314,7 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: elastic-operator-beat-autodiscover
+  name: elastic-beat-autodiscover
 rules:
 - apiGroups: [""] # "" indicates the core API group
   resources:

@@ -27,15 +27,15 @@ import (
 const (
 	// serviceAccountNameTemplate is the template to be used with Beat name to obtain the name of a ServiceAccount.
 	// Note that users might depend on it.
-	serviceAccountNameTemplate = "elastic-operator-beat-%s"
+	serviceAccountNameTemplate = "elastic-beat-%s"
 
 	// clusterRoleBindingNameTemplate is the template to be used with Beat namespace and name to obtain the name of
 	// a ClusterRoleBinding.
-	clusterRoleBindingNameTemplate = "elastic-operator-beat-autodiscover-%s-%s"
+	clusterRoleBindingNameTemplate = "elastic-beat-autodiscover-%s-%s"
 
 	// clusterRoleName is the name of the ClusterRole. If autodiscover RBAC management is enabled, operator assumes
 	// that this role already exists in the cluster.
-	clusterRoleName = "elastic-operator-beat-autodiscover"
+	clusterRoleName = "elastic-beat-autodiscover"
 
 	// autodiscoverBeatNameLabelName is a label name that is applied to ClusterRoleBinding for autodiscover
 	// permissions. Label value is the name of the Beat resource that the binding is for.

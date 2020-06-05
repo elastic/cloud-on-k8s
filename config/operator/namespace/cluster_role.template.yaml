@@ -63,7 +63,7 @@ rules:
   verbs:
   - bind
   resourceNames:
-  - elastic-operator-beat-autodiscover
+  - elastic-beat-autodiscover
 - apiGroups:
   - apps
   resources:
