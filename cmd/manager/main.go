@@ -257,6 +257,8 @@ func execute() {
 		CertDir: viper.GetString(operator.WebhookCertDirFlag),
 	}
 
+	manageBeatAutodiscoverRBAC := viper.GetBool(operator.ManageBeatAutodiscoverRBACFlag)
+
 	// configure the manager cache based on the number of managed namespaces
 	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
 	switch {
@@ -267,10 +269,15 @@ func execute() {
 		opts.Namespace = managedNamespaces[0]
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
-		// the manager cache should always include:
-		// 1. the operator namespace so that we can work with operator-internal resources
-		// 2. empty namespace so that we can work with cluster-wide (non-namespaced) resources
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace, ""))
+		// the manager cache should always include the operator namespace so that we can work with operator-internal resources
+		cachedNamespaces := append(managedNamespaces, operatorNamespace)
+
+		// include empty namespace so that we can work with cluster-wide (non-namespaced) resources needed with autodiscover
+		if manageBeatAutodiscoverRBAC {
+			cachedNamespaces = append(cachedNamespaces, "")
+		}
+
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(cachedNamespaces)
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
@@ -339,7 +346,7 @@ func execute() {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
 	}
 
-	if viper.GetBool(operator.ManageBeatAutodiscoverRBACFlag) {
+	if manageBeatAutodiscoverRBAC {
 		beatcommon.EnableAutodiscoverRBACManagement()
 	}
 
