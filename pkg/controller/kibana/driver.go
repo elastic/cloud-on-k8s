@@ -13,6 +13,7 @@ import (
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,6 +42,16 @@ var initContainersParameters = keystore.InitContainerParameters{
 	KeystoreAddCommand:            `/usr/share/kibana/bin/kibana-keystore add "$key" --stdin < "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 	DataVolumePath:                DataVolumeMountPath,
+	Resources: corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("128Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("128Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+	},
 }
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.

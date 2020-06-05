@@ -7,6 +7,8 @@ package initcontainer
 import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	esvolume "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/volume"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 const (
@@ -19,4 +21,14 @@ var KeystoreParams = keystore.InitContainerParameters{
 	KeystoreAddCommand:            KeystoreBinPath + ` add-file "$key" "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 	DataVolumePath:                esvolume.ElasticsearchDataMountPath,
+	Resources: corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("196Mi"),
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("196Mi"),
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+		},
+	},
 }

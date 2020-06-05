@@ -31,6 +31,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -61,6 +62,16 @@ var (
 		KeystoreAddCommand:            ApmServerBin + ` keystore add "$key" --stdin < "$filename"`,
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		DataVolumePath:                DataVolumePath,
+		Resources: corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+			Limits: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+		},
 	}
 )
 
