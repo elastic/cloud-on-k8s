@@ -73,7 +73,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 					return err
 				}
 
-				// it may take some extra time for Elasticsearch to be fully deleted
+				// it may take some extra time for Beat to be fully deleted
 				var beat beatv1beta1.Beat
 				err := k.Client.Get(k8s.ExtractNamespacedName(&b.Beat), &beat)
 				if err != nil && !apierrors.IsNotFound(err) {
@@ -107,7 +107,6 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Beat), &createdBeat)
 					require.NoError(t, err)
 					require.Equal(t, b.Beat.Spec.Version, createdBeat.Spec.Version)
-					// TODO this is incomplete
 				},
 			},
 		})

@@ -126,7 +126,6 @@ func (pb PodBuilder) CreationTestSteps(k *test.K8sClient) test.StepList {
 					var createdPod corev1.Pod
 					err := k.Client.Get(k8s.ExtractNamespacedName(&pb.Pod), &createdPod)
 					require.NoError(t, err)
-					// TODO this is incomplete
 				},
 			},
 		})
