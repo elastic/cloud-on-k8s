@@ -27,9 +27,8 @@ type Info struct {
 
 // Query params for _cluster/health see https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html
 const (
-	WaitForNoInitializingShards string = "wait_for_no_initializing_shards"
-	WaitForEvents               string = "wait_for_events"
-	Timeout                     string = "timeout"
+	WaitForEvents string = "wait_for_events"
+	Timeout       string = "timeout"
 )
 
 // Health represents the response from _cluster/health
