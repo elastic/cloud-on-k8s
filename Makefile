@@ -154,7 +154,7 @@ install-crds: generate-crds
 
 # Install roles that operator expects to be present by default.
 install-roles:
-	kubectl apply -f ./config/operator/all-in-one/roles.yaml
+	kubectl apply -f ./config/operator/all-in-one/beat-roles.yaml
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
