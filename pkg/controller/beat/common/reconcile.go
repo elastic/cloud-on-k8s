@@ -25,7 +25,7 @@ import (
 
 func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
-	if err := ValidateBeatSpec(params.Beat.Spec); err != nil {
+	if err := validateBeatSpec(params.Beat.Spec); err != nil {
 		return results.WithError(err)
 	}
 

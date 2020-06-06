@@ -555,6 +555,20 @@ spec:
               description: Image is the Beat Docker image to deploy. Version and Type
                 have to match the Beat in the image.
               type: string
+            preset:
+              description: 'Preset specifies which built-in configuration the operator
+                should use. The configuration provided in a preset consists of: Beat
+                config, roles containing permissions required by that config and podTemplate
+                for DaemonSet or Deployment. Preset must match the Beat `type`. If
+                `deployment` or `daemonSet` is provided it has to match Deployment
+                or DaemonSet in the preset. Then the `podTemplate` is merged with
+                PodTemplate from the preset. If `config` is provided, it replaces
+                the preset config entirely. If preset is not provided, both `config`
+                and `daemonSet` or `deployment` must be specified.'
+              enum:
+              - filebeat-k8s-autodiscover
+              - metricbeat-k8s-hosts
+              type: string
             serviceAccountName:
               description: ServiceAccountName is used to check access from the current
                 resource to Elasticsearch resource in a different namespace. Can only

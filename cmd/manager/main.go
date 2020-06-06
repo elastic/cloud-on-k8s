@@ -169,9 +169,9 @@ func init() {
 		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
 	)
 	Cmd.Flags().Bool(
-		operator.ManageBeatAutodiscoverRBACFlag,
+		operator.ManageBeatRBACFlag,
 		true,
-		"Determines whether the operator should set up bindings and service accounts for the Beats autodiscover feature",
+		"Determines whether the operator should set up service accounts and bindings for the Beats autodiscover feature and Beat CRD presets",
 	)
 
 	// enable using dashed notation in flags and underscores in env
@@ -257,7 +257,7 @@ func execute() {
 		CertDir: viper.GetString(operator.WebhookCertDirFlag),
 	}
 
-	manageBeatAutodiscoverRBAC := viper.GetBool(operator.ManageBeatAutodiscoverRBACFlag)
+	manageBeatRBAC := viper.GetBool(operator.ManageBeatRBACFlag)
 
 	// configure the manager cache based on the number of managed namespaces
 	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
@@ -272,8 +272,8 @@ func execute() {
 		// the manager cache should always include the operator namespace so that we can work with operator-internal resources
 		cachedNamespaces := append(managedNamespaces, operatorNamespace)
 
-		// include empty namespace so that we can work with cluster-wide (non-namespaced) resources needed with autodiscover
-		if manageBeatAutodiscoverRBAC {
+		// include empty namespace so that we can work with cluster-wide (non-namespaced) resources needed for Beat role management
+		if manageBeatRBAC {
 			cachedNamespaces = append(cachedNamespaces, "")
 		}
 
@@ -346,8 +346,8 @@ func execute() {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
 	}
 
-	if manageBeatAutodiscoverRBAC {
-		beatcommon.EnableAutodiscoverRBACManagement()
+	if manageBeatRBAC {
+		beatcommon.EnableRBACManagement()
 	}
 
 	if err = apmserver.Add(mgr, params); err != nil {

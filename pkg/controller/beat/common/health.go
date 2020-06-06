@@ -16,6 +16,8 @@ func CalculateHealth(associated v1.Association, ready, desired int32) beatv1beta
 	}
 
 	switch {
+	case desired == 0:
+		return beatv1beta1.BeatRedHealth
 	case ready == desired:
 		return beatv1beta1.BeatGreenHealth
 	case ready > 0:

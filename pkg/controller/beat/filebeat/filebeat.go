@@ -5,16 +5,21 @@
 package filebeat
 
 import (
+	"fmt"
+
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
-	Type beatcommon.Type = "filebeat"
+	Type common.Type = "filebeat"
 
 	HostContainersVolumeName = "varlibdockercontainers"
 	HostContainersPath       = "/var/lib/docker/containers"
@@ -30,38 +35,81 @@ const (
 )
 
 type Driver struct {
-	beatcommon.DriverParams
-	beatcommon.Driver
+	common.DriverParams
+	common.Driver
 }
 
-func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
-	spec := &params.Beat.Spec
-	// use the default for filebeat type if not provided
-	if spec.DaemonSet == nil && spec.Deployment == nil {
-		spec.DaemonSet = &beatv1beta1.DaemonSetSpec{}
-	}
-
+func NewDriver(params common.DriverParams) common.Driver {
 	return &Driver{DriverParams: params}
 }
 
 func (d *Driver) Reconcile() *reconciler.Results {
-	f := func(builder *defaults.PodTemplateBuilder) {
-		containersVolume := volume.NewReadOnlyHostVolume(HostContainersVolumeName, HostContainersPath, HostContainersMountPath)
-		containersLogsVolume := volume.NewReadOnlyHostVolume(HostContainersLogsVolumeName, HostContainersLogsPath, HostContainersLogsMountPath)
-		podsLogsVolume := volume.NewReadOnlyHostVolume(HostPodsLogsVolumeName, HostPodsLogsPath, HostPodsLogsMountPath)
-
-		for _, volume := range []volume.VolumeLike{
-			containersVolume,
-			containersLogsVolume,
-			podsLogsVolume,
-		} {
-			builder.WithVolumes(volume.Volume()).WithVolumeMounts(volume.VolumeMount())
-		}
-	}
-
-	return beatcommon.Reconcile(
-		d.DriverParams,
-		defaultConfig,
+	preset := d.fromPreset(d.Beat.Spec.Preset)
+	return common.Reconcile(
 		container.FilebeatImage,
-		f)
+		d.DriverParams,
+		preset)
+}
+
+func (d *Driver) fromPreset(name beatv1beta1.PresetName) common.Preset {
+	switch name {
+	case beatv1beta1.FilebeatK8sAutodiscoverPreset:
+		// default to DaemonSet
+		if d.Beat.Spec.DaemonSet == nil {
+			d.Beat.Spec.DaemonSet = &beatv1beta1.DaemonSetSpec{}
+		}
+
+		return common.Preset{
+			Config:    k8sAutodiscoverPresetConfig,
+			RoleNames: []string{},
+			PodTemplateFunc: func(nsName types.NamespacedName, builder *defaults.PodTemplateBuilder) {
+				for _, v := range []volume.VolumeLike{
+					volume.NewReadOnlyHostVolume(
+						HostContainersVolumeName,
+						HostContainersPath,
+						HostContainersMountPath),
+					volume.NewReadOnlyHostVolume(
+						HostContainersLogsVolumeName,
+						HostContainersLogsPath,
+						HostContainersLogsMountPath),
+					volume.NewReadOnlyHostVolume(
+						HostPodsLogsVolumeName,
+						HostPodsLogsPath,
+						HostPodsLogsMountPath),
+					volume.NewSecretVolume(
+						common.ConfigSecretName(string(Type), nsName.Name),
+						common.ConfigVolumeName,
+						common.ConfigMountPath,
+						common.ConfigFileName,
+						0600),
+					volume.NewHostVolume(
+						common.DataVolumeName,
+						fmt.Sprintf(common.DataMountPathTemplate, nsName.Namespace, nsName.Name, Type),
+						fmt.Sprintf(common.DataPathTemplate, Type),
+						false,
+						corev1.HostPathDirectoryOrCreate),
+				} {
+					builder.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
+				}
+
+				builder.
+					WithTerminationGracePeriod(30).
+					WithEnv(corev1.EnvVar{
+						Name: "NODE_NAME",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "spec.nodeName",
+							},
+						}}).
+					WithResources(common.DefaultResources).
+					WithHostNetwork().
+					WithDNSPolicy(corev1.DNSClusterFirstWithHostNet).
+					WithPodSecurityContext(corev1.PodSecurityContext{
+						RunAsUser: pointer.Int64(0),
+					})
+			},
+		}
+	default:
+		return common.Preset{}
+	}
 }

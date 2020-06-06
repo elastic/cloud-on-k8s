@@ -46,7 +46,7 @@ func Test_DriverParamsValidate(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotErr := ValidateBeatSpec(tt.driverParams.Beat.Spec) != nil
+			gotErr := validateBeatSpec(tt.driverParams.Beat.Spec) != nil
 			require.True(t, tt.wantErr == gotErr)
 		})
 	}

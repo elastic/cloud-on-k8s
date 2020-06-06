@@ -176,6 +176,7 @@ BeatSpec defines the desired state of a Beat.
 | *`type`* __string__ | Type is the type of the Beat to deploy (filebeat, metricbeat, etc.). Any string can be used, but well-known types will be recognized and will allow to provide sane default configurations.
 | *`version`* __string__ | Version of the Beat.
 | *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+| *`preset`* __PresetName__ | Preset specifies which built-in configuration the operator should use. The configuration provided in a preset consists of: Beat config, roles containing permissions required by that config and podTemplate for DaemonSet or Deployment. Preset must match the Beat `type`. If `deployment` or `daemonSet` is provided it has to match Deployment or DaemonSet in the preset. Then the `podTemplate` is merged with PodTemplate from the preset. If `config` is provided, it replaces the preset config entirely. If preset is not provided, both `config` and `daemonSet` or `deployment` must be specified.
 | *`image`* __string__ | Image is the Beat Docker image to deploy. Version and Type have to match the Beat in the image.
 | *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Beat configuration. If provided, it will override the default configuration.
 | *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace. Can only be used if ECK is enforcing RBAC on references.
@@ -217,6 +218,18 @@ BeatSpec defines the desired state of a Beat.
 | *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
 | *`replicas`* __integer__ | 
 |===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-presetname"]
+=== PresetName (string) 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
+****
+
 
 
 

@@ -96,7 +96,7 @@ func addWatches(c controller.Controller) error {
 		return err
 	}
 
-	if beatcommon.ShouldManageAutodiscoverRBAC() {
+	if beatcommon.ShouldManageRBAC() {
 		// Watch ServiceAccounts
 		if err := c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
@@ -105,14 +105,13 @@ func addWatches(c controller.Controller) error {
 			return err
 		}
 
-		// Watch relevant ClusterRoleBindings
+		// Watch only relevant ClusterRoleBindings
 		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
 			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-				requests := []reconcile.Request{}
-				if result, nsName := beatcommon.IsAutodiscoverResource(object.Meta); result {
-					requests = append(requests, reconcile.Request{NamespacedName: nsName})
+				if managed, nsName := beatcommon.IsManagedRBACResource(object.Meta); managed {
+					return []reconcile.Request{{NamespacedName: nsName}}
 				}
-				return requests
+				return []reconcile.Request{}
 			}),
 		}); err != nil {
 			return err
@@ -218,8 +217,8 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 }
 
 func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
-	if beatcommon.ShouldManageAutodiscoverRBAC() {
-		return beatcommon.CleanUp(r.Client, obj)
+	if beatcommon.ShouldManageRBAC() {
+		return beatcommon.DeleteRBACResources(r.Client, obj)
 	}
 
 	return nil

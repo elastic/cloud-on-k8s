@@ -5,7 +5,6 @@
 package common
 
 import (
-	"hash"
 	"path"
 
 	"github.com/go-logr/logr"
@@ -91,15 +90,9 @@ func buildBeatConfig(
 }
 
 func reconcileConfig(
+	cfgBytes []byte,
 	params DriverParams,
-	defaultConfig *settings.CanonicalConfig,
-	configHash hash.Hash,
 ) error {
-	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, defaultConfig)
-	if err != nil {
-		return err
-	}
-
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: params.Beat.Namespace,
@@ -111,11 +104,9 @@ func reconcileConfig(
 		},
 	}
 
-	if _, err = reconciler.ReconcileSecret(params.Client, expected, &params.Beat); err != nil {
+	if _, err := reconciler.ReconcileSecret(params.Client, expected, &params.Beat); err != nil {
 		return err
 	}
-
-	_, _ = configHash.Write(cfgBytes)
 
 	return nil
 }

@@ -70,6 +70,7 @@ rules:
   - bind
   resourceNames:
   - elastic-beat-autodiscover
+  - elastic-beat-preset-metricbeat-k8s-hosts
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:

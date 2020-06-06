@@ -9,8 +9,10 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	uyaml "github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -19,9 +21,18 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 )
 
 type Type string
+
+type PodTemplateFunc func(nsName types.NamespacedName, builder *defaults.PodTemplateBuilder)
+
+type Preset struct {
+	PodTemplateFunc PodTemplateFunc
+	RoleNames       []string
+	Config          *settings.CanonicalConfig
+}
 
 type Driver interface {
 	Reconcile() *reconciler.Results
@@ -47,31 +58,36 @@ func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{}
 }
 
-func ValidateBeatSpec(spec beatv1beta1.BeatSpec) error {
+func validateBeatSpec(spec beatv1beta1.BeatSpec) error {
 	if (spec.DaemonSet == nil && spec.Deployment == nil) || (spec.DaemonSet != nil && spec.Deployment != nil) {
-		return fmt.Errorf("either daemonset or deployment has to be specified")
+		return fmt.Errorf("exactly one of daemonset, deployment has to be specified")
 	}
 	return nil
 }
 
 func Reconcile(
-	params DriverParams,
-	defaultConfig *settings.CanonicalConfig,
 	defaultImage container.Image,
-	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
+	params DriverParams,
+	preset Preset,
 ) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
 
-	if err := ValidateBeatSpec(params.Beat.Spec); err != nil {
+	if err := validateBeatSpec(params.Beat.Spec); err != nil {
 		return results.WithError(err)
 	}
 
-	if err := ReconcileAutodiscoverRBAC(params.Context, params.Logger, params.Client, params.Beat); err != nil {
+	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, preset.Config)
+	if err != nil {
+		return results.WithError(err)
+	}
+	configHash := sha256.New224()
+	_, _ = configHash.Write(cfgBytes)
+
+	if err := reconcileRBAC(cfgBytes, preset.RoleNames, params); err != nil {
 		results.WithError(err)
 	}
 
-	configHash := sha256.New224()
-	if err := reconcileConfig(params, defaultConfig, configHash); err != nil {
+	if err := reconcileConfig(cfgBytes, params); err != nil {
 		return results.WithError(err)
 	}
 
@@ -80,7 +96,7 @@ func Reconcile(
 		return results.WithError(err)
 	}
 
-	podTemplate := buildPodTemplate(params, defaultImage, modifyPodFunc, configHash)
+	podTemplate := buildPodTemplate(params, defaultImage, preset.PodTemplateFunc, configHash)
 	results.WithResults(reconcilePodVehicle(podTemplate, params))
 	return results
 }

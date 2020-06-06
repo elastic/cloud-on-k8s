@@ -25,6 +25,16 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
+	// Preset specifies which built-in configuration the operator should use. The configuration provided in a preset
+	// consists of: Beat config, roles containing permissions required by that config and podTemplate for DaemonSet
+	// or Deployment. Preset must match the Beat `type`.
+	// If `deployment` or `daemonSet` is provided it has to match Deployment or DaemonSet in the preset. Then the
+	// `podTemplate` is merged with PodTemplate from the preset.
+	// If `config` is provided, it replaces the preset config entirely.
+	// If preset is not provided, both `config` and `daemonSet` or `deployment` must be specified.
+	// +kubebuilder:validation:Optional
+	Preset PresetName `json:"preset,omitempty"`
+
 	// Image is the Beat Docker image to deploy. Version and Type have to match the Beat in the image.
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
@@ -48,6 +58,14 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	Deployment *DeploymentSpec `json:"deployment,omitempty"`
 }
+
+// +kubebuilder:validation:Enum=filebeat-k8s-autodiscover;metricbeat-k8s-hosts
+type PresetName string
+
+const (
+	FilebeatK8sAutodiscoverPreset PresetName = "filebeat-k8s-autodiscover"
+	MetricbeatK8sHostsPreset      PresetName = "metricbeat-k8s-hosts"
+)
 
 type DaemonSetSpec struct {
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`

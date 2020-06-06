@@ -4,10 +4,12 @@
 
 package filebeat
 
-import "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+)
 
 var (
-	defaultConfig = settings.MustParseConfig([]byte(
+	k8sAutodiscoverPresetConfig = settings.MustParseConfig([]byte(
 		`filebeat:
   autodiscover:
     providers:

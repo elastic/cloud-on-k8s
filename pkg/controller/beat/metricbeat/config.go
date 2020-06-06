@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	defaultConfig = settings.MustParseConfig([]byte(
+	k8sHostsPresetConfig = settings.MustParseConfig([]byte(
 		`metricbeat:
   autodiscover:
     providers:

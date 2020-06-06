@@ -34,6 +34,7 @@ rules:
   - bind
   resourceNames:
   - elastic-beat-autodiscover
+  - elastic-beat-preset-metricbeat-k8s-hosts
 - apiGroups:
   - ""
   resources:

@@ -65,6 +65,11 @@ func (b Builder) WithElasticsearchRef(ref commonv1.ObjectSelector) Builder {
 	return b
 }
 
+func (b Builder) WithPreset(preset beatv1beta1.PresetName) Builder {
+	b.Beat.Spec.Preset = preset
+	return b
+}
+
 func (b Builder) WithConfig(config *commonv1.Config) Builder {
 	b.Beat.Spec.Config = config
 	return b
@@ -108,6 +113,17 @@ func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityCon
 		for i := range b.Beat.Spec.Deployment.PodTemplate.Spec.Containers {
 			b.Beat.Spec.Deployment.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
 		}
+	}
+
+	return b
+}
+
+func (b Builder) WithSecurityContext(podSecurityContext corev1.PodSecurityContext) Builder {
+	if b.Beat.Spec.DaemonSet != nil {
+		b.Beat.Spec.DaemonSet.PodTemplate.Spec.SecurityContext = &podSecurityContext
+	}
+	if b.Beat.Spec.Deployment != nil {
+		b.Beat.Spec.Deployment.PodTemplate.Spec.SecurityContext = &podSecurityContext
 	}
 
 	return b
