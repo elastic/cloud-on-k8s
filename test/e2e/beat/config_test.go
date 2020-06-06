@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -29,7 +30,10 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 
 	fbBuilder := beat.NewBuilder(name, filebeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithESValidations(beat.HasEventFromPod(testPodBuilder.Pod.Name))
+		WithESValidations(
+			beat.HasEventFromBeat(filebeat.Type),
+			beat.HasEventFromPod(testPodBuilder.Pod.Name),
+			beat.HasMessageContaining(testPodBuilder.Logged))
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
@@ -44,7 +48,16 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 
 	mbBuilder := beat.NewBuilder(name, metricbeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
-		WithESValidations(beat.HasEventFromBeat(metricbeat.Type))
+		WithESValidations(
+			beat.HasEventFromBeat(metricbeat.Type),
+			beat.HasEvent("event.dataset:system.cpu"),
+			beat.HasEvent("event.dataset:system.load"),
+			beat.HasEvent("event.dataset:system.memory"),
+			beat.HasEvent("event.dataset:system.network"),
+			beat.HasEvent("event.dataset:system.process"),
+			beat.HasEvent("event.dataset:system.process.summary"),
+			beat.HasEvent("event.dataset:system.fsstat"),
+		)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
 }
@@ -58,14 +71,16 @@ func TestHeartbeatConfig(t *testing.T) {
 	hbBuilder := beat.NewBuilder(name, "heartbeat").
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithImage("docker.elastic.co/beats/heartbeat:7.7.0").
-		WithESValidations(beat.HasEventFromBeat("heartbeat"))
+		WithESValidations(
+			beat.HasEventFromBeat("heartbeat"),
+			beat.HasEvent("monitor.status:up"))
 
 	yaml := fmt.Sprintf(`
 heartbeat.monitors:
 - type: tcp
   schedule: '@every 5s'
   hosts: ["%s.%s.svc:9200"]
-`, esBuilder.Elasticsearch.Name, esBuilder.Elasticsearch.Namespace)
+`, v1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
 	hbBuilder = applyConfigYaml(t, hbBuilder, yaml)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, hbBuilder).RunSequential(t)

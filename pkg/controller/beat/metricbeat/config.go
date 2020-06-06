@@ -14,7 +14,7 @@ var (
   autodiscover:
     providers:
     - hints:
-        default_config: null
+        default_config: {}
         enabled: "true"
       node: ${NODE_NAME}
       type: kubernetes
@@ -37,36 +37,7 @@ var (
   - module: system
     period: 1m
     metricsets:
-    - filesystem
     - fsstat
-    processors:
-    - drop_event:
-        when:
-          regexp:
-            system:
-              filesystem:
-                mount_point: ^/(sys|cgroup|proc|dev|etc|host|lib)($|/)
-  - module: kubernetes
-    period: 10s
-    host: ${NODE_NAME}
-    hosts:
-    - https://${HOSTNAME}:10250
-    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-    ssl:
-      verification_mode: none
-    metricsets:
-    - node
-    - system
-    - pod
-    - container
-    - volume
-  - module: kubernetes
-    period: 10s
-    host: ${NODE_NAME}
-    hosts:
-    - https://${HOSTNAME}:10249
-    metricsets:
-    - proxy
 processors:
 - add_cloud_metadata: {}
 `))

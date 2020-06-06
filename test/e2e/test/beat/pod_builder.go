@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
@@ -24,15 +25,23 @@ import (
 
 // Builder to create Beats
 type PodBuilder struct {
-	Pod corev1.Pod
+	Pod    corev1.Pod
+	Logged string
 }
 
 func NewPodBuilder(name string) PodBuilder {
+	return newPodBuilder(name, rand.String(4))
+}
+
+func newPodBuilder(name, suffix string) PodBuilder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
 		Labels:    map[string]string{run.TestNameLabel: name},
 	}
+
+	// inject random string into the logs to allow validating whether they end up in ES easily
+	loggedString := fmt.Sprintf("_%s_", rand.String(6))
 
 	return PodBuilder{
 		Pod: corev1.Pod{
@@ -45,14 +54,33 @@ func NewPodBuilder(name string) PodBuilder {
 						Command: []string{
 							"bash",
 							"-c",
-							"while [ true ]; do echo \"$(date)\"; sleep 5; done",
+							fmt.Sprintf("while [ true ]; do echo \"$(date) - %s\"; sleep 5; done", loggedString),
 						},
 					},
 				},
 				SecurityContext: test.DefaultSecurityContext(),
 			},
 		},
+		Logged: loggedString,
+	}.
+		WithSuffix(suffix).
+		WithLabel(run.TestNameLabel, name)
+}
+
+func (pb PodBuilder) WithSuffix(suffix string) PodBuilder {
+	if suffix != "" {
+		pb.Pod.ObjectMeta.Name = pb.Pod.ObjectMeta.Name + "-" + suffix
 	}
+	return pb
+}
+
+func (pb PodBuilder) WithLabel(key, value string) PodBuilder {
+	if pb.Pod.Labels == nil {
+		pb.Pod.Labels = make(map[string]string)
+	}
+	pb.Pod.Labels[key] = value
+
+	return pb
 }
 
 func (pb PodBuilder) RuntimeObjects() []runtime.Object {

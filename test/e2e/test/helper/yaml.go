@@ -75,7 +75,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 			b.ApmServer = *decodedObj
 			builder = transform(b)
 		case *beatv1beta1.Beat:
-			b := beat.NewBuilder(decodedObj.Name, beatcommon.Type(decodedObj.Spec.Type))
+			b := beat.NewBuilderWithoutSuffix(decodedObj.Name, beatcommon.Type(decodedObj.Spec.Type))
 			b.Beat = *decodedObj
 			builder = transform(b)
 		default:

@@ -16,16 +16,24 @@ import (
 )
 
 func HasEventFromBeat(name beatcommon.Type) ValidationFunc {
-	return HasEvent(fmt.Sprintf("/*beat*/_search?q=agent.type:%s", name))
+	return HasEvent(fmt.Sprintf("agent.type:%s", name))
 }
 
 func HasEventFromPod(name string) ValidationFunc {
-	return HasEvent(fmt.Sprintf("/*beat*/_search?q=kubernetes.pod.name:%s", name))
+	return HasEvent(fmt.Sprintf("kubernetes.pod.name:%s", name))
+}
+
+func HasMessageContaining(message string) ValidationFunc {
+	return HasEvent(fmt.Sprintf("message:%s", message))
 }
 
 func HasEvent(query string) ValidationFunc {
+	return hasEvent(fmt.Sprintf("/*beat*/_search?q=%s", query))
+}
+
+func hasEvent(url string) ValidationFunc {
 	return func(esClient client.Client) error {
-		req, err := http.NewRequest(http.MethodGet, query, nil)
+		req, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
 			return err
 		}
@@ -45,7 +53,7 @@ func HasEvent(query string) ValidationFunc {
 			return err
 		}
 		if len(results.Hits.Hits) == 0 {
-			return fmt.Errorf("hit count should be more than 0 for %s", query)
+			return fmt.Errorf("hit count should be more than 0 for %s", url)
 		}
 
 		return nil

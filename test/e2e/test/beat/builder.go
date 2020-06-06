@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -23,7 +24,15 @@ type Builder struct {
 	Validations []ValidationFunc
 }
 
+func NewBuilderWithoutSuffix(name string, typ beatcommon.Type) Builder {
+	return newBuilder(name, typ, "")
+}
+
 func NewBuilder(name string, typ beatcommon.Type) Builder {
+	return newBuilder(name, typ, rand.String(4))
+}
+
+func newBuilder(name string, typ beatcommon.Type, suffix string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
@@ -38,7 +47,9 @@ func NewBuilder(name string, typ beatcommon.Type) Builder {
 				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
-	}
+	}.
+		WithSuffix(suffix).
+		WithLabel(run.TestNameLabel, name)
 }
 
 type ValidationFunc func(client.Client) error
