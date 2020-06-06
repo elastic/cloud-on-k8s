@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
-	commonhash "github.com/elastic/cloud-on-k8s/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
+	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 const (
@@ -85,9 +85,9 @@ func buildPodTemplate(
 			}}).
 		WithResources(defaultResources).
 		WithHostNetwork().
-		WithLabels(map[string]string{
+		WithLabels(maps.Merge(NewLabels(params.Beat), map[string]string{
 			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-			VersionLabelName:    spec.Version}).
+			VersionLabelName:    spec.Version})).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
 		WithArgs("-e", "-c", ConfigMountPath).
 		WithDNSPolicy(corev1.DNSClusterFirstWithHostNet).
@@ -124,8 +124,6 @@ func buildPodTemplate(
 	for _, v := range volumes {
 		builder = builder.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
 	}
-
-	builder = builder.WithLabels(commonhash.SetTemplateHashLabel(NewLabels(params.Beat), builder.PodTemplate))
 
 	return builder.PodTemplate
 }

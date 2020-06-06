@@ -58,8 +58,8 @@
       seccomp.security.alpha.kubernetes.io/defaultProfileName:  'runtime/default'
       apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
   spec:
-    privileged: true
-    allowPrivilegeEscalation: true
+    privileged: false
+    allowPrivilegeEscalation: false
     # Allow core volume types.
     volumes:
       - 'configMap'

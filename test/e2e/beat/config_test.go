@@ -8,9 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
@@ -60,10 +58,7 @@ func TestHeartbeatConfig(t *testing.T) {
 	hbBuilder := beat.NewBuilder(name, "heartbeat").
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithImage("docker.elastic.co/beats/heartbeat:7.7.0").
-		WithESValidations(beat.HasEventFromBeat("heartbeat")).
-		WithContainerSecurityContext(corev1.SecurityContext{
-			RunAsUser: pointer.Int64(0),
-		})
+		WithESValidations(beat.HasEventFromBeat("heartbeat"))
 
 	yaml := fmt.Sprintf(`
 heartbeat.monitors:

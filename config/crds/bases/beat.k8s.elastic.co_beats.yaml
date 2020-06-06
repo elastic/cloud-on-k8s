@@ -68,10 +68,9 @@ spec:
                 override the default configuration.
               type: object
             daemonSet:
-              description: 'DaemonSet allows to: 1. Indicate whether the Beat should
-                be deployed as DaemonSet or Deployment, if both are absent, a default
-                for the    Type is used 2. Provide a spec for the DaemonSet Cannot
-                be used along with `deployment`.'
+              description: DaemonSet specifies the Beat should be deployed as a DaemonSet,
+                and allows providing its spec. Cannot be used along with `deployment`.
+                If both are absent a default for the Type is used.
               properties:
                 podTemplate:
                   description: PodTemplateSpec describes the data a pod should have
@@ -6105,10 +6104,9 @@ spec:
                   type: object
               type: object
             deployment:
-              description: 'Deployment allows to: 1. Indicate whether the Beat should
-                be deployed as DaemonSet or Deployment, if both are absent, a default
-                for the    Type is used 2. Provide a spec for the Deployment Cannot
-                be used along with `daemonSet`.'
+              description: Deployment specifies the Beat should be deployed as a Deployment,
+                and allows providing its spec. Cannot be used along with `daemonSet`.
+                If both are absent a default for the Type is used.
               properties:
                 podTemplate:
                   description: PodTemplateSpec describes the data a pod should have

@@ -10,6 +10,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -62,8 +63,13 @@ func reconcilePodVehicle(podTemplate corev1.PodTemplateSpec, params DriverParams
 	}
 
 	// clean up the other one
-	if err := params.Client.Delete(toDelete); err != nil && !apierrors.IsNotFound(err) {
-		return results.WithError(err)
+	if err := params.Client.Get(types.NamespacedName{
+		Namespace: params.Beat.Namespace,
+		Name:      name,
+	}, toDelete); err == nil {
+		results.WithError(params.Client.Delete(toDelete))
+	} else if !apierrors.IsNotFound(err) {
+		results.WithError(err)
 	}
 
 	err = updateStatus(params, ready, desired)
