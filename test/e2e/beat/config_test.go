@@ -24,7 +24,7 @@ import (
 )
 
 func TestFilebeatAutodiscoverPreset(t *testing.T) {
-	name := "test-fb-default-cfg"
+	name := "test-fb-ad-preset"
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
@@ -42,8 +42,8 @@ func TestFilebeatAutodiscoverPreset(t *testing.T) {
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
-func TestMetricbeatDefaultConfig(t *testing.T) {
-	name := "test-mb-default-cfg"
+func TestMetricbeatHostsPreset(t *testing.T) {
+	name := "test-mb-hosts-preset"
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
@@ -62,6 +62,12 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 			beat.HasEvent("event.dataset:system.process"),
 			beat.HasEvent("event.dataset:system.process.summary"),
 			beat.HasEvent("event.dataset:system.fsstat"),
+			beat.HasEvent("event.dataset:kubernetes.pod"),
+			beat.HasEvent("event.dataset:kubernetes.node"),
+			beat.HasEvent("event.dataset:kubernetes.container"),
+			beat.HasEvent("event.dataset:kubernetes.volume"),
+			beat.HasEvent("event.dataset:kubernetes.system"),
+			beat.HasEvent("kubernetes.container.name:"+beat.TestPodContainerName),
 		)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
@@ -73,7 +79,6 @@ func TestHeartbeatConfig(t *testing.T) {
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
-	tr := true
 	hbBuilder := beat.NewBuilder(name, "heartbeat").
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithImage("docker.elastic.co/beats/heartbeat:7.7.0").
@@ -85,7 +90,8 @@ func TestHeartbeatConfig(t *testing.T) {
 	hbBuilder.WithSecurityContext(corev1.PodSecurityContext{
 		FSGroup:      pointer.Int64(1000),
 		RunAsUser:    pointer.Int64(1000),
-		RunAsNonRoot: &tr})
+		RunAsNonRoot: test.BoolPtr(true),
+	})
 
 	yaml := fmt.Sprintf(`
 heartbeat.monitors:
@@ -97,78 +103,6 @@ heartbeat.monitors:
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, hbBuilder).RunSequential(t)
 }
-
-//func TestFilebeatOverrideConfig(t *testing.T) {
-//	name := "test-fb-override-cfg"
-//
-//	esBuilder := elasticsearch.NewBuilder(name).
-//		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
-//
-//	testPodBuilder := beat.NewPodBuilder(name)
-//
-//	fbBuilder := beat.NewBuilder(name, filebeat.Type).
-//		WithPreset(v1beta1.FilebeatK8sAutodiscoverPreset).
-//		WithElasticsearchRef(esBuilder.Ref()).
-//		WithESValidations(
-//			beat.HasEventFromBeat(filebeat.Type),
-//			beat.HasEventFromPod(testPodBuilder.Pod.Name),
-//			beat.HasMessageContaining(testPodBuilder.Logged))
-//
-//	yaml := fmt.Sprintf(`
-//filebeat:
-//  autodiscover:
-//	providers:
-//	  node: ${NODE_NAME}
-//	  type: kubernetes
-//	  templates:
-//      - condition.equals.kubernetes.namespace: %s
-//        config:
-//        - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
-//          type: container
-//processors:
-//- add_cloud_metadata: {}
-//- add_host_metadata: {}
-//`, test.Ctx().ManagedNamespace(0))
-//	fbBuilder = applyConfigYaml(t, fbBuilder, yaml)
-//
-//	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
-//}
-//
-//func TestBeatNoPreset(t *testing.T) {
-//	name := "test-beat-no-preset"
-//
-//	esBuilder := elasticsearch.NewBuilder(name).
-//		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
-//
-//	testPodBuilder := beat.NewPodBuilder(name)
-//
-//	mbBuilder := beat.NewBuilder(name, metricbeat.Type).
-//		WithPreset(v1beta1.MetricbeatK8sHostsPreset).
-//		WithElasticsearchRef(esBuilder.Ref()).
-//		WithESValidations(
-//			beat.HasEventFromBeat(metricbeat.Type),
-//			beat.HasEvent("event.dataset:system.cpu"),
-//			beat.HasEvent("event.dataset:system.load"),
-//			beat.HasEvent("event.dataset:system.memory"),
-//			beat.HasEvent("event.dataset:system.network"),
-//			beat.HasEvent("event.dataset:system.process"),
-//			beat.HasEvent("event.dataset:system.process.summary"),
-//			beat.HasEvent("event.dataset:system.fsstat"),
-//		)
-//
-//	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
-//}
-
-/*
-- delete different resources, check if they are reconciled back
-- cert rollover test
-- override config
-- override podtemplate
-- override both
-- no preset
-- custom sa, check if it works, no sa/binding created
-
-*/
 
 // --- helpers
 

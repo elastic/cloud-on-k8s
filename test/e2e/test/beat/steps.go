@@ -220,3 +220,7 @@ func (b Builder) MutationTestSteps(k *test.K8sClient) test.StepList {
 func (b Builder) MutationReversalTestContext() test.ReversalTestContext {
 	panic("implement me")
 }
+
+func roleBindingName(beat beatv1beta1.Beat) string {
+	return beat.Name + "-binding"
+}

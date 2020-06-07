@@ -23,6 +23,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
+const (
+	TestPodContainerName = "test-pod"
+)
+
 // Builder to create a Pod. It can be used as a source of logging/metric data for Beat (deployed separately) to collect.
 type PodBuilder struct {
 	Pod    corev1.Pod
@@ -49,7 +53,7 @@ func newPodBuilder(name, suffix string) PodBuilder {
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:  "ubuntu",
+						Name:  TestPodContainerName,
 						Image: "busybox",
 						Command: []string{
 							"sh",

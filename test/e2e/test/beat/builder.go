@@ -20,8 +20,14 @@ import (
 
 // Builder to create a Beat
 type Builder struct {
-	Beat        beatv1beta1.Beat
-	Validations []ValidationFunc
+	Beat           beatv1beta1.Beat
+	Validations    []ValidationFunc
+	SecurityConfig *SecurityConfig
+}
+
+type SecurityConfig struct {
+	PspName         string
+	ClusterRoleName string
 }
 
 func NewBuilderWithoutSuffix(name string, typ beatcommon.Type) Builder {
@@ -49,7 +55,8 @@ func newBuilder(name string, typ beatcommon.Type, suffix string) Builder {
 		},
 	}.
 		WithSuffix(suffix).
-		WithLabel(run.TestNameLabel, name)
+		WithLabel(run.TestNameLabel, name).
+		WithPsp()
 }
 
 type ValidationFunc func(client.Client) error
@@ -103,21 +110,6 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 	return b
 }
 
-func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityContext) Builder {
-	if b.Beat.Spec.DaemonSet != nil {
-		for i := range b.Beat.Spec.DaemonSet.PodTemplate.Spec.Containers {
-			b.Beat.Spec.DaemonSet.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
-		}
-	}
-	if b.Beat.Spec.Deployment != nil {
-		for i := range b.Beat.Spec.Deployment.PodTemplate.Spec.Containers {
-			b.Beat.Spec.Deployment.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
-		}
-	}
-
-	return b
-}
-
 func (b Builder) WithSecurityContext(podSecurityContext corev1.PodSecurityContext) Builder {
 	if b.Beat.Spec.DaemonSet != nil {
 		b.Beat.Spec.DaemonSet.PodTemplate.Spec.SecurityContext = &podSecurityContext
@@ -153,6 +145,17 @@ func (b Builder) WithPodLabel(key, value string) Builder {
 			podSpec.Labels = make(map[string]string)
 		}
 		podSpec.Labels[key] = value
+	}
+
+	return b
+}
+
+func (b Builder) WithPsp() Builder {
+	if b.SecurityConfig == nil {
+		b.SecurityConfig = &SecurityConfig{
+			PspName:         "elastic.beat.restricted",
+			ClusterRoleName: "elastic-beat-restricted",
+		}
 	}
 
 	return b
