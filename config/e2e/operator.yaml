@@ -60,8 +60,8 @@ rules:
   - update
   - patch
   - delete
-# required to allow the operator to bind service accounts it manages
-# to role that holds permissions needed for Beat autodiscover feature
+# required to allow the operator to bind service accounts it manages to role
+# that holds permissions needed for Beat autodiscover feature and Beat CRD presets
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:

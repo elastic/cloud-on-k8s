@@ -60,6 +60,7 @@ subjects:
     name: {{ .Operator.Name }}
     namespace: {{ .Operator.Namespace }}
 ---
+# ClusterRole allowing use of Beat-specific PSP
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -107,6 +108,7 @@ rules:
       - delete
       - create
       - update
+  # to dynamically bind service accounts to ClusterRole allowing to use PSP
   - apiGroups:
     - rbac.authorization.k8s.io
     resources:
