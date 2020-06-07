@@ -11,12 +11,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
@@ -92,6 +97,50 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{}.
 		WithSteps(test.StepList{
 			test.Step{
+				Name: "PSP should exist",
+				Test: func(t *testing.T) {
+					psp := v1beta1.PodSecurityPolicy{}
+					err := k.Client.Get(types.NamespacedName{Name: b.SecurityConfig.PspName}, &psp)
+					require.NoError(t, err)
+				},
+				Skip: func() bool { return b.SecurityConfig == nil || test.Ctx().OcpCluster },
+			},
+			test.Step{
+				Name: "PSP ClusterRole should exist",
+				Test: func(t *testing.T) {
+					clusterRole := rbacv1.ClusterRole{}
+					err := k.Client.Get(types.NamespacedName{Name: b.SecurityConfig.ClusterRoleName}, &clusterRole)
+					require.NoError(t, err)
+				},
+				Skip: func() bool { return b.SecurityConfig == nil || test.Ctx().OcpCluster },
+			},
+			test.Step{
+				Name: "Creating RoleBinding should succeed",
+				Test: func(t *testing.T) {
+					roleBinding := &rbacv1.RoleBinding{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      roleBindingName(b.Beat),
+							Namespace: b.Beat.Namespace,
+						},
+						Subjects: []rbacv1.Subject{
+							{
+								Kind:      "ServiceAccount",
+								Name:      beatcommon.ServiceAccountName(b.Beat.Name),
+								Namespace: b.Beat.Namespace,
+							},
+						},
+						RoleRef: rbacv1.RoleRef{
+							APIGroup: rbacv1.GroupName,
+							Kind:     "ClusterRole",
+							Name:     b.SecurityConfig.ClusterRoleName,
+						},
+					}
+					err := k.Client.Create(roleBinding)
+					require.NoError(t, err)
+				},
+				Skip: func() bool { return b.SecurityConfig == nil || test.Ctx().OcpCluster },
+			},
+			test.Step{
 				Name: "Creating a Beat should succeed",
 				Test: func(t *testing.T) {
 					for _, obj := range b.RuntimeObjects() {
@@ -110,6 +159,10 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 				},
 			},
 		})
+}
+
+func roleBindingName(beat beatv1beta1.Beat) string {
+	return beat.Name + "-binding"
 }
 
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
@@ -183,6 +236,20 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 					require.NoError(t, err)
 				}
 			},
+		},
+		{
+			Name: "Deleting the PSP role binding",
+			Test: func(t *testing.T) {
+				roleBinding := &rbacv1.RoleBinding{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      roleBindingName(b.Beat),
+						Namespace: b.Beat.Namespace,
+					},
+				}
+				err := k.Client.Delete(roleBinding)
+				require.NoError(t, err)
+			},
+			Skip: func() bool { return b.SecurityConfig == nil || test.Ctx().OcpCluster },
 		},
 		{
 			Name: "The resources should not be there anymore",

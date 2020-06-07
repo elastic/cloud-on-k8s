@@ -27,7 +27,6 @@ rules:
       - podsecuritypolicies
     resourceNames:
       - elastic.restricted
-      - elastic.beat.restricted
     verbs:
       - use
   - apiGroups:
@@ -61,6 +60,22 @@ subjects:
     name: {{ .Operator.Name }}
     namespace: {{ .Operator.Namespace }}
 ---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-beat-restricted
+  labels:
+    test-run: {{ .TestRun }}
+rules:
+- apiGroups:
+  - extensions
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - elastic.beat.restricted
+  verbs:
+  - use
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -92,6 +107,26 @@ rules:
       - delete
       - create
       - update
+  - apiGroups:
+    - rbac.authorization.k8s.io
+    resources:
+    - clusterroles
+    verbs:
+    - bind
+    resourceNames:
+    - elastic-beat-restricted
+  - apiGroups:
+    - "rbac.authorization.k8s.io"
+    resources:
+    - rolebindings
+    verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - patch
+    - delete
   - apiGroups:
       - "security.openshift.io"
     resources:
