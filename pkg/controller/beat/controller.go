@@ -188,7 +188,7 @@ func (r *ReconcileBeat) doReconcile(ctx context.Context, beat beatv1beta1.Beat) 
 		return results.WithError(err)
 	}
 
-	driverResults := newDriver(ctx, r.Client, beat).Reconcile()
+	driverResults := newDriver(ctx, r.recorder, r.Client, beat).Reconcile()
 	results.WithResults(driverResults)
 
 	return results
@@ -224,12 +224,13 @@ func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
 	return nil
 }
 
-func newDriver(ctx context.Context, client k8s.Client, beat beatv1beta1.Beat) beatcommon.Driver {
+func newDriver(ctx context.Context, recorder record.EventRecorder, client k8s.Client, beat beatv1beta1.Beat) beatcommon.Driver {
 	dp := beatcommon.DriverParams{
-		Client:  client,
-		Context: ctx,
-		Logger:  log,
-		Beat:    beat,
+		Client:   client,
+		Context:  ctx,
+		Logger:   log,
+		Recorder: recorder,
+		Beat:     beat,
 	}
 
 	switch beat.Spec.Type {

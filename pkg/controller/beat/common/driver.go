@@ -9,10 +9,12 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
 	uyaml "github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
@@ -39,9 +41,10 @@ type Driver interface {
 }
 
 type DriverParams struct {
-	Client  k8s.Client
-	Context context.Context
-	Logger  logr.Logger
+	Client   k8s.Client
+	Context  context.Context
+	Logger   logr.Logger
+	Recorder record.EventRecorder
 
 	Beat beatv1beta1.Beat
 }
@@ -73,6 +76,7 @@ func Reconcile(
 	results := reconciler.NewResult(params.Context)
 
 	if err := validateBeatSpec(params.Beat.Spec); err != nil {
+		k8s.EmitErrorEvent(params.Recorder, err, &params.Beat, events.EventReasonValidation, err.Error())
 		return results.WithError(err)
 	}
 
