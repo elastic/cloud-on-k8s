@@ -25,6 +25,7 @@ rules:
   - secrets
   - services
   - configmaps
+  - serviceaccounts
   verbs:
   - get
   - list
@@ -38,6 +39,7 @@ rules:
   resources:
   - deployments
   - statefulsets
+  - daemonsets
   verbs:
   - get
   - list
@@ -50,6 +52,28 @@ rules:
   - policy
   resources:
   - poddisruptionbudgets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+# required to allow the operator to bind service accounts it manages
+# to role that holds permissions needed for Beat autodiscover feature
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  verbs:
+  - bind
+  resourceNames:
+  - elastic-beat-autodiscover
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
   verbs:
   - get
   - list
@@ -108,6 +132,20 @@ rules:
   - enterprisesearches
   - enterprisesearches/status
   - enterprisesearches/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - beat.k8s.elastic.co
+  resources:
+  - beats
+  - beats/status
+  - beats/finalizers
   verbs:
   - get
   - list
@@ -271,3 +309,18 @@ spec:
       name: https-webhook
   selector:
     control-plane: {{ .Operator.Name }}
+---
+# permissions needed for Beat cluster-wide autodiscover feature
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-beat-autodiscover
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources:
+  - namespaces
+  - pods
+  verbs:
+  - get
+  - watch
+  - list

@@ -49,3 +49,10 @@ patchesJson6902:
       kind: CustomResourceDefinition
       name: enterprisesearches.enterprisesearch.k8s.elastic.co
     path: ent-patches.yaml
+  # custom patches for Beat
+  - target:
+      group: apiextensions.k8s.io
+      version: v1beta1
+      kind: CustomResourceDefinition
+      name: beats.beat.k8s.elastic.co
+    path: beat-patches.yaml

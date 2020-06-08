@@ -14,6 +14,7 @@ endif::[]
 .Packages
 - xref:{anchor_prefix}-apm-k8s-elastic-co-v1[$$apm.k8s.elastic.co/v1$$]
 - xref:{anchor_prefix}-apm-k8s-elastic-co-v1beta1[$$apm.k8s.elastic.co/v1beta1$$]
+- xref:{anchor_prefix}-beat-k8s-elastic-co-v1beta1[$$beat.k8s.elastic.co/v1beta1$$]
 - xref:{anchor_prefix}-common-k8s-elastic-co-v1[$$common.k8s.elastic.co/v1$$]
 - xref:{anchor_prefix}-common-k8s-elastic-co-v1beta1[$$common.k8s.elastic.co/v1beta1$$]
 - xref:{anchor_prefix}-elasticsearch-k8s-elastic-co-v1[$$elasticsearch.k8s.elastic.co/v1$$]
@@ -131,6 +132,94 @@ ApmServerSpec holds the specification of an APM Server.
 
 
 
+[id="{anchor_prefix}-beat-k8s-elastic-co-v1beta1"]
+== beat.k8s.elastic.co/v1beta1
+
+Package v1beta1 contains API Schema definitions for the beat v1beta1 API group
+
+.Resource Types
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beat[$$Beat$$]
+
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beat"]
+=== Beat 
+
+Beat is the Schema for the Beats API.
+
+
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`apiVersion`* __string__ | `beat.k8s.elastic.co/v1beta1`
+| *`kind`* __string__ | `Beat`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+
+| *`spec`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec"]
+=== BeatSpec 
+
+BeatSpec defines the desired state of a Beat.
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beat[$$Beat$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`type`* __string__ | Type is the type of the Beat to deploy (filebeat, metricbeat, etc.). Any string can be used, but well-known types will be recognized and will allow to provide sane default configurations.
+| *`version`* __string__ | Version of the Beat.
+| *`elasticsearchRef`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-objectselector[$$ObjectSelector$$]__ | ElasticsearchRef is a reference to an Elasticsearch cluster running in the same Kubernetes cluster.
+| *`image`* __string__ | Image is the Beat Docker image to deploy. Version and Type have to match the Beat in the image.
+| *`config`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-common-v1-config[$$Config$$]__ | Config holds the Beat configuration. If provided, it will override the default configuration.
+| *`serviceAccountName`* __string__ | ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace. Can only be used if ECK is enforcing RBAC on references.
+| *`daemonSet`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-daemonsetspec[$$DaemonSetSpec$$]__ | DaemonSet specifies the Beat should be deployed as a DaemonSet, and allows providing its spec. Cannot be used along with `deployment`. If both are absent a default for the Type is used.
+| *`deployment`* __xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-deploymentspec[$$DeploymentSpec$$]__ | Deployment specifies the Beat should be deployed as a Deployment, and allows providing its spec. Cannot be used along with `daemonSet`. If both are absent a default for the Type is used.
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-daemonsetspec"]
+=== DaemonSetSpec 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-deploymentspec"]
+=== DeploymentSpec 
+
+
+
+.Appears In:
+****
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
+****
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`podTemplate`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podtemplatespec-v1-core[$$PodTemplateSpec$$]__ | 
+| *`replicas`* __integer__ | 
+|===
+
+
+
 [id="{anchor_prefix}-common-k8s-elastic-co-v1"]
 == common.k8s.elastic.co/v1
 
@@ -146,6 +235,7 @@ Config represents untyped YAML configuration.
 .Appears In:
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-nodeset[$$NodeSet$$]
@@ -200,6 +290,7 @@ ObjectSelector defines a reference to a Kubernetes object.
 .Appears In:
 ****
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-apm-v1-apmserverspec[$$ApmServerSpec$$]
+- xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-beat-v1beta1-beatspec[$$BeatSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-enterprisesearch-v1beta1-enterprisesearchspec[$$EnterpriseSearchSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-kibana-v1-kibanaspec[$$KibanaSpec$$]
 - xref:{anchor_prefix}-github-com-elastic-cloud-on-k8s-pkg-apis-elasticsearch-v1-remotecluster[$$RemoteCluster$$]

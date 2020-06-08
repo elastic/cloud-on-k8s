@@ -461,6 +461,151 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
   creationTimestamp: null
+  name: beats.beat.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: available
+    type: integer
+  - JSONPath: .status.expectedNodes
+    description: Expected nodes
+    name: expected
+    type: integer
+  - JSONPath: .spec.type
+    description: Beat type
+    name: type
+    type: string
+  - JSONPath: .spec.version
+    description: Beat version
+    name: version
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: beat.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: Beat
+    listKind: BeatList
+    plural: beats
+    shortNames:
+    - beat
+    singular: beat
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Beat is the Schema for the Beats API.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: BeatSpec defines the desired state of a Beat.
+          properties:
+            config:
+              description: Config holds the Beat configuration. If provided, it will
+                override the default configuration.
+              type: object
+            daemonSet:
+              description: DaemonSet specifies the Beat should be deployed as a DaemonSet,
+                and allows providing its spec. Cannot be used along with `deployment`.
+                If both are absent a default for the Type is used.
+              properties: {}
+              type: object
+            deployment:
+              description: Deployment specifies the Beat should be deployed as a Deployment,
+                and allows providing its spec. Cannot be used along with `daemonSet`.
+                If both are absent a default for the Type is used.
+              properties:
+                replicas:
+                  format: int32
+                  type: integer
+              type: object
+            elasticsearchRef:
+              description: ElasticsearchRef is a reference to an Elasticsearch cluster
+                running in the same Kubernetes cluster.
+              properties:
+                name:
+                  description: Name of the Kubernetes object.
+                  type: string
+                namespace:
+                  description: Namespace of the Kubernetes object. If empty, defaults
+                    to the current namespace.
+                  type: string
+              required:
+              - name
+              type: object
+            image:
+              description: Image is the Beat Docker image to deploy. Version and Type
+                have to match the Beat in the image.
+              type: string
+            serviceAccountName:
+              description: ServiceAccountName is used to check access from the current
+                resource to Elasticsearch resource in a different namespace. Can only
+                be used if ECK is enforcing RBAC on references.
+              type: string
+            type:
+              description: Type is the type of the Beat to deploy (filebeat, metricbeat,
+                etc.). Any string can be used, but well-known types will be recognized
+                and will allow to provide sane default configurations.
+              maxLength: 20
+              type: string
+            version:
+              description: Version of the Beat.
+              type: string
+          required:
+          - type
+          - version
+          type: object
+        status:
+          description: BeatStatus defines the observed state of a Beat.
+          properties:
+            associationStatus:
+              description: AssociationStatus is the status of an association resource.
+              type: string
+            availableNodes:
+              format: int32
+              type: integer
+            expectedNodes:
+              format: int32
+              type: integer
+            health:
+              type: string
+          type: object
+  version: v1beta1
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
   name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
   additionalPrinterColumns:

@@ -94,7 +94,13 @@ func ElasticsearchAuthSettings(c k8s.Client, association commonv1.Association) (
 	if err := c.Get(secretObjKey, &secret); err != nil {
 		return "", "", err
 	}
-	return assocConf.AuthSecretKey, string(secret.Data[assocConf.AuthSecretKey]), nil
+
+	data, ok := secret.Data[assocConf.AuthSecretKey]
+	if !ok {
+		return "", "", errors.Errorf("auth secret key %s doesn't exist", assocConf.AuthSecretKey)
+	}
+
+	return assocConf.AuthSecretKey, string(data), nil
 }
 
 // GetAssociationConf extracts the association configuration from the given object by reading the annotations.
