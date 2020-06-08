@@ -11,12 +11,17 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/driver"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -31,7 +36,22 @@ type DriverParams struct {
 	Context context.Context
 	Logger  logr.Logger
 
+	Watches       watches.DynamicWatches
+	EventRecorder record.EventRecorder
+
 	Beat beatv1beta1.Beat
+}
+
+func (dp DriverParams) K8sClient() k8s.Client {
+	return dp.Client
+}
+
+func (dp DriverParams) Recorder() record.EventRecorder {
+	return dp.EventRecorder
+}
+
+func (dp DriverParams) DynamicWatches() watches.DynamicWatches {
+	return dp.Watches
 }
 
 func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
@@ -45,6 +65,8 @@ func (dp *DriverParams) GetPodTemplate() corev1.PodTemplateSpec {
 
 	return corev1.PodTemplateSpec{}
 }
+
+var _ driver.Interface = DriverParams{}
 
 func ValidateBeatSpec(spec beatv1beta1.BeatSpec) error {
 	if (spec.DaemonSet == nil && spec.Deployment == nil) || (spec.DaemonSet != nil && spec.Deployment != nil) {
@@ -61,6 +83,7 @@ func Reconcile(
 	results := reconciler.NewResult(params.Context)
 
 	if err := ValidateBeatSpec(params.Beat.Spec); err != nil {
+		k8s.EmitErrorEvent(params.EventRecorder, err, &params.Beat, events.EventReasonValidation, err.Error())
 		return results.WithError(err)
 	}
 
@@ -74,7 +97,18 @@ func Reconcile(
 		return results.WithError(err)
 	}
 
-	podTemplate := buildPodTemplate(params, defaultImage, configHash)
+	keystoreResources, err := keystore.NewResources(
+		params,
+		&params.Beat,
+		namer,
+		NewLabels(params.Beat),
+		initContainerParameters(params.Beat.Spec.Type),
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	podTemplate := buildPodTemplate(params, defaultImage, keystoreResources, configHash)
 	results.WithResults(reconcilePodVehicle(podTemplate, params))
 	return results
 }

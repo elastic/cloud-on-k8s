@@ -82,7 +82,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 			// adjust builder to compensate for overwriting Beat struct
 			// RBAC objects were populated using a name that doesn't have proper test suffix,
 			// hence clearing them here so the next calls can populate them properly
-			b.RBACObjects = nil
+			b.AdditionalObjects = nil
 
 			// Since b.Beat was overwritten, b.PodTemplate is pointing to wrong struct, fixing it here
 			if b.Beat.Spec.DaemonSet != nil {

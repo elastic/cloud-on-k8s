@@ -37,6 +37,12 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	Config *commonv1.Config `json:"config,omitempty"`
 
+	// SecureSettings is a list of references to Kubernetes Secrets containing sensitive configuration options for the Beat.
+	// Secrets data can be then referenced in the Beat config using Secret keys or as specified in `Entries` field of
+	// each SecureSetting.
+	// +kubebuilder:validation:Optional
+	SecureSettings []commonv1.SecretSource `json:"secureSettings,omitempty"`
+
 	// ServiceAccountName is used to check access from the current resource to Elasticsearch resource in a different namespace.
 	// Can only be used if ECK is enforcing RBAC on references.
 	// +kubebuilder:validation:Optional
@@ -228,6 +234,12 @@ func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
 	return commonv1.KibanaConfigAnnotationName
 }
+
+func (b *Beat) SecureSettings() []commonv1.SecretSource {
+	return b.Spec.SecureSettings
+}
+
+var _ commonv1.Associated = &Beat{}
 
 // +kubebuilder:object:root=true
 

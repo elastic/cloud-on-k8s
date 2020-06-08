@@ -31,9 +31,9 @@ const (
 
 // Builder to create a Beat
 type Builder struct {
-	Beat        beatv1beta1.Beat
-	Validations []ValidationFunc
-	RBACObjects []runtime.Object
+	Beat              beatv1beta1.Beat
+	Validations       []ValidationFunc
+	AdditionalObjects []runtime.Object
 
 	// PodTemplate points to the PodTemplate in spec.DaemonSet or spec.Deployment
 	PodTemplate *corev1.PodTemplateSpec
@@ -203,7 +203,7 @@ func bind(b Builder, clusterRoleName string) Builder {
 				Namespace: b.Beat.Namespace,
 			},
 		}
-		b.RBACObjects = append(b.RBACObjects, sa)
+		b.AdditionalObjects = append(b.AdditionalObjects, sa)
 	}
 
 	crb := &rbacv1.ClusterRoleBinding{
@@ -224,13 +224,28 @@ func bind(b Builder, clusterRoleName string) Builder {
 		},
 	}
 
-	b.RBACObjects = append(b.RBACObjects, crb)
+	b.AdditionalObjects = append(b.AdditionalObjects, crb)
 
 	return b
 }
 
+func (b Builder) WithSecureSettings(secretNames ...string) Builder {
+	for _, secretName := range secretNames {
+		b.Beat.Spec.SecureSettings = append(b.Beat.Spec.SecureSettings, commonv1.SecretSource{
+			SecretName: secretName,
+		})
+	}
+
+	return b
+}
+
+func (b Builder) WithObjects(objs ...runtime.Object) Builder {
+	b.AdditionalObjects = append(b.AdditionalObjects, objs...)
+	return b
+}
+
 func (b Builder) RuntimeObjects() []runtime.Object {
-	return append(b.RBACObjects, &b.Beat)
+	return append(b.AdditionalObjects, &b.Beat)
 }
 
 var _ test.Builder = Builder{}

@@ -12174,6 +12174,44 @@ spec:
               required:
               - name
               type: object
+            secureSettings:
+              description: SecureSettings is a list of references to Kubernetes Secrets
+                containing sensitive configuration options for the Beat. Secrets data
+                can be then referenced in the Beat config using Secret keys or as
+                specified in `Entries` field of each SecureSetting.
+              items:
+                description: SecretSource defines a data source based on a Kubernetes
+                  Secret.
+                properties:
+                  entries:
+                    description: Entries define how to project each key-value pair
+                      in the secret to filesystem paths. If not defined, all keys
+                      will be projected to similarly named paths in the filesystem.
+                      If defined, only the specified keys will be projected to the
+                      corresponding paths.
+                    items:
+                      description: KeyToPath defines how to map a key in a Secret
+                        object to a filesystem path.
+                      properties:
+                        key:
+                          description: Key is the key contained in the secret.
+                          type: string
+                        path:
+                          description: Path is the relative file path to map the key
+                            to. Path must not be an absolute file path and must not
+                            contain any ".." components.
+                          type: string
+                      required:
+                      - key
+                      type: object
+                    type: array
+                  secretName:
+                    description: SecretName is the name of the secret.
+                    type: string
+                required:
+                - secretName
+                type: object
+              type: array
             serviceAccountName:
               description: ServiceAccountName is used to check access from the current
                 resource to Elasticsearch resource in a different namespace. Can only
