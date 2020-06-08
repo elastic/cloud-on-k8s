@@ -51,5 +51,6 @@ metadata:
 spec:
   type: filebeat
   version: 7.7.0
+  preset: filebeat-k8s-autodiscover
   elasticsearchRef:
     name: elasticsearch-sample
