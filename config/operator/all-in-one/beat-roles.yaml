@@ -15,6 +15,7 @@ rules:
   - list
 ---
 # permissions needed for Beat metricbeat-k8s-hosts preset
+# source: https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-module-kubernetes.html
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -44,6 +45,7 @@ rules:
   resources:
   - statefulsets
   - deployments
+  - replicasets
   verbs:
   - get
   - list
@@ -52,6 +54,10 @@ rules:
   - ""
   resources:
   - nodes/stats
+  verbs:
+  - get
+- nonResourceURLs:
+  - /metrics
   verbs:
   - get
 

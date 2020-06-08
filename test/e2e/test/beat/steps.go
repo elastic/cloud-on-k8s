@@ -161,10 +161,6 @@ func (b Builder) CreationTestSteps(k *test.K8sClient) test.StepList {
 		})
 }
 
-func roleBindingName(beat beatv1beta1.Beat) string {
-	return beat.Name + "-binding"
-}
-
 func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	return test.StepList{}
 }

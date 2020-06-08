@@ -9,15 +9,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
-	uyaml "github.com/elastic/go-ucfg/yaml"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
-	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/events"
@@ -96,8 +94,8 @@ func Reconcile(
 	}
 
 	// we need to deref the secret here (if any) to include it in the configHash otherwise Beat will not be rolled on content changes
-	if err := commonassociation.WriteAssocToConfigHash(params.Client, &params.Beat, configHash); err != nil {
-		return results.WithError(err)
+	if err := association.WriteAssocToConfigHash(params.Client, &params.Beat, configHash); err != nil {
+		results.WithError(err)
 	}
 
 	podTemplate := buildPodTemplate(params, defaultImage, preset.PodTemplateFunc, configHash)

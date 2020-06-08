@@ -212,7 +212,7 @@ apply-operator:
 		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
 
 apply-psp:
-	kubectl apply -f config/dev/elastic-psp.yaml
+	kubectl apply -f config/psp/elastic-psp.yaml
 
 ALL_IN_ONE_OUTPUT_FILE=config/all-in-one.yaml
 

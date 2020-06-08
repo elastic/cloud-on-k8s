@@ -26,11 +26,11 @@ type BeatSpec struct {
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// Preset specifies which built-in configuration the operator should use. The configuration provided in a preset
-	// consists of: Beat config, roles containing permissions required by that config and podTemplate for DaemonSet
+	// consists of: Beat config, roles with permissions required by that config and podTemplate for DaemonSet
 	// or Deployment. Preset must match the Beat `type`.
-	// If `deployment` or `daemonSet` is provided it has to match Deployment or DaemonSet in the preset. Then the
-	// `podTemplate` is merged with PodTemplate from the preset.
-	// If `config` is provided, it replaces the preset config entirely.
+	// If `config` is provided, it replaces the config from preset entirely.
+	// If `deployment` or `daemonSet` is provided it has to match Deployment or DaemonSet in the preset. The
+	// `podTemplate` is then merged with PodTemplate from the preset.
 	// If preset is not provided, both `config` and `daemonSet` or `deployment` must be specified.
 	// +kubebuilder:validation:Optional
 	Preset PresetName `json:"preset,omitempty"`

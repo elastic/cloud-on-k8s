@@ -28,25 +28,27 @@ const (
 	// Note that users might depend on it.
 	serviceAccountNameTemplate = "elastic-beat-%s"
 
-	// clusterRoleBindingNameTemplate is the template to be used with role name, Beat namespace and name to obtain the name of
-	// a ClusterRoleBinding.
+	// clusterRoleBindingNameTemplate is the template to be used with role name, Beat namespace and Beat name to
+	// obtain the name of a ClusterRoleBinding.
 	clusterRoleBindingNameTemplate = "%s-binding-%s-%s"
 
-	// autodiscoverRoleName is the name of the ClusterRole. If autodiscover RBAC management is enabled, operator assumes
-	// that this role already exists in the cluster.
+	// autodiscoverRoleName is the name of the autodiscover ClusterRole. Operator assumes that this role
+	// already exists in the cluster.
 	autodiscoverRoleName = "elastic-beat-autodiscover"
 
 	presetRoleNamePrefix = "elastic-beat-preset-"
 
+	// MetricbeatK8sHostsPresetRole is the name of the role holding permissions needed by metricbeat-k8s-hosts preset.
+	// Operator assumes that this role already exists in the cluster.
 	MetricbeatK8sHostsPresetRole = presetRoleNamePrefix + string(beatv1beta1.MetricbeatK8sHostsPreset)
 
-	// autodiscoverBeatNameLabelName is a label name that is applied to ClusterRoleBinding for autodiscover
-	// permissions. Label value is the name of the Beat resource that the binding is for.
-	autodiscoverBeatNameLabelName = "autodiscover.beat.k8s.elastic.co/name"
+	// beatRoleBindingNameLabelName is a label name that is applied to ClusterRoleBinding of ECK-managed Beat
+	//roles. Label value is the name of the Beat resource that the binding is for.
+	beatRoleBindingNameLabelName = "role.beat.k8s.elastic.co/name"
 
-	// autodiscoverBeatNamespaceLabelName is a label name that is applied to ClusterRoleBinding for autodiscover
-	// permissions. Label value is the namespace of the Beat resource that the binding is for.
-	autodiscoverBeatNamespaceLabelName = "autodiscover.beat.k8s.elastic.co/namespace"
+	// beatRoleBindingNamespaceLabelName is a label name that is applied to ClusterRoleBinding of ECK-managed Beat
+	// roles. Label value is the namespace of the Beat resource that the binding is for.
+	beatRoleBindingNamespaceLabelName = "role.beat.k8s.elastic.co/namespace"
 )
 
 var (
@@ -81,8 +83,8 @@ func IsManagedRBACResource(meta metav1.Object) (bool, types.NamespacedName) {
 		return false, types.NamespacedName{}
 	}
 
-	name, okName := labels[autodiscoverBeatNameLabelName]
-	ns, okNs := labels[autodiscoverBeatNamespaceLabelName]
+	name, okName := labels[beatRoleBindingNameLabelName]
+	ns, okNs := labels[beatRoleBindingNamespaceLabelName]
 	if okName && okNs {
 		return true, types.NamespacedName{
 			Name:      name,
@@ -268,8 +270,8 @@ func reconcileClusterRoleBinding(client k8s.Client, beat beatv1beta1.Beat, roleR
 
 func addLabels(labels map[string]string, beat beatv1beta1.Beat) map[string]string {
 	return maps.Merge(labels, map[string]string{
-		autodiscoverBeatNameLabelName:      beat.Name,
-		autodiscoverBeatNamespaceLabelName: beat.Namespace,
+		beatRoleBindingNameLabelName:      beat.Name,
+		beatRoleBindingNamespaceLabelName: beat.Namespace,
 	})
 }
 

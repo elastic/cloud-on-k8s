@@ -91,7 +91,8 @@ func createBuilders(t *testing.T, decoder *helper.YAMLDecoder, sampleFile, testN
 				WithRestrictedSecurityContext().
 				WithLabel(run.TestNameLabel, testName).
 				WithPodLabel(run.TestNameLabel, testName).
-				WithESValidations(beat.HasEventFromBeat(beatcommon.Type(b.Beat.Spec.Type)))
+				WithESValidations(beat.HasEventFromBeat(beatcommon.Type(b.Beat.Spec.Type))).
+				WithPsp()
 		default:
 			return b
 		}

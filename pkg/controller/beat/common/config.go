@@ -20,7 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-// setOutput will set the output section in Beat config according to the association configuration.
+// setOutput will set the output section in Beat config according to the association configuration
 func setOutput(cfg *settings.CanonicalConfig, client k8s.Client, associated commonv1.Association) error {
 	if !associated.AssociationConf().IsConfigured() {
 		return nil
@@ -56,6 +56,8 @@ func setOutput(cfg *settings.CanonicalConfig, client k8s.Client, associated comm
 	return nil
 }
 
+// buildBeatConfig builds Beat config based on Beat spec and default config provided. Output configuration will be added
+// according to `elasticsearchRef` in the spec. No other merging is performed. Returns final config bytes.
 func buildBeatConfig(
 	log logr.Logger,
 	client k8s.Client,
@@ -64,6 +66,7 @@ func buildBeatConfig(
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
+	// set output if needed
 	if err := setOutput(cfg, client, &beat); err != nil {
 		return nil, err
 	}
@@ -83,12 +86,14 @@ func buildBeatConfig(
 		if err = cfg.MergeWith(userCfg); err != nil {
 			return nil, err
 		}
-		log.V(1).Info("Replacing ECK-managed configuration by user-provided configuration")
+		log.V(1).Info("Replacing preset configuration by user-provided configuration")
 	}
 
 	return cfg.Render()
 }
 
+// reconcileConfig reconciles provided config bytes in a Secret under a well known key. Secret name
+// is based on Beat name and type.
 func reconcileConfig(
 	cfgBytes []byte,
 	params DriverParams,

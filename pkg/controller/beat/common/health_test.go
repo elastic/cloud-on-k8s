@@ -44,7 +44,7 @@ func Test_CalculateHealth(t *testing.T) {
 			association: noAssociation,
 			ready:       0,
 			desired:     0,
-			want:        beatv1beta1.BeatGreenHealth,
+			want:        beatv1beta1.BeatRedHealth,
 		},
 		{
 			name:        "no association, all ready",
@@ -77,7 +77,7 @@ func Test_CalculateHealth(t *testing.T) {
 		{
 			name:        "association established, 0 desired",
 			association: createAssociation(true),
-			want:        beatv1beta1.BeatGreenHealth,
+			want:        beatv1beta1.BeatRedHealth,
 		},
 		{
 			name:        "association established, all ready",
