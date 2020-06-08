@@ -109,10 +109,9 @@ ECK detects those changes and ensures a smooth rolling upgrade of all Enterprise
 [id="{p}-enterprise-search-custom-configuration"]
 === Customize Enterprise Search configuration
 
-ECK sets up a default Enterprise Search configuration automatically.
-It can can be customized with link:https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration[Enterprise Search configuration] through the `config` element in the specification.
+ECK sets up a default Enterprise Search link:https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration[configuration]. Customize it through the ``config element in the specification.
 
-Especially, `ent_search.external_url` must be set to the desired URL.
+At a minimum, you must set `ent_search.external_url` to the desired URL.
 
 [source,yaml,subs="attributes"]
 ----
@@ -176,7 +175,7 @@ ECK merges the content of `config` and `configRef` into a single internal Secret
 [id="{p}-enterprise-search-custom-pod-template"]
 === Customize the Pod template
 
-Enterprise Search Pods specification can be overridden through the `podTemplate` element.
+You can override the Enterprise Search Pods specification through the `podTemplate` element.
 
 This example overrides the default 4Gi deployment to use 8Gi instead, and makes the deployment highly-available with 3 Pods:
 
@@ -221,7 +220,7 @@ NOTE: When exposed outside the scope of `localhost`, make sure to set `ent_searc
 
 The `elasticsearchRef` element allows ECK to automatically configure Enterprise Search to establish a secured connection to a managed Elasticsearch cluster.
 
-Enterprise Search can also be manually configured to access any available Elasticsearch cluster:
+Also, you can manually configure Enterprise Search to access any available Elasticsearch cluster:
 
 [source,yaml,subs="attributes,+macros"]
 ----
