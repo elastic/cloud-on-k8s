@@ -52,6 +52,13 @@ data:
       - add_cloud_metadata:
       - add_host_metadata:
 
+    setup.template.overwrite: true
+    setup.template.append_fields:
+    - name: kubernetes_version
+      type: keyword
+    - name: build_number
+      type: keyword
+
     output.elasticsearch:
       hosts: ['https://${MONITORING_IP}:${ELASTICSEARCH_PORT}']
       username: ${MONITORING_USER}
