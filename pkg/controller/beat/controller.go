@@ -196,6 +196,7 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 
 func (r *ReconcileBeat) onDelete(obj types.NamespacedName) {
 	r.dynamicWatches.Secrets.RemoveHandlerForKey(keystore.SecureSettingsWatchName(obj))
+	r.dynamicWatches.Secrets.RemoveHandlerForKey(beatcommon.ConfigRefWatchName(obj))
 }
 
 func newDriver(

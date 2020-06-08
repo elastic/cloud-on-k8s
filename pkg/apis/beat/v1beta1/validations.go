@@ -22,6 +22,7 @@ var (
 		checkAtMostOneDeploymentOption,
 		checkImageIfTypeUnknown,
 		checkBeatType,
+		checkSingleConfigSource,
 	}
 
 	updateChecks = []func(old, curr *Beat) field.ErrorList{
@@ -83,4 +84,16 @@ func checkBeatType(b *Beat) field.ErrorList {
 
 func checkNoDowngrade(prev, curr *Beat) field.ErrorList {
 	return commonv1.CheckNoDowngrade(prev.Spec.Version, curr.Spec.Version)
+}
+
+func checkSingleConfigSource(b *Beat) field.ErrorList {
+	if b.Spec.Config != nil && b.Spec.ConfigRef != nil {
+		msg := "Specify at most one of [`config`, `configRef`], not both"
+		return field.ErrorList{
+			field.Forbidden(field.NewPath("spec").Child("config"), msg),
+			field.Forbidden(field.NewPath("spec").Child("configRef"), msg),
+		}
+	}
+
+	return nil
 }

@@ -32,12 +32,12 @@ type Driver interface {
 }
 
 type DriverParams struct {
-	Client  k8s.Client
 	Context context.Context
 	Logger  logr.Logger
 
-	Watches       watches.DynamicWatches
+	Client        k8s.Client
 	EventRecorder record.EventRecorder
+	Watches       watches.DynamicWatches
 
 	Beat beatv1beta1.Beat
 }

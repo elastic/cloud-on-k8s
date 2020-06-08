@@ -15,6 +15,7 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -169,7 +170,14 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.beat, tt.managedConfig)
+			gotYaml, gotErr := buildBeatConfig(DriverParams{
+				Client:        tt.client,
+				Context:       nil,
+				Logger:        logrtesting.NullLogger{},
+				Watches:       watches.DynamicWatches{},
+				EventRecorder: nil,
+				Beat:          tt.beat,
+			}, tt.managedConfig)
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
 

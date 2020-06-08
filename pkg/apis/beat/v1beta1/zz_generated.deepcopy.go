@@ -131,6 +131,11 @@ func (in *BeatSpec) DeepCopyInto(out *BeatSpec) {
 		in, out := &in.Config, &out.Config
 		*out = (*in).DeepCopy()
 	}
+	if in.ConfigRef != nil {
+		in, out := &in.ConfigRef, &out.ConfigRef
+		*out = new(v1.ConfigSource)
+		**out = **in
+	}
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
 		*out = make([]v1.SecretSource, len(*in))
