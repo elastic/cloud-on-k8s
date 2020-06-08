@@ -23,7 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 )
 
-// Builder to create Beats
+// Builder to create a Pod. It can be used as a source of logging/metric data for Beat (deployed separately) to collect.
 type PodBuilder struct {
 	Pod    corev1.Pod
 	Logged string
@@ -50,9 +50,9 @@ func newPodBuilder(name, suffix string) PodBuilder {
 				Containers: []corev1.Container{
 					{
 						Name:  "ubuntu",
-						Image: "ubuntu",
+						Image: "busybox",
 						Command: []string{
-							"bash",
+							"sh",
 							"-c",
 							fmt.Sprintf("while [ true ]; do echo \"$(date) - %s\"; sleep 5; done", loggedString),
 						},
