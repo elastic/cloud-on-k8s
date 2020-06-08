@@ -20,7 +20,7 @@ type State struct {
 
 // RetrieveState returns the current Elasticsearch cluster state
 func RetrieveState(ctx context.Context, cluster types.NamespacedName, esClient esclient.Client) State {
-	health, err := esClient.GetClusterHealth(ctx, nil)
+	health, err := esClient.GetClusterHealth(ctx)
 	if err != nil {
 		log.V(1).Info("Unable to retrieve cluster health", "error", err, "namespace", cluster.Namespace, "es_name", cluster.Name)
 		return State{ClusterHealth: nil}

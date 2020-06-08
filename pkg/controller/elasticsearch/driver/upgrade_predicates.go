@@ -205,7 +205,7 @@ var predicates = [...]Predicate{
 			}
 			// This candidate needs a version upgrade, check if the primaries are assigned and shards are not moving or
 			// initializing
-			return context.esState.SafeToRoll()
+			return context.esState.IsSafeToRoll()
 		},
 	},
 	{

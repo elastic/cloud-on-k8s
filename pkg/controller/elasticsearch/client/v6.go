@@ -59,12 +59,19 @@ func (c *clientV6) Flush(ctx context.Context) error {
 	return c.post(ctx, "/_flush", nil, nil)
 }
 
-func (c *clientV6) GetClusterHealth(ctx context.Context, params url.Values) (Health, error) {
+func (c *clientV6) GetClusterHealth(ctx context.Context) (Health, error) {
 	var result Health
-	err := c.get(ctx, "/_cluster/health?"+params.Encode(), &result)
+	return result, c.get(ctx, "/_cluster/health", &result)
+}
+
+func (c *clientV6) GetClusterHealthWaitForAllEvents(ctx context.Context) (Health, error) {
+	var result Health
+	// wait for all events means wait for all events down to `languid` events which is the lowest event priority
+	err := c.get(ctx, "/_cluster/health?wait_for_events=languid&timeout=0s", &result)
 	if IsTimeout(err) {
-		// ignore timeout errors as they are communicated in the returned payload so we can reserve error handling
-		// for unexpected events
+		// ignore timeout errors as they are communicated in the returned payload and a timeout is to be expected
+		// given the query parameters. 408 for other reasons than the clients timeout parameter should not happen
+		// as they are expected only on idle connections https://go-review.googlesource.com/c/go/+/179457/4/src/net/http/transport.go#1931
 		err = nil
 	}
 	return result, err

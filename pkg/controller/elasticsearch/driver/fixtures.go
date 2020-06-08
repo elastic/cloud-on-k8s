@@ -284,8 +284,8 @@ func (t *testESState) Health() (esv1.ElasticsearchHealth, error) {
 	return t.health.Status, nil
 }
 
-func (t *testESState) SafeToRoll() (bool, error) {
-	return t.health.SafeToRoll(), nil
+func (t *testESState) IsSafeToRoll() (bool, error) {
+	return t.health.IsSafeToRoll(), nil
 }
 
 func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {

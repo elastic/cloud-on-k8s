@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -65,7 +64,9 @@ type Client interface {
 	// Flush requests a flush on the cluster.
 	Flush(ctx context.Context) error
 	// GetClusterHealth calls the _cluster/health api.
-	GetClusterHealth(ctx context.Context, params url.Values) (Health, error)
+	GetClusterHealth(ctx context.Context) (Health, error)
+	// GetClusterHealthWaitForAllEvents calls _cluster/health?wait_for_events=languid&timeout=0s
+	GetClusterHealthWaitForAllEvents(ctx context.Context) (Health, error)
 	// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
 	SetMinimumMasterNodes(ctx context.Context, n int) error
 	// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
