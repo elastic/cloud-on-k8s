@@ -112,8 +112,10 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 				return nil
 			}),
 		},
-
-		// Workplace Search tests
-		// TODO: requires a trial license + what should we test here?
+		// Workplace Search tests are much harder to perform, so there are none so far:
+		// - we need a trial license (already manipulated once in other tests)
+		// - connecting to an external source (eg. Google Drive) is probably too much work
+		// Both the Healthcheck and AppSearch tests already validated the Enterprise Search instance can
+		// correctly communicate with Elasticsearch.
 	}
 }
