@@ -12,9 +12,11 @@ import (
 	"text/template"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	apmcontroller "github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/nodespec"
+	kbcontroller "github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
@@ -53,10 +55,10 @@ func TestMetadataPropagation(t *testing.T) {
 
 					for _, c := range children {
 						c := c
-						t.Run(c.key.String(), func(t *testing.T) {
+						t.Run(c.identifier(), func(t *testing.T) {
 							t.Parallel()
 
-							have := c.getMetadata(t, k)
+							have := c.metadata(t, k)
 							require.True(t, maps.IsSubset(want.Annotations, have.Annotations),
 								"Expected annotations not found: \nwant=%++v\nhave=%++v", want.Annotations, have.Annotations)
 							require.True(t, maps.IsSubset(want.Labels, have.Labels),
@@ -131,60 +133,74 @@ func expectedChidrenForElasticsearch(b elasticsearch.Builder) []child {
 	name := b.Elasticsearch.Name
 	children := []child{
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.ElasticUserSecret(name)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.ElasticUserSecret(name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.HTTPService(name)},
-			obj: func() runtime.Object { return &corev1.Service{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.HTTPService(name)},
+			obj:    func() runtime.Object { return &corev1.Service{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: certificates.CAInternalSecretName(esv1.ESNamer, name, certificates.HTTPCAType)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.CAInternalSecretName(esv1.ESNamer, name, certificates.HTTPCAType)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: certificates.InternalCertsSecretName(esv1.ESNamer, name)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.InternalCertsSecretName(esv1.ESNamer, name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: certificates.PublicCertsSecretName(esv1.ESNamer, name)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.PublicCertsSecretName(esv1.ESNamer, name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.InternalUsersSecret(name)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.InternalUsersSecret(name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.RemoteCaSecretName(name)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.RemoteCaSecretName(name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.ScriptsConfigMap(name)},
-			obj: func() runtime.Object { return &corev1.ConfigMap{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.ScriptsConfigMap(name)},
+			obj:    func() runtime.Object { return &corev1.ConfigMap{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.TransportService(name)},
-			obj: func() runtime.Object { return &corev1.Service{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.TransportService(name)},
+			obj:    func() runtime.Object { return &corev1.Service{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: certificates.CAInternalSecretName(esv1.ESNamer, name, certificates.TransportCAType)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.CAInternalSecretName(esv1.ESNamer, name, certificates.TransportCAType)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.TransportCertificatesSecret(name)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.TransportCertificatesSecret(name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: certificates.PublicTransportCertsSecretName(esv1.ESNamer, name)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.PublicTransportCertsSecretName(esv1.ESNamer, name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.UnicastHostsConfigMap(name)},
-			obj: func() runtime.Object { return &corev1.ConfigMap{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.UnicastHostsConfigMap(name)},
+			obj:    func() runtime.Object { return &corev1.ConfigMap{} },
 		},
 		{
-			key: client.ObjectKey{Namespace: ns, Name: esv1.RolesAndFileRealmSecret(name)},
-			obj: func() runtime.Object { return &corev1.Secret{} },
+			parent: "Elasticsearch",
+			key:    client.ObjectKey{Namespace: ns, Name: esv1.RolesAndFileRealmSecret(name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
 		},
 	}
 
@@ -192,24 +208,20 @@ func expectedChidrenForElasticsearch(b elasticsearch.Builder) []child {
 		ssetName := esv1.StatefulSet(name, nodeSet.Name)
 		stsChildren := []child{
 			{
-				key: client.ObjectKey{Namespace: ns, Name: ssetName},
-				obj: func() runtime.Object { return &appsv1.StatefulSet{} },
+				parent: "Elasticsearch",
+				key:    client.ObjectKey{Namespace: ns, Name: ssetName},
+				obj:    func() runtime.Object { return &appsv1.StatefulSet{} },
 			},
 			{
-				key: client.ObjectKey{Namespace: ns, Name: nodespec.HeadlessServiceName(ssetName)},
-				obj: func() runtime.Object { return &corev1.Service{} },
+				parent: "Elasticsearch",
+				key:    client.ObjectKey{Namespace: ns, Name: nodespec.HeadlessServiceName(ssetName)},
+				obj:    func() runtime.Object { return &corev1.Service{} },
 			},
 			{
-				key: client.ObjectKey{Namespace: ns, Name: esv1.ConfigSecret(ssetName)},
-				obj: func() runtime.Object { return &corev1.Secret{} },
+				parent: "Elasticsearch",
+				key:    client.ObjectKey{Namespace: ns, Name: esv1.ConfigSecret(ssetName)},
+				obj:    func() runtime.Object { return &corev1.Secret{} },
 			},
-		}
-
-		for i := 0; i < int(nodeSet.Count); i++ {
-			stsChildren = append(stsChildren, child{
-				key: client.ObjectKey{Namespace: ns, Name: fmt.Sprintf("%s-%d", ssetName, i)},
-				obj: func() runtime.Object { return &corev1.Pod{} },
-			})
 		}
 
 		children = append(children, stsChildren...)
@@ -219,23 +231,104 @@ func expectedChidrenForElasticsearch(b elasticsearch.Builder) []child {
 }
 
 func expectedChidrenForKibana(b kibana.Builder) []child {
-	return nil
+	ns := b.Kibana.Namespace
+	name := b.Kibana.Name
+	children := []child{
+		{
+			parent: "Kibana",
+			key:    client.ObjectKey{Namespace: ns, Name: kbcontroller.Deployment(name)},
+			obj:    func() runtime.Object { return &appsv1.Deployment{} },
+		},
+		{
+			parent: "Kibana",
+			key:    client.ObjectKey{Namespace: ns, Name: kbcontroller.SecretName(b.Kibana)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+		{
+			parent: "Kibana",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.CAInternalSecretName(kbcontroller.Namer, name, certificates.HTTPCAType)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+		{
+			parent: "Kibana",
+			key:    client.ObjectKey{Namespace: ns, Name: kbcontroller.HTTPService(name)},
+			obj:    func() runtime.Object { return &corev1.Service{} },
+		},
+		{
+			parent: "Kibana",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.InternalCertsSecretName(kbcontroller.Namer, name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+		{
+			parent: "Kibana",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.PublicCertsSecretName(kbcontroller.Namer, name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+	}
+
+	return children
 }
 
 func expectedChidrenForAPMServer(b apmserver.Builder) []child {
-	return nil
+	ns := b.ApmServer.Namespace
+	name := b.ApmServer.Name
+	children := []child{
+		{
+			parent: "APMServer",
+			key:    client.ObjectKey{Namespace: ns, Name: apmcontroller.Config(name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+		{
+			parent: "APMServer",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.CAInternalSecretName(apmcontroller.Namer, name, certificates.HTTPCAType)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+		{
+			parent: "APMServer",
+			key:    client.ObjectKey{Namespace: ns, Name: apmcontroller.HTTPService(name)},
+			obj:    func() runtime.Object { return &corev1.Service{} },
+		},
+		{
+			parent: "APMServer",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.InternalCertsSecretName(apmcontroller.Namer, name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+		{
+			parent: "APMServer",
+			key:    client.ObjectKey{Namespace: ns, Name: certificates.PublicCertsSecretName(apmcontroller.Namer, name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+		{
+			parent: "APMServer",
+			key:    client.ObjectKey{Namespace: ns, Name: apmcontroller.Deployment(name)},
+			obj:    func() runtime.Object { return &appsv1.Deployment{} },
+		},
+		{
+			parent: "APMServer",
+			key:    client.ObjectKey{Namespace: ns, Name: apmcontroller.SecretToken(name)},
+			obj:    func() runtime.Object { return &corev1.Secret{} },
+		},
+	}
+
+	return children
 }
 
 type child struct {
-	key client.ObjectKey
-	obj func() runtime.Object
+	parent string
+	key    client.ObjectKey
+	obj    func() runtime.Object
 }
 
-func (c child) getMetadata(t *testing.T, k *test.K8sClient) metadata.Metadata {
+func (c child) identifier() string {
+	return fmt.Sprintf("%s/%s", c.parent, c.key.String())
+}
+
+func (c child) metadata(t *testing.T, k *test.K8sClient) metadata.Metadata {
 	t.Helper()
-	t.Logf("Getting %s", c.key.String())
+	t.Logf("Getting %s", c.identifier())
 
 	obj := c.obj()
+
 	err := k.Client.Get(c.key, obj)
 	require.NoError(t, err, "Failed to get object")
 

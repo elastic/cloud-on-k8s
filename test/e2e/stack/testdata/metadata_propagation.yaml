@@ -48,25 +48,28 @@ spec:
         my-template-ann: my-template-ann-value
   elasticsearchRef:
     name: "test-meta-prop-{{ .Suffix }}"
-    #---
-    #apiVersion: apm.k8s.elastic.co/v1
-    #kind: ApmServer
-    #metadata:
-    #  name: "test-meta-prop-{{ .Suffix }}"
-    #  labels:
-    #    my-label: my-label-value
-    #  annotations:
-    #    eck.k8s.elastic.co/propagate-annotations: "{{ .PropagateAnnotations }}"
-    #    eck.k8s.elastic.co/propagate-labels: "{{ .PropagateLabels }}"
-    #    my-annotation: my-annotation-value
-    #spec:
-    #  version: 7.7.0
-    #  count: 1
-    #  podTemplate:
-    #    metadata:
-    #      labels:
-    #        my-template-label: my-template-label-value
-    #      annotations:
-    #        my-template-ann: my-template-ann-value
-    #  elasticsearchRef:
-    #    name: "test-meta-prop-{{ .Suffix }}"
+---
+apiVersion: apm.k8s.elastic.co/v1
+kind: ApmServer
+metadata:
+  name: "test-meta-prop-{{ .Suffix }}"
+  labels:
+    my-label: my-label-value
+  annotations:
+    eck.k8s.elastic.co/propagate-annotations: "*"
+    eck.k8s.elastic.co/propagate-labels: "*"
+    my-annotation: my-annotation-value
+spec:
+  version: 7.7.0
+  count: 1
+  podTemplate:
+    metadata:
+      labels:
+        my-template-label: my-template-label-value
+      annotations:
+        my-template-ann: my-template-ann-value
+  elasticsearchRef:
+    name: "test-meta-prop-{{ .Suffix }}"
+  config:
+    apm-server.ilm.enabled: false
+    setup.template.settings.index.number_of_replicas: 0

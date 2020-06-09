@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -81,12 +82,11 @@ func (r Reconciler) ReconcileInternalHTTPCerts(ca *CA) (*CertificatesSecret, err
 	needsUpdate := false
 
 	// check whether labels and annotations need to be updated
-	labelsToAdd := maps.MergePreservingExistingKeys(maps.Clone(secret.Labels), r.Metadata.Labels)
-	annotationsToAdd := maps.MergePreservingExistingKeys(maps.Clone(secret.Annotations), r.Metadata.Annotations)
+	mergedMeta := r.Metadata.Merge(metadata.Metadata{Annotations: secret.Annotations, Labels: secret.Labels})
 
-	if !maps.Equal(labelsToAdd, secret.Labels) || !maps.Equal(annotationsToAdd, secret.Annotations) {
-		secret.Labels = labelsToAdd
-		secret.Annotations = annotationsToAdd
+	if !maps.Equal(mergedMeta.Labels, secret.Labels) || !maps.Equal(mergedMeta.Annotations, secret.Annotations) {
+		secret.Labels = mergedMeta.Labels
+		secret.Annotations = mergedMeta.Annotations
 		needsUpdate = true
 	}
 

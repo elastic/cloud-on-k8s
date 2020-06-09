@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	common "github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
@@ -148,7 +149,8 @@ func TestReconcileConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ReconcileConfig(tt.client, tt.es, tt.ssetName, tt.config); (err != nil) != tt.wantErr {
+			meta := metadata.Propagate(&tt.es, metadata.Metadata{Labels: label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&tt.es), tt.ssetName)})
+			if err := ReconcileConfig(tt.client, tt.es, tt.ssetName, tt.config, meta); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// config in the apiserver should be the expected one

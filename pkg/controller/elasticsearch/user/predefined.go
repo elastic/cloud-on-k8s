@@ -13,8 +13,8 @@ import (
 
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user/filerealm"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -30,7 +30,7 @@ const (
 )
 
 // reconcileElasticUser reconciles a single secret holding the "elastic" user password.
-func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm) (users, error) {
+func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm, meta metadata.Metadata) (users, error) {
 	return reconcilePredefinedUsers(
 		c,
 		es,
@@ -39,11 +39,12 @@ func reconcileElasticUser(c k8s.Client, es esv1.Elasticsearch, existingFileRealm
 			{Name: ElasticUserName, Roles: []string{SuperUserBuiltinRole}},
 		},
 		esv1.ElasticUserSecret(es.Name),
+		meta,
 	)
 }
 
 // reconcileInternalUsers reconciles a single secret holding the internal users passwords.
-func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm) (users, error) {
+func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRealm filerealm.Realm, meta metadata.Metadata) (users, error) {
 	return reconcilePredefinedUsers(
 		c,
 		es,
@@ -52,7 +53,9 @@ func reconcileInternalUsers(c k8s.Client, es esv1.Elasticsearch, existingFileRea
 			{Name: ControllerUserName, Roles: []string{SuperUserBuiltinRole}},
 			{Name: ProbeUserName, Roles: []string{ProbeUserRole}},
 		},
-		esv1.InternalUsersSecret(es.Name))
+		esv1.InternalUsersSecret(es.Name),
+		meta,
+	)
 }
 
 // reconcilePredefinedUsers reconciles a secret with the given name holding the given users.
@@ -63,6 +66,7 @@ func reconcilePredefinedUsers(
 	existingFileRealm filerealm.Realm,
 	users users,
 	secretName string,
+	meta metadata.Metadata,
 ) (users, error) {
 	secretNsn := types.NamespacedName{Namespace: es.Namespace, Name: secretName}
 
@@ -83,11 +87,14 @@ func reconcilePredefinedUsers(
 		secretData[u.Name] = u.Password
 	}
 
+	md := meta.Merge(metadata.Metadata{Labels: common.AddCredentialsLabel(nil)})
+
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: secretNsn.Namespace,
-			Name:      secretNsn.Name,
-			Labels:    common.AddCredentialsLabel(label.NewLabels(k8s.ExtractNamespacedName(&es))),
+			Namespace:   secretNsn.Namespace,
+			Name:        secretNsn.Name,
+			Labels:      md.Labels,
+			Annotations: md.Annotations,
 		},
 		Data: secretData,
 	}

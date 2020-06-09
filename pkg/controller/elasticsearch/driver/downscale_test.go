@@ -915,8 +915,9 @@ func Test_doDownscale_zen1MinimumMasterNodes(t *testing.T) {
 func Test_deleteStatefulSetResources(t *testing.T) {
 	es := esv1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "cluster"}}
 	sset := sset.TestSset{Namespace: "ns", Name: "sset", ClusterName: es.Name}.Build()
-	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"))
+
 	meta := metadata.Metadata{}
+	cfg := settings.ConfigSecret(es, sset.Name, []byte("fake config data"), meta)
 	svc := nodespec.HeadlessService(&es, sset.Name, meta)
 
 	tests := []struct {
