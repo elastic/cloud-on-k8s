@@ -18,6 +18,7 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/daemonset"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/metadata"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
@@ -95,7 +96,7 @@ func reconcileDeployment(rp ReconciliationParams) (int32, int32, error) {
 		Name:            Name(rp.beat.Name, rp.beat.Spec.Type),
 		Namespace:       rp.beat.Namespace,
 		Selector:        NewLabels(rp.beat),
-		Labels:          NewLabels(rp.beat),
+		Meta:            metadata.Metadata{Labels: NewLabels(rp.beat)},
 		PodTemplateSpec: rp.podTemplate,
 		Replicas:        pointer.Int32OrDefault(rp.beat.Spec.Deployment.Replicas, int32(1)),
 	})
