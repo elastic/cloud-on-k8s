@@ -162,6 +162,10 @@ func (b Builder) RuntimeObjects() []runtime.Object {
 }
 
 func (b Builder) RUMEnabled() bool {
+	if b.ApmServer.Spec.Config == nil || b.ApmServer.Spec.Config.Data == nil {
+		return false
+	}
+
 	rumEnabledConfig, ok := b.ApmServer.Spec.Config.Data["apm-server.rum.enabled"]
 	if ok {
 		if v, ok := rumEnabledConfig.(bool); ok {
