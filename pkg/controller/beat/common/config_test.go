@@ -39,7 +39,8 @@ func Test_buildBeatConfig(t *testing.T) {
 	defaultConfig := settings.MustParseConfig([]byte("default: true"))
 	userConfig := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
 	userCanonicalConfig := settings.MustCanonicalConfig(userConfig.Data)
-	outputCAYaml := settings.MustParseConfig([]byte("output.elasticsearch.ssl.certificate_authorities: /mnt/elastic-internal/es-certs/ca.crt"))
+	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities: 
+   - /mnt/elastic-internal/elasticsearch-certs/ca.crt`))
 	outputYaml := settings.MustParseConfig([]byte(`output:
   elasticsearch:
     hosts:
@@ -53,7 +54,8 @@ func Test_buildBeatConfig(t *testing.T) {
 			Namespace: "ns",
 		},
 	}
-	withAssociation.SetAssociationConf(&commonv1.AssociationConf{
+	esAssoc := beatv1beta1.BeatESAssociation{Beat: &withAssociation}
+	esAssoc.SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "secret",
 		AuthSecretKey:  "elastic",
 		CACertProvided: false,
@@ -61,7 +63,9 @@ func Test_buildBeatConfig(t *testing.T) {
 		URL:            "url",
 	})
 	withAssociationWithCA := *withAssociation.DeepCopy()
-	withAssociationWithCA.AssociationConf().CACertProvided = true
+
+	esAssocWithCA := beatv1beta1.BeatESAssociation{Beat: &withAssociationWithCA}
+	esAssocWithCA.AssociationConf().CACertProvided = true
 
 	withAssociationWithCAAndConfig := *withAssociationWithCA.DeepCopy()
 	withAssociationWithCAAndConfig.Spec.Config = userConfig

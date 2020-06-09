@@ -25,6 +25,10 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	ElasticsearchRef commonv1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
+	// KibanaRef is a reference to a Kibana instance running in the same Kubernetes cluster.
+	// It allows automatic setup of dashboards and visualizations.
+	KibanaRef commonv1.ObjectSelector `json:"kibanaRef,omitempty"`
+
 	// Image is the Beat Docker image to deploy. Version and Type have to match the Beat in the image.
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
@@ -70,7 +74,10 @@ type BeatStatus struct {
 	Health BeatHealth `json:"health,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	Association commonv1.AssociationStatus `json:"associationStatus,omitempty"`
+	ElasticsearchAssociation commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
+
+	// +kubebuilder:validation:Optional
+	KibanaAssocation commonv1.AssociationStatus `json:"kibanaAssocationStatus,omitempty"`
 }
 
 type BeatHealth string
@@ -106,32 +113,111 @@ type Beat struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec      BeatSpec                  `json:"spec,omitempty"`
-	Status    BeatStatus                `json:"status,omitempty"`
-	assocConf *commonv1.AssociationConf `json:"-"` //nolint:govet
+	Spec        BeatSpec                  `json:"spec,omitempty"`
+	Status      BeatStatus                `json:"status,omitempty"`
+	esAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
+	kbAssocConf *commonv1.AssociationConf `json:"-"` // nolint:govet
 }
 
-func (b *Beat) Associated() commonv1.Associated {
-	if b != nil {
-		return b
+var _ commonv1.Associated = &Beat{}
+
+func (b *Beat) GetAssociations() []commonv1.Association {
+	return []commonv1.Association{
+		&BeatESAssociation{Beat: b},
+		&BeatKibanaAssociation{Beat: b},
 	}
-	return &Beat{}
 }
 
-func (b *Beat) AssociatedType() string {
+func (b *Beat) ServiceAccountName() string {
+	return b.Spec.ServiceAccountName
+}
+
+type BeatESAssociation struct {
+	*Beat
+}
+
+var _ commonv1.Association = &BeatESAssociation{}
+
+func (b *BeatESAssociation) Associated() commonv1.Associated {
+	if b == nil {
+		return nil
+	}
+	if b.Beat == nil {
+		b.Beat = &Beat{}
+	}
+	return b.Beat
+}
+
+func (b *BeatESAssociation) AssociatedType() string {
 	return commonv1.ElasticsearchAssociationType
 }
 
-func (b *Beat) AssociationRef() commonv1.ObjectSelector {
+func (b *BeatESAssociation) AssociationRef() commonv1.ObjectSelector {
 	return b.Spec.ElasticsearchRef.WithDefaultNamespace(b.Namespace)
 }
 
-func (b *Beat) AssociationConfAnnotationName() string {
+func (b *BeatESAssociation) AssociationConfAnnotationName() string {
 	return commonv1.ElasticsearchConfigAnnotationName
 }
 
-func (b *Beat) GetAssociations() []commonv1.Association {
-	return []commonv1.Association{b}
+func (b *BeatESAssociation) AssociationConf() *commonv1.AssociationConf {
+	return b.esAssocConf
+}
+
+func (b *BeatESAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
+	b.esAssocConf = conf
+}
+
+func (b *BeatESAssociation) AssociationStatus() commonv1.AssociationStatus {
+	return b.Status.ElasticsearchAssociation
+}
+
+func (b *BeatESAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
+	b.Status.ElasticsearchAssociation = status
+}
+
+type BeatKibanaAssociation struct {
+	*Beat
+}
+
+var _ commonv1.Association = &BeatKibanaAssociation{}
+
+func (b *BeatKibanaAssociation) AssociationConf() *commonv1.AssociationConf {
+	return b.kbAssocConf
+}
+
+func (b *BeatKibanaAssociation) SetAssociationConf(conf *commonv1.AssociationConf) {
+	b.kbAssocConf = conf
+}
+
+func (b *BeatKibanaAssociation) AssociationStatus() commonv1.AssociationStatus {
+	return b.Status.KibanaAssocation
+}
+
+func (b *BeatKibanaAssociation) SetAssociationStatus(status commonv1.AssociationStatus) {
+	b.Status.KibanaAssocation = status
+}
+
+func (b *BeatKibanaAssociation) Associated() commonv1.Associated {
+	if b == nil {
+		return nil
+	}
+	if b.Beat == nil {
+		b.Beat = &Beat{}
+	}
+	return b.Beat
+}
+
+func (b *BeatKibanaAssociation) AssociatedType() string {
+	return commonv1.KibanaAssociationType
+}
+
+func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
+	return b.Spec.KibanaRef.WithDefaultNamespace(b.Namespace)
+}
+
+func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
+	return commonv1.KibanaConfigAnnotationName
 }
 
 // IsMarkedForDeletion returns true if the Beat is going to be deleted
@@ -139,32 +225,9 @@ func (b *Beat) IsMarkedForDeletion() bool {
 	return !b.DeletionTimestamp.IsZero()
 }
 
-func (b *Beat) ServiceAccountName() string {
-	return b.Spec.ServiceAccountName
-}
-
 func (b *Beat) ElasticsearchRef() commonv1.ObjectSelector {
 	return b.Spec.ElasticsearchRef
 }
-
-func (b *Beat) AssociationConf() *commonv1.AssociationConf {
-	return b.assocConf
-}
-
-func (b *Beat) SetAssociationConf(assocConf *commonv1.AssociationConf) {
-	b.assocConf = assocConf
-}
-
-func (b *Beat) AssociationStatus() commonv1.AssociationStatus {
-	return b.Status.Association
-}
-
-func (b *Beat) SetAssociationStatus(status commonv1.AssociationStatus) {
-	b.Status.Association = status
-}
-
-var _ commonv1.Associated = &Beat{}
-var _ commonv1.Association = &Beat{}
 
 // +kubebuilder:object:root=true
 

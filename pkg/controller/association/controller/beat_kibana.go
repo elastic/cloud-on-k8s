@@ -5,11 +5,8 @@
 package controller
 
 import (
-	"strconv"
-
-	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
-	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
@@ -17,31 +14,29 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
+func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociatedShortName:    "apm",
-		AssociationObjTemplate: func() commonv1.Association { return &apmv1.ApmKibanaAssociation{} },
-		ExternalServiceURL:     getKibanaExternalURL,
+		AssociationObjTemplate: func() commonv1.Association { return &beatv1beta1.BeatKibanaAssociation{} },
 		ElasticsearchRef:       getElasticsearchFromKibana,
+		ExternalServiceURL:     getKibanaExternalURL,
 		AssociatedNamer:        kibana.Namer,
-		AssociationName:        "apm-kibana",
+		AssociationName:        "beat-kibana",
+		AssociatedShortName:    "beat",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				ApmAssociationLabelName:      associated.Name,
-				ApmAssociationLabelNamespace: associated.Namespace,
-				ApmAssociationLabelType:      "kibana",
+				BeatAssociationLabelName:      associated.Name,
+				BeatAssociationLabelNamespace: associated.Namespace,
+				BeatAssociationLabelType:      commonv1.KibanaAssociationType,
 			}
 		},
-		UserSecretSuffix:  "apm-kb-user",
+		UserSecretSuffix:  "beat-kb-user",
 		CASecretLabelName: kibana.KibanaNameLabelName,
-		ESUserRole: func(_ commonv1.Associated) (string, error) {
-			return user.ApmAgentUserRole, nil
+		ESUserRole: func(commonv1.Associated) (string, error) {
+			return user.SuperUserBuiltinRole, nil
 		},
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
 			kibanaKey := association.AssociationRef().NamespacedName()
@@ -60,35 +55,4 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			w.Kibanas.RemoveHandlerForKey(watchName)
 		},
 	})
-}
-
-func getKibanaExternalURL(c k8s.Client, association commonv1.Association) (string, error) {
-	kibanaRef := association.AssociationRef()
-	if !kibanaRef.IsDefined() {
-		return "", nil
-	}
-	kb := kbv1.Kibana{}
-	if err := c.Get(kibanaRef.NamespacedName(), &kb); err != nil {
-		return "", err
-	}
-	return stringsutil.Concat(kb.Spec.HTTP.Protocol(), "://", kibana.HTTPService(kb.Name), ".", kb.Namespace, ".svc:", strconv.Itoa(kibana.HTTPPort)), nil
-}
-
-// getElasticsearchFromKibana returns the Elasticsearch reference in which the user must be created for this association.
-func getElasticsearchFromKibana(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
-	kibanaRef := association.AssociationRef()
-	if !kibanaRef.IsDefined() {
-		return false, commonv1.ObjectSelector{}, nil
-	}
-
-	kb := kbv1.Kibana{}
-	err := c.Get(kibanaRef.NamespacedName(), &kb)
-	if errors.IsNotFound(err) {
-		return false, commonv1.ObjectSelector{}, nil
-	}
-	if err != nil {
-		return false, commonv1.ObjectSelector{}, err
-	}
-
-	return true, kb.AssociationRef(), nil
 }

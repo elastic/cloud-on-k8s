@@ -12160,6 +12160,21 @@ spec:
               description: Image is the Beat Docker image to deploy. Version and Type
                 have to match the Beat in the image.
               type: string
+            kibanaRef:
+              description: KibanaRef is a reference to a Kibana instance running in
+                the same Kubernetes cluster. It allows APM agent central configuration
+                management in Kibana.
+              properties:
+                name:
+                  description: Name of the Kubernetes object.
+                  type: string
+                namespace:
+                  description: Namespace of the Kubernetes object. If empty, defaults
+                    to the current namespace.
+                  type: string
+              required:
+              - name
+              type: object
             serviceAccountName:
               description: ServiceAccountName is used to check access from the current
                 resource to Elasticsearch resource in a different namespace. Can only
@@ -12181,16 +12196,19 @@ spec:
         status:
           description: BeatStatus defines the observed state of a Beat.
           properties:
-            associationStatus:
-              description: AssociationStatus is the status of an association resource.
-              type: string
             availableNodes:
               format: int32
               type: integer
+            elasticsearchAssociationStatus:
+              description: AssociationStatus is the status of an association resource.
+              type: string
             expectedNodes:
               format: int32
               type: integer
             health:
+              type: string
+            kibanaAssocationStatus:
+              description: AssociationStatus is the status of an association resource.
               type: string
           type: object
       type: object

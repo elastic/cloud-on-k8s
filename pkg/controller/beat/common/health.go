@@ -10,9 +10,11 @@ import (
 )
 
 // CalculateHealth returns health of the Beat based on association status, desired count and ready count.
-func CalculateHealth(associated v1.Association, ready, desired int32) beatv1beta1.BeatHealth {
-	if associated.AssociationConf().IsConfigured() && associated.AssociationStatus() != v1.AssociationEstablished {
-		return beatv1beta1.BeatRedHealth
+func CalculateHealth(associated []v1.Association, ready, desired int32) beatv1beta1.BeatHealth {
+	for _, assoc := range associated {
+		if assoc.AssociationConf().IsConfigured() && assoc.AssociationStatus() != v1.AssociationEstablished {
+			return beatv1beta1.BeatRedHealth
+		}
 	}
 
 	switch {

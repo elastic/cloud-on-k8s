@@ -16,6 +16,9 @@ const (
 	ElasticsearchConfigAnnotationName = "association.k8s.elastic.co/es-conf"
 	ElasticsearchAssociationType      = "elasticsearch"
 
+	KibanaAssociationType      = "kibana"
+	KibanaConfigAnnotationName = "association.k8s.elastic.co/kb-conf"
+
 	AssociationUnknown     AssociationStatus = ""
 	AssociationPending     AssociationStatus = "Pending"
 	AssociationEstablished AssociationStatus = "Established"

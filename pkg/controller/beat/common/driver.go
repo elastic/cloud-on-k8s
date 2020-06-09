@@ -76,7 +76,7 @@ func Reconcile(
 	}
 
 	// we need to deref the secret here (if any) to include it in the configHash otherwise Beat will not be rolled on content changes
-	if err := commonassociation.WriteAssocToConfigHash(params.Client, &params.Beat, configHash); err != nil {
+	if err := commonassociation.WriteAssocsToConfigHash(params.Client, params.Beat.GetAssociations(), configHash); err != nil {
 		return results.WithError(err)
 	}
 

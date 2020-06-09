@@ -29,7 +29,7 @@ const (
 	// ApmAssociationLabelNamespace marks resources created for an association originating from APM.
 	ApmAssociationLabelNamespace = "apmassociation.k8s.elastic.co/namespace"
 	// ApmAssociationLabelNamespace marks resources created for an association originating from APM.
-	ApmAssociationTypeLabelNamespace = "apmassociation.k8s.elastic.co/type"
+	ApmAssociationLabelType = "apmassociation.k8s.elastic.co/type"
 )
 
 func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
@@ -44,9 +44,9 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		AssociationName:    "apm-es",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				ApmAssociationLabelName:          associated.Name,
-				ApmAssociationLabelNamespace:     associated.Namespace,
-				ApmAssociationTypeLabelNamespace: commonv1.ElasticsearchAssociationType,
+				ApmAssociationLabelName:      associated.Name,
+				ApmAssociationLabelNamespace: associated.Namespace,
+				ApmAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
 		UserSecretSuffix:  "apm-user",
