@@ -12,7 +12,7 @@ var (
   autodiscover:
     providers:
     - type: kubernetes
-      node: ${NODE_NAME}
+      host: ${NODE_NAME}
       hints:
         enabled: true
         default_config:
