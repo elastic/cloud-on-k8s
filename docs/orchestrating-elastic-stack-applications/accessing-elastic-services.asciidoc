@@ -33,6 +33,8 @@ To access Elasticsearch, Kibana or APM Server, the operator manages a default us
 42xyz42citsale42xyz42
 ----
 
+NOTE: Beware of copying this Secret as-is into a different namespace. See <<{p}-common-problems-owner-refs, Common Problems: Owner References>> for more information.
+
 [id="{p}-services"]
 == Services
 
