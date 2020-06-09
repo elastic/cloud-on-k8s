@@ -17,19 +17,19 @@ import (
 )
 
 const (
-			cfgInvalidMsg            = "Configuration invalid"
-			masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
-			parseVersionErrMsg       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-			parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
-			invalidSanIPErrMsg       = "Invalid SAN IP address. Must be a valid IPv4 address"
-			pvcImmutableMsg          = "Volume claim templates cannot be modified"
-			invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
-			unsupportedVersionErrMsg = "Unsupported version"
-			unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
-			duplicateNodeSets        = "NodeSet names must be unique"
-			noDowngradesMsg          = "Downgrades are not supported"
-			unsupportedVersionMsg    = "Unsupported version"
-			unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
+	cfgInvalidMsg            = "Configuration invalid"
+	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
+	parseVersionErrMsg       = "Cannot parse Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version. String format must be {major}.{minor}.{patch}[-{label}]"
+	invalidSanIPErrMsg       = "Invalid SAN IP address. Must be a valid IPv4 address"
+	pvcImmutableMsg          = "Volume claim templates cannot be modified"
+	invalidNamesErrMsg       = "Elasticsearch configuration would generate resources with invalid names"
+	unsupportedVersionErrMsg = "Unsupported version"
+	unsupportedConfigErrMsg  = "Configuration setting is reserved for internal use. User-configured use is unsupported"
+	duplicateNodeSets        = "NodeSet names must be unique"
+	noDowngradesMsg          = "Downgrades are not supported"
+	unsupportedVersionMsg    = "Unsupported version"
+	unsupportedUpgradeMsg    = "Unsupported version upgrade path. Check the Elasticsearch documentation for supported upgrade paths."
 )
 
 type validation func(*Elasticsearch) field.ErrorList
