@@ -150,7 +150,7 @@ type PartialConfig struct {
 	} `yaml:"app_search"`
 	Email struct {
 		Account struct {
-			Smtp struct {
+			SMTP struct {
 				Password string `yaml:"password"`
 			} `yaml:"smtp"`
 		} `yaml:"account"`

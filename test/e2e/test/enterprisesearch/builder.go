@@ -11,8 +11,13 @@ import (
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+)
+
+var (
+	minVersion = version.MustParse("7.7.0")
 )
 
 // Builder to create Enterprise Search.
@@ -22,6 +27,12 @@ type Builder struct {
 }
 
 var _ test.Builder = Builder{}
+
+func (b Builder) SkipTest() bool {
+	// no Enterprise Search before 7.7.0
+	testVersion := version.MustParse(test.Ctx().ElasticStackVersion)
+	return !testVersion.IsSameOrAfter(minVersion)
+}
 
 func NewBuilder(name string) Builder {
 	return newBuilder(name, rand.String(4))
