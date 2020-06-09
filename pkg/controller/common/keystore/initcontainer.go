@@ -68,6 +68,17 @@ func initContainer(
 		return corev1.Container{}, err
 	}
 
+	volumeMounts := []corev1.VolumeMount{
+		// access secure settings
+		secureSettingsSecret.VolumeMount(),
+	}
+
+	// caller might be already taking care of the right mount and volume
+	if parameters.DataVolumePath != "" {
+		// volume mount to write the keystore in the data volume
+		volumeMounts = append(volumeMounts, DataVolume(volumePrefix, parameters.DataVolumePath).VolumeMount())
+	}
+
 	return corev1.Container{
 		// Image will be inherited from pod template defaults Kibana Docker image
 		ImagePullPolicy: corev1.PullIfNotPresent,
@@ -75,13 +86,8 @@ func initContainer(
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
-		Command: []string{"/usr/bin/env", "bash", "-c", tplBuffer.String()},
-		VolumeMounts: []corev1.VolumeMount{
-			// access secure settings
-			secureSettingsSecret.VolumeMount(),
-			// write the keystore in the data volume
-			DataVolume(volumePrefix, parameters.DataVolumePath).VolumeMount(),
-		},
-		Resources: parameters.Resources,
+		Command:      []string{"/usr/bin/env", "bash", "-c", tplBuffer.String()},
+		VolumeMounts: volumeMounts,
+		Resources:    parameters.Resources,
 	}, nil
 }
