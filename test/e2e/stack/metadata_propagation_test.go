@@ -35,6 +35,7 @@ import (
 func TestMetadataPropagation(t *testing.T) {
 	builders := mkMetadataPropBuilders(t)
 
+	// nolint:prealloc
 	var children []child
 	for _, b := range builders {
 		children = append(children, expectedChildren(b)...)
