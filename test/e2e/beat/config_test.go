@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -20,7 +21,16 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
+func skipUnsupportedVersion(t *testing.T) {
+	ver := version.MustParse(test.Ctx().ElasticStackVersion)
+	if version.SupportedBeatVersions.WithinRange(ver) != nil {
+		t.SkipNow()
+	}
+}
+
 func TestFilebeatDefaultConfig(t *testing.T) {
+	skipUnsupportedVersion(t)
+
 	name := "test-fb-default-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -39,6 +49,8 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 }
 
 func TestMetricbeatDefaultConfig(t *testing.T) {
+	skipUnsupportedVersion(t)
+
 	name := "test-mb-default-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -63,6 +75,8 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 }
 
 func TestHeartbeatConfig(t *testing.T) {
+	skipUnsupportedVersion(t)
+
 	name := "test-hb-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
