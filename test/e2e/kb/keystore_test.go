@@ -56,8 +56,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 					// remove if already exists (ignoring errors)
 					_ = k.Client.Delete(&secureSettings)
 					// and create a fresh one
-					err := k.Client.Create(&secureSettings)
-					require.NoError(t, err)
+					require.NoError(t, k.Client.Create(&secureSettings))
 				},
 			},
 		}

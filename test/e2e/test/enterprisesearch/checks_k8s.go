@@ -27,7 +27,7 @@ func (b Builder) CheckK8sTestSteps(k *test.K8sClient) test.StepList {
 	}
 }
 
-// CheckApmServerDeployment checks the Deployment resource exists
+// CheckDeployment checks the Deployment resource exists
 func CheckDeployment(b Builder, k *test.K8sClient) test.Step {
 	return test.Step{
 		Name: "EnterpriseSearch deployment should be created",
@@ -63,9 +63,9 @@ func CheckPods(b Builder, k *test.K8sClient) test.Step {
 			}
 
 			// builder hash matches
-			goodBuilderHash := hash.HashObject(b.EnterpriseSearch.Spec)
+			expectedBuilderHash := hash.HashObject(b.EnterpriseSearch.Spec)
 			for _, pod := range pods.Items {
-				if err := test.ValidateBuilderHashAnnotation(pod, goodBuilderHash); err != nil {
+				if err := test.ValidateBuilderHashAnnotation(pod, expectedBuilderHash); err != nil {
 					return err
 				}
 			}
