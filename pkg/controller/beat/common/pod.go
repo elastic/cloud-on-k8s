@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	CABaseMountPath = "/mnt/elastic-internal/"
-	CAFileName      = "ca.crt"
+	CAFileName = "ca.crt"
 
 	ConfigVolumeName = "config"
 	ConfigMountPath  = "/etc/beat.yml"
@@ -52,7 +51,7 @@ var (
 )
 
 func certificatesDir(association commonv1.Association) string {
-	return fmt.Sprintf("%s/%s-certs", CABaseMountPath, association.AssociatedType())
+	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociatedType())
 }
 
 func buildPodTemplate(
