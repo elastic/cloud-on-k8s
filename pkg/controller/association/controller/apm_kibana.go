@@ -35,7 +35,7 @@ func AddApmKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, param
 			return map[string]string{
 				ApmAssociationLabelName:      associated.Name,
 				ApmAssociationLabelNamespace: associated.Namespace,
-				ApmAssociationLabelType:      "kibana",
+				ApmAssociationLabelType:      commonv1.KibanaAssociationType,
 			}
 		},
 		UserSecretSuffix:  "apm-kb-user",

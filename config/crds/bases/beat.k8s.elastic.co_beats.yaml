@@ -12207,7 +12207,7 @@ spec:
               type: integer
             health:
               type: string
-            kibanaAssocationStatus:
+            kibanaAssociationStatus:
               description: AssociationStatus is the status of an association resource.
               type: string
           type: object

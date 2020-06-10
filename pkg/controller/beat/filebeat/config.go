@@ -29,12 +29,12 @@ processors:
 `))
 )
 
-func (d *Driver) configParams() (common.DefaultConfigs, error) {
+func (d *Driver) defaultConfig() (common.DefaultConfig, error) {
 	kibanaConfig, err := common.BuildKibanaConfig(d.Client, v1beta1.BeatKibanaAssociation{Beat: &d.Beat})
 	if err != nil {
-		return common.DefaultConfigs{}, err
+		return common.DefaultConfig{}, err
 	}
-	return common.DefaultConfigs{
+	return common.DefaultConfig{
 		Managed:   kibanaConfig,
 		Unmanaged: defaultConfig,
 	}, nil

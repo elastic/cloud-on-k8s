@@ -62,14 +62,14 @@ func (d *Driver) Reconcile() *reconciler.Results {
 		builder.WithArgs("-e", "-c", beatcommon.ConfigMountPath, "-system.hostfs=/hostfs")
 	}
 
-	defaultConfigs, err := d.configParams()
+	defaultConfig, err := d.defaultConfig()
 	if err != nil {
 		return reconciler.NewResult(d.DriverParams.Context).WithError(err)
 	}
 
 	return beatcommon.Reconcile(
 		d.DriverParams,
-		defaultConfigs,
+		defaultConfig,
 		container.MetricbeatImage,
 		f)
 }

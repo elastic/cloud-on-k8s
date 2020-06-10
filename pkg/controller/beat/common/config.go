@@ -20,14 +20,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-type DefaultConfigs struct {
+type DefaultConfig struct {
 	// Managed config is handled by ECK and will not be nullified by user provided config.
 	Managed *settings.CanonicalConfig
 	// Unmanaged config is default config that will be overridden by any user provided config.
 	Unmanaged *settings.CanonicalConfig
 }
 
-// setOutput will set the output section in Beat config according to the association configuration.
+// buildOutputConfig will create the output section in Beat config according to the association configuration.
 func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
 	if !associated.AssociationConf().IsConfigured() {
 		return settings.NewCanonicalConfig(), nil
@@ -50,7 +50,7 @@ func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociati
 		esOutput["output.elasticsearch.ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
 	}
 
-	return settings.MustCanonicalConfig(esOutput), nil
+	return settings.NewCanonicalConfigFrom(esOutput)
 }
 
 // BuildKibanaConfig builds on optional Kibana configuration for dashboard setup and visualizations.
@@ -76,14 +76,14 @@ func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssoc
 	if associated.AssociationConf().GetCACertProvided() {
 		kibanaCfg["setup.kibana.ssl.certificate_authorities"] = []string{path.Join(certificatesDir(&associated), CAFileName)}
 	}
-	return settings.MustCanonicalConfig(kibanaCfg), nil
+	return settings.NewCanonicalConfigFrom(kibanaCfg)
 }
 
 func buildBeatConfig(
 	log logr.Logger,
 	client k8s.Client,
 	beat beatv1beta1.Beat,
-	defaultConfigs DefaultConfigs,
+	defaultConfig DefaultConfig,
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
@@ -91,14 +91,14 @@ func buildBeatConfig(
 	if err != nil {
 		return nil, err
 	}
-	err = cfg.MergeWith(outputCfg, defaultConfigs.Managed)
+	err = cfg.MergeWith(outputCfg, defaultConfig.Managed)
 	if err != nil {
 		return nil, err
 	}
 	// use only the default config or only the provided config - no overriding, no merging
 	userConfig := beat.Spec.Config
 	if userConfig == nil {
-		if err := cfg.MergeWith(defaultConfigs.Unmanaged); err != nil {
+		if err := cfg.MergeWith(defaultConfig.Unmanaged); err != nil {
 			return nil, err
 		}
 	} else {
@@ -118,10 +118,10 @@ func buildBeatConfig(
 
 func reconcileConfig(
 	params DriverParams,
-	defaultConfigs DefaultConfigs,
+	defaultConfig DefaultConfig,
 	configHash hash.Hash,
 ) error {
-	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, defaultConfigs)
+	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, defaultConfig)
 	if err != nil {
 		return err
 	}

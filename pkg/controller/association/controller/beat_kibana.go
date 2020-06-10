@@ -38,6 +38,8 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		ESUserRole: func(commonv1.Associated) (string, error) {
 			return user.SuperUserBuiltinRole, nil
 		},
+		// The generic association controller watches Elasticsearch by default but we are interested in changes to
+		// Kibana as well for the purposes of establishing the association.
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
 			kibanaKey := association.AssociationRef().NamespacedName()
 			watchName := association.GetNamespace() + "-" + association.GetName() + "-kibana-watch"

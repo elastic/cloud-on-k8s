@@ -55,7 +55,7 @@ func ValidateBeatSpec(spec beatv1beta1.BeatSpec) error {
 
 func Reconcile(
 	params DriverParams,
-	defaultConfigs DefaultConfigs,
+	defaultConfig DefaultConfig,
 	defaultImage container.Image,
 	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
 ) *reconciler.Results {
@@ -70,7 +70,7 @@ func Reconcile(
 	}
 
 	configHash := sha256.New224()
-	if err := reconcileConfig(params, defaultConfigs, configHash); err != nil {
+	if err := reconcileConfig(params, defaultConfig, configHash); err != nil {
 		return results.WithError(err)
 	}
 
