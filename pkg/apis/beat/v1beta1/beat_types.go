@@ -77,7 +77,7 @@ type BeatStatus struct {
 	ElasticsearchAssociation commonv1.AssociationStatus `json:"elasticsearchAssociationStatus,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	KibanaAssocation commonv1.AssociationStatus `json:"kibanaAssocationStatus,omitempty"`
+	KibanaAssocation commonv1.AssociationStatus `json:"kibanaAssociationStatus,omitempty"`
 }
 
 type BeatHealth string
@@ -130,6 +130,15 @@ func (b *Beat) GetAssociations() []commonv1.Association {
 
 func (b *Beat) ServiceAccountName() string {
 	return b.Spec.ServiceAccountName
+}
+
+// IsMarkedForDeletion returns true if the Beat is going to be deleted
+func (b *Beat) IsMarkedForDeletion() bool {
+	return !b.DeletionTimestamp.IsZero()
+}
+
+func (b *Beat) ElasticsearchRef() commonv1.ObjectSelector {
+	return b.Spec.ElasticsearchRef
 }
 
 type BeatESAssociation struct {
@@ -218,15 +227,6 @@ func (b *BeatKibanaAssociation) AssociationRef() commonv1.ObjectSelector {
 
 func (b *BeatKibanaAssociation) AssociationConfAnnotationName() string {
 	return commonv1.KibanaConfigAnnotationName
-}
-
-// IsMarkedForDeletion returns true if the Beat is going to be deleted
-func (b *Beat) IsMarkedForDeletion() bool {
-	return !b.DeletionTimestamp.IsZero()
-}
-
-func (b *Beat) ElasticsearchRef() commonv1.ObjectSelector {
-	return b.Spec.ElasticsearchRef
 }
 
 // +kubebuilder:object:root=true
