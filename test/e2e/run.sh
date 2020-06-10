@@ -20,5 +20,5 @@ done
 
 # sleep 1s to allow filebeat to read all logs with 1s max_backoff
 # minimizes race condition in filebeat between reading log file and
-# stopping reading due to pod termination autodiscovery event
+# stopping reading due to pod termination autodiscover event
 sleep 1

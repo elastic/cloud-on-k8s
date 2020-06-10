@@ -13,6 +13,7 @@ import (
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +21,7 @@ import (
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
+	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/deployment"
@@ -41,6 +43,16 @@ var initContainersParameters = keystore.InitContainerParameters{
 	KeystoreAddCommand:            `/usr/share/kibana/bin/kibana-keystore add "$key" --stdin < "$filename"`,
 	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 	DataVolumePath:                DataVolumeMountPath,
+	Resources: corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("128Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+		Limits: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("128Mi"),
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+		},
+	},
 }
 
 // minSupportedVersion is the minimum version of Kibana supported by ECK. Currently this is set to version 6.8.0.
@@ -198,28 +210,15 @@ func (d *driver) deploymentParams(kb *kbv1.Kibana) (deployment.Params, error) {
 	if keystoreResources != nil {
 		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
 	}
-	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
-	if kb.AssociationConf().AuthIsConfigured() {
-		esAuthKey := types.NamespacedName{Name: kb.AssociationConf().GetAuthSecretName(), Namespace: kb.Namespace}
-		esAuthSecret := corev1.Secret{}
-		if err := d.client.Get(esAuthKey, &esAuthSecret); err != nil {
-			return deployment.Params{}, err
-		}
-		_, _ = configChecksum.Write(esAuthSecret.Data[kb.AssociationConf().GetAuthSecretKey()])
+
+	// we need to deref the secret here to include it in the checksum otherwise Kibana will not be rolled on contents changes
+	if err := commonassociation.WriteAssocToConfigHash(d.client, kb, configChecksum); err != nil {
+		return deployment.Params{}, err
 	}
 
 	volumes := []commonvolume.SecretVolume{SecretVolume(*kb)}
 
 	if kb.AssociationConf().CAIsConfigured() {
-		esPublicCAKey := types.NamespacedName{Namespace: kb.Namespace, Name: kb.AssociationConf().GetCASecretName()}
-		var esPublicCASecret corev1.Secret
-		if err := d.client.Get(esPublicCAKey, &esPublicCASecret); err != nil {
-			return deployment.Params{}, err
-		}
-		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
-			_, _ = configChecksum.Write(certPem)
-		}
-
 		esCertsVolume := esCaCertSecretVolume(*kb)
 		volumes = append(volumes, esCertsVolume)
 		for i := range kibanaPodSpec.Spec.InitContainers {

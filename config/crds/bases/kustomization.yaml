@@ -3,3 +3,4 @@ resources:
   - elasticsearch.k8s.elastic.co_elasticsearches.yaml
   - kibana.k8s.elastic.co_kibanas.yaml
   - enterprisesearch.k8s.elastic.co_enterprisesearches.yaml
+  - beat.k8s.elastic.co_beats.yaml

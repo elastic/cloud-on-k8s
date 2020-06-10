@@ -14,6 +14,16 @@ spec:
       # See: https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
       node.store.allow_mmap: false
 ---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kb-apm-sample
+spec:
+  version: 7.7.0
+  count: 1
+  elasticsearchRef:
+    name: "es-apm-sample"
+---
 apiVersion: apm.k8s.elastic.co/v1
 kind: ApmServer
 metadata:
@@ -26,13 +36,3 @@ spec:
   # this allows ECK to configure automatically the Kibana endpoint as described in https://www.elastic.co/guide/en/apm/server/current/setup-kibana-endpoint.html
   kibanaRef:
     name: "kb-apm-sample"
----
-apiVersion: kibana.k8s.elastic.co/v1
-kind: Kibana
-metadata:
-  name: kb-apm-sample
-spec:
-  version: 7.7.0
-  count: 1
-  elasticsearchRef:
-    name: "es-apm-sample"

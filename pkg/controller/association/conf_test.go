@@ -298,6 +298,23 @@ func TestElasticsearchAuthSettings(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "When the auth secret key does not exist",
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+			}),
+			assocConf: commonv1.AssociationConf{
+				AuthSecretName: "apmelasticsearchassociation-sample-elastic-internal-apm",
+				AuthSecretKey:  "bad-key",
+				CASecretName:   "ca-secret",
+				URL:            "https://elasticsearch-sample-es-http.default.svc:9200",
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

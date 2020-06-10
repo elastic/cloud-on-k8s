@@ -36,7 +36,7 @@ func NoUnknownFields(dest runtime.Object, meta metav1.ObjectMeta) field.ErrorLis
 				err := field.Invalid(
 					field.NewPath(fld),
 					fld,
-					fmt.Sprintf("%s field found in the %s annotation is unknown", fld, v1.LastAppliedConfigAnnotation))
+					fmt.Sprintf("%s field found in the %s annotation is unknown. This is often due to incorrect indentation in the manifest.", fld, v1.LastAppliedConfigAnnotation))
 				errs = append(errs, err)
 			}
 		}

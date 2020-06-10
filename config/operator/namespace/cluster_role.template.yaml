@@ -33,6 +33,21 @@ rules:
   - secrets
   - services
   - configmaps
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+# required to allow the operator to bind service accounts it manages
+# to role that holds permissions needed for Beat autodiscover feature
+- apiGroups:
+  - "rbac.authorization.k8s.io"
+  resources:
+  - clusterrolebindings
   verbs:
   - get
   - list
@@ -42,10 +57,19 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterroles
+  verbs:
+  - bind
+  resourceNames:
+  - elastic-beat-autodiscover
+- apiGroups:
   - apps
   resources:
   - deployments
   - statefulsets
+  - daemonsets # used by Beats
   verbs:
   - get
   - list
@@ -129,4 +153,17 @@ rules:
   - update
   - patch
   - delete
-
+- apiGroups:
+  - beat.k8s.elastic.co
+  resources:
+  - beats
+  - beats/status
+  - beats/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete

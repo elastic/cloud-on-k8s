@@ -10,10 +10,13 @@ import (
 	"io"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +36,7 @@ func NewYAMLDecoder() *YAMLDecoder {
 	scheme.AddKnownTypes(esv1.GroupVersion, &esv1.Elasticsearch{}, &esv1.ElasticsearchList{})
 	scheme.AddKnownTypes(kbv1.GroupVersion, &kbv1.Kibana{}, &kbv1.KibanaList{})
 	scheme.AddKnownTypes(apmv1.GroupVersion, &apmv1.ApmServer{}, &apmv1.ApmServerList{})
+	scheme.AddKnownTypes(beatv1beta1.GroupVersion, &beatv1beta1.Beat{}, &beatv1beta1.BeatList{})
 	decoder := serializer.NewCodecFactory(scheme).UniversalDeserializer()
 
 	return &YAMLDecoder{decoder: decoder}
@@ -69,6 +73,10 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		case *apmv1.ApmServer:
 			b := apmserver.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.ApmServer = *decodedObj
+			builder = transform(b)
+		case *beatv1beta1.Beat:
+			b := beat.NewBuilderWithoutSuffix(decodedObj.Name, beatcommon.Type(decodedObj.Spec.Type))
+			b.Beat = *decodedObj
 			builder = transform(b)
 		default:
 			return builders, fmt.Errorf("unexpected object type: %t", decodedObj)

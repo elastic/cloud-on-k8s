@@ -7,6 +7,8 @@ package keystore
 import (
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -26,6 +28,16 @@ var (
 		KeystoreAddCommand:            `/keystore/bin/keystore add "$key" "$filename"`,
 		SecureSettingsVolumeMountPath: "/foo/secret",
 		DataVolumePath:                "/bar/data",
+		Resources: corev1.ResourceRequirements{
+			Requests: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+			Limits: map[corev1.ResourceName]resource.Quantity{
+				corev1.ResourceMemory: resource.MustParse("128Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+		},
 	}
 
 	testSecureSettingsSecretName = "secure-settings-secret"
@@ -120,6 +132,16 @@ echo "Keystore initialization successful."
 				SecurityContext: &corev1.SecurityContext{
 					Privileged: &varFalse,
 				},
+				Resources: corev1.ResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("128Mi"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+					},
+					Limits: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceMemory: resource.MustParse("128Mi"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+					},
+				},
 			},
 			// since this will be created, it will be incremented
 			wantVersion: "1",
@@ -151,6 +173,7 @@ echo "Keystore initialization successful."
 				assert.Equal(t, resources.InitContainer.Command, tt.wantContainers.Command)
 				assert.Equal(t, resources.InitContainer.VolumeMounts, tt.wantContainers.VolumeMounts)
 				assert.Equal(t, resources.InitContainer.SecurityContext, tt.wantContainers.SecurityContext)
+				assert.Equal(t, resources.InitContainer.Resources, tt.wantContainers.Resources)
 				assert.Equal(t, resources.Version, tt.wantVersion)
 			}
 

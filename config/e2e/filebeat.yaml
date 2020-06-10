@@ -52,6 +52,13 @@ data:
       - add_cloud_metadata:
       - add_host_metadata:
 
+    setup.template.overwrite: true
+    setup.template.append_fields:
+    - name: kubernetes_version
+      type: keyword
+    - name: build_number
+      type: keyword
+
     output.elasticsearch:
       hosts: ['https://${MONITORING_IP}:${ELASTICSEARCH_PORT}']
       username: ${MONITORING_USER}
@@ -214,7 +221,7 @@ rules:
     resources:
       - podsecuritypolicies
     resourceNames:
-      - elastic.filebeat.restricted
+      - elastic.beat.restricted
     verbs:
       - use
 ---
@@ -237,7 +244,7 @@ subjects:
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
-  name: filebeat
+  name: beat
 allowHostDirVolumePlugin: true
 allowHostIPC: false
 allowHostNetwork: true
@@ -262,6 +269,10 @@ supplementalGroups:
   type: RunAsAny
 users:
   - system:serviceaccount:{{ .E2ENamespace }}:filebeat
+groups:
+{{- range .Operator.ManagedNamespaces }}
+  - system:serviceaccounts:{{ . }}
+{{- end }}
 volumes:
   - '*'
 {{end}}

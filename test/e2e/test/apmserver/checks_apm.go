@@ -15,10 +15,13 @@ import (
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
+	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/test/e2e/test/kibana"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,7 +41,7 @@ func (b Builder) CheckStackTestSteps(k *test.K8sClient) test.StepList {
 		a.CheckEventsAPI(),
 		a.CheckEventsInElasticsearch(b.ApmServer, k),
 		a.CheckRUMEventsAPI(b.RUMEnabled()),
-	}
+	}.WithSteps(a.CheckAgentConfiguration(b.ApmServer, k))
 }
 
 func (c *apmClusterChecks) BuildApmServerClient(apm apmv1.ApmServer, k *test.K8sClient,
@@ -263,4 +266,54 @@ func countIndex(esClient client.Client, indexName string) (int, error) {
 		return 0, err
 	}
 	return countResult.Count, nil
+}
+
+const sampleDefaultAgentConfiguration = `{"service":{},"settings":{"transaction_sample_rate":"1","capture_body":"errors","transaction_max_spans":"99"}}`
+
+// CheckAgentConfiguration creates an agent configuration through Kibana and then check that the APM Server is able to retrieve it.
+func (c *apmClusterChecks) CheckAgentConfiguration(apm apmv1.ApmServer, k *test.K8sClient) test.StepList {
+	apmVersion := version.MustParse(apm.Spec.Version)
+
+	if !apm.Spec.KibanaRef.IsDefined() {
+		return []test.Step{}
+	}
+
+	return []test.Step{
+		{
+			Name: "Create the default Agent Configuration in Kibana",
+			Test: func(t *testing.T) {
+				kb := kbv1.Kibana{}
+				assert.NoError(t, k.Client.Get(apm.Spec.KibanaRef.WithDefaultNamespace(apm.Namespace).NamespacedName(), &kb))
+
+				password, err := k.GetElasticPassword(apm.Spec.ElasticsearchRef.WithDefaultNamespace(apm.Namespace).NamespacedName())
+				assert.NoError(t, err)
+
+				uri := "/api/apm/settings/agent-configuration"
+
+				// URI is slightly different before 7.7.0, we need to add "/new" at the end
+				if !apmVersion.IsSameOrAfter(version.MustParse("7.7.0")) {
+					uri += "/new"
+				}
+				_, err = kibana.DoRequest(k, kb, password, "PUT", uri, []byte(sampleDefaultAgentConfiguration))
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "Read back the agent default configuration from the APM Server",
+			Test: func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), DefaultReqTimeout)
+				defer cancel()
+
+				agentConfig, err := c.apmClient.AgentsDefaultConfig(ctx)
+				assert.NoError(t, err)
+
+				expectedAgentConfiguration := AgentConfig{
+					CaptureBody:           "errors",
+					TransactionMaxSpans:   "99",
+					TransactionSampleRate: "1",
+				}
+				assert.Equal(t, expectedAgentConfiguration, agentConfig)
+			},
+		},
+	}
 }

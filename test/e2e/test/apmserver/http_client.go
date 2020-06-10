@@ -28,6 +28,7 @@ const (
 	DefaultReqTimeout = 1 * time.Minute
 	backendIntakePath = "/intake/v2/events"
 	rumIntakePath     = "/intake/v2/rum/events"
+	agentConfigPath   = "/config/v1/agents?service.name=All"
 )
 
 // ApmClient is a simple client to use with an Apm Server.
@@ -223,4 +224,37 @@ func (c *ApmClient) IntakeV2Events(ctx context.Context, rum bool, payload []byte
 	}
 
 	return &eventsErrorResponse, err
+}
+
+// AgentConfig describes an agent configuration
+type AgentConfig struct {
+	CaptureBody           string `json:"capture_body,omitempty"`
+	TransactionMaxSpans   string `json:"transaction_max_spans,omitempty"`
+	TransactionSampleRate string `json:"transaction_sample_rate,omitempty"`
+	Error                 string `json:"error,omitempty"`
+}
+
+// AgentsDefaultConfig returns the default Agent configuration
+func (c *ApmClient) AgentsDefaultConfig(ctx context.Context) (AgentConfig, error) {
+	var agentConfig AgentConfig
+	request, err := http.NewRequest(
+		http.MethodGet,
+		stringsutil.Concat(c.endpoint, agentConfigPath),
+		nil,
+	)
+	if err != nil {
+		return agentConfig, err
+	}
+
+	resp, err := c.doRequest(ctx, request)
+	if err != nil {
+		return agentConfig, err
+	}
+	defer resp.Body.Close()
+
+	if err := json.NewDecoder(resp.Body).Decode(&agentConfig); err != nil {
+		return agentConfig, err
+	}
+
+	return agentConfig, nil
 }

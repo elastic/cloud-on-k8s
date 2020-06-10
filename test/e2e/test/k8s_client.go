@@ -25,9 +25,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
 	apmv1 "github.com/elastic/cloud-on-k8s/pkg/apis/apm/v1"
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/apmserver"
+	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/name"
@@ -71,6 +73,9 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	if err := apmv1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := beatv1beta1.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := k8sclient.New(cfg, k8sclient.Options{Scheme: scheme.Scheme})
@@ -313,6 +318,15 @@ func ApmServerPodListOptions(apmNamespace, apmName string) []k8sclient.ListOptio
 	})
 	return []k8sclient.ListOption{ns, matchLabels}
 
+}
+
+func BeatPodListOptions(beatNamespace, beatName, beatType string) []k8sclient.ListOption {
+	ns := k8sclient.InNamespace(beatNamespace)
+	matchLabels := k8sclient.MatchingLabels(map[string]string{
+		common.TypeLabelName:     beatcommon.TypeLabelValue,
+		beatcommon.NameLabelName: beatcommon.Name(beatName, beatType),
+	})
+	return []k8sclient.ListOption{ns, matchLabels}
 }
 
 func EventListOptions(namespace, name string) []k8sclient.ListOption {

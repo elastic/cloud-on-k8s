@@ -26,6 +26,8 @@ type InitContainerParameters struct {
 	KeystoreAddCommand string
 	// Keystore create command
 	KeystoreCreateCommand string
+	// Resources for the init container
+	Resources corev1.ResourceRequirements
 }
 
 // script is a small bash script to create a Kibana or APM keystore,
@@ -80,5 +82,6 @@ func initContainer(
 			// write the keystore in the data volume
 			DataVolume(volumePrefix, parameters.DataVolumePath).VolumeMount(),
 		},
+		Resources: parameters.Resources,
 	}, nil
 }
