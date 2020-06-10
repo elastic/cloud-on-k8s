@@ -72,7 +72,9 @@ func doRun(flags runFlags) error {
 			helper.createManagedNamespaces,
 			helper.deployOperator,
 			helper.waitForOperatorToBeReady,
+			helper.deployTestSecret,
 			helper.deployFilebeat,
+			helper.deployMetricbeat,
 			helper.deployTestJob,
 			helper.runTestJob,
 		}
@@ -290,14 +292,35 @@ func (h *helper) deployFilebeat() error {
 	return h.kubectlApplyTemplateWithCleanup("config/e2e/filebeat.yaml", h.testContext)
 }
 
-func (h *helper) deployTestJob() error {
-	log.Info("Deploying e2e test job")
-	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml",
+func (h *helper) deployMetricbeat() error {
+	if h.monitoringSecrets == "" {
+		log.Info("No monitoring secrets provided, metricbeat is not deployed")
+		return nil
+	}
+
+	log.Info("Deploying metricbeat")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/metricbeat.yaml", h.testContext)
+}
+
+func (h *helper) deployTestSecret() error {
+	log.Info("Deploying e2e test secret")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/secret.yaml",
 		struct {
 			Secrets map[string]string
 			Context test.Context
 		}{
 			Secrets: h.testSecrets,
+			Context: h.testContext,
+		},
+	)
+}
+
+func (h *helper) deployTestJob() error {
+	log.Info("Deploying e2e test job")
+	return h.kubectlApplyTemplateWithCleanup("config/e2e/batch_job.yaml",
+		struct {
+			Context test.Context
+		}{
 			Context: h.testContext,
 		},
 	)

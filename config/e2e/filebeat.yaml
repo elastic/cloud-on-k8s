@@ -269,6 +269,7 @@ supplementalGroups:
   type: RunAsAny
 users:
   - system:serviceaccount:{{ .E2ENamespace }}:filebeat
+  - system:serviceaccount:{{ .E2ENamespace }}:metricbeat
 groups:
 {{- range .Operator.ManagedNamespaces }}
   - system:serviceaccounts:{{ . }}
