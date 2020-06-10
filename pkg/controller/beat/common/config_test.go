@@ -18,6 +18,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+func merge(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
+	result := settings.NewCanonicalConfig()
+	err := result.MergeWith(cs...)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+
 func Test_buildBeatConfig(t *testing.T) {
 	clientWithSecret := k8s.WrappedFakeClient(
 		&corev1.Secret{
@@ -73,12 +82,6 @@ func Test_buildBeatConfig(t *testing.T) {
 
 	withAssociationWithConfig := *withAssociation.DeepCopy()
 	withAssociationWithConfig.Spec.Config = userConfig
-
-	merge := func(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
-		result := settings.NewCanonicalConfig()
-		_ = result.MergeWith(cs...)
-		return result
-	}
 
 	for _, tt := range []struct {
 		name          string
@@ -183,6 +186,111 @@ func Test_buildBeatConfig(t *testing.T) {
 
 			require.Empty(t, diff)
 			require.Equal(t, gotErr != nil, tt.wantErr)
+		})
+	}
+}
+
+func TestBuildKibanaConfig(t *testing.T) {
+
+	secretFixture := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "auth-secret",
+			Namespace: "test-ns",
+		},
+		Data: map[string][]byte{"elastic": []byte("123")},
+	}
+	kibanaAssocConf := commonv1.AssociationConf{
+		AuthSecretName: "auth-secret",
+		AuthSecretKey:  "elastic",
+		CACertProvided: false,
+		CASecretName:   "ca-secret",
+		URL:            "url",
+	}
+
+	kibanaAssocConfWithCA := kibanaAssocConf
+	kibanaAssocConfWithCA.CACertProvided = true
+
+	associationFixture := func(conf commonv1.AssociationConf) beatv1beta1.BeatKibanaAssociation {
+		assoc := beatv1beta1.BeatKibanaAssociation{Beat: &beatv1beta1.Beat{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "beat",
+				Namespace: "test-ns",
+			},
+			Spec: beatv1beta1.BeatSpec{
+				KibanaRef: commonv1.ObjectSelector{
+					Name:      "auth-secret",
+					Namespace: "test-ns",
+				}}}}
+
+		assoc.SetAssociationConf(&conf)
+		return assoc
+	}
+
+	expectedConfig := settings.MustParseConfig([]byte(`setup.dashboards.enabled: true
+setup.kibana: 
+  host: url
+  username: elastic
+  password: "123"
+`))
+
+	expectedCAConfig := settings.MustParseConfig([]byte(`setup.kibana.ssl.certificate_authorities: 
+  - "/mnt/elastic-internal/kibana-certs/ca.crt"
+`))
+
+	type args struct {
+		client     k8s.Client
+		associated beatv1beta1.BeatKibanaAssociation
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *settings.CanonicalConfig
+		wantErr bool
+	}{
+		{
+			name: "no association",
+			args: args{
+				associated: beatv1beta1.BeatKibanaAssociation{Beat: &beatv1beta1.Beat{}},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "association: no auth-secret",
+			args: args{
+				client:     k8s.WrappedFakeClient(),
+				associated: associationFixture(kibanaAssocConf),
+			},
+			wantErr: true,
+		},
+		{
+			name: "association: no ca",
+			args: args{
+				client:     k8s.WrappedFakeClient(secretFixture),
+				associated: associationFixture(kibanaAssocConf),
+			},
+			want:    expectedConfig,
+			wantErr: false,
+		},
+		{
+			name: "association: with ca",
+			args: args{
+				client:     k8s.WrappedFakeClient(secretFixture),
+				associated: associationFixture(kibanaAssocConfWithCA),
+			},
+			want:    merge(expectedConfig, expectedCAConfig),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := BuildKibanaConfig(tt.args.client, tt.args.associated)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BuildKibanaConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			diff := tt.want.Diff(got, nil)
+			require.Empty(t, diff)
 		})
 	}
 }
