@@ -36,7 +36,8 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	)
 
-	defaultConfig := settings.MustParseConfig([]byte("default: true"))
+	unmanagedDefaultCfg := settings.MustParseConfig([]byte("default: true"))
+	managedDefaultCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
 	userConfig := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
 	userCanonicalConfig := settings.MustCanonicalConfig(userConfig.Data)
 	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities: 
@@ -83,7 +84,7 @@ func Test_buildBeatConfig(t *testing.T) {
 		name          string
 		client        k8s.Client
 		beat          beatv1beta1.Beat
-		defaultConfig *settings.CanonicalConfig
+		defaultConfig DefaultConfigs
 		want          *settings.CanonicalConfig
 		wantErr       bool
 	}{
@@ -94,8 +95,8 @@ func Test_buildBeatConfig(t *testing.T) {
 		{
 			name:          "no association, only default config",
 			beat:          beatv1beta1.Beat{},
-			defaultConfig: defaultConfig,
-			want:          defaultConfig,
+			defaultConfig: DefaultConfigs{Unmanaged: unmanagedDefaultCfg},
+			want:          unmanagedDefaultCfg,
 		},
 		{
 			name: "no association, only user config",
@@ -109,15 +110,27 @@ func Test_buildBeatConfig(t *testing.T) {
 			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
 				Config: userConfig,
 			}},
-			defaultConfig: defaultConfig,
+			defaultConfig: DefaultConfigs{Unmanaged: unmanagedDefaultCfg},
 			want:          userCanonicalConfig,
 		},
+		{
+			name: "no association, both default configs and user config",
+			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+				Config: userConfig,
+			}},
+			defaultConfig: DefaultConfigs{
+				Unmanaged: unmanagedDefaultCfg,
+				Managed:   managedDefaultCfg,
+			},
+			want: merge(userCanonicalConfig, managedDefaultCfg),
+		},
+
 		{
 			name:          "association without ca, only default config",
 			client:        clientWithSecret,
 			beat:          withAssociation,
-			defaultConfig: defaultConfig,
-			want:          merge(defaultConfig, outputYaml),
+			defaultConfig: DefaultConfigs{Unmanaged: unmanagedDefaultCfg},
+			want:          merge(unmanagedDefaultCfg, outputYaml),
 		},
 		{
 			name:   "association without ca, only user config",
@@ -129,15 +142,15 @@ func Test_buildBeatConfig(t *testing.T) {
 			name:          "association without ca, default and user config",
 			client:        clientWithSecret,
 			beat:          withAssociationWithConfig,
-			defaultConfig: defaultConfig,
+			defaultConfig: DefaultConfigs{Unmanaged: unmanagedDefaultCfg},
 			want:          merge(userCanonicalConfig, outputYaml),
 		},
 		{
 			name:          "association with ca, only default config",
 			client:        clientWithSecret,
 			beat:          withAssociationWithCA,
-			defaultConfig: defaultConfig,
-			want:          merge(defaultConfig, outputYaml, outputCAYaml),
+			defaultConfig: DefaultConfigs{Unmanaged: unmanagedDefaultCfg},
+			want:          merge(unmanagedDefaultCfg, outputYaml, outputCAYaml),
 		},
 		{
 			name:   "association with ca, only user config",
@@ -149,8 +162,18 @@ func Test_buildBeatConfig(t *testing.T) {
 			name:          "association with ca, default and user config",
 			client:        clientWithSecret,
 			beat:          withAssociationWithCAAndConfig,
-			defaultConfig: defaultConfig,
+			defaultConfig: DefaultConfigs{Unmanaged: unmanagedDefaultCfg},
 			want:          merge(userCanonicalConfig, outputYaml, outputCAYaml),
+		},
+		{
+			name:   "association with ca, both default configs and user config",
+			client: clientWithSecret,
+			beat:   withAssociationWithCAAndConfig,
+			defaultConfig: DefaultConfigs{
+				Unmanaged: unmanagedDefaultCfg,
+				Managed:   managedDefaultCfg,
+			},
+			want: merge(userCanonicalConfig, managedDefaultCfg, outputYaml, outputCAYaml),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

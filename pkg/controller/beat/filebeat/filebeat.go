@@ -59,9 +59,14 @@ func (d *Driver) Reconcile() *reconciler.Results {
 		}
 	}
 
+	defaultConfigs, err := d.configParams()
+	if err != nil {
+		return reconciler.NewResult(d.DriverParams.Context).WithError(err)
+	}
+
 	return beatcommon.Reconcile(
 		d.DriverParams,
-		defaultConfig,
+		defaultConfigs,
 		container.FilebeatImage,
 		f)
 }

@@ -20,6 +20,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+type DefaultConfigs struct {
+	// Managed config is handled by ECK and will not be nullified by user provided config.
+	Managed *settings.CanonicalConfig
+	// Unmanaged config is default config that will be overridden by any user provided config.
+	Unmanaged *settings.CanonicalConfig
+}
+
 // setOutput will set the output section in Beat config according to the association configuration.
 func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
 	if !associated.AssociationConf().IsConfigured() {
@@ -46,7 +53,8 @@ func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociati
 	return settings.MustCanonicalConfig(esOutput), nil
 }
 
-func buildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssociation) (*settings.CanonicalConfig, error) {
+// BuildKibanaConfig builds on optional Kibana configuration for dashboard setup and visualizations.
+func BuildKibanaConfig(client k8s.Client, associated beatv1beta1.BeatKibanaAssociation) (*settings.CanonicalConfig, error) {
 	if !associated.AssociationConf().IsConfigured() {
 		return settings.NewCanonicalConfig(), nil
 	}
@@ -75,7 +83,7 @@ func buildBeatConfig(
 	log logr.Logger,
 	client k8s.Client,
 	beat beatv1beta1.Beat,
-	defaultConfig *settings.CanonicalConfig,
+	defaultConfigs DefaultConfigs,
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
@@ -83,16 +91,14 @@ func buildBeatConfig(
 	if err != nil {
 		return nil, err
 	}
-	kibanaCfg, err := buildKibanaConfig(client, beatv1beta1.BeatKibanaAssociation{Beat: &beat})
-
-	err = cfg.MergeWith(outputCfg, kibanaCfg)
+	err = cfg.MergeWith(outputCfg, defaultConfigs.Managed)
 	if err != nil {
 		return nil, err
 	}
 	// use only the default config or only the provided config - no overriding, no merging
 	userConfig := beat.Spec.Config
 	if userConfig == nil {
-		if err := cfg.MergeWith(defaultConfig); err != nil {
+		if err := cfg.MergeWith(defaultConfigs.Unmanaged); err != nil {
 			return nil, err
 		}
 	} else {
@@ -112,10 +118,10 @@ func buildBeatConfig(
 
 func reconcileConfig(
 	params DriverParams,
-	defaultConfig *settings.CanonicalConfig,
+	defaultConfigs DefaultConfigs,
 	configHash hash.Hash,
 ) error {
-	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, defaultConfig)
+	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, defaultConfigs)
 	if err != nil {
 		return err
 	}

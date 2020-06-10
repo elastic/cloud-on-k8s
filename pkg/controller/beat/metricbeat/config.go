@@ -5,6 +5,8 @@
 package metricbeat
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 )
 
@@ -42,3 +44,14 @@ processors:
 - add_cloud_metadata: {}
 `))
 )
+
+func (d *Driver) configParams() (common.DefaultConfigs, error) {
+	kibanaConfig, err := common.BuildKibanaConfig(d.Client, v1beta1.BeatKibanaAssociation{Beat: &d.Beat})
+	if err != nil {
+		return common.DefaultConfigs{}, err
+	}
+	return common.DefaultConfigs{
+		Managed:   kibanaConfig,
+		Unmanaged: defaultConfig,
+	}, nil
+}
