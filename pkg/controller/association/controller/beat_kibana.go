@@ -36,7 +36,7 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		UserSecretSuffix:  "beat-kb-user",
 		CASecretLabelName: kibana.KibanaNameLabelName,
 		ESUserRole: func(commonv1.Associated) (string, error) {
-			return user.SuperUserBuiltinRole, nil
+			return user.KibanaAdminBuiltinRole, nil
 		},
 		// The generic association controller watches Elasticsearch by default but we are interested in changes to
 		// Kibana as well for the purposes of establishing the association.
