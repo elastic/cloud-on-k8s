@@ -15,7 +15,6 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
@@ -57,16 +56,11 @@ func Reconcile(
 	params DriverParams,
 	defaultConfig DefaultConfig,
 	defaultImage container.Image,
-	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
 ) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
 
 	if err := ValidateBeatSpec(params.Beat.Spec); err != nil {
 		return results.WithError(err)
-	}
-
-	if err := ReconcileAutodiscoverRBAC(params.Context, params.Logger, params.Client, params.Beat); err != nil {
-		results.WithError(err)
 	}
 
 	configHash := sha256.New224()
@@ -79,7 +73,7 @@ func Reconcile(
 		return results.WithError(err)
 	}
 
-	podTemplate := buildPodTemplate(params, defaultImage, modifyPodFunc, configHash)
+	podTemplate := buildPodTemplate(params, defaultImage, configHash)
 	results.WithResults(reconcilePodVehicle(podTemplate, params))
 	return results
 }

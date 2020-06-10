@@ -23,8 +23,6 @@ import (
 type DefaultConfig struct {
 	// Managed config is handled by ECK and will not be nullified by user provided config.
 	Managed *settings.CanonicalConfig
-	// Unmanaged config is default config that will be overridden by any user provided config.
-	Unmanaged *settings.CanonicalConfig
 }
 
 // buildOutputConfig will create the output section in Beat config according to the association configuration.
@@ -95,27 +93,25 @@ func buildBeatConfig(
 	if err != nil {
 		return nil, err
 	}
-	// use only the default config or only the provided config - no overriding, no merging
+
 	userConfig := beat.Spec.Config
 	if userConfig == nil {
-		if err := cfg.MergeWith(defaultConfig.Unmanaged); err != nil {
-			return nil, err
-		}
-	} else {
-		userCfg, err := settings.NewCanonicalConfigFrom(userConfig.Data)
-		if err != nil {
-			return nil, err
-		}
-
-		if err = cfg.MergeWith(userCfg); err != nil {
-			return nil, err
-		}
-		log.V(1).Info(
-			"Replacing ECK-managed configuration by user-provided configuration",
-			"beat_name", beat.Name,
-			"namespace", beat.Namespace,
-		)
+		return cfg.Render()
 	}
+
+	userCfg, err := settings.NewCanonicalConfigFrom(userConfig.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = cfg.MergeWith(userCfg); err != nil {
+		return nil, err
+	}
+	log.V(1).Info(
+		"Replacing ECK-managed configuration by user-provided configuration",
+		"beat_name", beat.Name,
+		"namespace", beat.Namespace,
+	)
 
 	return cfg.Render()
 }

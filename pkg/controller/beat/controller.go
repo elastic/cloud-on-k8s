@@ -12,7 +12,6 @@ import (
 	"go.elastic.co/apm"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -94,29 +93,6 @@ func addWatches(c controller.Controller) error {
 		OwnerType:    &beatv1beta1.Beat{},
 	}); err != nil {
 		return err
-	}
-
-	if beatcommon.ShouldManageAutodiscoverRBAC() {
-		// Watch ServiceAccounts
-		if err := c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &beatv1beta1.Beat{},
-		}); err != nil {
-			return err
-		}
-
-		// Watch relevant ClusterRoleBindings
-		if err := c.Watch(&source.Kind{Type: &rbacv1.ClusterRoleBinding{}}, &handler.EnqueueRequestsFromMapFunc{
-			ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-				requests := []reconcile.Request{}
-				if result, nsName := beatcommon.IsAutodiscoverResource(object.Meta); result {
-					requests = append(requests, reconcile.Request{NamespacedName: nsName})
-				}
-				return requests
-			}),
-		}); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -218,10 +194,6 @@ func (r *ReconcileBeat) isCompatible(ctx context.Context, beat *beatv1beta1.Beat
 }
 
 func (r *ReconcileBeat) onDelete(obj types.NamespacedName) error {
-	if beatcommon.ShouldManageAutodiscoverRBAC() {
-		return beatcommon.CleanUp(r.Client, obj)
-	}
-
 	return nil
 }
 

@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"testing"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
@@ -45,6 +45,7 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 			beat.HasEventFromPod(testPodBuilder.Pod.Name),
 			beat.HasMessageContaining(testPodBuilder.Logged))
 
+	t.SkipNow()
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
@@ -71,6 +72,7 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 			beat.HasEvent("event.dataset:system.fsstat"),
 		)
 
+	t.SkipNow()
 	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
 }
 
@@ -97,6 +99,7 @@ heartbeat.monitors:
 `, v1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
 	hbBuilder = applyConfigYaml(t, hbBuilder, yaml)
 
+	t.SkipNow()
 	test.Sequence(nil, test.EmptySteps, esBuilder, hbBuilder).RunSequential(t)
 }
 
