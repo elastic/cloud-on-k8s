@@ -87,7 +87,7 @@ Open `https://localhost:3002` in your browser.
 +
 NOTE: Your browser will show a warning because the self-signed certificate configured by default is not verified by a known certificate authority and not trusted by your browser. Acknowledge the warning for the purposes of this quickstart but it is highly recommended that you <<{p}-enterprise-search-expose,configure valid certificates>> for any production deployments.
 +
-Login as the `elastic` user created link:../k8s-quickstart.html[with the Elasticsearch cluster]. Its password can be obtained with:
+Login as the `elastic` user created link:k8s-quickstart.html[with the Elasticsearch cluster]. Its password can be obtained with:
 +
 [source,sh]
 ----
