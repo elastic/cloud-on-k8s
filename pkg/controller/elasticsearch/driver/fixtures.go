@@ -280,12 +280,8 @@ func (t *testESState) ShardAllocationsEnabled() (bool, error) {
 	return true, nil
 }
 
-func (t *testESState) Health() (esv1.ElasticsearchHealth, error) {
-	return t.health.Status, nil
-}
-
-func (t *testESState) IsSafeToRoll() (bool, error) {
-	return t.health.IsSafeToRoll(), nil
+func (t *testESState) Health() (client.Health, error) {
+	return t.health, nil
 }
 
 func (t *testESState) NodesInCluster(nodeNames []string) (bool, error) {

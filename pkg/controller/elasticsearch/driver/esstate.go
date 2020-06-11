@@ -8,7 +8,6 @@ import (
 	"context"
 	"sync"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
@@ -20,9 +19,7 @@ type ESState interface {
 	// ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 	ShardAllocationsEnabled() (bool, error)
 	// Health returns the health of the Elasticsearch cluster.
-	Health() (esv1.ElasticsearchHealth, error)
-	// IsSafeToRoll returns true if shards are not moving and primaries are allocated
-	IsSafeToRoll() (bool, error)
+	Health() (esclient.Health, error)
 }
 
 // MemoizingESState requests Elasticsearch for the requested information only once, at first call.
@@ -113,15 +110,14 @@ func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, erro
 	return s.enabled, nil
 }
 
-// -- Cluster Health
+// -- Cluster Status
 
 // memoizingHealth provides cluster health information.
 type memoizingHealth struct {
-	health     esv1.ElasticsearchHealth
-	safeToRoll bool
-	once       sync.Once
-	esClient   esclient.Client
-	ctx        context.Context
+	health   esclient.Health
+	once     sync.Once
+	esClient esclient.Client
+	ctx      context.Context
 }
 
 // initialize requests Elasticsearch for cluster health, only once.
@@ -135,23 +131,14 @@ func (h *memoizingHealth) initialize() error {
 	if err != nil {
 		return err
 	}
-	h.health = health.Status
-	h.safeToRoll = health.IsSafeToRoll()
+	h.health = health
 	return nil
 }
 
 // Health returns the cluster health.
-func (h *memoizingHealth) Health() (esv1.ElasticsearchHealth, error) {
+func (h *memoizingHealth) Health() (esclient.Health, error) {
 	if err := initOnce(&h.once, h.initialize); err != nil {
-		return "", err
+		return esclient.Health{}, err
 	}
 	return h.health, nil
-}
-
-// IsSafeToRoll returns true if shards a not moving and primaries are allocated
-func (h *memoizingHealth) IsSafeToRoll() (bool, error) {
-	if err := initOnce(&h.once, h.initialize); err != nil {
-		return false, err
-	}
-	return h.safeToRoll, nil
 }

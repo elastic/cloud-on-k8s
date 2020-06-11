@@ -171,12 +171,12 @@ func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 	require.NoError(t, err)
 	// es should be requested on first call
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
-	require.Equal(t, esv1.ElasticsearchGreenHealth, health)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, health.Status)
 	// ES should not be requested again on subsequent calls
 	health, err = h.Health()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
-	require.Equal(t, esv1.ElasticsearchGreenHealth, health)
+	require.Equal(t, esv1.ElasticsearchGreenHealth, health.Status)
 
 	// simulate yellow health
 	esClient = &fakeESClient{health: esclient.Health{Status: esv1.ElasticsearchYellowHealth}}
@@ -184,7 +184,7 @@ func Test_memoizingGreenHealth_GreenHealth(t *testing.T) {
 	health, err = h.Health()
 	require.NoError(t, err)
 	require.Equal(t, 1, esClient.GetClusterHealthCalledCount)
-	require.NotEqual(t, esv1.ElasticsearchGreenHealth, health)
+	require.NotEqual(t, esv1.ElasticsearchGreenHealth, health.Status)
 }
 
 func TestNewMemoizingESState(t *testing.T) {

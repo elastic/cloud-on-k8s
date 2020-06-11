@@ -44,19 +44,6 @@ type Health struct {
 	ActiveShardsPercentAsNumber float32                  `json:"active_shards_percent_as_number"`
 }
 
-// IsSafeToRoll indicates that a rolling update can continue with the next node if
-// - no relocating or initializing shards or shards being fetched
-// - all primaries allocated
-// only reliable if Health result was created with wait_for_events=languid
-// so that there are no pending initialisations in the task queue
-func (h Health) IsSafeToRoll() bool {
-	return !h.TimedOut && // make sure request did not time out (i.e. no pending events)
-		h.Status != esv1.ElasticsearchRedHealth && // all primaries allocated
-		h.NumberOfInFlightFetch == 0 && // no shards being fetched
-		h.InitializingShards == 0 && // no shards initializing
-		h.RelocatingShards == 0 // no shards relocating
-}
-
 type ShardState string
 
 // These are possible shard states
