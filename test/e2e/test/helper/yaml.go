@@ -80,6 +80,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		case *beatv1beta1.Beat:
 			b := beat.NewBuilderWithoutSuffix(decodedObj.Name, beatcommon.Type(decodedObj.Spec.Type))
 			b.Beat = *decodedObj
+			builder = transform(b)
 		case *entv1beta1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.EnterpriseSearch = *decodedObj
