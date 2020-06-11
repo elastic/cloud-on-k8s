@@ -35,14 +35,14 @@ pipeline {
         }
         stage('Run tests for different ELK stack versions in GKE') {
             parallel {
-                stage("6.8.9") {
+                stage("6.8.x") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.9")
+                            runWith(lib, failedTests, "eck-68-${BUILD_NUMBER}-e2e", "6.8.10")
                         }
                     }
                 }
@@ -112,14 +112,14 @@ pipeline {
                         }
                     }
                 }
-                stage("7.7.0") {
+                stage("7.7.1") {
                     agent {
                         label 'linux'
                     }
                     steps {
                         unstash "source"
                         script {
-                            runWith(lib, failedTests, "eck-77-${BUILD_NUMBER}-e2e", "7.7.0")
+                            runWith(lib, failedTests, "eck-77-${BUILD_NUMBER}-e2e", "7.7.1")
                         }
                     }
                 }

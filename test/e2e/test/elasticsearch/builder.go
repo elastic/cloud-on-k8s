@@ -49,6 +49,10 @@ type Builder struct {
 
 var _ test.Builder = Builder{}
 
+func (b Builder) SkipTest() bool {
+	return false
+}
+
 func NewBuilder(name string) Builder {
 	return newBuilder(name, rand.String(4))
 }

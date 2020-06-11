@@ -1,10 +1,10 @@
-# This sample sets up an Elasticsearch cluster and a Enterprise Search instance preconfigured for that cluster
+# This sample sets up an Elasticsearch cluster and an Enterprise Search instance preconfigured for that cluster
 apiVersion: elasticsearch.k8s.elastic.co/v1
 kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: 7.7.0
+  version: 7.7.1
   nodeSets:
     - name: default
       count: 1
@@ -18,30 +18,9 @@ kind: EnterpriseSearch
 metadata:
   name: ent-sample
 spec:
-  version: 7.7.0
+  version: 7.7.1
   count: 1
   elasticsearchRef:
     name: elasticsearch-sample
   config:
     ent_search.external_url: https://localhost:3002
-#  configRef:
-#    - secretName: smtp-credentials
-  http:
-#    service:
-#      spec:
-#        type: LoadBalancer
-    tls:
-      selfSignedCertificate:
-        subjectAltNames:
-          - dns: localhost
-  # http:
-  #   service:
-  #     spec:
-  #       type: LoadBalancer
-  # podTemplate:
-  #   spec:
-  #     containers:
-  #       - name: enterprise-search
-  #         resources:
-  #           requests:
-  #             cpu: 4

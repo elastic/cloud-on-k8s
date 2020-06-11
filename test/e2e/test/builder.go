@@ -29,4 +29,6 @@ type Builder interface {
 	// We assume the resource to be ready and running.
 	// We assume the resource to be the same as the original resource after reversion.
 	MutationReversalTestContext() ReversalTestContext
+	// Skip the test if true.
+	SkipTest() bool
 }
