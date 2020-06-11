@@ -7,9 +7,15 @@ package test
 // Sequence returns a list of steps corresponding to the basic workflow (some optional init steps, then init steps,
 // create steps, check steps, then something and delete steps to terminate).
 func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
-	k := NewK8sClientOrFatal()
-
 	steps := StepList{}
+	for _, b := range builders {
+		// ignore the test if some builders cannot be tested
+		if b.SkipTest() {
+			return steps
+		}
+	}
+
+	k := NewK8sClientOrFatal()
 
 	if before != nil {
 		steps = steps.WithSteps(before(k))

@@ -29,6 +29,10 @@ type PodBuilder struct {
 	Logged string
 }
 
+func (pb PodBuilder) SkipTest() bool {
+	return false
+}
+
 func NewPodBuilder(name string) PodBuilder {
 	return newPodBuilder(name, rand.String(4))
 }

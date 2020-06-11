@@ -50,9 +50,9 @@ func CheckKibanaPods(b Builder, k *test.K8sClient) test.Step {
 			}
 
 			// builder hash matches
-			goodBuilderHash := hash.HashObject(b.Kibana.Spec)
+			expectedBuilderHash := hash.HashObject(b.Kibana.Spec)
 			for _, pod := range pods.Items {
-				if err := test.ValidateBuilderHashAnnotation(pod, goodBuilderHash); err != nil {
+				if err := test.ValidateBuilderHashAnnotation(pod, expectedBuilderHash); err != nil {
 					return err
 				}
 			}
