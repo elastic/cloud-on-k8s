@@ -15,7 +15,7 @@ This section describes how to deploy, configure and access Enterprise Search wit
 [id="{p}-enterprise-search-quickstart"]
 == Quickstart
 
-. Apply the following specification to deploy Enterprise Search. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in link:../k8s-quickstart.html[Elasticsearch quickstart].
+. Apply the following specification to deploy Enterprise Search. ECK automatically configures the secured connection to an Elasticsearch cluster named `quickstart`, created in link:k8s-quickstart.html[Elasticsearch quickstart].
 +
 [source,yaml,subs="attributes,+macros"]
 ----
@@ -105,7 +105,7 @@ Any setting can be changed in the Enterprise Search yaml specification, includin
 [id="{p}-enterprise-search-custom-configuration"]
 === Customize Enterprise Search configuration
 
-ECK sets up a default Enterprise Search link:https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration[configuration]. Customize it through the ``config element in the specification.
+ECK sets up a default Enterprise Search link:https://www.elastic.co/guide/en/enterprise-search/current/configuration.html#configuration[configuration]. Customize it through the `config` element in the specification.
 
 At a minimum, you must set `ent_search.external_url` to the desired URL.
 
@@ -206,7 +206,7 @@ spec:
 
 By default ECK manages self-signed TLS certificates to secure the connection to Enterprise Search. It also restricts the Kubernetes service to `ClusterIP` type that cannot be accessed publicly.
 
-See link:../k8s-accessing-elastic-services.html[how to access Elastic Stack services] to customize TLS settings and expose the service.
+See link:k8s-accessing-elastic-services.html[how to access Elastic Stack services] to customize TLS settings and expose the service.
 
 NOTE: When exposed outside the scope of `localhost`, make sure to set `ent_search.external_url` accordingly in the Enterprise Search configuration.
 
