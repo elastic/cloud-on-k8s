@@ -24,6 +24,10 @@ type Builder struct {
 	Validations []ValidationFunc
 }
 
+func (b Builder) SkipTest() bool {
+	return false
+}
+
 func NewBuilderWithoutSuffix(name string, typ beatcommon.Type) Builder {
 	return newBuilder(name, typ, "")
 }
