@@ -13,4 +13,4 @@ processor:
     - "enterprisesearch"
 
 render:
-  kubernetesVersion: 1.17
+  kubernetesVersion: 1.18
