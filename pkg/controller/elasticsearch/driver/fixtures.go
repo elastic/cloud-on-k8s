@@ -5,6 +5,7 @@
 package driver
 
 import (
+	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -271,7 +272,7 @@ func (t testPod) toPodPtr() *corev1.Pod {
 
 type testESState struct {
 	inCluster []string
-	health    esv1.ElasticsearchHealth
+	health    client.Health
 	ESState
 }
 
@@ -279,7 +280,7 @@ func (t *testESState) ShardAllocationsEnabled() (bool, error) {
 	return true, nil
 }
 
-func (t *testESState) Health() (esv1.ElasticsearchHealth, error) {
+func (t *testESState) Health() (client.Health, error) {
 	return t.health, nil
 }
 

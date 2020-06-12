@@ -25,7 +25,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 		esVersion       string
 		upgradeTestPods upgradeTestPods
 		ES              esv1.Elasticsearch
-		health          esv1.ElasticsearchHealth
+		health          client.Health
 		mutation        mutation
 		maxUnavailable  int
 	}
@@ -53,7 +53,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 					newTestPod("other-master-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).inStatefulset("other-master"),
 				),
 				maxUnavailable: 1,
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				mutation:       removeMasterType("other-master"),
 			},
 			deleted:                      []string{"other-master-0"},
@@ -70,7 +70,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 					newTestPod("other-master-0").withVersion("6.8.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 1,
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				mutation:       removeMasterType("other-master"),
 			},
 			deleted:                      []string{"other-master-0"},
@@ -90,7 +90,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 					newTestPod("other-master-0").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				mutation:       removeMasterType("other-master"),
 			},
 			deleted:                      []string{},
@@ -107,7 +107,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(false).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true),
 				),
 				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				mutation:       addMasterType("data-to-masters"),
 			},
 			deleted:                      []string{"data-to-masters-1"},
@@ -124,7 +124,7 @@ func TestUpgradePodsDeletion_WithNodeTypeMutations(t *testing.T) {
 					newTestPod("data-to-masters-1").withVersion("7.2.0").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true),
 				),
 				maxUnavailable: 2, // 2 unavailable nodes to be sure that the predicate managing the masters is actually called
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				mutation:       addMasterType("data-to-masters"),
 			},
 			deleted:                      []string{"data-to-masters-0"},
@@ -177,7 +177,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 		upgradeTestPods upgradeTestPods
 		shardLister     client.ShardLister
 		ES              esv1.Elasticsearch
-		health          esv1.ElasticsearchHealth
+		health          client.Health
 		maxUnavailable  int
 		podFilter       filter
 		esVersion       string
@@ -201,7 +201,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 2,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{"node-1"},
@@ -219,7 +219,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{},
@@ -237,7 +237,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{"masters-0"},
@@ -255,7 +255,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{"masters-2"},
@@ -273,7 +273,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 2,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{"masters-2"},
@@ -293,7 +293,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 2,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{"master-1"},
@@ -310,7 +310,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{"node-0"},
@@ -326,7 +326,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchRedHealth,
+				health:         client.Health{Status: esv1.ElasticsearchRedHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{},
@@ -342,7 +342,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchUnknownHealth,
+				health:         client.Health{Status: esv1.ElasticsearchUnknownHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{},
@@ -360,7 +360,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchUnknownHealth,
+				health:         client.Health{Status: esv1.ElasticsearchUnknownHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{"masters-2"},
@@ -377,7 +377,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(false).needsUpgrade(true).isInCluster(false).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         esv1.ElasticsearchYellowHealth,
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					client.Shard{
 						Index:    "index_a",
@@ -410,7 +410,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         esv1.ElasticsearchYellowHealth,
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					client.Shard{
 						Index:    "index_a",
@@ -445,7 +445,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-4").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.4.0"),
 				),
 				maxUnavailable: 1,
-				health:         esv1.ElasticsearchYellowHealth,
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					client.Shard{
 						Index:    "index_a",
@@ -492,7 +492,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(true).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         esv1.ElasticsearchYellowHealth,
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					client.Shard{
 						Index:    "index_a",
@@ -525,7 +525,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-2").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         esv1.ElasticsearchYellowHealth,
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth, RelocatingShards: 1},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					client.Shard{
 						Index:    "index_a",
@@ -550,7 +550,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 					newTestPod("masters-1").isMaster(true).isData(true).isHealthy(true).needsUpgrade(false).isInCluster(true).withVersion("7.5.0"),
 				),
 				maxUnavailable: 1,
-				health:         esv1.ElasticsearchYellowHealth,
+				health:         client.Health{Status: esv1.ElasticsearchYellowHealth},
 				shardLister: migration.NewFakeShardLister(client.Shards{
 					// One shard is not assigned on masters-0 because its version is not the expected one
 					client.Shard{
@@ -592,7 +592,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			deleted:                      []string{"masters-1"},
@@ -610,7 +610,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				maxUnavailable: 1,
 				shardLister:    migration.NewFakeShardLister(client.Shards{}),
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      byName("masters-2"),
 			},
 			deleted:                      []string{},
@@ -637,7 +637,7 @@ func TestUpgradePodsDeletion_Delete(t *testing.T) {
 				),
 				shardLister:    migration.NewFakeShardFromFile("shards.json"),
 				maxUnavailable: 2, // Allow 2 to be upgraded at the same time
-				health:         esv1.ElasticsearchGreenHealth,
+				health:         client.Health{Status: esv1.ElasticsearchGreenHealth},
 				podFilter:      nothing,
 			},
 			// elasticsearch-sample-es-nodes-3 must be skipped because it shares a shard with elasticsearch-sample-es-nodes-4
@@ -703,7 +703,7 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 				),
 				esState: &testESState{
 					inCluster: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0", "masters-0"},
-					health:    esv1.ElasticsearchUnknownHealth,
+					health:    client.Health{Status: esv1.ElasticsearchUnknownHealth},
 				},
 			},
 			want: []string{"data-1", "data-0", "amasters-2", "amasters-1", "amasters-0", "masters-0"},
@@ -722,7 +722,7 @@ func TestDeletionStrategy_SortFunction(t *testing.T) {
 				),
 				esState: &testESState{
 					inCluster: []string{"data-2", "data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},
-					health:    esv1.ElasticsearchUnknownHealth,
+					health:    client.Health{Status: esv1.ElasticsearchUnknownHealth},
 				},
 			},
 			want: []string{"data-2", "data-1", "data-0", "amasters-2", "amasters-1", "amasters-0"},

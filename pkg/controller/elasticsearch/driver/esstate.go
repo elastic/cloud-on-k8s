@@ -8,7 +8,6 @@ import (
 	"context"
 	"sync"
 
-	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	esclient "github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/stringsutil"
 )
@@ -20,7 +19,7 @@ type ESState interface {
 	// ShardAllocationsEnabled returns true if shards allocation are enabled in the cluster.
 	ShardAllocationsEnabled() (bool, error)
 	// Health returns the health of the Elasticsearch cluster.
-	Health() (esv1.ElasticsearchHealth, error)
+	Health() (esclient.Health, error)
 }
 
 // MemoizingESState requests Elasticsearch for the requested information only once, at first call.
@@ -111,11 +110,11 @@ func (s *memoizingShardsAllocationEnabled) ShardAllocationsEnabled() (bool, erro
 	return s.enabled, nil
 }
 
-// -- Cluster Health
+// -- Cluster Status
 
 // memoizingHealth provides cluster health information.
 type memoizingHealth struct {
-	health   esv1.ElasticsearchHealth
+	health   esclient.Health
 	once     sync.Once
 	esClient esclient.Client
 	ctx      context.Context
@@ -125,18 +124,21 @@ type memoizingHealth struct {
 func (h *memoizingHealth) initialize() error {
 	ctx, cancel := context.WithTimeout(h.ctx, esclient.DefaultReqTimeout)
 	defer cancel()
-	health, err := h.esClient.GetClusterHealth(ctx)
+
+	// get cluster health but make sure we have no pending shard initializations
+	// by requiring the event queue to be empty
+	health, err := h.esClient.GetClusterHealthWaitForAllEvents(ctx)
 	if err != nil {
 		return err
 	}
-	h.health = health.Status
+	h.health = health
 	return nil
 }
 
 // Health returns the cluster health.
-func (h *memoizingHealth) Health() (esv1.ElasticsearchHealth, error) {
+func (h *memoizingHealth) Health() (esclient.Health, error) {
 	if err := initOnce(&h.once, h.initialize); err != nil {
-		return "", err
+		return esclient.Health{}, err
 	}
 	return h.health, nil
 }
