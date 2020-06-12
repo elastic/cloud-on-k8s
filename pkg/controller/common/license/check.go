@@ -40,11 +40,14 @@ func (lc *checker) publicKeyFor(l EnterpriseLicense) ([]byte, error) {
 	if !l.IsECKManagedTrial() {
 		return lc.publicKey, nil
 	}
+
 	var signatureSec corev1.Secret
-	return signatureSec.Data[TrialPubkeyKey], lc.k8sClient.Get(types.NamespacedName{
+	err := lc.k8sClient.Get(types.NamespacedName{
 		Namespace: lc.operatorNamespace,
 		Name:      TrialStatusSecretKey,
 	}, &signatureSec)
+	// read secret data only after retrieving the secret
+	return signatureSec.Data[TrialPubkeyKey], err
 }
 
 // CurrentEnterpriseLicense returns the currently valid Enterprise license if installed.
