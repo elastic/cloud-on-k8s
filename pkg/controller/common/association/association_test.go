@@ -18,29 +18,32 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+func associationFixture(conf *commonv1.AssociationConf) commonv1.Association {
+	withAssoc := &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"}}
+	esAssoc := beatv1beta1.BeatESAssociation{Beat: withAssoc}
+	esAssoc.SetAssociationConf(conf)
+	return &esAssoc
+}
+
 func Test_writeAuthSecretToConfigHash(t *testing.T) {
 	for _, tt := range []struct {
 		name       string
 		client     k8s.Client
-		assoc      func() commonv1.Association
+		assoc      commonv1.Association
 		wantHashed string
 		wantErr    bool
 	}{
 		{
 			name:  "no association",
-			assoc: func() commonv1.Association { return &beatv1beta1.Beat{} },
+			assoc: associationFixture(nil),
 		},
 		{
 			name:   "association secret missing",
 			client: k8s.WrappedFakeClient(),
-			assoc: func() commonv1.Association {
-				withAssoc := &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"}}
-				withAssoc.SetAssociationConf(&commonv1.AssociationConf{
-					AuthSecretName: "secret-name",
-					AuthSecretKey:  "secret-key",
-				})
-				return withAssoc
-			},
+			assoc: associationFixture(&commonv1.AssociationConf{
+				AuthSecretName: "secret-name",
+				AuthSecretKey:  "secret-key",
+			}),
 			wantHashed: "",
 			wantErr:    true,
 		},
@@ -52,14 +55,10 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 					Namespace: "test-ns",
 				},
 			}),
-			assoc: func() commonv1.Association {
-				withAssoc := &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"}}
-				withAssoc.SetAssociationConf(&commonv1.AssociationConf{
-					AuthSecretName: "secret-name",
-					AuthSecretKey:  "non-existing-key",
-				})
-				return withAssoc
-			},
+			assoc: associationFixture(&commonv1.AssociationConf{
+				AuthSecretName: "secret-name",
+				AuthSecretKey:  "non-existing-key",
+			}),
 			wantHashed: "",
 			wantErr:    true,
 		},
@@ -74,20 +73,16 @@ func Test_writeAuthSecretToConfigHash(t *testing.T) {
 					"secret-key": []byte("123"),
 				},
 			}),
-			assoc: func() commonv1.Association {
-				withAssoc := &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"}}
-				withAssoc.SetAssociationConf(&commonv1.AssociationConf{
-					AuthSecretName: "secret-name",
-					AuthSecretKey:  "secret-key",
-				})
-				return withAssoc
-			},
+			assoc: associationFixture(&commonv1.AssociationConf{
+				AuthSecretName: "secret-name",
+				AuthSecretKey:  "secret-key",
+			}),
 			wantHashed: "123",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			configHashPassed := sha256.New224()
-			gotErr := writeAuthSecretToConfigHash(tt.client, tt.assoc(), configHashPassed)
+			gotErr := writeAuthSecretToConfigHash(tt.client, tt.assoc, configHashPassed)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 
 			configHash := sha256.New224()
@@ -101,24 +96,20 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 	for _, tt := range []struct {
 		name       string
 		client     k8s.Client
-		assoc      func() commonv1.Association
+		assoc      commonv1.Association
 		wantHashed string
 		wantErr    bool
 	}{
 		{
 			name:  "no association",
-			assoc: func() commonv1.Association { return &beatv1beta1.Beat{} },
+			assoc: associationFixture(nil),
 		},
 		{
 			name:   "association ca secret missing",
 			client: k8s.WrappedFakeClient(),
-			assoc: func() commonv1.Association {
-				withAssoc := &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"}}
-				withAssoc.SetAssociationConf(&commonv1.AssociationConf{
-					CASecretName: "ca-secret-name",
-				})
-				return withAssoc
-			},
+			assoc: associationFixture(&commonv1.AssociationConf{
+				CASecretName: "ca-secret-name",
+			}),
 			wantHashed: "",
 			wantErr:    true,
 		},
@@ -130,13 +121,9 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 					Namespace: "test-ns",
 				},
 			}),
-			assoc: func() commonv1.Association {
-				withAssoc := &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"}}
-				withAssoc.SetAssociationConf(&commonv1.AssociationConf{
-					CASecretName: "ca-secret-name",
-				})
-				return withAssoc
-			},
+			assoc: associationFixture(&commonv1.AssociationConf{
+				CASecretName: "ca-secret-name",
+			}),
 			wantHashed: "",
 			wantErr:    true,
 		},
@@ -151,19 +138,15 @@ func Test_writeCASecretToConfigHash(t *testing.T) {
 					certificates.CertFileName: []byte("456"),
 				},
 			}),
-			assoc: func() commonv1.Association {
-				withAssoc := &beatv1beta1.Beat{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"}}
-				withAssoc.SetAssociationConf(&commonv1.AssociationConf{
-					CASecretName: "ca-secret-name",
-				})
-				return withAssoc
-			},
+			assoc: associationFixture(&commonv1.AssociationConf{
+				CASecretName: "ca-secret-name",
+			}),
 			wantHashed: "456",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			configHashPassed := sha256.New224()
-			gotErr := writeCASecretToConfigHash(tt.client, tt.assoc(), configHashPassed)
+			gotErr := writeCASecretToConfigHash(tt.client, tt.assoc, configHashPassed)
 			require.Equal(t, tt.wantErr, gotErr != nil)
 
 			configHash := sha256.New224()

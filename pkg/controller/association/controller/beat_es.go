@@ -20,16 +20,17 @@ import (
 )
 
 const (
-	// BeatESAssociationLabelName marks resources created by this controller for easier retrieval.
-	BeatESAssociationLabelName = "beatassociation.k8s.elastic.co/name"
-
-	// BeatESAssociationLabelNamespace marks resources created by this controller for easier retrieval.
-	BeatESAssociationLabelNamespace = "beatassociation.k8s.elastic.co/namespace"
+	// BeatAssociationLabelName marks resources created by this controller for easier retrieval.
+	BeatAssociationLabelName = "beatassociation.k8s.elastic.co/name"
+	// BeatAssociationLabelNamespace marks resources created by this controller for easier retrieval.
+	BeatAssociationLabelNamespace = "beatassociation.k8s.elastic.co/namespace"
+	// BeatAssociationLabelType marks the type of association
+	BeatAssociationLabelType = "beatassociation.k8s.elastic.co/type"
 )
 
 func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params operator.Parameters) error {
 	return association.AddAssociationController(mgr, accessReviewer, params, association.AssociationInfo{
-		AssociationObjTemplate: func() commonv1.Association { return &beatv1beta1.Beat{} },
+		AssociationObjTemplate: func() commonv1.Association { return &beatv1beta1.BeatESAssociation{} },
 		ElasticsearchRef: func(c k8s.Client, association commonv1.Association) (bool, commonv1.ObjectSelector, error) {
 			return true, association.AssociationRef(), nil
 		},
@@ -39,8 +40,9 @@ func AddBeatES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params o
 		AssociatedShortName: "beat",
 		AssociationLabels: func(associated types.NamespacedName) map[string]string {
 			return map[string]string{
-				BeatESAssociationLabelName:      associated.Name,
-				BeatESAssociationLabelNamespace: associated.Namespace,
+				BeatAssociationLabelName:      associated.Name,
+				BeatAssociationLabelNamespace: associated.Namespace,
+				BeatAssociationLabelType:      commonv1.ElasticsearchAssociationType,
 			}
 		},
 		UserSecretSuffix:  "beat-user",

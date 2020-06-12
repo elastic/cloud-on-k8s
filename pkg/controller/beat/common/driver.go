@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -56,7 +55,7 @@ func ValidateBeatSpec(spec beatv1beta1.BeatSpec) error {
 
 func Reconcile(
 	params DriverParams,
-	defaultConfig *settings.CanonicalConfig,
+	defaultConfig DefaultConfig,
 	defaultImage container.Image,
 	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
 ) *reconciler.Results {
@@ -76,7 +75,7 @@ func Reconcile(
 	}
 
 	// we need to deref the secret here (if any) to include it in the configHash otherwise Beat will not be rolled on content changes
-	if err := commonassociation.WriteAssocToConfigHash(params.Client, &params.Beat, configHash); err != nil {
+	if err := commonassociation.WriteAssocsToConfigHash(params.Client, params.Beat.GetAssociations(), configHash); err != nil {
 		return results.WithError(err)
 	}
 

@@ -210,11 +210,11 @@ func (akb *ApmKibanaAssociation) Associated() commonv1.Associated {
 }
 
 func (akb *ApmKibanaAssociation) AssociationConfAnnotationName() string {
-	return "association.k8s.elastic.co/kb-conf"
+	return commonv1.KibanaConfigAnnotationName
 }
 
 func (akb *ApmKibanaAssociation) AssociatedType() string {
-	return "kibana"
+	return commonv1.KibanaAssociationType
 }
 
 func (akb *ApmKibanaAssociation) AssociationRef() commonv1.ObjectSelector {

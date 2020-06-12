@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash"
 
+	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -19,9 +20,7 @@ import (
 )
 
 const (
-	CAVolumeName = "es-certs"
-	CAMountPath  = "/mnt/elastic-internal/es-certs/"
-	CAFileName   = "ca.crt"
+	CAFileName = "ca.crt"
 
 	ConfigVolumeName = "config"
 	ConfigMountPath  = "/etc/beat.yml"
@@ -50,6 +49,10 @@ var (
 		},
 	}
 )
+
+func certificatesDir(association commonv1.Association) string {
+	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociatedType())
+}
 
 func buildPodTemplate(
 	params DriverParams,
@@ -114,11 +117,18 @@ func buildPodTemplate(
 		dataVolume,
 	}
 
-	if params.Beat.AssociationConf().CAIsConfigured() {
-		volumes = append(volumes, volume.NewSecretVolumeWithMountPath(
-			params.Beat.AssociationConf().GetCASecretName(),
-			CAVolumeName,
-			CAMountPath))
+	for _, association := range params.Beat.GetAssociations() {
+		if !association.AssociationConf().CAIsConfigured() {
+			continue
+		}
+		caSecretName := association.AssociationConf().GetCASecretName()
+		caVolume := volume.NewSecretVolumeWithMountPath(
+			caSecretName,
+			association.AssociatedType()+"-certs",
+			certificatesDir(association),
+		)
+		volumes = append(volumes, caVolume)
+
 	}
 
 	for _, v := range volumes {

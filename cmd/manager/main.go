@@ -349,7 +349,6 @@ func execute() {
 	if manageBeatAutodiscoverRBAC {
 		beatcommon.EnableAutodiscoverRBACManagement()
 	}
-
 	if err = apmserver.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ApmServer")
 		os.Exit(1)
@@ -388,6 +387,10 @@ func execute() {
 	}
 	if err = associationctl.AddBeatES(mgr, accessReviewer, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "beat-es-association")
+		os.Exit(1)
+	}
+	if err = associationctl.AddBeatKibana(mgr, accessReviewer, params); err != nil {
+		log.Error(err, "unable to create controller", "controller", "beat-kibana-association")
 		os.Exit(1)
 	}
 

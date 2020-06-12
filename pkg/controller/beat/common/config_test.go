@@ -18,6 +18,15 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
+func merge(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
+	result := settings.NewCanonicalConfig()
+	err := result.MergeWith(cs...)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+
 func Test_buildBeatConfig(t *testing.T) {
 	clientWithSecret := k8s.WrappedFakeClient(
 		&corev1.Secret{
@@ -36,10 +45,12 @@ func Test_buildBeatConfig(t *testing.T) {
 		},
 	)
 
-	defaultConfig := settings.MustParseConfig([]byte("default: true"))
+	unmanagedDefaultCfg := settings.MustParseConfig([]byte("default: true"))
+	managedDefaultCfg := settings.MustParseConfig([]byte("setup.kibana: true"))
 	userConfig := &commonv1.Config{Data: map[string]interface{}{"user": "true"}}
 	userCanonicalConfig := settings.MustCanonicalConfig(userConfig.Data)
-	outputCAYaml := settings.MustParseConfig([]byte("output.elasticsearch.ssl.certificate_authorities: /mnt/elastic-internal/es-certs/ca.crt"))
+	outputCAYaml := settings.MustParseConfig([]byte(`output.elasticsearch.ssl.certificate_authorities: 
+   - /mnt/elastic-internal/elasticsearch-certs/ca.crt`))
 	outputYaml := settings.MustParseConfig([]byte(`output:
   elasticsearch:
     hosts:
@@ -53,7 +64,8 @@ func Test_buildBeatConfig(t *testing.T) {
 			Namespace: "ns",
 		},
 	}
-	withAssociation.SetAssociationConf(&commonv1.AssociationConf{
+	esAssoc := beatv1beta1.BeatESAssociation{Beat: &withAssociation}
+	esAssoc.SetAssociationConf(&commonv1.AssociationConf{
 		AuthSecretName: "secret",
 		AuthSecretKey:  "elastic",
 		CACertProvided: false,
@@ -61,7 +73,9 @@ func Test_buildBeatConfig(t *testing.T) {
 		URL:            "url",
 	})
 	withAssociationWithCA := *withAssociation.DeepCopy()
-	withAssociationWithCA.AssociationConf().CACertProvided = true
+
+	esAssocWithCA := beatv1beta1.BeatESAssociation{Beat: &withAssociationWithCA}
+	esAssocWithCA.AssociationConf().CACertProvided = true
 
 	withAssociationWithCAAndConfig := *withAssociationWithCA.DeepCopy()
 	withAssociationWithCAAndConfig.Spec.Config = userConfig
@@ -69,17 +83,11 @@ func Test_buildBeatConfig(t *testing.T) {
 	withAssociationWithConfig := *withAssociation.DeepCopy()
 	withAssociationWithConfig.Spec.Config = userConfig
 
-	merge := func(cs ...*settings.CanonicalConfig) *settings.CanonicalConfig {
-		result := settings.NewCanonicalConfig()
-		_ = result.MergeWith(cs...)
-		return result
-	}
-
 	for _, tt := range []struct {
 		name          string
 		client        k8s.Client
 		beat          beatv1beta1.Beat
-		defaultConfig *settings.CanonicalConfig
+		defaultConfig DefaultConfig
 		want          *settings.CanonicalConfig
 		wantErr       bool
 	}{
@@ -90,8 +98,8 @@ func Test_buildBeatConfig(t *testing.T) {
 		{
 			name:          "no association, only default config",
 			beat:          beatv1beta1.Beat{},
-			defaultConfig: defaultConfig,
-			want:          defaultConfig,
+			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
+			want:          unmanagedDefaultCfg,
 		},
 		{
 			name: "no association, only user config",
@@ -105,15 +113,27 @@ func Test_buildBeatConfig(t *testing.T) {
 			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
 				Config: userConfig,
 			}},
-			defaultConfig: defaultConfig,
+			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
 			want:          userCanonicalConfig,
 		},
+		{
+			name: "no association, both default configs and user config",
+			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
+				Config: userConfig,
+			}},
+			defaultConfig: DefaultConfig{
+				Unmanaged: unmanagedDefaultCfg,
+				Managed:   managedDefaultCfg,
+			},
+			want: merge(userCanonicalConfig, managedDefaultCfg),
+		},
+
 		{
 			name:          "association without ca, only default config",
 			client:        clientWithSecret,
 			beat:          withAssociation,
-			defaultConfig: defaultConfig,
-			want:          merge(defaultConfig, outputYaml),
+			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
+			want:          merge(unmanagedDefaultCfg, outputYaml),
 		},
 		{
 			name:   "association without ca, only user config",
@@ -125,15 +145,15 @@ func Test_buildBeatConfig(t *testing.T) {
 			name:          "association without ca, default and user config",
 			client:        clientWithSecret,
 			beat:          withAssociationWithConfig,
-			defaultConfig: defaultConfig,
+			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
 			want:          merge(userCanonicalConfig, outputYaml),
 		},
 		{
 			name:          "association with ca, only default config",
 			client:        clientWithSecret,
 			beat:          withAssociationWithCA,
-			defaultConfig: defaultConfig,
-			want:          merge(defaultConfig, outputYaml, outputCAYaml),
+			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
+			want:          merge(unmanagedDefaultCfg, outputYaml, outputCAYaml),
 		},
 		{
 			name:   "association with ca, only user config",
@@ -145,8 +165,18 @@ func Test_buildBeatConfig(t *testing.T) {
 			name:          "association with ca, default and user config",
 			client:        clientWithSecret,
 			beat:          withAssociationWithCAAndConfig,
-			defaultConfig: defaultConfig,
+			defaultConfig: DefaultConfig{Unmanaged: unmanagedDefaultCfg},
 			want:          merge(userCanonicalConfig, outputYaml, outputCAYaml),
+		},
+		{
+			name:   "association with ca, both default configs and user config",
+			client: clientWithSecret,
+			beat:   withAssociationWithCAAndConfig,
+			defaultConfig: DefaultConfig{
+				Unmanaged: unmanagedDefaultCfg,
+				Managed:   managedDefaultCfg,
+			},
+			want: merge(userCanonicalConfig, managedDefaultCfg, outputYaml, outputCAYaml),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -156,6 +186,111 @@ func Test_buildBeatConfig(t *testing.T) {
 
 			require.Empty(t, diff)
 			require.Equal(t, gotErr != nil, tt.wantErr)
+		})
+	}
+}
+
+func TestBuildKibanaConfig(t *testing.T) {
+
+	secretFixture := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "auth-secret",
+			Namespace: "test-ns",
+		},
+		Data: map[string][]byte{"elastic": []byte("123")},
+	}
+	kibanaAssocConf := commonv1.AssociationConf{
+		AuthSecretName: "auth-secret",
+		AuthSecretKey:  "elastic",
+		CACertProvided: false,
+		CASecretName:   "ca-secret",
+		URL:            "url",
+	}
+
+	kibanaAssocConfWithCA := kibanaAssocConf
+	kibanaAssocConfWithCA.CACertProvided = true
+
+	associationFixture := func(conf commonv1.AssociationConf) beatv1beta1.BeatKibanaAssociation {
+		assoc := beatv1beta1.BeatKibanaAssociation{Beat: &beatv1beta1.Beat{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "beat",
+				Namespace: "test-ns",
+			},
+			Spec: beatv1beta1.BeatSpec{
+				KibanaRef: commonv1.ObjectSelector{
+					Name:      "auth-secret",
+					Namespace: "test-ns",
+				}}}}
+
+		assoc.SetAssociationConf(&conf)
+		return assoc
+	}
+
+	expectedConfig := settings.MustParseConfig([]byte(`setup.dashboards.enabled: true
+setup.kibana: 
+  host: url
+  username: elastic
+  password: "123"
+`))
+
+	expectedCAConfig := settings.MustParseConfig([]byte(`setup.kibana.ssl.certificate_authorities: 
+  - "/mnt/elastic-internal/kibana-certs/ca.crt"
+`))
+
+	type args struct {
+		client     k8s.Client
+		associated beatv1beta1.BeatKibanaAssociation
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *settings.CanonicalConfig
+		wantErr bool
+	}{
+		{
+			name: "no association",
+			args: args{
+				associated: beatv1beta1.BeatKibanaAssociation{Beat: &beatv1beta1.Beat{}},
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "association: no auth-secret",
+			args: args{
+				client:     k8s.WrappedFakeClient(),
+				associated: associationFixture(kibanaAssocConf),
+			},
+			wantErr: true,
+		},
+		{
+			name: "association: no ca",
+			args: args{
+				client:     k8s.WrappedFakeClient(secretFixture),
+				associated: associationFixture(kibanaAssocConf),
+			},
+			want:    expectedConfig,
+			wantErr: false,
+		},
+		{
+			name: "association: with ca",
+			args: args{
+				client:     k8s.WrappedFakeClient(secretFixture),
+				associated: associationFixture(kibanaAssocConfWithCA),
+			},
+			want:    merge(expectedConfig, expectedCAConfig),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := BuildKibanaConfig(tt.args.client, tt.args.associated)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BuildKibanaConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			diff := tt.want.Diff(got, nil)
+			require.Empty(t, diff)
 		})
 	}
 }
