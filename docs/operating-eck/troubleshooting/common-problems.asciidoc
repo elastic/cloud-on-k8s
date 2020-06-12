@@ -65,7 +65,7 @@ metadata:
 type: Opaque
 ----
 
-To copy it to a different namespace, you would want to strip the `metadata.ownerReferences` field as well as the object-specific data:
+To copy it to a different namespace, strip the `metadata.ownerReferences` field as well as the object-specific data:
 
 [source,yaml]
 ----
