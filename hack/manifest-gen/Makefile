@@ -1,5 +1,5 @@
-RESTRICTED_NS:=elastic-system
-DOCKER_IMAGE:=docker.elastic.co/eck/manifest-gen:$(shell cat ../../VERSION)
+RESTRICTED_NS := elastic-system
+DOCKER_IMAGE  := docker.elastic.co/eck/manifest-gen:$(shell cat ../../VERSION)
 
 .PHONY: gen-global
 gen-global:
