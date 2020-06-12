@@ -51,7 +51,7 @@ func AddApmES(mgr manager.Manager, accessReviewer rbac.AccessReviewer, params op
 		},
 		UserSecretSuffix:  "apm-user",
 		CASecretLabelName: eslabel.ClusterNameLabelName,
-		ESUserRole:        getRoles,
+		ESUserRole:        getAPMElasticsearchRoles,
 	})
 }
 
@@ -67,8 +67,8 @@ func getElasticsearchExternalURL(c k8s.Client, association commonv1.Association)
 	return services.ExternalServiceURL(es), nil
 }
 
-// getRoles returns for a given version of the APM Server the set of required roles.
-func getRoles(associated commonv1.Associated) (string, error) {
+// getAPMElasticsearchRoles returns for a given version of the APM Server the set of required roles.
+func getAPMElasticsearchRoles(associated commonv1.Associated) (string, error) {
 	apmServer, ok := associated.(*apmv1.ApmServer)
 	if !ok {
 		return "", pkgerrors.Errorf(

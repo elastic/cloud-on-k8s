@@ -28,9 +28,6 @@ const (
 
 	// ApmAgentUserRole is the name of the role used by APMServer instances to connect to Kibana
 	ApmAgentUserRole = "eck_apm_agent_user_role"
-
-	// KibanaAdminBuiltinRole is the name of the built-in Kibana admin role
-	KibanaAdminBuiltinRole = "kibana_admin"
 )
 
 var (

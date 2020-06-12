@@ -9,11 +9,12 @@ import (
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/rbac"
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -35,9 +36,7 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 		},
 		UserSecretSuffix:  "beat-kb-user",
 		CASecretLabelName: kibana.KibanaNameLabelName,
-		ESUserRole: func(commonv1.Associated) (string, error) {
-			return user.KibanaAdminBuiltinRole, nil
-		},
+		ESUserRole:        getBeatKibanaRoles,
 		// The generic association controller watches Elasticsearch by default but we are interested in changes to
 		// Kibana as well for the purposes of establishing the association.
 		SetDynamicWatches: func(association commonv1.Association, w watches.DynamicWatches) error {
@@ -57,4 +56,24 @@ func AddBeatKibana(mgr manager.Manager, accessReviewer rbac.AccessReviewer, para
 			w.Kibanas.RemoveHandlerForKey(watchName)
 		},
 	})
+}
+
+func getBeatKibanaRoles(associated commonv1.Associated) (string, error) {
+	beat, ok := associated.(*beatv1beta1.Beat)
+	if !ok {
+		return "", pkgerrors.Errorf(
+			"Beat expected, got %s/%s",
+			associated.GetObjectKind().GroupVersionKind().Group,
+			associated.GetObjectKind().GroupVersionKind().Kind,
+		)
+	}
+
+	v, err := version.Parse(beat.Spec.Version)
+	if err != nil {
+		return "", err
+	}
+	if v.IsSameOrAfter(version.From(7, 5, 0)) {
+		return "kibana_admin", nil
+	}
+	return "kibana_user", nil
 }
