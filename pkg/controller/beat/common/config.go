@@ -110,7 +110,11 @@ func buildBeatConfig(
 		if err = cfg.MergeWith(userCfg); err != nil {
 			return nil, err
 		}
-		log.V(1).Info("Replacing ECK-managed configuration by user-provided configuration")
+		log.V(1).Info(
+			"Replacing ECK-managed configuration by user-provided configuration",
+			"beat_name", beat.Name,
+			"namespace", beat.Namespace,
+		)
 	}
 
 	return cfg.Render()
