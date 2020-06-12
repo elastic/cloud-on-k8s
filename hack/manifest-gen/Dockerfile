@@ -1,4 +1,4 @@
-FROM golang as builder
+FROM golang:1.14 as builder
 ADD . /manifest-gen
 WORKDIR /manifest-gen
 ENV GO111MODULE=on CGO_ENABLED=0 GOOS=linux 
@@ -8,4 +8,3 @@ FROM scratch
 COPY --from=builder /manifest-gen/manifest-gen /manifest-gen
 COPY --from=builder /manifest-gen/assets /assets
 ENTRYPOINT ["/manifest-gen"]
-
