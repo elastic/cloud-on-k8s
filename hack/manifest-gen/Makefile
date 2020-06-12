@@ -20,4 +20,4 @@ docker-gen-global: docker-build
 
 .PHONY: docker-gen-restricted
 docker-gen-restricted: docker-build
-	@ docker run $(DOCKER_IMAGE) generate --profile=restricted --set=operator.namespace=$(RESTRICTED_NS) --set=config.managedNamespaces="{$(RESTRICTED_NS)}"
+	@ docker run --rm $(DOCKER_IMAGE) generate --profile=restricted --set=operator.namespace=$(RESTRICTED_NS) --set=config.managedNamespaces="{$(RESTRICTED_NS)}"
