@@ -1,5 +1,9 @@
-RESTRICTED_NS := elastic-system
-DOCKER_IMAGE  := docker.elastic.co/eck/manifest-gen:$(shell cat ../../VERSION)
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License;
+# you may not use this file except in compliance with the Elastic License.
+
+RESTRICTED_NS:= elastic-system
+DOCKER_IMAGE := docker.elastic.co/eck/manifest-gen:$(shell cat ../../VERSION)
 
 .PHONY: gen-global
 gen-global:

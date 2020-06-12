@@ -29,9 +29,9 @@ func main() {
 
 func buildCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "manifest",
-		Short:         "ECK manifest operations",
-		Long:          `Utilities for generating an installation manifest for ECK`,
+		Use:           "manifest-gen",
+		Short:         "ECK manifest generator",
+		Long:          `Generates an installation manifest for ECK`,
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
@@ -80,25 +80,25 @@ By default, the operator is installed into the "elastic-system" namespace. This 
 `
 	examples := `
 Global operator:
-    $ eck manifest generate
+    $ manifest-gen generate
 
 Global operator with the validation webhook disabled:
-    $ eck manifest generate --set=config.webhook.enabled=false
+    $ manifest-gen generate --set=config.webhook.enabled=false
 
 Global operator with resource memory limit increased to 300Mi and CPU limit increased to 2:
-    $ eck manifest generate --set=operator.resources.limits.cpu=2,operator.resources.limits.memory=300Mi
+    $ manifest-gen generate --set=operator.resources.limits.cpu=2,operator.resources.limits.memory=300Mi
 
 Restricted operator without CRDs, managing the "elastic-system" namespace:
-    $ eck manifest generate --profile=restricted --exclude-crds
+    $ manifest-gen generate --profile=restricted --exclude-crds
 
 Restricted operator installed to and managing the single namespace named "namespacex":
-    $ eck manifest generate --profile=restricted --set=operator.namespace=namespacex --set=config.managedNamespaces='{namespacex}'
+    $ manifest-gen generate --profile=restricted --set=operator.namespace=namespacex --set=config.managedNamespaces='{namespacex}'
 
 Restricted operator managing "elastic-system", "nsa" and "nsb":
-    $ eck manifest generate --profile=restricted --set=config.managedNamespaces='{elastic-system, nsa, nsb}'
+    $ manifest-gen generate --profile=restricted --set=config.managedNamespaces='{elastic-system, nsa, nsb}'
 
 Restricted operator with tracing configured:
-    $ eck manifest generate --profile=restricted --set=config.tracing.enabled=true --set=config.tracing.config.ELASTIC_APM_SERVER_URL=http://apm:8200
+    $ manifest-gen generate --profile=restricted --set=config.tracing.enabled=true --set=config.tracing.config.ELASTIC_APM_SERVER_URL=http://apm:8200
 `
 
 	cmd := &cobra.Command{
