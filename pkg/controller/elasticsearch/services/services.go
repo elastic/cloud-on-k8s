@@ -50,6 +50,7 @@ func NewTransportService(es esv1.Elasticsearch) *corev1.Service {
 	labels := label.NewLabels(nsn)
 	ports := []corev1.ServicePort{
 		{
+			Name:     "tls-transport",
 			Protocol: corev1.ProtocolTCP,
 			Port:     network.TransportPort,
 		},
