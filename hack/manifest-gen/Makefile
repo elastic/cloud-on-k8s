@@ -16,7 +16,7 @@ docker-build:
 
 .PHONY: docker-gen-global
 docker-gen-global: docker-build
-	@ docker run $(DOCKER_IMAGE) generate --profile=global
+	@ docker run --rm $(DOCKER_IMAGE) generate --profile=global
 
 .PHONY: docker-gen-restricted
 docker-gen-restricted: docker-build
