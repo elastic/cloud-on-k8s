@@ -79,6 +79,13 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		case *beatv1beta1.Beat:
 			b := beat.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Beat = *decodedObj
+			// adjust builder to compensate for overwriting Beat struct
+			b.RBACObjects = nil
+			if b.Beat.Spec.DaemonSet != nil {
+				b.PodTemplate = &b.Beat.Spec.DaemonSet.PodTemplate
+			} else if b.Beat.Spec.Deployment != nil {
+				b.PodTemplate = &b.Beat.Spec.Deployment.PodTemplate
+			}
 			builder = transform(b)
 		case *entv1beta1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)

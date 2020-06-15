@@ -22,7 +22,7 @@ import (
 
 const sampleFile = "../../config/samples/beat/filebeat_es_kibana_apm.yaml"
 
-// TestSmoke runs a test suite using the ApmServer + Kibana + ES sample.
+// TestSmoke runs a test suite using the ApmServer + Kibana + ES + Beat sample.
 func TestSmoke(t *testing.T) {
 	var esBuilder elasticsearch.Builder
 	var kbBuilder kibana.Builder
