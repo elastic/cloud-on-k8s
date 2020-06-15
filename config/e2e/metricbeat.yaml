@@ -210,10 +210,6 @@ spec:
           configMap:
             defaultMode: 0600
             name: metricbeat-daemonset-modules
-        - name: data
-          hostPath:
-            path: /var/lib/metricbeat-data
-            type: DirectoryOrCreate
         - name: monitoring-ca
           secret:
             secretName: "eck-{{ .TestRun }}"
