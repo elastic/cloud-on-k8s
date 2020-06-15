@@ -19,22 +19,26 @@ type clientV7 struct {
 
 func (c *clientV7) GetLicense(ctx context.Context) (License, error) {
 	var license LicenseResponse
-	return license.License, c.get(ctx, "/_license", &license)
+	err := c.get(ctx, "/_license", &license)
+	return license.License, err
 }
 
 func (c *clientV7) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
 	var response LicenseUpdateResponse
-	return response, c.post(ctx, "/_license?acknowledge=true", licenses, &response)
+	err := c.post(ctx, "/_license?acknowledge=true", licenses, &response)
+	return response, err
 }
 
 func (c *clientV7) StartBasic(ctx context.Context) (StartBasicResponse, error) {
 	var response StartBasicResponse
-	return response, c.post(ctx, "/_license/start_basic?acknowledge=true", nil, &response)
+	err := c.post(ctx, "/_license/start_basic?acknowledge=true", nil, &response)
+	return response, err
 }
 
 func (c *clientV7) StartTrial(ctx context.Context) (StartTrialResponse, error) {
 	var response StartTrialResponse
-	return response, c.post(ctx, "/_license/start_trial?acknowledge=true", nil, &response)
+	err := c.post(ctx, "/_license/start_trial?acknowledge=true", nil, &response)
+	return response, err
 }
 
 func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
