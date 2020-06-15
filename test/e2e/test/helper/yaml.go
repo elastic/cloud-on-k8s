@@ -84,7 +84,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 			// hence clearing them here so the next calls can populate them properly
 			b.RBACObjects = nil
 
-			// Since b.Beat got overwritted, b.PodTemplate is pointing to wrong struct, fixing it here
+			// Since b.Beat was overwritten, b.PodTemplate is pointing to wrong struct, fixing it here
 			if b.Beat.Spec.DaemonSet != nil {
 				b.PodTemplate = &b.Beat.Spec.DaemonSet.PodTemplate
 			} else if b.Beat.Spec.Deployment != nil {
