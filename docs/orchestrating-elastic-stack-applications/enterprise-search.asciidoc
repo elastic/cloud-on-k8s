@@ -69,7 +69,7 @@ kubectl logs -f enterprise-search-quickstart-ent-58b84db85-dl7c6
 
 . Access Enterprise Search
 +
-A ClusterIP service is automatically created for the deployment, and can be used to access the Enterprise Search API from within the Kubernetes cluster:
+A ClusterIP Service is automatically created for the deployment, and can be used to access the Enterprise Search API from within the Kubernetes cluster:
 +
 [source,sh]
 ----
@@ -128,9 +128,9 @@ spec:
 ----
 
 [id="{p}-enterprise-search-secret-configuration"]
-=== Reference Kubernetes secrets for sensitive settings
+=== Reference Kubernetes Secrets for sensitive settings
 
-Some sensitive settings are best stored in Kubernetes secrets, referenced in the Enterprise Search specification.
+Some sensitive settings are best stored in Kubernetes Secrets, referenced in the Enterprise Search specification.
 
 This example sets up a Secret with SMTP credentials:
 
