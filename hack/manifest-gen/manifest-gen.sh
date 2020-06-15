@@ -16,9 +16,22 @@ update_chart() {
     local VERSION
     VERSION=$(cat "${SCRIPT_DIR}/../../VERSION")
 
+    local SED="sed_gnu"
+    if [[ "$OSTYPE" =~ "darwin" ]]; then
+        SED="sed_bsd"
+    fi
+
     cp -f "$ALL_CRDS" "${CHART_DIR}/crds/all-crds.yaml"
-    sed -i -E "s#version: [0-9]+\.[0-9]+\.[0-9]+#version: $VERSION#" "${CHART_DIR}/values.yaml"
-    sed -i -E "s#appVersion: [0-9]+\.[0-9]+\.[0-9]+#appVersion: $VERSION#" "${CHART_DIR}/Chart.yaml"
+    "$SED" -E "s#version: [0-9]+\.[0-9]+\.[0-9]+#version: $VERSION#" "${CHART_DIR}/values.yaml"
+    "$SED" -E "s#appVersion: [0-9]+\.[0-9]+\.[0-9]+#appVersion: $VERSION#" "${CHART_DIR}/Chart.yaml"
+}
+
+sed_gnu() {
+    sed -i "$@"
+}
+
+sed_bsd() {
+    sed -i '' "$@"
 }
 
 usage() {
