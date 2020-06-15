@@ -5,12 +5,15 @@
 package common
 
 import (
+	"context"
 	"testing"
 
 	logrtesting "github.com/go-logr/logr/testing"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
@@ -288,6 +291,101 @@ setup.kibana:
 			}
 			diff := tt.want.Diff(got, nil)
 			require.Empty(t, diff)
+		})
+	}
+}
+
+func Test_getUserConfig(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		config    *commonv1.Config
+		configRef *commonv1.ConfigSource
+		client    k8s.Client
+		want      *settings.CanonicalConfig
+		wantErr   bool
+	}{
+		{
+			name: "no user config",
+		},
+		{
+			name:   "config populated",
+			config: &commonv1.Config{Data: map[string]interface{}{"config": "true"}},
+			want:   settings.MustParseConfig([]byte(`config: "true"`)),
+		},
+		{
+			name: "configref populated - no secret",
+			configRef: &commonv1.ConfigSource{
+				SecretRef: commonv1.SecretRef{
+					SecretName: "my-secret-config",
+				},
+			},
+			client:  k8s.WrappedFakeClient(),
+			wantErr: true,
+		},
+		{
+			name: "configref populated - no secret key",
+			configRef: &commonv1.ConfigSource{
+				SecretRef: commonv1.SecretRef{
+					SecretName: "my-secret-config",
+				},
+			},
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-secret-config",
+				},
+			}),
+			wantErr: true,
+		},
+		{
+			name: "configref populated - malformed config",
+			configRef: &commonv1.ConfigSource{
+				SecretRef: commonv1.SecretRef{
+					SecretName: "my-secret-config-2",
+				},
+			},
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-secret-config-2",
+				},
+				Data: map[string][]byte{"beat.yml": []byte("filebeat:bad:value")},
+			}),
+			wantErr: true,
+		},
+		{
+			name: "configref populated",
+			configRef: &commonv1.ConfigSource{
+				SecretRef: commonv1.SecretRef{
+					SecretName: "my-secret-config-2",
+				},
+			},
+			client: k8s.WrappedFakeClient(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "my-secret-config-2",
+				},
+				Data: map[string][]byte{"beat.yml": []byte(`filebeat: "true"`)},
+			}),
+			want: settings.MustParseConfig([]byte(`filebeat: "true"`)),
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			params := DriverParams{
+				Context:       context.Background(),
+				Logger:        log.NullLogger{},
+				Client:        tt.client,
+				EventRecorder: &record.FakeRecorder{},
+				Watches:       watches.NewDynamicWatches(),
+				Beat: beatv1beta1.Beat{
+					Spec: beatv1beta1.BeatSpec{
+						Config:    tt.config,
+						ConfigRef: tt.configRef,
+					},
+				},
+			}
+
+			got, gotErr := getUserConfig(params)
+			require.Equal(t, tt.wantErr, gotErr != nil)
+			require.Equal(t, tt.want, got)
+
 		})
 	}
 }
