@@ -263,6 +263,7 @@ func mkTransportService() corev1.Service {
 			Type:                     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
+					Name:     "tls-transport",
 					Protocol: corev1.ProtocolTCP,
 					Port:     network.TransportPort,
 				},
