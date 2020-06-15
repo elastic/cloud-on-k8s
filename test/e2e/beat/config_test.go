@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"testing"
 
-	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
-	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
+	ghodssyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
+	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
@@ -21,16 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/elasticsearch"
 )
 
-func skipUnsupportedVersion(t *testing.T) {
-	ver := version.MustParse(test.Ctx().ElasticStackVersion)
-	if version.SupportedBeatVersions.WithinRange(ver) != nil {
-		t.SkipNow()
-	}
-}
-
 func TestFilebeatDefaultConfig(t *testing.T) {
-	skipUnsupportedVersion(t)
-
 	name := "test-fb-default-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -38,19 +29,20 @@ func TestFilebeatDefaultConfig(t *testing.T) {
 
 	testPodBuilder := beat.NewPodBuilder(name)
 
-	fbBuilder := beat.NewBuilder(name, filebeat.Type).
+	fbBuilder := beat.NewBuilder(name).
+		WithType(filebeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(filebeat.Type),
 			beat.HasEventFromPod(testPodBuilder.Pod.Name),
 			beat.HasMessageContaining(testPodBuilder.Logged))
 
+	fbBuilder = applyYamls(t, fbBuilder, e2eFilebeatConfig, e2eFilebeatPodTemplate)
+
 	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
 func TestMetricbeatDefaultConfig(t *testing.T) {
-	skipUnsupportedVersion(t)
-
 	name := "test-mb-default-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -58,7 +50,8 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 
 	testPodBuilder := beat.NewPodBuilder(name)
 
-	mbBuilder := beat.NewBuilder(name, metricbeat.Type).
+	mbBuilder := beat.NewBuilder(name).
+		WithType(metricbeat.Type).
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithESValidations(
 			beat.HasEventFromBeat(metricbeat.Type),
@@ -71,41 +64,55 @@ func TestMetricbeatDefaultConfig(t *testing.T) {
 			beat.HasEvent("event.dataset:system.fsstat"),
 		)
 
+	mbBuilder = applyYamls(t, mbBuilder, e2eMetricbeatConfig, e2eMetricbeatPodTemplate)
+
 	test.Sequence(nil, test.EmptySteps, esBuilder, mbBuilder, testPodBuilder).RunSequential(t)
 }
 
 func TestHeartbeatConfig(t *testing.T) {
-	skipUnsupportedVersion(t)
-
 	name := "test-hb-cfg"
 
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
-	hbBuilder := beat.NewBuilder(name, "heartbeat").
+	hbBuilder := beat.NewBuilder(name).
+		WithType("heartbeat").
+		WithDeployment().
 		WithElasticsearchRef(esBuilder.Ref()).
 		WithImage("docker.elastic.co/beats/heartbeat:7.7.0").
 		WithESValidations(
 			beat.HasEventFromBeat("heartbeat"),
 			beat.HasEvent("monitor.status:up"))
 
-	yaml := fmt.Sprintf(`
+	podTemplateYaml := `spec:
+  dnsPolicy: ClusterFirstWithHostNet
+  hostNetwork: true
+  securityContext:
+    runAsUser: 0
+`
+
+	configYaml := fmt.Sprintf(`
 heartbeat.monitors:
 - type: tcp
   schedule: '@every 5s'
   hosts: ["%s.%s.svc:9200"]
 `, v1.HTTPService(esBuilder.Elasticsearch.Name), esBuilder.Elasticsearch.Namespace)
-	hbBuilder = applyConfigYaml(t, hbBuilder, yaml)
+
+	hbBuilder = applyYamls(t, hbBuilder, configYaml, podTemplateYaml)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, hbBuilder).RunSequential(t)
 }
 
 // --- helpers
 
-func applyConfigYaml(t *testing.T, b beat.Builder, yaml string) beat.Builder {
-	config := &commonv1.Config{}
-	err := settings.MustParseConfig([]byte(yaml)).Unpack(&config.Data)
+func applyYamls(t *testing.T, b beat.Builder, configYaml, podTemplateYaml string) beat.Builder {
+	b.Beat.Spec.Config = &commonv1.Config{}
+	err := settings.MustParseConfig([]byte(configYaml)).Unpack(&b.Beat.Spec.Config.Data)
 	require.NoError(t, err)
 
-	return b.WithConfig(config)
+	// use ghodss as settings package has issues with unpacking volumes part of the yamls
+	err = ghodssyaml.Unmarshal([]byte(podTemplateYaml), b.PodTemplate)
+	require.NoError(t, err)
+
+	return b
 }

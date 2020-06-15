@@ -519,8 +519,7 @@ spec:
           description: BeatSpec defines the desired state of a Beat.
           properties:
             config:
-              description: Config holds the Beat configuration. If provided, it will
-                override the default configuration.
+              description: Config holds the Beat configuration.
               type: object
             daemonSet:
               description: DaemonSet specifies the Beat should be deployed as a DaemonSet,

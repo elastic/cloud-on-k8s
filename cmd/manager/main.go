@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	associationctl "github.com/elastic/cloud-on-k8s/pkg/controller/association/controller"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/operator"
@@ -168,11 +167,6 @@ func init() {
 		"",
 		fmt.Sprintf("K8s secret mounted into the path designated by %s to be used for webhook certificates", operator.WebhookCertDirFlag),
 	)
-	Cmd.Flags().Bool(
-		operator.ManageBeatAutodiscoverRBACFlag,
-		true,
-		"Determines whether the operator should set up bindings and service accounts for the Beats autodiscover feature",
-	)
 
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -257,8 +251,6 @@ func execute() {
 		CertDir: viper.GetString(operator.WebhookCertDirFlag),
 	}
 
-	manageBeatAutodiscoverRBAC := viper.GetBool(operator.ManageBeatAutodiscoverRBACFlag)
-
 	// configure the manager cache based on the number of managed namespaces
 	managedNamespaces := viper.GetStringSlice(operator.NamespacesFlag)
 	switch {
@@ -270,14 +262,7 @@ func execute() {
 	default:
 		log.Info("Operator configured to manage multiple namespaces", "namespaces", managedNamespaces, "operator_namespace", operatorNamespace)
 		// the manager cache should always include the operator namespace so that we can work with operator-internal resources
-		cachedNamespaces := append(managedNamespaces, operatorNamespace)
-
-		// include empty namespace so that we can work with cluster-wide (non-namespaced) resources needed with autodiscover
-		if manageBeatAutodiscoverRBAC {
-			cachedNamespaces = append(cachedNamespaces, "")
-		}
-
-		opts.NewCache = cache.MultiNamespacedCacheBuilder(cachedNamespaces)
+		opts.NewCache = cache.MultiNamespacedCacheBuilder(append(managedNamespaces, operatorNamespace))
 	}
 
 	// only expose prometheus metrics if provided a non-zero port
@@ -346,9 +331,6 @@ func execute() {
 		accessReviewer = rbac.NewPermissiveAccessReviewer()
 	}
 
-	if manageBeatAutodiscoverRBAC {
-		beatcommon.EnableAutodiscoverRBACManagement()
-	}
 	if err = apmserver.Add(mgr, params); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ApmServer")
 		os.Exit(1)

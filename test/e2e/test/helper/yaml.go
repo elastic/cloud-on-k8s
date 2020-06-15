@@ -14,7 +14,6 @@ import (
 	esv1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
 	entv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/enterprisesearch/v1beta1"
 	kbv1 "github.com/elastic/cloud-on-k8s/pkg/apis/kibana/v1"
-	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/apmserver"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test/beat"
@@ -78,7 +77,7 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 			b.ApmServer = *decodedObj
 			builder = transform(b)
 		case *beatv1beta1.Beat:
-			b := beat.NewBuilderWithoutSuffix(decodedObj.Name, beatcommon.Type(decodedObj.Spec.Type))
+			b := beat.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Beat = *decodedObj
 			builder = transform(b)
 		case *entv1beta1.EnterpriseSearch:

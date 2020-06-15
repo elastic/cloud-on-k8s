@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
-	"github.com/elastic/cloud-on-k8s/pkg/utils/pointer"
 )
 
 const (
@@ -57,54 +56,17 @@ func certificatesDir(association commonv1.Association) string {
 func buildPodTemplate(
 	params DriverParams,
 	defaultImage container.Image,
-	modifyPodFunc func(builder *defaults.PodTemplateBuilder),
 	configHash hash.Hash) corev1.PodTemplateSpec {
 	podTemplate := params.GetPodTemplate()
 
-	// Token mounting gets defaulted to false, which prevents from detecting whether user had set it.
-	// Instead, checking that here, before the default is applied.
-	// This is required for autodiscover which is enabled by default.
-	if podTemplate.Spec.AutomountServiceAccountToken == nil {
-		t := true
-		podTemplate.Spec.AutomountServiceAccountToken = &t
-	}
-
 	spec := &params.Beat.Spec
-	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type)
-
-	// might be nil if caller wants to use the default builder without any modifications
-	if modifyPodFunc != nil {
-		modifyPodFunc(builder)
-	}
-
-	builder = builder.
-		WithTerminationGracePeriod(30).
-		WithEnv(corev1.EnvVar{
-			Name: "NODE_NAME",
-			ValueFrom: &corev1.EnvVarSource{
-				FieldRef: &corev1.ObjectFieldSelector{
-					FieldPath: "spec.nodeName",
-				},
-			}}).
+	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithResources(defaultResources).
-		WithHostNetwork().
 		WithLabels(maps.Merge(NewLabels(params.Beat), map[string]string{
 			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
 			VersionLabelName:    spec.Version})).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
-		WithArgs("-e", "-c", ConfigMountPath).
-		WithDNSPolicy(corev1.DNSClusterFirstWithHostNet).
-		WithPodSecurityContext(corev1.PodSecurityContext{
-			RunAsUser: pointer.Int64(0),
-		})
-
-	if ShouldManageAutodiscoverRBAC() {
-		autodiscoverServiceAccountName := ServiceAccountName(params.Beat.Name)
-		// If SA is already provided, the call will be no-op. This is fine as we then assume
-		// that for this resource (despite operator configuration) the user took the responsibility
-		// of configuring RBAC.
-		builder.WithServiceAccount(autodiscoverServiceAccountName)
-	}
+		WithArgs("-e", "-c", ConfigMountPath)
 
 	dataVolume := createDataVolume(params)
 	volumes := []volume.VolumeLike{
