@@ -33,7 +33,7 @@ type BeatSpec struct {
 	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
 
-	// Config holds the Beat configuration. If provided, it will override the default configuration.
+	// Config holds the Beat configuration.
 	// +kubebuilder:validation:Optional
 	Config *commonv1.Config `json:"config,omitempty"`
 

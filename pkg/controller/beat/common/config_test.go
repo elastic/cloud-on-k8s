@@ -86,7 +86,7 @@ func Test_buildBeatConfig(t *testing.T) {
 		name          string
 		client        k8s.Client
 		beat          beatv1beta1.Beat
-		defaultConfig DefaultConfig
+		managedConfig *settings.CanonicalConfig
 		want          *settings.CanonicalConfig
 		wantErr       bool
 	}{
@@ -102,22 +102,18 @@ func Test_buildBeatConfig(t *testing.T) {
 			want: userCanonicalCfg,
 		},
 		{
-			name: "no association, managed config",
-			beat: beatv1beta1.Beat{},
-			defaultConfig: DefaultConfig{
-				Managed: managedCfg,
-			},
-			want: managedCfg,
+			name:          "no association, managed config",
+			beat:          beatv1beta1.Beat{},
+			managedConfig: managedCfg,
+			want:          managedCfg,
 		},
 		{
 			name: "no association, managed and user configs",
 			beat: beatv1beta1.Beat{Spec: beatv1beta1.BeatSpec{
 				Config: userCfg,
 			}},
-			defaultConfig: DefaultConfig{
-				Managed: managedCfg,
-			},
-			want: merge(userCanonicalCfg, managedCfg),
+			managedConfig: managedCfg,
+			want:          merge(userCanonicalCfg, managedCfg),
 		},
 		{
 			name:   "association without ca, no configs",
@@ -132,22 +128,18 @@ func Test_buildBeatConfig(t *testing.T) {
 			want:   merge(userCanonicalCfg, outputYaml),
 		},
 		{
-			name:   "association without ca, managed config",
-			client: clientWithSecret,
-			beat:   withAssoc,
-			defaultConfig: DefaultConfig{
-				Managed: managedCfg,
-			},
-			want: merge(managedCfg, outputYaml),
+			name:          "association without ca, managed config",
+			client:        clientWithSecret,
+			beat:          withAssoc,
+			managedConfig: managedCfg,
+			want:          merge(managedCfg, outputYaml),
 		},
 		{
-			name:   "association without ca, user and managed configs",
-			client: clientWithSecret,
-			beat:   withAssocWithConfig,
-			defaultConfig: DefaultConfig{
-				Managed: managedCfg,
-			},
-			want: merge(userCanonicalCfg, managedCfg, outputYaml),
+			name:          "association without ca, user and managed configs",
+			client:        clientWithSecret,
+			beat:          withAssocWithConfig,
+			managedConfig: managedCfg,
+			want:          merge(userCanonicalCfg, managedCfg, outputYaml),
 		},
 		{
 			name:   "association with ca, no configs",
@@ -162,26 +154,22 @@ func Test_buildBeatConfig(t *testing.T) {
 			want:   merge(userCanonicalCfg, outputYaml, outputCAYaml),
 		},
 		{
-			name:   "association with ca, managed config",
-			client: clientWithSecret,
-			beat:   withAssocWithCA,
-			defaultConfig: DefaultConfig{
-				Managed: managedCfg,
-			},
-			want: merge(managedCfg, outputYaml, outputCAYaml),
+			name:          "association with ca, managed config",
+			client:        clientWithSecret,
+			beat:          withAssocWithCA,
+			managedConfig: managedCfg,
+			want:          merge(managedCfg, outputYaml, outputCAYaml),
 		},
 		{
-			name:   "association with ca, user and managed configs",
-			client: clientWithSecret,
-			beat:   withAssocWithCAWithonfig,
-			defaultConfig: DefaultConfig{
-				Managed: managedCfg,
-			},
-			want: merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
+			name:          "association with ca, user and managed configs",
+			client:        clientWithSecret,
+			beat:          withAssocWithCAWithonfig,
+			managedConfig: managedCfg,
+			want:          merge(userCanonicalCfg, managedCfg, outputYaml, outputCAYaml),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.beat, tt.defaultConfig)
+			gotYaml, gotErr := buildBeatConfig(logrtesting.NullLogger{}, tt.client, tt.beat, tt.managedConfig)
 
 			diff := tt.want.Diff(settings.MustParseConfig(gotYaml), nil)
 

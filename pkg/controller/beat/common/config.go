@@ -20,11 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
-type DefaultConfig struct {
-	// Managed config is handled by ECK and will not be nullified by user provided config.
-	Managed *settings.CanonicalConfig
-}
-
 // buildOutputConfig will create the output section in Beat config according to the association configuration.
 func buildOutputConfig(client k8s.Client, associated beatv1beta1.BeatESAssociation) (*settings.CanonicalConfig, error) {
 	if !associated.AssociationConf().IsConfigured() {
@@ -81,7 +76,7 @@ func buildBeatConfig(
 	log logr.Logger,
 	client k8s.Client,
 	beat beatv1beta1.Beat,
-	defaultConfig DefaultConfig,
+	managedConfig *settings.CanonicalConfig,
 ) ([]byte, error) {
 	cfg := settings.NewCanonicalConfig()
 
@@ -89,7 +84,7 @@ func buildBeatConfig(
 	if err != nil {
 		return nil, err
 	}
-	err = cfg.MergeWith(outputCfg, defaultConfig.Managed)
+	err = cfg.MergeWith(outputCfg, managedConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -118,10 +113,10 @@ func buildBeatConfig(
 
 func reconcileConfig(
 	params DriverParams,
-	defaultConfig DefaultConfig,
+	managedConfig *settings.CanonicalConfig,
 	configHash hash.Hash,
 ) error {
-	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, defaultConfig)
+	cfgBytes, err := buildBeatConfig(params.Logger, params.Client, params.Beat, managedConfig)
 	if err != nil {
 		return err
 	}

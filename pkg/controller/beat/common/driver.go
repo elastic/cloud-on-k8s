@@ -16,6 +16,7 @@ import (
 	commonassociation "github.com/elastic/cloud-on-k8s/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/k8s"
 )
 
@@ -54,7 +55,7 @@ func ValidateBeatSpec(spec beatv1beta1.BeatSpec) error {
 
 func Reconcile(
 	params DriverParams,
-	defaultConfig DefaultConfig,
+	managedConfig *settings.CanonicalConfig,
 	defaultImage container.Image,
 ) *reconciler.Results {
 	results := reconciler.NewResult(params.Context)
@@ -64,7 +65,7 @@ func Reconcile(
 	}
 
 	configHash := sha256.New224()
-	if err := reconcileConfig(params, defaultConfig, configHash); err != nil {
+	if err := reconcileConfig(params, managedConfig, configHash); err != nil {
 		return results.WithError(err)
 	}
 

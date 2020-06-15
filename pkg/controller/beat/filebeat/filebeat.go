@@ -5,6 +5,7 @@
 package filebeat
 
 import (
+	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
@@ -24,7 +25,7 @@ func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
 }
 
 func (d *Driver) Reconcile() *reconciler.Results {
-	defaultConfig, err := d.defaultConfig()
+	defaultConfig, err := beatcommon.BuildKibanaConfig(d.Client, beatv1beta1.BeatKibanaAssociation{Beat: &d.Beat})
 	if err != nil {
 		return reconciler.NewResult(d.DriverParams.Context).WithError(err)
 	}

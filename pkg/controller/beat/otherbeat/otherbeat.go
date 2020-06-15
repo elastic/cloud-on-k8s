@@ -7,6 +7,7 @@ package otherbeat
 import (
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/settings"
 )
 
 type Driver struct {
@@ -19,5 +20,5 @@ func NewDriver(params beatcommon.DriverParams) beatcommon.Driver {
 }
 
 func (d *Driver) Reconcile() *reconciler.Results {
-	return beatcommon.Reconcile(d.DriverParams, beatcommon.DefaultConfig{}, "")
+	return beatcommon.Reconcile(d.DriverParams, &settings.CanonicalConfig{}, "")
 }
