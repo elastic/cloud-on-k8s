@@ -5,7 +5,10 @@
 package beat
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -13,30 +16,44 @@ import (
 	beatv1beta1 "github.com/elastic/cloud-on-k8s/pkg/apis/beat/v1beta1"
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/test/e2e/cmd/run"
 	"github.com/elastic/cloud-on-k8s/test/e2e/test"
+)
+
+const (
+	PSPClusterRoleName          = "elastic-beat-restricted"
+	AutodiscoverClusterRoleName = "elastic-beat-autodiscover"
+	MetricbeatClusterRoleName   = "elastic-beat-metricbeat"
 )
 
 // Builder to create a Beat
 type Builder struct {
 	Beat        beatv1beta1.Beat
 	Validations []ValidationFunc
+	RBACObjects []runtime.Object
+
+	// PodTemplate points to the PodTemplate in spec.DaemonSet or spec.Deployment
+	PodTemplate *corev1.PodTemplateSpec
 }
 
 func (b Builder) SkipTest() bool {
-	return false
+	ver := version.MustParse(b.Beat.Spec.Version)
+	return version.SupportedBeatVersions.WithinRange(ver) != nil
+
 }
 
-func NewBuilderWithoutSuffix(name string, typ beatcommon.Type) Builder {
-	return newBuilder(name, typ, "")
+func NewBuilderWithoutSuffix(name string) Builder {
+	return newBuilder(name, "")
 }
 
-func NewBuilder(name string, typ beatcommon.Type) Builder {
-	return newBuilder(name, typ, rand.String(4))
+func NewBuilder(name string) Builder {
+	return newBuilder(name, rand.String(4))
 }
 
-func newBuilder(name string, typ beatcommon.Type, suffix string) Builder {
+func newBuilder(name string, suffix string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: test.Ctx().ManagedNamespace(0),
@@ -47,16 +64,50 @@ func newBuilder(name string, typ beatcommon.Type, suffix string) Builder {
 		Beat: beatv1beta1.Beat{
 			ObjectMeta: meta,
 			Spec: beatv1beta1.BeatSpec{
-				Type:    string(typ),
 				Version: test.Ctx().ElasticStackVersion,
 			},
 		},
 	}.
 		WithSuffix(suffix).
-		WithLabel(run.TestNameLabel, name)
+		WithLabel(run.TestNameLabel, name).
+		WithDaemonSet().
+		WithRBAC().
+		WithPSP()
 }
 
 type ValidationFunc func(client.Client) error
+
+func (b Builder) WithType(typ beatcommon.Type) Builder {
+	b.Beat.Spec.Type = string(typ)
+	return b
+}
+
+func (b Builder) WithDaemonSet() Builder {
+	b.Beat.Spec.DaemonSet = &beatv1beta1.DaemonSetSpec{}
+
+	// if it exists, move PodTemplate from Deployment to DaemonSet
+	if b.Beat.Spec.Deployment != nil {
+		b.Beat.Spec.DaemonSet.PodTemplate = b.Beat.Spec.Deployment.PodTemplate
+		b.Beat.Spec.Deployment = nil
+	}
+
+	b.PodTemplate = &b.Beat.Spec.DaemonSet.PodTemplate
+
+	return b
+}
+
+func (b Builder) WithDeployment() Builder {
+	b.Beat.Spec.Deployment = &beatv1beta1.DeploymentSpec{}
+
+	// if it exists, move PodTemplate from DaemonSet to Deployment
+	if b.Beat.Spec.DaemonSet != nil {
+		b.Beat.Spec.Deployment.PodTemplate = b.Beat.Spec.DaemonSet.PodTemplate
+		b.Beat.Spec.DaemonSet = nil
+	}
+	b.PodTemplate = &b.Beat.Spec.Deployment.PodTemplate
+
+	return b
+}
 
 func (b Builder) WithESValidations(validations ...ValidationFunc) Builder {
 	b.Validations = append(b.Validations, validations...)
@@ -92,26 +143,14 @@ func (b Builder) WithNamespace(namespace string) Builder {
 }
 
 func (b Builder) WithRestrictedSecurityContext() Builder {
-	if b.Beat.Spec.DaemonSet != nil {
-		b.Beat.Spec.DaemonSet.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
-	}
-	if b.Beat.Spec.Deployment != nil {
-		b.Beat.Spec.Deployment.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
-	}
+	b.PodTemplate.Spec.SecurityContext = test.DefaultSecurityContext()
 
 	return b
 }
 
 func (b Builder) WithContainerSecurityContext(securityContext corev1.SecurityContext) Builder {
-	if b.Beat.Spec.DaemonSet != nil {
-		for i := range b.Beat.Spec.DaemonSet.PodTemplate.Spec.Containers {
-			b.Beat.Spec.DaemonSet.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
-		}
-	}
-	if b.Beat.Spec.Deployment != nil {
-		for i := range b.Beat.Spec.Deployment.PodTemplate.Spec.Containers {
-			b.Beat.Spec.Deployment.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
-		}
+	for i := range b.PodTemplate.Spec.Containers {
+		b.PodTemplate.Spec.Containers[i].SecurityContext = &securityContext
 	}
 
 	return b
@@ -127,27 +166,71 @@ func (b Builder) WithLabel(key, value string) Builder {
 }
 
 func (b Builder) WithPodLabel(key, value string) Builder {
-	var podSpecs []corev1.PodTemplateSpec
-
-	if b.Beat.Spec.DaemonSet != nil {
-		podSpecs = append(podSpecs, b.Beat.Spec.DaemonSet.PodTemplate)
+	if b.PodTemplate.Labels == nil {
+		b.PodTemplate.Labels = make(map[string]string)
 	}
-	if b.Beat.Spec.Deployment != nil {
-		podSpecs = append(podSpecs, b.Beat.Spec.Deployment.PodTemplate)
-	}
+	b.PodTemplate.Labels[key] = value
 
-	for _, podSpec := range podSpecs {
-		if podSpec.Labels == nil {
-			podSpec.Labels = make(map[string]string)
+	return b
+}
+
+func (b Builder) WithPodTemplateServiceAccount(name string) Builder {
+	b.PodTemplate.Spec.ServiceAccountName = name
+
+	return b
+}
+
+func (b Builder) WithRBAC() Builder {
+	clusterRoleName := AutodiscoverClusterRoleName
+	if b.Beat.Spec.Type == string(metricbeat.Type) {
+		clusterRoleName = MetricbeatClusterRoleName
+	}
+	return bind(b, clusterRoleName)
+}
+
+func (b Builder) WithPSP() Builder {
+	return bind(b, PSPClusterRoleName)
+}
+
+func bind(b Builder, clusterRoleName string) Builder {
+	saName := fmt.Sprintf("%s-sa", b.Beat.Name)
+
+	if b.PodTemplate.Spec.ServiceAccountName != saName {
+		b = b.WithPodTemplateServiceAccount(saName)
+		sa := &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      saName,
+				Namespace: b.Beat.Namespace,
+			},
 		}
-		podSpec.Labels[key] = value
+		b.RBACObjects = append(b.RBACObjects, sa)
 	}
+
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: fmt.Sprintf("%s-%s-%s-binding", clusterRoleName, b.Beat.Namespace, b.Beat.Name),
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      saName,
+				Namespace: b.Beat.Namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     clusterRoleName,
+		},
+	}
+
+	b.RBACObjects = append(b.RBACObjects, crb)
 
 	return b
 }
 
 func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.Beat}
+	return append(b.RBACObjects, &b.Beat)
 }
 
 var _ test.Builder = Builder{}
