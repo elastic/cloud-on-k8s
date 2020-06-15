@@ -54,8 +54,8 @@ func certificatesDir(association commonv1.Association) string {
 	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociatedType())
 }
 
-// initContainerParameters is used to generate an init container parameters needed to create an init container that will
-// load the secure settings into a keystore
+// initContainerParameters generates parameters specific to Beats for an init container that will load the secure
+// settings into a keystore
 func initContainerParameters(typ string) keystore.InitContainerParameters {
 	return keystore.InitContainerParameters{
 		KeystoreCreateCommand:         fmt.Sprintf("%s keystore create --force", typ),
