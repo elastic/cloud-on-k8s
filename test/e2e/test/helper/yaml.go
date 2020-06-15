@@ -79,6 +79,17 @@ func (yd *YAMLDecoder) ToBuilders(reader *bufio.Reader, transform BuilderTransfo
 		case *beatv1beta1.Beat:
 			b := beat.NewBuilderWithoutSuffix(decodedObj.Name)
 			b.Beat = *decodedObj
+			// adjust builder to compensate for overwriting Beat struct
+			// RBAC objects were populated using a name that doesn't have proper test suffix,
+			// hence clearing them here so the next calls can populate them properly
+			b.RBACObjects = nil
+
+			// Since b.Beat got overwritted, b.PodTemplate is pointing to wrong struct, fixing it here
+			if b.Beat.Spec.DaemonSet != nil {
+				b.PodTemplate = &b.Beat.Spec.DaemonSet.PodTemplate
+			} else if b.Beat.Spec.Deployment != nil {
+				b.PodTemplate = &b.Beat.Spec.Deployment.PodTemplate
+			}
 			builder = transform(b)
 		case *entv1beta1.EnterpriseSearch:
 			b := enterprisesearch.NewBuilderWithoutSuffix(decodedObj.Name)
