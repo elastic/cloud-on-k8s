@@ -26,7 +26,7 @@ const (
 	ConfigMountPath  = "/etc/beat.yml"
 	ConfigFileName   = "beat.yml"
 
-	DataVolumeName        = "data"
+	DataVolumeName        = "beat-data"
 	DataMountPathTemplate = "/var/lib/%s/%s/%s-data"
 	DataPathTemplate      = "/usr/share/%s/data"
 
