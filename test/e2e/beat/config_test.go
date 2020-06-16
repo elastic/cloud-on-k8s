@@ -10,6 +10,8 @@ import (
 
 	ghodssyaml "github.com/ghodss/yaml"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1 "github.com/elastic/cloud-on-k8s/pkg/apis/common/v1"
 	v1 "github.com/elastic/cloud-on-k8s/pkg/apis/elasticsearch/v1"
@@ -101,6 +103,61 @@ heartbeat.monitors:
 	hbBuilder = applyYamls(t, hbBuilder, configYaml, podTemplateYaml)
 
 	test.Sequence(nil, test.EmptySteps, esBuilder, hbBuilder).RunSequential(t)
+}
+
+func TestBeatSecureSettings(t *testing.T) {
+	name := "test-beat-secure-settings"
+
+	esBuilder := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
+
+	testPodBuilder := beat.NewPodBuilder(name)
+
+	secretName := "secret-agent"
+	agentName := "test-agent-name-xyz"
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: test.Ctx().ManagedNamespace(0),
+		},
+		Data: map[string][]byte{
+			"AGENT_NAME_VAR": []byte(agentName),
+		},
+	}
+
+	fbBuilder := beat.NewBuilder(name).
+		WithType(filebeat.Type).
+		WithElasticsearchRef(esBuilder.Ref()).
+		WithSecureSettings(secretName).
+		WithObjects(secret).
+		WithESValidations(
+			beat.HasEventFromBeat(filebeat.Type),
+			beat.HasEventFromPod(testPodBuilder.Pod.Name),
+			beat.HasMessageContaining(testPodBuilder.Logged),
+			beat.HasEvent("agent.name:"+agentName),
+		)
+
+	config := `
+name: ${AGENT_NAME_VAR}
+filebeat:
+  autodiscover:
+    providers:
+    - hints:
+        default_config:
+          paths:
+          - /var/log/containers/*${data.kubernetes.container.id}.log
+          type: container
+        enabled: true
+      host: ${HOSTNAME}
+      type: kubernetes
+processors:
+- add_cloud_metadata: {}
+- add_host_metadata: {}
+`
+
+	fbBuilder = applyYamls(t, fbBuilder, config, e2eFilebeatPodTemplate)
+
+	test.Sequence(nil, test.EmptySteps, esBuilder, fbBuilder, testPodBuilder).RunSequential(t)
 }
 
 // --- helpers

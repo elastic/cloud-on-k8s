@@ -14,6 +14,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/container"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/pkg/utils/maps"
 )
@@ -25,7 +26,7 @@ const (
 	ConfigMountPath  = "/etc/beat.yml"
 	ConfigFileName   = "beat.yml"
 
-	DataVolumeName        = "data"
+	DataVolumeName        = "beat-data"
 	DataMountPathTemplate = "/var/lib/%s/%s/%s-data"
 	DataPathTemplate      = "/usr/share/%s/data"
 
@@ -53,18 +54,29 @@ func certificatesDir(association commonv1.Association) string {
 	return fmt.Sprintf("/mnt/elastic-internal/%s-certs", association.AssociatedType())
 }
 
+// initContainerParameters generates parameters specific to Beats for an init container that will load the secure
+// settings into a keystore
+func initContainerParameters(typ string) keystore.InitContainerParameters {
+	return keystore.InitContainerParameters{
+		KeystoreCreateCommand:         fmt.Sprintf("%s keystore create --force", typ),
+		KeystoreAddCommand:            fmt.Sprintf(`cat "$filename" | %s keystore add "$key" --stdin --force`, typ),
+		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+		DataVolumePath:                fmt.Sprintf(DataPathTemplate, typ),
+		Resources:                     defaultResources,
+	}
+}
+
 func buildPodTemplate(
 	params DriverParams,
 	defaultImage container.Image,
-	configHash hash.Hash) corev1.PodTemplateSpec {
+	keystoreResources *keystore.Resources,
+	configHash hash.Hash,
+) corev1.PodTemplateSpec {
 	podTemplate := params.GetPodTemplate()
 
 	spec := &params.Beat.Spec
 	builder := defaults.NewPodTemplateBuilder(podTemplate, spec.Type).
 		WithResources(defaultResources).
-		WithLabels(maps.Merge(NewLabels(params.Beat), map[string]string{
-			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
-			VersionLabelName:    spec.Version})).
 		WithDockerImage(spec.Image, container.ImageRepository(defaultImage, spec.Version)).
 		WithArgs("-e", "-c", ConfigMountPath)
 
@@ -96,6 +108,18 @@ func buildPodTemplate(
 	for _, v := range volumes {
 		builder = builder.WithVolumes(v.Volume()).WithVolumeMounts(v.VolumeMount())
 	}
+
+	if keystoreResources != nil {
+		_, _ = configHash.Write([]byte(keystoreResources.Version))
+		builder.WithInitContainers(keystoreResources.InitContainer).
+			WithVolumes(keystoreResources.Volume).
+			WithInitContainerDefaults()
+	}
+
+	builder = builder.
+		WithLabels(maps.Merge(NewLabels(params.Beat), map[string]string{
+			ConfigChecksumLabel: fmt.Sprintf("%x", configHash.Sum(nil)),
+			VersionLabelName:    spec.Version}))
 
 	return builder.PodTemplate
 }

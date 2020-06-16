@@ -131,6 +131,13 @@ func (in *BeatSpec) DeepCopyInto(out *BeatSpec) {
 		in, out := &in.Config, &out.Config
 		*out = (*in).DeepCopy()
 	}
+	if in.SecureSettings != nil {
+		in, out := &in.SecureSettings, &out.SecureSettings
+		*out = make([]v1.SecretSource, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.DaemonSet != nil {
 		in, out := &in.DaemonSet, &out.DaemonSet
 		*out = new(DaemonSetSpec)
