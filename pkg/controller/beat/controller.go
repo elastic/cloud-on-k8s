@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/pkg/controller/association"
 	beatcommon "github.com/elastic/cloud-on-k8s/pkg/controller/beat/common"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/filebeat"
+	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/heartbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/metricbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/beat/otherbeat"
 	"github.com/elastic/cloud-on-k8s/pkg/controller/common"
@@ -220,6 +221,8 @@ func newDriver(
 		return filebeat.NewDriver(dp)
 	case string(metricbeat.Type):
 		return metricbeat.NewDriver(dp)
+	case string(heartbeat.Type):
+		return heartbeat.NewDriver(dp)
 	default:
 		return otherbeat.NewDriver(dp)
 	}

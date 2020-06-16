@@ -13,7 +13,7 @@ import (
 
 // BeatSpec defines the desired state of a Beat.
 type BeatSpec struct {
-	// Type is the type of the Beat to deploy (filebeat, metricbeat, etc.). Any string can be used,
+	// Type is the type of the Beat to deploy (filebeat, metricbeat, heartbeat, etc.). Any string can be used,
 	// but well-known types will be recognized and will allow to provide sane default configurations.
 	// +kubebuilder:validation:MaxLength=20
 	// +kubebuilder:validation:Pattern=[a-zA-Z0-9-]+

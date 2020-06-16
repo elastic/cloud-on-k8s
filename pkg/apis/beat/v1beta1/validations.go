@@ -57,13 +57,13 @@ func checkAtMostOneDeploymentOption(b *Beat) field.ErrorList {
 }
 
 func checkImageIfTypeUnknown(b *Beat) field.ErrorList {
-	knownTypes := []string{"filebeat", "metricbeat"}
+	knownTypes := []string{"filebeat", "metricbeat", "heartbeat"}
 	if !stringsutil.StringInSlice(b.Spec.Type, knownTypes) &&
 		b.Spec.Image == "" {
 		return field.ErrorList{
 			field.Required(
 				field.NewPath("spec").Child("image"),
-				"Image is required if Beat type is not one of [filebeat, metricbeat]"),
+				"Image is required if Beat type is not one of [filebeat, metricbeat, heartbeat]"),
 		}
 	}
 	return nil

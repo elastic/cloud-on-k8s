@@ -90,7 +90,7 @@ var (
 )
 
 func init() {
-	for _, beat := range []string{"filebeat", "metricbeat"} {
+	for _, beat := range []string{"filebeat", "metricbeat", "heartbeat"} {
 		PredefinedRoles[BeatRoleName(V77, beat)] = esclient.Role{
 			Cluster: []string{"monitor", "manage_ilm", "manage_ml", "read_ilm", "cluster:admin/ingest/pipeline/get"},
 			Indices: []esclient.IndexRole{
